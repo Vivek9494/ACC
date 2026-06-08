@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en" style=""><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Verify Players</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-container-lowest": "#ffffff",
+                    "on-primary-container": "#572000",
+                    "on-tertiary-fixed": "#001d35",
+                    "tertiary-fixed": "#d0e4ff",
+                    "primary": "#a04100",
+                    "error-container": "#ffdad6",
+                    "tertiary-container": "#059eff",
+                    "on-secondary-fixed-variant": "#544600",
+                    "surface-variant": "#e2e2e5",
+                    "on-secondary-fixed": "#221b00",
+                    "inverse-surface": "#2f3133",
+                    "surface-container-high": "#e8e8ea",
+                    "tertiary": "#0062a1",
+                    "on-background": "#1a1c1e",
+                    "outline-variant": "#e2bfb0",
+                    "surface-bright": "#f9f9fc",
+                    "secondary-fixed": "#ffe170",
+                    "on-secondary": "#ffffff",
+                    "on-tertiary-container": "#003357",
+                    "surface-dim": "#dadadc",
+                    "on-error": "#ffffff",
+                    "on-primary-fixed-variant": "#7a3000",
+                    "inverse-primary": "#ffb693",
+                    "secondary-fixed-dim": "#e9c400",
+                    "on-primary": "#ffffff",
+                    "primary-fixed": "#ffdbcc",
+                    "on-secondary-container": "#6f5c00",
+                    "surface-tint": "#a04100",
+                    "on-tertiary": "#ffffff",
+                    "background": "#f9f9fc",
+                    "tertiary-fixed-dim": "#9ccaff",
+                    "primary-container": "#ff6b00",
+                    "on-surface-variant": "#5a4136",
+                    "on-primary-fixed": "#351000",
+                    "secondary-container": "#fdd400",
+                    "surface-container-low": "#f3f3f6",
+                    "on-tertiary-fixed-variant": "#00497b",
+                    "on-error-container": "#93000a",
+                    "surface": "#f9f9fc",
+                    "secondary": "#705d00",
+                    "surface-container": "#eeeef0",
+                    "on-surface": "#1a1c1e",
+                    "surface-container-highest": "#e2e2e5",
+                    "primary-fixed-dim": "#ffb693",
+                    "error": "#ba1a1a",
+                    "inverse-on-surface": "#f0f0f3",
+                    "outline": "#8e7164"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "8px",
+                    "xl": "12px",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "lg": "40px",
+                    "base": "8px",
+                    "margin-desktop": "auto",
+                    "max-width": "1280px",
+                    "md": "24px",
+                    "xs": "4px",
+                    "margin-mobile": "16px",
+                    "sm": "12px",
+                    "xl": "64px",
+                    "gutter": "24px"
+            },
+            "fontFamily": {
+                    "label-md": ["Plus Jakarta Sans"],
+                    "headline-xl-mobile": ["Plus Jakarta Sans"],
+                    "headline-md": ["Plus Jakarta Sans"],
+                    "body-sm": ["Plus Jakarta Sans"],
+                    "body-md": ["Plus Jakarta Sans"],
+                    "label-sm": ["Plus Jakarta Sans"],
+                    "body-lg": ["Plus Jakarta Sans"],
+                    "headline-xl": ["Plus Jakarta Sans"],
+                    "headline-lg": ["Plus Jakarta Sans"]
+            },
+            "fontSize": {
+                    "label-md": ["14px", {"lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "600"}],
+                    "headline-xl-mobile": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "label-sm": ["12px", {"lineHeight": "14px", "letterSpacing": "0.04em", "fontWeight": "600"}],
+                    "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                    "headline-xl": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            background-color: #F4F4F8;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .custom-shadow {
+            box-shadow: 0px 4px 20px rgba(255, 107, 0, 0.08);
+        }
+    </style>
+</head>
+<body class="text-on-background min-h-screen pb-24">
+<!-- Top AppBar -->
+<header class="w-full top-0 sticky bg-surface dark:bg-background dark:border-outline z-50">
+<div class="flex justify-between items-center px-margin-mobile md:px-margin-desktop py-base w-full">
+<div class="flex items-center gap-4">
+<button class="hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors p-2 rounded-full active:scale-95 duration-150 flex items-center justify-center">
+<span class="material-symbols-outlined dark:text-primary-fixed text-primary-container" data-icon="arrow_back">arrow_back</span>
+</button>
+</div>
+<div class="flex items-center">
+<img alt="User Avatar" class="w-10 h-10 rounded-full border-2 border-primary-fixed" data-alt="A professional headshot of a young male athlete with a confident expression, set against a blurred stadium background. The lighting is warm and golden, reflecting a late afternoon sun, which aligns with a high-energy solar minimalism aesthetic. The image is crisp, modern, and high-contrast, fitting for a premium sports application interface." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAOKDSXW8VQ90otDfj6QfK3yERjBjSf1nJOsC8sMVC_FFx3ZE0NH02amhqu5PkSeKAEuiFa55K5MIPXhn-ZOe2n95ZyJzkT4H1CfpJn6SqfQMps8D7aDZ3jzBFrtP5-WsB9z5fgeWJlJX7vvQU60iQEFkF2HSKuRB8FfYrr7DD_wcLYkYKuz0AakX33QBILbkXfkS6RcSyqwfnuC8n_yCqIudc6LyYoard2xls-hgyF9Qi9sTYJzYuCwTAhDTJ2lyW5Jn731s0JAaBx"/>
+</div>
+</div>
+</header>
+<main class="max-w-max-width mx-auto px-margin-mobile md:px-margin-desktop py-md"><h1 class="text-2xl font-bold text-on-surface mb-sm px-0 font-headline-md">Elite Pro Championship - 2024</h1>
+<!-- Search and Filter (Bonus for High-End UI) -->
+<div class="mb-md flex gap-sm overflow-x-auto no-scrollbar">
+</div>
+<!-- Players List (Bento-like Grid Layout for Desktop, Stack for Mobile) -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-[12px]">
+<!-- Player Card 1 -->
+<div class="bg-white border border-outline-variant rounded-lg custom-shadow flex items-center justify-between transition-all hover:translate-y-[-2px] px-md py-3">
+<div class="flex items-center gap-sm">
+<div class="relative">
+<img alt="Arjun Singh" class="w-14 h-14 rounded-full object-cover" data-alt="Close-up portrait of a determined young man with short hair, smiling slightly. The background is a soft-focus athletic field with vibrant green grass. The lighting is bright and optimistic, emphasizing skin textures and clear eyes. The overall mood is professional, energetic, and perfectly suited for a clean, modern sports verification platform." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDqTsX5O15XfFOQakcrYS7-oExtdqxtCkFJsonAjvjaEvoUQ2xbtODIdv6egY-akTpna5Y5ZevVsFV22E7S2uYqk1S6zWxZVVhSLKvvapZJdpcVFBwcJ0w-oqiebBlWLrcIPfvD-uen79NEwWwRZrFavtJpf2v6bh0NLwgyZakblnMIiAdAEbtOTisEUIhBmJ5ehTiNHCF6gNnGY0i25ZLNQjk9oqADreH0ap0pR8WiIAI96fQxZSc_ZmbYHlM5OGdSTagnSldf3A2Y"/>
+<div class="absolute bottom-0 right-0 w-4 h-4 bg-error rounded-full border-2 border-white"></div>
+</div>
+<div>
+<h3 class="font-headline-md text-body-lg font-bold text-on-background">Arjun Singh</h3>
+<p class="font-body-sm text-on-surface-variant">+91 98765 43210</p><div class="flex justify-between items-center mt-2 gap-4 w-full">
+<div class="flex flex-col items-center flex-1">
+<span class="text-[10px] uppercase text-on-surface-variant/70 font-bold font-label-sm">Bat</span>
+<span class="font-body-md text-primary font-bold">4.5</span>
+</div>
+<div class="flex flex-col items-center flex-1">
+<span class="text-[10px] uppercase text-on-surface-variant/70 font-bold font-label-sm">Bowl</span>
+<span class="font-body-md text-primary font-bold">3.0</span>
+</div>
+<div class="flex flex-col items-center flex-1">
+<span class="text-[10px] uppercase text-on-surface-variant/70 font-bold font-label-sm">Field</span>
+<span class="font-body-md text-primary font-bold">4.0</span>
+</div>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-sm">
+<button class="w-10 h-10 bg-primary-container rounded-full flex items-center justify-center text-white active:scale-90 transition-transform shadow-md">
+<span class="material-symbols-outlined" data-icon="check" style='font-variation-settings: "FILL" 1;'>check</span>
+</button>
+<button class="w-10 h-10 bg-surface-container rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-colors active:scale-90">
+<span class="material-symbols-outlined" data-icon="edit">edit</span>
+</button>
+</div>
+</div>
+<!-- Player Card 2 -->
+<div class="bg-white border border-outline-variant rounded-lg custom-shadow flex items-center justify-between transition-all hover:translate-y-[-2px] px-md py-3">
+<div class="flex items-center gap-sm">
+<img alt="Priya Sharma" class="w-14 h-14 rounded-full object-cover" data-alt="A portrait of a cheerful young woman with her hair in a ponytail, wearing a sporty orange jersey. The background is a minimalist gym interior with cool blue tones and soft overhead lighting. The composition is clean and focused, reflecting a high-quality user profile in a modern, professional sports management application." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDq9IAEBE6cmH3SFcdzGR2gXdfUr1kPKER4-P2a8nRWNU6XaDVVv7D1mw3m9Ce2Fsv1QRhDOmFhkrtEfHJsPWdRZyxPoE1OLKmmRqgLwXsxxZa_hDOrG91TvAkv_IFfs1buYwNtLHgpNmQ1_tIQKtcxosDGNgjLmok3giOhWbbLuMKhcu-kchYv0l6pi6riCHy7k9MuvTYR9boPZa_CYLIv0ReY0sibaZUj5tgNkC-i5-NjHU4pXoX9QKQS8aRejvCmYd9pIM7PicxS"/>
+<div>
+<h3 class="font-headline-md text-body-lg font-bold text-on-background">Priya Sharma</h3>
+<p class="font-body-sm text-on-surface-variant">+91 91234 56789</p><div class="flex justify-between items-center mt-2 gap-4 w-full">
+<div class="flex flex-col items-center flex-1">
+<span class="text-[10px] uppercase text-on-surface-variant/70 font-bold font-label-sm">Bat</span>
+<span class="font-body-md text-primary font-bold">4.0</span>
+</div>
+<div class="flex flex-col items-center flex-1">
+<span class="text-[10px] uppercase text-on-surface-variant/70 font-bold font-label-sm">Bowl</span>
+<span class="font-body-md text-primary font-bold">3.5</span>
+</div>
+<div class="flex flex-col items-center flex-1">
+<span class="text-[10px] uppercase text-on-surface-variant/70 font-bold font-label-sm">Field</span>
+<span class="font-body-md text-primary font-bold">4.2</span>
+</div>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-sm">
+<button class="w-10 h-10 bg-primary-container rounded-full flex items-center justify-center text-white active:scale-90 transition-transform shadow-md">
+<span class="material-symbols-outlined" data-icon="check" style='font-variation-settings: "FILL" 1;'>check</span>
+</button>
+<button class="w-10 h-10 bg-surface-container rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-colors active:scale-90">
+<span class="material-symbols-outlined" data-icon="edit">edit</span>
+</button>
+</div>
+</div>
+<!-- Player Card 3 -->
+<div class="bg-white border border-outline-variant rounded-lg custom-shadow flex items-center justify-between transition-all hover:translate-y-[-2px] px-md py-3">
+<div class="flex items-center gap-sm">
+<img alt="Rahul Varma" class="w-14 h-14 rounded-full object-cover" data-alt="A side-profile portrait of a young man with a beard, looking thoughtfully into the distance. He is wearing a dark grey athletic shirt. The lighting is crisp and detailed, with a soft orange glow on one side of his face suggesting a warm sunset. The visual style is modern, minimal, and highly professional, fitting a high-growth consumer platform." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBEysw8l2kauJxRkvVjkAU7ZMcLg7oxINm7h-fY2xTOtS6iHJuJ8-YFfxRqEmQfMODVCaGCQU-PGE6d7ALaSp3tjbKeyLoZsLHDoxCu4Ahe0y_OQTqs0IJpfBkw5AyxK1HbPEDORNRPvP75-8BoSHSUXLnBC4k0alF5dXl4xt54b1k5A7B6ELKTLk_ZfpfhiVn3Xc-VjIILaFGOWz2lIlR58uEpVeNSocnrtdbmVV-QWLemxZVPCdldv-5FxnCguaO4xjlwRT9kTJuj"/>
+<div>
+<h3 class="font-headline-md text-body-lg font-bold text-on-background">Rahul Varma</h3>
+<p class="font-body-sm text-on-surface-variant">+91 88888 77777</p><div class="flex justify-between items-center mt-2 gap-4 w-full">
+<div class="flex flex-col items-center flex-1">
+<span class="text-[10px] uppercase text-on-surface-variant/70 font-bold font-label-sm">Bat</span>
+<span class="font-body-md text-primary font-bold">3.8</span>
+</div>
+<div class="flex flex-col items-center flex-1">
+<span class="text-[10px] uppercase text-on-surface-variant/70 font-bold font-label-sm">Bowl</span>
+<span class="font-body-md text-primary font-bold">4.8</span>
+</div>
+<div class="flex flex-col items-center flex-1">
+<span class="text-[10px] uppercase text-on-surface-variant/70 font-bold font-label-sm">Field</span>
+<span class="font-body-md text-primary font-bold">3.5</span>
+</div>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-sm">
+<button class="w-10 h-10 bg-primary-container rounded-full flex items-center justify-center text-white active:scale-90 transition-transform shadow-md">
+<span class="material-symbols-outlined" data-icon="check" style='font-variation-settings: "FILL" 1;'>check</span>
+</button>
+<button class="w-10 h-10 bg-surface-container rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-colors active:scale-90">
+<span class="material-symbols-outlined" data-icon="edit">edit</span>
+</button>
+</div>
+</div>
+<!-- Player Card 4 -->
+<div class="bg-white border border-outline-variant rounded-lg custom-shadow flex items-center justify-between transition-all hover:translate-y-[-2px] px-md py-3">
+<div class="flex items-center gap-sm">
+<img alt="Sana Khan" class="w-14 h-14 rounded-full object-cover" data-alt="Portrait of a young woman with a warm, authentic smile, wearing a white t-shirt. The background is a clean, minimalist studio setting with soft neutral tones. The lighting is bright and even, creating a sense of clarity and modern efficiency. The overall aesthetic is cheerful and professional, perfect for a community-focused sports interface." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBWZwH_RltosTcUJNxi6Ifs8h8S_5pCEXeT_5TKdTlAf0a2OvBYFTSUYoabZzTWlxOQnng4ELtjmVmuxcl3ZyjPLA9I4IV1okMfKthFWTYIg4jlxHx6mkSaphCr7QA-WMuPbbmlUf36k5f27AGc00AGD07CDb5HYoplcEUHMvG-ggho9Wovmfk0RINN6Bn0ly8g9SejnEUK8IQBWJKHVGqM1RbvoLyuj3tZuMYoKmXxDUgo_vhZxaaJk358Zt1URULDGr_Y7a7fevdA"/>
+<div>
+<h3 class="font-headline-md text-body-lg font-bold text-on-background">Sana Khan</h3>
+<p class="font-body-sm text-on-surface-variant">+91 70000 11111</p><div class="flex justify-between items-center mt-2 gap-4 w-full">
+<div class="flex flex-col items-center flex-1">
+<span class="text-[10px] uppercase text-on-surface-variant/70 font-bold font-label-sm">Bat</span>
+<span class="font-body-md text-primary font-bold">4.2</span>
+</div>
+<div class="flex flex-col items-center flex-1">
+<span class="text-[10px] uppercase text-on-surface-variant/70 font-bold font-label-sm">Bowl</span>
+<span class="font-body-md text-primary font-bold">3.2</span>
+</div>
+<div class="flex flex-col items-center flex-1">
+<span class="text-[10px] uppercase text-on-surface-variant/70 font-bold font-label-sm">Field</span>
+<span class="font-body-md text-primary font-bold">4.5</span>
+</div>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-sm">
+<button class="w-10 h-10 bg-primary-container rounded-full flex items-center justify-center text-white active:scale-90 transition-transform shadow-md">
+<span class="material-symbols-outlined" data-icon="check" style='font-variation-settings: "FILL" 1;'>check</span>
+</button>
+<button class="w-10 h-10 bg-surface-container rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-colors active:scale-90">
+<span class="material-symbols-outlined" data-icon="edit">edit</span>
+</button>
+</div>
+</div>
+<!-- Player Card 5 -->
+<div class="bg-white border border-outline-variant rounded-lg custom-shadow flex items-center justify-between transition-all hover:translate-y-[-2px] px-md py-3">
+<div class="flex items-center gap-sm">
+<img alt="Kevin Peters" class="w-14 h-14 rounded-full object-cover" data-alt="A bright, clear headshot of a blond young man with a friendly expression. He is wearing a yellow polo shirt that complements the solar minimalism theme. The background is a soft-focus urban park. The lighting is natural and high-key, creating an optimistic and vibrant mood suitable for a modern startup's user directory." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDLubjTA0ZpNSN1jdNWUYCriePQhjSe1mEFotpmfS4EkAQiFkY2viEY5VzbETRrEGdKd0BlhIgyWnRGAq7gxBSg5riolaPRxiBCeu-hP7iZjXwoCmTdkzivRnc77-KGW0ZyLCaV8ko7Zj1xLe75q-5nFYeOLErhfO-CscgZndVDkKWACKxWzgyR7OVmM8ADvMm4AfhaBo9lj1ITY66l8hpFDW2P7hEaqKwwXahakixIQc2osRLGhVDfmGbz564lHzoN8f-4lOvc5sIX"/>
+<div>
+<h3 class="font-headline-md text-body-lg font-bold text-on-background">Kevin Peters</h3>
+<p class="font-body-sm text-on-surface-variant">+91 95555 44444</p><div class="flex justify-between items-center mt-2 gap-4 w-full">
+<div class="flex flex-col items-center flex-1">
+<span class="text-[10px] uppercase text-on-surface-variant/70 font-bold font-label-sm">Bat</span>
+<span class="font-body-md text-primary font-bold">3.5</span>
+</div>
+<div class="flex flex-col items-center flex-1">
+<span class="text-[10px] uppercase text-on-surface-variant/70 font-bold font-label-sm">Bowl</span>
+<span class="font-body-md text-primary font-bold">4.0</span>
+</div>
+<div class="flex flex-col items-center flex-1">
+<span class="text-[10px] uppercase text-on-surface-variant/70 font-bold font-label-sm">Field</span>
+<span class="font-body-md text-primary font-bold">4.8</span>
+</div>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-sm">
+<button class="w-10 h-10 bg-primary-container rounded-full flex items-center justify-center text-white active:scale-90 transition-transform shadow-md">
+<span class="material-symbols-outlined" data-icon="check" style='font-variation-settings: "FILL" 1;'>check</span>
+</button>
+<button class="w-10 h-10 bg-surface-container rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-colors active:scale-90">
+<span class="material-symbols-outlined" data-icon="edit">edit</span>
+</button>
+</div>
+</div>
+<!-- Player Card 6 -->
+<div class="bg-white border border-outline-variant rounded-lg custom-shadow flex items-center justify-between transition-all hover:translate-y-[-2px] px-md py-3">
+<div class="flex items-center gap-sm">
+<img alt="Meera Nair" class="w-14 h-14 rounded-full object-cover" data-alt="Close-up portrait of a focused young woman athlete with braided hair. The lighting is dramatic yet clean, with strong highlights on her features. The setting is a professional sports training facility with clean lines and a modern feel. The aesthetic is high-energy and optimistic, utilizing a palette of crisp whites and warm skin tones." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCLiueeFxdybYHb0d4GO8ApPL-HjlGAIa0Qj4qVxax7eOsHqpddHS0jm7_lFj9EP5SguMlkVaPvRhegssT1h7bk-YEg-ZrZaMzq8YTlJkcXpnloH4gknspmrzZpqT2pFcWuHZTg4c2b42iIVLIEqIhcxgsrlKvo7gDoSPXIzfxBqqTXRx4os7Gx_9zuFYv1rPfAuJ4dEcTvSnb--3FceGkoJfm9v7qpFY0VtDBNLzUwCmhx10NIe7g0pLQvV05gOD_jqx-IYo-8AfJU"/>
+<div>
+<h3 class="font-headline-md text-body-lg font-bold text-on-background">Meera Nair</h3>
+<p class="font-body-sm text-on-surface-variant">+91 82222 33333</p><div class="flex justify-between items-center mt-2 gap-4 w-full">
+<div class="flex flex-col items-center flex-1">
+<span class="text-[10px] uppercase text-on-surface-variant/70 font-bold font-label-sm">Bat</span>
+<span class="font-body-md text-primary font-bold">4.7</span>
+</div>
+<div class="flex flex-col items-center flex-1">
+<span class="text-[10px] uppercase text-on-surface-variant/70 font-bold font-label-sm">Bowl</span>
+<span class="font-body-md text-primary font-bold">2.5</span>
+</div>
+<div class="flex flex-col items-center flex-1">
+<span class="text-[10px] uppercase text-on-surface-variant/70 font-bold font-label-sm">Field</span>
+<span class="font-body-md text-primary font-bold">4.2</span>
+</div>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-sm">
+<button class="w-10 h-10 bg-primary-container rounded-full flex items-center justify-center text-white active:scale-90 transition-transform shadow-md">
+<span class="material-symbols-outlined" data-icon="check" style='font-variation-settings: "FILL" 1;'>check</span>
+</button>
+<button class="w-10 h-10 bg-surface-container rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-colors active:scale-90">
+<span class="material-symbols-outlined" data-icon="edit">edit</span>
+</button>
+</div>
+</div>
+</div>
+</main>
+<!-- FAB for adding new players -->
+<button class="fixed bottom-24 right-6 w-14 h-14 bg-primary text-white rounded-full flex items-center justify-center shadow-xl active:scale-90 transition-transform z-40">
+<span class="material-symbols-outlined" data-icon="person_add">person_add</span>
+</button>
+<!-- Bottom NavBar -->
+<script>
+        // Micro-interaction for buttons
+        document.querySelectorAll('button').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const icon = this.querySelector('.material-symbols-outlined');
+                if (icon && icon.getAttribute('data-icon') === 'check') {
+                    this.classList.replace('bg-primary-container', 'bg-green-500');
+                    setTimeout(() => {
+                        this.classList.replace('bg-green-500', 'bg-primary-container');
+                    }, 1000);
+                }
+            });
+        });
+    </script>
+<nav class="md:hidden fixed bottom-0 w-full z-50 rounded-t-xl bg-surface-container-lowest shadow-[0px_-4px_20px_rgba(42,44,65,0.05)] border-t border-surface-variant/40">
+<div class="flex justify-around items-center h-20 px-4 w-full">
+<!-- Home -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-label-sm text-label-sm">Home</span>
+</a>
+<!-- Matches (Active) -->
+<a class="flex flex-col items-center justify-center text-white px-6 py-2 active:scale-90 duration-150 rounded-lg bg-primary-container" href="#">
+<span class="material-symbols-outlined" data-icon="sports_cricket">sports_cricket</span>
+<span class="font-label-sm text-label-sm">Matches</span>
+</a>
+<!-- Stats -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="leaderboard">leaderboard</span>
+<span class="font-label-sm text-label-sm">Stats</span>
+</a>
+<!-- Messages -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="forum">forum</span>
+<span class="font-label-sm text-label-sm">Messages</span>
+</a></div>
+</nav><!-- Edit Player Modal -->
+<div class="fixed inset-0 z-[100] hidden items-center justify-center p-4 bg-black/40 backdrop-blur-sm transition-opacity duration-300" id="edit-player-modal">
+<div class="bg-white w-full max-w-md rounded-xl p-md shadow-2xl transform transition-transform duration-300 scale-95">
+<div class="flex flex-col gap-md">
+<!-- Player Header -->
+<div class="flex items-center gap-sm">
+<img alt="Player" class="w-14 h-14 rounded-full object-cover" id="modal-player-img" src=""/>
+<div class="flex flex-col">
+<h2 class="font-headline-md text-on-surface text-lg" id="modal-player-name">Player Name</h2>
+<p class="font-body-md text-on-surface-variant" id="modal-player-phone">+91 00000 00000</p>
+</div>
+</div>
+<!-- Input Fields -->
+<div class="space-y-4">
+<div class="flex flex-col gap-1.5">
+<label class="font-label-md text-on-surface-variant">Batting Rating</label>
+<select class="w-full rounded-lg border-outline-variant bg-surface-container-low p-2.5 font-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none">
+<option value="1.0">1.0</option>
+<option value="2.0">2.0</option>
+<option value="3.0">3.0</option>
+<option value="4.0">4.0</option>
+<option value="5.0">5.0</option>
+</select>
+</div>
+<div class="flex flex-col gap-1.5">
+<label class="font-label-md text-on-surface-variant">Bowling Rating</label>
+<select class="w-full rounded-lg border-outline-variant bg-surface-container-low p-2.5 font-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none">
+<option value="1.0">1.0</option>
+<option value="2.0">2.0</option>
+<option value="3.0">3.0</option>
+<option value="4.0">4.0</option>
+<option value="5.0">5.0</option>
+</select>
+</div>
+<div class="flex flex-col gap-1.5">
+<label class="font-label-md text-on-surface-variant">Fielding Rating</label>
+<select class="w-full rounded-lg border-outline-variant bg-surface-container-low p-2.5 font-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none">
+<option value="1.0">1.0</option>
+<option value="2.0">2.0</option>
+<option value="3.0">3.0</option>
+<option value="4.0">4.0</option>
+<option value="5.0">5.0</option>
+</select>
+</div>
+</div>
+<!-- Actions -->
+<div class="flex gap-sm mt-md">
+<button class="flex-1 py-3 px-4 rounded-lg border border-primary text-primary font-label-md hover:bg-primary/5 transition-colors" id="close-modal">Cancel</button>
+<button class="flex-1 py-3 px-4 rounded-lg bg-primary-container text-white font-label-md hover:brightness-110 shadow-md transition-all active:scale-[0.98]">Submit</button>
+</div>
+</div>
+</div>
+</div><script>
+  const modal = document.getElementById('edit-player-modal');
+  const closeBtn = document.getElementById('close-modal');
+
+  // Open modal logic (for demonstration)
+  document.querySelectorAll('button:has(span[data-icon="edit"])').forEach(btn => {
+    btn.onclick = (e) => {
+      const card = e.currentTarget.closest('.bg-white');
+      const name = card.querySelector('h3').textContent;
+      const phone = card.querySelector('p').textContent;
+      const imgSrc = card.querySelector('img').src;
+
+      document.getElementById('modal-player-name').textContent = name;
+      document.getElementById('modal-player-phone').textContent = phone;
+      document.getElementById('modal-player-img').src = imgSrc;
+
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      setTimeout(() => {
+        modal.querySelector('.transform').classList.remove('scale-95');
+        modal.querySelector('.transform').classList.add('scale-100');
+      }, 10);
+    };
+  });
+
+  closeBtn.onclick = () => {
+    modal.querySelector('.transform').classList.replace('scale-100', 'scale-95');
+    setTimeout(() => {
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }, 200);
+  };
+
+  modal.onclick = (e) => {
+    if (e.target === modal) closeBtn.click();
+  };
+</script></body></html>

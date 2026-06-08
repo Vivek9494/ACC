@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>New Match Setup | Cricket Live</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&amp;family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-tint": "#a04100",
+                    "on-secondary-fixed": "#251a00",
+                    "surface-bright": "#fff8f5",
+                    "primary-fixed": "#ffdbcc",
+                    "surface-container-high": "#f1e6e1",
+                    "on-tertiary-fixed": "#001d35",
+                    "on-tertiary-fixed-variant": "#00497b",
+                    "secondary": "#765b00",
+                    "on-surface": "#1f1b18",
+                    "error-container": "#ffdad6",
+                    "tertiary-fixed-dim": "#9ccaff",
+                    "on-secondary-container": "#6e5400",
+                    "on-error-container": "#93000a",
+                    "surface-container": "#f7ece6",
+                    "outline": "#8e7164",
+                    "on-error": "#ffffff",
+                    "on-primary": "#ffffff",
+                    "inverse-surface": "#352f2c",
+                    "surface-container-lowest": "#ffffff",
+                    "on-background": "#1f1b18",
+                    "on-secondary": "#ffffff",
+                    "primary-fixed-dim": "#ffb693",
+                    "primary-container": "#ff6b00",
+                    "tertiary-fixed": "#d0e4ff",
+                    "inverse-on-surface": "#f9efe9",
+                    "on-primary-fixed-variant": "#7a3000",
+                    "on-secondary-fixed-variant": "#594400",
+                    "background": "#fff8f2",
+                    "outline-variant": "#e2bfb0",
+                    "surface-variant": "#ebe0db",
+                    "surface-container-highest": "#ebe0db",
+                    "inverse-primary": "#ffb693",
+                    "secondary-fixed": "#ffdf94",
+                    "on-primary-container": "#572000",
+                    "primary": "#a04100",
+                    "on-tertiary-container": "#003357",
+                    "secondary-fixed-dim": "#f5bf00",
+                    "tertiary": "#0062a1",
+                    "on-tertiary": "#ffffff",
+                    "on-primary-fixed": "#351000",
+                    "surface-container-low": "#fcf1ec",
+                    "surface-dim": "#e2d8d3",
+                    "error": "#ba1a1a",
+                    "secondary-container": "#ffc703",
+                    "tertiary-container": "#059eff",
+                    "surface": "#fff8f5",
+                    "on-surface-variant": "#5a4136"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "gutter": "24px",
+                    "max-width": "1280px",
+                    "margin-desktop": "64px",
+                    "margin-mobile": "16px",
+                    "base": "8px"
+            },
+            "fontFamily": {
+                    "headline-md": ["Hanken Grotesk"],
+                    "headline-lg": ["Hanken Grotesk"],
+                    "body-md": ["Inter"],
+                    "label-md": ["JetBrains Mono"],
+                    "body-sm": ["Inter"],
+                    "headline-xl": ["Hanken Grotesk"],
+                    "body-lg": ["Inter"],
+                    "label-sm": ["JetBrains Mono"]
+            },
+            "fontSize": {
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "fontWeight": "600"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "label-md": ["14px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "headline-xl": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                    "label-sm": ["12px", {"lineHeight": "14px", "letterSpacing": "0.05em", "fontWeight": "500"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            background-color: #fff8f2;
+            color: #1f1b18;
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+        .form-input-focus:focus {
+            border-color: #ff6b00 !important;
+            outline: none;
+            box-shadow: 0 0 0 1px #ff6b00;
+        }
+        .active-pill {
+            background-color: #ff6b00 !important;
+            color: #ffffff !important;
+            border-color: #ff6b00 !important;
+        }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen pb-24">
+<!-- TopAppBar -->
+<header class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-margin-mobile h-16 bg-surface border-b border-outline-variant/30">
+<div class="flex items-center gap-4">
+<button class="text-primary transition-all duration-200 active:scale-95 hover:bg-primary-container/10 p-2 rounded-full">
+<span class="material-symbols-outlined">menu</span>
+</button>
+<h1 class="text-headline-md font-headline-md text-primary tracking-tighter">CRICKET LIVE</h1>
+</div>
+<button class="text-primary transition-all duration-200 active:scale-95 hover:bg-primary-container/10 p-2 rounded-full">
+<span class="material-symbols-outlined">settings</span>
+</button>
+</header>
+<main class="mt-20 px-margin-mobile max-w-2xl mx-auto w-full">
+<section class="mb-8">
+<h2 class="text-headline-lg font-headline-lg text-on-surface mb-1">New Match</h2>
+<p class="text-body-md font-body-md text-on-surface-variant">Configure match details and toss results to begin.</p>
+</section>
+<!-- Form Canvas -->
+<div class="space-y-6">
+<!-- Team Names -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<div class="space-y-2">
+<label class="text-label-md font-label-md text-primary">TEAM A NAME</label>
+<input class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg p-3 text-on-surface placeholder-on-surface-variant/50 form-input-focus transition-all duration-200" placeholder="e.g. Warriors" type="text"/>
+</div>
+<div class="space-y-2">
+<label class="text-label-md font-label-md text-primary">TEAM B NAME</label>
+<input class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg p-3 text-on-surface placeholder-on-surface-variant/50 form-input-focus transition-all duration-200" placeholder="e.g. Titans" type="text"/>
+</div>
+</div>
+<!-- Match Format & Overs -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-surface-container-low p-4 rounded-xl border border-outline-variant/30">
+<div class="space-y-2">
+<label class="text-label-md font-label-md text-primary">FORMAT</label>
+<div class="flex gap-2">
+<button class="flex-1 py-2 rounded-lg border border-primary text-primary text-label-sm font-label-sm hover:bg-primary-container/10 transition-colors active-pill">T20</button>
+<button class="flex-1 py-2 rounded-lg border border-outline-variant text-on-surface-variant text-label-sm font-label-sm hover:bg-surface-variant transition-colors">ODI</button>
+<button class="flex-1 py-2 rounded-lg border border-outline-variant text-on-surface-variant text-label-sm font-label-sm hover:bg-surface-variant transition-colors">TEST</button>
+</div>
+</div>
+<div class="space-y-2">
+<label class="text-label-md font-label-md text-primary">TOTAL OVERS</label>
+<input class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg p-3 text-on-surface form-input-focus transition-all duration-200" type="number" value="20"/>
+</div>
+</div>
+<!-- Record Toss Section -->
+<div class="bg-surface-container-high p-6 rounded-xl border border-outline-variant/30 relative overflow-hidden">
+<div class="absolute top-0 left-0 w-1.5 h-full bg-secondary"></div>
+<h3 class="text-label-md font-label-md text-secondary mb-4 tracking-widest">RECORD TOSS</h3>
+<div class="space-y-4">
+<div class="flex items-center justify-between">
+<span class="text-body-md font-body-md text-on-surface">Toss Winner</span>
+<select class="bg-surface-container-lowest border border-outline-variant rounded-lg px-3 py-2 text-on-surface outline-none focus:border-primary">
+<option>Team A</option>
+<option>Team B</option>
+</select>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<div class="space-y-2">
+<label class="text-label-sm font-label-sm text-on-surface-variant">CALL</label>
+<div class="flex rounded-lg overflow-hidden border border-outline-variant">
+<button class="flex-1 py-2 bg-secondary text-on-secondary font-bold text-xs">HEADS</button>
+<button class="flex-1 py-2 bg-transparent text-on-surface-variant text-xs hover:bg-surface-variant">TAILS</button>
+</div>
+</div>
+<div class="space-y-2">
+<label class="text-label-sm font-label-sm text-on-surface-variant">DECISION</label>
+<div class="flex rounded-lg overflow-hidden border border-outline-variant">
+<button class="flex-1 py-2 bg-transparent text-on-surface-variant text-xs hover:bg-surface-variant border-r border-outline-variant">BAT</button>
+<button class="flex-1 py-2 bg-secondary text-on-secondary font-bold text-xs">BOWL</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Start Button -->
+<div class="pt-4 pb-8">
+<button class="w-full bg-primary-container text-on-primary-container font-bold text-headline-md py-4 rounded-xl shadow-lg shadow-primary-container/20 transition-all duration-200 active:scale-[0.98] hover:brightness-105 flex items-center justify-center gap-2">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">play_arrow</span>
+                START MATCH
+            </button>
+</div>
+</div>
+<!-- Atmospheric Card -->
+<div class="relative w-full h-48 rounded-2xl overflow-hidden mt-6 mb-12 group border border-outline-variant/20 shadow-sm">
+<img alt="Cricket stadium" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" data-alt="A cinematic, low-angle shot of a professional cricket stadium at twilight under powerful floodlights. The field is a lush, vibrant green with perfectly mown patterns, and the pitch is a crisp tan color. The sky is a deep twilight navy. The atmosphere is electric and high-performance, dominated by a dark mode aesthetic with high-contrast lighting and subtle orange lens flares." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDZqHlgO7Vh60osjUOnznbL_-rKOGBHO8w4R3qTjsogPKWy3EyEtGd11e3EbR-VT5CxhfQZ2Q7W6xRHJnfaMVoEdkpX1sgksJpMBkzLAB9EbKo0TYRk62H6V8xoUSedjsdu_XkWRJWRoDL2TSkRMiM5tTV2cYe_6bvOMvIy-FLsLl1qSpZdmC0IZbRrPFNn2BFy2xogYBDhtvz4-6b61kARQNYyjaqci_5p0IMmWQTUnMuBOcWrBY9oWRdU0fNoCV_u4e5Z6oyFaFN4"/>
+<div class="absolute inset-0 bg-gradient-to-t from-surface via-surface/10 to-transparent"></div>
+<div class="absolute bottom-4 left-4">
+<span class="px-2 py-0.5 bg-secondary text-on-secondary text-[10px] font-bold tracking-widest rounded mb-2 block w-fit">PRO MODE</span>
+<p class="text-on-surface font-bold text-body-lg drop-shadow-sm">Tournament Grade Tracking</p>
+<p class="text-on-surface-variant text-label-sm">Ball-by-ball analysis enabled</p>
+</div>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-margin-mobile py-2 bg-surface border-t border-outline-variant/30">
+<a class="flex flex-col items-center justify-center text-on-surface-variant transition-transform duration-200 active:scale-90 hover:text-primary" href="#">
+<span class="material-symbols-outlined">sports_cricket</span>
+<span class="text-label-sm font-label-sm">Live</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant transition-transform duration-200 active:scale-90 hover:text-primary" href="#">
+<span class="material-symbols-outlined">assessment</span>
+<span class="text-label-sm font-label-sm">Scorecard</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-xl px-4 py-1 transition-transform duration-200 active:scale-90" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">add_circle</span>
+<span class="text-label-sm font-label-sm">Setup</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant transition-transform duration-200 active:scale-90 hover:text-primary" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="text-label-sm font-label-sm">Profile</span>
+</a>
+</nav>
+<script>
+    // Micro-interactions for buttons
+    const setupButtons = document.querySelectorAll('button');
+    setupButtons.forEach(btn => {
+        const text = btn.innerText.trim();
+        if (['T20', 'ODI', 'TEST', 'HEADS', 'TAILS', 'BAT', 'BOWL'].includes(text)) {
+            btn.addEventListener('click', function() {
+                const parent = this.parentElement;
+                parent.querySelectorAll('button').forEach(b => {
+                    b.classList.remove('bg-secondary', 'text-on-secondary', 'active-pill', 'bg-primary-container', 'text-on-primary-container', 'border-primary');
+                    b.classList.add('bg-transparent', 'text-on-surface-variant', 'border-outline-variant');
+                });
+                
+                if (['T20', 'ODI', 'TEST'].includes(text)) {
+                    this.classList.add('active-pill');
+                    this.classList.remove('text-on-surface-variant', 'border-outline-variant');
+                } else {
+                    this.classList.add('bg-secondary', 'text-on-secondary');
+                    this.classList.remove('text-on-surface-variant', 'border-outline-variant');
+                }
+            });
+        }
+    });
+</script>
+</body></html>

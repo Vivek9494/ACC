@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Favorite Players</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #f9f9fc;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            border: 1px solid #e2e2e9;
+        }
+        .custom-shadow {
+            box-shadow: 0px 4px 20px rgba(255, 107, 0, 0.08);
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "inverse-primary": "#ffb693",
+                        "on-surface": "#1a1c1e",
+                        "on-error": "#ffffff",
+                        "on-background": "#1a1c1e",
+                        "on-tertiary": "#ffffff",
+                        "tertiary-container": "#059eff",
+                        "surface": "#f9f9fc",
+                        "surface-container-lowest": "#ffffff",
+                        "on-surface-variant": "#5a4136",
+                        "surface-bright": "#f9f9fc",
+                        "inverse-surface": "#2f3133",
+                        "on-tertiary-container": "#003357",
+                        "tertiary": "#0062a1",
+                        "inverse-on-surface": "#f0f0f3",
+                        "outline-variant": "#e2bfb0",
+                        "on-secondary": "#ffffff",
+                        "primary-fixed": "#ffdbcc",
+                        "tertiary-fixed-dim": "#9ccaff",
+                        "surface-container": "#eeeef0",
+                        "on-primary-fixed": "#351000",
+                        "secondary-fixed-dim": "#e9c400",
+                        "on-primary-container": "#572000",
+                        "background": "#f9f9fc",
+                        "primary-fixed-dim": "#ffb693",
+                        "surface-tint": "#a04100",
+                        "secondary-fixed": "#ffe170",
+                        "on-primary": "#ffffff",
+                        "surface-container-low": "#f3f3f6",
+                        "on-secondary-container": "#6f5c00",
+                        "primary": "#a04100",
+                        "tertiary-fixed": "#d0e4ff",
+                        "surface-container-high": "#e8e8ea",
+                        "secondary": "#705d00",
+                        "error-container": "#ffdad6",
+                        "on-tertiary-fixed-variant": "#00497b",
+                        "on-secondary-fixed-variant": "#544600",
+                        "on-secondary-fixed": "#221b00",
+                        "on-tertiary-fixed": "#001d35",
+                        "surface-container-highest": "#e2e2e5",
+                        "on-error-container": "#93000a",
+                        "surface-dim": "#dadadc",
+                        "primary-container": "#ff6b00",
+                        "surface-variant": "#e2e2e5",
+                        "outline": "#8e7164",
+                        "error": "#ba1a1a",
+                        "on-primary-fixed-variant": "#7a3000",
+                        "secondary-container": "#fdd400"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-mobile": "16px",
+                        "xs": "4px",
+                        "base": "8px",
+                        "gutter": "24px",
+                        "lg": "40px",
+                        "sm": "12px",
+                        "max-width": "1280px",
+                        "margin-desktop": "auto",
+                        "xl": "64px",
+                        "md": "24px"
+                    },
+                    "fontFamily": {
+                        "body-sm": ["Plus Jakarta Sans"],
+                        "label-sm": ["Plus Jakarta Sans"],
+                        "body-lg": ["Plus Jakarta Sans"],
+                        "headline-lg": ["Plus Jakarta Sans"],
+                        "headline-md": ["Plus Jakarta Sans"],
+                        "headline-xl": ["Plus Jakarta Sans"],
+                        "headline-xl-mobile": ["Plus Jakarta Sans"],
+                        "body-md": ["Plus Jakarta Sans"],
+                        "label-md": ["Plus Jakarta Sans"]
+                    },
+                    "fontSize": {
+                        "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "label-sm": ["12px", {"lineHeight": "14px", "letterSpacing": "0.04em", "fontWeight": "600"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                        "headline-xl": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                        "headline-xl-mobile": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "label-md": ["14px", {"lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "600"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface">
+<!-- TopAppBar -->
+<header class="w-full sticky top-0 z-40 bg-surface flex items-center px-4 h-16 w-full max-w-max-width mx-auto">
+<div class="flex items-center gap-4">
+<button class="flex items-center justify-center p-2 rounded-full hover:bg-surface-container-high transition-colors active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-primary">arrow_back</span>
+</button>
+<h1 class="font-headline-md text-headline-md text-on-surface">Favorite Players</h1>
+</div>
+</header>
+<main class="max-w-max-width mx-auto px-4 pt-4 pb-24 md:px-gutter">
+<!-- Content Area -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-md">
+<!-- Player Card 1 -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-lg p-md custom-shadow flex flex-col gap-4">
+<div class="flex items-center gap-md">
+<img alt="Player Photo" class="w-16 h-16 rounded-full object-cover border-2 border-primary-container" data-alt="A professional studio portrait of a confident male athlete with a friendly smile, set against a clean and warm light-toned background. The lighting is soft and cinematic, highlighting the player's features while maintaining a professional and modern look. The image embodies the high-energy and optimistic spirit of the Solar Minimalism brand with a bright and airy atmosphere." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCTORSlZ4AYNMpux8R4iR7OB_92KfB2yggUYFJG8qK99Hudvb6AGFW1-0h7sSTMGAM8idiKEf2jxVFZcJ_3UHqXiYAGxJO9iEIrYS9ffi1b8fi27anQl0lfo4OhHPUoH4WqIsPyKfMxC9ZMGenVwOIUWT1HN1YaAcQoyyrwxIDLKtoRX8Wk3hkKn19ZLC3fSrmfmvqPxXtSfwNb3Sz0PkarNnQDIb5WopV27JFVQkRSnP_LMZqwVY8trvMM6I_bWmbjDZOi8Zspl_Hp"/>
+<div>
+<h2 class="font-headline-md text-headline-md text-on-surface">Virat Kohli</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Royal Challengers Center</p>
+</div>
+</div>
+<div class="flex justify-between items-center py-base border-y border-outline-variant/30">
+<div class="flex flex-col items-center">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase">Bat</span>
+<span class="font-headline-md text-primary">85</span>
+</div>
+<div class="flex flex-col items-center">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase">Bowl</span>
+<span class="font-headline-md text-primary">72</span>
+</div>
+<div class="flex flex-col items-center">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase">Field</span>
+<span class="font-headline-md text-primary">90</span>
+</div>
+</div>
+<button class="w-full py-3 bg-primary-container text-on-primary-container font-label-md text-label-md rounded-lg hover:brightness-95 active:scale-95 transition-all">
+                    View Profile
+                </button>
+</div>
+<!-- Player Card 2 -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-lg p-md custom-shadow flex flex-col gap-4">
+<div class="flex items-center gap-md">
+<img alt="Player Photo" class="w-16 h-16 rounded-full object-cover border-2 border-primary-container" data-alt="A high-resolution headshot of a professional athlete looking directly into the camera with determination. The setting is a bright, modern athletic facility with soft natural light streaming in, creating a clean and minimal aesthetic. The palette is dominated by warm neutrals and crisp whites, perfectly aligning with a premium, solar-themed sports interface." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA7BZdoBUqkgwzGWmJtfWg0aoLBQc4i7xX8RHBavh6ONF7G_F5X3_UVUWVjlq6eKNavto4S6PN1gQ1jVsvU6bmbeKhb6kj0l8scrmmHITL9QcCqcUBtgvzWsdddUgBiK70V2L2pp6FL82VYWQ2edl6kBww0srbr7RByLxdVs24Vihm0o7JSeYMp3JqZN6sZTVRbyJ3kWwmFgH02QaDxGzilt0umelmWo72C2qZTROJuuIcWhaYjFR9b65t0fIXuDRQmV3MkVYK7pcMp"/>
+<div>
+<h2 class="font-headline-md text-headline-md text-on-surface">Steve Smith</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Sydney Cricket Center</p>
+</div>
+</div>
+<div class="flex justify-between items-center py-base border-y border-outline-variant/30">
+<div class="flex flex-col items-center">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase">Bat</span>
+<span class="font-headline-md text-primary">92</span>
+</div>
+<div class="flex flex-col items-center">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase">Bowl</span>
+<span class="font-headline-md text-primary">45</span>
+</div>
+<div class="flex flex-col items-center">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase">Field</span>
+<span class="font-headline-md text-primary">82</span>
+</div>
+</div>
+<button class="w-full py-3 bg-primary-container text-on-primary-container font-label-md text-label-md rounded-lg hover:brightness-95 active:scale-95 transition-all">
+                    View Profile
+                </button>
+</div>
+<!-- Player Card 3 -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-lg p-md custom-shadow flex flex-col gap-4">
+<div class="flex items-center gap-md">
+<img alt="Player Photo" class="w-16 h-16 rounded-full object-cover border-2 border-primary-container" data-alt="A portrait of a young cricket player in athletic gear, captured in a bright outdoor environment with soft sun-drenched lighting. The visual style is contemporary and minimalist, with a focus on vibrant, optimistic energy. The background is a blurred field with a warm, solar glow, emphasizing the athlete as the central focus of this professional sports profile." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBTp57SSKnH_tQD-S05WEUjRTCC2OHOWPdYJ3XBurK8-Xm_n42WBhFK1A653ESNyv0lEk-4JKIk59ZVa_qi9O436t7EOGev_DDktA2yz2Lxr0ku_kbcfRqw5XTJ31BlBA158-4AXYlLJRUchQbrKkk7mr1GWUErpiKMKTi-Pef4Ivk7nhnB2EXMLGZ6rgTGJVojUgXKBiYK0DB8iu_lbLrdhopG5iPZznRDQ7A8PzG-y5PR-yXps-Oxy2TxtLiXeHBKUeoCXjqL1Mc5"/>
+<div>
+<h2 class="font-headline-md text-headline-md text-on-surface">Kane Williamson</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Bay Oval Training Center</p>
+</div>
+</div>
+<div class="flex justify-between items-center py-base border-y border-outline-variant/30">
+<div class="flex flex-col items-center">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase">Bat</span>
+<span class="font-headline-md text-primary">88</span>
+</div>
+<div class="flex flex-col items-center">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase">Bowl</span>
+<span class="font-headline-md text-primary">30</span>
+</div>
+<div class="flex flex-col items-center">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase">Field</span>
+<span class="font-headline-md text-primary">85</span>
+</div>
+</div>
+<button class="w-full py-3 bg-primary-container text-on-primary-container font-label-md text-label-md rounded-lg hover:brightness-95 active:scale-95 transition-all">
+                    View Profile
+                </button>
+</div>
+<!-- Player Card 4 -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-lg p-md custom-shadow flex flex-col gap-4">
+<div class="flex items-center gap-md">
+<img alt="Player Photo" class="w-16 h-16 rounded-full object-cover border-2 border-primary-container" data-alt="A professional profile photo of a female athlete with a focused and strong expression. The lighting is high-key and even, reflecting a modern light-mode design system. The setting is a minimalist athletic center with subtle orange accents that resonate with the Solar Minimalism brand. The image is crisp, clean, and exudes a sense of elite performance and professionalism." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBNwRkXfsiaALr34kF2VMDrsj6oTpv8Nprv7VAwz1QnCPSANhPjByJgtbtWItLcVEvh4JeaZKiO_fGNIEoNnPVY7lhuOUVGlUG8WUXzwVuOHowdeqNpkdI3U-vTLbxI2dl_aVZUC-x7wBlcj6jnnsER31HJ6XgT-reOnrSR5aH8GVtQgv4nBYDKgGf0RFcumSex8u1XgGd0D75K0b5QslK1m7OWjtvMHKIBh5DYTNMU42yiMajiztjhEQSv-bkOIV6RaJgwjiVBumel"/>
+<div>
+<h2 class="font-headline-md text-headline-md text-on-surface">Ellyse Perry</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Melbourne Sports Center</p>
+</div>
+</div>
+<div class="flex justify-between items-center py-base border-y border-outline-variant/30">
+<div class="flex flex-col items-center">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase">Bat</span>
+<span class="font-headline-md text-primary">82</span>
+</div>
+<div class="flex flex-col items-center">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase">Bowl</span>
+<span class="font-headline-md text-primary">84</span>
+</div>
+<div class="flex flex-col items-center">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase">Field</span>
+<span class="font-headline-md text-primary">88</span>
+</div>
+</div>
+<button class="w-full py-3 bg-primary-container text-on-primary-container font-label-md text-label-md rounded-lg hover:brightness-95 active:scale-95 transition-all">
+                    View Profile
+                </button>
+</div>
+<!-- Player Card 5 -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-lg p-md custom-shadow flex flex-col gap-4">
+<div class="flex items-center gap-md">
+<img alt="Player Photo" class="w-16 h-16 rounded-full object-cover border-2 border-primary-container" data-alt="A detailed headshot of a male athlete against a neutral, softly lit studio background. The lighting emphasizes a warm, energetic glow on the subject's face, aligning with the Solar brand's optimistic aesthetic. The overall composition is clean and minimalist, using a bright and professional tone that complements a high-end sports application's white and orange UI." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBAydMOh_JBoPGCHM7xyUc6hCKmfA9NSCbAczXV9TqKUQirdOiRtKFtoZ72hwsEtA4GXKV0-fU5_VbeVmoSMRMtxJCrgznYRdDgSni9daFDfWcZyJxmyUqgHy6_dSaRz6QrM0voJO9yR-RngFK7LLHoFTH8JC68GqjhiE-eTrS2sqwPiz0YvxYEfhNX2pWaWeC_vZIqK966KhRS2UJwuy6lfcwQr4xaNPakcYM604kPcf5c6wbpw8uugzeX9uFlH23f-_aM8mcEfcI9"/>
+<div>
+<h2 class="font-headline-md text-headline-md text-on-surface">Joe Root</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Lord's Training Ground</p>
+</div>
+</div>
+<div class="flex justify-between items-center py-base border-y border-outline-variant/30">
+<div class="flex flex-col items-center">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase">Bat</span>
+<span class="font-headline-md text-primary">91</span>
+</div>
+<div class="flex flex-col items-center">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase">Bowl</span>
+<span class="font-headline-md text-primary">35</span>
+</div>
+<div class="flex flex-col items-center">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase">Field</span>
+<span class="font-headline-md text-primary">79</span>
+</div>
+</div>
+<button class="w-full py-3 bg-primary-container text-on-primary-container font-label-md text-label-md rounded-lg hover:brightness-95 active:scale-95 transition-all">
+                    View Profile
+                </button>
+</div>
+<!-- Player Card 6 -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-lg p-md custom-shadow flex flex-col gap-4">
+<div class="flex items-center gap-md">
+<img alt="Player Photo" class="w-16 h-16 rounded-full object-cover border-2 border-primary-container" data-alt="A high-key portrait of a female sports professional with a vibrant and cheerful smile. The background is a clean, modern white studio, lit with soft and diffused lighting that creates a welcoming and high-growth startup vibe. The image uses a warm and clear color palette, featuring subtle bright orange light reflections to maintain consistency with the Solar Minimalism design system." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBWnFY46bGv7jmaw_VTfKeBUXy7zorobLwQYWVWYG_w5cFUKWCa0MNadbiHLy2jYQ4V0uHjH4BdKAaU-8SIxPX9jGr90hRlUKgZvmHK6HApDBaILlli3H3bxa6k3hPRkm7oTYI-niloKTx0MF0r0onwR17iTKOUqxXKZYmrnmvu_n31HMPUEQx2nTHPj7mUSryyneiX0ZBrhO1YhYk-1eU10coL75NWw5W8q_DHH1y9rPQ0JWCl3YixK_1rd9WNsMQy8kivmIUxRayK"/>
+<div>
+<h2 class="font-headline-md text-headline-md text-on-surface">Smriti Mandhana</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Mumbai Academy</p>
+</div>
+</div>
+<div class="flex justify-between items-center py-base border-y border-outline-variant/30">
+<div class="flex flex-col items-center">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase">Bat</span>
+<span class="font-headline-md text-primary">87</span>
+</div>
+<div class="flex flex-col items-center">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase">Bowl</span>
+<span class="font-headline-md text-primary">20</span>
+</div>
+<div class="flex flex-col items-center">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase">Field</span>
+<span class="font-headline-md text-primary">75</span>
+</div>
+</div>
+<button class="w-full py-3 bg-primary-container text-on-primary-container font-label-md text-label-md rounded-lg hover:brightness-95 active:scale-95 transition-all">
+                    View Profile
+                </button>
+</div>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-2 py-3 bg-surface shadow-[0px_-4px_20px_rgba(255,107,0,0.08)]">
+<a class="flex flex-col items-center justify-center text-on-surface-variant px-5 py-1 hover:bg-surface-container-highest transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-sm text-label-sm">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant px-5 py-1 hover:bg-surface-container-highest transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined">sports_cricket</span>
+<span class="font-label-sm text-label-sm">Matches</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-2xl px-5 py-1 active:scale-90 transition-all duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="font-label-sm text-label-sm">Favorites</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant px-5 py-1 hover:bg-surface-container-highest transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="font-label-sm text-label-sm">Profile</span>
+</a>
+</nav>
+</body></html>

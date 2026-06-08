@@ -1,0 +1,277 @@
+<!DOCTYPE html><html lang="en" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>CricketLive - Player Profile</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "tertiary": "#0062a1",
+                    "surface-dim": "#dadadc",
+                    "error": "#ba1a1a",
+                    "secondary": "#705d00",
+                    "on-background": "#1a1c1e",
+                    "secondary-fixed-dim": "#e9c400",
+                    "on-error": "#ffffff",
+                    "on-primary-container": "#572000",
+                    "inverse-primary": "#ffb693",
+                    "on-secondary-container": "#6f5c00",
+                    "tertiary-fixed": "#d0e4ff",
+                    "secondary-fixed": "#ffe170",
+                    "on-surface-variant": "#5a4136",
+                    "outline": "#8e7164",
+                    "on-secondary-fixed": "#221b00",
+                    "surface-container": "#eeeef0",
+                    "primary-container": "#ff6b00",
+                    "background": "#f9f9fc",
+                    "on-secondary-fixed-variant": "#544600",
+                    "on-tertiary": "#ffffff",
+                    "inverse-on-surface": "#f0f0f3",
+                    "inverse-surface": "#2f3133",
+                    "error-container": "#ffdad6",
+                    "surface-container-low": "#f3f3f6",
+                    "on-primary-fixed-variant": "#7a3000",
+                    "primary-fixed": "#ffdbcc",
+                    "on-primary-fixed": "#351000",
+                    "tertiary-container": "#059eff",
+                    "tertiary-fixed-dim": "#9ccaff",
+                    "surface-container-highest": "#e2e2e5",
+                    "surface": "#f9f9fc",
+                    "on-tertiary-container": "#003357",
+                    "on-tertiary-fixed-variant": "#00497b",
+                    "on-error-container": "#93000a",
+                    "surface-variant": "#e2e2e5",
+                    "primary": "#a04100",
+                    "secondary-container": "#fdd400",
+                    "surface-tint": "#a04100",
+                    "on-secondary": "#ffffff",
+                    "surface-container-high": "#e8e8ea",
+                    "on-primary": "#ffffff",
+                    "primary-fixed-dim": "#ffb693",
+                    "outline-variant": "#e2bfb0",
+                    "on-surface": "#1a1c1e",
+                    "surface-bright": "#f9f9fc"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "margin-desktop": "auto",
+                    "xs": "4px",
+                    "lg": "40px",
+                    "md": "24px",
+                    "base": "8px",
+                    "max-width": "1280px",
+                    "gutter": "24px",
+                    "margin-mobile": "16px",
+                    "xl": "64px",
+                    "sm": "12px"
+            },
+            "fontFamily": {
+                    "label-sm": ["Plus Jakarta Sans"],
+                    "body-md": ["Plus Jakarta Sans"],
+                    "body-sm": ["Plus Jakarta Sans"],
+                    "headline-md": ["Plus Jakarta Sans"],
+                    "headline-xl-mobile": ["Plus Jakarta Sans"],
+                    "headline-lg": ["Plus Jakarta Sans"],
+                    "body-lg": ["Plus Jakarta Sans"],
+                    "headline-xl": ["Plus Jakarta Sans"],
+                    "label-md": ["Plus Jakarta Sans"]
+            },
+            "fontSize": {
+                    "label-sm": ["12px", {"lineHeight": "14px", "letterSpacing": "0.04em", "fontWeight": "600"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                    "headline-xl-mobile": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                    "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                    "headline-xl": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                    "label-md": ["14px", {"lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "600"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            background-color: #F4F4F8;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            color: #1a1c1e;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(20px);
+            border: 1px solid #E2E2E9;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+        }
+        @media (min-width: 768px) {
+            .stats-grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+        .performance-chart-bar {
+            transition: height 1s ease-out;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="min-h-screen pb-24 md:pb-0 bg-[#F4F4F8]">
+<!-- TopAppBar -->
+<header class="w-full top-0 sticky z-50 bg-transparent flex items-center justify-between px-margin-mobile h-16 transition-colors duration-200">
+<div class="flex items-center gap-3">
+<button class="material-symbols-outlined text-[#ff6b00] hover:bg-surface-container-low p-2 rounded-full transition-colors">arrow_back</button>
+<h1 class="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed-dim">CricketLive</h1>
+</div>
+<div class="flex items-center gap-4">
+<button class="material-symbols-outlined text-on-surface-variant hover:bg-surface-container-low p-2 rounded-full transition-colors">account_circle</button>
+</div>
+</header>
+<main class="max-w-max-width mx-auto px-margin-mobile md:px-gutter py-base">
+<!-- Hero Section: Player Identity -->
+<section class="relative mt-4 mb-8 overflow-hidden rounded-xl bg-white border border-[#E2E2E9] shadow-sm">
+<div class="h-48 md:h-64 w-full bg-gradient-to-r from-primary to-secondary overflow-hidden opacity-90">
+<div class="absolute inset-0 opacity-10" style="background-image: radial-gradient(#fff 1px, transparent 1px); background-size: 20px 20px;"></div>
+</div>
+
+</section>
+<!-- Stats Bento Grid 1 -->
+<section class="stats-grid mb-4">
+<div class="bg-white p-md rounded-xl border border-[#E2E2E9] hover:shadow-md transition-shadow">
+<p class="text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider mb-2">Total Runs</p>
+<h3 class="font-headline-lg text-headline-lg text-primary">8,492</h3>
+<p class="text-green-600 text-label-sm mt-1 flex items-center gap-1">
+<span class="material-symbols-outlined text-xs">trending_up</span> +124 this season
+                </p>
+</div>
+<div class="bg-white p-md rounded-xl border border-[#E2E2E9] hover:shadow-md transition-shadow">
+<p class="text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider mb-2">Average</p>
+<h3 class="font-headline-lg text-headline-lg text-on-surface">54.21</h3>
+<p class="text-on-surface-variant text-label-sm mt-1">Career High: 56.10</p>
+</div>
+<div class="bg-white p-md rounded-xl border border-[#E2E2E9] hover:shadow-md transition-shadow">
+<p class="text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider mb-2">Highest Score</p>
+<div class="flex items-baseline gap-2">
+<h3 class="font-headline-lg text-headline-lg text-on-surface">182*</h3>
+<span class="text-label-sm text-on-surface-variant">vs AUS</span>
+</div>
+<p class="text-on-surface-variant text-label-sm mt-1">Lords, 2023</p>
+</div>
+<div class="bg-white p-md rounded-xl border border-[#E2E2E9] hover:shadow-md transition-shadow">
+<p class="text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider mb-2">Strike Rate</p>
+<h3 class="font-headline-lg text-headline-lg text-on-surface">142.8</h3>
+<div class="mt-2 w-full bg-surface-container rounded-full h-1">
+<div class="bg-secondary h-1 rounded-full w-[85%]"></div>
+</div>
+</div>
+</section>
+<!-- Stats Bento Grid 2 (New Stats) -->
+<section class="stats-grid mb-8">
+<div class="bg-white p-md rounded-xl border border-[#E2E2E9] hover:shadow-md transition-shadow">
+<p class="text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider mb-2">Total Wickets</p>
+<h3 class="font-headline-lg text-headline-lg text-on-surface">214</h3>
+<p class="text-on-surface-variant text-label-sm mt-1">Econ: 4.85</p>
+</div>
+<div class="bg-white p-md rounded-xl border border-[#E2E2E9] hover:shadow-md transition-shadow">
+<p class="text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider mb-2">Best Figures</p>
+<h3 class="font-headline-lg text-headline-lg text-on-surface">5/24</h3>
+<p class="text-on-surface-variant text-label-sm mt-1">vs IND, 2022</p>
+</div>
+<div class="bg-white p-md rounded-xl border border-[#E2E2E9] hover:shadow-md transition-shadow">
+<p class="text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider mb-2">Total Catches</p>
+<h3 class="font-headline-lg text-headline-lg text-on-surface">42</h3>
+<p class="text-on-surface-variant text-label-sm mt-1">Recent: +3 in SL</p>
+</div>
+<div class="bg-white p-md rounded-xl border border-[#E2E2E9] hover:shadow-md transition-shadow">
+<p class="text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider mb-2">Total Stumpings</p>
+<h3 class="font-headline-lg text-headline-lg text-on-surface">8</h3>
+<p class="text-on-surface-variant text-label-sm mt-1">Career Record</p>
+</div>
+</section>
+<!-- Performance Chart & Milestones -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+<!-- Recent Performance Chart -->
+
+<!-- Milestones Progress -->
+
+</div>
+<!-- Latest News/Feed -->
+<section class="mb-8">
+<h4 class="font-headline-md text-headline-md text-on-surface mb-4">Latest for Rivers</h4>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<div class="bg-white rounded-xl overflow-hidden border border-[#E2E2E9] flex items-stretch">
+<img class="w-32 object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC_AE4bF9Q5n6_VyuVZyfq2OFrW5GJe4qvzWFnzlVQ1SztXv0Aeg3qzEPIZWfNZpIERK_KSH3nvqfEkABak3Px1QEZOgrSH8jI24kyJHS6yyskTrGMHwqfRdEn5PMhsdQqti_uoZtvyXG-W7ddPWyue5he-rfz_MQYV8J5c6g36qRhWAnI-K1hbI01hDUNVAQgsQgTMl4gdZ3txVM9wgo_PBP1LHCHx2jcXq6C3CyLa2o7uy0GJ8fNQd2GM7PPmWfHefyNWrnw573Ed">
+<div class="p-4 flex flex-col justify-center">
+<span class="text-primary text-[10px] font-bold uppercase tracking-widest mb-1">Match Report</span>
+<h5 class="font-label-md text-label-md leading-tight mb-2">Rivers secures victory with stunning 112* at Lords.</h5>
+<p class="text-[12px] text-on-surface-variant">2 days ago • 4 min read</p>
+</div>
+</div>
+<div class="bg-white rounded-xl overflow-hidden border border-[#E2E2E9] flex items-stretch">
+<img class="w-32 object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBrXbr_Mv7lSz7A--9A-ofJpKVnTLa1Eg0N1FYjT60HSOV3YPSfp0bR6MpYXDbFPxvojux_JlPJAB3NoeHZP1NqjLbWzScyOCjtJiRh-h_gXqFsEAkYvO18r150fEsFO7uC5t4xgu3wmCsnMJrXgl_-u6TUjXQ74UxR1Ie4taL0wIaFlYZM2nUEyQKN4eRUyjKq5gYqJcOLDON3c8usfDwbzEV4FFb-JKUSwC4xDvshBw0aVNEMIdFtuufsbXXTWDR8UsrNidv78LE3">
+<div class="p-4 flex flex-col justify-center">
+<span class="text-secondary text-[10px] font-bold uppercase tracking-widest mb-1">Interview</span>
+<h5 class="font-label-md text-label-md leading-tight mb-2">"The focus is on the World Cup," says Rivers.</h5>
+<p class="text-[12px] text-on-surface-variant">5 days ago • 8 min read</p>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Bottom Navigation Bar (Updated) -->
+<nav class="md:hidden fixed bottom-0 w-full z-50 rounded-t-xl bg-white shadow-[0px_-8px_30px_rgba(42,44,65,0.06)] border-t border-surface-variant/30">
+<div class="flex justify-around items-center h-20 px-4 w-full">
+<!-- Home -->
+<a class="flex flex-col items-center justify-center text-on-surface/60 hover:text-primary active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-sm text-label-sm">Home</span>
+</a>
+<!-- Matches -->
+<a class="flex flex-col items-center justify-center text-on-surface/60 hover:text-primary active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined">sports_cricket</span>
+<span class="font-label-sm text-label-sm">Matches</span>
+</a>
+<!-- Stats (Active) -->
+<a class="flex flex-col items-center justify-center bg-primary text-white px-6 py-2 active:scale-90 transition-all duration-150 rounded-lg" href="#">
+<span class="material-symbols-outlined">leaderboard</span>
+<span class="font-label-sm text-label-sm">Stats</span>
+</a>
+<!-- Messages -->
+<a class="flex flex-col items-center justify-center text-on-surface/60 hover:text-primary active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined">forum</span>
+<span class="font-label-sm text-label-sm">Messages</span>
+</a>
+</div>
+</nav>
+<script>
+        // Micro-interaction for performance chart
+        document.addEventListener('DOMContentLoaded', () => {
+            const bars = document.querySelectorAll('.performance-chart-bar');
+            bars.forEach((bar, index) => {
+                const targetHeight = bar.style.height;
+                bar.style.height = '0';
+                setTimeout(() => {
+                    bar.style.height = targetHeight;
+                }, 100 * index);
+            });
+        });
+    </script>
+
+
+</body></html>

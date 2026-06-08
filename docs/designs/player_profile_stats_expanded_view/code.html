@@ -1,0 +1,239 @@
+<!DOCTYPE html><html lang="en" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>CricketLive - Player Profile</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "tertiary": "#0062a1",
+                    "surface-dim": "#dadadc",
+                    "error": "#ba1a1a",
+                    "secondary": "#705d00",
+                    "on-background": "#1a1c1e",
+                    "secondary-fixed-dim": "#e9c400",
+                    "on-error": "#ffffff",
+                    "on-primary-container": "#572000",
+                    "inverse-primary": "#ffb693",
+                    "on-secondary-container": "#6f5c00",
+                    "tertiary-fixed": "#d0e4ff",
+                    "secondary-fixed": "#ffe170",
+                    "on-surface-variant": "#5a4136",
+                    "outline": "#8e7164",
+                    "on-secondary-fixed": "#221b00",
+                    "surface-container": "#eeeef0",
+                    "primary-container": "#ff6b00",
+                    "background": "#f9f9fc",
+                    "on-secondary-fixed-variant": "#544600",
+                    "on-tertiary": "#ffffff",
+                    "inverse-on-surface": "#f0f0f3",
+                    "inverse-surface": "#2f3133",
+                    "error-container": "#ffdad6",
+                    "surface-container-low": "#f3f3f6",
+                    "on-primary-fixed-variant": "#7a3000",
+                    "primary-fixed": "#ffdbcc",
+                    "on-primary-fixed": "#351000",
+                    "tertiary-container": "#059eff",
+                    "tertiary-fixed-dim": "#9ccaff",
+                    "surface-container-highest": "#e2e2e5",
+                    "surface": "#f9f9fc",
+                    "on-tertiary-container": "#003357",
+                    "on-tertiary-fixed-variant": "#00497b",
+                    "on-error-container": "#93000a",
+                    "surface-variant": "#e2e2e5",
+                    "primary": "#a04100",
+                    "secondary-container": "#fdd400",
+                    "surface-tint": "#a04100",
+                    "on-secondary": "#ffffff",
+                    "surface-container-high": "#e8e8ea",
+                    "on-primary": "#ffffff",
+                    "primary-fixed-dim": "#ffb693",
+                    "outline-variant": "#e2bfb0",
+                    "on-surface": "#1a1c1e",
+                    "surface-bright": "#f9f9fc"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "margin-desktop": "auto",
+                    "xs": "4px",
+                    "lg": "40px",
+                    "md": "24px",
+                    "base": "8px",
+                    "max-width": "1280px",
+                    "gutter": "24px",
+                    "margin-mobile": "16px",
+                    "xl": "64px",
+                    "sm": "12px"
+            },
+            "fontFamily": {
+                    "label-sm": ["Plus Jakarta Sans"],
+                    "body-md": ["Plus Jakarta Sans"],
+                    "body-sm": ["Plus Jakarta Sans"],
+                    "headline-md": ["Plus Jakarta Sans"],
+                    "headline-xl-mobile": ["Plus Jakarta Sans"],
+                    "headline-lg": ["Plus Jakarta Sans"],
+                    "body-lg": ["Plus Jakarta Sans"],
+                    "headline-xl": ["Plus Jakarta Sans"],
+                    "label-md": ["Plus Jakarta Sans"]
+            },
+            "fontSize": {
+                    "label-sm": ["12px", {"lineHeight": "14px", "letterSpacing": "0.04em", "fontWeight": "600"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                    "headline-xl-mobile": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                    "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                    "headline-xl": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                    "label-md": ["14px", {"lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "600"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            background-color: #F4F4F8;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            color: #1a1c1e;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(20px);
+            border: 1px solid #E2E2E9;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+        }
+        @media (min-width: 768px) {
+            .stats-grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+        .performance-chart-bar {
+            transition: height 1s ease-out;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="min-h-screen pb-24 md:pb-0">
+<!-- TopAppBar -->
+<header class="w-full top-0 sticky z-50 dark:bg-on-background flex items-center justify-between px-margin-mobile h-16 transition-colors duration-200" style="background-color: #f9f9fc;">
+<div class="flex items-center gap-3"><button class="material-symbols-outlined text-primary p-2 -ml-2 hover:bg-surface-container-low rounded-full transition-colors">arrow_back</button>
+<span class="material-symbols-outlined text-primary dark:text-primary-fixed-dim" style="font-variation-settings: &quot;FILL&quot; 1;">sports_cricket</span>
+<h1 class="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed-dim">CricketLive</h1>
+</div>
+<div class="flex items-center gap-4">
+<button class="material-symbols-outlined text-on-surface-variant hover:bg-surface-container-low p-2 rounded-full transition-colors">search</button>
+<button class="material-symbols-outlined text-on-surface-variant hover:bg-surface-container-low p-2 rounded-full transition-colors">notifications</button>
+<div class="w-8 h-8 rounded-full overflow-hidden border border-outline-variant cursor-pointer ml-2"><img alt="Profile" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAa7SNFopCk1F558uZcgrtXwUf3g_OumFyCbyRFNBdCsb_JirkRIuiNlgfvZewnX33wJXEJg2-nGIM8JQ2GN33oAMORs6413p55MFgliNvSGyrAqa9oIBXQQTjjtlI7H7rkZsCyJxD-5hH3CyHhd6MG1SeiHMQuSkZuuABz5KKpfIACagCvkKNJKSDW-G3GhVbbRG0Iv062EfEy3CUFwuQkcr-7ngtdu0OO9UWo2eD5gMOvHNfZ0jf_Hm4pIHoJJIpu4aBzkkQgP5Jt"></div></div>
+</header>
+<main class="max-w-max-width mx-auto px-margin-mobile md:px-gutter py-base">
+<!-- Hero Section: Player Identity -->
+<section class="relative mt-4 mb-8 overflow-hidden rounded-xl bg-white border border-[#E2E2E9] shadow-sm">
+<div class="h-48 md:h-64 w-full bg-gradient-to-r from-primary to-secondary overflow-hidden opacity-90">
+<div class="absolute inset-0 opacity-10" style="background-image: radial-gradient(#fff 1px, transparent 1px); background-size: 20px 20px;"></div>
+</div>
+<div class="px-md pb-md -mt-16 relative z-10 flex flex-col md:flex-row md:items-end gap-6">
+<div class="relative">
+<img alt="Alex Rivers" class="w-32 h-32 md:w-48 md:h-48 rounded-2xl border-4 border-white object-cover shadow-lg" data-alt="A professional studio portrait of a charismatic male athlete named Alex Rivers with a determined expression, wearing a sleek modern orange and white cricket jersey. The lighting is high-end sports photography style with sharp rim lighting against a clean, minimalist background. The overall aesthetic is energetic and premium, utilizing a warm sun-drenched palette of oranges and yellows." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB9Z2D6SsM38FWETQdOyt1LhTgRpGtVrND0aUwyt_oSs4F70ic2SUGLb5kGBL90BIEGatgU3KohChTGPFk2bjsKnmdcKxbGl5mShinpilsE5a6Wc-_5ia0qcKYmfB8ZiCFQUxnWR6ZhFdr0ytq8DT7o_eTVEMR3ao4QBNafun4yN6fJriGrhBWikAxk550d6OSPiasT6HEm3gFzvIF1d36264CJyqsf_ECcEUjYcwQNwCP2tZJkJHHhWEw-CkowuXjmjzkANCNMHsib">
+
+</div>
+<div class="flex-1 pb-2">
+<h2 class="font-headline-lg text-headline-lg md:text-headline-xl text-on-surface">Alex "Thunder" Rivers</h2>
+<div class="flex flex-wrap gap-3 mt-2">
+<span class="bg-surface-container-low text-on-surface-variant px-3 py-1 rounded-full text-label-md font-label-md flex items-center gap-1">
+<span class="material-symbols-outlined text-[18px]">workspace_premium</span> Captain
+                        </span>
+<span class="bg-surface-container-low text-on-surface-variant px-3 py-1 rounded-full text-label-md font-label-md flex items-center gap-1">
+<span class="material-symbols-outlined text-[18px]">public</span> England
+                        </span>
+<span class="bg-surface-container-low text-on-surface-variant px-3 py-1 rounded-full text-label-md font-label-md flex items-center gap-1">
+<span class="material-symbols-outlined text-[18px]">bolt</span> All-Rounder
+                        </span>
+</div>
+</div>
+
+</div>
+</section>
+<!-- Stats Bento Grid -->
+<section class="stats-grid mb-8">
+<div class="bg-white p-md rounded-xl border border-[#E2E2E9] hover:shadow-md transition-shadow">
+<p class="text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider mb-2">Total Runs</p>
+<h3 class="font-headline-lg text-headline-lg text-primary">8,492</h3>
+<p class="text-green-600 text-label-sm mt-1 flex items-center gap-1">
+<span class="material-symbols-outlined text-xs">trending_up</span> +124 this season
+                </p>
+</div>
+<div class="bg-white p-md rounded-xl border border-[#E2E2E9] hover:shadow-md transition-shadow">
+<p class="text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider mb-2">Average</p>
+<h3 class="font-headline-lg text-headline-lg text-on-surface">54.21</h3>
+<p class="text-on-surface-variant text-label-sm mt-1">Career High: 56.10</p>
+</div>
+<div class="bg-white p-md rounded-xl border border-[#E2E2E9] hover:shadow-md transition-shadow">
+<p class="text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider mb-2">Highest Score</p>
+<div class="flex items-baseline gap-2">
+<h3 class="font-headline-lg text-headline-lg text-on-surface">182*</h3>
+<span class="text-label-sm text-on-surface-variant">vs AUS</span>
+</div>
+<p class="text-on-surface-variant text-label-sm mt-1">Lords, 2023</p>
+</div>
+<div class="bg-white p-md rounded-xl border border-[#E2E2E9] hover:shadow-md transition-shadow">
+<p class="text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider mb-2">Strike Rate</p>
+<h3 class="font-headline-lg text-headline-lg text-on-surface">142.8</h3>
+<div class="mt-2 w-full bg-surface-container rounded-full h-1">
+<div class="bg-secondary h-1 rounded-full w-[85%]"></div>
+</div>
+</div>
+<div class="bg-white p-md rounded-xl border border-[#E2E2E9] hover:shadow-md transition-shadow"><p class="text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider mb-2">Total Wickets</p><h3 class="font-headline-lg text-headline-lg text-on-surface">214</h3><p class="text-on-surface-variant text-label-sm mt-1">Career Span: 8yrs</p></div><div class="bg-white p-md rounded-xl border border-[#E2E2E9] hover:shadow-md transition-shadow"><p class="text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider mb-2">Best Figures</p><h3 class="font-headline-lg text-headline-lg text-on-surface">5/24</h3><p class="text-on-surface-variant text-label-sm mt-1">vs PAK, 2021</p></div><div class="bg-white p-md rounded-xl border border-[#E2E2E9] hover:shadow-md transition-shadow"><p class="text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider mb-2">Total Catches</p><h3 class="font-headline-lg text-headline-lg text-on-surface">42</h3><p class="text-on-surface-variant text-label-sm mt-1">C/M Ratio: 0.8</p></div><div class="bg-white p-md rounded-xl border border-[#E2E2E9] hover:shadow-md transition-shadow"><p class="text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider mb-2">Total Stumpings</p><h3 class="font-headline-lg text-headline-lg text-on-surface">8</h3><p class="text-on-surface-variant text-label-sm mt-1">Last: 2023</p></div></section>
+<!-- Performance Chart & Milestones -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+<!-- Recent Performance Chart -->
+
+<!-- Milestones Progress -->
+
+</div>
+<!-- Latest News/Feed -->
+<section class="mb-8">
+
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+
+</div>
+</section>
+</main>
+<!-- BottomNavBar (Mobile only) -->
+<nav class="md:hidden fixed bottom-0 w-full z-50 rounded-t-xl bg-surface-container-lowest shadow-[0px_-8px_30px_rgba(42,44,65,0.06)] border-t border-surface-variant/30"><div class="flex justify-around items-center h-20 px-4 w-full"><a class="flex flex-col items-center justify-center bg-primary text-white px-6 py-2 active:scale-90 transition-all duration-150 rounded-lg" href="#"><span class="material-symbols-outlined">home</span><span class="font-label-sm text-label-sm">Home</span></a><a class="flex flex-col items-center justify-center text-on-surface/60 hover:text-primary active:scale-90 duration-150" href="#"><span class="material-symbols-outlined">sports_cricket</span><span class="font-label-sm text-label-sm">Matches</span></a><a class="flex flex-col items-center justify-center text-on-surface/60 hover:text-primary active:scale-90 duration-150" href="#"><span class="material-symbols-outlined">leaderboard</span><span class="font-label-sm text-label-sm">Stats</span></a><a class="flex flex-col items-center justify-center text-on-surface/60 hover:text-primary active:scale-90 duration-150" href="#"><span class="material-symbols-outlined">forum</span><span class="font-label-sm text-label-sm">Messages</span></a></div></nav>
+<script>
+        // Micro-interaction for performance chart
+        document.addEventListener('DOMContentLoaded', () => {
+            const bars = document.querySelectorAll('.performance-chart-bar');
+            bars.forEach((bar, index) => {
+                const targetHeight = bar.style.height;
+                bar.style.height = '0';
+                setTimeout(() => {
+                    bar.style.height = targetHeight;
+                }, 100 * index);
+            });
+        });
+    </script>
+
+
+</body></html>

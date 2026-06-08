@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Cricket Live Scorer</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            background-color: #101225;
+            color: #e0e0fc;
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .scoring-btn {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .scoring-btn:active {
+            transform: scale(0.92);
+        }
+        .glass-panel {
+            background: rgba(49, 51, 73, 0.4);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(224, 224, 252, 0.1);
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary-fixed-dim": "#f9bc4d",
+                        "primary-fixed": "#ffdbd1",
+                        "inverse-primary": "#ab3514",
+                        "on-tertiary-fixed-variant": "#45474a",
+                        "tertiary-container": "#9c9da1",
+                        "inverse-on-surface": "#2d2f44",
+                        "secondary-fixed": "#ffdeac",
+                        "surface-container-high": "#26283d",
+                        "on-secondary": "#432c00",
+                        "primary-container": "#ff724c",
+                        "on-primary-fixed": "#3c0800",
+                        "on-surface": "#e0e0fc",
+                        "on-secondary-fixed": "#281900",
+                        "error-container": "#93000a",
+                        "primary": "#ffb5a1",
+                        "on-tertiary": "#2f3034",
+                        "tertiary-fixed-dim": "#c6c6ca",
+                        "inverse-surface": "#e0e0fc",
+                        "surface-container-low": "#181a2e",
+                        "on-primary": "#611300",
+                        "error": "#ffb4ab",
+                        "on-tertiary-container": "#333538",
+                        "outline-variant": "#58413b",
+                        "surface-container": "#1c1e32",
+                        "on-background": "#e0e0fc",
+                        "surface-tint": "#ffb5a1",
+                        "surface-container-highest": "#313349",
+                        "surface": "#101225",
+                        "surface-container-lowest": "#0a0c20",
+                        "outline": "#a78a83",
+                        "on-primary-container": "#681600",
+                        "on-error": "#690005",
+                        "on-tertiary-fixed": "#1a1c1f",
+                        "secondary-container": "#bd8718",
+                        "surface-dim": "#101225",
+                        "on-surface-variant": "#e0bfb7",
+                        "tertiary": "#c6c6ca",
+                        "on-secondary-fixed-variant": "#5f4100",
+                        "tertiary-fixed": "#e2e2e6",
+                        "on-error-container": "#ffdad6",
+                        "on-secondary-container": "#3a2600",
+                        "surface-bright": "#36384d",
+                        "background": "#101225",
+                        "primary-fixed-dim": "#ffb5a1",
+                        "on-primary-fixed-variant": "#881f00",
+                        "surface-variant": "#313349",
+                        "secondary": "#f9bc4d"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "gutter": "16px",
+                        "md": "24px",
+                        "margin-desktop": "32px",
+                        "base": "4px",
+                        "lg": "40px",
+                        "margin-mobile": "16px",
+                        "xs": "8px",
+                        "sm": "16px",
+                        "xl": "64px"
+                    },
+                    "fontFamily": {
+                        "headline-lg-mobile": ["Inter"],
+                        "label-md": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "body-md": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "display-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-lg-mobile": ["28px", {"lineHeight": "36px", "fontWeight": "700"}],
+                        "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                        "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "500"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface">
+<!-- Top Navigation Bar -->
+<header class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-margin-mobile h-16 bg-surface border-b border-outline-variant/10">
+<div class="flex items-center gap-4">
+<button class="material-symbols-outlined text-primary transition-all duration-200 active:scale-95" data-icon="menu">menu</button>
+<h1 class="text-headline-md-mobile font-headline-md-mobile font-bold text-primary tracking-tighter">CRICKET LIVE</h1>
+</div>
+<div class="flex items-center gap-4">
+<span class="bg-primary/20 text-primary-container px-2 py-0.5 rounded-sm text-[10px] font-bold animate-pulse">LIVE</span>
+<button class="material-symbols-outlined text-primary transition-all duration-200 active:scale-95" data-icon="settings">settings</button>
+</div>
+</header>
+<main class="pt-20 pb-24 px-margin-mobile max-w-lg mx-auto">
+<!-- Scoreboard Header Card -->
+<section class="mb-md">
+<div class="bg-surface-container-highest p-sm border-l-4 border-primary">
+<div class="flex justify-between items-end mb-2">
+<div>
+<p class="text-label-sm font-label-sm text-on-surface-variant mb-1">IND VS AUS • FINAL</p>
+<div class="flex items-baseline gap-2">
+<span class="text-display-lg font-display-lg text-on-surface">145/3</span>
+<span class="text-body-lg font-body-lg text-primary">18.4 Ovs</span>
+</div>
+</div>
+<div class="text-right">
+<p class="text-label-sm font-label-sm text-secondary">CRR: 7.78</p>
+<p class="text-label-sm font-label-sm text-on-surface-variant">Target: 210</p>
+</div>
+</div>
+<div class="flex gap-1 h-1.5 w-full bg-surface-container-lowest rounded-full overflow-hidden">
+<div class="h-full bg-primary" style="width: 72%;"></div>
+<div class="h-full bg-secondary" style="width: 2%;"></div>
+</div>
+</div>
+</section>
+<!-- Dynamic Stats Grid (Bento Style) -->
+<div class="grid grid-cols-2 gap-sm mb-md">
+<!-- Batsman 1 -->
+<div class="bg-surface-container p-sm border border-outline-variant/10 relative overflow-hidden group">
+<div class="absolute top-0 right-0 p-1">
+<span class="material-symbols-outlined text-secondary text-sm" style="font-variation-settings: 'FILL' 1;">sports_cricket</span>
+</div>
+<p class="text-label-md font-label-md text-on-surface truncate">V. Kohli</p>
+<div class="flex items-baseline gap-1 mt-1">
+<span class="text-headline-md font-headline-md text-secondary">42</span>
+<span class="text-label-sm font-label-sm text-on-surface-variant">(31)</span>
+</div>
+<div class="flex gap-2 mt-2 opacity-60 text-[10px] font-bold">
+<span>4s: 3</span>
+<span>6s: 1</span>
+<span>SR: 135.5</span>
+</div>
+</div>
+<!-- Batsman 2 -->
+<div class="bg-surface-container p-sm border border-outline-variant/10">
+<p class="text-label-md font-label-md text-on-surface truncate">KL Rahul</p>
+<div class="flex items-baseline gap-1 mt-1">
+<span class="text-headline-md font-headline-md text-on-surface">18</span>
+<span class="text-label-sm font-label-sm text-on-surface-variant">(14)</span>
+</div>
+<div class="flex gap-2 mt-2 opacity-60 text-[10px] font-bold">
+<span>4s: 1</span>
+<span>6s: 0</span>
+<span>SR: 128.6</span>
+</div>
+</div>
+<!-- Bowler Info (Full Width Span) -->
+<div class="col-span-2 bg-surface-container-high p-sm border border-secondary/20 flex justify-between items-center">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-secondary-container/30 flex items-center justify-center">
+<span class="material-symbols-outlined text-secondary" data-icon="sports_handball">sports_handball</span>
+</div>
+<div>
+<p class="text-label-md font-label-md text-on-surface">P. Cummins</p>
+<p class="text-[10px] font-bold text-on-surface-variant">SPELL: 3.4-0-28-1</p>
+</div>
+</div>
+<div class="flex gap-1">
+<span class="w-6 h-6 rounded-full bg-surface-container-lowest border border-outline-variant/20 flex items-center justify-center text-[10px]">1</span>
+<span class="w-6 h-6 rounded-full bg-surface-container-lowest border border-outline-variant/20 flex items-center justify-center text-[10px]">wd</span>
+<span class="w-6 h-6 rounded-full bg-primary/20 border border-primary/40 flex items-center justify-center text-[10px] font-bold text-primary">4</span>
+<span class="w-6 h-6 rounded-full bg-surface-container-lowest border border-outline-variant/20 flex items-center justify-center text-[10px]">0</span>
+</div>
+</div>
+</div>
+<!-- Scoring Console -->
+<section class="glass-panel p-md rounded-xl">
+<h2 class="text-label-sm font-label-sm text-primary mb-sm tracking-widest uppercase">Quick Scoring</h2>
+<div class="grid grid-cols-3 gap-3">
+<!-- Row 1 -->
+<button class="scoring-btn bg-surface-container-highest h-16 rounded-lg flex items-center justify-center border border-outline-variant/20 hover:border-secondary transition-colors" onclick="this.classList.add('bg-secondary/10')">
+<span class="text-headline-md font-headline-md">0</span>
+</button>
+<button class="scoring-btn bg-surface-container-highest h-16 rounded-lg flex items-center justify-center border border-outline-variant/20 hover:border-secondary transition-colors">
+<span class="text-headline-md font-headline-md">1</span>
+</button>
+<button class="scoring-btn bg-surface-container-highest h-16 rounded-lg flex items-center justify-center border border-outline-variant/20 hover:border-secondary transition-colors">
+<span class="text-headline-md font-headline-md">2</span>
+</button>
+<!-- Row 2 -->
+<button class="scoring-btn bg-surface-container-highest h-16 rounded-lg flex items-center justify-center border border-outline-variant/20 hover:border-secondary transition-colors">
+<span class="text-headline-md font-headline-md">3</span>
+</button>
+<button class="scoring-btn bg-primary-container h-16 rounded-lg flex items-center justify-center border border-primary/40 shadow-lg shadow-primary/10">
+<span class="text-headline-md font-headline-md text-on-primary-container">4</span>
+</button>
+<button class="scoring-btn bg-secondary-container h-16 rounded-lg flex items-center justify-center border border-secondary/40 shadow-lg shadow-secondary/10">
+<span class="text-headline-md font-headline-md text-on-secondary-container">6</span>
+</button>
+<!-- Specials Row -->
+<button class="scoring-btn bg-error-container/20 h-14 rounded-lg flex items-center justify-center border border-error/30 hover:bg-error-container/40">
+<span class="text-label-md font-label-md text-error">W</span>
+</button>
+<button class="scoring-btn bg-surface-container-highest h-14 rounded-lg flex items-center justify-center border border-outline-variant/20 hover:bg-surface-variant">
+<span class="text-label-md font-label-md">Wd</span>
+</button>
+<button class="scoring-btn bg-surface-container-highest h-14 rounded-lg flex items-center justify-center border border-outline-variant/20 hover:bg-surface-variant">
+<span class="text-label-md font-label-md">Nb</span>
+</button>
+</div>
+<!-- Footer Controls -->
+<div class="flex gap-3 mt-md">
+<button class="flex-1 py-3 bg-transparent border border-outline-variant text-on-surface-variant rounded-sm text-label-md font-label-md uppercase tracking-tight active:scale-95 transition-transform">
+                    Undo last
+                </button>
+<button class="flex-[2] py-3 bg-secondary text-on-secondary rounded-sm text-label-md font-label-md font-bold uppercase tracking-widest shadow-lg shadow-secondary/20 active:scale-95 transition-transform">
+                    Next Over
+                </button>
+</div>
+</section>
+<!-- Decorative Progress Card -->
+<div class="mt-md">
+<div class="relative rounded-lg h-32 overflow-hidden border border-outline-variant/10">
+<img class="w-full h-full object-cover grayscale opacity-30" data-alt="A cinematic, wide-angle shot of a lush green cricket stadium under brilliant stadium floodlights during a night match. The sky is a deep twilight navy, and the air has a slight atmospheric haze or mist. The focus is sharp on the manicured grass of the pitch, with the vibrant orange and secondary gold accents of the UI theme subtly reflected in the ambient lighting. The mood is high-stakes, professional, and electric." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBjS6-h6xNfbFVUCC27ycCdv0jHfvHsODkNsN_BmNjNpDJ1tDNYig5OPEb65_qvPklFsTb3nf9UX-GQppeQqlbCEgCeppiK_IWULcxWSZUqmOqtBXWPlUM4h3f37LD1mVIyXjNs-vBiKtuuxISD54LaAWPrKWiS8X537n3nPpVaDBemp5yS1puiJoovofDZ4hvrqE9gkrUyQOi9baw-765gGxkYsdUw1fqi5a4jSbTZ4Num4KOGV66y216OowxjGdSrhB7kamrUK8gX"/>
+<div class="absolute inset-0 bg-gradient-to-t from-surface to-transparent"></div>
+<div class="absolute bottom-4 left-4 right-4 flex justify-between items-center">
+<div>
+<p class="text-[10px] font-bold text-secondary uppercase tracking-[0.2em]">Projection</p>
+<p class="text-headline-md font-headline-md text-on-surface">198 Final Score</p>
+</div>
+<button class="p-2 bg-surface/80 backdrop-blur-md rounded-full border border-white/10">
+<span class="material-symbols-outlined text-primary" data-icon="analytics">analytics</span>
+</button>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation Bar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-margin-mobile py-2 bg-surface-container-low border-t border-outline-variant/10">
+<a class="flex flex-col items-center justify-center bg-secondary-container/20 text-secondary rounded-full px-4 py-1 transition-transform duration-200 active:scale-90" href="#">
+<span class="material-symbols-outlined" data-icon="sports_cricket" style="font-variation-settings: 'FILL' 1;">sports_cricket</span>
+<span class="text-label-sm font-label-sm">Live</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-on-surface transition-transform duration-200 active:scale-90" href="#">
+<span class="material-symbols-outlined" data-icon="assessment">assessment</span>
+<span class="text-label-sm font-label-sm">Scorecard</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-on-surface transition-transform duration-200 active:scale-90" href="#">
+<span class="material-symbols-outlined" data-icon="add_circle">add_circle</span>
+<span class="text-label-sm font-label-sm">Setup</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-on-surface transition-transform duration-200 active:scale-90" href="#">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="text-label-sm font-label-sm">Profile</span>
+</a>
+</nav>
+<script>
+        // Simple micro-interaction for scoring buttons
+        document.querySelectorAll('.scoring-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const value = this.querySelector('span').innerText;
+                console.log(`Scored: ${value}`);
+                // Atmospheric feedback
+                this.classList.add('ring-2', 'ring-secondary/50');
+                setTimeout(() => {
+                    this.classList.remove('ring-2', 'ring-secondary/50');
+                }, 200);
+            });
+        });
+    </script>
+</body></html>

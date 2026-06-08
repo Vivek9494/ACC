@@ -1,0 +1,202 @@
+<!DOCTYPE html><html class="light" lang="en" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Add Team | SolarScore</title>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect">
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,600;0,700;0,800;1,400&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-container-low": "#f3f3f6",
+                    "tertiary-fixed-dim": "#9ccaff",
+                    "on-surface-variant": "#5a4136",
+                    "primary-fixed": "#ffdbcc",
+                    "outline": "#8e7164",
+                    "on-primary-fixed-variant": "#7a3000",
+                    "surface-dim": "#dadadc",
+                    "surface-container-lowest": "#ffffff",
+                    "on-background": "#1a1c1e",
+                    "primary-fixed-dim": "#ffb693",
+                    "secondary-container": "#fdd400",
+                    "inverse-on-surface": "#f0f0f3",
+                    "surface-container-high": "#e8e8ea",
+                    "surface-container": "#eeeef0",
+                    "surface-tint": "#a04100",
+                    "on-secondary": "#ffffff",
+                    "on-surface": "#1a1c1e",
+                    "primary": "#a04100",
+                    "on-secondary-fixed-variant": "#544600",
+                    "tertiary-container": "#059eff",
+                    "surface-bright": "#f9f9fc",
+                    "on-tertiary-fixed-variant": "#00497b",
+                    "inverse-surface": "#2f3133",
+                    "error": "#ba1a1a",
+                    "background": "#f9f9fc",
+                    "tertiary-fixed": "#d0e4ff",
+                    "on-tertiary": "#ffffff",
+                    "secondary-fixed": "#ffe170",
+                    "outline-variant": "#e2bfb0",
+                    "on-error-container": "#93000a",
+                    "primary-container": "#ff6b00",
+                    "on-tertiary-container": "#003357",
+                    "on-primary-fixed": "#351000",
+                    "on-primary": "#ffffff",
+                    "surface-container-highest": "#e2e2e5",
+                    "on-error": "#ffffff",
+                    "on-tertiary-fixed": "#001d35",
+                    "surface-variant": "#e2e2e5",
+                    "on-secondary-fixed": "#221b00",
+                    "on-secondary-container": "#6f5c00",
+                    "inverse-primary": "#ffb693",
+                    "tertiary": "#0062a1",
+                    "surface": "#f9f9fc",
+                    "secondary-fixed-dim": "#e9c400",
+                    "secondary": "#705d00",
+                    "on-primary-container": "#572000",
+                    "error-container": "#ffdad6"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "margin-mobile": "16px",
+                    "lg": "40px",
+                    "base": "8px",
+                    "sm": "12px",
+                    "xs": "4px",
+                    "xl": "64px",
+                    "max-width": "1280px",
+                    "margin-desktop": "auto",
+                    "gutter": "24px",
+                    "md": "24px"
+            },
+            "fontFamily": {
+                    "body-lg": ["Plus Jakarta Sans"],
+                    "body-sm": ["Plus Jakarta Sans"],
+                    "label-md": ["Plus Jakarta Sans"],
+                    "headline-lg": ["Plus Jakarta Sans"],
+                    "body-md": ["Plus Jakarta Sans"],
+                    "label-sm": ["Plus Jakarta Sans"],
+                    "headline-xl-mobile": ["Plus Jakarta Sans"],
+                    "headline-md": ["Plus Jakarta Sans"],
+                    "headline-xl": ["Plus Jakarta Sans"]
+            },
+            "fontSize": {
+                    "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "label-md": ["14px", {"lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "600"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "label-sm": ["12px", {"lineHeight": "14px", "letterSpacing": "0.04em", "fontWeight": "600"}],
+                    "headline-xl-mobile": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                    "headline-xl": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "800"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            background-color: #f9f9fc;
+            -webkit-tap-highlight-color: transparent;
+        }
+    </style>
+</head>
+<body class="font-body-md text-on-background">
+<!-- TopAppBar -->
+<header class="flex justify-between items-center w-full px-margin-mobile h-16 bg-surface z-50 fixed top-0 left-0">
+<button class="text-primary hover:bg-surface-container-high transition-colors active:scale-95 duration-150 p-2 rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined text-primary-container" data-icon="arrow_back">arrow_back</span>
+</button>
+
+<div class="w-10 h-10 rounded-full overflow-hidden border-2 border-outline-variant active:scale-95 duration-150 cursor-pointer">
+<img alt="User Profile" class="w-full h-full object-cover" data-alt="A professional headshot of a friendly user for a sports application profile. The lighting is bright and warm, reflecting a modern light-mode aesthetic. The background is a soft, out-of-focus neutral grey, ensuring the individual stands out. The image style is clean, high-resolution, and optimistic, matching a solar-themed minimalist design system." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBISAeoP7K1HnO9z6RxqHU6TcSwzqYgPUx8h6cmiMd7Nu-dqME-piHvAg7sMls6nCVXO7YcUzMONIVrkQMhNw1afm9S5BI1dLSTkIe_I5AyjMWBZBYIwlduQx2KV6pc5HDbErDvJIOq-nBHrLjvP48PiZlVyEL6kzB13fA__ArLW3WPZb0MrS9wTOG0IVG80rczCWiRYjilyi8FcXJfblMqIo_AUem1qiJCm7TqSFHKLMKTtDWiwdyfgSYSP8dZwoI5Y-nmGwxB0dUL">
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="pt-24 pb-32 px-margin-mobile max-w-[600px] mx-auto min-h-screen">
+<!-- Section Header -->
+<section class="mb-lg">
+<h2 class="font-headline-md text-headline-md text-on-surface mb-xs">Add Team</h2>
+<p class="font-body-md text-on-surface-variant">Upload logo and name your team</p>
+</section>
+<!-- Form Section -->
+<form class="space-y-lg" onsubmit="event.preventDefault();">
+<!-- Team Logo Upload -->
+<div class="group relative">
+<label class="block font-label-md text-label-md text-on-surface mb-sm">Team Logo</label>
+<div class="w-full aspect-square md:aspect-video rounded-xl border-2 border-dashed border-outline-variant hover:border-primary hover:bg-primary-fixed/20 transition-all duration-300 cursor-pointer flex flex-col items-center justify-center gap-base overflow-hidden" id="upload-area">
+<span class="material-symbols-outlined text-[48px] text-primary-container" data-icon="add_photo_alternate">add_photo_alternate</span>
+<span class="font-label-md text-label-md text-primary-container">Tap to upload team logo</span>
+<input accept="image/*" class="hidden" id="logo-input" type="file">
+</div>
+</div>
+<!-- Team Name Input -->
+<div class="space-y-sm">
+<label class="block font-label-md text-label-md text-on-surface" for="team-name">Team Name</label>
+<input class="w-full h-14 px-md bg-surface-container-lowest border border-outline-variant rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all outline-none font-body-md text-on-surface placeholder:text-outline/50" id="team-name" placeholder="e.g. Barrie Cobras" type="text">
+</div>
+<!-- Submit Button -->
+<div class="pt-md">
+<button class="w-full h-14 bg-primary-container text-on-primary font-bold text-body-lg rounded-xl shadow-[0px_4px_20px_rgba(255,107,0,0.15)] hover:bg-primary transition-all active:scale-[0.98] duration-150 flex items-center justify-center gap-base" type="submit">
+<span class="">Add Team</span>
+</button>
+</div>
+</form>
+</main>
+<!-- BottomNavBar (Hidden on this transactional screen as per logic "Linear/Transactional: suppress navigation shell") -->
+<!-- The FAB is also suppressed for transactional/form-entry screens -->
+<script>
+        // Simple Interaction logic
+        const uploadArea = document.getElementById('upload-area');
+        const logoInput = document.getElementById('logo-input');
+
+        uploadArea.addEventListener('click', () => {
+            logoInput.click();
+        });
+
+        logoInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    uploadArea.innerHTML = `<img src="${event.target.result}" class="w-full h-full object-contain p-4">`;
+                    uploadArea.classList.remove('border-dashed');
+                    uploadArea.classList.add('border-solid');
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Form Submission micro-interaction
+        document.querySelector('form').addEventListener('submit', () => {
+            const btn = document.querySelector('button[type="submit"]');
+            btn.innerHTML = '<span class="material-symbols-outlined animate-spin" data-icon="progress_activity">progress_activity</span>';
+            setTimeout(() => {
+                btn.innerHTML = '<span>Team Added!</span>';
+                btn.classList.replace('bg-primary-container', 'bg-tertiary-container');
+            }, 1500);
+        });
+    </script>
+
+
+
+
+</body></html>

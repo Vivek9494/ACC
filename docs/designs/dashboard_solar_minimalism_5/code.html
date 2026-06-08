@@ -1,0 +1,316 @@
+<!DOCTYPE html><html class="light" lang="en" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Hariprabodham Sports Club - Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-bright": "#f9f9fc",
+                    "on-primary": "#ffffff",
+                    "secondary-fixed": "#ffe170",
+                    "surface-variant": "#e2e2e5",
+                    "surface-container-high": "#e8e8ea",
+                    "on-primary-fixed-variant": "#7a3000",
+                    "surface-container-low": "#f3f3f6",
+                    "secondary-fixed-dim": "#e9c400",
+                    "on-surface": "#1a1c1e",
+                    "surface-tint": "#a04100",
+                    "primary-fixed-dim": "#ffb693",
+                    "on-error-container": "#93000a",
+                    "surface": "#f9f9fc",
+                    "on-tertiary-fixed": "#001d35",
+                    "inverse-surface": "#2f3133",
+                    "secondary": "#705d00",
+                    "on-surface-variant": "#5a4136",
+                    "on-primary-fixed": "#351000",
+                    "on-background": "#1a1c1e",
+                    "on-secondary-fixed": "#221b00",
+                    "surface-container-lowest": "#ffffff",
+                    "on-error": "#ffffff",
+                    "tertiary-container": "#059eff",
+                    "on-tertiary": "#ffffff",
+                    "background": "#f9f9fc",
+                    "surface-container": "#eeeef0",
+                    "outline-variant": "#e2bfb0",
+                    "surface-dim": "#dadadc",
+                    "outline": "#8e7164",
+                    "surface-container-highest": "#e2e2e5",
+                    "on-secondary": "#ffffff",
+                    "primary-fixed": "#ffdbcc",
+                    "on-secondary-fixed-variant": "#544600",
+                    "tertiary": "#0062a1",
+                    "inverse-primary": "#ffb693",
+                    "error": "#ba1a1a",
+                    "on-secondary-container": "#6f5c00",
+                    "secondary-container": "#fdd400",
+                    "primary": "#a04100",
+                    "inverse-on-surface": "#f0f0f3",
+                    "tertiary-fixed-dim": "#9ccaff",
+                    "primary-container": "#ff6b00",
+                    "tertiary-fixed": "#d0e4ff",
+                    "on-tertiary-container": "#003357",
+                    "on-tertiary-fixed-variant": "#00497b",
+                    "on-primary-container": "#572000",
+                    "error-container": "#ffdad6"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "gutter": "24px",
+                    "xl": "64px",
+                    "max-width": "1280px",
+                    "margin-mobile": "16px",
+                    "sm": "12px",
+                    "md": "24px",
+                    "xs": "4px",
+                    "margin-desktop": "auto",
+                    "lg": "40px",
+                    "base": "8px"
+            },
+            "fontFamily": {
+                    "headline-lg": ["Plus Jakarta Sans"],
+                    "label-md": ["Plus Jakarta Sans"],
+                    "headline-md": ["Plus Jakarta Sans"],
+                    "body-md": ["Plus Jakarta Sans"],
+                    "body-lg": ["Plus Jakarta Sans"],
+                    "label-sm": ["Plus Jakarta Sans"],
+                    "headline-xl": ["Plus Jakarta Sans"],
+                    "body-sm": ["Plus Jakarta Sans"],
+                    "headline-xl-mobile": ["Plus Jakarta Sans"]
+            },
+            "fontSize": {
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                    "label-md": ["14px", {"lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "600"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                    "label-sm": ["12px", {"lineHeight": "14px", "letterSpacing": "0.04em", "fontWeight": "600"}],
+                    "headline-xl": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "headline-xl-mobile": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "800"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            background-color: #f8f7f5;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            color: #23170f;
+        }
+        .glass-shadow {
+            box-shadow: 0px 4px 20px rgba(255, 107, 0, 0.08);
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<style>
+        body {
+            background-color: #f8f7f5;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            color: #23170f;
+        }
+        .glass-shadow {
+            box-shadow: 0px 4px 20px rgba(255, 107, 0, 0.08);
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style></head>
+<body class="bg-background-light text-background-dark mb-24 md:mb-0">
+<!-- Top App Bar -->
+<header class="fixed top-0 w-full z-50 dark:bg-surface-dim shadow-[0px_4px_20px_rgba(255,107,0,0.08)] bg-white">
+<div class="flex justify-between items-center px-gutter h-16 w-full max-w-max-width mx-margin-desktop">
+<div class="flex flex-col">
+<span class="text-on-surface-variant font-label-sm text-label-sm">Jay Swaminarayan,</span>
+<span class="text-primary font-bold font-headline-md text-headline-md" style="color: rgb(255, 107, 0);">Rahul</span>
+</div>
+<div class="flex items-center gap-4">
+<button class="material-symbols-outlined text-on-surface-variant hover:bg-surface-container-high p-2 rounded-full transition-colors active:scale-95 duration-200" data-icon="notifications">notifications</button>
+<div class="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center text-on-primary-container overflow-hidden active:scale-95 duration-200 cursor-pointer">
+<img alt="User Profile" class="w-full h-full object-cover" data-alt="A professional close-up studio portrait of a young Indian man in sports attire, looking confident and cheerful. The background is a soft, out-of-focus cricket stadium in the evening light. The lighting is warm and golden, reflecting a high-energy, optimistic atmosphere consistent with the Solar design system." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAa7SNFopCk1F558uZcgrtXwUf3g_OumFyCbyRFNBdCsb_JirkRIuiNlgfvZewnX33wJXEJg2-nGIM8JQ2GN33oAMORs6413p55MFgliNvSGyrAqa9oIBXQQTjjtlI7H7rkZsCyJxD-5hH3CyHhd6MG1SeiHMQuSkZuuABz5KKpfIACagCvkKNJKSDW-G3GhVbbRG0Iv062EfEy3CUFwuQkcr-7ngtdu0OO9UWo2eD5gMOvHNfZ0jf_Hm4pIHoJJIpu4aBzkkQgP5Jt">
+</div>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="pt-24 pb-12 px-margin-mobile md:px-gutter max-w-max-width mx-auto">
+<!-- Live Match Section (Bento Style Card) -->
+<section class="mb-10">
+
+<div class="rounded-xl p-6 glass-shadow border border-surface-variant transition-all hover:scale-[1.01] relative bg-white" style="--mouse-x: 356.7899932861328px; --mouse-y: 31.214996337890625px;"><div class="absolute top-6 right-6 flex items-center gap-1 px-3 py-1 bg-error rounded-full animate-pulse z-10">
+<span class="w-2 h-2 bg-white rounded-full"></span>
+<span class="text-white font-label-sm text-label-sm uppercase tracking-wider">Live</span>
+</div>
+<p class="font-label-md text-label-md text-primary mb-4" style="color: rgb(255, 107, 0);">Hariprabodham Premier League</p>
+<div class="space-y-3">
+    <!-- DC Row (Top Team) -->
+    <div class="flex justify-between items-center">
+        <div class="flex items-center gap-3">
+            <div class="w-8 h-8 bg-surface-container-low rounded-full overflow-hidden flex items-center justify-center p-1">
+                <img alt="DC" class="w-full h-full object-contain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD0pWRBLdB9f5b9JwSANpVnvRytIuqwjrOGng2kqczzT-8uKAzo1p0Vtu8VLjEmQ2SxFrZzWI9EQdD_Oady21xpaL5pyIrQgekiOXF6qoYqBp4UnE6LZQj23uoEuoDuXII8hmuitwgdIoUpvaQIYBqNMffndWqIEQ_mbu0YdN6SqtYoM6Mk71LNPmeTJE9jr-hBzRXx9XDRWOvmsS9ae1tsCKcZQJfksFfJzkuxhpLysthffuledNu61KMuoNYuYgxxyUhCfdSsx89I">
+            </div>
+            <span class="font-bold text-on-surface">DC</span>
+        </div>
+        <div class="flex items-center gap-1 font-bold text-on-surface text-lg">
+            <span class="">203-5</span>
+            <span class="text-on-surface-variant text-sm font-normal">(20)</span>
+        </div>
+    </div>
+
+    <!-- KKR Row (Bottom Team) -->
+    <div class="flex justify-between items-center">
+        <div class="flex items-center gap-3">
+            <div class="w-8 h-8 bg-surface-container-low rounded-full overflow-hidden flex items-center justify-center p-1">
+                <img alt="KKR" class="w-full h-full object-contain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBMGrgBjum9gniFM5Diu1VAiF1oW-jm1xUZQUKAXjjwbEIXJ2xTpEiFjuPm1q4Rj4UpccUCYRPsIrwKZ0Jg9MvRpOD0MwoWNOwCGlbKgo3rtQA5w4k_wJ9zr5GaGIxP04E2jY4utHlehTmAIjCkX2LLpdX1pNZ9aQphKORoNdkc6kc11VZ5BpKx20eyZ4KKc-A5R5OQHhAyM_P5uUnl23LcwnmK4FN6eqb5Pz7Bgc3A7sD5CIYciDGCpcKIWMHLcS7mpeYpdl7spi-P">
+            </div>
+            <span class="font-bold text-on-surface-variant">KKR</span>
+        </div>
+        <div class="flex items-center gap-1 font-bold text-on-surface-variant text-lg">
+            <span class="">163</span>
+            <span class="text-on-surface-variant text-sm font-normal">(18.4)</span>
+        </div>
+    </div>
+</div>
+<div class="mt-4 pt-4 border-t border-surface-variant flex gap-1 flex-col gap-2"><span class="font-body-sm text-[#3b82f6] font-semibold text-left">Delhi Capitals won by 40 runs</span>
+    <a href="#" class="text-body-sm font-semibold text-[#3b82f6] hover:underline flex items-center gap-1 self-end">
+        Schedule
+    </a></div>
+</div>
+</section>
+<!-- Stats Grid (High-end Row) -->
+<section class="mb-10">
+<h2 class="font-headline-md text-headline-md text-on-surface mb-4">Your Performance</h2>
+<div class="rounded-xl p-6 glass-shadow border border-surface-variant flex justify-between items-center text-center bg-white" style="--mouse-x: 196px; --mouse-y: 30px;">
+<div class="flex-1 px-4">
+<p class="text-on-surface-variant font-label-sm text-label-sm mb-1 uppercase tracking-wider">Matches</p>
+<p class="font-headline-md text-headline-md text-on-surface">12</p>
+</div>
+<div class="h-10 w-px bg-surface-variant"></div>
+<div class="flex-1 px-4">
+<p class="text-on-surface-variant font-label-sm text-label-sm mb-1 uppercase tracking-wider">Runs</p>
+<p class="font-headline-md text-headline-md text-primary" style="color: #ff6b00;">450</p>
+</div>
+<div class="h-10 w-px bg-surface-variant"></div>
+<div class="flex-1 px-4">
+<p class="text-on-surface-variant font-label-sm text-label-sm mb-1 uppercase tracking-wider">Wickets</p>
+<p class="font-headline-md text-headline-md text-on-surface">08</p>
+</div>
+</div>
+</section>
+<!-- Tournaments (Asymmetric Layout) -->
+<section class="mb-10">
+<h2 class="font-headline-md text-headline-md text-on-surface mb-4">Tournaments</h2>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<!-- Upcoming Card -->
+
+<!-- Ongoing Card -->
+<div class="group relative bg-surface-container-lowest rounded-xl overflow-hidden glass-shadow border border-surface-variant transition-all hover:scale-[1.02] cursor-pointer" style="--mouse-x: 271.6352081298828px; --mouse-y: 300.37939453125px;">
+<div class="absolute top-4 right-4 z-10 px-3 py-1 bg-tertiary-container text-on-tertiary rounded-full font-label-sm text-label-sm">
+                        Ongoing
+                    </div>
+<div class="h-48 overflow-hidden">
+<img alt="Inter-City Cup" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" data-alt="An action-oriented shot of a cricket game in progress at a city stadium. The focus is sharp on the batsman playing a lofted shot against a background of high-rise city buildings blurred by a shallow depth of field. The scene is illuminated by floodlights, giving a vibrant, professional aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD6mipWuKZxmCgRgqpOGlH3xzqXFPQyxz_x8b2eytiaPfjLR0OTCDd2nPRLO5hv8d-YEb53y8Qu3ZuFRRd4cGyiUPeQiu6J2Tc8U2R2TnRn2zc4TIgbkksHEDXtVGDcyYrOqyXcYBCIMk3BpPxciFuFH1XTBbnO_JkyNaiZvYuGEaMII2IXCn7dupt3O7w2S6pECvivAv-jPA5mte8L8OO6VrxJtPvETTxj7GFp18lc6W2frpqVY6uOmGOdn2BbcDbYcVEN5ReVLk2m">
+</div>
+<div class="p-6">
+<h3 class="font-headline-md text-headline-md text-on-surface"><div class="flex justify-between items-center w-full"><span class="">Inter-City Cup</span><img src="https://lh3.googleusercontent.com/aida/ADBb0ui49IcY_j7W8bQLujwxf1wStpyLpNF5YFVnJa2rmq7v56rZTUjgQlCTMGdHDlR33NxQFvzduPPicnEGtTKqNz6q_YgMEoq_gStn6EF0kQ0zTK386PvkpgR1fO1CjueGa73KKjGnZdcKzBZV92qPR5ArosCJoRJwhXKRUBdCZEHcYEJRTvIVh7w4wJYA0S5-vHxk3ZktXrzOMUy7EZLZvHgIOstp3OLn4lJ--EKjv9nybPM_QZbHngbWnGqPyfP_ADPQwID6SGuzPJc" alt="Tennis Ball" class="w-6 h-6 object-contain flex-shrink-0"></div></h3>
+<div class="flex items-center gap-2 mt-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[20px]" data-icon="location_on">location_on</span>
+<span class="font-body-sm text-body-sm">Surat District Arena</span>
+</div>
+</div>
+</div><div class="group relative bg-surface-container-lowest rounded-xl overflow-hidden glass-shadow border border-surface-variant transition-all hover:scale-[1.02] cursor-pointer" style="--mouse-x: 226.12109375px; --mouse-y: 62.1021728515625px;">
+<div class="absolute top-4 right-4 z-10 px-3 py-1 bg-secondary-container text-on-secondary-container rounded-full font-label-sm text-label-sm">
+                        Upcoming
+                    </div>
+<div class="h-48 overflow-hidden">
+<img alt="Spring Trophy 2024" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" data-alt="A wide-angle landscape shot of a lush green cricket stadium under a clear spring morning sky. The dew is fresh on the grass, and the morning sunlight creates a warm, hopeful glow across the pitch. The style is bright and minimalist with crisp cool tones and vibrant green colors." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAkxjPYB-x4ISplNPOnJ7Mq6VBe9UPmAhF07Y8d1diZyd3w-jA9-c1KsyhrUEMWnt4pe_bfoi-148wacAY2VwuySnH_tdnAqP-cBK0l-N0MU1S1HSZtwbEYuQh8LuHksSySvlR2pt4hAQKHDxjoBh63smhp8FNa1ITumCwrdX_-G2z4Hn7toKtsyBhOjHnEBzatIHPRBrlN6O9lKBfKoVKiwnAweELqEL4lZ7oVUyoSrHAS4YFPdjr8qkoH_b-aPwGRtFPbwzKVzHXe">
+</div>
+<div class="p-6">
+<h3 class="font-headline-md text-headline-md text-on-surface"><div class="flex justify-between items-center w-full"><span class="">Spring Trophy 2024</span><img src="https://lh3.googleusercontent.com/aida/ADBb0uilmvEIpF1sf7hhUdzy_REiANeYAc32iSIhex36Hq4JLrTRJuWxopq6MhksM9wrGMld-_xjEBEPXTjgOTyoGZ1WaP5pYHk39xj8i1sisFdxXkMncarBmYuPAvdOSTWvXghZ02rLktUdCImkIfmQ_Omm-joxRxUKRQ13L8FBV4sgdMUyrtC8r8bRla_snGaWcnVyl63dqwDtVKASXgYR-phOr2NZ_TTYpCzVkG83R6fhHsLabk_O9SP12fbHUVghnwyRLb1u-a6HH9Y" alt="Cricket Ball" class="w-6 h-6 object-contain flex-shrink-0"></div></h3>
+<div class="flex items-center gap-2 mt-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[20px]" data-icon="calendar_today">calendar_today</span>
+<span class="font-body-sm text-body-sm">June 15 - June 20</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Social Activity Preview (Bento Item) -->
+
+</main>
+<!-- Bottom Navigation Bar -->
+<nav class="md:hidden fixed bottom-0 w-full z-50 rounded-t-xl bg-surface-container-lowest shadow-[0px_-4px_20px_rgba(255,107,0,0.05)] border-t border-surface-variant">
+<div class="flex justify-around items-center h-20 px-4 w-full">
+<!-- Home (Active) -->
+<a class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-full px-4 py-1 active:scale-90 duration-150" href="#" style="background-color: rgb(255, 107, 0); color: white;">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-label-sm text-label-sm">Home</span>
+</a>
+<!-- Matches -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="sports_cricket">sports_cricket</span>
+<span class="font-label-sm text-label-sm">Matches</span>
+</a>
+<!-- Stats -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="leaderboard">leaderboard</span>
+<span class="font-label-sm text-label-sm">Stats</span>
+</a>
+<!-- Social -->
+
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="forum">forum</span>
+<span class="font-label-sm text-label-sm">Messages</span>
+</a></div>
+</nav>
+<!-- Desktop Floating Action Button (FAB) -->
+<button class="hidden md:flex fixed bottom-8 right-8 w-14 h-14 bg-primary rounded-full items-center justify-center text-white shadow-lg transition-all hover:scale-110 hover:rotate-12 active:scale-95 z-50" style="background-color: rgb(255, 107, 0);">
+<span class="material-symbols-outlined" data-icon="add">add</span>
+</button>
+<script>
+        // Micro-interactions and subtle effects
+        document.querySelectorAll('.glass-shadow').forEach(card => {
+            card.addEventListener('mousemove', (e) => {
+                const rect = card.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                card.style.setProperty('--mouse-x', `${x}px`);
+                card.style.setProperty('--mouse-y', `${y}px`);
+            });
+        });
+    </script>
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

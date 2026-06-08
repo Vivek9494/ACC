@@ -1,0 +1,9 @@
+node_modules
+dist
+build
+coverage
+.expo
+pnpm-lock.yaml
+
+# User-supplied specs and design exports (not maintained as source)
+docs/

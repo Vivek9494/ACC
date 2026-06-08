@@ -1,0 +1,252 @@
+<!DOCTYPE html><html class="light" lang="en" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Poll Results - Player Availability</title>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "tertiary-fixed": "#d0e4ff",
+                    "surface-container-low": "#f3f3f6",
+                    "primary-fixed": "#ffdbcc",
+                    "surface-tint": "#a04100",
+                    "secondary-container": "#fdd400",
+                    "on-secondary-container": "#6f5c00",
+                    "on-tertiary-fixed": "#001d35",
+                    "secondary-fixed-dim": "#e9c400",
+                    "tertiary-fixed-dim": "#9ccaff",
+                    "surface-container-highest": "#e2e2e5",
+                    "surface-bright": "#f9f9fc",
+                    "on-primary-fixed-variant": "#7a3000",
+                    "inverse-primary": "#ffb693",
+                    "secondary-fixed": "#ffe170",
+                    "primary-fixed-dim": "#ffb693",
+                    "on-primary-container": "#572000",
+                    "on-tertiary-fixed-variant": "#00497b",
+                    "error": "#ba1a1a",
+                    "on-tertiary-container": "#003357",
+                    "on-secondary-fixed": "#221b00",
+                    "inverse-on-surface": "#f0f0f3",
+                    "surface-container-lowest": "#ffffff",
+                    "surface": "#f9f9fc",
+                    "tertiary-container": "#059eff",
+                    "surface-dim": "#dadadc",
+                    "primary-container": "#ff6b00",
+                    "on-primary": "#ffffff",
+                    "surface-variant": "#e2e2e5",
+                    "on-error": "#ffffff",
+                    "on-error-container": "#93000a",
+                    "outline": "#8e7164",
+                    "on-surface-variant": "#5a4136",
+                    "on-secondary": "#ffffff",
+                    "surface-container-high": "#e8e8ea",
+                    "surface-container": "#eeeef0",
+                    "on-tertiary": "#ffffff",
+                    "secondary": "#705d00",
+                    "on-primary-fixed": "#351000",
+                    "error-container": "#ffdad6",
+                    "tertiary": "#0062a1",
+                    "background": "#f9f9fc",
+                    "primary": "#a04100",
+                    "on-surface": "#1a1c1e",
+                    "on-secondary-fixed-variant": "#544600",
+                    "on-background": "#1a1c1e",
+                    "inverse-surface": "#2f3133",
+                    "outline-variant": "#e2bfb0"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "sm": "12px",
+                    "xl": "64px",
+                    "md": "24px",
+                    "base": "8px",
+                    "lg": "40px",
+                    "max-width": "1280px",
+                    "margin-mobile": "16px",
+                    "margin-desktop": "auto",
+                    "gutter": "24px",
+                    "xs": "4px"
+            },
+            "fontFamily": {
+                    "body-md": ["Plus Jakarta Sans"],
+                    "body-sm": ["Plus Jakarta Sans"],
+                    "headline-xl-mobile": ["Plus Jakarta Sans"],
+                    "headline-lg": ["Plus Jakarta Sans"],
+                    "headline-xl": ["Plus Jakarta Sans"],
+                    "body-lg": ["Plus Jakarta Sans"],
+                    "label-sm": ["Plus Jakarta Sans"],
+                    "label-md": ["Plus Jakarta Sans"],
+                    "headline-md": ["Plus Jakarta Sans"]
+            },
+            "fontSize": {
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "headline-xl-mobile": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                    "headline-xl": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                    "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                    "label-sm": ["12px", {"lineHeight": "14px", "letterSpacing": "0.04em", "fontWeight": "600"}],
+                    "label-md": ["14px", {"lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "600"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "700"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #f4f4f8;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(8px);
+            border: 1px solid #E2E2E9;
+        }
+        .tab-transition {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="text-on-surface antialiased">
+<!-- TopAppBar -->
+<header class="w-full top-0 sticky z-50 bg-surface dark:bg-background flex items-center px-margin-mobile h-16 w-full cursor-pointer active:scale-95 transition-colors">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-primary dark:text-inverse-primary" data-icon="arrow_back">arrow_back</span>
+<h1 class="font-headline-md text-headline-md font-bold text-primary">Poll Results</h1>
+</div>
+</header>
+<main class="max-w-max-width mx-auto pb-32">
+<!-- Tabs Section -->
+<div class="sticky top-16 bg-surface/80 backdrop-blur-md z-40 border-b border-outline-variant/30">
+<div class="flex w-full">
+<button class="flex-1 py-4 text-center font-label-md text-label-md tab-transition border-b-2 border-primary-container text-primary-container" id="tab-in" onclick="switchTab('in')">
+                    IN <span class="ml-1 opacity-70">(5)</span>
+</button>
+<button class="flex-1 py-4 text-center font-label-md text-label-md tab-transition border-b-2 border-transparent text-on-surface-variant" id="tab-out" onclick="switchTab('out')">
+                    OUT <span class="ml-1 opacity-70">(3)</span>
+</button>
+</div>
+</div>
+<!-- Availability Lists -->
+<div class="px-margin-mobile mt-6">
+<!-- IN List -->
+<div class="space-y-3" id="list-in">
+<div class="flex items-center justify-between mb-4"><div class="flex items-center gap-4 flex-1"><h2 class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Confirmed Players</h2></div><div class="flex gap-4 w-40 justify-end mr-2"><span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-tighter w-16 text-center">Playing 11</span><span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-tighter w-16 text-center">Substitute</span></div></div>
+<!-- Player Row -->
+<div class="glass-card rounded-lg p-sm flex items-center gap-4 hover:shadow-md transition-shadow duration-200"><img alt="Arjun Sharma" class="w-12 h-12 rounded-lg object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDNgaibDS5XVHFSOE2SA5_5QQPqKfbpm9Xzfhi_WXTW7NAZm7QUzF9SpOeOa1L_kyaUWySAC4qBzf3F_ifF05nVgz2GxZDvd0Akpx2T52R7PWuQbALzPYHk3aMEP8cZluNdxuZtd5rx5trFLjpMDIFzZXADByarPTcO93YAXosbLZNwxgdiXJpFX9mBzrG4FJV4431bRmWgu9VOHeSYX6lUWnRAV3VAD_Va13EsRkL_XhLSS1J7RhYoRw8ZiGuaPtN7OXm9csorx00W"><div class="flex-1"><p class="font-body-md text-body-md font-semibold text-on-surface">Arjun Sharma</p><p class="text-label-sm font-label-sm text-on-surface-variant">Opening Batsman</p></div><div class="flex gap-4 w-40 justify-end"><div class="w-16 flex justify-center"><input class="w-5 h-5 text-primary border-outline-variant focus:ring-primary-container rounded-full cursor-pointer" name="status-arjun" type="radio"></div><div class="w-16 flex justify-center"><input class="w-5 h-5 text-primary border-outline-variant focus:ring-primary-container rounded-full cursor-pointer" name="status-arjun" type="radio"></div></div></div>
+<div class="glass-card rounded-lg p-sm flex items-center gap-4 hover:shadow-md transition-shadow duration-200"><img alt="Priya Patel" class="w-12 h-12 rounded-lg object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBRKKbo0ydaYtS-piUDzyDZF5Gx_rGG1NRYpVcKEhBSMPQg79gizBlmwaODKVuGgTrXpC8Sd0a9_kqHvXeucQHtpl-mRShDXrdrJVGXAJJEgwprGeQf2_UVE4joQAT4JPLdC9EQRuRFAqIMtGDpU-DH3wV589GZ2UE-ALiBr35-Vgk9LVK4F98RB2lj-xmyaLfoWQsF2sGgZZz7gmSg7xexn2KIyG3YsznodbSAcwUoZGHytFORA9SswcJuVvsunsrFtYP99k4X0h0a"><div class="flex-1"><p class="font-body-md text-body-md font-semibold text-on-surface">Priya Patel</p><p class="text-label-sm font-label-sm text-on-surface-variant">All-rounder</p></div><div class="flex gap-4 w-40 justify-end"><div class="w-16 flex justify-center"><input class="w-5 h-5 text-primary border-outline-variant focus:ring-primary-container rounded-full cursor-pointer" name="status-priya" type="radio"></div><div class="w-16 flex justify-center"><input class="w-5 h-5 text-primary border-outline-variant focus:ring-primary-container rounded-full cursor-pointer" name="status-priya" type="radio"></div></div></div>
+<div class="glass-card rounded-lg p-sm flex items-center gap-4 hover:shadow-md transition-shadow duration-200"><img alt="Kevin Peterson" class="w-12 h-12 rounded-lg object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBbrsyyWN-MlVxeg4qgTiNZU-x-2L_oFFnUfZetM-tmTbi3hlPj0_8PR7QV-Fcq1AEpQdnlKKtLhSVLDsijHPZUiGs_Z2XAHC28Dt2A708VXiuxngbU5XfNL2a3gJCpKRQTKCpba24Fk_B_CDoI_PrcV2p3Qh2Ucjy47FJtLhTfn-ZPJUBRj8aCqaR6O6zbSoUn0RyJdan16T4W2uHBfwozFrjJwrEREPOOcSYiKuqGW2mySGgqhTZHCU02hNjyb88W_1IhtX5bMC7t"><div class="flex-1"><p class="font-body-md text-body-md font-semibold text-on-surface">Kevin Peterson</p><p class="text-label-sm font-label-sm text-on-surface-variant">Wicket Keeper</p></div><div class="flex gap-4 w-40 justify-end"><div class="w-16 flex justify-center"><input class="w-5 h-5 text-primary border-outline-variant focus:ring-primary-container rounded-full cursor-pointer" name="status-kevin" type="radio"></div><div class="w-16 flex justify-center"><input class="w-5 h-5 text-primary border-outline-variant focus:ring-primary-container rounded-full cursor-pointer" name="status-kevin" type="radio"></div></div></div>
+<div class="glass-card rounded-lg p-sm flex items-center gap-4 hover:shadow-md transition-shadow duration-200"><img alt="Sarah Johnson" class="w-12 h-12 rounded-lg object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDnMnprAbzt4f3N74Ix5p1keWYWj5ywN36msWGRosq5yoOKCNCOv_XGK8CtgpftA58yLHzCKyXCZUO2N76zPR8eARtrRv8Y7xjjHpJ1FqpbRf-Ub7ctMubc9pDQhJCI5Ib_1eBQ4KM5l0mmR8Kw5B5tAd7ZDmHFo30t1Q5vh2jXIjglhDpzAc5uiRYYDn0f0VnicIbwyTPvNOjhFD-fBMpiYIeI3dItAqp8rf9y1ORcw0_jgqW5SvilZqkMH9dg2KSPcG5fHuBhCYFw"><div class="flex-1"><p class="font-body-md text-body-md font-semibold text-on-surface">Sarah Johnson</p><p class="text-label-sm font-label-sm text-on-surface-variant">Fast Bowler</p></div><div class="flex gap-4 w-40 justify-end"><div class="w-16 flex justify-center"><input class="w-5 h-5 text-primary border-outline-variant focus:ring-primary-container rounded-full cursor-pointer" name="status-sarah" type="radio"></div><div class="w-16 flex justify-center"><input class="w-5 h-5 text-primary border-outline-variant focus:ring-primary-container rounded-full cursor-pointer" name="status-sarah" type="radio"></div></div></div>
+<div class="glass-card rounded-lg p-sm flex items-center gap-4 hover:shadow-md transition-shadow duration-200"><img alt="Liam Davies" class="w-12 h-12 rounded-lg object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAuqLHvBnC008Yvyw06o8aIQ2c877XtXTyc_4L_rB5UGNiP4XeWNwhggIfRNXvYZf2vv81yFIeyDtdQ-PMtzs2em-Q5nUbSe72J3ZNbfsRXu3ykAjp9C2QFZdxNihpIPhX-x4jLwygYf2yUrx7ss9PxWojMXMMjc-gThxrHMM95A06A5wohOxGJb7iv1FKHeKlxgluK41At-JThgL4bk2Z7QdiPe4BY9R1mGDbeJSdvjgG6CVfyTEK4GfY54gXhhuPXRZfIG2AmZD3D"><div class="flex-1"><p class="font-body-md text-body-md font-semibold text-on-surface">Liam Davies</p><p class="text-label-sm font-label-sm text-on-surface-variant">Middle Order</p></div><div class="flex gap-4 w-40 justify-end"><div class="w-16 flex justify-center"><input class="w-5 h-5 text-primary border-outline-variant focus:ring-primary-container rounded-full cursor-pointer" name="status-liam" type="radio"></div><div class="w-16 flex justify-center"><input class="w-5 h-5 text-primary border-outline-variant focus:ring-primary-container rounded-full cursor-pointer" name="status-liam" type="radio"></div></div></div>
+<div class="mt-6 space-y-3">
+<div class="flex items-center justify-between mb-4">
+<div class="flex items-center gap-4 flex-1">
+<h2 class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Late Arrival Penalty Players</h2>
+</div>
+</div>
+<!-- Player Row: Rohit Sharma -->
+<div class="glass-card rounded-lg p-sm flex items-center gap-4 hover:shadow-md transition-shadow duration-200">
+<img alt="Rohit Sharma" class="w-12 h-12 rounded-lg object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDgaibDS5XVHFSOE2SA5_5QQPqKfbpm9Xzfhi_WXTW7NAZm7QUzF9SpOeOa1L_kyaUWySAC4qBzf3F_ifF05nVgz2GxZDvd0Akpx2T52R7PWuQbALzPYHk3aMEP8cZluNdxuZtd5rx5trFLjpMDIFzZXADByarPTcO93YAXosbLZNwxgdiXJpFX9mBzrG4FJV4431bRmWgu9VOHeSYX6lUWnRAV3VAD_Va13EsRkL_XhLSS1J7RhYoRw8ZiGuaPtN7OXm9csorx00W">
+<div class="flex-1">
+<p class="font-body-md text-body-md font-semibold text-on-surface">Rohit Sharma</p>
+<p class="text-label-sm font-label-sm text-on-surface-variant">Opening Batsman</p>
+</div>
+<div class="flex gap-4 w-40 justify-end"><div class="w-16 flex justify-center"><input type="checkbox" class="w-5 h-5 text-primary border-outline-variant focus:ring-primary-container rounded cursor-pointer transition-colors"></div></div>
+</div>
+<!-- Player Row: Virat Kohli -->
+<div class="glass-card rounded-lg p-sm flex items-center gap-4 hover:shadow-md transition-shadow duration-200">
+<img alt="Virat Kohli" class="w-12 h-12 rounded-lg object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBRKKbo0ydaYtS-piUDzyDZF5Gx_rGG1NRYpVcKEhBSMPQg79gizBlmwaODKVuGgTrXpC8Sd0a9_kqHvXeucQHtpl-mRShDXrdrJVGXAJJEgwprGeQf2_UVE4joQAT4JPLdC9EQRuRFAqIMtGDpU-DH3wV589GZ2UE-ALiBr35-Vgk9LVK4F98RB2lj-xmyaLfoWQsF2sGgZZz7gmSg7xexn2KIyG3YsznodbSAcwUoZGHytFORA9SswcJuVvsunsrFtYP99k4X0h0a">
+<div class="flex-1">
+<p class="font-body-md text-body-md font-semibold text-on-surface">Virat Kohli</p>
+<p class="text-label-sm font-label-sm text-on-surface-variant">Top Order Batsman</p>
+</div>
+<div class="flex gap-4 w-40 justify-end"><div class="w-16 flex justify-center"><input type="checkbox" class="w-5 h-5 text-primary border-outline-variant focus:ring-primary-container rounded cursor-pointer transition-colors"></div></div>
+</div>
+</div></div>
+<!-- OUT List (Hidden by default) -->
+<div class="hidden space-y-3" id="list-out">
+<div class="flex items-center justify-between mb-4">
+<h2 class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Unavailable</h2>
+<span class="bg-surface-container-highest text-on-surface-variant px-3 py-1 rounded-full text-xs font-bold">3 PLAYERS</span>
+</div>
+<div class="glass-card rounded-lg p-sm flex items-center gap-4 opacity-75">
+<img alt="Chris Gayle" class="w-12 h-12 rounded-lg object-cover grayscale" data-alt="A portrait of a charismatic Black man with dreadlocks, wearing a black athletic hoodie. The lighting is cinematic yet soft, highlighting his features against a clean, light-colored background. The image evokes a sense of professional sportsmanship with a minimalist, high-contrast visual style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCCP7ZN22jBBvUI9OgIqa9nBkLIXRSsePe15EsR62ug3JkXCRmY61d31SeU3ocOxrLnyKqTnyGPVEIwNSgWcm7vV7CDSy_HzevhzwwqaPM6kByEjy0gtrc6HQCIZLwvxUfm1dJWDBJfp4adh9QOZq0W567PTosrqjhL5vtFiuDA-fgIMmzVWkV9-j2cjI1IyQhT0iNjXs56dvuZsldRnbbp539sVUrcKZ1WWiPUayR3wcj7o3HWdw3KXh2ZAwcpfpXaeTDgG8DyTnii">
+<div class="flex-1">
+<p class="font-body-md text-body-md font-semibold text-on-surface">Chris Gayle</p>
+<p class="text-label-sm font-label-sm text-on-surface-variant">Personal Reasons</p>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="cancel">cancel</span>
+</div>
+<div class="glass-card rounded-lg p-sm flex items-center gap-4 opacity-75">
+<img alt="Rashid Khan" class="w-12 h-12 rounded-lg object-cover grayscale" data-alt="A close-up photograph of a professional athlete with an intense gaze, wearing a dark grey tracksuit. The background is a minimalist sports facility with clean lines and bright, overhead lighting. The color palette is neutral with subtle warm undertones, maintaining a sophisticated and modern aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC6s2f_YsLAVSimHK9bsZ6A9LY2VAXOhckMKlW_2RdKYslg9EOjHTMxWu-I2ZSbSKjt_ul2hB6sG1NZu_HA6E1IP5gREY3IcJCLKoy0lh0_w3HNFZGGLqc8AmlQC2PbAH7vFD7jqRpI7TcPRhWYb5CdyMK1-6TOGkH1GJEVWHPJ6ryzTY8y8-2hfb41yLspCdWPYB6Qk8wMpPqxDHRoXsplZtoUzpbm52JTj5VSQ_rPlw74o9eGF3T9eTssTLECKMhHFYzqiwq0Hz_7">
+<div class="flex-1">
+<p class="font-body-md text-body-md font-semibold text-on-surface">Rashid Khan</p>
+<p class="text-label-sm font-label-sm text-on-surface-variant">Injury</p>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="cancel">cancel</span>
+</div>
+<div class="glass-card rounded-lg p-sm flex items-center gap-4 opacity-75">
+<img alt="Mohammed Shami" class="w-12 h-12 rounded-lg object-cover grayscale" data-alt="A portrait of a focused man with a neatly trimmed beard, wearing a white training kit. He is positioned in a bright, airy indoor space with floor-to-ceiling windows. The lighting is high-key and optimistic, focusing on clear textures and a professional, modern look consistent with a sports lifestyle brand." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAOzze-z0OiELbJA2_j6UszBY4ij35g7gAOdWZmTCWXY1lxnPXv0Ul0_NvCfL6Q4-hkuZzHWdmPvqxCyKj5bZb6qLocvKa_I_crvdHbLRorhwusWZJQ-NAO58TclhykMOw09arVgUmHaLinGQ-09x8NNpdzjIpFHDlumte52dnIGmWGsDdyJR5x28_APstRw7-YdrMf4BQtaXuxFyCAsZMgfVk9YXpdG7eo0ioz2JjikUpojtoRzNQ1WfLHbzgarXxVwgt6RI8Keb9H">
+<div class="flex-1">
+<p class="font-body-md text-body-md font-semibold text-on-surface">Mohammed Shami</p>
+<p class="text-label-sm font-label-sm text-on-surface-variant">Travel</p>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="cancel">cancel</span>
+</div>
+</div>
+<button class="w-full h-14 bg-primary-container text-on-primary rounded-lg font-label-md text-label-md mt-6 shadow-md active:scale-95 transition-transform duration-150 flex items-center justify-center">Confirm</button></div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 w-full flex justify-around items-center py-2 pb-safe bg-surface-container-lowest dark:bg-surface-container-low shadow-md z-50"><a class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-full px-4 py-1 active:scale-90 transition-transform duration-150" href="#"><span class="material-symbols-outlined" data-icon="sports_cricket">sports_cricket</span><span class="font-label-sm text-label-sm">Matches</span></a><a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-highest transition-all active:scale-90 duration-150" href="#"><span class="material-symbols-outlined" data-icon="groups">groups</span><span class="font-label-sm text-label-sm">Teams</span></a><a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-highest transition-all active:scale-90 duration-150" href="#"><span class="material-symbols-outlined" data-icon="poll">poll</span><span class="font-label-sm text-label-sm">Polls</span></a></nav>
+<script>
+        function switchTab(tab) {
+            const listIn = document.getElementById('list-in');
+            const listOut = document.getElementById('list-out');
+            const btnIn = document.getElementById('tab-in');
+            const btnOut = document.getElementById('tab-out');
+
+            if (tab === 'in') {
+                listIn.classList.remove('hidden');
+                listOut.classList.add('hidden');
+                btnIn.classList.add('border-primary-container', 'text-primary-container');
+                btnIn.classList.remove('border-transparent', 'text-on-surface-variant');
+                btnOut.classList.add('border-transparent', 'text-on-surface-variant');
+                btnOut.classList.remove('border-primary-container', 'text-primary-container');
+            } else {
+                listIn.classList.add('hidden');
+                listOut.classList.remove('hidden');
+                btnOut.classList.add('border-primary-container', 'text-primary-container');
+                btnOut.classList.remove('border-transparent', 'text-on-surface-variant');
+                btnIn.classList.add('border-transparent', 'text-on-surface-variant');
+                btnIn.classList.remove('border-primary-container', 'text-primary-container');
+            }
+        }
+    </script>
+
+
+
+
+</body></html>

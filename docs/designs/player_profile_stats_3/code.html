@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "secondary-fixed-dim": "#f9bc4d",
+                    "primary-fixed": "#ffdbd1",
+                    "inverse-primary": "#ab3514",
+                    "on-tertiary-fixed-variant": "#45474a",
+                    "tertiary-container": "#9c9da1",
+                    "inverse-on-surface": "#2d2f44",
+                    "secondary-fixed": "#ffdeac",
+                    "surface-container-high": "#26283d",
+                    "on-secondary": "#432c00",
+                    "primary-container": "#ff724c",
+                    "on-primary-fixed": "#3c0800",
+                    "on-surface": "#e0e0fc",
+                    "on-secondary-fixed": "#281900",
+                    "error-container": "#93000a",
+                    "primary": "#ffb5a1",
+                    "on-tertiary": "#2f3034",
+                    "tertiary-fixed-dim": "#c6c6ca",
+                    "inverse-surface": "#e0e0fc",
+                    "surface-container-low": "#181a2e",
+                    "on-primary": "#611300",
+                    "error": "#ffb4ab",
+                    "on-tertiary-container": "#333538",
+                    "outline-variant": "#58413b",
+                    "surface-container": "#1c1e32",
+                    "on-background": "#e0e0fc",
+                    "surface-tint": "#ffb5a1",
+                    "surface-container-highest": "#313349",
+                    "surface": "#101225",
+                    "surface-container-lowest": "#0a0c20",
+                    "outline": "#a78a83",
+                    "on-primary-container": "#681600",
+                    "on-error": "#690005",
+                    "on-tertiary-fixed": "#1a1c1f",
+                    "secondary-container": "#bd8718",
+                    "surface-dim": "#101225",
+                    "on-surface-variant": "#e0bfb7",
+                    "tertiary": "#c6c6ca",
+                    "on-secondary-fixed-variant": "#5f4100",
+                    "tertiary-fixed": "#e2e2e6",
+                    "on-error-container": "#ffdad6",
+                    "on-secondary-container": "#3a2600",
+                    "surface-bright": "#36384d",
+                    "background": "#101225",
+                    "primary-fixed-dim": "#ffb5a1",
+                    "on-primary-fixed-variant": "#881f00",
+                    "surface-variant": "#313349",
+                    "secondary": "#f9bc4d"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "gutter": "16px",
+                    "md": "24px",
+                    "margin-desktop": "32px",
+                    "base": "4px",
+                    "lg": "40px",
+                    "margin-mobile": "16px",
+                    "xs": "8px",
+                    "sm": "16px",
+                    "xl": "64px"
+            },
+            "fontFamily": {
+                    "headline-lg-mobile": ["Inter"],
+                    "label-md": ["Inter"],
+                    "headline-lg": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "label-sm": ["Inter"],
+                    "body-md": ["Inter"],
+                    "headline-md": ["Inter"],
+                    "display-lg": ["Inter"]
+            },
+            "fontSize": {
+                    "headline-lg-mobile": ["28px", {"lineHeight": "36px", "fontWeight": "700"}],
+                    "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                    "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                    "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "500"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            background-color: #101225;
+            color: #e0e0fc;
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding-bottom: 80px; /* Space for BottomNavBar */
+            padding-top: 64px; /* Space for TopAppBar */
+        }
+        .tonal-layer-1 {
+            background-color: #1c1e32;
+            border: 1px solid rgba(224, 224, 252, 0.1);
+        }
+        .active-border {
+            border: 1.5px solid #f9bc4d;
+        }
+        .stat-card-gradient {
+            background: linear-gradient(135deg, rgba(255, 181, 161, 0.05) 0%, rgba(249, 188, 77, 0.05) 100%);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background">
+<!-- TopAppBar -->
+<header class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-margin-mobile h-16 bg-surface dark:bg-surface border-b border-outline-variant/10">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary transition-all duration-200 active:scale-95">menu</span>
+<h1 class="text-headline-md-mobile font-headline-md-mobile font-bold text-primary dark:text-primary tracking-tighter">CRICKET LIVE</h1>
+</div>
+<div class="flex items-center">
+<span class="material-symbols-outlined text-primary transition-all duration-200 active:scale-95">settings</span>
+</div>
+</header>
+<main class="max-w-[1280px] mx-auto px-margin-mobile md:px-margin-desktop pt-md space-y-md">
+<!-- Profile Hero Section -->
+<section class="flex flex-col md:flex-row gap-md items-center md:items-end">
+<div class="relative group">
+<div class="w-32 h-32 md:w-48 md:h-48 rounded-lg overflow-hidden border-2 border-secondary/20 active-border">
+<img alt="Player Portrait" class="w-full h-full object-cover" data-alt="A professional, high-contrast studio portrait of a cricket player in a dark athletic jersey. The lighting is dramatic and moody, utilizing deep shadows and vibrant orange rim lighting that echoes the brand's precision aesthetic. The player has a focused, intense expression, set against a dark charcoal background with subtle technical textures and a premium, stealth-like atmosphere." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBlHcE7vdCw3kpXfdidtsGW4ULNQlKiylUu_Y1LcCUmwDeDTKyqXDuWJ49_bqpvimcD793SNdjrKQH7qRowpWtsK7A1dBlSzNe3Pb5Hm3IBAX22dFiX7ke7sbW3AfIyvuuvUHPla5Q_X1FwbAU1gdCORRmg5mrOBnKzG95i-xeObfoY7UuYVgrI3AvX_EZrO-D8hGyU6WrsP-QoDKBOYW9GD1g-QMP_BqSHoA3yqS3RHG_BnYb2HhNQvG92VcqEHf9NvMhpXRQuRP2K"/>
+</div>
+<div class="absolute -bottom-2 -right-2 bg-secondary text-on-secondary px-xs py-1 rounded text-label-sm font-label-sm uppercase tracking-wider">
+                    PRO
+                </div>
+</div>
+<div class="text-center md:text-left flex-1">
+<div class="flex flex-wrap items-center justify-center md:justify-start gap-xs mb-base">
+<span class="bg-secondary-container/20 text-secondary px-xs py-1 rounded text-label-sm font-label-sm">BATSMAN</span>
+<span class="bg-primary-container/20 text-primary px-xs py-1 rounded text-label-sm font-label-sm">RIGHT HAND</span>
+</div>
+<h2 class="text-headline-lg-mobile md:text-headline-lg font-headline-lg text-on-surface">Alex "Thunder" Rivers</h2>
+<p class="text-body-md text-on-surface-variant">Global Strikers FC • National League</p>
+</div>
+<div class="flex gap-sm">
+<button class="bg-primary-container text-on-primary-container px-md py-xs rounded-lg font-label-md text-label-md transition-all duration-200 active:scale-95">
+                    FOLLOW
+                </button>
+<button class="border-[1.5px] border-secondary text-secondary px-md py-xs rounded-lg font-label-md text-label-md transition-all duration-200 active:scale-95">
+                    SHARE
+                </button>
+</div>
+</section>
+<!-- Key Stats Bento Grid -->
+<section class="grid grid-cols-2 md:grid-cols-4 gap-sm md:gap-md">
+<div class="tonal-layer-1 p-md rounded-xl stat-card-gradient flex flex-col justify-center">
+<span class="text-label-sm font-label-sm text-on-surface-variant uppercase mb-base">Total Runs</span>
+<span class="text-headline-md font-headline-md text-secondary">4,829</span>
+</div>
+<div class="tonal-layer-1 p-md rounded-xl stat-card-gradient flex flex-col justify-center">
+<span class="text-label-sm font-label-sm text-on-surface-variant uppercase mb-base">Average</span>
+<span class="text-headline-md font-headline-md text-primary">52.4</span>
+</div>
+<div class="tonal-layer-1 p-md rounded-xl stat-card-gradient flex flex-col justify-center">
+<span class="text-label-sm font-label-sm text-on-surface-variant uppercase mb-base">Highest Score</span>
+<span class="text-headline-md font-headline-md text-secondary">184*</span>
+</div>
+<div class="tonal-layer-1 p-md rounded-xl stat-card-gradient flex flex-col justify-center">
+<span class="text-label-sm font-label-sm text-on-surface-variant uppercase mb-base">Strike Rate</span>
+<span class="text-headline-md font-headline-md text-on-surface">142.8</span>
+</div>
+</section>
+<!-- Performance Chart Section -->
+<section class="tonal-layer-1 p-md md:p-lg rounded-xl">
+<div class="flex justify-between items-center mb-md">
+<h3 class="text-headline-md font-headline-md text-on-surface">Recent Performance</h3>
+<div class="flex gap-xs">
+<span class="flex items-center gap-base text-label-sm font-label-sm text-on-surface-variant">
+<span class="w-3 h-3 bg-secondary rounded-full"></span> Runs
+                    </span>
+</div>
+</div>
+<!-- Custom CSS Bar Chart -->
+<div class="h-64 flex items-end justify-between gap-base md:gap-sm pt-md border-b border-outline-variant/20">
+<div class="flex flex-col items-center flex-1 group">
+<div class="w-full bg-secondary/80 group-hover:bg-secondary rounded-t-sm transition-all duration-300 relative" style="height: 45%;">
+<span class="absolute -top-8 left-1/2 -translate-x-1/2 text-label-sm font-label-sm text-secondary opacity-0 group-hover:opacity-100 transition-opacity">45</span>
+</div>
+<span class="text-label-sm font-label-sm text-on-surface-variant mt-sm">M1</span>
+</div>
+<div class="flex flex-col items-center flex-1 group">
+<div class="w-full bg-secondary/80 group-hover:bg-secondary rounded-t-sm transition-all duration-300 relative" style="height: 82%;">
+<span class="absolute -top-8 left-1/2 -translate-x-1/2 text-label-sm font-label-sm text-secondary opacity-0 group-hover:opacity-100 transition-opacity">82</span>
+</div>
+<span class="text-label-sm font-label-sm text-on-surface-variant mt-sm">M2</span>
+</div>
+<div class="flex flex-col items-center flex-1 group">
+<div class="w-full bg-secondary/80 group-hover:bg-secondary rounded-t-sm transition-all duration-300 relative" style="height: 12%;">
+<span class="absolute -top-8 left-1/2 -translate-x-1/2 text-label-sm font-label-sm text-secondary opacity-0 group-hover:opacity-100 transition-opacity">12</span>
+</div>
+<span class="text-label-sm font-label-sm text-on-surface-variant mt-sm">M3</span>
+</div>
+<div class="flex flex-col items-center flex-1 group">
+<div class="w-full bg-secondary/80 group-hover:bg-secondary rounded-t-sm transition-all duration-300 relative" style="height: 94%;">
+<span class="absolute -top-8 left-1/2 -translate-x-1/2 text-label-sm font-label-sm text-secondary opacity-0 group-hover:opacity-100 transition-opacity">94</span>
+</div>
+<span class="text-label-sm font-label-sm text-on-surface-variant mt-sm">M4</span>
+</div>
+<div class="flex flex-col items-center flex-1 group">
+<div class="w-full bg-secondary/80 group-hover:bg-secondary rounded-t-sm transition-all duration-300 relative" style="height: 56%;">
+<span class="absolute -top-8 left-1/2 -translate-x-1/2 text-label-sm font-label-sm text-secondary opacity-0 group-hover:opacity-100 transition-opacity">56</span>
+</div>
+<span class="text-label-sm font-label-sm text-on-surface-variant mt-sm">M5</span>
+</div>
+<div class="flex flex-col items-center flex-1 group">
+<div class="w-full bg-secondary/80 group-hover:bg-secondary rounded-t-sm transition-all duration-300 relative" style="height: 38%;">
+<span class="absolute -top-8 left-1/2 -translate-x-1/2 text-label-sm font-label-sm text-secondary opacity-0 group-hover:opacity-100 transition-opacity">38</span>
+</div>
+<span class="text-label-sm font-label-sm text-on-surface-variant mt-sm">M6</span>
+</div>
+<div class="flex flex-col items-center flex-1 group">
+<div class="w-full bg-secondary/80 group-hover:bg-secondary rounded-t-sm transition-all duration-300 relative" style="height: 100%;">
+<span class="absolute -top-8 left-1/2 -translate-x-1/2 text-label-sm font-label-sm text-secondary opacity-0 group-hover:opacity-100 transition-opacity">100</span>
+</div>
+<span class="text-label-sm font-label-sm text-on-surface-variant mt-sm">M7</span>
+</div>
+</div>
+<p class="text-label-sm font-label-sm text-on-surface-variant mt-md text-center">Score history for the last 7 competitive matches</p>
+</section>
+<!-- Milestones & Awards -->
+<section class="grid grid-cols-1 md:grid-cols-2 gap-md">
+<div class="tonal-layer-1 p-md rounded-xl space-y-sm">
+<h4 class="text-label-md font-label-md text-primary uppercase">Recent Milestones</h4>
+<div class="space-y-xs">
+<div class="flex justify-between items-center p-xs bg-surface-container-low rounded">
+<span class="text-body-md">5000 Club Access</span>
+<div class="h-2 w-24 bg-surface-container rounded-full overflow-hidden">
+<div class="h-full bg-secondary" style="width: 96%"></div>
+</div>
+</div>
+<div class="flex justify-between items-center p-xs bg-surface-container-low rounded">
+<span class="text-body-md">10th Century</span>
+<div class="h-2 w-24 bg-surface-container rounded-full overflow-hidden">
+<div class="h-full bg-secondary" style="width: 70%"></div>
+</div>
+</div>
+</div>
+</div>
+<div class="tonal-layer-1 p-md rounded-xl flex items-center justify-around">
+<div class="flex flex-col items-center">
+<div class="p-xs rounded-full bg-secondary/10 border border-secondary mb-xs">
+<span class="material-symbols-outlined text-secondary" style="font-variation-settings: 'FILL' 1;">workspace_premium</span>
+</div>
+<span class="text-label-sm font-label-sm">MVP 2023</span>
+</div>
+<div class="flex flex-col items-center">
+<div class="p-xs rounded-full bg-primary/10 border border-primary mb-xs">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">military_tech</span>
+</div>
+<span class="text-label-sm font-label-sm">Top Scorer</span>
+</div>
+<div class="flex flex-col items-center">
+<div class="p-xs rounded-full bg-tertiary-container/10 border border-tertiary mb-xs">
+<span class="material-symbols-outlined text-tertiary" style="font-variation-settings: 'FILL' 1;">star</span>
+</div>
+<span class="text-label-sm font-label-sm">All Star</span>
+</div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-margin-mobile py-2 bg-surface-container-low dark:bg-surface-container-low border-t border-outline-variant/10">
+<div class="flex flex-col items-center justify-center text-on-surface-variant transition-transform duration-200 active:scale-90 hover:text-on-surface">
+<span class="material-symbols-outlined" data-icon="sports_cricket">sports_cricket</span>
+<span class="text-label-sm font-label-sm">Live</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant transition-transform duration-200 active:scale-90 hover:text-on-surface">
+<span class="material-symbols-outlined" data-icon="assessment">assessment</span>
+<span class="text-label-sm font-label-sm">Scorecard</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant transition-transform duration-200 active:scale-90 hover:text-on-surface">
+<span class="material-symbols-outlined" data-icon="add_circle">add_circle</span>
+<span class="text-label-sm font-label-sm">Setup</span>
+</div>
+<div class="flex flex-col items-center justify-center bg-secondary-container/20 text-secondary rounded-full px-4 py-1 transition-transform duration-200 active:scale-90">
+<span class="material-symbols-outlined" data-icon="person" style="font-variation-settings: 'FILL' 1;">person</span>
+<span class="text-label-sm font-label-sm">Profile</span>
+</div>
+</nav>
+<script>
+        // Simple micro-interaction for stats cards
+        document.querySelectorAll('.stat-card-gradient').forEach(card => {
+            card.addEventListener('mouseenter', () => {
+                card.style.transform = 'translateY(-4px)';
+                card.style.transition = 'transform 0.2s ease-out';
+            });
+            card.addEventListener('mouseleave', () => {
+                card.style.transform = 'translateY(0px)';
+            });
+        });
+    </script>
+</body></html>

@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>CricketLive - Player Profile</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&amp;family=Geist:wght@500&amp;family=Hanken+Grotesk:wght@600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-primary-fixed": "#3c0800",
+                    "primary-fixed": "#ffdbd1",
+                    "surface-container-highest": "#e2e2e6",
+                    "tertiary-fixed": "#74f6f5",
+                    "outline-variant": "#e0bfb7",
+                    "surface-dim": "#d9dade",
+                    "surface-container-high": "#e8e8ec",
+                    "on-secondary-container": "#714e00",
+                    "tertiary-fixed-dim": "#53d9d8",
+                    "primary": "#ab3514",
+                    "surface-container-lowest": "#ffffff",
+                    "secondary-fixed-dim": "#f9bc4d",
+                    "tertiary": "#006a69",
+                    "surface-variant": "#e2e2e6",
+                    "background": "#f9f9fd",
+                    "on-primary": "#ffffff",
+                    "on-error-container": "#93000a",
+                    "inverse-primary": "#ffb5a1",
+                    "on-primary-fixed-variant": "#881f00",
+                    "on-surface": "#1a1c1f",
+                    "on-secondary-fixed-variant": "#5f4100",
+                    "on-error": "#ffffff",
+                    "on-tertiary": "#ffffff",
+                    "surface": "#f9f9fd",
+                    "surface-container-low": "#f3f3f7",
+                    "secondary": "#7e5700",
+                    "on-tertiary-fixed": "#002020",
+                    "on-background": "#1a1c1f",
+                    "secondary-container": "#fdbf50",
+                    "error": "#ba1a1a",
+                    "on-primary-container": "#681600",
+                    "surface-container": "#ededf1",
+                    "primary-container": "#ff724c",
+                    "on-secondary-fixed": "#281900",
+                    "tertiary-container": "#00afae",
+                    "on-tertiary-fixed-variant": "#00504f",
+                    "outline": "#8c716a",
+                    "on-tertiary-container": "#003b3b",
+                    "surface-bright": "#f9f9fd",
+                    "inverse-on-surface": "#f0f0f4",
+                    "on-surface-variant": "#58413b",
+                    "inverse-surface": "#2f3034",
+                    "error-container": "#ffdad6",
+                    "primary-fixed-dim": "#ffb5a1",
+                    "on-secondary": "#ffffff",
+                    "secondary-fixed": "#ffdeac",
+                    "surface-tint": "#ab3514"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "stack-sm": "12px",
+                    "gutter": "16px",
+                    "container-margin": "24px",
+                    "base": "8px",
+                    "stack-lg": "48px",
+                    "stack-md": "24px"
+            },
+            "fontFamily": {
+                    "body-md": ["Inter"],
+                    "label-sm": ["Geist"],
+                    "headline-md": ["Hanken Grotesk"],
+                    "body-lg": ["Inter"],
+                    "headline-xl": ["Hanken Grotesk"],
+                    "headline-xl-mobile": ["Hanken Grotesk"]
+            },
+            "fontSize": {
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "label-sm": ["13px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                    "headline-xl": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "headline-xl-mobile": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}]
+            }
+          }
+        }
+      }
+    </script>
+<style>
+        body { background-color: #F4F4F8; min-height: 100vh; font-family: 'Inter', sans-serif; }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0px 4px 24px rgba(0, 0, 0, 0.04);
+        }
+        .glass-card-interactive {
+            transition: all 0.3s ease;
+        }
+        .glass-card-interactive:hover {
+            background: rgba(255, 255, 255, 0.8);
+            box-shadow: 0px 8px 32px rgba(0, 0, 0, 0.08);
+            transform: translateY(-2px);
+        }
+        .glow-orange {
+            box-shadow: 0 0 15px rgba(255, 114, 76, 0.4);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="text-on-background">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-surface/60 backdrop-blur-xl border-b border-white/20 shadow-[0px_4px_24px_rgba(0,0,0,0.04)]">
+<div class="flex items-center justify-between px-gutter h-16 w-full max-w-2xl mx-auto">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">sports_cricket</span>
+<h1 class="font-headline-md text-headline-md font-bold text-primary">CricketLive</h1>
+</div>
+<div class="flex gap-4">
+<button class="material-symbols-outlined text-on-surface-variant hover:bg-white/10 transition-colors p-2 rounded-full active:scale-95 duration-200">notifications</button>
+<button class="material-symbols-outlined text-on-surface-variant hover:bg-white/10 transition-colors p-2 rounded-full active:scale-95 duration-200">search</button>
+</div>
+</div>
+</header>
+<main class="pt-16 pb-24 max-w-2xl mx-auto min-h-screen">
+<!-- Hero Section with Player Photo -->
+<section class="relative h-80 overflow-hidden mx-gutter mt-gutter rounded-3xl group">
+<img alt="Cricket Player Portrait" class="w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-105" data-alt="A professional cricket player in a clean white team uniform, standing confidently on a lush green cricket pitch. The atmosphere is bright and solar, with warm late afternoon sunlight catching the details of the fabric and the grass. The visual style is high-key and minimalist, utilizing a soft depth-of-field effect that blurs the background stadium into soft whites and greens. Professional sports photography aesthetic with warm orange-hued highlights." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCQpAzLno-DVX27koXXu1V9GbToaYKWN2YWuGDm9wFnEvP7m0-47twk2qD4B9QNFtx3sXNVebTi02KCnVQt2BrVjXJyjknXFLWg5bPQrNCVMEYC9p5D8OenT3A62HEianI8FNFvJ9PKMJfNYaVWuIuwdtWuVZOKlVuAn8kCvVZEFJVkzaICWVjHSIhbKANYnoyI1v95hUXki_pkFpFVWohvvPQvU1b5dlPKZidpV3A2e1ZzfttsbWB35feD0QrlS5dkFgEA2biBn9qD"/>
+<!-- Frosted Glass Overlay for Info -->
+<div class="absolute bottom-0 left-0 w-full p-6 glass-card rounded-t-3xl translate-y-2">
+<div class="flex justify-between items-end">
+<div>
+<div class="flex items-center gap-2 mb-1">
+<span class="px-3 py-1 rounded-full bg-secondary-container/15 text-secondary text-label-sm font-label-sm">Top Order Batter</span>
+<span class="px-3 py-1 rounded-full bg-tertiary-container/15 text-tertiary text-label-sm font-label-sm uppercase">Active</span>
+</div>
+<h2 class="font-headline-xl-mobile text-headline-xl-mobile text-on-surface">Arjun "The Wall" Sharma</h2>
+<div class="flex items-center gap-2 text-on-surface-variant mt-1">
+<span class="material-symbols-outlined text-sm">location_on</span>
+<span class="font-body-md text-body-md">India • Royal Challengers</span>
+</div>
+</div>
+<button class="bg-primary-container text-on-primary-container p-4 rounded-2xl glow-orange active:scale-90 transition-transform shadow-lg">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">person_add</span>
+</button>
+</div>
+</div>
+</section>
+<!-- Stats Grid (Bento Style) -->
+<section class="px-gutter mt-8 grid grid-cols-2 gap-4">
+<!-- Total Runs -->
+<div class="glass-card glass-card-interactive p-6 rounded-3xl flex flex-col justify-between h-40">
+<span class="material-symbols-outlined text-primary text-3xl">trending_up</span>
+<div>
+<p class="text-on-surface-variant font-label-sm text-label-sm">Total Runs</p>
+<h3 class="text-headline-md font-headline-md text-on-surface">8,452</h3>
+</div>
+</div>
+<!-- Average -->
+<div class="glass-card glass-card-interactive p-6 rounded-3xl flex flex-col justify-between h-40">
+<span class="material-symbols-outlined text-tertiary text-3xl">analytics</span>
+<div>
+<p class="text-on-surface-variant font-label-sm text-label-sm">Batting Average</p>
+<h3 class="text-headline-md font-headline-md text-on-surface">54.21</h3>
+</div>
+</div>
+<!-- Strike Rate -->
+<div class="glass-card glass-card-interactive p-6 rounded-3xl flex flex-col justify-between h-40 col-span-2 sm:col-span-1">
+<div class="flex justify-between items-start">
+<span class="material-symbols-outlined text-secondary text-3xl">bolt</span>
+<span class="text-secondary font-label-sm text-label-sm bg-secondary-container/10 px-2 py-1 rounded-lg">+2.4%</span>
+</div>
+<div>
+<p class="text-on-surface-variant font-label-sm text-label-sm">Strike Rate</p>
+<h3 class="text-headline-md font-headline-md text-on-surface">138.4</h3>
+</div>
+</div>
+<!-- 100s / 50s -->
+<div class="glass-card glass-card-interactive p-6 rounded-3xl col-span-2 sm:col-span-1 flex items-center justify-around">
+<div class="text-center">
+<p class="text-on-surface-variant font-label-sm text-label-sm">Centuries</p>
+<h3 class="text-headline-md font-headline-md text-primary">24</h3>
+</div>
+<div class="w-[1px] h-12 bg-white/30"></div>
+<div class="text-center">
+<p class="text-on-surface-variant font-label-sm text-label-sm">Fifties</p>
+<h3 class="text-headline-md font-headline-md text-on-surface">42</h3>
+</div>
+</div>
+</section>
+<!-- Recent Performance Chart Section -->
+<section class="px-gutter mt-8">
+<div class="glass-card p-6 rounded-3xl">
+<div class="flex justify-between items-center mb-6">
+<h3 class="font-headline-md text-headline-md text-on-surface">Recent Performance</h3>
+<div class="flex gap-2">
+<button class="bg-primary text-white font-label-sm text-label-sm px-4 py-1 rounded-full">ODI</button>
+<button class="text-on-surface-variant font-label-sm text-label-sm px-4 py-1 border border-outline-variant rounded-full">T20</button>
+</div>
+</div>
+<!-- Simulated Chart -->
+<div class="relative h-48 w-full flex items-end justify-between gap-2 px-2">
+<!-- Grid Lines -->
+<div class="absolute inset-0 flex flex-col justify-between opacity-10">
+<div class="border-t border-on-surface w-full"></div>
+<div class="border-t border-on-surface w-full"></div>
+<div class="border-t border-on-surface w-full"></div>
+<div class="border-t border-on-surface w-full"></div>
+</div>
+<!-- Bars -->
+<div class="flex-1 bg-primary-container/20 hover:bg-primary-container/40 transition-colors h-[40%] rounded-t-lg relative group cursor-pointer">
+<div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-on-surface text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">42</div>
+</div>
+<div class="flex-1 bg-primary-container/20 hover:bg-primary-container/40 transition-colors h-[85%] rounded-t-lg relative group cursor-pointer">
+<div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-on-surface text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">104</div>
+</div>
+<div class="flex-1 bg-primary-container/60 hover:bg-primary-container/80 transition-colors h-[15%] rounded-t-lg relative group cursor-pointer border-t-2 border-primary">
+<div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-on-surface text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">12</div>
+</div>
+<div class="flex-1 bg-primary-container/20 hover:bg-primary-container/40 transition-colors h-[65%] rounded-t-lg relative group cursor-pointer">
+<div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-on-surface text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">78</div>
+</div>
+<div class="flex-1 bg-primary-container/20 hover:bg-primary-container/40 transition-colors h-[50%] rounded-t-lg relative group cursor-pointer">
+<div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-on-surface text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">56</div>
+</div>
+<div class="flex-1 bg-primary-container/20 hover:bg-primary-container/40 transition-colors h-[92%] rounded-t-lg relative group cursor-pointer">
+<div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-on-surface text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">118</div>
+</div>
+<div class="flex-1 bg-primary-container/20 hover:bg-primary-container/40 transition-colors h-[30%] rounded-t-lg relative group cursor-pointer">
+<div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-on-surface text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">31</div>
+</div>
+</div>
+<div class="flex justify-between mt-4 text-on-surface-variant font-label-sm text-[10px]">
+<span>LAST 7 INNINGS</span>
+<span>VS AUS, 12 OCT 2023</span>
+</div>
+</div>
+</section>
+<!-- Professional Comparison Block -->
+<section class="px-gutter mt-8 mb-8">
+<div class="glass-card p-6 rounded-3xl border-l-4 border-l-secondary-container">
+<div class="flex items-center gap-4">
+<div class="h-12 w-12 rounded-full bg-secondary-container/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-secondary">workspace_premium</span>
+</div>
+<div>
+<h4 class="font-headline-md text-body-lg font-bold text-on-surface">Tier 1 Performance</h4>
+<p class="text-on-surface-variant font-body-md text-label-sm">Arjun is currently in the top 5% of run-scorers this season.</p>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 w-full z-50 bg-surface/60 backdrop-blur-xl rounded-t-xl border-t border-white/20 shadow-[0px_-4px_24px_rgba(0,0,0,0.04)]">
+<div class="flex justify-around items-center w-full h-20 px-4 pb-safe max-w-md mx-auto">
+<a class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1 hover:bg-white/10 transition-colors active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined">live_tv</span>
+<span class="font-label-sm text-label-sm">Live</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1 hover:bg-white/10 transition-colors active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined">analytics</span>
+<span class="font-label-sm text-label-sm">Scorecard</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1 hover:bg-white/10 transition-colors active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-label-sm text-label-sm">Setup</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-primary-container/20 text-primary rounded-xl px-4 py-1 hover:bg-white/10 transition-colors active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">person</span>
+<span class="font-label-sm text-label-sm">Profile</span>
+</a>
+</div>
+</nav>
+<script>
+        // Optional micro-interaction for the stats cards
+        document.querySelectorAll('.glass-card-interactive').forEach(card => {
+            card.addEventListener('mousemove', (e) => {
+                const rect = card.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                card.style.background = `radial-gradient(circle at ${x}px ${y}px, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.6))`;
+            });
+            card.addEventListener('mouseleave', () => {
+                card.style.background = 'rgba(255, 255, 255, 0.6)';
+            });
+        });
+    </script>
+</body></html>

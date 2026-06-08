@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en" style=""><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ACC Fees Tracker</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #f9f9fc;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .active-tab-indicator {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .glass-effect {
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-highest": "#e2e2e5",
+                        "outline": "#8e7164",
+                        "surface-variant": "#e2e2e5",
+                        "surface-tint": "#a04100",
+                        "primary-fixed-dim": "#ffb693",
+                        "on-secondary": "#ffffff",
+                        "on-secondary-container": "#6f5c00",
+                        "on-error-container": "#93000a",
+                        "inverse-primary": "#ffb693",
+                        "error-container": "#ffdad6",
+                        "surface": "#f9f9fc",
+                        "inverse-on-surface": "#f0f0f3",
+                        "on-tertiary-fixed": "#001d35",
+                        "on-tertiary-container": "#003357",
+                        "on-secondary-fixed": "#221b00",
+                        "surface-container-high": "#e8e8ea",
+                        "secondary": "#705d00",
+                        "on-primary-fixed-variant": "#7a3000",
+                        "surface-dim": "#dadadc",
+                        "surface-container-lowest": "#ffffff",
+                        "on-primary-fixed": "#351000",
+                        "secondary-fixed": "#ffe170",
+                        "outline-variant": "#e2bfb0",
+                        "on-tertiary-fixed-variant": "#00497b",
+                        "on-tertiary": "#ffffff",
+                        "on-surface-variant": "#5a4136",
+                        "tertiary-container": "#059eff",
+                        "error": "#ba1a1a",
+                        "tertiary-fixed-dim": "#9ccaff",
+                        "on-primary-container": "#572000",
+                        "on-secondary-fixed-variant": "#544600",
+                        "secondary-fixed-dim": "#e9c400",
+                        "secondary-container": "#fdd400",
+                        "background": "#f9f9fc",
+                        "primary-fixed": "#ffdbcc",
+                        "surface-bright": "#f9f9fc",
+                        "surface-container": "#eeeef0",
+                        "primary-container": "#ff6b00",
+                        "inverse-surface": "#2f3133",
+                        "on-surface": "#1a1c1e",
+                        "on-error": "#ffffff",
+                        "tertiary": "#0062a1",
+                        "primary": "#a04100",
+                        "surface-container-low": "#f3f3f6",
+                        "on-background": "#1a1c1e",
+                        "tertiary-fixed": "#d0e4ff",
+                        "on-primary": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "md": "24px",
+                        "xl": "64px",
+                        "base": "8px",
+                        "xs": "4px",
+                        "margin-mobile": "16px",
+                        "margin-desktop": "auto",
+                        "lg": "40px",
+                        "max-width": "1280px",
+                        "gutter": "24px",
+                        "sm": "12px"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Plus Jakarta Sans"],
+                        "body-lg": ["Plus Jakarta Sans"],
+                        "label-md": ["Plus Jakarta Sans"],
+                        "headline-xl": ["Plus Jakarta Sans"],
+                        "headline-lg": ["Plus Jakarta Sans"],
+                        "headline-xl-mobile": ["Plus Jakarta Sans"],
+                        "body-md": ["Plus Jakarta Sans"],
+                        "body-sm": ["Plus Jakarta Sans"],
+                        "label-sm": ["Plus Jakarta Sans"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                        "label-md": ["14px", {"lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "600"}],
+                        "headline-xl": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                        "headline-xl-mobile": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "label-sm": ["12px", {"lineHeight": "14px", "letterSpacing": "0.04em", "fontWeight": "600"}]
+                    }
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-surface">
+<!-- TopAppBar -->
+<header class="bg-surface dark:bg-surface-dim shadow-sm flex items-center w-full px-4 h-16 sticky top-0 z-50">
+<button class="material-symbols-outlined text-primary dark:text-primary-fixed-dim p-2 active:scale-95 transition-transform" data-icon="arrow_back">arrow_back</button>
+<h1 class="ml-4 font-headline-md text-headline-md font-bold text-on-surface dark:text-on-surface">ACC Fees Tracker</h1>
+</header>
+<main class="max-w-[1280px] mx-auto pb-32">
+<!-- Tab Bar -->
+<div class="flex px-4 mt-6 border-b border-surface-container-highest">
+<button class="flex-1 pb-4 font-label-md text-label-md border-b-2 active:scale-95 transition-all text-on-surface-variant border-transparent" id="tab-paid" onclick="switchTab('paid')">
+                Paid
+            </button>
+<button class="flex-1 pb-4 font-label-md text-label-md border-b-2 active:scale-95 transition-all text-primary border-primary-container" id="tab-remaining" onclick="switchTab('remaining')">
+                Remaining to Pay
+            </button>
+</div>
+<!-- Content Area -->
+<div class="px-4 py-6">
+<!-- Paid Tab Content -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-md hidden" id="content-paid">
+<!-- Paid Card 1 -->
+<div class="bg-surface-container-lowest border border-surface-container-highest rounded-xl p-4 flex items-center gap-4 hover:shadow-md transition-shadow">
+<img class="w-16 h-16 rounded-full object-cover border-2 border-surface-container" data-alt="A professional headshot of a smiling young male athlete in a minimalist athletic jersey. The portrait is captured with soft, natural morning light in a modern outdoor sports complex. The aesthetic is clean and high-contrast, following a Solar Minimalism style with warm skin tones and a crisp, white background that emphasizes clarity and athletic focus." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDaBxXc1FNYi65fyv7afjgWRad8Qn4DDg6UCuX98MC4I7kx3zJ836cLt1jw2qPhvzgj03iLDhAUcgeEs5h-lmu_b1A8V6DFwVAzIeYiN5Tm6uuaffQ2MJM6AT-ij8kARtOHWV6myJmwtegF_JG45GGPN369W-twuvNXjgEJyut53NXyZ8EJ6YfmIvMPIWNWWdyySm4QjXqEe_Ha6kqIAh0B9HtWVOqEdsKCm11gK4h-rK6gyiv_wNRgHzD5ZGdTBsvdGUCxIzZ2avux"/>
+<div class="flex-1">
+<p class="font-headline-md text-body-md text-on-surface">Marcus Chen</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Thunder Hawks FC</p>
+</div>
+<span class="bg-tertiary-container text-on-tertiary-container px-3 py-1 rounded-full font-label-sm text-label-sm">Paid</span>
+</div>
+<!-- Paid Card 2 -->
+<div class="bg-surface-container-lowest border border-surface-container-highest rounded-xl p-4 flex items-center gap-4 hover:shadow-md transition-shadow">
+<img class="w-16 h-16 rounded-full object-cover border-2 border-surface-container" data-alt="A vibrant portrait of a determined female player against a bright, minimalist backdrop. The lighting is high-key and optimistic, casting soft shadows that highlight the athlete's focused expression. The color palette incorporates subtle oranges and yellows from the Solar theme, creating a warm, modern aesthetic that feels professional and energetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC4FqQXan_w6ZvewQZWauLwde07nz5XCIQ9M-cBH2g1vk0IWFWdVBJmOQ5_1SM2ErbyEDmAflLUCu1ajs86WVA_-rF16iEp5iEBOA9A9JRRy74NyTR7ORguVuPRELS1F0WRnFdF7FmYQKMfQu71aoj3ChCtl-eOZ_G8prgjoAbAqfm30VKLpcZtmKViEES-V4IjDFRKkjQTRTfCGrDQRaGiP2nbOi1w_7wgw4r5ZdsQ5MePM-Ofa7d1s_iz6mVrqiupEcxPZsZa9DZZ"/>
+<div class="flex-1">
+<p class="font-headline-md text-body-md text-on-surface">Sarah Jenkins</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Golden Eagles</p>
+</div>
+<span class="bg-tertiary-container text-on-tertiary-container px-3 py-1 rounded-full font-label-sm text-label-sm">Paid</span>
+</div>
+<!-- Paid Card 3 -->
+<div class="bg-surface-container-lowest border border-surface-container-highest rounded-xl p-4 flex items-center gap-4 hover:shadow-md transition-shadow">
+<img class="w-16 h-16 rounded-full object-cover border-2 border-surface-container" data-alt="A close-up studio photograph of a cheerful male teammate in a clean, minimalist setting. The visual style is modern and refined, with bright, even lighting that emphasizes the optimism of the Solar Minimalism brand. The image uses a high-contrast black and white foundation with warm, vibrant accents typical of high-growth startup aesthetics." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC7QKvqLPW9qOPKTx0fbvwWlJ8QtFJjqK2pzlIpbs9NjybTURFW6xu8EIvuXUQVfnzSbXj_9P27CVDnb3QGdsNAAvSBWyHa9I2ZIUBfy1O4gDxvXAlAdcmTWfGfGyvbTtrBvwhGQkeA8LVduTOdZWe3l-UgXnORHLgEAvlcNwcIp4mJ0GVTZHfTQIL_p39FbW9HC1mpLj6ZICbKwk4R3ZnIDmw_Bw7ruZ3xWtczcL3SGSaQNYQCtJMd6MF3dbKrq9jFJGk9bLYibfOR"/>
+<div class="flex-1">
+<p class="font-headline-md text-body-md text-on-surface">David Okafor</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Thunder Hawks FC</p>
+</div>
+<span class="bg-tertiary-container text-on-tertiary-container px-3 py-1 rounded-full font-label-sm text-label-sm">Paid</span>
+</div>
+</div>
+<!-- Remaining Tab Content -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-md" id="content-remaining">
+<!-- Remaining Card 1 -->
+<div class="bg-surface-container-lowest border border-surface-container-highest rounded-xl p-4 flex items-center gap-4 hover:shadow-md transition-shadow">
+<img class="w-16 h-16 rounded-full object-cover border-2 border-surface-container" data-alt="A bright, clear headshot of a male player looking toward the future, set against a minimalist architectural background. The image is bathed in soft, warm sunlight, reinforcing the Solar theme's optimistic mood. Sharp focus and high-key exposure create a modern, professional look that balances clarity with vibrant energy." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBD6LGoKkbpWRr1JsEEGlLiPrmiOt00jHiLzpxPFeRy4AM65OtAZ1DRoxE2Z7GSOcsf2c_uVRUN3BSAJ9vbyylHgr6EwH5BbxR_KGaG27XbpZkcqSH6uL_MzZoJnvdRBWXg39Y2VuIwx_Ii8WA_B_LLVLjDeLYkS7i2a-HdFkjPolGr9Xc3rhSWETrVVwij-Pt5bFrtKINMt7XO2Dx04OYDYV8u0aHz9hJ83dLStrTMWPyrO5r28OZpFUSMtZMfzXZGQA6IkoEN_lGv"/>
+<div class="flex-1">
+<p class="font-headline-md text-body-md text-on-surface">Liam O'Sullivan</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Strikers United</p>
+<p class="font-label-md text-label-md text-primary mt-1">$50</p>
+</div>
+<button class="bg-secondary-container text-on-secondary-container px-4 py-2 rounded-lg font-label-md text-label-md active:scale-95 transition-all hover:bg-secondary hover:text-on-secondary">Received</button>
+</div>
+<!-- Remaining Card 2 -->
+<div class="bg-surface-container-lowest border border-surface-container-highest rounded-xl p-4 flex items-center gap-4 hover:shadow-md transition-shadow">
+<img class="w-16 h-16 rounded-full object-cover border-2 border-surface-container" data-alt="A portrait of a confident woman athlete in a modern, white-walled indoor gym. The lighting is diffused and bright, creating a clean light-mode atmosphere. Accents of yellow and orange are subtly integrated into the clothing or background elements, maintaining visual consistency with a vibrant and professional minimalist design system." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBi_LKBcreorneR_g2FUqVzLE7EkpXb7SJTmhNH5OJeJU8ubEOp0i7ggTtpM0HxBwwtyo6lsNaNO0A2uyAZJqzOuM9VtQ9EcKkV88lDb_bqVDx0bD66pFZzfOzXYiOKEtkuY_4BhwQX4PWyE0zQSoYMlL8GcyU9QtT_BMU2XplGDFNjTEc8re2wNLUFgiyWbeUgK0bdckMN7pEIMCkYqPdKimoZMgxJwOLMx7LQr89TSMBMm_4UbOJ9dIxt1_zGPumek6rRAFTlHenh"/>
+<div class="flex-1">
+<p class="font-headline-md text-body-md text-on-surface">Chloe Simmons</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Golden Eagles</p>
+<p class="font-label-md text-label-md text-primary mt-1">$120</p>
+</div>
+<button class="bg-secondary-container text-on-secondary-container px-4 py-2 rounded-lg font-label-md text-label-md active:scale-95 transition-all hover:bg-secondary hover:text-on-secondary">
+                        Received</button>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 bg-surface-container-lowest dark:bg-surface-dim shadow-[0px_-4px_20px_rgba(255,107,0,0.08)] flex justify-around items-center px-4 pb-4 pt-2 rounded-t-xl">
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline p-2 hover:text-primary transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="emoji_events">emoji_events</span>
+<span class="font-label-sm text-label-sm mt-1">Tournaments</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline p-2 hover:text-primary transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="groups">groups</span>
+<span class="font-label-sm text-label-sm mt-1">Teams</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-secondary-container dark:bg-secondary text-on-secondary-container dark:text-on-secondary rounded-full px-5 py-1 Active: scale-95 transition-all duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="payments">payments</span>
+<span class="font-label-sm text-label-sm mt-1">Fees</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline p-2 hover:text-primary transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-label-sm text-label-sm mt-1">Profile</span>
+</a>
+</nav>
+<script>
+        function switchTab(tab) {
+            const paidTab = document.getElementById('tab-paid');
+            const remainingTab = document.getElementById('tab-remaining');
+            const paidContent = document.getElementById('content-paid');
+            const remainingContent = document.getElementById('content-remaining');
+
+            if (tab === 'paid') {
+                paidTab.classList.add('text-primary', 'border-primary-container');
+                paidTab.classList.remove('text-on-surface-variant', 'border-transparent');
+                remainingTab.classList.remove('text-primary', 'border-primary-container');
+                remainingTab.classList.add('text-on-surface-variant', 'border-transparent');
+                
+                paidContent.classList.remove('hidden');
+                remainingContent.classList.add('hidden');
+            } else {
+                remainingTab.classList.add('text-primary', 'border-primary-container');
+                remainingTab.classList.remove('text-on-surface-variant', 'border-transparent');
+                paidTab.classList.remove('text-primary', 'border-primary-container');
+                paidTab.classList.add('text-on-surface-variant', 'border-transparent');
+                
+                remainingContent.classList.remove('hidden');
+                paidContent.classList.add('hidden');
+            }
+        }
+    </script>
+<div class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+<div class="bg-surface-container-lowest rounded-xl p-6 max-w-sm w-full shadow-xl border border-surface-container-highest">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-4">Confirm Payment</h3>
+<p class="text-body-md text-on-surface-variant mb-8">Are you sure this Player has paid Tournament Fees?</p>
+<div class="flex gap-4">
+<button class="flex-1 py-2 px-4 bg-surface border border-primary-container text-primary font-label-md rounded-lg active:scale-95 transition-all">Cancel</button>
+<button class="flex-1 py-2 px-4 bg-primary-container text-on-primary font-label-md rounded-lg active:scale-95 transition-all shadow-sm">Confirm</button>
+</div>
+</div>
+</div></body></html>

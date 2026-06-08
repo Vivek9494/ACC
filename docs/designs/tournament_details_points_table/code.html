@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Tournament Details - Points Table</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #f4f4f8; /* From Brand Logic */
+        }
+        .glass-effect {
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "surface-container": "#eeeef0",
+                      "on-error": "#ffffff",
+                      "tertiary-fixed-dim": "#9ccaff",
+                      "surface-bright": "#f9f9fc",
+                      "surface-container-lowest": "#ffffff",
+                      "on-secondary-container": "#6f5c00",
+                      "on-tertiary-container": "#003357",
+                      "surface-variant": "#e2e2e5",
+                      "on-error-container": "#93000a",
+                      "on-primary-fixed-variant": "#7a3000",
+                      "outline-variant": "#e2bfb0",
+                      "secondary": "#705d00",
+                      "surface-container-low": "#f3f3f6",
+                      "primary-fixed": "#ffdbcc",
+                      "secondary-fixed": "#ffe170",
+                      "on-primary": "#ffffff",
+                      "surface": "#f9f9fc",
+                      "on-surface-variant": "#5a4136",
+                      "on-secondary": "#ffffff",
+                      "error": "#ba1a1a",
+                      "on-surface": "#1a1c1e",
+                      "on-secondary-fixed": "#221b00",
+                      "tertiary": "#0062a1",
+                      "background": "#f9f9fc",
+                      "surface-dim": "#dadadc",
+                      "surface-container-highest": "#e2e2e5",
+                      "primary-fixed-dim": "#ffb693",
+                      "surface-tint": "#a04100",
+                      "outline": "#8e7164",
+                      "inverse-primary": "#ffb693",
+                      "on-primary-container": "#572000",
+                      "on-primary-fixed": "#351000",
+                      "on-tertiary-fixed-variant": "#00497b",
+                      "on-background": "#1a1c1e",
+                      "on-secondary-fixed-variant": "#544600",
+                      "error-container": "#ffdad6",
+                      "tertiary-fixed": "#d0e4ff",
+                      "tertiary-container": "#059eff",
+                      "on-tertiary": "#ffffff",
+                      "inverse-surface": "#2f3133",
+                      "primary-container": "#ff6b00",
+                      "inverse-on-surface": "#f0f0f3",
+                      "secondary-container": "#fdd400",
+                      "secondary-fixed-dim": "#e9c400",
+                      "primary": "#a04100",
+                      "surface-container-high": "#e8e8ea",
+                      "on-tertiary-fixed": "#001d35"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "lg": "40px",
+                      "gutter": "24px",
+                      "sm": "12px",
+                      "margin-desktop": "auto",
+                      "xs": "4px",
+                      "margin-mobile": "16px",
+                      "base": "8px",
+                      "md": "24px",
+                      "xl": "64px",
+                      "max-width": "1280px"
+              },
+              "fontFamily": {
+                      "headline-xl": ["Plus Jakarta Sans"],
+                      "body-sm": ["Plus Jakarta Sans"],
+                      "body-md": ["Plus Jakarta Sans"],
+                      "headline-md": ["Plus Jakarta Sans"],
+                      "headline-lg": ["Plus Jakarta Sans"],
+                      "body-lg": ["Plus Jakarta Sans"],
+                      "label-sm": ["Plus Jakarta Sans"],
+                      "label-md": ["Plus Jakarta Sans"],
+                      "headline-xl-mobile": ["Plus Jakarta Sans"]
+              },
+              "fontSize": {
+                      "headline-xl": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                      "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                      "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                      "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                      "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                      "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                      "label-sm": ["12px", {"lineHeight": "14px", "letterSpacing": "0.04em", "fontWeight": "600"}],
+                      "label-md": ["14px", {"lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "600"}],
+                      "headline-xl-mobile": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "800"}]
+              }
+            },
+          },
+        }
+      </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface min-h-screen pb-24">
+<!-- TopAppBar -->
+<header class="w-full top-0 sticky z-40 bg-surface dark:bg-background border-b border-outline-variant dark:border-outline flex justify-between items-center px-margin-mobile md:px-max-width py-base">
+<div class="flex items-center gap-4">
+<button class="material-symbols-outlined text-primary dark:text-primary-fixed hover:bg-surface-container-high transition-colors p-2 rounded-full active:scale-95 duration-150">arrow_back</button>
+<h1 class="font-headline-md text-headline-md font-bold text-on-surface dark:text-on-background">Tournament Details</h1>
+</div>
+<div class="flex items-center gap-4">
+<div class="hidden md:flex gap-6 mr-6">
+<!-- Desktop Nav Cluster -->
+<a class="font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors" href="#">Matches</a>
+<a class="font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors" href="#">Teams</a>
+<a class="font-label-md text-label-md text-primary font-bold border-b-2 border-primary-container pb-1" href="#">Points Table</a>
+<a class="font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors" href="#">Leaderboard</a>
+<a class="font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors" href="#">Stats</a>
+</div>
+<div class="w-10 h-10 rounded-full bg-surface-container-highest overflow-hidden border border-outline-variant">
+<img alt="User Profile" class="w-full h-full object-cover" data-alt="A professional headshot of a young male sports analyst in a minimalist modern studio. The lighting is soft and high-key, creating a clean light-mode aesthetic with a neutral grey background. He is wearing a sleek navy blue polo shirt, reflecting a professional yet energetic startup vibe. The image has a crisp, sharp focus and a high-end editorial quality." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDDDEZMG4lQOXfBopUiM4dJ2iSnu2P4hPCfkf8xJnsEpQlGyBsv5i6X9GIh2TYN81dcKOIrGQ2HVCEsPsSU3I9UovcYRMYsqoEE1Lu8DdwxbbbBoFoPMOwpBuiyXEsv7anzftrz4winCp1hcLDRDZaSliaiMdY2_XViQFYNd0BKGCVECQl2DePpjRnyGMqsPG3PwltjEfgirj4FjyfHLLxTIs5R1GZdMTPSbLhF_ohPZMDNefsry4iR7ojk5HXlQwWK7RWygRe3j_zV"/>
+</div>
+</div>
+</header>
+<main class="max-w-[1280px] mx-auto px-margin-mobile md:px-gutter py-md">
+<!-- Tournament Hero Card -->
+<div class="relative w-full h-[240px] md:h-[320px] rounded-xl overflow-hidden mb-md group shadow-md border border-outline-variant">
+<img alt="Tournament Stadium" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" data-alt="A wide-angle cinematic shot of a high-tech modern cricket stadium during sunset. The sky is a vibrant gradient of orange and deep yellow, mirroring the Solar Minimalism palette. The field is lush green, illuminated by bright floodlights that create long, soft shadows. The architecture is futuristic with clean lines and steel structures, evoking a sense of progress and high-energy professional competition." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAf30nYZ6tNer0SSBjObOKKT8g8ROIu3aatmjbJuvm_V6yVLsgmG6AbRItnymqfD_3-11LnF2yj1ySaRBqE6rLCDIwZ7rAI2PL3pRqWAgl89ssAqFBg3-kfEGifJKCZaCVy-H9ILn3u6osNvxKIAAX1zkKarRYYOyJKudwaU4XGQAkyhEumuRCs9uTjGF7AnTQ-p-B8RvRgj6thfQwQ-jlXxhJflEFCtU5gwm5UmSPlPKegPaL2uDe9C-FN-edC8psc3pHN4zxtHbPV"/>
+<div class="absolute inset-0 bg-gradient-to-t from-on-surface/80 via-on-surface/20 to-transparent flex flex-col justify-end p-md md:p-lg">
+<span class="inline-block px-3 py-1 bg-secondary-container text-on-secondary-container font-label-sm text-label-sm rounded-full w-fit mb-2">Ongoing Season</span>
+<h2 class="text-white font-headline-lg text-headline-lg md:text-headline-xl">Solar Cricket Premiership 2024</h2>
+<div class="flex items-center gap-4 mt-2 text-white/90">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[18px]">calendar_month</span>
+<span class="text-body-sm font-body-sm">Oct 15 - Nov 20</span>
+</div>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[18px]">location_on</span>
+<span class="text-body-sm font-body-sm">Multiple Venues</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Points Table Section -->
+<section class="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden shadow-[0px_4px_20px_rgba(255,107,0,0.08)]">
+<div class="px-md py-md border-b border-outline-variant bg-surface-bright flex flex-col md:flex-row md:items-center justify-between gap-4">
+<div>
+<h3 class="font-headline-md text-headline-md text-on-surface">Points Table</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Round Robin Stage • Top 4 qualify for Playoffs</p>
+</div>
+<div class="flex gap-2 overflow-x-auto no-scrollbar">
+<button class="px-4 py-2 bg-secondary-container text-on-secondary-container font-label-md text-label-md rounded-full shadow-sm hover:brightness-95 transition-all">Overall</button>
+<button class="px-4 py-2 bg-surface-container text-on-surface-variant font-label-md text-label-md rounded-full hover:bg-surface-container-high transition-all">Home</button>
+<button class="px-4 py-2 bg-surface-container text-on-surface-variant font-label-md text-label-md rounded-full hover:bg-surface-container-high transition-all">Away</button>
+</div>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-low text-on-surface-variant border-b border-outline-variant">
+<th class="px-md py-4 font-label-md text-label-md uppercase tracking-wider">Pos</th>
+<th class="px-md py-4 font-label-md text-label-md uppercase tracking-wider">Team</th>
+<th class="px-md py-4 font-label-md text-label-md uppercase tracking-wider text-center">M</th>
+<th class="px-md py-4 font-label-md text-label-md uppercase tracking-wider text-center">W</th>
+<th class="px-md py-4 font-label-md text-label-md uppercase tracking-wider text-center">L</th>
+<th class="px-md py-4 font-label-md text-label-md uppercase tracking-wider text-center">NR</th>
+<th class="px-md py-4 font-label-md text-label-md uppercase tracking-wider text-center">PTS</th>
+<th class="px-md py-4 font-label-md text-label-md uppercase tracking-wider text-right">NRR</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant">
+<!-- Mumbai Mavericks -->
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="px-md py-4 font-label-md text-label-md font-bold text-primary">1</td>
+<td class="px-md py-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-primary-container/10 flex items-center justify-center p-2 border border-primary-container/20">
+<span class="material-symbols-outlined text-primary-container" style="font-variation-settings: 'FILL' 1;">bolt</span>
+</div>
+<span class="font-label-md text-label-md text-on-surface">Mumbai Mavericks</span>
+</div>
+</td>
+<td class="px-md py-4 font-body-md text-body-md text-center">10</td>
+<td class="px-md py-4 font-body-md text-body-md text-center">8</td>
+<td class="px-md py-4 font-body-md text-body-md text-center">2</td>
+<td class="px-md py-4 font-body-md text-body-md text-center">0</td>
+<td class="px-md py-4 font-headline-md text-headline-md text-center text-on-surface">16</td>
+<td class="px-md py-4 font-body-md text-body-md text-right text-secondary font-bold">+1.450</td>
+</tr>
+<!-- Delhi Dynamos -->
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="px-md py-4 font-label-md text-label-md font-bold text-primary">2</td>
+<td class="px-md py-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-secondary-container/10 flex items-center justify-center p-2 border border-secondary-container/20">
+<span class="material-symbols-outlined text-secondary-container" style="font-variation-settings: 'FILL' 1;">shield</span>
+</div>
+<span class="font-label-md text-label-md text-on-surface">Delhi Dynamos</span>
+</div>
+</td>
+<td class="px-md py-4 font-body-md text-body-md text-center">10</td>
+<td class="px-md py-4 font-body-md text-body-md text-center">7</td>
+<td class="px-md py-4 font-body-md text-body-md text-center">3</td>
+<td class="px-md py-4 font-body-md text-body-md text-center">0</td>
+<td class="px-md py-4 font-headline-md text-headline-md text-center text-on-surface">14</td>
+<td class="px-md py-4 font-body-md text-body-md text-right text-secondary font-bold">+0.820</td>
+</tr>
+<!-- Chennai Challengers -->
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="px-md py-4 font-label-md text-label-md font-bold text-primary">3</td>
+<td class="px-md py-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-tertiary-container/10 flex items-center justify-center p-2 border border-tertiary-container/20">
+<span class="material-symbols-outlined text-tertiary-container" style="font-variation-settings: 'FILL' 1;">swords</span>
+</div>
+<span class="font-label-md text-label-md text-on-surface">Chennai Challengers</span>
+</div>
+</td>
+<td class="px-md py-4 font-body-md text-body-md text-center">10</td>
+<td class="px-md py-4 font-body-md text-body-md text-center">6</td>
+<td class="px-md py-4 font-body-md text-body-md text-center">3</td>
+<td class="px-md py-4 font-body-md text-body-md text-center">1</td>
+<td class="px-md py-4 font-headline-md text-headline-md text-center text-on-surface">13</td>
+<td class="px-md py-4 font-body-md text-body-md text-right text-secondary font-bold">+0.512</td>
+</tr>
+<!-- Bangalore Blasters -->
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="px-md py-4 font-label-md text-label-md font-bold text-on-surface-variant">4</td>
+<td class="px-md py-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-error-container/10 flex items-center justify-center p-2 border border-error-container/20">
+<span class="material-symbols-outlined text-error" style="font-variation-settings: 'FILL' 1;">rocket_launch</span>
+</div>
+<span class="font-label-md text-label-md text-on-surface">Bangalore Blasters</span>
+</div>
+</td>
+<td class="px-md py-4 font-body-md text-body-md text-center">10</td>
+<td class="px-md py-4 font-body-md text-body-md text-center">5</td>
+<td class="px-md py-4 font-body-md text-body-md text-center">5</td>
+<td class="px-md py-4 font-body-md text-body-md text-center">0</td>
+<td class="px-md py-4 font-headline-md text-headline-md text-center text-on-surface">10</td>
+<td class="px-md py-4 font-body-md text-body-md text-right text-on-surface-variant">-0.120</td>
+</tr>
+<!-- Punjab Kings -->
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="px-md py-4 font-label-md text-label-md font-bold text-on-surface-variant">5</td>
+<td class="px-md py-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-surface-container-highest/50 flex items-center justify-center p-2 border border-outline-variant">
+<span class="material-symbols-outlined text-on-surface-variant" style="font-variation-settings: 'FILL' 1;">crown</span>
+</div>
+<span class="font-label-md text-label-md text-on-surface">Punjab Kings</span>
+</div>
+</td>
+<td class="px-md py-4 font-body-md text-body-md text-center">10</td>
+<td class="px-md py-4 font-body-md text-body-md text-center">4</td>
+<td class="px-md py-4 font-body-md text-body-md text-center">6</td>
+<td class="px-md py-4 font-body-md text-body-md text-center">0</td>
+<td class="px-md py-4 font-headline-md text-headline-md text-center text-on-surface">8</td>
+<td class="px-md py-4 font-body-md text-body-md text-right text-on-surface-variant">-0.450</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="p-md bg-surface-container-low/50 border-t border-outline-variant">
+<div class="flex items-start gap-2">
+<span class="material-symbols-outlined text-primary text-[20px]">info</span>
+<p class="text-body-sm font-body-sm text-on-surface-variant italic">Note: In case of equal points, Net Run Rate (NRR) determines the final standing. The top four teams at the end of the round-robin stage will progress to the Qualifiers.</p>
+</div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-2 bg-surface-container-lowest dark:bg-inverse-surface shadow-[0px_-4px_20px_rgba(255,107,0,0.08)]">
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-surface-variant opacity-70 hover:bg-surface-container dark:hover:bg-surface-container-high transition-all px-2 py-1" href="#">
+<span class="material-symbols-outlined">sports_cricket</span>
+<span class="font-label-sm text-label-sm">Matches</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-surface-variant opacity-70 hover:bg-surface-container dark:hover:bg-surface-container-high transition-all px-2 py-1" href="#">
+<span class="material-symbols-outlined">groups</span>
+<span class="font-label-sm text-label-sm">Teams</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-secondary-container dark:bg-secondary text-on-secondary-container dark:text-on-secondary rounded-full px-4 py-1 active:scale-90 duration-200 transition-transform" href="#">
+<span class="material-symbols-outlined">leaderboard</span>
+<span class="font-label-sm text-label-sm">Points Table</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-surface-variant opacity-70 hover:bg-surface-container dark:hover:bg-surface-container-high transition-all px-2 py-1" href="#">
+<span class="material-symbols-outlined">emoji_events</span>
+<span class="font-label-sm text-label-sm">Leaderboard</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-surface-variant opacity-70 hover:bg-surface-container dark:hover:bg-surface-container-high transition-all px-2 py-1" href="#">
+<span class="material-symbols-outlined">query_stats</span>
+<span class="font-label-sm text-label-sm">Stats</span>
+</a>
+</nav>
+<script>
+        // Simple interaction for table rows
+        document.querySelectorAll('tbody tr').forEach(row => {
+            row.addEventListener('click', () => {
+                row.classList.add('scale-[0.99]');
+                setTimeout(() => {
+                    row.classList.remove('scale-[0.99]');
+                }, 150);
+            });
+        });
+    </script>
+</body></html>

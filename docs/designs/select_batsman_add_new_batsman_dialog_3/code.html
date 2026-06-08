@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Add New Batsman - CricStats Pro</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .solar-glow {
+            box-shadow: 0 10px 40px -10px rgba(255, 107, 0, 0.15);
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "outline-variant": "#e2bfb0",
+                        "surface-container-high": "#e8e7f1",
+                        "on-tertiary-container": "#313131",
+                        "surface-dim": "#dad9e3",
+                        "tertiary-container": "#9a9898",
+                        "primary-fixed": "#ffdbcc",
+                        "surface-container": "#eeedf7",
+                        "secondary": "#5f5e59",
+                        "inverse-on-surface": "#f1effa",
+                        "on-secondary-fixed-variant": "#474742",
+                        "primary": "#a04100",
+                        "on-secondary-fixed": "#1c1c18",
+                        "on-surface": "#1a1b22",
+                        "on-primary-container": "#572000",
+                        "surface-tint": "#a04100",
+                        "inverse-surface": "#2f3038",
+                        "on-primary-fixed": "#351000",
+                        "primary-container": "#ff6b00",
+                        "surface": "#fbf8ff",
+                        "surface-bright": "#fbf8ff",
+                        "on-tertiary-fixed-variant": "#474746",
+                        "error": "#ba1a1a",
+                        "tertiary-fixed-dim": "#c8c6c5",
+                        "tertiary-fixed": "#e5e2e1",
+                        "error-container": "#ffdad6",
+                        "on-error": "#ffffff",
+                        "inverse-primary": "#ffb693",
+                        "on-error-container": "#93000a",
+                        "surface-container-low": "#f4f2fd",
+                        "secondary-fixed-dim": "#c9c6c0",
+                        "background": "#fbf8ff",
+                        "outline": "#8e7164",
+                        "on-primary-fixed-variant": "#7a3000",
+                        "secondary-container": "#e2dfd9",
+                        "on-surface-variant": "#5a4136",
+                        "on-secondary": "#ffffff",
+                        "surface-container-lowest": "#ffffff",
+                        "on-background": "#1a1b22",
+                        "secondary-fixed": "#e5e2dc",
+                        "on-tertiary-fixed": "#1c1b1b",
+                        "surface-container-highest": "#e3e1ec",
+                        "surface-variant": "#e3e1ec",
+                        "on-secondary-container": "#63635d",
+                        "primary-fixed-dim": "#ffb693",
+                        "on-tertiary": "#ffffff",
+                        "tertiary": "#5f5e5e",
+                        "on-primary": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-mobile": "16px",
+                        "container-max-width": "1280px",
+                        "gutter": "24px",
+                        "margin-desktop": "40px",
+                        "unit": "8px"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Plus Jakarta Sans"],
+                        "headline-lg": ["Plus Jakarta Sans"],
+                        "label-md": ["Plus Jakarta Sans"],
+                        "body-lg": ["Plus Jakarta Sans"],
+                        "headline-xl": ["Plus Jakarta Sans"],
+                        "body-md": ["Plus Jakarta Sans"],
+                        "label-sm": ["Plus Jakarta Sans"],
+                        "headline-lg-mobile": ["Plus Jakarta Sans"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                        "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.02em", "fontWeight": "600"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                        "headline-xl": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "500"}],
+                        "headline-lg-mobile": ["28px", {"lineHeight": "36px", "fontWeight": "700"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background font-body-md text-on-background min-h-screen overflow-hidden">
+<!-- Top App Bar -->
+<header class="flex justify-between items-center w-full px-margin-mobile md:px-margin-desktop h-16 z-40 bg-surface dark:bg-background docked full-width top-0">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary" data-icon="sports_cricket">sports_cricket</span>
+<h1 class="font-headline-md text-headline-md font-extrabold text-primary">CricStats Pro</h1>
+</div>
+<div class="w-10 h-10 rounded-full bg-secondary-container flex items-center justify-center overflow-hidden border border-outline-variant">
+<img alt="User Profile" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBwJMtAW41lo5LuzkRIo4Okqs47zwuGBJQecfOjfgSF58yAgWMXixuHiI_KY1XwHuo1NM6uApTvIM60EpoBwBT-RNlkBpMWnKgt4dNcHWJy4NreUGgjO6XWj0V1bi4ULwlKGvOaY6owtW4yn_zSD9LbdyhA6ECcyvvLvveQ_Mh_B_wrX1mZh1gzsLpI2MyW9hiNdB3x27XNOCHLTXFnTTB74io68JHrEPCYQCdxqnWpBr9QWkYrCR7dR7sVN5y03edxN_eW_JgsovQx"/>
+</div>
+</header>
+<!-- Main Content Canvas (Blurred Background) -->
+<main class="relative px-margin-mobile md:px-margin-desktop pt-8 pb-24 max-w-container-max-width mx-auto filter blur-sm grayscale-[0.2]">
+<header class="mb-8">
+<h2 class="font-headline-lg text-headline-lg text-on-surface mb-2">Select Batsman</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Pick the next batter for the current innings</p>
+</header>
+<!-- Player List Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+<!-- Player Card 1 -->
+<div class="glass-card p-6 rounded-xl flex items-center justify-between">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-lg bg-primary-fixed flex items-center justify-center text-on-primary-fixed font-bold text-headline-md">VK</div>
+<div>
+<p class="font-label-md text-label-md text-on-surface">Virat Kohli</p>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Top Order • RHB</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="chevron_right">chevron_right</span>
+</div>
+<!-- Player Card 2 -->
+<div class="glass-card p-6 rounded-xl flex items-center justify-between">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-lg bg-secondary-fixed flex items-center justify-center text-on-secondary-fixed font-bold text-headline-md">RS</div>
+<div>
+<p class="font-label-md text-label-md text-on-surface">Rohit Sharma</p>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Opener • RHB</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="chevron_right">chevron_right</span>
+</div>
+<!-- Player Card 3 -->
+<div class="glass-card p-6 rounded-xl flex items-center justify-between border-2 border-primary-container">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-lg bg-primary-container flex items-center justify-center text-on-primary-container font-bold text-headline-md">KL</div>
+<div>
+<p class="font-label-md text-label-md text-on-surface">KL Rahul</p>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Middle Order • RHB</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-primary" data-icon="check_circle" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+<!-- More placeholders to show the list context -->
+<div class="glass-card p-6 rounded-xl flex items-center justify-between opacity-50">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-lg bg-surface-container-high flex items-center justify-center text-on-surface-variant font-bold text-headline-md">HP</div>
+<div>
+<p class="font-label-md text-label-md text-on-surface">Hardik Pandya</p>
+<p class="font-label-sm text-label-sm text-on-surface-variant">All Rounder • RHB</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="lock">lock</span>
+</div>
+</div>
+</main>
+<!-- Modal Overlay -->
+<div class="fixed inset-0 z-[60] flex items-center justify-center bg-inverse-surface/40 backdrop-blur-[2px] transition-opacity duration-300">
+<!-- Dialog Box -->
+<div class="bg-surface-container-lowest w-[90%] max-w-[400px] rounded-lg solar-glow overflow-hidden transform transition-all animate-in fade-in zoom-in duration-300">
+<!-- Header -->
+<div class="px-6 pt-6 pb-2">
+<h3 class="font-headline-md text-headline-md text-on-surface">Add New Batsman</h3>
+</div>
+<!-- Content -->
+<div class="px-6 py-4">
+<div class="flex flex-col gap-2">
+<label class="font-label-md text-label-md text-on-surface-variant" for="batsman-name">Batsman Name</label>
+<input class="w-full h-12 px-4 rounded-lg border border-outline-variant bg-surface focus:outline-none focus:ring-2 focus:ring-primary-container/20 focus:border-primary-container transition-all font-body-md text-on-surface" id="batsman-name" placeholder="Enter name..." type="text"/>
+</div>
+<p class="mt-4 font-label-sm text-label-sm text-on-surface-variant italic">
+                    Added players will be available for selection in the current match session.
+                </p>
+</div>
+<!-- Actions -->
+<div class="px-6 pb-6 pt-4 flex justify-end gap-3">
+<button class="h-10 px-6 rounded-lg font-label-md text-label-md text-primary border border-primary hover:bg-primary-fixed-dim/10 transition-colors active:scale-95">
+                    Cancel
+                </button>
+<button class="h-10 px-8 rounded-lg font-label-md text-label-md bg-primary-container text-on-primary-container hover:shadow-lg transition-all active:scale-95 solar-glow">
+                    Add
+                </button>
+</div>
+</div>
+</div>
+<!-- Bottom Nav Bar (Visual Anchor Only) -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-4 pt-2 bg-surface-container-lowest dark:bg-surface-dim shadow-lg rounded-t-xl filter blur-sm">
+<div class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-full px-4 py-1">
+<span class="material-symbols-outlined" data-icon="scoreboard" style="font-variation-settings: 'FILL' 1;">scoreboard</span>
+<span class="font-label-md text-label-md">Scoring</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1">
+<span class="material-symbols-outlined" data-icon="leaderboard">leaderboard</span>
+<span class="font-label-md text-label-md">Analytics</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1">
+<span class="material-symbols-outlined" data-icon="groups">groups</span>
+<span class="font-label-md text-label-md">Players</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1">
+<span class="material-symbols-outlined" data-icon="emoji_events">emoji_events</span>
+<span class="font-label-md text-label-md">Tourney</span>
+</div>
+</nav>
+<!-- Background Decorative Elements -->
+<div class="fixed top-0 left-0 w-full h-full -z-10 pointer-events-none overflow-hidden">
+<div class="absolute -top-24 -right-24 w-96 h-96 bg-primary/5 rounded-full blur-3xl"></div>
+<div class="absolute top-1/2 -left-24 w-64 h-64 bg-secondary-container/10 rounded-full blur-3xl"></div>
+</div>
+<script>
+        // Simple micro-interaction for the dialog buttons
+        document.querySelectorAll('button').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const modal = btn.closest('.fixed.inset-0');
+                if (modal) {
+                    modal.classList.add('opacity-0');
+                    setTimeout(() => {
+                        window.location.reload(); // Simulate closing for demo
+                    }, 300);
+                }
+            });
+        });
+
+        // Close on clicking overlay
+        document.querySelector('.bg-inverse-surface\\/40').addEventListener('click', (e) => {
+            if (e.target === e.currentTarget) {
+                e.currentTarget.classList.add('opacity-0');
+                setTimeout(() => window.location.reload(), 300);
+            }
+        });
+    </script>
+</body></html>

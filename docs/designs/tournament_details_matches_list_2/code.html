@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Tournament Details - Elite Pro Championship 2024</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-high": "#e8e8ea",
+                        "on-primary": "#ffffff",
+                        "on-error": "#ffffff",
+                        "primary": "#a04100",
+                        "on-tertiary-container": "#003357",
+                        "surface": "#f9f9fc",
+                        "primary-container": "#ff6b00",
+                        "on-background": "#1a1c1e",
+                        "tertiary": "#0062a1",
+                        "on-secondary-fixed-variant": "#544600",
+                        "outline": "#8e7164",
+                        "tertiary-fixed-dim": "#9ccaff",
+                        "on-surface-variant": "#5a4136",
+                        "error": "#ba1a1a",
+                        "on-surface": "#1a1c1e",
+                        "primary-fixed": "#ffdbcc",
+                        "error-container": "#ffdad6",
+                        "inverse-primary": "#ffb693",
+                        "surface-bright": "#f9f9fc",
+                        "secondary-fixed": "#ffe170",
+                        "secondary-fixed-dim": "#e9c400",
+                        "on-tertiary-fixed-variant": "#00497b",
+                        "inverse-on-surface": "#f0f0f3",
+                        "tertiary-fixed": "#d0e4ff",
+                        "background": "#f4f4f8",
+                        "surface-container-lowest": "#ffffff",
+                        "on-secondary-container": "#6f5c00",
+                        "outline-variant": "#e2bfb0",
+                        "on-tertiary": "#ffffff",
+                        "surface-variant": "#e2e2e5",
+                        "secondary-container": "#fdd400",
+                        "on-primary-fixed": "#351000",
+                        "primary-fixed-dim": "#ffb693",
+                        "tertiary-container": "#059eff",
+                        "surface-container": "#eeeef0",
+                        "surface-container-low": "#f3f3f6",
+                        "on-primary-container": "#572000",
+                        "on-tertiary-fixed": "#001d35",
+                        "on-secondary": "#ffffff",
+                        "inverse-surface": "#2f3133",
+                        "on-primary-fixed-variant": "#7a3000",
+                        "secondary": "#705d00",
+                        "surface-tint": "#a04100",
+                        "surface-container-highest": "#e2e2e5",
+                        "on-error-container": "#93000a",
+                        "on-secondary-fixed": "#221b00",
+                        "surface-dim": "#dadadc"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-desktop": "auto",
+                        "sm": "12px",
+                        "xs": "4px",
+                        "md": "24px",
+                        "xl": "64px",
+                        "max-width": "1280px",
+                        "margin-mobile": "16px",
+                        "base": "8px",
+                        "gutter": "24px",
+                        "lg": "40px"
+                    },
+                    "fontFamily": {
+                        "body-md": ["Plus Jakarta Sans"],
+                        "headline-lg": ["Plus Jakarta Sans"],
+                        "body-sm": ["Plus Jakarta Sans"],
+                        "label-md": ["Plus Jakarta Sans"],
+                        "headline-xl-mobile": ["Plus Jakarta Sans"],
+                        "body-lg": ["Plus Jakarta Sans"],
+                        "headline-xl": ["Plus Jakarta Sans"],
+                        "label-sm": ["Plus Jakarta Sans"],
+                        "headline-md": ["Plus Jakarta Sans"]
+                    },
+                    "fontSize": {
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                        "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "label-md": ["14px", {"lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "600"}],
+                        "headline-xl-mobile": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                        "headline-xl": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                        "label-sm": ["12px", {"lineHeight": "14px", "letterSpacing": "0.04em", "fontWeight": "600"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "700"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            vertical-align: middle;
+        }
+        body {
+            background-color: #F4F4F8;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .glass-header {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+        .hero-gradient {
+            background: linear-gradient(0deg, rgba(26, 28, 30, 0.9) 0%, rgba(26, 28, 30, 0.4) 50%, rgba(26, 28, 30, 0) 100%);
+        }
+    </style>
+</head>
+<body class="font-body-md text-on-surface">
+<!-- TopAppBar -->
+<header class="glass-header sticky top-0 z-50 flex justify-between items-center w-full px-margin-mobile h-16 border-b border-outline-variant">
+<div class="flex items-center gap-4">
+<button class="flex items-center justify-center w-10 h-10 rounded-full hover:bg-surface-container-low transition-colors active:scale-95 duration-200">
+<span class="material-symbols-outlined text-primary">arrow_back</span>
+</button>
+<h1 class="text-headline-md font-headline-md font-bold text-primary">Tournament Details</h1>
+</div>
+<div class="w-10 h-10 rounded-full overflow-hidden border-2 border-primary-container">
+<img alt="User Profile Avatar" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCcdJY2zV_QuTd43Z2kZY8jpMtPrF5P_4L7Vp0GExWqFI9JK1f2ufSfvlOOtq-bxec8ATLuz9vpkPTeVYQzxEc1yJvYLSrUrahvX6DBmwT0qpwpaY5NTPhQmYAUDLcJIpIBMLYnqUqRWeRZ_syuEG_x9TMYf_d3nbDpCnBowyU2jXqiJnlnT5IEllZ1-2V7VCC3432qkE1hoPsQjIFMDcDkB8RZG6gX9Ky9rTZVeFwGrG1YBZKvUuWbv2ZzLMSf6Ak-DkN56_WQaU9S"/>
+</div>
+</header>
+<main class="pb-24 max-w-max-width mx-auto">
+<!-- Hero Section -->
+<section class="relative w-full h-[300px] md:h-[400px] overflow-hidden">
+<div class="absolute inset-0 bg-cover bg-center" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuB7ymr_7Qtmi1S8zKEUK1s-WRHGUzsq0umdG_s_7ZHA6T-vxy3-oZv-t41WGqyvFcnY-g6LepHZQ36OygGIgp43lp9sqaJ3k-yveXu2v7Ctryvlw7o7Xsiz0HL6wLKAvwfoPqsnHffAiNWAilMEaBmwk53D2MD-7Mc6Z931wwAtaxDvX1KMjc5rJ58JJHpSwIKIQGqgLodkYvDwM1ze0U-MHu1jtZEKi_J6-rv64NxvLqpLecxfBqW9oAauiQ6BUTcDrzvBTQ60fIKV')"></div>
+<div class="absolute inset-0 hero-gradient"></div>
+<div class="absolute bottom-0 left-0 w-full p-margin-mobile md:p-lg flex flex-col gap-2">
+<div class="inline-flex px-3 py-1 bg-secondary-container text-on-secondary-container rounded-full w-fit font-label-sm text-label-sm">
+                    CHAMPIONSHIP SERIES
+                </div>
+<h2 class="text-white font-headline-xl-mobile text-headline-xl-mobile md:font-headline-xl md:text-headline-xl">Elite Pro Championship - 2024</h2>
+<div class="flex items-center gap-2 text-white/90 font-label-md text-label-md">
+<span class="material-symbols-outlined text-secondary-container">calendar_today</span>
+                    June 15 - June 20
+                </div>
+</div>
+</section>
+<!-- Tab Bar -->
+<nav class="sticky top-16 bg-surface z-40 border-b border-outline-variant flex px-margin-mobile overflow-x-auto no-scrollbar">
+<button class="px-6 py-4 relative font-label-md text-label-md text-primary font-bold border-b-2 border-primary transition-all">
+                Matches
+            </button>
+<button class="px-6 py-4 font-label-md text-label-md text-on-surface-variant hover:bg-surface-container-low transition-colors">
+                Teams
+            </button>
+<button class="px-6 py-4 font-label-md text-label-md text-on-surface-variant hover:bg-surface-container-low transition-colors">
+                Points Table
+            </button>
+</nav>
+<!-- Match List -->
+<div class="p-margin-mobile flex flex-col gap-4 max-w-3xl mx-auto">
+<!-- Card 1 -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300">
+<div class="p-4 flex flex-col gap-4">
+<div class="flex justify-between items-center">
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">schedule</span>
+<span class="font-label-sm text-label-sm uppercase tracking-wider">25 June • 10:00 AM</span>
+</div>
+<span class="px-3 py-1 bg-primary/10 text-primary font-label-sm text-label-sm rounded-full">UPCOMING</span>
+</div>
+<div class="flex items-center justify-between gap-4 py-4">
+<div class="flex flex-col items-center flex-1 gap-2">
+<div class="w-16 h-16 rounded-full bg-surface-container flex items-center justify-center border border-outline-variant overflow-hidden">
+<img alt="Mumbai Mavericks Logo" class="w-10 h-10" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDXrYxbngOp37nisTuHo5RvYViin2DCxDxwUjJ0O7PkAY1jitAcCsR-Y18ikD4Xf4zsiCYsJc7bjrZE_ygF8rlnixS5aSAU7NBsHP2rYZ9FIyn9mUu-1dstbVhzpOQpX4A1mjaavy5I_iNgftYlDXoJQJ51oeNbZvktYbxoWFMG4feAaaoTgMtkukaHmNffPhOtCz0E4q9p96qQl26lD75JdYUpwmzV56-4Wv1vMpttbNBNOl4ofnyR-KMnNOwCauH-Q07WPmnIapuk"/>
+</div>
+<span class="font-label-md text-label-md text-center">Mumbai Mavericks</span>
+</div>
+<div class="flex flex-col items-center">
+<span class="text-on-surface-variant font-bold text-body-lg">VS</span>
+</div>
+<div class="flex flex-col items-center flex-1 gap-2">
+<div class="w-16 h-16 rounded-full bg-surface-container flex items-center justify-center border border-outline-variant overflow-hidden">
+<img alt="Delhi Dynamos Logo" class="w-10 h-10" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA-0yssmBQLVzuGAm5gswc4q6DBQARN9ob_Yb_ZByKkWalOeDk0jRo_jy7CrZRR5mdztqZFikRQVAyIHf6ECWjmxgv9O-niBv4ePI2aRYtnXwsFyt7rTEc16GR1iT-MiXQ95CQcALvPHJFIlRiGEPCJ4tXXL7T5j_W7iE6sp4psandrgJn4bp42qGSbF6Zyr_LYFk0nAqRCo5eY5AycTeIqz4vpCPfS_vCs0npSCiw7f-_D43KJ_lqiyPL-YKx_4jSgbRgbOGmidOde"/>
+</div>
+<span class="font-label-md text-label-md text-center">Delhi Dynamos</span>
+</div>
+</div>
+<div class="flex items-start gap-2 pt-2 border-t border-outline-variant/30 text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">location_on</span>
+<span class="font-body-sm text-body-sm">Surat District Arena, Sector 12</span>
+</div>
+</div>
+<button class="w-full py-4 bg-primary text-on-primary font-label-md text-label-md flex items-center justify-center gap-2 hover:opacity-90 active:scale-[0.98] transition-all">
+<span class="material-symbols-outlined">notifications_active</span>
+                    Remind Me
+                </button>
+</div>
+<!-- Card 2 -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300">
+<div class="p-4 flex flex-col gap-4">
+<div class="flex justify-between items-center">
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">schedule</span>
+<span class="font-label-sm text-label-sm uppercase tracking-wider">26 June • 02:30 PM</span>
+</div>
+<span class="px-3 py-1 bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm rounded-full">SCHEDULED</span>
+</div>
+<div class="flex items-center justify-between gap-4 py-4">
+<div class="flex flex-col items-center flex-1 gap-2">
+<div class="w-16 h-16 rounded-full bg-surface-container flex items-center justify-center border border-outline-variant overflow-hidden">
+<img alt="Kolkata Knights Logo" class="w-10 h-10" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA5UlrfNczDLov5fHqKA3Li7wftW_4cb6HB98x37PHeDqmtVU8nsMrQMYqbndPWg56GAUl1oBiqBGrEDe9TozrGMiZ9IdVS-7tqlCqOIHE2PQj0aHQ0OXA5LF3-ZrPwDifRPeFdkz3-RavNTA8zJuwaa3uAaqm3rviL-sG4C6tWOZO6EuvVqmPHdKYmXbTE1YjmolhotOrmjJiD8Gi8GANl6P5DKq2i0HFtvyg_R1VT3ncakaGScXoCbEl-7wNF7zpC3xtcN50Yk__N"/>
+</div>
+<span class="font-label-md text-label-md text-center">Kolkata Knights</span>
+</div>
+<div class="flex flex-col items-center">
+<span class="text-on-surface-variant font-bold text-body-lg">VS</span>
+</div>
+<div class="flex flex-col items-center flex-1 gap-2">
+<div class="w-16 h-16 rounded-full bg-surface-container flex items-center justify-center border border-outline-variant overflow-hidden">
+<img alt="Rajasthan Royals Logo" class="w-10 h-10" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDo5-ajwUIKTYVhBBExgeWDfy_xthnkjyJNGjJuNcDIyBcPGZ03grr9AuRKdrI9-71-EFAsXL6T7gGSBxkMwSeUVoPV2Uu_YFmgtiGvEZIedxuwESTw4cqUx52VWLkT4GfR6wdiqOcHcHkLyiDZ613r_H7C1JWSnELn6ho6A6dEsC6uQXsXVwsujgmDaKQJZtOouHIUpN6XRd8vAmqDDNZDE8FkqhwBYt6u5TtjIJj1_G0bc7ZZDgdHc5leN-3-YnssR5yfZCsZJMns"/>
+</div>
+<span class="font-label-md text-label-md text-center">Rajasthan Royals</span>
+</div>
+</div>
+<div class="flex items-start gap-2 pt-2 border-t border-outline-variant/30 text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">location_on</span>
+<span class="font-body-sm text-body-sm">Wankhede Heritage Ground</span>
+</div>
+</div>
+<button class="w-full py-4 bg-secondary-container text-on-secondary-container font-label-md text-label-md flex items-center justify-center gap-2 hover:opacity-90 active:scale-[0.98] transition-all">
+                    View Match Details
+                </button>
+</div>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 w-full z-50 flex justify-around items-center px-4 py-2 bg-surface border-t border-outline-variant shadow-md">
+<!-- Home -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:bg-surface-container-high transition-colors active:scale-90 duration-150 rounded-lg" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-sm text-label-sm mt-1">Home</span>
+</a>
+<!-- Matches - Active -->
+<a class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-full px-4 py-1 active:scale-90 transition-all duration-150" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">sports_cricket</span>
+<span class="font-label-sm text-label-sm mt-0.5">Matches</span>
+</a>
+<!-- Stats -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:bg-surface-container-high transition-colors active:scale-90 duration-150 rounded-lg" href="#">
+<span class="material-symbols-outlined">leaderboard</span>
+<span class="font-label-sm text-label-sm mt-1">Stats</span>
+</a>
+<!-- Messages -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:bg-surface-container-high transition-colors active:scale-90 duration-150 rounded-lg" href="#">
+<span class="material-symbols-outlined">chat</span>
+<span class="font-label-sm text-label-sm mt-1">Messages</span>
+</a>
+</nav>
+</body></html>

@@ -1,0 +1,489 @@
+<!DOCTYPE html><html class="light" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Mumbai Mavericks - Team Players</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #f9f9fc;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-fixed": "#d0e4ff",
+                        "secondary-fixed": "#ffe170",
+                        "on-tertiary-container": "#003357",
+                        "on-secondary-fixed-variant": "#544600",
+                        "outline-variant": "#e2bfb0",
+                        "surface-container-highest": "#e2e2e5",
+                        "secondary": "#705d00",
+                        "background": "#f9f9fc",
+                        "tertiary-fixed-dim": "#9ccaff",
+                        "surface-container-lowest": "#ffffff",
+                        "on-primary-fixed-variant": "#7a3000",
+                        "on-surface-variant": "#5a4136",
+                        "on-error": "#ffffff",
+                        "surface-variant": "#e2e2e5",
+                        "surface-container-high": "#e8e8ea",
+                        "on-primary": "#ffffff",
+                        "secondary-fixed-dim": "#e9c400",
+                        "error-container": "#ffdad6",
+                        "surface-container-low": "#f3f3f6",
+                        "surface": "#f9f9fc",
+                        "outline": "#8e7164",
+                        "surface-container": "#eeeef0",
+                        "on-background": "#1a1c1e",
+                        "inverse-primary": "#ffb693",
+                        "on-secondary": "#ffffff",
+                        "error": "#ba1a1a",
+                        "surface-tint": "#a04100",
+                        "on-primary-container": "#572000",
+                        "on-secondary-container": "#6f5c00",
+                        "on-surface": "#1a1c1e",
+                        "tertiary-container": "#059eff",
+                        "secondary-container": "#fdd400",
+                        "surface-dim": "#dadadc",
+                        "on-error-container": "#93000a",
+                        "primary-fixed": "#ffdbcc",
+                        "tertiary": "#0062a1",
+                        "primary": "#a04100",
+                        "inverse-surface": "#2f3133",
+                        "surface-bright": "#f9f9fc",
+                        "on-tertiary-fixed-variant": "#00497b",
+                        "on-primary-fixed": "#351000",
+                        "inverse-on-surface": "#f0f0f3",
+                        "primary-fixed-dim": "#ffb693",
+                        "primary-container": "#ff6b00",
+                        "on-tertiary-fixed": "#001d35",
+                        "on-tertiary": "#ffffff",
+                        "on-secondary-fixed": "#221b00"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "max-width": "1280px",
+                        "lg": "40px",
+                        "xs": "4px",
+                        "margin-mobile": "16px",
+                        "md": "24px",
+                        "gutter": "24px",
+                        "xl": "64px",
+                        "margin-desktop": "auto",
+                        "sm": "12px",
+                        "base": "8px"
+                    },
+                    "fontFamily": {
+                        "body-md": ["Plus Jakarta Sans"],
+                        "headline-xl": ["Plus Jakarta Sans"],
+                        "headline-lg": ["Plus Jakarta Sans"],
+                        "headline-md": ["Plus Jakarta Sans"],
+                        "label-md": ["Plus Jakarta Sans"],
+                        "label-sm": ["Plus Jakarta Sans"]
+                    },
+                    "fontSize": {
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "headline-xl": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                        "label-md": ["14px", {"lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "600"}],
+                        "label-sm": ["12px", {"lineHeight": "14px", "letterSpacing": "0.04em", "fontWeight": "600"}]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-background text-on-surface min-h-screen pb-24">
+<!-- Top App Bar -->
+<header class="fixed top-0 left-0 right-0 z-50 bg-surface dark:bg-surface border-b border-outline-variant flex justify-between items-center w-full px-margin-mobile h-16">
+<div class="flex items-center gap-4">
+<button class="active:scale-95 transition-transform duration-200 text-primary p-2 hover:bg-surface-container-low rounded-full">
+<span class="material-symbols-outlined" style="font-variation-settings: &quot;FILL&quot; 0;">arrow_back</span>
+</button>
+<h1 class="text-headline-md font-headline-md text-primary">Mumbai Mavericks</h1>
+</div>
+<div class="w-10 h-10 rounded-full overflow-hidden border-2 border-primary-container active:scale-95 transition-transform cursor-pointer">
+<img alt="User Profile Avatar" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAyzBIh7mU7vlu1zIdswRUHvNh30eJjRo681FAeaEH7XMsQbQ3Yu06XkQhSe4ab4eQ-cc33tfWEZ7E3VsWCc5oSwV_wGzJcNEyp_ha_P76cZVzopp7EGaciGj4_PwnNFaRm1JypX7JnwIDQUo768WEAkEeSevuBAoKvR-je-JlXmuDJcvkIN-M5W-ZgIL20uzswxqXD_hO5RvNJIiBm5ql3nl4H-4qtG23tBCJlHkfX_bx12QsYwdIJbgXppfrj4nS6MgT0TXLYe0HE">
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="pt-20 px-margin-mobile max-w-max-width mx-auto">
+<!-- Team Stats Summary Section (Bento Style) -->
+<section class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 mt-4">
+<div class="col-span-2 md:col-span-2 bg-primary-container p-6 rounded-xl text-on-primary flex flex-col justify-between shadow-lg">
+<div>
+<p class="text-label-md font-label-md opacity-80 mb-1">Squad Status</p>
+<h2 class="text-headline-md font-headline-md">15 Active Players</h2>
+</div>
+<div class="flex gap-2 mt-4">
+<span class="bg-on-primary-container/20 px-3 py-1 rounded-full text-label-sm font-label-sm">In Form: 8</span>
+<span class="bg-on-primary-container/20 px-3 py-1 rounded-full text-label-sm font-label-sm">Reserve: 7</span>
+</div>
+</div>
+
+
+</section>
+<!-- Player List Header -->
+<div class="flex justify-between items-center mb-6">
+<h3 class="text-headline-md font-headline-md text-on-surface">Playing XI &amp; Reserves</h3>
+<button class="text-primary font-label-md flex items-center gap-1 hover:underline">
+                Filter <span class="material-symbols-outlined text-sm">filter_list</span>
+</button>
+</div>
+<!-- Players Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-gutter">
+<!-- Player Card Template -->
+<script>
+                const players = [
+                    { name: "Arjun Singh", role: "Captain", bat: "4.8", bowl: "3.2", field: "4.5", img: "41" },
+                    { name: "Rohit Deshmukh", role: "Wicketkeeper", bat: "4.5", bowl: "0.0", field: "4.9", img: "21" },
+                    { name: "Vihaan Sharma", role: "All Rounder", bat: "4.2", bowl: "4.6", field: "4.0", img: "12" },
+                    { name: "Ishaan Malhotra", role: "Fast Bowler", bat: "2.1", bowl: "4.9", field: "3.5", img: "56" },
+                    { name: "Kabir Verma", role: "Spinner", bat: "3.0", bowl: "4.7", field: "4.2", img: "67" },
+                    { name: "Aditya Nair", role: "Opening Batsman", bat: "4.7", bowl: "1.2", field: "4.0", img: "72" }
+                ];
+
+                document.write(players.map(player => `
+                    <div class="group bg-surface-container-lowest border border-outline-variant rounded-xl p-5 hover:shadow-xl hover:border-primary-container transition-all duration-300 relative overflow-hidden">
+                        <div class="absolute top-0 right-0 w-24 h-24 bg-primary-container/5 rounded-bl-full -mr-8 -mt-8 group-hover:bg-primary-container/10 transition-colors"></div>
+                        
+                        <div class="flex items-center gap-4 mb-6 relative z-10">
+                            <div class="w-16 h-16 rounded-full overflow-hidden border-2 border-secondary-container shadow-md">
+                                <img src="https://avatar.iran.liara.run/public/${player.img}" 
+                                     data-alt="A professional sports headshot of a young athletic male cricket player with a determined expression. The image features high-key studio lighting with soft shadows, set against a minimalist clean white background. The player wears a modern vibrant orange and yellow team jersey reflecting the solar minimalism aesthetic. High-quality digital photography with a shallow depth of field focusing on the facial features."
+                                     class="w-full h-full object-cover">
+                            </div>
+                            <div>
+                                <h4 class="text-body-md font-bold text-on-surface group-hover:text-primary transition-colors">${player.name}</h4>
+                                <span class="text-label-sm font-label-sm text-on-surface-variant flex items-center gap-1">
+                                    <span class="material-symbols-outlined text-[14px]">verified</span>
+                                    ${player.role}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="bg-background rounded-lg p-3 flex justify-between items-center relative z-10">
+                            <div class="text-center px-2">
+                                <p class="text-label-sm font-label-sm text-on-surface-variant mb-1 uppercase tracking-wider">Bat</p>
+                                <p class="text-body-md font-bold text-primary">${player.bat}</p>
+                            </div>
+                            <div class="w-px h-8 bg-outline-variant"></div>
+                            <div class="text-center px-2">
+                                <p class="text-label-sm font-label-sm text-on-surface-variant mb-1 uppercase tracking-wider">Bowl</p>
+                                <p class="text-body-md font-bold text-primary">${player.bowl}</p>
+                            </div>
+                            <div class="w-px h-8 bg-outline-variant"></div>
+                            <div class="text-center px-2">
+                                <p class="text-label-sm font-label-sm text-on-surface-variant mb-1 uppercase tracking-wider">Field</p>
+                                <p class="text-body-md font-bold text-primary">${player.field}</p>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 flex justify-end">
+                            <button class="text-label-md font-label-md bg-secondary-container text-on-secondary-container px-4 py-2 rounded-full hover:bg-secondary-container/80 transition-colors active:scale-90 duration-150">
+                                View Profile
+                            </button>
+                        </div>
+                    </div>
+                `).join(''));
+            </script>
+                    <div class="group bg-surface-container-lowest border border-outline-variant rounded-xl p-5 hover:shadow-xl hover:border-primary-container transition-all duration-300 relative overflow-hidden" style="transform: translateY(0px);">
+                        <div class="absolute top-0 right-0 w-24 h-24 bg-primary-container/5 rounded-bl-full -mr-8 -mt-8 group-hover:bg-primary-container/10 transition-colors"></div>
+                        
+                        <div class="flex items-center gap-4 mb-6 relative z-10">
+                            <div class="w-16 h-16 rounded-full overflow-hidden border-2 border-secondary-container shadow-md">
+                                <img src="https://avatar.iran.liara.run/public/41" data-alt="A professional sports headshot of a young athletic male cricket player with a determined expression. The image features high-key studio lighting with soft shadows, set against a minimalist clean white background. The player wears a modern vibrant orange and yellow team jersey reflecting the solar minimalism aesthetic. High-quality digital photography with a shallow depth of field focusing on the facial features." class="w-full h-full object-cover">
+                            </div>
+                            <div>
+                                <h4 class="text-body-md font-bold text-on-surface group-hover:text-primary transition-colors">Arjun Singh</h4>
+                                <span class="text-label-sm font-label-sm text-on-surface-variant flex items-center gap-1">
+                                    <span class="material-symbols-outlined text-[14px]">verified</span>
+                                    Captain
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="bg-background rounded-lg p-3 flex justify-between items-center relative z-10">
+                            <div class="text-center px-2">
+                                <p class="text-label-sm font-label-sm text-on-surface-variant mb-1 uppercase tracking-wider">Bat</p>
+                                <p class="text-body-md font-bold text-primary">4.8</p>
+                            </div>
+                            <div class="w-px h-8 bg-outline-variant"></div>
+                            <div class="text-center px-2">
+                                <p class="text-label-sm font-label-sm text-on-surface-variant mb-1 uppercase tracking-wider">Bowl</p>
+                                <p class="text-body-md font-bold text-primary">3.2</p>
+                            </div>
+                            <div class="w-px h-8 bg-outline-variant"></div>
+                            <div class="text-center px-2">
+                                <p class="text-label-sm font-label-sm text-on-surface-variant mb-1 uppercase tracking-wider">Field</p>
+                                <p class="text-body-md font-bold text-primary">4.5</p>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 flex justify-end">
+                            <button class="text-label-md font-label-md bg-secondary-container text-on-secondary-container px-4 py-2 rounded-full hover:bg-secondary-container/80 transition-colors active:scale-90 duration-150">
+                                View Profile
+                            </button>
+                        </div>
+                    </div>
+                
+                    <div class="group bg-surface-container-lowest border border-outline-variant rounded-xl p-5 hover:shadow-xl hover:border-primary-container transition-all duration-300 relative overflow-hidden">
+                        <div class="absolute top-0 right-0 w-24 h-24 bg-primary-container/5 rounded-bl-full -mr-8 -mt-8 group-hover:bg-primary-container/10 transition-colors"></div>
+                        
+                        <div class="flex items-center gap-4 mb-6 relative z-10">
+                            <div class="w-16 h-16 rounded-full overflow-hidden border-2 border-secondary-container shadow-md">
+                                <img src="https://avatar.iran.liara.run/public/21" data-alt="A professional sports headshot of a young athletic male cricket player with a determined expression. The image features high-key studio lighting with soft shadows, set against a minimalist clean white background. The player wears a modern vibrant orange and yellow team jersey reflecting the solar minimalism aesthetic. High-quality digital photography with a shallow depth of field focusing on the facial features." class="w-full h-full object-cover">
+                            </div>
+                            <div>
+                                <h4 class="text-body-md font-bold text-on-surface group-hover:text-primary transition-colors">Rohit Deshmukh</h4>
+                                <span class="text-label-sm font-label-sm text-on-surface-variant flex items-center gap-1">
+                                    <span class="material-symbols-outlined text-[14px]">verified</span>
+                                    Wicketkeeper
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="bg-background rounded-lg p-3 flex justify-between items-center relative z-10">
+                            <div class="text-center px-2">
+                                <p class="text-label-sm font-label-sm text-on-surface-variant mb-1 uppercase tracking-wider">Bat</p>
+                                <p class="text-body-md font-bold text-primary">4.5</p>
+                            </div>
+                            <div class="w-px h-8 bg-outline-variant"></div>
+                            <div class="text-center px-2">
+                                <p class="text-label-sm font-label-sm text-on-surface-variant mb-1 uppercase tracking-wider">Bowl</p>
+                                <p class="text-body-md font-bold text-primary">0.0</p>
+                            </div>
+                            <div class="w-px h-8 bg-outline-variant"></div>
+                            <div class="text-center px-2">
+                                <p class="text-label-sm font-label-sm text-on-surface-variant mb-1 uppercase tracking-wider">Field</p>
+                                <p class="text-body-md font-bold text-primary">4.9</p>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 flex justify-end">
+                            <button class="text-label-md font-label-md bg-secondary-container text-on-secondary-container px-4 py-2 rounded-full hover:bg-secondary-container/80 transition-colors active:scale-90 duration-150">
+                                View Profile
+                            </button>
+                        </div>
+                    </div>
+                
+                    <div class="group bg-surface-container-lowest border border-outline-variant rounded-xl p-5 hover:shadow-xl hover:border-primary-container transition-all duration-300 relative overflow-hidden">
+                        <div class="absolute top-0 right-0 w-24 h-24 bg-primary-container/5 rounded-bl-full -mr-8 -mt-8 group-hover:bg-primary-container/10 transition-colors"></div>
+                        
+                        <div class="flex items-center gap-4 mb-6 relative z-10">
+                            <div class="w-16 h-16 rounded-full overflow-hidden border-2 border-secondary-container shadow-md">
+                                <img src="https://avatar.iran.liara.run/public/12" data-alt="A professional sports headshot of a young athletic male cricket player with a determined expression. The image features high-key studio lighting with soft shadows, set against a minimalist clean white background. The player wears a modern vibrant orange and yellow team jersey reflecting the solar minimalism aesthetic. High-quality digital photography with a shallow depth of field focusing on the facial features." class="w-full h-full object-cover">
+                            </div>
+                            <div>
+                                <h4 class="text-body-md font-bold text-on-surface group-hover:text-primary transition-colors">Vihaan Sharma</h4>
+                                <span class="text-label-sm font-label-sm text-on-surface-variant flex items-center gap-1">
+                                    <span class="material-symbols-outlined text-[14px]">verified</span>
+                                    All Rounder
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="bg-background rounded-lg p-3 flex justify-between items-center relative z-10">
+                            <div class="text-center px-2">
+                                <p class="text-label-sm font-label-sm text-on-surface-variant mb-1 uppercase tracking-wider">Bat</p>
+                                <p class="text-body-md font-bold text-primary">4.2</p>
+                            </div>
+                            <div class="w-px h-8 bg-outline-variant"></div>
+                            <div class="text-center px-2">
+                                <p class="text-label-sm font-label-sm text-on-surface-variant mb-1 uppercase tracking-wider">Bowl</p>
+                                <p class="text-body-md font-bold text-primary">4.6</p>
+                            </div>
+                            <div class="w-px h-8 bg-outline-variant"></div>
+                            <div class="text-center px-2">
+                                <p class="text-label-sm font-label-sm text-on-surface-variant mb-1 uppercase tracking-wider">Field</p>
+                                <p class="text-body-md font-bold text-primary">4.0</p>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 flex justify-end">
+                            <button class="text-label-md font-label-md bg-secondary-container text-on-secondary-container px-4 py-2 rounded-full hover:bg-secondary-container/80 transition-colors active:scale-90 duration-150">
+                                View Profile
+                            </button>
+                        </div>
+                    </div>
+                
+                    <div class="group bg-surface-container-lowest border border-outline-variant rounded-xl p-5 hover:shadow-xl hover:border-primary-container transition-all duration-300 relative overflow-hidden">
+                        <div class="absolute top-0 right-0 w-24 h-24 bg-primary-container/5 rounded-bl-full -mr-8 -mt-8 group-hover:bg-primary-container/10 transition-colors"></div>
+                        
+                        <div class="flex items-center gap-4 mb-6 relative z-10">
+                            <div class="w-16 h-16 rounded-full overflow-hidden border-2 border-secondary-container shadow-md">
+                                <img src="https://avatar.iran.liara.run/public/56" data-alt="A professional sports headshot of a young athletic male cricket player with a determined expression. The image features high-key studio lighting with soft shadows, set against a minimalist clean white background. The player wears a modern vibrant orange and yellow team jersey reflecting the solar minimalism aesthetic. High-quality digital photography with a shallow depth of field focusing on the facial features." class="w-full h-full object-cover">
+                            </div>
+                            <div>
+                                <h4 class="text-body-md font-bold text-on-surface group-hover:text-primary transition-colors">Ishaan Malhotra</h4>
+                                <span class="text-label-sm font-label-sm text-on-surface-variant flex items-center gap-1">
+                                    <span class="material-symbols-outlined text-[14px]">verified</span>
+                                    Fast Bowler
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="bg-background rounded-lg p-3 flex justify-between items-center relative z-10">
+                            <div class="text-center px-2">
+                                <p class="text-label-sm font-label-sm text-on-surface-variant mb-1 uppercase tracking-wider">Bat</p>
+                                <p class="text-body-md font-bold text-primary">2.1</p>
+                            </div>
+                            <div class="w-px h-8 bg-outline-variant"></div>
+                            <div class="text-center px-2">
+                                <p class="text-label-sm font-label-sm text-on-surface-variant mb-1 uppercase tracking-wider">Bowl</p>
+                                <p class="text-body-md font-bold text-primary">4.9</p>
+                            </div>
+                            <div class="w-px h-8 bg-outline-variant"></div>
+                            <div class="text-center px-2">
+                                <p class="text-label-sm font-label-sm text-on-surface-variant mb-1 uppercase tracking-wider">Field</p>
+                                <p class="text-body-md font-bold text-primary">3.5</p>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 flex justify-end">
+                            <button class="text-label-md font-label-md bg-secondary-container text-on-secondary-container px-4 py-2 rounded-full hover:bg-secondary-container/80 transition-colors active:scale-90 duration-150">
+                                View Profile
+                            </button>
+                        </div>
+                    </div>
+                
+                    <div class="group bg-surface-container-lowest border border-outline-variant rounded-xl p-5 hover:shadow-xl hover:border-primary-container transition-all duration-300 relative overflow-hidden">
+                        <div class="absolute top-0 right-0 w-24 h-24 bg-primary-container/5 rounded-bl-full -mr-8 -mt-8 group-hover:bg-primary-container/10 transition-colors"></div>
+                        
+                        <div class="flex items-center gap-4 mb-6 relative z-10">
+                            <div class="w-16 h-16 rounded-full overflow-hidden border-2 border-secondary-container shadow-md">
+                                <img src="https://avatar.iran.liara.run/public/67" data-alt="A professional sports headshot of a young athletic male cricket player with a determined expression. The image features high-key studio lighting with soft shadows, set against a minimalist clean white background. The player wears a modern vibrant orange and yellow team jersey reflecting the solar minimalism aesthetic. High-quality digital photography with a shallow depth of field focusing on the facial features." class="w-full h-full object-cover">
+                            </div>
+                            <div>
+                                <h4 class="text-body-md font-bold text-on-surface group-hover:text-primary transition-colors">Kabir Verma</h4>
+                                <span class="text-label-sm font-label-sm text-on-surface-variant flex items-center gap-1">
+                                    <span class="material-symbols-outlined text-[14px]">verified</span>
+                                    Spinner
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="bg-background rounded-lg p-3 flex justify-between items-center relative z-10">
+                            <div class="text-center px-2">
+                                <p class="text-label-sm font-label-sm text-on-surface-variant mb-1 uppercase tracking-wider">Bat</p>
+                                <p class="text-body-md font-bold text-primary">3.0</p>
+                            </div>
+                            <div class="w-px h-8 bg-outline-variant"></div>
+                            <div class="text-center px-2">
+                                <p class="text-label-sm font-label-sm text-on-surface-variant mb-1 uppercase tracking-wider">Bowl</p>
+                                <p class="text-body-md font-bold text-primary">4.7</p>
+                            </div>
+                            <div class="w-px h-8 bg-outline-variant"></div>
+                            <div class="text-center px-2">
+                                <p class="text-label-sm font-label-sm text-on-surface-variant mb-1 uppercase tracking-wider">Field</p>
+                                <p class="text-body-md font-bold text-primary">4.2</p>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 flex justify-end">
+                            <button class="text-label-md font-label-md bg-secondary-container text-on-secondary-container px-4 py-2 rounded-full hover:bg-secondary-container/80 transition-colors active:scale-90 duration-150">
+                                View Profile
+                            </button>
+                        </div>
+                    </div>
+                
+                    <div class="group bg-surface-container-lowest border border-outline-variant rounded-xl p-5 hover:shadow-xl hover:border-primary-container transition-all duration-300 relative overflow-hidden">
+                        <div class="absolute top-0 right-0 w-24 h-24 bg-primary-container/5 rounded-bl-full -mr-8 -mt-8 group-hover:bg-primary-container/10 transition-colors"></div>
+                        
+                        <div class="flex items-center gap-4 mb-6 relative z-10">
+                            <div class="w-16 h-16 rounded-full overflow-hidden border-2 border-secondary-container shadow-md">
+                                <img src="https://avatar.iran.liara.run/public/72" data-alt="A professional sports headshot of a young athletic male cricket player with a determined expression. The image features high-key studio lighting with soft shadows, set against a minimalist clean white background. The player wears a modern vibrant orange and yellow team jersey reflecting the solar minimalism aesthetic. High-quality digital photography with a shallow depth of field focusing on the facial features." class="w-full h-full object-cover">
+                            </div>
+                            <div>
+                                <h4 class="text-body-md font-bold text-on-surface group-hover:text-primary transition-colors">Aditya Nair</h4>
+                                <span class="text-label-sm font-label-sm text-on-surface-variant flex items-center gap-1">
+                                    <span class="material-symbols-outlined text-[14px]">verified</span>
+                                    Opening Batsman
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="bg-background rounded-lg p-3 flex justify-between items-center relative z-10">
+                            <div class="text-center px-2">
+                                <p class="text-label-sm font-label-sm text-on-surface-variant mb-1 uppercase tracking-wider">Bat</p>
+                                <p class="text-body-md font-bold text-primary">4.7</p>
+                            </div>
+                            <div class="w-px h-8 bg-outline-variant"></div>
+                            <div class="text-center px-2">
+                                <p class="text-label-sm font-label-sm text-on-surface-variant mb-1 uppercase tracking-wider">Bowl</p>
+                                <p class="text-body-md font-bold text-primary">1.2</p>
+                            </div>
+                            <div class="w-px h-8 bg-outline-variant"></div>
+                            <div class="text-center px-2">
+                                <p class="text-label-sm font-label-sm text-on-surface-variant mb-1 uppercase tracking-wider">Field</p>
+                                <p class="text-body-md font-bold text-primary">4.0</p>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 flex justify-end">
+                            <button class="text-label-md font-label-md bg-secondary-container text-on-secondary-container px-4 py-2 rounded-full hover:bg-secondary-container/80 transition-colors active:scale-90 duration-150">
+                                View Profile
+                            </button>
+                        </div>
+                    </div>
+                
+</div>
+</main>
+<!-- Bottom Navigation Bar -->
+<nav class="fixed bottom-0 w-full z-50 flex justify-around items-center px-4 py-2 bg-surface dark:bg-surface border-t border-outline-variant shadow-md">
+<!-- Home -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant p-2 hover:bg-surface-container-high transition-colors active:scale-90 transition-all duration-150" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="text-label-sm font-label-sm">Home</span>
+</a>
+<!-- Matches -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant p-2 hover:bg-surface-container-high transition-colors active:scale-90 transition-all duration-150" href="#">
+<span class="material-symbols-outlined">sports_cricket</span>
+<span class="text-label-sm font-label-sm">Matches</span>
+</a>
+<!-- Stats (Active) -->
+<a class="flex flex-col items-center justify-center bg-secondary-container dark:bg-secondary text-on-secondary-container dark:text-on-secondary rounded-full px-4 py-1 active:scale-90 transition-all duration-150" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: &quot;FILL&quot; 1;">leaderboard</span>
+<span class="text-label-sm font-label-sm">Stats</span>
+</a>
+<!-- Messages -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant p-2 hover:bg-surface-container-high transition-colors active:scale-90 transition-all duration-150" href="#">
+<span class="material-symbols-outlined">chat</span>
+<span class="text-label-sm font-label-sm">Messages</span>
+</a>
+</nav>
+<!-- Micro-interaction Script -->
+<script>
+        // Simple hover effect for player cards
+        document.querySelectorAll('.group').forEach(card => {
+            card.addEventListener('mouseenter', () => {
+                card.style.transform = 'translateY(-4px)';
+            });
+            card.addEventListener('mouseleave', () => {
+                card.style.transform = 'translateY(0)';
+            });
+        });
+    </script>
+
+
+</body></html>

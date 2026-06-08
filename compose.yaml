@@ -1,0 +1,6 @@
+# Run from repo root: docker compose up -d
+# Services and env live under docker/ (see docker/.env).
+include:
+  - path: docker/docker-compose.yml
+    project_directory: docker
+    env_file: docker/.env

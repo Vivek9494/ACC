@@ -1,0 +1,111 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Login - Hariprabodham Sports Club</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<style data-purpose="custom-shadows">
+    .soft-shadow-input {
+      box-shadow: 0 4px 15px -1px rgba(0, 0, 0, 0.05), 0 2px 10px -1px rgba(0, 0, 0, 0.025);
+    }
+    .orange-glow-button {
+      background: linear-gradient(180deg, #FF8E42 0%, #FF5C00 100%);
+      box-shadow: 0 10px 20px -5px rgba(255, 92, 0, 0.4);
+    }
+  </style>
+<style data-purpose="background-watermark">
+    /* 
+       Note: The original image shows a very clean white background with minimal noise. 
+       Adding a subtle pattern to mimic the 'sports-themed watermark' requested 
+    */
+    body {
+      background-color: #ffffff;
+      background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M54.62 10.11L51.05 6.54c-1.12-1.12-2.93-1.12-4.05 0l-7.29 7.29-2.03-2.03 2.03-2.03c.59-.59.59-1.54 0-2.12-.59-.59-1.54-.59-2.12 0L35.56 9.68l-2.03-2.03 7.29-7.29c1.12-1.12 1.12-2.93 0-4.05L37.25-7.25c-1.12-1.12-2.93-1.12-4.05 0l-7.29 7.29-2.03-2.03 2.03-2.03c.59-.59.59-1.54 0-2.12-.59-.59-1.54-.59-2.12 0l-2.03 2.03-2.03-2.03 7.29-7.29c1.12-1.12 1.12-2.93 0-4.05l-3.57-3.57c-1.12-1.12-2.93-1.12-4.05 0L12.11 2.38l-2.03-2.03 2.03-2.03c.59-.59.59-1.54 0-2.12-.59-.59-1.54-.59-2.12 0l-2.03 2.03-2.03-2.03 7.29-7.29c1.12-1.12 1.12-2.93 0-4.05L11.68-20.73' fill='%23f0f0f0' fill-opacity='0.1' fill-rule='evenodd'/%3E%3C/svg%3E");
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col font-sans text-slate-800 antialiased">
+<!-- BEGIN: MainContainer -->
+<main class="flex-1 flex flex-col px-8 pt-20 pb-10 max-w-md mx-auto w-full mt-5" data-purpose="login-screen-container">
+<!-- BEGIN: HeaderSection -->
+<section class="mb-10" data-purpose="branding-header">
+<!-- Image 16 was the UI screenshot itself, representing the overall layout. 
+           The branding text "Jay Swaminarayan" is the primary visual anchor. -->
+<h1 class="text-3xl font-bold tracking-tight text-black mb-2">
+        Jay Swaminarayan
+      </h1>
+<p class="text-gray-400 text-lg font-medium">
+        Welcome back, you've been missed!
+      </p>
+</section>
+<!-- END: HeaderSection -->
+<!-- BEGIN: LoginForm -->
+<form class="space-y-6" data-purpose="auth-form">
+<!-- Mobile Number Field -->
+<div class="space-y-2">
+<label class="block text-sm font-medium text-gray-300 ml-1" for="mobile">
+          Mobile Number
+        </label>
+<div class="relative">
+<input class="w-full px-5 py-5 bg-white border border-gray-100 rounded-2xl soft-shadow-input text-gray-700 placeholder-gray-300 focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all outline-none" id="mobile" placeholder="10-digit mobile number" type="tel">
+</div>
+</div>
+<!-- Password Field -->
+<div class="space-y-2">
+<label class="block text-sm font-medium text-gray-300 ml-1" for="password">
+          Password
+        </label>
+<div class="relative">
+<input class="w-full px-5 py-5 bg-white border border-gray-100 rounded-2xl soft-shadow-input text-gray-700 placeholder-gray-300 focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all outline-none" id="password" placeholder="Enter your password" type="password">
+<!-- Eye Icon (Password Toggle) -->
+<div class="absolute inset-y-0 right-5 flex items-center">
+<svg class="h-6 w-6 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+<path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</div>
+</div>
+</div>
+<!-- Remember Me & Forgot Password -->
+<div class="flex items-center justify-between px-1">
+<div class="flex items-center">
+<input checked="" class="h-5 w-5 text-orange-500 border-orange-500 rounded focus:ring-orange-500" id="remember-me" name="remember-me" type="checkbox">
+<label class="ml-2 block text-sm font-semibold text-black" for="remember-me">
+            Remember Me
+          </label>
+</div>
+<div class="text-sm">
+<a class="font-semibold text-orange-500" href="#">
+            Forgot Password ?
+          </a>
+</div>
+</div>
+<!-- Login Button -->
+<div class="pt-4">
+<button class="w-full orange-glow-button text-white font-bold py-5 rounded-2xl flex items-center justify-center text-lg shadow-lg active:scale-[0.98] transition-transform" type="submit">
+          Login
+        </button>
+</div>
+</form>
+<!-- END: LoginForm -->
+<!-- BEGIN: FooterLinks -->
+<div class="mt-auto pb-12" data-purpose="footer-navigation">
+<div class="flex flex-col items-center space-y-8">
+<!-- OR Divider -->
+<div class="flex items-center w-full">
+<div class="flex-grow h-px"></div>
+<span class="px-4 text-sm font-semibold text-gray-400 uppercase tracking-widest">OR</span>
+<div class="flex-grow h-px"></div>
+</div>
+<!-- Sign Up Prompt -->
+<p class="text-gray-400 font-medium">
+          Don't have an account ? 
+          <a class="text-orange-500 font-bold ml-1" href="#">Sign Up</a>
+</p>
+</div>
+</div>
+<!-- END: FooterLinks -->
+</main>
+<!-- END: MainContainer -->
+
+
+</body></html>

@@ -1,0 +1,330 @@
+<!DOCTYPE html><html lang="en" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Tournament Registration</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #f9f9fc;
+            color: #1a1c1e;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .custom-shadow {
+            box-shadow: 0px 4px 20px rgba(255, 107, 0, 0.08);
+        }
+        /* Hide scrollbar for Chrome, Safari and Opera */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        /* Hide scrollbar for IE, Edge and Firefox */
+        .no-scrollbar {
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-tertiary-container": "#003357",
+                      "on-tertiary-fixed-variant": "#00497b",
+                      "on-primary-fixed": "#351000",
+                      "secondary-container": "#fdd400",
+                      "outline-variant": "#e2bfb0",
+                      "on-tertiary-fixed": "#001d35",
+                      "inverse-on-surface": "#f0f0f3",
+                      "tertiary-fixed-dim": "#9ccaff",
+                      "tertiary-fixed": "#d0e4ff",
+                      "surface-container-highest": "#e2e2e5",
+                      "on-secondary-fixed-variant": "#544600",
+                      "on-error-container": "#93000a",
+                      "on-background": "#1a1c1e",
+                      "error": "#ba1a1a",
+                      "surface-container-low": "#f3f3f6",
+                      "primary": "#a04100",
+                      "surface-container-lowest": "#ffffff",
+                      "on-primary": "#ffffff",
+                      "tertiary-container": "#059eff",
+                      "primary-fixed": "#ffdbcc",
+                      "on-secondary-fixed": "#221b00",
+                      "secondary-fixed-dim": "#e9c400",
+                      "on-surface-variant": "#5a4136",
+                      "surface": "#f9f9fc",
+                      "error-container": "#ffdad6",
+                      "on-tertiary": "#ffffff",
+                      "surface-dim": "#dadadc",
+                      "inverse-surface": "#2f3133",
+                      "surface-tint": "#a04100",
+                      "on-surface": "#1a1c1e",
+                      "primary-fixed-dim": "#ffb693",
+                      "surface-container-high": "#e8e8ea",
+                      "on-secondary-container": "#6f5c00",
+                      "surface-container": "#eeeef0",
+                      "primary-container": "#ff6b00",
+                      "inverse-primary": "#ffb693",
+                      "tertiary": "#0062a1",
+                      "on-error": "#ffffff",
+                      "on-secondary": "#ffffff",
+                      "outline": "#8e7164",
+                      "on-primary-container": "#572000",
+                      "background": "#f9f9fc",
+                      "secondary": "#705d00",
+                      "surface-bright": "#f9f9fc",
+                      "on-primary-fixed-variant": "#7a3000",
+                      "surface-variant": "#e2e2e5",
+                      "secondary-fixed": "#ffe170"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "sm": "12px",
+                      "md": "24px",
+                      "xl": "64px",
+                      "xs": "4px",
+                      "lg": "40px",
+                      "margin-mobile": "16px",
+                      "max-width": "1280px",
+                      "margin-desktop": "auto",
+                      "base": "8px",
+                      "gutter": "24px"
+              },
+              "fontFamily": {
+                      "headline-lg": ["Plus Jakarta Sans"],
+                      "headline-xl": ["Plus Jakarta Sans"],
+                      "body-md": ["Plus Jakarta Sans"],
+                      "label-md": ["Plus Jakarta Sans"],
+                      "headline-xl-mobile": ["Plus Jakarta Sans"],
+                      "headline-md": ["Plus Jakarta Sans"],
+                      "body-lg": ["Plus Jakarta Sans"],
+                      "label-sm": ["Plus Jakarta Sans"],
+                      "body-sm": ["Plus Jakarta Sans"]
+              },
+              "fontSize": {
+                      "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                      "headline-xl": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                      "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                      "label-md": ["14px", {"lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "600"}],
+                      "headline-xl-mobile": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                      "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                      "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                      "label-sm": ["12px", {"lineHeight": "14px", "letterSpacing": "0.04em", "fontWeight": "600"}],
+                      "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}]
+              }
+            },
+          },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface">
+<!-- Top App Bar -->
+<header class="fixed top-0 w-full z-50 bg-surface flex justify-between items-center px-margin-mobile h-16">
+<div class="flex items-center gap-4">
+<button class="hover:bg-surface-container-low transition-colors p-2 rounded-full active:scale-95 duration-200">
+<span class="material-symbols-outlined text-primary-container" data-icon="arrow_back">arrow_back</span>
+</button>
+
+</div>
+<div class="w-10 h-10 rounded-full bg-surface-container-high border border-outline-variant overflow-hidden">
+<img alt="User Profile Avatar" class="w-full h-full object-cover" data-alt="A close-up high-resolution portrait of a young athletic professional with a friendly smile, set against a blurred modern stadium background during golden hour. The lighting is warm and cinematic, reflecting the solar-inspired color palette of oranges and yellows. The overall aesthetic is clean, professional, and optimistic, matching a high-end sports application interface." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDodGUIbMg75Aw5vri0PGF46JIBEBh-F2C1qX1IM5uA1dXzeA5Ai_5uH8wdG_tSEGhIv8QAnEqATfqRgMnSoTIw6Rcck4oVHS_Por_8FRCIgfsQGycO6E_DZ-BDQvePTgZ_9n2dLkldK_wozdTN5NXRsZshF1BTDtVT_PFz-gNJcXONo81H10vQhxXX_5cRM7898NjpnIrDx4TKvzmEAl8oOmenXf4w7wGvHgJhaGPvCHVipgHHD0xoVLJGEq2CS3NtbtTRHJIWNj-k">
+</div>
+</header>
+<!-- Main Content Area -->
+<main class="pt-20 pb-24 px-margin-mobile max-w-[800px] mx-auto">
+<!-- Welcome Section -->
+<div class="mb-8">
+<h2 class="text-headline-lg font-headline-lg text-on-surface mb-2">Player Registration</h2>
+<p class="text-body-md font-body-md text-on-surface-variant">Complete your profile to join the upcoming championship tournament.</p>
+</div>
+<!-- Registration Form -->
+<form class="space-y-6" id="registrationForm">
+<!-- Personal Information Section -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-md custom-shadow">
+<h3 class="text-label-md font-label-md text-primary-container mb-4 uppercase tracking-wider">Personal Information</h3>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-md">
+<div class="flex flex-col gap-2">
+<label class="text-label-md font-label-md text-on-surface-variant ml-1">First Name</label>
+<input class="w-full h-12 px-4 rounded-lg bg-white border border-outline-variant focus:ring-2 focus:ring-primary-container focus:border-primary-container outline-none transition-all" placeholder="Enter first name" type="text">
+</div>
+<div class="flex flex-col gap-2">
+<label class="text-label-md font-label-md text-on-surface-variant ml-1">Last Name</label>
+<input class="w-full h-12 px-4 rounded-lg bg-white border border-outline-variant focus:ring-2 focus:ring-primary-container focus:border-primary-container outline-none transition-all" placeholder="Enter last name" type="text">
+</div>
+</div>
+</div>
+<!-- Role & Hand Section -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-md custom-shadow">
+<h3 class="text-label-md font-label-md text-primary-container mb-4 uppercase tracking-wider">Game Preferences</h3>
+<div class="space-y-6">
+<!-- Dropdowns Row -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-md">
+<div class="flex flex-col gap-2" style="transition: transform 0.2s;">
+<label class="text-label-md font-label-md text-on-surface-variant ml-1">Center</label>
+<select class="w-full h-12 px-4 rounded-lg bg-white border border-outline-variant focus:ring-2 focus:ring-primary-container focus:border-primary-container outline-none appearance-none cursor-pointer">
+<option disabled="" selected="">Select training center</option>
+<option>North Academy</option>
+<option>Central Stadium</option>
+<option>East Ground</option>
+</select>
+</div>
+<div class="flex flex-col gap-2" style="transition: transform 0.2s;">
+<label class="text-label-md font-label-md text-on-surface-variant ml-1">Batting/Bowling Hand</label>
+<select class="w-full h-12 px-4 rounded-lg bg-white border border-outline-variant focus:ring-2 focus:ring-primary-container focus:border-primary-container outline-none appearance-none cursor-pointer">
+<option value="RHB">Right Hand (RHB/RAB)</option>
+<option value="LHB">Left Hand (LHB/LAB)</option>
+</select>
+</div>
+</div>
+<!-- Radio Buttons: Are you? -->
+<div class="flex flex-col gap-3">
+<label class="text-label-md font-label-md text-on-surface-variant ml-1">Are you?</label>
+<div class="flex flex-wrap gap-4">
+<label class="flex items-center gap-2 cursor-pointer group">
+<input checked="" class="w-5 h-5 text-primary border-outline-variant focus:ring-primary" name="playerRole" type="radio">
+<span class="text-body-md font-body-md group-hover:text-primary transition-colors">Batsman</span>
+</label>
+<label class="flex items-center gap-2 cursor-pointer group" style="transition: transform 0.2s;">
+<input class="w-5 h-5 text-primary border-outline-variant focus:ring-primary" name="playerRole" type="radio">
+<span class="text-body-md font-body-md group-hover:text-primary transition-colors">Bowler</span>
+</label>
+<label class="flex items-center gap-2 cursor-pointer group" style="transition: transform 0.2s;">
+<input class="w-5 h-5 text-primary border-outline-variant focus:ring-primary" name="playerRole" type="radio">
+<span class="text-body-md font-body-md group-hover:text-primary transition-colors">All-rounder</span>
+</label>
+</div>
+</div>
+</div>
+</div>
+<!-- Skill Ratings Section -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-md custom-shadow">
+<h3 class="text-label-md font-label-md text-primary-container mb-4 uppercase tracking-wider">Skill Assessment</h3>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-y-6 gap-x-md">
+<!-- Batting -->
+<div class="flex flex-col gap-2" style="transition: transform 0.2s;">
+<label class="text-label-md font-label-md text-on-surface-variant ml-1">Batting Rating</label>
+<select class="w-full h-12 px-4 rounded-lg bg-white border border-outline-variant focus:ring-2 focus:ring-primary-container outline-none cursor-pointer">
+<option>Star</option><option>A</option><option>B</option><option>C</option>
+</select>
+</div>
+<div class="flex flex-col gap-2" style="transition: transform 0.2s;">
+<label class="text-label-md font-label-md text-on-surface-variant ml-1">Batting Position</label>
+<select class="w-full h-12 px-4 rounded-lg bg-white border border-outline-variant focus:ring-2 focus:ring-primary-container outline-none cursor-pointer">
+<option>Opener</option><option>Middle Order</option><option>Finisher</option><option>Tail-ender</option>
+</select>
+</div>
+<!-- Bowling -->
+<div class="flex flex-col gap-2" style="transition: transform 0.2s;">
+<label class="text-label-md font-label-md text-on-surface-variant ml-1">Bowling Rating</label>
+<select class="w-full h-12 px-4 rounded-lg bg-white border border-outline-variant focus:ring-2 focus:ring-primary-container outline-none cursor-pointer">
+<option>Star</option><option>A</option><option>B</option><option>C</option>
+</select>
+</div>
+<div class="flex flex-col gap-2" style="transition: transform 0.2s;">
+<label class="text-label-md font-label-md text-on-surface-variant ml-1">Bowling Type</label>
+<select class="w-full h-12 px-4 rounded-lg bg-white border border-outline-variant focus:ring-2 focus:ring-primary-container outline-none cursor-pointer">
+<option>Fast</option><option>Medium</option><option>Leg Spin</option><option>Off Spin</option>
+</select>
+</div>
+<!-- Fielding -->
+<div class="flex flex-col gap-2" style="transition: transform 0.2s;">
+<label class="text-label-md font-label-md text-on-surface-variant ml-1">Fielding Rating</label>
+<select class="w-full h-12 px-4 rounded-lg bg-white border border-outline-variant focus:ring-2 focus:ring-primary-container outline-none cursor-pointer">
+<option>Excellent</option><option>Good</option><option>Average</option>
+</select>
+</div>
+<div class="flex flex-col gap-2" style="transition: transform 0.2s;">
+<label class="text-label-md font-label-md text-on-surface-variant ml-1">Fielding Position</label>
+<select class="w-full h-12 px-4 rounded-lg bg-white border border-outline-variant focus:ring-2 focus:ring-primary-container outline-none cursor-pointer">
+<option>Slips</option><option>Inner Circle</option><option>Outfield</option><option>Wicketkeeper</option>
+</select>
+</div>
+</div>
+</div>
+<!-- Submit Button -->
+<button class="w-full h-14 bg-primary-container text-on-primary hover:opacity-90 active:scale-95 transition-all rounded-lg font-bold text-lg shadow-lg flex items-center justify-center gap-2" type="submit">
+<span class="">Registration</span>
+
+</button>
+</form>
+</main>
+<!-- Bottom Navigation Bar -->
+<nav class="md:hidden fixed bottom-0 w-full z-50 rounded-t-xl bg-surface-container-lowest shadow-[0px_-8px_30px_rgba(42,44,65,0.06)] border-t border-surface-variant/30">
+<div class="flex justify-around items-center h-20 px-4 w-full">
+<!-- Home -->
+<a class="flex flex-col items-center justify-center text-on-surface/60 hover:text-primary active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-label-sm text-label-sm">Home</span>
+</a>
+<!-- Matches (Active) -->
+<a class="flex flex-col items-center justify-center text-white px-6 py-2 active:scale-90 transition-all duration-150 rounded-lg bg-primary-container" href="#">
+<span class="material-symbols-outlined" data-icon="sports_cricket">sports_cricket</span>
+<span class="font-label-sm text-label-sm">Matches</span>
+</a>
+<!-- Stats -->
+<a class="flex flex-col items-center justify-center text-on-surface/60 hover:text-primary active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="leaderboard">leaderboard</span>
+<span class="font-label-sm text-label-sm">Stats</span>
+</a>
+<!-- Messages -->
+<a class="flex flex-col items-center justify-center text-on-surface/60 hover:text-primary active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="forum">forum</span>
+<span class="font-label-sm text-label-sm">Messages</span>
+</a></div>
+</nav>
+<script>
+        // Simple form submission micro-interaction
+        document.getElementById('registrationForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const btn = e.target.querySelector('button[type="submit"]');
+            const originalContent = btn.innerHTML;
+            
+            btn.innerHTML = '<span class="material-symbols-outlined animate-spin" data-icon="progress_activity">progress_activity</span> Processing...';
+            btn.classList.add('opacity-80');
+            
+            setTimeout(() => {
+                btn.innerHTML = '<span class="material-symbols-outlined" data-icon="check_circle">check_circle</span> Registered Successfully!';
+                btn.classList.remove('bg-primary-container');
+                btn.classList.add('bg-green-600');
+                
+                setTimeout(() => {
+                    btn.innerHTML = originalContent;
+                    btn.classList.remove('bg-green-600', 'opacity-80');
+                    btn.classList.add('bg-primary-container');
+                    alert('Thank you for registering!');
+                }, 2000);
+            }, 1500);
+        });
+
+        // Interactive hover effects for form fields
+        const inputs = document.querySelectorAll('input, select');
+        inputs.forEach(input => {
+            input.addEventListener('focus', () => {
+                input.parentElement.classList.add('scale-[1.01]');
+                input.parentElement.style.transition = 'transform 0.2s ease';
+            });
+            input.addEventListener('blur', () => {
+                input.parentElement.classList.remove('scale-[1.01]');
+            });
+        });
+    </script>
+
+
+
+
+</body></html>

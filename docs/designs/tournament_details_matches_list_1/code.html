@@ -1,0 +1,336 @@
+<!DOCTYPE html><html class="light" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Tournament Details - Matches List</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "outline-variant": "#e2bfb0",
+                        "on-tertiary": "#ffffff",
+                        "primary-fixed-dim": "#ffb693",
+                        "secondary-container": "#fdd400",
+                        "on-primary-fixed": "#351000",
+                        "surface-variant": "#e2e2e5",
+                        "tertiary-fixed": "#d0e4ff",
+                        "inverse-on-surface": "#f0f0f3",
+                        "secondary-fixed-dim": "#e9c400",
+                        "on-tertiary-fixed-variant": "#00497b",
+                        "on-secondary-container": "#6f5c00",
+                        "surface-container-lowest": "#ffffff",
+                        "background": "#f9f9fc",
+                        "on-secondary-fixed": "#221b00",
+                        "on-error-container": "#93000a",
+                        "surface-tint": "#a04100",
+                        "surface-container-highest": "#e2e2e5",
+                        "surface-dim": "#dadadc",
+                        "on-primary-fixed-variant": "#7a3000",
+                        "on-tertiary-fixed": "#001d35",
+                        "on-secondary": "#ffffff",
+                        "inverse-surface": "#2f3133",
+                        "surface-container-low": "#f3f3f6",
+                        "on-primary-container": "#572000",
+                        "tertiary-container": "#059eff",
+                        "surface-container": "#eeeef0",
+                        "secondary": "#705d00",
+                        "on-background": "#1a1c1e",
+                        "outline": "#8e7164",
+                        "tertiary": "#0062a1",
+                        "on-secondary-fixed-variant": "#544600",
+                        "on-error": "#ffffff",
+                        "surface-container-high": "#e8e8ea",
+                        "on-primary": "#ffffff",
+                        "surface": "#f9f9fc",
+                        "primary-container": "#ff6b00",
+                        "on-tertiary-container": "#003357",
+                        "primary": "#a04100",
+                        "inverse-primary": "#ffb693",
+                        "error-container": "#ffdad6",
+                        "primary-fixed": "#ffdbcc",
+                        "secondary-fixed": "#ffe170",
+                        "surface-bright": "#f9f9fc",
+                        "error": "#ba1a1a",
+                        "on-surface-variant": "#5a4136",
+                        "tertiary-fixed-dim": "#9ccaff",
+                        "on-surface": "#1a1c1e"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "lg": "40px",
+                        "gutter": "24px",
+                        "max-width": "1280px",
+                        "margin-mobile": "16px",
+                        "base": "8px",
+                        "xl": "64px",
+                        "md": "24px",
+                        "xs": "4px",
+                        "sm": "12px",
+                        "margin-desktop": "auto"
+                    },
+                    "fontFamily": {
+                        "label-sm": ["Plus Jakarta Sans"],
+                        "headline-md": ["Plus Jakarta Sans"],
+                        "headline-xl": ["Plus Jakarta Sans"],
+                        "headline-lg": ["Plus Jakarta Sans"],
+                        "body-sm": ["Plus Jakarta Sans"],
+                        "label-md": ["Plus Jakarta Sans"],
+                        "headline-xl-mobile": ["Plus Jakarta Sans"],
+                        "body-lg": ["Plus Jakarta Sans"],
+                        "body-md": ["Plus Jakarta Sans"]
+                    },
+                    "fontSize": {
+                        "label-sm": ["12px", {"lineHeight": "14px", "letterSpacing": "0.04em", "fontWeight": "600"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                        "headline-xl": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                        "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "label-md": ["14px", {"lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "600"}],
+                        "headline-xl-mobile": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background min-h-screen font-body-md">
+<!-- Top App Bar -->
+<header class="w-full top-0 sticky z-50 glass-effect border-b border-outline-variant flex justify-between items-center px-margin-mobile md:px-margin-desktop py-base">
+<div class="flex items-center gap-sm">
+<button class="material-symbols-outlined text-primary hover:bg-surface-container-high p-xs rounded-full transition-colors active:scale-95 duration-150" data-icon="arrow_back">arrow_back</button>
+<h1 class="font-headline-md text-headline-md font-bold text-on-surface">Elite Pro Championship - 2024</h1>
+</div>
+<div class="h-10 w-10 rounded-full bg-primary-fixed border border-primary overflow-hidden">
+<img alt="User profile avatar" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCQQMXjD2kjyOVuWCsqinYVSBM9Ho5KRL2sBO4hZ6fqRV9PnTXjN5w7Eye_y2Q66_Q66DQ2SsZEYCyI6NV7CYAckXVQat7B2GX7xk3oNyxJe7wqbKleVjjVRw6Ue80JnVLCtbyHKcs0Ba5MFVsmY74lEfNT_2n6TTRBGIA-H6uMQwLepf34zL8D5ik0HGRDw9HYJUbopLCMIh_N7L7F2nvjODEKNWV-Q3dXlT7_TzgrH_0g2pZxp4nBTy06RXw1OAdzWCnpe4myhn46">
+</div>
+</header>
+<main class="max-w-max-width mx-auto px-margin-mobile md:px-margin-desktop pb-32 pt-md">
+<!-- Section Header -->
+<div class="mb-gutter flex justify-between items-end">
+<div>
+<h2 class="font-headline-lg text-headline-lg text-on-surface">Match Schedule</h2>
+<p class="font-body-md text-on-surface-variant">Round Robin Stage • June 2024</p>
+</div>
+<div class="hidden md:flex gap-xs">
+<button class="bg-primary-container text-on-primary px-md py-sm rounded-lg font-label-md flex items-center gap-xs hover:opacity-90 transition-all active:scale-95">
+<span class="material-symbols-outlined" data-icon="calendar_month">calendar_month</span>
+                    Full Calendar
+                </button>
+</div>
+</div>
+<!-- Matches Bento Grid / List -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-gutter">
+<!-- Featured Scheduled Match (Large Card) -->
+<div class="lg:col-span-2 bg-surface-container-lowest border border-outline-variant rounded-xl p-md shadow-sm relative overflow-hidden group hover:shadow-md transition-shadow">
+<div class="absolute top-0 right-0 p-sm">
+<span class="bg-secondary-container text-on-secondary-container text-label-sm font-label-sm px-sm py-xs rounded-full flex items-center gap-xs">
+<span class="material-symbols-outlined text-[14px]" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+                        MAIN EVENT
+                    </span>
+</div>
+<div class="flex flex-col h-full justify-between">
+<div class="flex items-center gap-xs text-primary mb-base">
+<span class="material-symbols-outlined text-[18px]" data-icon="event">event</span>
+<span class="font-label-md">25 June • 10:00 AM</span>
+</div>
+<div class="flex items-center justify-between py-md">
+<div class="flex flex-col items-center gap-sm flex-1">
+<div class="w-16 h-16 rounded-full bg-surface-container flex items-center justify-center p-sm border border-outline-variant">
+<span class="material-symbols-outlined text-4xl text-primary" data-icon="sports_kabaddi">sports_kabaddi</span>
+</div>
+<span class="font-headline-md text-center">Mumbai Mavericks</span>
+</div>
+<div class="px-md flex flex-col items-center">
+<span class="text-outline font-headline-xl opacity-30">VS</span>
+</div>
+<div class="flex flex-col items-center gap-sm flex-1">
+<div class="w-16 h-16 rounded-full bg-surface-container flex items-center justify-center p-sm border border-outline-variant">
+<span class="material-symbols-outlined text-4xl text-secondary" data-icon="shield">shield</span>
+</div>
+<span class="font-headline-md text-center">Delhi Dynamos</span>
+</div>
+</div>
+<div class="flex items-center justify-between border-t border-outline-variant pt-md mt-md">
+<div class="flex items-center gap-xs text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="location_on">location_on</span>
+<span class="font-body-sm">Surat District Arena, Sector 12</span>
+</div>
+<button class="bg-primary text-on-primary px-md py-sm rounded-lg font-label-md hover:bg-surface-tint transition-colors">
+                            Remind Me
+                        </button>
+</div>
+</div>
+</div>
+<!-- Normal Match Card -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-md shadow-sm flex flex-col gap-sm hover:border-primary-container transition-colors">
+<div class="flex justify-between items-start mb-xs">
+<span class="text-primary font-label-md">26 June • 02:30 PM</span>
+<span class="bg-surface-container text-on-surface-variant text-[10px] font-label-sm px-sm py-xs rounded-full uppercase tracking-wider">Scheduled</span>
+</div>
+<div class="flex flex-col gap-md">
+<div class="flex justify-between items-center bg-surface-container-low p-sm rounded-lg border border-outline-variant/30">
+<div class="flex items-center gap-sm">
+<div class="w-8 h-8 rounded-full bg-tertiary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-on-tertiary text-sm" data-icon="bolt">bolt</span>
+</div>
+<span class="font-label-md">Kolkata Knights</span>
+</div>
+<span class="material-symbols-outlined text-outline opacity-20" data-icon="horizontal_rule">horizontal_rule</span>
+</div>
+<div class="flex justify-between items-center bg-surface-container-low p-sm rounded-lg border border-outline-variant/30">
+<div class="flex items-center gap-sm">
+<div class="w-8 h-8 rounded-full bg-secondary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-on-secondary-container text-sm" data-icon="castle">castle</span>
+</div>
+<span class="font-label-md">Rajasthan Royals</span>
+</div>
+<span class="material-symbols-outlined text-outline opacity-20" data-icon="horizontal_rule">horizontal_rule</span>
+</div>
+</div>
+<div class="mt-auto pt-sm flex items-center gap-xs text-on-surface-variant">
+<span class="material-symbols-outlined text-sm" data-icon="stadium">stadium</span>
+<span class="font-body-sm text-xs truncate">Wankhede Heritage Ground</span>
+</div>
+</div>
+<!-- Another Match Card -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-md shadow-sm flex flex-col gap-sm hover:border-primary-container transition-colors">
+<div class="flex justify-between items-start mb-xs">
+<span class="text-primary font-label-md">26 June • 07:00 PM</span>
+<span class="bg-surface-container text-on-surface-variant text-[10px] font-label-sm px-sm py-xs rounded-full uppercase tracking-wider">Scheduled</span>
+</div>
+<div class="flex flex-col gap-md">
+<div class="flex justify-between items-center bg-surface-container-low p-sm rounded-lg border border-outline-variant/30">
+<div class="flex items-center gap-sm">
+<div class="w-8 h-8 rounded-full bg-primary-fixed flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-sm" data-icon="sunny">sunny</span>
+</div>
+<span class="font-label-md">Chennai Challengers</span>
+</div>
+<span class="material-symbols-outlined text-outline opacity-20" data-icon="horizontal_rule">horizontal_rule</span>
+</div>
+<div class="flex justify-between items-center bg-surface-container-low p-sm rounded-lg border border-outline-variant/30">
+<div class="flex items-center gap-sm">
+<div class="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center">
+<span class="material-symbols-outlined text-on-surface-variant text-sm" data-icon="water_drop">water_drop</span>
+</div>
+<span class="font-label-md">Punjab Pirates</span>
+</div>
+<span class="material-symbols-outlined text-outline opacity-20" data-icon="horizontal_rule">horizontal_rule</span>
+</div>
+</div>
+<div class="mt-auto pt-sm flex items-center gap-xs text-on-surface-variant">
+<span class="material-symbols-outlined text-sm" data-icon="stadium">stadium</span>
+<span class="font-body-sm text-xs truncate">Eden Gardens Arena</span>
+</div>
+</div>
+<!-- Image/Banner Decoration -->
+<div class="relative bg-inverse-surface rounded-xl overflow-hidden h-48 md:h-full lg:col-span-1 min-h-[200px]">
+<img class="w-full h-full object-cover opacity-60" data-alt="A high-octane wide-angle shot of a cricket stadium at night during a championship match, with intense floodlights casting a warm orange glow over the perfectly manicured green field and excited fans in the stands. The atmosphere is electric, optimistic, and professionally captured, utilizing a solar minimalism aesthetic with clean lines and high contrast. The vibrant orange sky of twilight blends into deep blues, mirroring the UI's primary palette." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDBdUyuJcMFWVXhuBr9MMyU2xkAopOM4fwPDMt5X-FAKct9a2fBPzOCJ_SkHbm1Cqy7u7qJYb3ie_NNxzlLllrKJcxyKxc8qHcnj7RoNw7p9s-QOaYAETRKcIFU4ahF2wfrIm6BgRLdUKkYOCtgQySECe2lRAdkIm9vvqbxcwZWlhGovJlYNk6PL48esY2fH_JJV6NPgDsIabTfwN4AgiF5otwBMqQdo36y3uoAVB348ldbv0Te3FTfYR_jR6g0ZjZVWtx-FvShe2xN">
+<div class="absolute inset-0 bg-gradient-to-t from-primary/80 to-transparent flex flex-col justify-end p-md">
+<h3 class="text-white font-headline-md leading-tight">Join the Fan Park in Surat!</h3>
+<p class="text-white/80 font-body-sm">Live screenings, food stalls, and music.</p>
+</div>
+</div>
+<!-- More Matches in List Style (Mobile Friendly) -->
+<div class="lg:col-span-2 space-y-sm">
+<!-- List Item Match -->
+<div class="flex items-center bg-surface-container-lowest border border-outline-variant rounded-lg p-sm hover:bg-surface transition-colors cursor-pointer group">
+<div class="w-12 text-center border-r border-outline-variant mr-md pr-md">
+<span class="block font-headline-md leading-none">27</span>
+<span class="text-[10px] uppercase font-label-sm text-on-surface-variant">JUN</span>
+</div>
+<div class="flex-1 flex items-center justify-between gap-md">
+<div class="flex items-center gap-sm flex-1">
+<span class="font-label-md truncate">Bangalore Blasters</span>
+<span class="text-outline text-xs">v</span>
+<span class="font-label-md truncate">Hyderabad Hawks</span>
+</div>
+<div class="hidden sm:flex items-center gap-xs text-on-surface-variant text-xs">
+<span class="material-symbols-outlined text-sm" data-icon="schedule">schedule</span>
+                            03:30 PM
+                        </div>
+<span class="material-symbols-outlined text-primary group-hover:translate-x-1 transition-transform" data-icon="chevron_right">chevron_right</span>
+</div>
+</div>
+<!-- List Item Match -->
+<div class="flex items-center bg-surface-container-lowest border border-outline-variant rounded-lg p-sm hover:bg-surface transition-colors cursor-pointer group">
+<div class="w-12 text-center border-r border-outline-variant mr-md pr-md">
+<span class="block font-headline-md leading-none">28</span>
+<span class="text-[10px] uppercase font-label-sm text-on-surface-variant">JUN</span>
+</div>
+<div class="flex-1 flex items-center justify-between gap-md">
+<div class="flex items-center gap-sm flex-1">
+<span class="font-label-md truncate">Mumbai Mavericks</span>
+<span class="text-outline text-xs">v</span>
+<span class="font-label-md truncate">Kolkata Knights</span>
+</div>
+<div class="hidden sm:flex items-center gap-xs text-on-surface-variant text-xs">
+<span class="material-symbols-outlined text-sm" data-icon="schedule">schedule</span>
+                            07:30 PM
+                        </div>
+<span class="material-symbols-outlined text-primary group-hover:translate-x-1 transition-transform" data-icon="chevron_right">chevron_right</span>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation Bar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-2 bg-surface-container-lowest dark:bg-inverse-surface shadow-[0px_-4px_20px_rgba(255,107,0,0.08)]">
+<!-- Matches (Active) -->
+<a class="flex flex-col items-center justify-center bg-secondary-container dark:bg-secondary text-on-secondary-container dark:text-on-secondary rounded-full px-4 py-1 active:scale-90 duration-200 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="sports_cricket" style="font-variation-settings: 'FILL' 1;">sports_cricket</span>
+<span class="font-label-sm text-label-sm">Matches</span>
+</a>
+<!-- Teams -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-surface-variant opacity-70 hover:bg-surface-container dark:hover:bg-surface-container-high transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="groups">groups</span>
+<span class="font-label-sm text-label-sm">Teams</span>
+</a>
+<!-- Points Table -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-surface-variant opacity-70 hover:bg-surface-container dark:hover:bg-surface-container-high transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="leaderboard">leaderboard</span>
+<span class="font-label-sm text-label-sm">Points Table</span>
+</a>
+<!-- Leaderboard -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-surface-variant opacity-70 hover:bg-surface-container dark:hover:bg-surface-container-high transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="emoji_events">emoji_events</span>
+<span class="font-label-sm text-label-sm">Leaderboard</span>
+</a>
+<!-- Stats -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-surface-variant opacity-70 hover:bg-surface-container dark:hover:bg-surface-container-high transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="query_stats">query_stats</span>
+<span class="font-label-sm text-label-sm">Stats</span>
+</a>
+</nav>
+<!-- Contextual FAB (Matches specific) -->
+<button class="fixed bottom-24 right-margin-mobile bg-primary text-on-primary w-14 h-14 rounded-full shadow-lg flex items-center justify-center active:scale-95 transition-transform hover:bg-surface-tint">
+<span class="material-symbols-outlined" data-icon="filter_list">filter_list</span>
+</button>
+</body></html>

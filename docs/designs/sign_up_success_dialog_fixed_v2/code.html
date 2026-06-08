@@ -1,0 +1,307 @@
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Sign Up | Hariprabodham Sports Club</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary": "#ff6b00",
+                        "on-primary": "#ffffff",
+                        "surface": "#f9f9fc",
+                        "on-surface": "#1a1c1e",
+                        "background": "#f9f9fc",
+                        "on-background": "#1a1c1e",
+                        "surface-variant": "#eeeef0",
+                        "on-surface-variant": "#5a4136",
+                        "outline": "#8e7164",
+                        "outline-variant": "#e2bfb0",
+                        "secondary-container": "#fdd400",
+                        "tertiary": "#0062a1",
+                        "tertiary-container": "#059eff",
+                        "error": "#ba1a1a"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "2xl": "1rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "lg": "40px",
+                        "md": "24px",
+                        "sm": "12px",
+                        "xs": "4px",
+                        "xl": "64px",
+                        "gutter": "24px",
+                        "margin-mobile": "16px",
+                        "margin-desktop": "auto",
+                        "max-width": "1280px",
+                        "base": "8px"
+                    },
+                    "fontFamily": {
+                        "body-md": ["Plus Jakarta Sans"],
+                        "label-sm": ["Plus Jakarta Sans"],
+                        "headline-lg": ["Plus Jakarta Sans"],
+                        "label-md": ["Plus Jakarta Sans"],
+                        "headline-xl": ["Plus Jakarta Sans"],
+                        "body-sm": ["Plus Jakarta Sans"],
+                        "body-lg": ["Plus Jakarta Sans"],
+                        "headline-xl-mobile": ["Plus Jakarta Sans"],
+                        "headline-md": ["Plus Jakarta Sans"]
+                    },
+                    "fontSize": {
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "label-sm": ["12px", {"lineHeight": "14px", "letterSpacing": "0.04em", "fontWeight": "600"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                        "label-md": ["14px", {"lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "600"}],
+                        "headline-xl": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                        "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                        "headline-xl-mobile": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "700"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            background-color: #f9f9fc;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        input:focus, select:focus {
+            outline: none !important;
+            box-shadow: 0px 4px 12px rgba(255, 107, 0, 0.08) !important;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #e2e2e9; border-radius: 10px; }
+        .soft-shadow-input { box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04); }
+    </style>
+</head>
+<body class="text-on-background bg-background">
+<!-- Top AppBar -->
+<header class="fixed top-0 w-full z-50 h-16 flex items-center px-4 bg-surface/80 backdrop-blur-md border-b border-surface-variant">
+<div class="flex items-center gap-4 w-full max-w-xl mx-auto">
+<button class="p-2 rounded-full hover:bg-black/5 active:scale-90 transition-all" onclick="window.history.back()">
+<span class="material-symbols-outlined text-primary">arrow_back</span>
+</button>
+<h1 class="font-headline-md text-headline-md font-bold text-on-surface">Welcome</h1>
+</div>
+</header>
+<main class="pt-20 pb-32 px-4 max-w-xl mx-auto">
+<!-- Visual Anchor/Hero -->
+<div class="mb-10 mt-5">
+<h2 class="font-headline-lg text-headline-lg text-primary font-extrabold mb-2">Join the Club</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Complete your profile to start your journey with Hariprabodham Sports Club.</p>
+</div>
+<form class="space-y-6" id="registrationForm">
+<!-- Basic Info Section -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface ml-1">First Name</label>
+<input class="w-full h-14 px-5 bg-white font-body-md text-on-surface placeholder:text-outline-variant transition-all rounded-lg soft-shadow-input border-none" placeholder="e.g. Rahul" required="" type="text"/>
+</div>
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface ml-1">Last Name</label>
+<input class="w-full h-14 px-5 bg-white font-body-md text-on-surface placeholder:text-outline-variant transition-all rounded-lg soft-shadow-input border-none" placeholder="e.g. Sharma" required="" type="text"/>
+</div>
+</div>
+<!-- Contact Section -->
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface ml-1">Mobile Number</label>
+<div class="relative">
+<span class="absolute left-5 top-1/2 -translate-y-1/2 material-symbols-outlined text-outline">call</span>
+<input class="w-full h-14 pl-14 pr-5 bg-white font-body-md text-on-surface placeholder:text-outline-variant transition-all rounded-lg soft-shadow-input border-none" placeholder="+91 00000 00000" required="" type="tel"/>
+</div>
+</div>
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface ml-1">Email</label>
+<div class="relative">
+<span class="absolute left-5 top-1/2 -translate-y-1/2 material-symbols-outlined text-outline">mail</span>
+<input class="w-full h-14 pl-14 pr-5 bg-white font-body-md text-on-surface placeholder:text-outline-variant transition-all rounded-lg soft-shadow-input border-none" placeholder="rahul@example.com" required="" type="email"/>
+</div>
+</div>
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface ml-1">Date of Birth</label>
+<div class="relative">
+<span class="absolute left-5 top-1/2 -translate-y-1/2 material-symbols-outlined text-outline">calendar_today</span>
+<input class="w-full h-14 pl-14 pr-5 bg-white font-body-md text-on-surface transition-all appearance-none rounded-lg soft-shadow-input border-none" required="" type="date"/>
+</div>
+</div>
+<!-- Location Section -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface ml-1">Province</label>
+<select class="w-full h-14 px-5 bg-white font-body-md text-on-surface appearance-none transition-all cursor-pointer rounded-lg soft-shadow-input border-none" required="">
+<option disabled="" selected="" value="">Select Province</option>
+<option>Gujarat</option>
+<option>Maharashtra</option>
+<option>Ontario</option>
+<option>New Jersey</option>
+</select>
+</div>
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface ml-1">Center</label>
+<select class="w-full h-14 px-5 bg-white font-body-md text-on-surface appearance-none transition-all cursor-pointer rounded-lg soft-shadow-input border-none" required="">
+<option disabled="" selected="" value="">Select Center</option>
+<option>Ahmedabad West</option>
+<option>Mumbai Central</option>
+<option>Toronto North</option>
+<option>Edison East</option>
+</select>
+</div>
+</div>
+<!-- Sports Info Section -->
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface ml-1">Jersey Name &amp; Number</label>
+<div class="relative">
+<span class="absolute left-5 top-1/2 -translate-y-1/2 material-symbols-outlined text-outline">apparel</span>
+<input class="w-full h-14 pl-14 pr-5 bg-white font-body-md text-on-surface placeholder:text-outline-variant transition-all rounded-lg soft-shadow-input border-none" placeholder="RAHUL 07" type="text"/>
+</div>
+</div>
+<!-- Security Section -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface ml-1">Password</label>
+<div class="relative">
+<span class="absolute left-5 top-1/2 -translate-y-1/2 material-symbols-outlined text-outline">lock</span>
+<input class="w-full h-14 pl-14 pr-5 bg-white font-body-md text-on-surface placeholder:text-outline-variant transition-all rounded-lg soft-shadow-input border-none" placeholder="••••••••" required="" type="password"/>
+</div>
+</div>
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface ml-1">Confirm Password</label>
+<div class="relative">
+<span class="absolute left-5 top-1/2 -translate-y-1/2 material-symbols-outlined text-outline">lock_reset</span>
+<input class="w-full h-14 pl-14 pr-5 bg-white font-body-md text-on-surface placeholder:text-outline-variant transition-all rounded-lg soft-shadow-input border-none" placeholder="••••••••" required="" type="password"/>
+</div>
+</div>
+</div>
+<!-- Emergency Contact Section -->
+<div class="p-5 bg-primary/5 space-y-4 border border-primary/10 mt-4 rounded-lg">
+<h3 class="font-label-md text-label-md text-primary uppercase tracking-wider flex items-center gap-2">
+<span class="material-symbols-outlined text-[20px]">emergency</span> Emergency Contact
+                </h3>
+<div class="space-y-4">
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface ml-1">Contact Name</label>
+<input class="w-full h-14 px-5 bg-white font-body-md text-on-surface placeholder:text-outline-variant transition-all rounded-lg soft-shadow-input border-none" placeholder="Relation / Name" required="" type="text"/>
+</div>
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface ml-1">Contact Number</label>
+<input class="w-full h-14 px-5 bg-white font-body-md text-on-surface placeholder:text-outline-variant transition-all rounded-lg soft-shadow-input border-none" placeholder="+91 00000 00000" required="" type="tel"/>
+</div>
+</div>
+</div>
+<!-- Legal Agreement -->
+<div class="flex items-start gap-3 py-2">
+<input class="mt-1 w-5 h-5 rounded border-outline-variant text-primary focus:ring-primary/20 cursor-pointer" id="terms" required="" type="checkbox"/>
+<label class="font-body-sm text-body-sm text-on-surface-variant" for="terms">
+                    I agree to the <a class="text-primary font-bold" href="#">Terms of Service</a> and <a class="text-primary font-bold" href="#">Privacy Policy</a> regarding my participation in sports activities.
+                </label>
+</div>
+</form>
+</main>
+<!-- Fixed Bottom Action Bar -->
+<div class="fixed bottom-0 left-0 right-0 p-4 bg-surface/80 backdrop-blur-xl z-50 border-t border-surface-variant">
+<div class="max-w-xl mx-auto">
+<button class="w-full bg-primary text-on-primary shadow-[0px_8px_24px_rgba(255,107,0,0.25)] border-none active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2 rounded-lg font-label-md text-label-md py-4" form="registrationForm" id="registerBtn" type="submit">
+                Register
+                <span class="material-symbols-outlined">how_to_reg</span>
+</button>
+</div>
+</div>
+<!-- Success Dialog -->
+<div class="fixed inset-0 z-[100] flex items-center justify-center px-4 hidden" id="successDialog">
+<div class="absolute inset-0 bg-on-background/40 backdrop-blur-sm" id="dialogOverlay"></div>
+<div class="bg-white rounded-lg shadow-2xl w-full max-w-sm p-8 text-center relative z-10 animate-in fade-in zoom-in duration-300">
+<div class="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
+<span class="material-symbols-outlined text-primary text-[48px]">check_circle</span>
+</div>
+<h3 class="font-headline-md text-on-surface mb-2">Congrats!</h3>
+<p class="font-body-md text-on-surface-variant mb-8">You are registered successfully.</p>
+<button class="w-full bg-primary text-on-primary rounded-lg font-label-md py-4 shadow-[0px_4px_12px_rgba(255,107,0,0.2)] active:scale-95 transition-transform" id="backToLoginBtn">
+                Back to Login
+            </button>
+</div>
+</div>
+<script>
+        // Micro-interaction for input fields
+        const inputs = document.querySelectorAll('input, select');
+        inputs.forEach(input => {
+            input.addEventListener('focus', () => {
+                const container = input.closest('.space-y-2');
+                if (container) {
+                    const label = container.querySelector('label');
+                    if (label) label.classList.add('text-primary');
+                }
+            });
+            input.addEventListener('blur', () => {
+                const container = input.closest('.space-y-2');
+                if (container) {
+                    const label = container.querySelector('label');
+                    if (label) label.classList.remove('text-primary');
+                }
+            });
+        });
+
+        const registrationForm = document.getElementById('registrationForm');
+        const successDialog = document.getElementById('successDialog');
+        const backToLoginBtn = document.getElementById('backToLoginBtn');
+        const registerBtn = document.getElementById('registerBtn');
+        const dialogOverlay = document.getElementById('dialogOverlay');
+
+        // Robust form submission to show dialog
+        registrationForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            // Basic validation check (browser handles most via required attribute)
+            if (!registrationForm.checkValidity()) {
+                return;
+            }
+
+            const originalContent = registerBtn.innerHTML;
+            
+            // Show loading state
+            registerBtn.innerHTML = '<span class="material-symbols-outlined animate-spin">progress_activity</span> Processing...';
+            registerBtn.classList.add('opacity-80');
+            registerBtn.disabled = true;
+            
+            // Simulate API call
+            setTimeout(() => {
+                registerBtn.innerHTML = originalContent;
+                registerBtn.classList.remove('opacity-80');
+                registerBtn.disabled = false;
+                
+                // Show the success dialog
+                successDialog.classList.remove('hidden');
+                document.body.style.overflow = 'hidden'; // Prevent background scrolling
+            }, 1000);
+        });
+
+        // Close dialog and return to login
+        const closeDialog = () => {
+            successDialog.classList.add('hidden');
+            document.body.style.overflow = '';
+            // In a real app, this would be: window.location.href = 'login.html';
+            console.log("Redirecting to login...");
+        };
+
+        backToLoginBtn.addEventListener('click', closeDialog);
+        
+        // Optional: Close on overlay click if desired, though for success feedback 
+        // usually forced interaction with the button is preferred
+        // dialogOverlay.addEventListener('click', closeDialog);
+    </script>
+</body></html>

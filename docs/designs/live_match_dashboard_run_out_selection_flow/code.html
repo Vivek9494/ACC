@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en" style=""><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport"/>
+<title>CricketLive - Match Center</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "tertiary": "#0062a1",
+                      "surface-dim": "#dadadc",
+                      "error": "#ba1a1a",
+                      "secondary": "#705d00",
+                      "on-background": "#1a1c1e",
+                      "secondary-fixed-dim": "#e9c400",
+                      "on-error": "#ffffff",
+                      "on-primary-container": "#572000",
+                      "inverse-primary": "#ffb693",
+                      "on-secondary-container": "#6f5c00",
+                      "tertiary-fixed": "#d0e4ff",
+                      "secondary-fixed": "#ffe170",
+                      "on-surface-variant": "#5a4136",
+                      "outline": "#8e7164",
+                      "on-secondary-fixed": "#221b00",
+                      "surface-container": "#eeeef0",
+                      "primary-container": "#ff6b00",
+                      "background": "#f9f9fc",
+                      "on-secondary-fixed-variant": "#544600",
+                      "on-tertiary": "#ffffff",
+                      "inverse-on-surface": "#f0f0f3",
+                      "surface-container-lowest": "#ffffff",
+                      "on-tertiary-fixed": "#001d35",
+                      "inverse-surface": "#2f3133",
+                      "error-container": "#ffdad6",
+                      "surface-container-low": "#f3f3f6",
+                      "on-primary-fixed-variant": "#7a3000",
+                      "primary-fixed": "#ffdbcc",
+                      "on-primary-fixed": "#351000",
+                      "tertiary-container": "#059eff",
+                      "tertiary-fixed-dim": "#9ccaff",
+                      "surface-container-highest": "#e2e2e5",
+                      "surface": "#f9f9fc",
+                      "on-tertiary-container": "#003357",
+                      "on-tertiary-fixed-variant": "#00497b",
+                      "on-error-container": "#93000a",
+                      "surface-variant": "#e2e2e5",
+                      "primary": "#a04100",
+                      "secondary-container": "#fdd400",
+                      "surface-tint": "#a04100",
+                      "on-secondary": "#ffffff",
+                      "surface-container-high": "#e8e8ea",
+                      "on-primary": "#ffffff",
+                      "primary-fixed-dim": "#ffb693",
+                      "outline-variant": "#e2bfb0",
+                      "on-surface": "#1a1c1e",
+                      "surface-bright": "#f9f9fc"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "margin-desktop": "auto",
+                      "xs": "4px",
+                      "lg": "40px",
+                      "md": "24px",
+                      "base": "8px",
+                      "max-width": "1280px",
+                      "gutter": "24px",
+                      "margin-mobile": "16px",
+                      "xl": "64px",
+                      "sm": "12px"
+              },
+              "fontFamily": {
+                      "label-sm": ["Plus Jakarta Sans"],
+                      "body-md": ["Plus Jakarta Sans"],
+                      "body-sm": ["Plus Jakarta Sans"],
+                      "headline-md": ["Plus Jakarta Sans"],
+                      "headline-xl-mobile": ["Plus Jakarta Sans"],
+                      "headline-lg": ["Plus Jakarta Sans"],
+                      "body-lg": ["Plus Jakarta Sans"],
+                      "headline-xl": ["Plus Jakarta Sans"],
+                      "label-md": ["Plus Jakarta Sans"]
+              },
+              "fontSize": {
+                      "label-sm": ["12px", {"lineHeight": "14px", "letterSpacing": "0.04em", "fontWeight": "600"}],
+                      "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                      "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                      "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                      "headline-xl-mobile": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                      "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                      "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                      "headline-xl": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                      "label-md": ["14px", {"lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "600"}]
+              }
+            },
+          },
+        }
+      </script>
+<style>
+        body {
+            background-color: #F4F4F8;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .active-dot {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .4; }
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="text-on-surface">
+<!-- TopAppBar -->
+<header class="w-full top-0 sticky z-50 bg-surface flex items-center justify-between px-margin-mobile h-16 w-full">
+<div class="flex items-center gap-base">
+<span class="material-symbols-outlined text-primary" data-icon="sports_cricket">sports_cricket</span>
+<h1 class="font-headline-md text-headline-md font-bold text-primary">CricketLive</h1>
+</div>
+<div class="flex items-center gap-4">
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container-low transition-colors duration-200">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="notifications">notifications</span>
+</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container-low transition-colors duration-200">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="search">search</span>
+</button>
+</div>
+</header>
+<main class="max-w-max-width mx-auto px-margin-mobile md:px-gutter py-base pb-32">
+<!-- Live Match Score Card -->
+<section class="mt-base">
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-md shadow-[0px_4px_20px_rgba(255,107,0,0.08)] relative overflow-hidden">
+<!-- Live Indicator -->
+<div class="absolute top-4 right-4 flex items-center gap-xs bg-error-container px-2 py-1 rounded-full">
+<span class="w-2 h-2 rounded-full bg-error active-dot"></span>
+<span class="font-label-sm text-label-sm text-on-error-container">LIVE</span>
+</div>
+<div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-md">
+<div>
+<p class="font-label-md text-label-md text-on-surface-variant mb-xs">ICC World Cup • Final</p>
+<div class="flex items-center gap-sm">
+<h2 class="font-headline-lg text-headline-lg font-bold">145/3</h2>
+<span class="font-body-lg text-body-lg text-on-surface-variant">(18.4 Overs)</span>
+</div>
+<p class="font-body-md text-body-md mt-xs">CRR: <span class="font-bold">7.77</span> • Target: <span class="font-bold">214</span></p>
+</div>
+<div class="bg-primary-container text-on-primary-container p-md rounded-xl w-full md:w-auto">
+<div class="flex flex-col gap-xs">
+<span class="font-label-sm text-label-sm opacity-80">PROJECTED SCORE</span>
+<div class="flex justify-between items-end gap-md">
+<div>
+<p class="font-body-sm text-body-sm">at current</p>
+<p class="font-headline-md text-headline-md leading-none">194</p>
+</div>
+<div class="border-l border-on-primary-container/20 pl-md">
+<p class="font-body-sm text-body-sm">at 10 RPO</p>
+<p class="font-headline-md text-headline-md leading-none">231</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Last Over Visualization -->
+</div>
+</section>
+<!-- Player Stats Bento Grid -->
+<section class="mt-md grid grid-cols-1 md:grid-cols-3 gap-md">
+<!-- Batsmen -->
+<div class="md:col-span-2 bg-surface-container-lowest border border-outline-variant rounded-xl p-md">
+<div class="flex items-center justify-between mb-md">
+<h3 class="font-headline-md text-headline-md">Batting</h3>
+<span class="material-symbols-outlined text-primary" data-icon="edit_note">edit_note</span>
+</div>
+<div class="space-y-md">
+<div class="flex items-center justify-between p-sm bg-surface-container-low rounded-lg border-l-4 border-primary">
+<div class="flex items-center gap-md">
+<img class="w-10 h-10 rounded-full bg-primary-fixed" data-alt="Close up professional portrait of a famous cricketer Virat Kohli looking focused and determined, with soft studio lighting and a clean minimalist background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCbQSY48vdhQyws32YE0kvAy_CfvGAPFhFqsCwvzMxmeoILnayNvkEB5bi1-zXEXvqsPqVZcN4uqMVdtl0_xPl00x20tfNFRXh5LAb8W537D2a8dC8r0y-j96YM_JG3ShV9SzeOgpBqBUVgv0C-ZRL7lEWyHjFp7tmDHVEOD5at-MKZPcwpwXYs5cGsRtyKzyI-dMR6AwlxOCix4UQyXVHNbA3TcNppK3bhYcA7caozJ8RP6dDg-JYpM4tHh-lhf6FUVEQ4UnJ0nBUF"/>
+<div>
+<p class="font-label-md text-label-md">V. Kohli*</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">SR: 132.4</p>
+</div>
+</div>
+<div class="text-right">
+<p class="font-headline-md text-headline-md">68<span class="text-body-sm">(45)</span></p>
+<p class="font-label-sm text-label-sm text-on-surface-variant">4s: 6 | 6s: 2</p>
+</div>
+</div>
+<div class="flex items-center justify-between p-sm hover:bg-surface-container-low transition-colors rounded-lg">
+<div class="flex items-center gap-md">
+<img class="w-10 h-10 rounded-full bg-surface-container-highest" data-alt="Close up professional portrait of a professional cricket batsman KL Rahul in a relaxed pose, featuring soft directional lighting and a modern aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCgrzE3m6YXAvd8Ub3SdsFiWaC5ovvvbJ_ySMsmZDeSv1HxGurotvsBHd96fp3P9ZZDcKAlSeQ7jvKEZ7vmaJ_xtg38eW70BTUBwD9y1Gi5_g4o2teCWQEF1JhBRznFsGgBIFGgU1TphNJwYIWuQdeDblztebDOO2FeFO6wlItT4NVSP4ISvobDF3yYDup0ujsSdYxJJs8IrVssKrozZZzY1sUnk9jL2BtT1K3A175t4uhxZm0HYM4fHnHgoz-08U33PV-pL8JUKmVA"/>
+<div>
+<p class="font-label-md text-label-md">KL Rahul</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">SR: 110.2</p>
+</div>
+</div>
+<div class="text-right">
+<p class="font-headline-md text-headline-md">24<span class="text-body-sm">(21)</span></p>
+<p class="font-label-sm text-label-sm text-on-surface-variant">4s: 2 | 6s: 0</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Bowler -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-md"><div class="flex items-center justify-between mb-md">
+<h3 class="font-headline-md text-headline-md">Bowling</h3>
+<span class="material-symbols-outlined text-secondary cursor-pointer" data-icon="sports_handball" onclick="document.getElementById('bowlers-list-dialog').classList.remove('hidden')">sports_handball</span>
+</div>
+<div class="overflow-x-auto -mx-md px-md">
+<table class="w-full text-left border-collapse min-w-[600px]">
+<thead>
+<tr class="border-b border-outline-variant">
+<th class="py-2 font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Bowler</th>
+<th class="py-2 px-2 font-label-sm text-label-sm text-on-surface-variant text-center">O</th>
+<th class="py-2 px-2 font-label-sm text-label-sm text-on-surface-variant text-center">M</th>
+<th class="py-2 px-2 font-label-sm text-label-sm text-on-surface-variant text-center">R</th>
+<th class="py-2 px-2 font-label-sm text-label-sm text-on-surface-variant text-center font-bold text-primary">W</th>
+<th class="py-2 px-2 font-label-sm text-label-sm text-on-surface-variant text-center">Econ</th>
+<th class="py-2 px-2 font-label-sm text-label-sm text-on-surface-variant text-center">0s</th>
+<th class="py-2 px-2 font-label-sm text-label-sm text-on-surface-variant text-center">Wd</th>
+<th class="py-2 px-2 font-label-sm text-label-sm text-on-surface-variant text-center">NB</th>
+<th class="py-2 px-2 font-label-sm text-label-sm text-on-surface-variant text-center">4s</th>
+<th class="py-2 px-2 font-label-sm text-label-sm text-on-surface-variant text-center">6s</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant/30">
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="py-3 font-label-md text-label-md">P. Cummins*</td>
+<td class="py-3 px-2 text-center font-body-sm">3.4</td>
+<td class="py-3 px-2 text-center font-body-sm">0</td>
+<td class="py-3 px-2 text-center font-body-sm">28</td>
+<td class="py-3 px-2 text-center font-bold text-primary">1</td>
+<td class="py-3 px-2 text-center font-body-sm">7.6</td>
+<td class="py-3 px-2 text-center font-body-sm">8</td>
+<td class="py-3 px-2 text-center font-body-sm">1</td>
+<td class="py-3 px-2 text-center font-body-sm">0</td>
+<td class="py-3 px-2 text-center font-body-sm">3</td>
+<td class="py-3 px-2 text-center font-body-sm">1</td>
+</tr>
+</tbody>
+</table>
+</div></div>
+</section>
+<!-- Quick Scoring Grid -->
+<section class="mt-md">
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-md shadow-sm">
+<div class="flex items-center gap-sm mb-md">
+<span class="material-symbols-outlined text-primary" data-icon="keyboard">keyboard</span>
+<h3 class="font-label-md text-label-md uppercase tracking-widest text-on-surface-variant">Live Scoring Assistant</h3>
+</div>
+<div class="mb-md pb-md border-b border-outline-variant">
+<p class="font-label-sm text-label-sm text-on-surface-variant mb-sm uppercase tracking-wider">Recent Balls</p>
+<div class="flex gap-sm">
+<div class="w-8 h-8 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center font-bold text-body-sm">4</div>
+<div class="w-8 h-8 rounded-full bg-surface-variant text-on-surface-variant flex items-center justify-center font-bold text-body-sm">.</div>
+<div class="w-8 h-8 rounded-full bg-surface-variant text-on-surface-variant flex items-center justify-center font-bold text-body-sm">1</div>
+<div class="w-8 h-8 rounded-full bg-surface-container-high text-on-surface flex items-center justify-center font-bold text-body-sm">wd</div>
+<div class="w-8 h-8 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold text-body-sm">6</div>
+<div class="w-8 h-8 rounded-full bg-error text-white flex items-center justify-center font-bold text-body-sm">W</div>
+</div>
+</div><div class="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-9 gap-sm">
+<button class="aspect-square flex flex-col items-center justify-center rounded-xl bg-surface-container-high hover:bg-surface-container-highest transition-colors font-bold text-headline-md" style="transform: scale(1);">0</button>
+<button class="aspect-square flex flex-col items-center justify-center rounded-xl bg-surface-container-high hover:bg-surface-container-highest transition-colors font-bold text-headline-md" style="transform: scale(1);">1</button>
+<button class="aspect-square flex flex-col items-center justify-center rounded-xl bg-surface-container-high hover:bg-surface-container-highest transition-colors font-bold text-headline-md" style="transform: scale(1);">2</button>
+<button class="aspect-square flex flex-col items-center justify-center rounded-xl bg-surface-container-high hover:bg-surface-container-highest transition-colors font-bold text-headline-md" style="transform: scale(1);">3</button>
+<button class="aspect-square flex flex-col items-center justify-center rounded-xl bg-secondary-container hover:bg-secondary transition-colors font-bold text-headline-md text-on-secondary-container" style="transform: scale(1);">4</button>
+<button class="aspect-square flex flex-col items-center justify-center rounded-xl bg-primary-container hover:bg-primary transition-colors font-bold text-headline-md text-on-primary-container" style="transform: scale(1);">6</button>
+<button class="aspect-square flex flex-col items-center justify-center rounded-xl bg-error-container hover:bg-error hover:text-white transition-colors font-bold text-headline-md text-on-error-container" onclick="document.getElementById('dismissal-type-dialog').classList.remove('hidden')" style="transform: scale(1);">W</button>
+<button class="aspect-square flex flex-col items-center justify-center rounded-xl bg-surface-container-high hover:bg-surface-container-highest transition-colors font-bold text-headline-md" style="transform: scale(1);">Wd</button>
+<button class="aspect-square flex flex-col items-center justify-center rounded-xl bg-surface-container-high hover:bg-surface-container-highest transition-colors font-bold text-headline-md" style="transform: scale(1);">Nb</button>
+<button class="aspect-square flex flex-col items-center justify-center rounded-xl bg-surface-container-high hover:bg-surface-container-highest transition-colors font-bold text-headline-md" style="transform: scale(1);">Lb</button><button class="aspect-square flex flex-col items-center justify-center rounded-xl bg-surface-container-high hover:bg-surface-container-highest transition-colors font-bold text-headline-md" style="transform: scale(1);">B</button><button class="aspect-square flex flex-col items-center justify-center rounded-xl bg-surface-container-high hover:bg-surface-container-highest transition-colors font-bold text-label-sm" onclick="document.getElementById('bonus-runs-dialog').classList.remove('hidden')" style="transform: scale(1);"><span class="material-symbols-outlined mb-xs" data-icon="add_circle">add_circle</span>Bonus</button><button class="aspect-square flex flex-col items-center justify-center rounded-xl bg-surface-container-high hover:bg-surface-container-highest transition-colors font-bold text-label-sm" onclick="document.getElementById('more-options-dialog').classList.remove('hidden')" style="transform: scale(1);"><span class="material-symbols-outlined mb-xs" data-icon="more_horiz">more_horiz</span>More</button><button class="aspect-square flex flex-col items-center justify-center rounded-xl bg-surface-container-high hover:bg-surface-container-highest transition-colors font-bold text-label-sm" style="transform: scale(1);"><span class="material-symbols-outlined mb-xs" data-icon="undo">undo</span>Undo</button></div>
+</div>
+</section>
+<!-- Commentary/Asymmetric Content -->
+<section class="mt-md grid grid-cols-1 md:grid-cols-4 gap-md">
+<!-- Ad/Mini Stats -->
+<div class="hidden md:block space-y-md">
+<div class="bg-on-background text-white p-md rounded-xl relative overflow-hidden h-64 flex flex-col justify-end">
+<img class="absolute inset-0 w-full h-full object-cover opacity-30 mix-blend-overlay" data-alt="Cinematic background of a cricket stadium filled with fans under bright night lights, with a blurred ticket graphic overlaid, creating an energetic and premium sports event atmosphere." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD2qNKs6Hpa-h5bMBCwEVWkyVvdIOcbpfT1ZD7Y-W6BDkxlGM1J17JJhh4E22MAEFm0PrToS9zw7RaYegXIQqzgkcpq_-L4N3buvPjrLRtgg4sWuX5Aszr8kI3WJN8wBNFD-roCF8JhW64ot9umupl84O4Bo5OgP5FL6poHslkycRj7E7729kSr91Dou5L6WZqxTKfZRBhWExkp8OhB925b8UsYwNUBghtFQ2AzPHRBdPUW2TWEHNO4_1OKocYKRPE_Rh3-gwL750TQ"/>
+<p class="relative font-headline-md text-headline-md leading-tight">Get Final Tickets Now!</p>
+<button class="relative mt-md bg-primary-container text-on-primary-container px-md py-sm rounded-full font-bold self-start">Book Seat</button>
+</div>
+<div class="bg-surface-container border border-outline-variant p-md rounded-xl">
+<p class="font-label-md text-label-md mb-sm">Partnership</p>
+<p class="font-headline-md text-headline-md">42 <span class="text-body-sm font-normal">(31 balls)</span></p>
+<div class="w-full h-2 bg-surface-container-highest rounded-full mt-sm flex overflow-hidden">
+<div class="h-full bg-primary" style="width: 70%;"></div>
+<div class="h-full bg-secondary-container" style="width: 30%;"></div>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-2 pb-safe bg-surface shadow-[0px_-4px_20px_rgba(255,107,0,0.08)] rounded-t-xl">
+<a class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-full px-4 py-1 scale-95 active:scale-90 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="live_tv" data-weight="fill">live_tv</span>
+<span class="font-label-sm text-label-sm">Live</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-colors duration-150 px-4 py-1" href="#">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+<span class="font-label-sm text-label-sm">Scorecard</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-colors duration-150 px-4 py-1" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-label-sm text-label-sm">Setup</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-colors duration-150 px-4 py-1" href="#">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-label-sm text-label-sm">Profile</span>
+</a>
+</nav>
+<script>
+        // Micro-interactions for scoring buttons
+        document.querySelectorAll('button').forEach(button => {
+            button.addEventListener('mousedown', () => {
+                button.style.transform = 'scale(0.95)';
+            });
+            button.addEventListener('mouseup', () => {
+                button.style.transform = 'scale(1)';
+            });
+            button.addEventListener('mouseleave', () => {
+                button.style.transform = 'scale(1)';
+            });
+        });
+
+        // Simple ticker update simulation
+        setInterval(() => {
+            const liveText = document.querySelector('.active-dot');
+            if (liveText) {
+                // Flash effect is handled by CSS animation 'pulse'
+            }
+        }, 2000);
+    </script>
+<div class="hidden fixed inset-0 z-[100] flex items-center justify-center p-margin-mobile" id="more-options-dialog">
+<div class="absolute inset-0 bg-on-background/40 backdrop-blur-sm" onclick="document.getElementById('more-options-dialog').classList.add('hidden')"></div>
+<div class="relative w-full max-w-sm bg-surface-container-lowest rounded-xl shadow-xl overflow-hidden">
+<div class="p-md border-b border-outline-variant flex justify-between items-center">
+<h3 class="font-headline-md text-headline-md">More Options</h3>
+<button class="material-symbols-outlined text-on-surface-variant" onclick="document.getElementById('more-options-dialog').classList.add('hidden')">close</button>
+</div>
+<div class="p-md flex flex-col gap-sm">
+<button class="w-full py-3 px-md rounded-lg bg-surface-container-high hover:bg-surface-container-highest transition-colors text-left font-label-md flex items-center gap-sm">
+<span class="material-symbols-outlined text-primary">stop_circle</span> End Inning
+      </button>
+<button class="w-full py-3 px-md rounded-lg bg-surface-container-high hover:bg-surface-container-highest transition-colors text-left font-label-md flex items-center gap-sm">
+<span class="material-symbols-outlined text-primary">gavel</span> Penalty
+      </button>
+<button class="w-full py-3 px-md rounded-lg bg-surface-container-high hover:bg-surface-container-highest transition-colors text-left font-label-md flex items-center gap-sm">
+<span class="material-symbols-outlined text-primary">medical_services</span> Retired Hurt
+      </button>
+<button class="w-full py-3 px-md rounded-lg bg-surface-container-high hover:bg-surface-container-highest transition-colors text-left font-label-md flex items-center gap-sm">
+<span class="material-symbols-outlined text-primary">edit_square</span> Change Target
+      </button>
+<button class="w-full py-3 px-md rounded-lg bg-surface-container-high hover:bg-surface-container-highest transition-colors text-left font-label-md flex items-center gap-sm">
+<span class="material-symbols-outlined text-primary">history</span> Change Overs
+      </button>
+<button class="w-full mt-md py-3 px-md rounded-lg border border-outline text-on-surface font-bold hover:bg-surface-container-low transition-colors" onclick="document.getElementById('more-options-dialog').classList.add('hidden')">
+        Cancel
+      </button>
+</div>
+</div>
+</div><div class="fixed inset-0 z-[100] flex items-center justify-center p-margin-mobile hidden" id="bonus-runs-dialog"><div class="absolute inset-0 bg-on-background/40 backdrop-blur-sm" onclick="document.getElementById('bonus-runs-dialog').classList.add('hidden')"></div><div class="relative w-full max-w-sm bg-surface-container-lowest rounded-xl shadow-xl overflow-hidden"><div class="p-md border-b border-outline-variant flex justify-between items-center"><h3 class="font-headline-md text-headline-md">Bonus Runs</h3><div class="grid grid-cols-3 gap-sm mb-md mt-[10px]"><button class="aspect-square flex items-center justify-center rounded-xl bg-surface-container-high hover:bg-primary hover:text-white transition-colors font-bold text-headline-md">-1</button><button class="aspect-square flex items-center justify-center rounded-xl bg-surface-container-high hover:bg-primary hover:text-white transition-colors font-bold text-headline-md">-2</button><button class="aspect-square flex items-center justify-center rounded-xl bg-surface-container-high hover:bg-primary hover:text-white transition-colors font-bold text-headline-md">-3</button><button class="aspect-square flex items-center justify-center rounded-xl bg-surface-container-high hover:bg-primary hover:text-white transition-colors font-bold text-headline-md">-4</button><button class="aspect-square flex items-center justify-center rounded-xl bg-surface-container-high hover:bg-primary hover:text-white transition-colors font-bold text-headline-md">-5</button><button class="aspect-square flex items-center justify-center rounded-xl bg-surface-container-high hover:bg-primary hover:text-white transition-colors font-bold text-headline-md">-6</button></div><button class="material-symbols-outlined text-on-surface-variant" onclick="document.getElementById('bonus-runs-dialog').classList.add('hidden')">close</button></div><div class="p-md"><div class="mb-md pb-md border-b border-outline-variant"><p class="font-label-sm text-label-sm text-on-surface-variant mb-sm uppercase tracking-wider">Recent Balls</p><div class="flex gap-sm"><div class="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center font-bold text-on-surface">1</div><div class="w-10 h-10 rounded-full bg-secondary-container flex items-center justify-center font-bold text-on-secondary-container">4</div><div class="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center font-bold text-on-surface">0</div><div class="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold">6</div><div class="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center font-bold text-on-surface">1</div><div class="w-10 h-10 rounded-full border-2 border-primary flex items-center justify-center font-bold text-primary active-dot">...</div></div></div><div class="grid grid-cols-3 gap-sm mb-md"><button class="aspect-square flex items-center justify-center rounded-xl bg-surface-container-high hover:bg-primary hover:text-white transition-colors font-bold text-headline-md">+1</button><button class="aspect-square flex items-center justify-center rounded-xl bg-surface-container-high hover:bg-primary hover:text-white transition-colors font-bold text-headline-md">+2</button><button class="aspect-square flex items-center justify-center rounded-xl bg-surface-container-high hover:bg-primary hover:text-white transition-colors font-bold text-headline-md">+3</button><button class="aspect-square flex items-center justify-center rounded-xl bg-surface-container-high hover:bg-primary hover:text-white transition-colors font-bold text-headline-md">+4</button><button class="aspect-square flex items-center justify-center rounded-xl bg-surface-container-high hover:bg-primary hover:text-white transition-colors font-bold text-headline-md">+5</button><button class="aspect-square flex items-center justify-center rounded-xl bg-surface-container-high hover:bg-primary hover:text-white transition-colors font-bold text-headline-md">+6</button></div><div class="grid grid-cols-3 gap-sm mb-md mt-[10px]"><button class="aspect-square flex items-center justify-center rounded-xl bg-surface-container-high hover:bg-primary hover:text-white transition-colors font-bold text-headline-md">-1</button><button class="aspect-square flex items-center justify-center rounded-xl bg-surface-container-high hover:bg-primary hover:text-white transition-colors font-bold text-headline-md">-2</button><button class="aspect-square flex items-center justify-center rounded-xl bg-surface-container-high hover:bg-primary hover:text-white transition-colors font-bold text-headline-md">-3</button><button class="aspect-square flex items-center justify-center rounded-xl bg-surface-container-high hover:bg-primary hover:text-white transition-colors font-bold text-headline-md">-4</button><button class="aspect-square flex items-center justify-center rounded-xl bg-surface-container-high hover:bg-primary hover:text-white transition-colors font-bold text-headline-md">-5</button><button class="aspect-square flex items-center justify-center rounded-xl bg-surface-container-high hover:bg-primary hover:text-white transition-colors font-bold text-headline-md">-6</button></div><button class="w-full py-3 px-md rounded-lg border border-outline text-on-surface font-bold hover:bg-surface-container-low transition-colors" onclick="document.getElementById('bonus-runs-dialog').classList.add('hidden')">Cancel</button></div></div></div>
+<div class="hidden fixed inset-0 z-[100] flex items-center justify-center p-margin-mobile" id="bowlers-list-dialog"><div class="absolute inset-0 bg-on-background/40 backdrop-blur-sm" onclick="document.getElementById('bowlers-list-dialog').classList.add('hidden')"></div><div class="relative w-full max-w-2xl bg-surface-container-lowest rounded-xl shadow-xl overflow-hidden"><div class="p-md border-b border-outline-variant flex justify-between items-center"><h3 class="font-headline-md text-headline-md">Bowlers List</h3><button class="material-symbols-outlined text-on-surface-variant" onclick="document.getElementById('bowlers-list-dialog').classList.add('hidden')">close</button></div><div class="p-md overflow-x-auto"><table class="w-full text-left border-collapse min-w-[600px]"><thead><tr class="border-b border-outline-variant"><th class="py-2 font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Bowler</th><th class="py-2 px-2 font-label-sm text-label-sm text-on-surface-variant text-center">O</th><th class="py-2 px-2 font-label-sm text-label-sm text-on-surface-variant text-center">M</th><th class="py-2 px-2 font-label-sm text-label-sm text-on-surface-variant text-center">R</th><th class="py-2 px-2 font-label-sm text-label-sm text-on-surface-variant text-center font-bold text-primary">W</th><th class="py-2 px-2 font-label-sm text-label-sm text-on-surface-variant text-center">Econ</th><th class="py-2 px-2 font-label-sm text-label-sm text-on-surface-variant text-center">0s</th><th class="py-2 px-2 font-label-sm text-label-sm text-on-surface-variant text-center">4s</th><th class="py-2 px-2 font-label-sm text-label-sm text-on-surface-variant text-center">6s</th><th class="py-2 px-2 font-label-sm text-label-sm text-on-surface-variant text-center">Wd</th><th class="py-2 px-2 font-label-sm text-label-sm text-on-surface-variant text-center">NB</th></tr></thead><tbody class="divide-y divide-outline-variant/30"><tr class="hover:bg-surface-container-low transition-colors"><td class="py-3 font-label-md text-label-md">P. Cummins*</td><td class="py-3 px-2 text-center font-body-sm">3.4</td><td class="py-3 px-2 text-center font-body-sm">0</td><td class="py-3 px-2 text-center font-body-sm">28</td><td class="py-3 px-2 text-center font-bold text-primary">1</td><td class="py-3 px-2 text-center font-body-sm">7.6</td><td class="py-3 px-2 text-center font-body-sm">8</td><td class="py-3 px-2 text-center font-body-sm">3</td><td class="py-3 px-2 text-center font-body-sm">1</td><td class="py-3 px-2 text-center font-body-sm">1</td><td class="py-3 px-2 text-center font-body-sm">0</td></tr><tr class="hover:bg-surface-container-low transition-colors"><td class="py-3 font-label-md text-label-md">M. Starc</td><td class="py-3 px-2 text-center font-body-sm">4.0</td><td class="py-3 px-2 text-center font-body-sm">1</td><td class="py-3 px-2 text-center font-body-sm">32</td><td class="py-3 px-2 text-center font-bold text-primary">2</td><td class="py-3 px-2 text-center font-body-sm">8.0</td><td class="py-3 px-2 text-center font-body-sm">12</td><td class="py-3 px-2 text-center font-body-sm">4</td><td class="py-3 px-2 text-center font-body-sm">2</td><td class="py-3 px-2 text-center font-body-sm">0</td><td class="py-3 px-2 text-center font-body-sm">0</td></tr><tr class="hover:bg-surface-container-low transition-colors"><td class="py-3 font-label-md text-label-md">J. Hazlewood</td><td class="py-3 px-2 text-center font-body-sm">4.0</td><td class="py-3 px-2 text-center font-body-sm">0</td><td class="py-3 px-2 text-center font-body-sm">24</td><td class="py-3 px-2 text-center font-bold text-primary">0</td><td class="py-3 px-2 text-center font-body-sm">6.0</td><td class="py-3 px-2 text-center font-body-sm">14</td><td class="py-3 px-2 text-center font-body-sm">2</td><td class="py-3 px-2 text-center font-body-sm">0</td><td class="py-3 px-2 text-center font-body-sm">2</td><td class="py-3 px-2 text-center font-body-sm">1</td></tr></tbody></table></div><div class="p-md border-t border-outline-variant"><button class="w-full py-3 px-md rounded-lg border border-outline text-on-surface font-bold hover:bg-surface-container-low transition-colors" onclick="document.getElementById('bowlers-list-dialog').classList.add('hidden')">Close</button></div></div></div><div class="hidden fixed inset-0 z-[100] flex items-center justify-center p-margin-mobile" id="dismissal-type-dialog"><div class="absolute inset-0 bg-on-background/40 backdrop-blur-sm" onclick="document.getElementById('dismissal-type-dialog').classList.add('hidden')"></div><div class="relative w-full max-w-sm bg-surface-container-lowest rounded-xl shadow-xl overflow-hidden"><div class="p-md border-b border-outline-variant flex justify-between items-center"><h3 class="font-headline-md text-headline-md">Select Dismissal Type</h3><button class="material-symbols-outlined text-on-surface-variant" onclick="document.getElementById('dismissal-type-dialog').classList.add('hidden')">close</button></div><div class="p-md"><div class="grid grid-cols-3 gap-sm mb-md"><button class="py-3 px-2 rounded-lg border border-outline-variant bg-surface-container-low hover:bg-primary-container hover:text-on-primary-container transition-colors text-center font-label-md text-on-surface">Bowled</button><button class="py-3 px-2 rounded-lg border border-outline-variant bg-surface-container-low hover:bg-primary-container hover:text-on-primary-container transition-colors text-center font-label-md text-on-surface">Caught</button><button class="py-3 px-2 rounded-lg border border-outline-variant bg-surface-container-low hover:bg-primary-container hover:text-on-primary-container transition-colors text-center font-label-md text-on-surface">Stumped</button><button class="py-3 px-2 rounded-lg border border-outline-variant bg-surface-container-low hover:bg-primary-container hover:text-on-primary-container transition-colors text-center font-label-md text-on-surface">LBW</button><button class="py-3 px-2 rounded-lg border border-outline-variant bg-surface-container-low hover:bg-primary-container hover:text-on-primary-container transition-colors text-center font-label-md text-on-surface" onclick="document.getElementById('dismissal-type-dialog').classList.add('hidden'); document.getElementById('run-out-details-dialog').classList.remove('hidden')">Run Out</button><button class="py-3 px-2 rounded-lg border border-outline-variant bg-surface-container-low hover:bg-primary-container hover:text-on-primary-container transition-colors text-center font-label-md text-on-surface">Hit Wicket</button><button class="py-3 px-2 rounded-lg border border-outline-variant bg-surface-container-low hover:bg-primary-container hover:text-on-primary-container transition-colors text-center font-label-md text-on-surface">Retired</button><button class="py-3 px-2 rounded-lg border border-outline-variant bg-surface-container-low hover:bg-primary-container hover:text-on-primary-container transition-colors text-center font-label-md text-on-surface">Mankad</button></div><button class="w-full py-3 px-md rounded-lg border border-outline text-on-surface font-bold hover:bg-surface-container-low transition-colors" onclick="document.getElementById('dismissal-type-dialog').classList.add('hidden')">Cancel</button></div></div></div><div class="hidden fixed inset-0 z-[110] flex items-center justify-center p-margin-mobile" id="run-out-details-dialog"><div class="absolute inset-0 bg-on-background/40 backdrop-blur-sm" onclick="document.getElementById('run-out-details-dialog').classList.add('hidden')"></div><div class="relative w-full max-w-sm bg-surface-container-lowest rounded-xl shadow-xl overflow-hidden flex flex-col max-h-[90vh]"><div class="p-md border-b border-outline-variant flex justify-between items-center shrink-0"><h3 class="font-headline-md text-headline-md">Run Out Details</h3><button class="material-symbols-outlined text-on-surface-variant" onclick="document.getElementById('run-out-details-dialog').classList.add('hidden')">close</button></div><div class="p-md space-y-md overflow-y-auto"><div><p class="font-label-sm text-label-sm text-on-surface-variant mb-sm uppercase tracking-wider">Select the Batsman</p><div class="grid grid-cols-2 gap-sm"><button class="py-2 px-4 rounded-lg border border-primary bg-primary-container text-on-primary-container font-label-md">V. Kohli</button><button class="py-2 px-4 rounded-lg border border-outline-variant bg-surface-container-low hover:bg-surface-container-high transition-colors font-label-md">KL Rahul</button></div></div><div><p class="font-label-sm text-label-sm text-on-surface-variant mb-sm uppercase tracking-wider">Select Fielder</p><div class="space-y-sm"><select class="w-full p-2 rounded-lg border border-outline-variant bg-surface-container-low font-body-sm"><option>Fielder 1 (e.g., P. Cummins)</option><option>J. Hazlewood</option><option>M. Starc</option></select><select class="w-full p-2 rounded-lg border border-outline-variant bg-surface-container-low font-body-sm"><option>Fielder 2 (Optional)</option><option>P. Cummins</option><option>J. Hazlewood</option><option>M. Starc</option></select></div></div><div><p class="font-label-sm text-label-sm text-on-surface-variant mb-sm uppercase tracking-wider">Did Batsman complete any runs?</p><div class="flex flex-wrap gap-xs"><button class="w-10 h-10 rounded-lg border border-outline-variant bg-surface-container-low flex items-center justify-center font-bold">1</button><button class="w-10 h-10 rounded-lg border border-outline-variant bg-surface-container-low flex items-center justify-center font-bold">2</button><button class="w-10 h-10 rounded-lg border border-outline-variant bg-surface-container-low flex items-center justify-center font-bold">3</button><button class="w-10 h-10 rounded-lg border border-outline-variant bg-surface-container-low flex items-center justify-center font-bold">4</button><button class="w-10 h-10 rounded-lg border border-outline-variant bg-surface-container-low flex items-center justify-center font-bold">5</button><button class="w-10 h-10 rounded-lg border border-outline-variant bg-surface-container-low flex items-center justify-center font-bold">6</button></div></div><div><p class="font-label-sm text-label-sm text-on-surface-variant mb-sm uppercase tracking-wider">Extras (Optional)</p><div class="flex flex-wrap gap-sm mb-sm"><button class="px-4 py-2 rounded-lg border border-outline-variant bg-surface-container-low font-label-md">Byes</button><button class="px-4 py-2 rounded-lg border border-outline-variant bg-surface-container-low font-label-md">Leg Byes</button></div><div class="flex flex-wrap gap-sm"><button class="px-4 py-2 rounded-lg border border-outline-variant bg-surface-container-low font-label-md">No Ball</button><button class="px-4 py-2 rounded-lg border border-outline-variant bg-surface-container-low font-label-md">Wide</button></div></div></div><div class="p-md border-t border-outline-variant flex gap-sm shrink-0"><button class="flex-1 py-3 rounded-lg border border-outline text-on-surface font-bold hover:bg-surface-container-low transition-colors" onclick="document.getElementById('run-out-details-dialog').classList.add('hidden'); document.getElementById('dismissal-type-dialog').classList.remove('hidden')">Back</button><button class="flex-1 py-3 rounded-lg bg-primary text-white font-bold hover:bg-primary/90 transition-colors" onclick="document.getElementById('run-out-details-dialog').classList.add('hidden')">Confirm</button></div></div></div></body></html>

@@ -1,0 +1,44 @@
+import { type AuthUser, UserRole } from '@acc/types';
+import { Body, Controller, HttpCode, HttpStatus, Post, UseGuards } from '@nestjs/common';
+
+import { CurrentUser } from './current-user.decorator';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
+import { UnlockAccountDto } from './dto/unlock-account.dto';
+import { JwtAuthGuard } from './jwt-auth.guard';
+import { PasswordResetService } from './password-reset.service';
+import { Roles } from './roles.decorator';
+import { RolesGuard } from './roles.guard';
+
+@Controller('auth')
+export class PasswordResetController {
+  constructor(private readonly passwordReset: PasswordResetService) {}
+
+  /** Request an OTP. Always 200 so callers can't probe which numbers exist. */
+  @Post('forgot-password')
+  @HttpCode(HttpStatus.OK)
+  async forgotPassword(@Body() dto: ForgotPasswordDto): Promise<{ success: true }> {
+    await this.passwordReset.requestOtp(dto.mobileNumber);
+    return { success: true };
+  }
+
+  @Post('reset-password')
+  @HttpCode(HttpStatus.OK)
+  async resetPassword(@Body() dto: ResetPasswordDto): Promise<{ success: true }> {
+    await this.passwordReset.resetPassword(dto);
+    return { success: true };
+  }
+
+  /** Admin/Captain/Club Manager: clear a reset lock and reset OTP counters. */
+  @Post('unlock')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.Admin, UserRole.Captain, UserRole.ClubManager)
+  async unlock(
+    @CurrentUser() actor: AuthUser,
+    @Body() dto: UnlockAccountDto,
+  ): Promise<{ success: true }> {
+    await this.passwordReset.unlock(actor, dto.userId);
+    return { success: true };
+  }
+}

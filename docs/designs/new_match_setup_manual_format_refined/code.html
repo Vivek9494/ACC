@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>New Match Setup - CricSolar</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-tertiary-fixed": "#001d35",
+                        "on-secondary-container": "#ffffff",
+                        "surface-bright": "#F4F4F8",
+                        "background": "#F4F4F8",
+                        "primary": "#FF724C",
+                        "on-secondary": "#ffffff",
+                        "inverse-on-surface": "#f0f0f3",
+                        "primary-fixed": "#ffdbcc",
+                        "on-tertiary-fixed-variant": "#00497b",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-container-low": "#f3f3f6",
+                        "on-primary-container": "#ffffff",
+                        "outline-variant": "#e2bfb0",
+                        "inverse-primary": "#ffb693",
+                        "primary-fixed-dim": "#ffb693",
+                        "secondary-fixed-dim": "#e9c400",
+                        "error-container": "#ffdad6",
+                        "surface-variant": "#e2e2e5",
+                        "on-error-container": "#93000a",
+                        "error": "#ba1a1a",
+                        "tertiary-container": "#059eff",
+                        "secondary-fixed": "#fdbf50",
+                        "secondary": "#ff6b00",
+                        "primary-container": "#FF724C",
+                        "on-tertiary-container": "#003357",
+                        "on-error": "#ffffff",
+                        "tertiary-fixed-dim": "#9ccaff",
+                        "on-tertiary": "#ffffff",
+                        "inverse-surface": "#2A2C41",
+                        "surface-dim": "#dadadc",
+                        "on-surface": "#2A2C41",
+                        "on-secondary-fixed-variant": "#544600",
+                        "on-primary-fixed-variant": "#7a3000",
+                        "on-primary": "#ffffff",
+                        "surface-container": "#eeeef0",
+                        "tertiary-fixed": "#d0e4ff",
+                        "on-surface-variant": "#5a4136",
+                        "secondary-container": "#ff6b00",
+                        "surface": "#F4F4F8",
+                        "on-primary-fixed": "#351000",
+                        "on-background": "#2A2C41",
+                        "tertiary": "#0062a1",
+                        "surface-tint": "#FF724C",
+                        "outline": "#8e7164",
+                        "surface-container-high": "#e8e8ea",
+                        "on-secondary-fixed": "#221b00",
+                        "surface-container-highest": "#e2e2e5"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "1rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "xs": "4px",
+                        "xl": "64px",
+                        "sm": "12px",
+                        "md": "24px",
+                        "lg": "40px",
+                        "gutter": "24px",
+                        "margin-desktop": "auto",
+                        "base": "8px",
+                        "max-width": "1280px",
+                        "margin-mobile": "16px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Plus Jakarta Sans"],
+                        "headline-md": ["Plus Jakarta Sans"],
+                        "label-sm": ["Plus Jakarta Sans"],
+                        "headline-lg": ["Plus Jakarta Sans"],
+                        "headline-xl": ["Plus Jakarta Sans"],
+                        "headline-xl-mobile": ["Plus Jakarta Sans"],
+                        "label-md": ["Plus Jakarta Sans"],
+                        "body-sm": ["Plus Jakarta Sans"],
+                        "body-md": ["Plus Jakarta Sans"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                        "label-sm": ["12px", {"lineHeight": "14px", "letterSpacing": "0.04em", "fontWeight": "600"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                        "headline-xl": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                        "headline-xl-mobile": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                        "label-md": ["14px", {"lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "600"}],
+                        "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            background-color: #F4F4F8;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            color: #2A2C41;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-input {
+            background: #ffffff;
+            border: 1px solid #e2bfb0;
+            box-shadow: 0px 4px 12px rgba(42, 44, 65, 0.03);
+            transition: all 0.3s ease;
+        }
+        .glass-input:focus {
+            box-shadow: 0px 8px 20px rgba(255, 107, 0, 0.1);
+            border-color: #ff6b00;
+        }
+        input[type="date"]::-webkit-calendar-picker-indicator,
+        input[type="time"]::-webkit-calendar-picker-indicator {
+            background: transparent;
+            bottom: 0;
+            color: transparent;
+            cursor: pointer;
+            height: auto;
+            left: 0;
+            position: absolute;
+            right: 0;
+            top: 0;
+            width: auto;
+        }
+    </style>
+</head>
+<body class="text-on-surface antialiased overflow-x-hidden min-h-screen">
+<!-- Standardized Top App Bar -->
+<header class="fixed top-0 w-full z-50 bg-transparent">
+<div class="flex justify-between items-center px-gutter h-16 w-full max-w-max-width mx-auto">
+<div class="flex items-center">
+<button class="flex items-center justify-center w-10 h-10 rounded-full hover:bg-surface-container-high/50 transition-colors active:scale-95 duration-200">
+<span class="material-symbols-outlined text-[24px] text-primary">arrow_back</span>
+</button>
+</div>
+<div class="flex items-center">
+<div class="w-10 h-10 rounded-full overflow-hidden border-2 border-white shadow-sm shrink-0 active:scale-95 duration-200 cursor-pointer">
+<img alt="User Profile" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBqshoOVkacx1Kli2mKPHjEUeMOLbvAZQsdREHFelLcS-QqUSMEs7TJDvU6JP1LDAvEcDYikHOW8FVq3CplG-5vbGn1naejPF9kALM-aCf1FA4HOuhYFh5eYM11ycqjKkFeQq2UOP67_PgsfRMd-q6-CLANXFyI3rfkuskS6Oyy244iNE8SVpJKLZHEDfob1GCHBgMKqNxmK4oYG6ite-i3aakJgoThb4nQlS_AixM32HFug2p8jPfdQH4hzo1hIsfVWcSoWXn8ExHo"/>
+</div>
+</div>
+</div>
+</header>
+<main class="pt-20 pb-32 px-4 md:px-gutter max-w-2xl mx-auto">
+<div class="mb-8">
+<h2 class="font-headline-md text-headline-md text-on-surface">New Match Setup</h2>
+<p class="font-body-sm text-on-surface-variant">Configure the manual match details below to proceed.</p>
+</div>
+<form class="space-y-6" id="manualMatchForm">
+<!-- Team A & B Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-md">
+<div class="space-y-xs">
+<label class="font-label-md text-label-md text-on-surface-variant ml-1">Team A</label>
+<div class="relative">
+<select class="w-full glass-input p-4 text-body-md outline-none appearance-none rounded-lg border border-[#e2bfb0]">
+<option selected="">Select Team A</option>
+<option>Solar Strikers</option>
+<option>Lunar Legends</option>
+</select>
+<span class="material-symbols-outlined absolute right-4 top-4 text-on-surface-variant pointer-events-none">expand_more</span>
+</div>
+</div>
+<div class="space-y-xs">
+<label class="font-label-md text-label-md text-on-surface-variant ml-1">Team B</label>
+<div class="relative">
+<select class="w-full glass-input p-4 text-body-md outline-none appearance-none rounded-lg border border-[#e2bfb0]">
+<option selected="">Select Team B</option>
+<option>Eclipse Eleven</option>
+<option>Nova Knights</option>
+</select>
+<span class="material-symbols-outlined absolute right-4 top-4 text-on-surface-variant pointer-events-none">expand_more</span>
+</div>
+</div>
+</div>
+<!-- Ground Location -->
+<div class="space-y-xs">
+<label class="font-label-md text-label-md text-on-surface-variant ml-1">Ground Location</label>
+<div class="relative">
+<input class="w-full glass-input p-4 pl-12 text-body-md outline-none rounded-lg border border-[#e2bfb0]" placeholder="Enter stadium name or city" type="text"/>
+<span class="material-symbols-outlined absolute left-4 top-4 text-on-surface-variant">location_on</span>
+</div>
+</div>
+<!-- Date & Time Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-md">
+<div class="space-y-xs">
+<label class="font-label-md text-label-md text-on-surface-variant ml-1">Match Date</label>
+<div class="relative">
+<input class="w-full glass-input p-4 pl-12 text-body-md outline-none rounded-lg border border-[#e2bfb0]" type="date"/>
+<span class="material-symbols-outlined absolute left-4 top-4 text-on-surface-variant">calendar_today</span>
+</div>
+</div>
+<div class="space-y-xs">
+<label class="font-label-md text-label-md text-on-surface-variant ml-1">Match Time</label>
+<div class="relative">
+<input class="w-full glass-input p-4 pl-12 text-body-md outline-none rounded-lg border border-[#e2bfb0]" type="time"/>
+<span class="material-symbols-outlined absolute left-4 top-4 text-on-surface-variant">schedule</span>
+</div>
+</div>
+</div>
+<!-- Overs & Overs per Bowler Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-md">
+<div class="space-y-xs">
+<label class="font-label-md text-label-md text-on-surface-variant ml-1">Overs</label>
+<div class="relative">
+<select class="w-full glass-input p-4 text-body-md outline-none appearance-none rounded-lg border border-[#e2bfb0]">
+<option>20 Overs (T20)</option>
+<option>50 Overs (ODI)</option>
+<option>Custom</option>
+</select>
+<span class="material-symbols-outlined absolute right-4 top-4 text-on-surface-variant pointer-events-none">expand_more</span>
+</div>
+</div>
+<div class="space-y-xs">
+<label class="font-label-md text-label-md text-on-surface-variant ml-1">Overs per Bowler</label>
+<div class="relative">
+<select class="w-full glass-input p-4 text-body-md outline-none appearance-none rounded-lg border border-[#e2bfb0]">
+<option>4 Overs</option>
+<option>10 Overs</option>
+<option>Custom</option>
+</select>
+<span class="material-symbols-outlined absolute right-4 top-4 text-on-surface-variant pointer-events-none">expand_more</span>
+</div>
+</div>
+</div>
+<!-- Officials -->
+<div class="space-y-4">
+<label class="font-label-md text-label-md text-on-surface-variant ml-1">Match Officials</label>
+<div class="relative">
+<select class="w-full glass-input p-4 text-body-md outline-none appearance-none rounded-lg border border-[#e2bfb0]">
+<option selected="">Select Umpire</option>
+<option>John Smith</option>
+<option>David Miller</option>
+</select>
+<span class="material-symbols-outlined absolute right-4 top-4 text-on-surface-variant pointer-events-none">expand_more</span>
+</div>
+<div class="relative">
+<select class="w-full glass-input p-4 text-body-md outline-none appearance-none rounded-lg border border-[#e2bfb0]">
+<option selected="">Select Second Umpire</option>
+<option>Robert Brown</option>
+<option>Michael Clark</option>
+</select>
+<span class="material-symbols-outlined absolute right-4 top-4 text-on-surface-variant pointer-events-none">expand_more</span>
+</div>
+<div class="relative">
+<select class="w-full glass-input p-4 text-body-md outline-none appearance-none rounded-lg border border-[#e2bfb0]">
+<option selected="">Select Scorer</option>
+<option>Current User</option>
+<option>Other</option>
+</select>
+<span class="material-symbols-outlined absolute right-4 top-4 text-on-surface-variant pointer-events-none">expand_more</span>
+</div>
+</div>
+<!-- Action Button -->
+<div class="pt-4">
+<button class="w-full h-14 bg-primary text-on-primary font-bold text-body-lg shadow-[0px_4px_20px_rgba(255,114,76,0.25)] hover:brightness-110 transition-all active:scale-[0.98] duration-150 flex items-center justify-center gap-base rounded-lg" type="submit">
+<span>Schedule Match</span>
+<span class="material-symbols-outlined">event_available</span>
+</button>
+</div>
+</form>
+</main>
+<!-- Standardized Bottom Navigation Bar -->
+<nav class="fixed bottom-0 w-full z-50 bg-surface-container-lowest border-t border-outline-variant/20 px-2 pb-safe shadow-[0px_-8px_30px_rgba(42,44,65,0.06)]">
+<div class="flex justify-around items-center h-20 px-4 w-full">
+<a class="flex flex-col items-center justify-center text-on-surface/60 hover:text-primary active:scale-90 transition-all duration-150 rounded-lg" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-sm text-label-sm">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-primary text-white px-6 py-2 active:scale-90 duration-150 rounded-lg" href="#">
+<span class="material-symbols-outlined">sports_cricket</span>
+<span class="font-label-sm text-label-sm">Matches</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface/60 hover:text-primary active:scale-90 transition-all duration-150" href="#">
+<span class="material-symbols-outlined">leaderboard</span>
+<span class="font-label-sm text-label-sm">Stats</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface/60 hover:text-primary active:scale-90 transition-all duration-150" href="#">
+<span class="material-symbols-outlined">forum</span>
+<span class="font-label-sm text-label-sm">Messages</span>
+</a>
+</div>
+</nav>
+</body></html>

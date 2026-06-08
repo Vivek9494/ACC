@@ -1,0 +1,370 @@
+<!DOCTYPE html><html class="light" lang="en" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>New Match Setup - Cricket Manager</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-low": "#f3f3f6",
+                        "error": "#ba1a1a",
+                        "on-tertiary-fixed": "#001d35",
+                        "primary-fixed-dim": "#ffb693",
+                        "on-secondary-fixed-variant": "#544600",
+                        "on-primary-fixed": "#351000",
+                        "on-tertiary": "#ffffff",
+                        "on-tertiary-container": "#003357",
+                        "on-secondary-fixed": "#221b00",
+                        "on-primary-fixed-variant": "#7a3000",
+                        "surface-dim": "#dadadc",
+                        "on-surface": "#1a1c1e",
+                        "surface-container-high": "#e8e8ea",
+                        "secondary": "#705d00",
+                        "inverse-surface": "#2f3133",
+                        "tertiary-container": "#059eff",
+                        "on-primary-container": "#572000",
+                        "inverse-primary": "#ffb693",
+                        "tertiary-fixed": "#d0e4ff",
+                        "secondary-container": "#fdd400",
+                        "primary-fixed": "#ffdbcc",
+                        "on-tertiary-fixed-variant": "#00497b",
+                        "secondary-fixed": "#ffe170",
+                        "inverse-on-surface": "#f0f0f3",
+                        "on-error": "#ffffff",
+                        "surface-bright": "#f9f9fc",
+                        "tertiary": "#0062a1",
+                        "on-background": "#1a1c1e",
+                        "surface": "#f9f9fc",
+                        "error-container": "#ffdad6",
+                        "secondary-fixed-dim": "#e9c400",
+                        "surface-tint": "#a04100",
+                        "surface-container-highest": "#e2e2e5",
+                        "on-secondary": "#ffffff",
+                        "surface-container": "#eeeef0",
+                        "primary": "#a04100",
+                        "tertiary-fixed-dim": "#9ccaff",
+                        "outline-variant": "#e2bfb0",
+                        "outline": "#8e7164",
+                        "on-error-container": "#93000a",
+                        "on-primary": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "lg": "40px",
+                        "margin-mobile": "16px",
+                        "md": "24px",
+                        "xl": "64px",
+                        "sm": "12px",
+                        "max-width": "1280px",
+                        "xs": "4px",
+                        "margin-desktop": "auto",
+                        "gutter": "24px",
+                        "base": "8px"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Plus Jakarta Sans"],
+                        "body-md": ["Plus Jakarta Sans"],
+                        "label-md": ["Plus Jakarta Sans"],
+                        "headline-xl": ["Plus Jakarta Sans"],
+                        "label-sm": ["Plus Jakarta Sans"],
+                        "body-sm": ["Plus Jakarta Sans"],
+                        "headline-xl-mobile": ["Plus Jakarta Sans"],
+                        "headline-lg": ["Plus Jakarta Sans"],
+                        "body-lg": ["Plus Jakarta Sans"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "label-md": ["14px", {"lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "600"}],
+                        "headline-xl": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                        "label-sm": ["12px", {"lineHeight": "14px", "letterSpacing": "0.04em", "fontWeight": "600"}],
+                        "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "headline-xl-mobile": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            background-color: #F4F4F8;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            color: #1a1c1e;
+        }
+        .input-focus-ring:focus {
+            border-color: #ff6b00;
+            box-shadow: 0 0 0 2px rgba(255, 107, 0, 0.2);
+            outline: none;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        /* Custom date/time picker styling appearance */
+        input[type="date"]::-webkit-calendar-picker-indicator,
+        input[type="time"]::-webkit-calendar-picker-indicator {
+            background: transparent;
+            bottom: 0;
+            color: transparent;
+            cursor: pointer;
+            height: auto;
+            left: 0;
+            position: absolute;
+            right: 0;
+            top: 0;
+            width: auto;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center">
+<!-- Top AppBar (from Shared Components) -->
+<header class="w-full top-0 sticky z-50 bg-surface border-b border-outline-variant flex items-center justify-between px-margin-mobile h-16">
+<div class="flex items-center gap-4">
+<button class="active:scale-95 transition-transform p-2 hover:bg-surface-container-high rounded-full">
+<span class="material-symbols-outlined text-primary">arrow_back</span>
+</button>
+<h1 class="font-headline-md text-headline-md text-primary font-bold">New Match Setup</h1>
+</div>
+<div class="flex items-center">
+<button class="active:scale-95 transition-transform p-2 hover:bg-surface-container-high rounded-full">
+<span class="material-symbols-outlined text-primary">account_circle</span>
+</button>
+</div>
+</header>
+<!-- Content Canvas -->
+<main class="w-full max-w-max-width px-margin-mobile md:px-lg py-8 pb-32">
+<div class="grid grid-cols-1 md:grid-cols-12 gap-gutter">
+<!-- Form Card -->
+<div class="md:col-span-8 p-6 md:p-8">
+<h2 class="font-headline-md text-headline-md text-on-surface mb-8">Tournament: Summer League Round Robin</h2>
+<form class="space-y-6" id="matchSetupForm">
+<!-- Teams Selection -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="relative">
+<label class="block font-label-md text-label-md text-on-surface-variant ml-1 mb-1">Team A</label>
+<div class="relative">
+<select class="w-full glass-input p-4 text-body-md outline-none rounded-lg border border-[#e2bfb0]" id="teamA">
+<option disabled="" selected="" value="">Select Team A</option>
+<option value="vanguards">Velocity Vanguards</option>
+<option value="strikers">Solar Strikers</option>
+<option value="titans">Thunder Titans</option>
+<option value="ravens">Royal Ravens</option>
+</select>
+<span class="material-symbols-outlined absolute right-4 top-4 text-on-surface-variant pointer-events-none">expand_more</span>
+</div>
+</div>
+<div class="relative">
+<label class="block font-label-md text-label-md text-on-surface-variant ml-1 mb-1">Team B</label>
+<div class="relative">
+<select class="w-full glass-input p-4 text-body-md outline-none rounded-lg border border-[#e2bfb0]" id="teamB">
+<option disabled="" selected="" value="">Select Team B</option>
+<option value="vanguards">Velocity Vanguards</option>
+<option value="strikers">Solar Strikers</option>
+<option value="titans">Thunder Titans</option>
+<option value="ravens">Royal Ravens</option>
+</select>
+<span class="material-symbols-outlined absolute right-4 top-4 text-on-surface-variant pointer-events-none">expand_more</span>
+</div>
+</div>
+</div>
+<!-- Ground Location -->
+<div class="relative">
+<label class="block font-label-md text-label-md text-on-surface-variant ml-1 mb-1">Ground Location</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-4 top-4 text-primary">location_on</span>
+<input class="w-full glass-input p-4 pl-12 text-body-md outline-none rounded-lg border border-[#e2bfb0]" placeholder="Enter stadium or ground name" type="text">
+</div>
+</div>
+<!-- Match Specs -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="relative">
+<label class="block font-label-md text-label-md text-on-surface-variant ml-1 mb-1">Overs</label>
+<div class="relative">
+<select class="w-full glass-input p-4 text-body-md outline-none rounded-lg border border-[#e2bfb0]">
+<option value="20">20 Overs (T20)</option>
+<option value="50">50 Overs (ODI)</option>
+<option value="10">10 Overs (T10)</option>
+<option value="test">Test Match</option>
+</select>
+<span class="material-symbols-outlined absolute right-4 top-4 text-on-surface-variant pointer-events-none">expand_more</span>
+</div>
+</div>
+<div class="relative">
+<label class="block font-label-md text-label-md text-on-surface-variant ml-1 mb-1">Overs per bowler</label>
+<div class="relative">
+<select class="w-full glass-input p-4 text-body-md outline-none rounded-lg border border-[#e2bfb0]">
+<option value="4">Max 4 Overs</option>
+<option value="10">Max 10 Overs</option>
+<option value="2">Max 2 Overs</option>
+<option value="unlimited">Unlimited</option>
+</select>
+<span class="material-symbols-outlined absolute right-4 top-4 text-on-surface-variant pointer-events-none">expand_more</span>
+</div>
+</div>
+</div>
+<!-- Date & Time -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="relative">
+<label class="block font-label-md text-label-md text-on-surface-variant ml-1 mb-1">Match Date</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-4 top-4 text-primary">calendar_today</span>
+<input class="w-full glass-input p-4 pl-12 text-body-md outline-none rounded-lg border border-[#e2bfb0]" type="date">
+</div>
+</div>
+<div class="relative">
+<label class="block font-label-md text-label-md text-on-surface-variant ml-1 mb-1">Match Time</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-4 top-4 text-primary">schedule</span>
+<input class="w-full glass-input p-4 pl-12 text-body-md outline-none rounded-lg border border-[#e2bfb0]" type="time">
+</div>
+</div>
+</div>
+<!-- Officials -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<div class="relative">
+<label class="block font-label-md text-label-md text-on-surface-variant ml-1 mb-1">Umpire</label>
+<div class="relative">
+<select class="w-full glass-input p-4 text-body-md outline-none rounded-lg border border-[#e2bfb0]">
+<option disabled="" selected="" value="">Select</option>
+<option value="u1">Michael Gough</option>
+<option value="u2">Richard Illingworth</option>
+<option value="u3">Nitin Menon</option>
+</select>
+<span class="material-symbols-outlined absolute right-4 top-4 text-on-surface-variant pointer-events-none">expand_more</span>
+</div>
+</div>
+<div class="relative">
+<label class="block font-label-md text-label-md text-on-surface-variant ml-1 mb-1">Second Umpire</label>
+<div class="relative">
+<select class="w-full glass-input p-4 text-body-md outline-none rounded-lg border border-[#e2bfb0]">
+<option disabled="" selected="" value="">Select</option>
+<option value="u1">Michael Gough</option>
+<option value="u2">Richard Illingworth</option>
+<option value="u3">Nitin Menon</option>
+</select>
+<span class="material-symbols-outlined absolute right-4 top-4 text-on-surface-variant pointer-events-none">expand_more</span>
+</div>
+</div>
+<div class="relative">
+<label class="block font-label-md text-label-md text-on-surface-variant ml-1 mb-1">Scorer</label>
+<div class="relative">
+<select class="w-full glass-input p-4 text-body-md outline-none rounded-lg border border-[#e2bfb0]">
+<option disabled="" selected="" value="">Select</option>
+<option value="s1">Alice Johnson</option>
+<option value="s2">Bob Smith</option>
+</select>
+<span class="material-symbols-outlined absolute right-4 top-4 text-on-surface-variant pointer-events-none">expand_more</span>
+</div>
+</div>
+</div>
+</form>
+</div>
+<!-- Context Info Sidebar -->
+<div class="md:col-span-4 space-y-6">
+<div class="bg-white border border-[#E2E2E9] rounded-xl p-6 shadow-[0px_4px_20px_rgba(255,107,0,0.04)] overflow-hidden relative">
+<div class="relative z-10">
+<h3 class="font-headline-md text-[20px] text-on-surface mb-2">Round Robin Format</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-4">You are scheduling Match #14 of the tournament. Each team will play against every other team once.</p>
+<div class="bg-secondary-container/20 rounded-lg p-4 border border-secondary-container/40">
+<div class="flex items-center gap-2 mb-2 text-on-secondary-container">
+<span class="material-symbols-outlined text-[20px]">info</span>
+<span class="font-label-md">Current Standings</span>
+</div>
+<div class="space-y-2">
+<div class="flex justify-between text-body-sm">
+<span class="">Solar Strikers</span>
+<span class="font-bold">6 pts</span>
+</div>
+<div class="flex justify-between text-body-sm">
+<span class="">Velocity Vanguards</span>
+<span class="font-bold">4 pts</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Decorative Element -->
+<div class="absolute -right-4 -bottom-4 opacity-5 pointer-events-none">
+<span class="material-symbols-outlined text-[120px]" style="font-variation-settings: &quot;FILL&quot; 1;">sports_cricket</span>
+</div>
+</div>
+<div class="bg-white border border-[#E2E2E9] rounded-xl overflow-hidden shadow-[0px_4px_20px_rgba(255,107,0,0.04)]">
+<img class="w-full h-40 object-cover" data-alt="A lush green professional cricket stadium under a clear bright blue sky during daytime. The meticulously maintained grass field shows white boundary markings and a central clay pitch ready for a match. The stadium stands in the background are empty, conveying a peaceful yet expectant atmosphere in a modern high-key lighting style with vibrant natural colors." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCiu_wqPCe0Uo8uPUQOeyqBk80TxuSnwELhzs687T3CcOEugGliWfzO68o23dS0jE-ZRbzdB4LY1cPd9L0wy1765Oa3pV_2ZiEKTgSNz_7mQzeKLSoSxEdwTT9S8_NYHAVLz3G9imrC3PXerNDWCRN4AUQwgjEVOtUQx0y783mrbbBoKPbXshTgcbEMyuIZXhImnvBdu0g3VP7dMqQmqbY6r7Okd2QNXOeoWCse_SbGJCFPDjAxRF0gA84unc1WHjaadOagaFSImCZl">
+<div class="p-6">
+<h4 class="font-label-md text-primary mb-1">PRO TIP</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Ensure both umpires are certified for tournament-level officiating to maintain match integrity.</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Sticky Bottom Action Bar -->
+<div class="fixed bottom-0 left-0 w-full bg-white border-t border-outline-variant p-4 md:p-6 flex justify-center z-50 shadow-lg">
+<div class="w-full max-w-max-width flex justify-end items-center gap-4">
+<button class="hidden md:block px-6 py-3 font-label-md text-label-md text-on-surface-variant hover:bg-surface-container transition-colors rounded-lg">
+                    Cancel &amp; Return
+                </button>
+<button class="w-full md:w-auto px-10 py-3 bg-[#FF6B00] text-white font-headline-md text-[18px] rounded-lg shadow-[0px_4px_20px_rgba(255,107,0,0.25)] active:scale-95 transition-all flex items-center justify-center gap-2">
+<span class="">Schedule Match</span>
+<span class="material-symbols-outlined">event_available</span>
+</button>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation (Mobile Only as per hierarchy) -->
+<nav class="md:hidden fixed bottom-0 w-full z-[60] bg-surface border-t border-outline-variant flex justify-around items-center h-16 px-4 shadow-md">
+<div class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-full px-4 py-1 active:scale-90 transition-all duration-200">
+<span class="material-symbols-outlined">sports_cricket</span>
+<span class="font-label-sm text-label-sm">Matches</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1 active:scale-90 transition-all duration-200">
+<span class="material-symbols-outlined">groups</span>
+<span class="font-label-sm text-label-sm">Teams</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1 active:scale-90 transition-all duration-200">
+<span class="material-symbols-outlined">leaderboard</span>
+<span class="font-label-sm text-label-sm">Stats</span>
+</div>
+</nav>
+<script>
+        // Simple team exclusion logic
+        const teamA = document.getElementById('teamA');
+        const teamB = document.getElementById('teamB');
+
+        teamA.addEventListener('change', () => {
+            const selectedValue = teamA.value;
+            Array.from(teamB.options).forEach(option => {
+                if (option.value === selectedValue) {
+                    option.disabled = true;
+                } else {
+                    option.disabled = false;
+                }
+            });
+        });
+
+        teamB.addEventListener('change', () => {
+            const selectedValue = teamB.value;
+            Array.from(teamA.options).forEach(option => {
+                if (option.value === selectedValue) {
+                    option.disabled = true;
+                } else {
+                    option.disabled = false;
+                }
+            });
+        });
+
+        // Ripples or small micro-interactions can go here
+    </script>
+
+
+</body></html>

@@ -1,0 +1,322 @@
+<!DOCTYPE html><html class="light" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>CricketLive - India Inning Scorecard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #F4F4F8;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            height: 4px;
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #E2E2E9;
+            border-radius: 10px;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "primary": "#ff6b00",
+                      "primary-container": "#ffdbcc",
+                      "on-primary": "#ffffff",
+                      "secondary": "#705d00",
+                      "background": "#F4F4F8",
+                      "surface": "#ffffff",
+                      "on-surface": "#1a1c1e",
+                      "on-surface-variant": "#5a4136",
+                      "outline-variant": "#e2bfb0",
+                      "surface-container": "#eeeef0",
+                      "surface-container-low": "#f3f3f6",
+                      "error": "#ba1a1a"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "margin-desktop": "auto",
+                      "xs": "4px",
+                      "lg": "40px",
+                      "md": "24px",
+                      "base": "8px",
+                      "max-width": "1280px",
+                      "gutter": "24px",
+                      "margin-mobile": "16px",
+                      "xl": "64px",
+                      "sm": "12px"
+              },
+              "fontFamily": {
+                      "label-sm": ["Plus Jakarta Sans"],
+                      "body-md": ["Plus Jakarta Sans"],
+                      "body-sm": ["Plus Jakarta Sans"],
+                      "headline-md": ["Plus Jakarta Sans"],
+                      "headline-lg": ["Plus Jakarta Sans"]
+              }
+            },
+          },
+        }
+    </script>
+</head>
+<body class="bg-background text-on-surface">
+<!-- Header -->
+<header class="bg-surface sticky top-0 z-50 border-b border-surface-container">
+<div class="flex items-center justify-between px-margin-mobile h-16 max-w-max-width mx-auto">
+<div class="flex items-center gap-4">
+<button class="material-symbols-outlined text-primary p-2 rounded-full active:scale-95 transition-transform">
+                    arrow_back
+                </button>
+<h1 class="font-headline-md text-xl">Match Details</h1>
+</div>
+<div class="w-10 h-10 rounded-full overflow-hidden border-2 border-primary-container">
+<img alt="User profile" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCLZ2RM3JXR_J22vYT-xVgQbnMVdAuOPaTLeoomI7bKZxip7zdPtrkLXgsyZcrjcofltynRJQmLCL22rzfNRvYhuSCJ2cGcU__zu3CzqpRsHjUH_4nBvzfY7NMFVdtcizVeyYV227nMhO20pFny40CR1jzWa99KYi_2lPCDYOO_DMPMoNwx2RwDMa9ZWqTwDiC8v5b0QdntAgDBuSHBRpJIP5HrZ-spmDIxl6zhkQxb2XWnxwIwhDCfx4410qtdJn8oiDm5Sv9Jnmew">
+</div>
+</div>
+</header>
+<main class="max-w-max-width mx-auto px-margin-mobile pt-md pb-32">
+<!-- Inning Header Tab -->
+<div class="bg-surface rounded-t-xl border border-b-0 border-outline-variant overflow-hidden">
+<div class="flex">
+<button class="flex-1 py-4 font-bold text-primary border-b-2 border-primary bg-primary-container/10">
+                    INDIA INNINGS
+                </button>
+</div>
+</div>
+<!-- Detailed Scorecard -->
+<div class="bg-surface border border-outline-variant rounded-b-xl shadow-sm mb-gutter">
+<!-- Batting Table -->
+<div class="p-base md:p-md border-b border-surface-container">
+<h3 class="font-headline-md text-lg mb-4">Batting</h3>
+<div class="overflow-x-auto custom-scrollbar">
+<table class="w-full text-left min-w-[600px]">
+<thead>
+<tr class="text-on-surface-variant text-[11px] uppercase tracking-wider font-bold">
+<th class="py-2">Batsman</th>
+<th class="py-2">Status</th>
+<th class="py-2 text-right">R</th>
+<th class="py-2 text-right">B</th>
+<th class="py-2 text-right">4s</th>
+<th class="py-2 text-right">6s</th>
+<th class="py-2 text-right">SR</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-surface-container">
+<tr class="text-sm">
+<td class="py-3 font-semibold">Rohit Sharma</td>
+<td class="py-3 text-on-surface-variant">c Butler b Wood</td>
+<td class="py-3 text-right font-bold">74</td>
+<td class="py-3 text-right">68</td>
+<td class="py-3 text-right">8</td>
+<td class="py-3 text-right">2</td>
+<td class="py-3 text-right">108.8</td>
+</tr>
+<tr class="text-sm">
+<td class="py-3 font-semibold">Shubman Gill</td>
+<td class="py-3 text-on-surface-variant">lbw b Rashid</td>
+<td class="py-3 text-right font-bold">52</td>
+<td class="py-3 text-right">44</td>
+<td class="py-3 text-right">6</td>
+<td class="py-3 text-right">1</td>
+<td class="py-3 text-right">118.2</td>
+</tr>
+<tr class="text-sm bg-primary/5">
+<td class="py-3 font-semibold text-primary flex items-center gap-1">
+                                    Virat Kohli <span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1;">star</span>
+</td>
+<td class="py-3 text-primary font-semibold">not out</td>
+<td class="py-3 text-right font-bold text-primary">88</td>
+<td class="py-3 text-right text-primary">92</td>
+<td class="py-3 text-right text-primary">9</td>
+<td class="py-3 text-right text-primary">0</td>
+<td class="py-3 text-right text-primary">95.6</td>
+</tr>
+<tr class="text-sm">
+<td class="py-3 font-semibold">Shreyas Iyer</td>
+<td class="py-3 text-on-surface-variant">b Curran</td>
+<td class="py-3 text-right font-bold">18</td>
+<td class="py-3 text-right">22</td>
+<td class="py-3 text-right">1</td>
+<td class="py-3 text-right">0</td>
+<td class="py-3 text-right">81.8</td>
+</tr>
+<tr class="text-sm bg-primary/5">
+<td class="py-3 font-semibold text-primary">KL Rahul</td>
+<td class="py-3 text-primary font-semibold">not out</td>
+<td class="py-3 text-right font-bold text-primary">42</td>
+<td class="py-3 text-right text-primary">35</td>
+<td class="py-3 text-right text-primary">4</td>
+<td class="py-3 text-right text-primary">1</td>
+<td class="py-3 text-right text-primary">120.0</td>
+</tr>
+</tbody>
+<tfoot>
+<tr class="bg-surface-container-low text-sm">
+<td class="py-3 px-2 font-semibold" colspan="2">Extras (w 8, b 4, lb 2)</td>
+<td class="py-3 px-2 text-right font-bold" colspan="5">14</td>
+</tr>
+<tr class="bg-primary text-on-primary">
+<td class="py-4 px-2 font-bold text-base" colspan="2">TOTAL</td>
+<td class="py-4 px-2 text-right font-bold text-base" colspan="5">342/4 (44.2 Ov)</td>
+</tr>
+</tfoot>
+</table>
+</div>
+</div>
+<!-- Bowling Table -->
+<div class="p-base md:p-md border-b border-surface-container">
+<h3 class="font-headline-md text-lg mb-4">Bowling</h3>
+<div class="overflow-x-auto custom-scrollbar">
+<table class="w-full text-left min-w-[500px]">
+<thead>
+<tr class="text-on-surface-variant text-[11px] uppercase tracking-wider font-bold">
+<th class="py-2">Bowler</th>
+<th class="py-2 text-right">O</th>
+<th class="py-2 text-right">M</th>
+<th class="py-2 text-right">R</th>
+<th class="py-2 text-right text-primary">W</th>
+<th class="py-2 text-right">Econ</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-surface-container">
+<tr class="text-sm">
+<td class="py-3 font-semibold">Chris Woakes</td>
+<td class="py-3 text-right">9.0</td>
+<td class="py-3 text-right">0</td>
+<td class="py-3 text-right">62</td>
+<td class="py-3 text-right font-bold text-primary">0</td>
+<td class="py-3 text-right">6.8</td>
+</tr>
+<tr class="text-sm">
+<td class="py-3 font-semibold">Mark Wood</td>
+<td class="py-3 text-right">8.2</td>
+<td class="py-3 text-right">1</td>
+<td class="py-3 text-right">54</td>
+<td class="py-3 text-right font-bold text-primary">1</td>
+<td class="py-3 text-right">6.5</td>
+</tr>
+<tr class="text-sm">
+<td class="py-3 font-semibold">Adil Rashid</td>
+<td class="py-3 text-right">10.0</td>
+<td class="py-3 text-right">0</td>
+<td class="py-3 text-right">72</td>
+<td class="py-3 text-right font-bold text-primary">1</td>
+<td class="py-3 text-right">7.2</td>
+</tr>
+<tr class="text-sm">
+<td class="py-3 font-semibold">Sam Curran</td>
+<td class="py-3 text-right">7.0</td>
+<td class="py-3 text-right">0</td>
+<td class="py-3 text-right">58</td>
+<td class="py-3 text-right font-bold text-primary">1</td>
+<td class="py-3 text-right">8.3</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- Fall of Wickets -->
+<div class="p-base md:p-md border-b border-surface-container">
+<h3 class="font-headline-md text-lg mb-4">Fall of Wickets</h3>
+<div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+<div class="p-3 bg-surface-container-low rounded-lg border border-surface-container">
+<span class="text-[10px] font-bold text-primary uppercase">1st Wicket</span>
+<div class="font-bold text-sm">1-118</div>
+<div class="text-[11px] text-on-surface-variant truncate">R. Sharma, 16.4 ov</div>
+</div>
+<div class="p-3 bg-surface-container-low rounded-lg border border-surface-container">
+<span class="text-[10px] font-bold text-primary uppercase">2nd Wicket</span>
+<div class="font-bold text-sm">2-209</div>
+<div class="text-[11px] text-on-surface-variant truncate">S. Gill, 28.2 ov</div>
+</div>
+<div class="p-3 bg-surface-container-low rounded-lg border border-surface-container">
+<span class="text-[10px] font-bold text-primary uppercase">3rd Wicket</span>
+<div class="font-bold text-sm">3-245</div>
+<div class="text-[11px] text-on-surface-variant truncate">S. Iyer, 34.5 ov</div>
+</div>
+<div class="p-3 bg-surface-container-low rounded-lg border border-surface-container">
+<span class="text-[10px] font-bold text-primary uppercase">4th Wicket</span>
+<div class="font-bold text-sm">4-312</div>
+<div class="text-[11px] text-on-surface-variant truncate">H. Pandya, 41.1 ov</div>
+</div>
+</div>
+</div>
+<!-- Partnerships -->
+<div class="p-base md:p-md">
+<h3 class="font-headline-md text-lg mb-4">Partnerships</h3>
+<div class="space-y-6">
+<!-- Partnership 1 -->
+<div class="space-y-2">
+<div class="flex justify-between text-xs font-semibold">
+<span>Rohit Sharma (74)</span>
+<span class="text-primary">118 Runs (100 balls)</span>
+<span>Shubman Gill (44)</span>
+</div>
+<div class="h-2 w-full bg-surface-container-highest rounded-full overflow-hidden flex">
+<div class="h-full bg-primary" style="width: 63%"></div>
+<div class="h-full bg-secondary" style="width: 37%"></div>
+</div>
+</div>
+<!-- Partnership 2 -->
+<div class="space-y-2">
+<div class="flex justify-between text-xs font-semibold">
+<span>Shubman Gill (8)</span>
+<span class="text-primary">91 Runs (70 balls)</span>
+<span>Virat Kohli (83)</span>
+</div>
+<div class="h-2 w-full bg-surface-container-highest rounded-full overflow-hidden flex">
+<div class="h-full bg-primary" style="width: 9%"></div>
+<div class="h-full bg-secondary" style="width: 91%"></div>
+</div>
+</div>
+<!-- Partnership 3 -->
+<div class="space-y-2">
+<div class="flex justify-between text-xs font-semibold">
+<span>Virat Kohli (5)</span>
+<span class="text-primary">36 Runs (39 balls)</span>
+<span>Shreyas Iyer (18)</span>
+</div>
+<div class="h-2 w-full bg-surface-container-highest rounded-full overflow-hidden flex">
+<div class="h-full bg-primary" style="width: 20%"></div>
+<div class="h-full bg-secondary" style="width: 80%"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-2 pb-6 bg-surface border-t border-surface-container shadow-lg">
+<div class="flex flex-col items-center justify-center text-on-surface-variant p-2 cursor-pointer opacity-60">
+<span class="material-symbols-outlined">live_tv</span>
+<span class="text-[10px] font-bold uppercase">Live</span>
+</div>
+<div class="flex flex-col items-center justify-center bg-primary text-on-primary rounded-full px-6 py-2 shadow-md cursor-pointer">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">analytics</span>
+<span class="text-[10px] font-bold uppercase">Scorecard</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant p-2 cursor-pointer opacity-60">
+<span class="material-symbols-outlined">settings</span>
+<span class="text-[10px] font-bold uppercase">Setup</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant p-2 cursor-pointer opacity-60">
+<span class="material-symbols-outlined">person</span>
+<span class="text-[10px] font-bold uppercase">Profile</span>
+</div>
+</nav>
+</body></html>

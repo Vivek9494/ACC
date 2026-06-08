@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en" style="width: 390px; height: 1036px; overflow: hidden; position: relative;"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Select Batsman - CricStats Pro</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<style>
+        .glass-card {
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .solar-glow {
+            box-shadow: 0 10px 30px -10px rgba(255, 107, 0, 0.15);
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "outline-variant": "#e2bfb0",
+                      "surface-container-high": "#e8e7f1",
+                      "on-tertiary-container": "#313131",
+                      "surface-dim": "#dad9e3",
+                      "tertiary-container": "#9a9898",
+                      "primary-fixed": "#ffdbcc",
+                      "surface-container": "#eeedf7",
+                      "secondary": "#5f5e59",
+                      "inverse-on-surface": "#f1effa",
+                      "on-secondary-fixed-variant": "#474742",
+                      "primary": "#a04100",
+                      "on-secondary-fixed": "#1c1c18",
+                      "on-surface": "#1a1b22",
+                      "on-primary-container": "#572000",
+                      "surface-tint": "#a04100",
+                      "inverse-surface": "#2f3038",
+                      "on-primary-fixed": "#351000",
+                      "primary-container": "#ff6b00",
+                      "surface": "#fbf8ff",
+                      "surface-bright": "#fbf8ff",
+                      "on-tertiary-fixed-variant": "#474746",
+                      "error": "#ba1a1a",
+                      "tertiary-fixed-dim": "#c8c6c5",
+                      "tertiary-fixed": "#e5e2e1",
+                      "error-container": "#ffdad6",
+                      "on-error": "#ffffff",
+                      "inverse-primary": "#ffb693",
+                      "on-error-container": "#93000a",
+                      "surface-container-low": "#f4f2fd",
+                      "secondary-fixed-dim": "#c9c6c0",
+                      "background": "#fbf8ff",
+                      "outline": "#8e7164",
+                      "on-primary-fixed-variant": "#7a3000",
+                      "secondary-container": "#e2dfd9",
+                      "on-surface-variant": "#5a4136",
+                      "on-secondary": "#ffffff",
+                      "surface-container-lowest": "#ffffff",
+                      "on-background": "#1a1b22",
+                      "secondary-fixed": "#e5e2dc",
+                      "on-tertiary-fixed": "#1c1b1b",
+                      "surface-container-highest": "#e3e1ec",
+                      "surface-variant": "#e3e1ec",
+                      "on-secondary-container": "#63635d",
+                      "primary-fixed-dim": "#ffb693",
+                      "on-tertiary": "#ffffff",
+                      "tertiary": "#5f5e5e",
+                      "on-primary": "#ffffff"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "margin-mobile": "16px",
+                      "container-max-width": "1280px",
+                      "gutter": "24px",
+                      "margin-desktop": "40px",
+                      "unit": "8px"
+              },
+              "fontFamily": {
+                      "headline-md": ["Plus Jakarta Sans"],
+                      "headline-lg": ["Plus Jakarta Sans"],
+                      "label-md": ["Plus Jakarta Sans"],
+                      "body-lg": ["Plus Jakarta Sans"],
+                      "headline-xl": ["Plus Jakarta Sans"],
+                      "body-md": ["Plus Jakarta Sans"],
+                      "label-sm": ["Plus Jakarta Sans"],
+                      "headline-lg-mobile": ["Plus Jakarta Sans"]
+              },
+              "fontSize": {
+                      "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                      "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                      "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.02em", "fontWeight": "600"}],
+                      "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                      "headline-xl": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                      "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                      "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "500"}],
+                      "headline-lg-mobile": ["28px", {"lineHeight": "36px", "fontWeight": "700"}]
+              }
+            },
+          },
+        }
+    </script>
+</head>
+<body class="bg-surface text-on-surface font-body-md text-body-md min-h-screen flex flex-col">
+<!-- Top Navigation Bar -->
+<header class="flex justify-between items-center w-full px-margin-mobile md:px-margin-desktop h-16 z-50 bg-surface fixed top-0 left-0">
+<div class="flex items-center gap-4">
+<button aria-label="Back" class="p-2 hover:bg-surface-container-low transition-colors rounded-full active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-primary" data-icon="arrow_back">arrow_back</span>
+</button>
+<h1 class="font-headline-md text-headline-md font-extrabold text-primary">Select Batsman</h1>
+</div>
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-secondary-container flex items-center justify-center overflow-hidden">
+<img alt="Coach Profile" class="w-full h-full object-cover" data-alt="A professional headshot of a middle-aged sports coach with a warm smile. The lighting is bright and airy, typical of a modern solar minimalism aesthetic. He is set against a soft-focus background of a sunlit cricket stadium during a clear day, embodying leadership and clarity." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAaWIomjWajK9t593tUc8_YGvHIAiF_dhzI4iWu1etyl2Sfb9jdArOREtjXWMnd2Z_iH-NgrjLUkT02UoGvsIxKIIgwJEFkTwOKp7MfkuaoFboSAAoB5qu-AhKwNQgkii_-RnhRFd-a1l9ndF3VceAR6HfIaID9wN8sr8BmFtPgMnvRAFxLFswaTDQCxsc6ZNuszvGfVjIFNmabIfDybpIDRnbC1CONL0WtMFQ617ikmk0TcwC795lm8jmRt3HCgee82rFgLbD98Zzd"/>
+</div>
+</div>
+</header>
+<!-- Content Canvas -->
+<main class="flex-grow pt-20 pb-24 px-margin-mobile md:px-margin-desktop max-w-container-max-width mx-auto w-full">
+<!-- Sub-header Section -->
+<section class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+<div>
+<p class="text-on-surface-variant font-label-md text-label-md uppercase tracking-wider mb-1">Batting Team</p>
+<div class="flex items-center gap-3">
+<h2 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-surface">Lions CC</h2>
+<span class="px-3 py-1 bg-primary-container text-on-primary-container rounded-full font-label-md text-label-md solar-glow">Playing 11</span>
+</div>
+</div>
+<div class="relative w-full md:w-64">
+</div>
+</section>
+<!-- Player List Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-gutter">
+<!-- Player Card: Active State -->
+<button class="glass-card p-4 rounded-xl text-left flex items-center gap-4 hover:bg-surface-container transition-all group relative border-2 border-primary-container solar-glow">
+<div class="w-16 h-16 rounded-lg overflow-hidden bg-surface-dim">
+<img alt="Player Portrait" class="w-full h-full object-cover" data-alt="Close up portrait of a young athletic male cricket player wearing a white jersey. The shot is captured with professional lighting, reflecting a warm, optimistic atmosphere. The background is a clean, minimalist off-white gradient with soft orange highlights, keeping consistent with a high-end sport UI theme." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBlsKcpsnn1HAcOi2xU51yOcnIz35U2apzsuse85QTilwVC2_P4jBY3WMzgCOslTXlh-pwQ2-TQsKH9MGzWMtXGj27Ke6gitISBCmrC-pl_Ca7dYqcaYQCc4-SXV2DuU5ABRNkeQJzCvGN8c0z2LOYEFuHg2_pM60wiCtmXAi9n-osQKgdhdXsCaluE7RLOUInCmzQKW78idj2OJoPNzydqgWknz_7Vdg2Aro9D2OTbh6W9keRqu1-rmKgSxo92k2cdJ1597W_JhZ0b"/>
+</div>
+<div class="flex-grow">
+<h3 class="font-headline-md text-body-lg font-bold text-on-surface">Arjun Sharma</h3>
+<p class="text-on-surface-variant text-label-md">Right Hand Batsman • <span class="text-primary font-bold">68 (45)</span></p>
+</div>
+<div class="bg-primary-container text-on-primary-container p-1 rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined text-[20px]" data-icon="check_circle" style='font-variation-settings: "FILL" 1;'>check_circle</span>
+</div>
+</button>
+<!-- Player Card: Neutral -->
+<button class="glass-card p-4 rounded-xl text-left flex items-center gap-4 hover:bg-surface-container-high transition-all group active:scale-[0.98]">
+<div class="w-16 h-16 rounded-lg overflow-hidden bg-surface-dim">
+<img alt="Player Portrait" class="w-full h-full object-cover" data-alt="Studio portrait of a smiling male athlete in a crisp white sports shirt. The lighting is diffused and atmospheric, highlighting a minimalist and modern aesthetic. The color palette is composed of soft whites and subtle grey tones with a hint of warm sunlight filtering from the side." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBlYf7h8-V77NTzhpH4qh0FqR2lgUCl9LrLkLKo-jlf8VnM6tjn6-SsWISDH-BxnfadwfUTBVmye1N9AyYXi4AvHHkdqi3_7lBvOFJUpOkD2Tolg6ql3wM6V1tPgDxY_LtVmKdgWuycGd5xVwt4AvD5Lv4Q8yhbzl-5blDodhn1Dw6tpfFQAUOrdlKB3x0CScoqXDG448Tq9SrKQb46vzqJvR6NndHK7Uh51PY9vhsdF-gGquNgB6NTolLDN2BvHNoaWhhTsQaSd0Qz"/>
+</div>
+<div class="flex-grow">
+<h3 class="font-headline-md text-body-lg font-bold text-on-surface">Kevin Peterson</h3>
+<p class="text-on-surface-variant text-label-md">24 (21) • c Butler b Wood</p>
+</div>
+<div class="w-6 h-6 border-2 border-outline-variant rounded-full"></div>
+</button>
+<!-- Player Card: Left Hander -->
+<button class="glass-card p-4 rounded-xl text-left flex items-center gap-4 hover:bg-surface-container-high transition-all group active:scale-[0.98]">
+<div class="w-16 h-16 rounded-lg overflow-hidden bg-surface-dim">
+<img alt="Player Portrait" class="w-full h-full object-cover" data-alt="Portrait of a determined female athlete in professional cricket attire. The setting is bright and spacious with high-key lighting that evokes a sense of clarity and professionalism. The visual style is clean, with no clutter, emphasizing the person and a radiant, minimalist vibe." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD25r4cc6jhJ2I4R87maRX2U83Vs91P5jVje3yyx6TV4kS6GWEA4ijCHSbTeYDdN0Vo3qAWm07duQuBDphwlypge9djER4iABjid_wMgRwxOT4avAviFkVAsfcXKyHz72vT1uOjKuvVlsTo6PJRYJp_1tv-XZhmoatJRKoh4YTE1s1IxZIW_3uVGlxiqJARyrxSk1Imm1SP0TUofxlUUt8iYQhPjiQM_tLZijhQmvQ0Snn1mT-nYy0UWKus7poqu6K2n_6HR2ur_K2b"/>
+</div>
+<div class="flex-grow">
+<h3 class="font-headline-md text-body-lg font-bold text-on-surface">Sarah Johnson</h3>
+<p class="text-on-surface-variant text-label-md">Left Hand Batsman</p>
+</div>
+<div class="w-6 h-6 border-2 border-outline-variant rounded-full"></div>
+</button>
+<!-- Player Card: Active State 2 -->
+<button class="glass-card p-4 rounded-xl text-left flex items-center gap-4 hover:bg-surface-container transition-all group relative border-2 border-primary-container solar-glow">
+<div class="w-16 h-16 rounded-lg overflow-hidden bg-surface-dim">
+<img alt="Player Portrait" class="w-full h-full object-cover" data-alt="Cinematic portrait of a focused sports player against a bright, minimalist backdrop. The image is bathed in a warm solar glow, creating a feeling of optimism and energy. The lighting is soft but defined, outlining the subject with a professional, clean tech-inspired finish." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDCijpbz7ScCa9cmDVWUKZW462usMl5Zdpmeu6GNLYwE0IoyMwO6wp24bV8gFveG4ebILmzvPAAJXBiz6SS7-X2I4-B1yISxon6qcE4vbuorR7mO6FkTgs_ZGL6CJn4bI-eV8_lWMoSd6FwI1N1qR-H8rdOiXm1XKunR0S3p6irpPdLdNHAjAzJjxnvUsfdYqMDxqntOgkBFTEMBDCCvTJ218LqlIXeJJblTbNc0vSuoywnvlmOC4SeUyg6xvfqswMg0lqxW7GqkhcX"/>
+</div>
+<div class="flex-grow">
+<h3 class="font-headline-md text-body-lg font-bold text-on-surface">Priya Patel</h3>
+<p class="text-on-surface-variant text-label-md">Right Hand Batsman • <span class="text-primary font-bold">12 (8)</span></p>
+</div>
+<div class="bg-primary-container text-on-primary-container p-1 rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined text-[20px]" data-icon="check_circle" style='font-variation-settings: "FILL" 1;'>check_circle</span>
+</div>
+</button>
+<!-- Player Card: Additional Players -->
+<button class="glass-card p-4 rounded-xl text-left flex items-center gap-4 hover:bg-surface-container-high transition-all group active:scale-[0.98]">
+<div class="w-16 h-16 rounded-lg overflow-hidden bg-surface-dim">
+<img alt="Player Portrait" class="w-full h-full object-cover" data-alt="Close-up of a smiling male athlete in sportswear. High-end lifestyle photography style with soft atmospheric shadows and translucent light. The scene is bright and airy, using a restricted palette of whites, light greys, and a touch of vibrant primary orange." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDhUAlu9K4fUyEiNyOgH2Z1d1zLQeQjy6YnsYtPuqigugogFLyMvSzS30OB5xGmDyRXUor_MIWECj9TtKQDN1SYey5BJsNcvgxNgf-zIyGsGEKBE-WldVGBcxIPWZ8BTvJG39VFZNUzY3d-H7PPWTs_8Lt36w276pDRS5jh5HTVp98DQEIlXKH4-qBvQ4RwHgPszjqPF5KghEqD_2ZJ2dg9SAiFO3vlZHs0ze9Z-98LtzBro8lBCpazLC4q1Nywg2oBQQLfo2SKOnrE"/>
+</div>
+<div class="flex-grow">
+<h3 class="font-headline-md text-body-lg font-bold text-on-surface">Liam Davies</h3>
+<p class="text-on-surface-variant text-label-md">Right Hand Batsman</p>
+</div>
+<div class="w-6 h-6 border-2 border-outline-variant rounded-full"></div>
+</button>
+<button class="glass-card p-4 rounded-xl text-left flex items-center gap-4 hover:bg-surface-container-high transition-all group active:scale-[0.98]">
+<div class="w-16 h-16 rounded-lg overflow-hidden bg-surface-dim">
+<img alt="Player Portrait" class="w-full h-full object-cover" data-alt="A portrait of a young female sports professional. The aesthetic is extremely clean and functional, with a glassmorphic blur in the distant background. Lighting is soft and even, highlighting a radiant skin tone and a confident expression suitable for a professional sport application." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBnuEirE7aY8RXirm4gxzbbuXfzoFU2YEsMmfZ3nXyKY2aILEtlYbA7Ci9lMN5zUtxtWH2Jh1HTF2VH3qqCHV0u2ArV76zfe9fIyGgGMURl7A1AkFRVi2D8q3V-i3uxcKAxET1mhCv8-w3yqqOTwIjVBKYyVal3x7YahJS1xiS9Oa73zfagvInKUwlxiliz-RX2HIniV8N3SxMfMehZRm4JsbsyAt02mhusOz0ZYmGU2VRtuZvVnHCLFqKJJaBRfgQU2aSqXq-Yvcf4"/>
+</div>
+<div class="flex-grow">
+<h3 class="font-headline-md text-body-lg font-bold text-on-surface">Chris Gayle</h3>
+<p class="text-on-surface-variant text-label-md">Left Hand Batsman</p>
+</div>
+<div class="w-6 h-6 border-2 border-outline-variant rounded-full"></div>
+</button>
+</div>
+</main>
+<!-- Fixed Footer Actions -->
+<footer class="fixed bottom-0 left-0 w-full z-50 flex justify-center items-center px-4 pb-8 pt-4 bg-surface/80 backdrop-blur-md">
+<button class="flex items-center justify-center gap-3 bg-primary-container text-on-primary-container font-headline-md text-body-lg px-8 py-4 rounded-lg solar-glow hover:brightness-110 active:scale-95 transition-all w-full max-w-md shadow-xl">
+<span class="material-symbols-outlined" data-icon="add">add</span>
+            Add New Batsman
+        </button>
+</footer>
+<!-- Bottom Nav Bar (Hidden for Desktop, showing only for primary mobile view as per shared component logic) -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full z-40 flex justify-around items-center px-4 pb-4 pt-2 bg-surface-container-lowest shadow-lg rounded-t-xl hidden">
+<!-- Kept hidden as footer action button takes priority for this specific "Select" task screen -->
+</nav>
+<script>
+        // Micro-interactions
+        document.querySelectorAll('.glass-card').forEach(card => {
+            card.addEventListener('click', function() {
+                const indicator = this.querySelector('.border-2');
+                if (indicator) {
+                    // Simple toggle simulation
+                    if (this.classList.contains('border-primary-container')) {
+                        this.classList.remove('border-primary-container', 'solar-glow');
+                        indicator.innerHTML = '';
+                        indicator.classList.remove('bg-primary-container', 'text-on-primary-container', 'p-1', 'flex', 'items-center', 'justify-center');
+                        indicator.classList.add('w-6', 'h-6', 'border-outline-variant');
+                    } else {
+                        this.classList.add('border-primary-container', 'solar-glow');
+                        indicator.classList.remove('w-6', 'h-6', 'border-outline-variant');
+                        indicator.classList.add('bg-primary-container', 'text-on-primary-container', 'p-1', 'flex', 'items-center', 'justify-center');
+                        indicator.innerHTML = '<span class="material-symbols-outlined text-[20px]" data-icon="check_circle" style="font-variation-settings: \'FILL\' 1;">check_circle</span>';
+                    }
+                }
+            });
+        });
+    </script>
+<div aria-hidden="true" data-snapdom-sandbox="true" id="snapdom-sandbox" style="position: absolute; left: -9999px; top: -9999px; width: 0px; height: 0px; overflow: hidden;"></div><div class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-on-surface/40 backdrop-blur-sm" id="add-batsman-modal">
+<div class="glass-card w-full max-w-md rounded-xl p-6 shadow-xl solar-glow">
+<div class="flex justify-between items-center mb-6">
+<h2 class="font-headline-md text-headline-md text-on-surface">Add New Batsman</h2>
+<button class="p-1 hover:bg-surface-container rounded-full transition-colors" onclick="document.getElementById('add-batsman-modal').remove()">
+<span class="material-symbols-outlined text-on-surface-variant">close</span>
+</button>
+</div>
+<div class="space-y-4">
+<div class="flex flex-col gap-2">
+<label class="font-label-md text-label-md text-on-surface-variant" for="batsman-name">Batsman Name</label>
+<input class="w-full p-3 rounded-lg border-2 border-outline-variant bg-surface focus:border-primary outline-none transition-colors text-on-surface" id="batsman-name" placeholder="Enter full name" type="text"/>
+<p class="text-[12px] leading-4 font-normal text-on-surface-variant">Added players will be available for selection in the current match session.</p>
+</div>
+</div>
+<div class="flex gap-3 mt-8">
+<button class="flex-1 py-3 rounded-lg border-2 border-outline-variant font-label-md text-on-surface-variant hover:bg-surface-container-low transition-colors" onclick="document.getElementById('add-batsman-modal').remove()">Cancel</button>
+<button class="flex-1 py-3 rounded-lg bg-primary text-on-primary font-label-md shadow-lg hover:brightness-110 active:scale-95 transition-all">Add</button>
+</div>
+</div>
+</div></body></html>

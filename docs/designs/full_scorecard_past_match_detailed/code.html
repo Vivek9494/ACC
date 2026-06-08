@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>CricketLive - Match Scorecard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #F4F4F8;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #E2E2E9;
+            border-radius: 10px;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "tertiary": "#0062a1",
+                      "surface-dim": "#dadadc",
+                      "error": "#ba1a1a",
+                      "secondary": "#705d00",
+                      "on-background": "#1a1c1e",
+                      "secondary-fixed-dim": "#e9c400",
+                      "on-error": "#ffffff",
+                      "on-primary-container": "#572000",
+                      "inverse-primary": "#ffb693",
+                      "on-secondary-container": "#6f5c00",
+                      "tertiary-fixed": "#d0e4ff",
+                      "secondary-fixed": "#ffe170",
+                      "on-surface-variant": "#5a4136",
+                      "outline": "#8e7164",
+                      "on-secondary-fixed": "#221b00",
+                      "surface-container": "#eeeef0",
+                      "primary-container": "#ff6b00",
+                      "background": "#f9f9fc",
+                      "on-secondary-fixed-variant": "#544600",
+                      "on-tertiary": "#ffffff",
+                      "inverse-on-surface": "#f0f0f3",
+                      "inverse-surface": "#2f3133",
+                      "error-container": "#ffdad6",
+                      "surface-container-low": "#f3f3f6",
+                      "on-primary-fixed-variant": "#7a3000",
+                      "primary-fixed": "#ffdbcc",
+                      "on-primary-fixed": "#351000",
+                      "tertiary-container": "#059eff",
+                      "tertiary-fixed-dim": "#9ccaff",
+                      "surface-container-highest": "#e2e2e5",
+                      "surface": "#f9f9fc",
+                      "on-tertiary-container": "#003357",
+                      "on-tertiary-fixed-variant": "#00497b",
+                      "on-error-container": "#93000a",
+                      "surface-variant": "#e2e2e5",
+                      "primary": "#a04100",
+                      "secondary-container": "#fdd400",
+                      "surface-tint": "#a04100",
+                      "on-secondary": "#ffffff",
+                      "surface-container-high": "#e8e8ea",
+                      "on-primary": "#ffffff",
+                      "primary-fixed-dim": "#ffb693",
+                      "outline-variant": "#e2bfb0",
+                      "on-surface": "#1a1c1e",
+                      "surface-bright": "#f9f9fc"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "margin-desktop": "auto",
+                      "xs": "4px",
+                      "lg": "40px",
+                      "md": "24px",
+                      "base": "8px",
+                      "max-width": "1280px",
+                      "gutter": "24px",
+                      "margin-mobile": "16px",
+                      "xl": "64px",
+                      "sm": "12px"
+              },
+              "fontFamily": {
+                      "label-sm": ["Plus Jakarta Sans"],
+                      "body-md": ["Plus Jakarta Sans"],
+                      "body-sm": ["Plus Jakarta Sans"],
+                      "headline-md": ["Plus Jakarta Sans"],
+                      "headline-xl-mobile": ["Plus Jakarta Sans"],
+                      "headline-lg": ["Plus Jakarta Sans"],
+                      "body-lg": ["Plus Jakarta Sans"],
+                      "headline-xl": ["Plus Jakarta Sans"],
+                      "label-md": ["Plus Jakarta Sans"]
+              },
+              "fontSize": {
+                      "label-sm": ["12px", {"lineHeight": "14px", "letterSpacing": "0.04em", "fontWeight": "600"}],
+                      "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                      "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                      "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                      "headline-xl-mobile": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                      "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                      "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                      "headline-xl": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                      "label-md": ["14px", {"lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "600"}]
+              }
+            },
+          },
+        }
+    </script>
+</head>
+<body class="bg-background text-on-surface">
+<!-- Top Navigation -->
+<header class="bg-surface dark:bg-on-background w-full top-0 sticky z-50 transition-colors duration-200 border-b border-outline-variant">
+<div class="flex items-center justify-between px-margin-mobile h-16 w-full max-w-max-width mx-auto">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary font-headline-md">sports_cricket</span>
+<span class="font-headline-md text-headline-md font-bold text-primary">CricketLive</span>
+</div>
+<div class="flex items-center gap-4">
+<button class="material-symbols-outlined p-2 rounded-full hover:bg-surface-container-low text-on-surface-variant">share</button>
+<button class="material-symbols-outlined p-2 rounded-full hover:bg-surface-container-low text-on-surface-variant">notifications</button>
+</div>
+</div>
+</header>
+<main class="max-w-max-width mx-auto px-margin-mobile pt-md pb-xl">
+<!-- Header Score Section (Past Match) -->
+<div class="bg-white border border-outline-variant rounded-lg p-md shadow-sm mb-gutter relative overflow-hidden">
+<div class="absolute top-0 left-0 w-1.5 h-full bg-primary"></div>
+<div class="space-y-4">
+<div class="flex justify-between items-center">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center overflow-hidden">
+<img alt="India" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAEniB2l2COHytCI18AtxIZmyFLwbgWTJmNicP1pbhLNBYya01gmvKNBJU08E1Sw5emtGAa_wfesgY4voGy1UWz85kymvenAFbdUEhDa3C0nFVtLt2g5E0qeglbWra6frhCgLGSQB3BGxdLPpnWzLTfWwNiCasH53GK-BkUTF1GX5M8eQMsOKBcJtVckgGEVscx3dMluFs61P2ROBJGfm13Sxz_3UA9NYyU2KJDsnNO1rUB7FqnPocE0ehwBv68RDWSVS0zIO-SDJ7p"/>
+</div>
+<span class="font-headline-md text-headline-md">India</span>
+</div>
+<div class="text-right">
+<div class="font-headline-md text-headline-md">357/8</div>
+<div class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">50.0 Overs</div>
+</div>
+</div>
+<div class="flex justify-between items-center">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center overflow-hidden">
+<img alt="England" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBjt56Ujju65m1sEiMwq-Sf9Iv_5Vkus93C6umxiLuxmSxuk0DSDB-LU2vqvizCQyK16ZbakvALWovhETnfDuvEPSkcubTTf6rNC7XnYklsOcLTcfmCq-9Id3QLcDqCJBnF7Lj54KDdPpcz-dwEwKjtcnWfUGZHL0MSwSbyZ95Xg1AAZNEUITeLPzK3SMtIJ698knk9bQbAH3xYNcmbsKqhJ5vHKR0kQEV7gXpc_hk6GMxjVVHj_1FtTav5DjA0PuvIfaKews4nLWJU"/>
+</div>
+<span class="font-headline-md text-headline-md">England</span>
+</div>
+<div class="text-right">
+<div class="font-headline-md text-headline-md">277/10</div>
+<div class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">44.5 Overs</div>
+</div>
+</div>
+<div class="pt-2 border-t border-surface-container">
+<p class="font-label-md text-label-md text-primary text-center">India won by 80 runs</p>
+</div>
+</div>
+</div>
+<!-- Man of the Match Card -->
+<div class="glass-panel rounded-lg p-md mb-gutter flex items-center gap-4 relative overflow-hidden">
+<div class="absolute right-0 top-0 opacity-10 rotate-12 pointer-events-none">
+<span class="material-symbols-outlined text-[120px] text-primary">stars</span>
+</div>
+<div class="relative">
+<div class="w-20 h-20 rounded-full border-4 border-primary-fixed overflow-hidden bg-surface-container-highest">
+<img alt="Virat Kohli" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDFhlM_KOES0dQ3dgX3vq9HCk09B2AEqK7EfjHTG8eAhYEr5jggPN72_10AZlBcuUZuX81gKlyp2JXdWnvBpoOGVH-9hyxwIAR4OzbojTXgd-QApSoSkm1jHATAd29aNCEctuXPdPPoIX5BuvF8M0vC59QX0hYnHh9isQiUopts9DzgurX5BqzMHcdniPnFsJirranooS3mpDV9fm1_jLwrm1v1BqCFYrtJ_-U97iRdBRAVY3GYDZM_Nw35r5Ig4jTAHDPNe0yzEv6Z"/>
+</div>
+<div class="absolute -bottom-1 -right-1 bg-primary text-white rounded-full p-1 border-2 border-white">
+<span class="material-symbols-outlined text-sm leading-none" style="font-variation-settings: 'FILL' 1;">stars</span>
+</div>
+</div>
+<div>
+<p class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider mb-1">Man of the Match</p>
+<h3 class="font-headline-md text-headline-md mb-1">Virat Kohli</h3>
+<div class="flex gap-4">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Batting</span>
+<span class="font-label-md text-label-md">88 (92)</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Catches</span>
+<span class="font-label-md text-label-md">2</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Scorecard Detailed Sections -->
+<div class="bg-white border border-outline-variant rounded-lg overflow-hidden shadow-sm">
+<!-- Tabs -->
+<div class="flex border-b border-surface-container bg-surface-container-lowest">
+<button class="flex-1 py-4 font-label-md text-label-md text-primary border-b-2 border-primary bg-primary-fixed/10 transition-all" id="tab-1" onclick="switchInnings(1)">INDIA INNINGS</button>
+<button class="flex-1 py-4 font-label-md text-label-md text-on-surface-variant hover:bg-surface-container-low transition-all" id="tab-2" onclick="switchInnings(2)">ENGLAND INNINGS</button>
+</div>
+<div class="p-base md:p-md">
+<!-- Batting Table -->
+<div class="mb-lg overflow-x-auto">
+<h4 class="font-headline-md text-headline-md mb-md px-2">Batting</h4>
+<table class="w-full text-left">
+<thead>
+<tr class="border-b border-surface-container text-on-surface-variant font-label-sm text-label-sm uppercase bg-surface-container-low">
+<th class="py-3 px-2 min-w-[150px]">Batsman</th>
+<th class="py-3 px-2">Status</th>
+<th class="py-3 px-2 text-right">R</th>
+<th class="py-3 px-2 text-right">B</th>
+<th class="py-3 px-2 text-right">4s</th>
+<th class="py-3 px-2 text-right">6s</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-surface-container">
+<tr class="hover:bg-surface-container-lowest transition-colors">
+<td class="py-4 px-2 font-label-md text-label-md text-on-surface">Rohit Sharma</td>
+<td class="py-4 px-2 font-body-sm text-body-sm text-on-surface-variant">c Butler b Wood</td>
+<td class="py-4 px-2 font-label-md text-label-md text-right">74</td>
+<td class="py-4 px-2 font-body-sm text-body-sm text-right">68</td>
+<td class="py-4 px-2 font-body-sm text-body-sm text-right">8</td>
+<td class="py-4 px-2 font-body-sm text-body-sm text-right">2</td>
+</tr>
+<tr class="hover:bg-surface-container-lowest transition-colors">
+<td class="py-4 px-2 font-label-md text-label-md text-on-surface">Shubman Gill</td>
+<td class="py-4 px-2 font-body-sm text-body-sm text-on-surface-variant">lbw b Rashid</td>
+<td class="py-4 px-2 font-label-md text-label-md text-right">52</td>
+<td class="py-4 px-2 font-body-sm text-body-sm text-right">44</td>
+<td class="py-4 px-2 font-body-sm text-body-sm text-right">6</td>
+<td class="py-4 px-2 font-body-sm text-body-sm text-right">1</td>
+</tr>
+<tr class="bg-primary-fixed/5 hover:bg-primary-fixed/10 transition-colors">
+<td class="py-4 px-2 font-label-md text-label-md text-primary">Virat Kohli</td>
+<td class="py-4 px-2 font-body-sm text-body-sm text-primary">c Root b Curran</td>
+<td class="py-4 px-2 font-label-md text-label-md text-right text-primary">88</td>
+<td class="py-4 px-2 font-body-sm text-body-sm text-right text-primary">92</td>
+<td class="py-4 px-2 font-body-sm text-body-sm text-right text-primary">9</td>
+<td class="py-4 px-2 font-body-sm text-body-sm text-right text-primary">0</td>
+</tr>
+<tr class="hover:bg-surface-container-lowest transition-colors">
+<td class="py-4 px-2 font-label-md text-label-md text-on-surface">Shreyas Iyer</td>
+<td class="py-4 px-2 font-body-sm text-body-sm text-on-surface-variant">b Curran</td>
+<td class="py-4 px-2 font-label-md text-label-md text-right">18</td>
+<td class="py-4 px-2 font-body-sm text-body-sm text-right">22</td>
+<td class="py-4 px-2 font-body-sm text-body-sm text-right">1</td>
+<td class="py-4 px-2 font-body-sm text-body-sm text-right">0</td>
+</tr>
+<tr class="hover:bg-surface-container-lowest transition-colors">
+<td class="py-4 px-2 font-label-md text-label-md text-on-surface">KL Rahul</td>
+<td class="py-4 px-2 font-body-sm text-body-sm text-on-surface-variant">not out</td>
+<td class="py-4 px-2 font-label-md text-label-md text-right">42</td>
+<td class="py-4 px-2 font-body-sm text-body-sm text-right">35</td>
+<td class="py-4 px-2 font-body-sm text-body-sm text-right">4</td>
+<td class="py-4 px-2 font-body-sm text-body-sm text-right">1</td>
+</tr>
+</tbody>
+<tfoot>
+<tr class="bg-surface-container-low font-label-sm text-label-sm">
+<td class="py-4 px-2 text-on-surface-variant" colspan="2">Extras: 18 (w 8, b 4, lb 2, nb 4)</td>
+<td class="py-4 px-2 text-right font-label-md text-label-md" colspan="4">18</td>
+</tr>
+<tr class="bg-surface-container text-on-surface font-headline-md">
+<td class="py-5 px-2" colspan="2">TOTAL</td>
+<td class="py-5 px-2 text-right" colspan="4">357/8 (50.0)</td>
+</tr>
+</tfoot>
+</table>
+</div>
+<!-- Bowling Table -->
+<div class="mb-lg overflow-x-auto">
+<h4 class="font-headline-md text-headline-md mb-md px-2">Bowling</h4>
+<table class="w-full text-left">
+<thead>
+<tr class="border-b border-surface-container text-on-surface-variant font-label-sm text-label-sm uppercase bg-surface-container-low">
+<th class="py-3 px-2 min-w-[140px]">Bowler</th>
+<th class="py-3 px-2 text-right">O</th>
+<th class="py-3 px-2 text-right">M</th>
+<th class="py-3 px-2 text-right">R</th>
+<th class="py-3 px-2 text-right font-bold text-primary">W</th>
+<th class="py-3 px-2 text-right">EC</th>
+<th class="py-3 px-2 text-right">Dots</th>
+<th class="py-3 px-2 text-right">4s</th>
+<th class="py-3 px-2 text-right">6s</th>
+<th class="py-3 px-2 text-right">WD</th>
+<th class="py-3 px-2 text-right">NB</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-surface-container">
+<tr class="hover:bg-surface-container-lowest transition-colors">
+<td class="py-4 px-2 font-label-md text-label-md text-on-surface">Chris Woakes</td>
+<td class="py-4 px-2 font-body-sm text-body-sm text-right">10.0</td>
+<td class="py-4 px-2 font-body-sm text-body-sm text-right">0</td>
+<td class="py-4 px-2 font-body-sm text-body-sm text-right">72</td>
+<td class="py-4 px-2 font-label-md text-label-md text-right text-primary">1</td>
+<td class="py-4 px-2 font-body-sm text-body-sm text-right">7.2</td>
+<td class="py-4 px-2 font-body-sm text-body-sm text-right">24</td>
+<td class="py-4 px-2 font-body-sm text-body-sm text-right">8</td>
+<td class="py-4 px-2 font-body-sm text-body-sm text-right">2</td>
+<td class="py-4 px-2 font-body-sm text-body-sm text-right">2</td>
+<td class="py-4 px-2 font-body-sm text-body-sm text-right">1</td>
+</tr>
+<tr class="hover:bg-surface-container-lowest transition-colors">
+<td class="py-4 px-2 font-label-md text-label-md text-on-surface">Mark Wood</td>
+<td class="py-4 px-2 font-body-sm text-body-sm text-right">10.0</td>
+<td class="py-4 px-2 font-body-sm text-body-sm text-right">65</td>
+<td class="py-4 px-2 font-body-sm text-body-sm text-right">65</td>
+<td class="py-4 px-2 font-label-md text-label-md text-right text-primary">2</td>
+<td class="py-4 px-2 font-body-sm text-body-sm text-right">6.5</td>
+<td class="py-4 px-2 font-body-sm text-body-sm text-right">28</td>
+<td class="py-4 px-2 font-body-sm text-body-sm text-right">6</td>
+<td class="py-4 px-2 font-body-sm text-body-sm text-right">1</td>
+<td class="py-4 px-2 font-body-sm text-body-sm text-right">1</td>
+<td class="py-4 px-2 font-body-sm text-body-sm text-right">0</td>
+</tr>
+<tr class="hover:bg-surface-container-lowest transition-colors">
+<td class="py-4 px-2 font-label-md text-label-md text-on-surface">Adil Rashid</td>
+<td class="py-4 px-2 font-body-sm text-body-sm text-right">10.0</td>
+<td class="py-4 px-2 font-body-sm text-body-sm text-right">0</td>
+<td class="py-4 px-2 font-body-sm text-body-sm text-right">58</td>
+<td class="py-4 px-2 font-label-md text-label-md text-right text-primary">1</td>
+<td class="py-4 px-2 font-body-sm text-body-sm text-right">5.8</td>
+<td class="py-4 px-2 font-body-sm text-body-sm text-right">22</td>
+<td class="py-4 px-2 font-body-sm text-body-sm text-right">3</td>
+<td class="py-4 px-2 font-body-sm text-body-sm text-right">0</td>
+<td class="py-4 px-2 font-body-sm text-body-sm text-right">3</td>
+<td class="py-4 px-2 font-body-sm text-body-sm text-right">1</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Fall of Wickets Section -->
+<div class="mb-lg">
+<h4 class="font-headline-md text-headline-md mb-md px-2">Fall of Wickets</h4>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<div class="bg-surface-container-low p-sm rounded-lg flex flex-col border border-outline-variant">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">1-45</span>
+<span class="font-label-md text-label-md">Rohit Sharma, 8.2 ov</span>
+</div>
+<div class="bg-surface-container-low p-sm rounded-lg flex flex-col border border-outline-variant">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">2-132</span>
+<span class="font-label-md text-label-md">Shubman Gill, 22.4 ov</span>
+</div>
+<div class="bg-surface-container-low p-sm rounded-lg flex flex-col border border-outline-variant">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">3-176</span>
+<span class="font-label-md text-label-md">Shreyas Iyer, 28.1 ov</span>
+</div>
+<div class="bg-surface-container-low p-sm rounded-lg flex flex-col border border-outline-variant">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">4-312</span>
+<span class="font-label-md text-label-md">Virat Kohli, 45.3 ov</span>
+</div>
+</div>
+</div>
+<!-- Partnerships Section -->
+<div class="mb-lg">
+<h4 class="font-headline-md text-headline-md mb-md px-2">Partnerships</h4>
+<div class="space-y-3">
+<div class="glass-panel p-sm rounded-lg flex flex-col gap-1">
+<div class="flex justify-between items-center text-label-sm text-on-surface-variant">
+<span>Rohit Sharma (24/30)</span>
+<span class="font-bold text-primary">45 (50)</span>
+<span>Shubman Gill (18/20)</span>
+</div>
+<div class="w-full bg-surface-container-high h-1.5 rounded-full overflow-hidden flex">
+<div class="h-full bg-primary/40" style="width: 53%"></div>
+<div class="h-full bg-primary/20" style="width: 47%"></div>
+</div>
+</div>
+<div class="glass-panel p-sm rounded-lg flex flex-col gap-1">
+<div class="flex justify-between items-center text-label-sm text-on-surface-variant">
+<span>Shubman Gill (34/24)</span>
+<span class="font-bold text-primary">87 (86)</span>
+<span>Virat Kohli (48/62)</span>
+</div>
+<div class="w-full bg-surface-container-high h-1.5 rounded-full overflow-hidden flex">
+<div class="h-full bg-primary/40" style="width: 39%"></div>
+<div class="h-full bg-primary/20" style="width: 61%"></div>
+</div>
+</div>
+<div class="glass-panel p-sm rounded-lg flex flex-col gap-1">
+<div class="flex justify-between items-center text-label-sm text-on-surface-variant">
+<span>Virat Kohli (40/30)</span>
+<span class="font-bold text-primary">136 (103)</span>
+<span>KL Rahul (42/35)</span>
+</div>
+<div class="w-full bg-surface-container-high h-1.5 rounded-full overflow-hidden flex">
+<div class="h-full bg-primary/40" style="width: 48%"></div>
+<div class="h-full bg-primary/20" style="width: 52%"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-2 pb-safe bg-surface dark:bg-on-background shadow-[0px_-4px_20px_rgba(255,107,0,0.08)] border-t border-outline-variant">
+<div class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary px-4 py-1 transition-all duration-150 active:scale-90 cursor-pointer">
+<span class="material-symbols-outlined">live_tv</span>
+<span class="font-label-sm text-label-sm">Live</span>
+</div>
+<div class="flex flex-col items-center justify-center text-primary border-t-2 border-primary -mt-[1px] px-4 py-1 transition-all duration-150 cursor-pointer">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">analytics</span>
+<span class="font-label-sm text-label-sm">Scorecard</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary px-4 py-1 transition-all duration-150 active:scale-90 cursor-pointer">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-label-sm text-label-sm">Setup</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary px-4 py-1 transition-all duration-150 active:scale-90 cursor-pointer">
+<span class="material-symbols-outlined">person</span>
+<span class="font-label-sm text-label-sm">Profile</span>
+</div>
+</nav>
+<script>
+        function switchInnings(inning) {
+            const btn1 = document.getElementById('tab-1');
+            const btn2 = document.getElementById('tab-2');
+            
+            if (inning === 1) {
+                btn1.classList.add('text-primary', 'border-primary', 'bg-primary-fixed/10');
+                btn1.classList.remove('text-on-surface-variant');
+                btn1.style.borderBottomWidth = '2px';
+                
+                btn2.classList.remove('text-primary', 'border-primary', 'bg-primary-fixed/10');
+                btn2.classList.add('text-on-surface-variant');
+                btn2.style.borderBottomWidth = '0px';
+            } else {
+                btn2.classList.add('text-primary', 'border-primary', 'bg-primary-fixed/10');
+                btn2.classList.remove('text-on-surface-variant');
+                btn2.style.borderBottomWidth = '2px';
+                
+                btn1.classList.remove('text-primary', 'border-primary', 'bg-primary-fixed/10');
+                btn1.classList.add('text-on-surface-variant');
+                btn1.style.borderBottomWidth = '0px';
+            }
+        }
+    </script>
+</body></html>

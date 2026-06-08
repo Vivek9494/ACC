@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Live Match Card - Solar Minimalism</title>
+<!-- Load Tailwind CSS v3 with relevant plugins -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Load Plus Jakarta Sans font as specified in Design System -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            solar: {
+              orange: '#ff6b00',
+              surface: '#f9f9fc',
+              'surface-dim': '#dadadc',
+              'surface-bright': '#f9f9fc',
+              'surface-container-lowest': '#ffffff',
+              'surface-container-low': '#f3f3f6',
+              'text-dark': '#1e293b',
+              'text-muted': '#64748b'
+            }
+          },
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'sans-serif'],
+          },
+          borderRadius: {
+            'solar-8': '2rem', // Representing the "ROUND_EIGHT" preset with a substantial curve
+          }
+        }
+      }
+    }
+  </script>
+<style data-purpose="layout-styling">
+    body {
+      background-color: #f9f9fc;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 1rem;
+    }
+
+    /* Custom shadow for the "Solar Minimalism" card feel */
+    .solar-card-shadow {
+      box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.05);
+    }
+  </style>
+</head>
+<body class="bg-solar-surface">
+<!-- BEGIN: LiveMatchFocusScreen -->
+<main class="w-full max-w-md" data-purpose="focused-match-container">
+<!-- BEGIN: LiveMatchCard -->
+<section class="bg-surface-container-lowest border border-surface-variant rounded-xl p-md shadow-sm relative overflow-hidden" data-purpose="live-match-card">
+<div class="flex justify-between items-start mb-4">
+<h3 class="font-label-md text-label-md text-primary">Atmiya Premier League</h3>
+<span class="flex items-center gap-1 bg-error-container text-error px-2 py-0.5 rounded-full font-label-sm text-[10px] font-bold tracking-wider">
+<span class="material-symbols-outlined text-[10px]" style="font-variation-settings: 'FILL' 1;">fiber_manual_record</span>
+                        LIVE
+                    </span>
+</div>
+<div class="flex items-center justify-between mb-6">
+<div class="flex flex-col items-center gap-1">
+<div class="w-14 h-14 bg-surface-container rounded-full flex items-center justify-center border border-surface-variant overflow-hidden p-2">
+<img alt="Barrie Cobras Logo" class="w-full h-full object-contain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCO8G3gphg8uwyIzLrmDAto65Zy6DkfDIdgtYSyDZJUnRrQrd_-yw2ZdwTAyCHN4tsz4lJtTE92CTJT1hr89MqOIEy7za-VmPN_xO9kCuSJnjW-X8mp1taJkDYo5rw4RfBAYAoxyscdgV2KoUGzXHi9b_JCja_qKTVPLEso7QF_n9nyj2NC70zCvKX6m6O1HMg095tmxHskcHy1_vDYXL_70nNQ2zHTIsAOZ_axlE5Z-GSkKUs3OeXzaYKvhvDdH76LuwJ5krDGjnQk"/>
+</div>
+<span class="font-label-md text-label-md text-on-surface">Barrie Cobras</span>
+</div>
+<div class="flex flex-col items-center">
+<span class="font-headline-md text-headline-md text-on-surface">203/5</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">20.0 Overs</span>
+<span class="font-label-sm text-label-sm text-primary font-bold mt-1">vs</span>
+</div>
+<div class="flex flex-col items-center gap-1">
+<div class="w-14 h-14 bg-surface-container rounded-full flex items-center justify-center border border-surface-variant overflow-hidden p-2">
+<img alt="Scarborough Strikeforce Logo" class="w-full h-full object-contain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBgdkyxXUr26f7CRdSP64htshMduHGCbcYT2JTtJ_T0GfvNhkIyz8is1OjnfzCkx4jhQBJ-blT7gNOKe97Hfbxm9PM_0JN1YAXAD-dbf2JJQxFdaVOKNdvyOJbfkHsufqsi4un-gQN6cP3Gag8prj0kGC6-6S1pJy1INgeWMYhZ90Gwnjc1xYpRyF9SFALclhCLXwnhv5xR4Zdh_M2VjYYbu6lQBXkQEvQfYbY6HGsXuza89pXRnle-Si0K-YADiYi8mB1BGFkHK-DK"/>
+</div>
+<span class="font-label-md text-label-md text-on-surface text-center">Scarborough Strikeforce</span>
+</div>
+</div>
+<div class="flex justify-between items-center border-t border-surface-variant pt-4">
+<p class="font-body-sm text-body-sm text-on-surface-variant italic">Barrie Cobras won by 40 runs</p>
+<a class="font-label-md text-label-md text-primary flex items-center gap-1 hover:underline" href="#">
+                        Schedule
+                        <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</a>
+</div>
+</section>
+<!-- END: LiveMatchCard -->
+</main>
+<!-- END: LiveMatchFocusScreen -->
+</body></html>

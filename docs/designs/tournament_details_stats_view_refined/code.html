@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Tournament Stats - Cricket Central</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-fixed": "#d0e4ff",
+                        "surface-container-low": "#f3f3f6",
+                        "outline-variant": "#e2bfb0",
+                        "on-tertiary-container": "#003357",
+                        "on-primary-container": "#572000",
+                        "outline": "#8e7164",
+                        "on-surface": "#1a1c1e",
+                        "on-secondary-fixed": "#221b00",
+                        "on-primary-fixed": "#351000",
+                        "inverse-primary": "#ffb693",
+                        "on-primary-fixed-variant": "#7a3000",
+                        "error": "#ba1a1a",
+                        "secondary-container": "#fdd400",
+                        "on-tertiary-fixed-variant": "#00497b",
+                        "surface-dim": "#dadadc",
+                        "on-secondary": "#ffffff",
+                        "primary-fixed": "#ffdbcc",
+                        "background": "#f4f4f8",
+                        "on-background": "#1a1c1e",
+                        "secondary": "#705d00",
+                        "on-secondary-fixed-variant": "#544600",
+                        "on-secondary-container": "#6f5c00",
+                        "on-tertiary": "#ffffff",
+                        "on-surface-variant": "#5a4136",
+                        "surface-tint": "#a04100",
+                        "error-container": "#ffdad6",
+                        "primary-fixed-dim": "#ffb693",
+                        "primary-container": "#ff6b00",
+                        "tertiary-fixed-dim": "#9ccaff",
+                        "primary": "#a04100",
+                        "tertiary-container": "#059eff",
+                        "inverse-on-surface": "#f0f0f3",
+                        "surface-container": "#eeeef0",
+                        "surface": "#f9f9fc",
+                        "on-primary": "#ffffff",
+                        "on-error": "#ffffff",
+                        "tertiary": "#0062a1",
+                        "surface-bright": "#f9f9fc",
+                        "on-error-container": "#93000a",
+                        "surface-container-highest": "#e2e2e5",
+                        "inverse-surface": "#2f3133",
+                        "secondary-fixed-dim": "#e9c400",
+                        "surface-container-high": "#e8e8ea",
+                        "secondary-fixed": "#ffe170",
+                        "on-tertiary-fixed": "#001d35",
+                        "surface-variant": "#e2e2e5",
+                        "surface-container-lowest": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "sm": "12px",
+                        "base": "8px",
+                        "margin-desktop": "auto",
+                        "md": "24px",
+                        "lg": "40px",
+                        "gutter": "24px",
+                        "xs": "4px",
+                        "xl": "64px",
+                        "max-width": "1280px",
+                        "margin-mobile": "16px"
+                    },
+                    "fontFamily": {
+                        "label-sm": ["Plus Jakarta Sans"],
+                        "label-md": ["Plus Jakarta Sans"],
+                        "body-md": ["Plus Jakarta Sans"],
+                        "headline-md": ["Plus Jakarta Sans"],
+                        "body-sm": ["Plus Jakarta Sans"],
+                        "body-lg": ["Plus Jakarta Sans"],
+                        "headline-xl": ["Plus Jakarta Sans"],
+                        "headline-xl-mobile": ["Plus Jakarta Sans"],
+                        "headline-lg": ["Plus Jakarta Sans"]
+                    },
+                    "fontSize": {
+                        "label-sm": ["12px", {"lineHeight": "14px", "letterSpacing": "0.04em", "fontWeight": "600"}],
+                        "label-md": ["14px", {"lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "600"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                        "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                        "headline-xl": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                        "headline-xl-mobile": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .stats-grid-item {
+            transition: transform 0.2s ease-out;
+        }
+        .stats-grid-item:hover {
+            transform: translateY(-4px);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body-md min-h-screen pb-32">
+<!-- TopAppBar -->
+<header class="w-full top-0 sticky bg-surface dark:bg-background z-50 border-b border-outline-variant dark:border-outline flex justify-between items-center px-4 md:px-margin-desktop py-base">
+<div class="flex items-center gap-sm">
+<button class="hover:bg-surface-container-high p-2 rounded-full transition-colors active:scale-95 duration-150">
+<span class="material-symbols-outlined text-primary">arrow_back</span>
+</button>
+<h1 class="font-headline-md text-headline-md font-bold text-on-surface">Tournament Details</h1>
+</div>
+<div class="flex items-center gap-sm">
+<div class="w-10 h-10 rounded-full overflow-hidden border-2 border-primary-container">
+<img alt="User Profile" class="w-full h-full object-cover" data-alt="A professional high-resolution headshot of a young athlete in sports gear, set against a blurred stadium background with warm sunset lighting. The visual style is clean and minimalist, aligning with a high-end sports application aesthetic. Soft orange tones highlight the contours of the face, creating a modern and vibrant atmosphere." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC4vjn7iJKFKBkYTci8W64dxS8S2XjxCWN76pvhmShElHHOm7q4y06mLrIqOgtG84Ghjdy7yBBeoHHkvkKcewi83VGecqTNO7-g6r-So98fFTyPdoDEzky5CPhXrmmRRrxoPNYEodcQkr-faX7dUX-m7t6v3pdUUvO8KuVRbyooIfZeQVryAhT-pWNJ6w5WhAxNuq6JUMphAF2mq9q5T4s8Ug4s6zzFveK3llkJe0pB_jRuOksZwn_RqKKym25M0U6KUcNHPTnli-_C"/>
+</div>
+</div>
+</header>
+<main class="max-w-max-width mx-auto px-margin-mobile md:px-gutter py-md">
+<!-- Stats Active View Title -->
+<div class="mb-lg">
+<h2 class="font-headline-lg text-headline-lg text-on-surface mb-xs">Tournament Analytics</h2>
+<p class="text-on-surface-variant font-body-md">Real-time performance data and record-breaking achievements.</p>
+</div>
+<!-- Tournament Summary Grid -->
+<section class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-gutter mb-xl">
+<!-- Sixes Card -->
+<div class="stats-grid-item bg-surface-container-lowest p-md rounded-xl border border-outline-variant shadow-sm flex flex-col items-center justify-center text-center">
+<span class="material-symbols-outlined text-primary mb-sm">sports_cricket</span>
+<span class="font-label-md text-label-md text-on-surface-variant mb-xs">SIXES</span>
+<span class="font-headline-lg text-headline-lg text-primary font-extrabold">1,248</span>
+</div>
+<!-- Fours Card -->
+<div class="stats-grid-item bg-surface-container-lowest p-md rounded-xl border border-outline-variant shadow-sm flex flex-col items-center justify-center text-center">
+<span class="material-symbols-outlined text-primary mb-sm">celebration</span>
+<span class="font-label-md text-label-md text-on-surface-variant mb-xs">FOURS</span>
+<span class="font-headline-lg text-headline-lg text-primary font-extrabold">2,854</span>
+</div>
+<!-- Wickets Card -->
+<div class="stats-grid-item bg-surface-container-lowest p-md rounded-xl border border-outline-variant shadow-sm flex flex-col items-center justify-center text-center">
+<span class="material-symbols-outlined text-primary mb-sm">reorder</span>
+<span class="font-label-md text-label-md text-on-surface-variant mb-xs">WICKETS</span>
+<span class="font-headline-lg text-headline-lg text-primary font-extrabold">412</span>
+</div>
+<!-- Runs Card -->
+<div class="stats-grid-item bg-surface-container-lowest p-md rounded-xl border border-outline-variant shadow-sm flex flex-col items-center justify-center text-center">
+<span class="material-symbols-outlined text-primary mb-sm">moving</span>
+<span class="font-label-md text-label-md text-on-surface-variant mb-xs">RUNS</span>
+<span class="font-headline-lg text-headline-lg text-primary font-extrabold">14,209</span>
+</div>
+<!-- 50s Card -->
+<div class="stats-grid-item bg-surface-container-lowest p-md rounded-xl border border-outline-variant shadow-sm flex flex-col items-center justify-center text-center">
+<span class="material-symbols-outlined text-primary mb-sm">military_tech</span>
+<span class="font-label-md text-label-md text-on-surface-variant mb-xs">50s</span>
+<span class="font-headline-lg text-headline-lg text-primary font-extrabold">184</span>
+</div>
+<!-- 100s Card -->
+<div class="stats-grid-item bg-surface-container-lowest p-md rounded-xl border border-outline-variant shadow-sm flex flex-col items-center justify-center text-center">
+<span class="material-symbols-outlined text-primary mb-sm">workspace_premium</span>
+<span class="font-label-md text-label-md text-on-surface-variant mb-xs">100s</span>
+<span class="font-headline-lg text-headline-lg text-primary font-extrabold">32</span>
+</div>
+</section>
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter items-start">
+<!-- Main Content Left Column -->
+<div class="lg:col-span-8 space-y-xl">
+<!-- Tournament Run Rate Chart (Mock Visual) -->
+<div class="bg-surface-container-lowest p-lg rounded-xl border border-outline-variant shadow-sm relative overflow-hidden">
+<div class="flex justify-between items-end mb-lg">
+<div>
+<h3 class="font-headline-md text-headline-md text-on-surface">Tournament Run Rate</h3>
+<p class="text-on-surface-variant font-body-sm">Visual trend of average runs per over throughout the season</p>
+</div>
+<div class="text-right">
+<span class="font-headline-lg text-headline-lg text-primary">8.42</span>
+<span class="font-label-sm text-label-sm block text-on-surface-variant">SEASON AVG</span>
+</div>
+</div>
+<!-- Simulated Area Chart -->
+<div class="w-full h-48 flex items-end gap-1.5 relative">
+<div class="absolute inset-0 flex flex-col justify-between opacity-10">
+<div class="border-t border-on-surface w-full"></div>
+<div class="border-t border-on-surface w-full"></div>
+<div class="border-t border-on-surface w-full"></div>
+<div class="border-t border-on-surface w-full"></div>
+</div>
+<!-- Bars -->
+<div class="flex-1 bg-primary-container/20 rounded-t-sm h-[40%] hover:bg-primary-container transition-colors"></div>
+<div class="flex-1 bg-primary-container/20 rounded-t-sm h-[60%] hover:bg-primary-container transition-colors"></div>
+<div class="flex-1 bg-primary-container/20 rounded-t-sm h-[55%] hover:bg-primary-container transition-colors"></div>
+<div class="flex-1 bg-primary-container/20 rounded-t-sm h-[85%] hover:bg-primary-container transition-colors"></div>
+<div class="flex-1 bg-primary-container rounded-t-sm h-[90%] shadow-lg shadow-primary-container/20"></div>
+<div class="flex-1 bg-primary-container/20 rounded-t-sm h-[70%] hover:bg-primary-container transition-colors"></div>
+<div class="flex-1 bg-primary-container/20 rounded-t-sm h-[65%] hover:bg-primary-container transition-colors"></div>
+<div class="flex-1 bg-primary-container/20 rounded-t-sm h-[75%] hover:bg-primary-container transition-colors"></div>
+<div class="flex-1 bg-primary-container/20 rounded-t-sm h-[80%] hover:bg-primary-container transition-colors"></div>
+<div class="flex-1 bg-primary-container/20 rounded-t-sm h-[95%] hover:bg-primary-container transition-colors"></div>
+</div>
+<div class="flex justify-between mt-sm text-on-surface-variant font-label-sm">
+<span>WK 01</span>
+<span>WK 05</span>
+<span>WK 10</span>
+<span>CURRENT</span>
+</div>
+</div>
+<!-- Bento Style Secondary Lists -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-gutter">
+<!-- Most Sixes Section -->
+<div class="bg-surface-container-lowest p-md rounded-xl border border-outline-variant shadow-sm">
+<div class="flex items-center gap-sm mb-md">
+<span class="material-symbols-outlined text-primary">rocket_launch</span>
+<h3 class="font-headline-md text-headline-md text-on-surface !text-lg">Most Sixes</h3>
+</div>
+<div class="space-y-sm">
+<div class="flex items-center justify-between p-sm rounded-lg hover:bg-surface-container-low transition-colors">
+<div class="flex items-center gap-sm">
+<div class="w-12 h-12 rounded-full overflow-hidden bg-primary-fixed">
+<img alt="Player 1" class="w-full h-full object-cover" data-alt="Close-up portrait of an elite cricket batsman with intense focus, wearing a vibrant orange team jersey. The background is a soft-focus professional cricket field during a golden hour sunset, filled with warm, optimistic light. The image has a clean, premium digital photography feel with vibrant yet natural color tones." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBvLJ9kjzCc71CcRhpXZug-wl3Gv3j76Pdd7bpdUMGvMu2XQekxD6dfEa7g40oDI3V43_MCYLpYBI1KcgRBSUr1cshZGigp33FHSltB-_V2ZvzxAsmIBsFu5XFBS2t6Ng2RgzB1ZY16ShSYLjM2BdNDNaT5Gy6NLLesA44pixBINx9H4nR8JwsUgjsp1L68EwFAGL8c-v-FMJYEF4WuwBFMUs6jmay6rH2h7j01I0SfGjaGIyzGh_Hxk2ELf4F5jgKHFjNhiQCRez36"/>
+</div>
+<div>
+<p class="font-label-md text-on-surface">Virat Kohli</p>
+<p class="font-label-sm text-on-surface-variant">Royal Challengers</p>
+</div>
+</div>
+<div class="text-right">
+<span class="font-headline-md text-primary">54</span>
+<span class="block font-label-sm text-on-surface-variant">Sixes</span>
+</div>
+</div>
+<div class="flex items-center justify-between p-sm rounded-lg hover:bg-surface-container-low transition-colors">
+<div class="flex items-center gap-sm">
+<div class="w-12 h-12 rounded-full overflow-hidden bg-secondary-fixed">
+<img alt="Player 2" class="w-full h-full object-cover" data-alt="A cinematic side profile of a focused professional cricket player holding a bat, illuminated by strong stadium floodlights that create a dramatic contrast. The aesthetic is clean and modern, using a palette of oranges and deep grays to evoke a sense of high-performance and athletic excellence." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA8QIoDS9AA_8s9CvdYpFs90Pcpid8JnJ4cPisZb0ndHa7ZmZABoEoP_1h4zj9LG9J-WKzGRNWjt1xL4OD6qZEI92J2t4eWfIGCfCsfwvJH3gEd9QKRugh0RPcl7Sv2Ia2LCb0s6h6wHYyuVnYgYiDd2GGt0ZbBoeGS9Iq48dpcX5wqRwVpGIxj-Xo9YYAqSBUJPNjy97bjGUQz9a_d3OREUb_duxKPNZpqaQY8XTnM46OSdFh4gXS3cuHLH1g5c1OsY5IUTZU2bPZI"/>
+</div>
+<div>
+<p class="font-label-md text-on-surface">Rohit Sharma</p>
+<p class="font-label-sm text-on-surface-variant">Mumbai Indians</p>
+</div>
+</div>
+<div class="text-right">
+<span class="font-headline-md text-primary">48</span>
+<span class="block font-label-sm text-on-surface-variant">Sixes</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Most Fours Section -->
+<div class="bg-surface-container-lowest p-md rounded-xl border border-outline-variant shadow-sm">
+<div class="flex items-center gap-sm mb-md">
+<span class="material-symbols-outlined text-primary">flash_on</span>
+<h3 class="font-headline-md text-headline-md text-on-surface !text-lg">Most Fours</h3>
+</div>
+<div class="space-y-sm">
+<div class="flex items-center justify-between p-sm rounded-lg hover:bg-surface-container-low transition-colors">
+<div class="flex items-center gap-sm">
+<div class="w-12 h-12 rounded-full overflow-hidden bg-tertiary-fixed">
+<img alt="Player 3" class="w-full h-full object-cover" data-alt="High-contrast athletic portrait of a batsman in action, focusing on their determined expression under a bright, modern stadium lighting setup. The color scheme is dominated by bright whites and vibrant orange accents, reflecting a high-energy startup UI aesthetic. The background is minimal, keeping the focus entirely on the subject." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC4Q6SqYEwJwx0IiRWP6hjO1I8CDbTB7GRQ0d6VyJPC5EUpJyfmgAtQPW3A16QBuiT08F5_lg_CVxfrRnhpJ_ftfYCT5nZSEvAX6BfydVizRk4uf0ccn7wKd3kT9sCmuHGLXK4BigM1bMJhaIuzyaFgVgZFMB3rST2Z1ZImkdB-D14CO1ph1H3u-7OgrnJALVOYxGYsgnY2eDdl_gXOePwlqeMqdQeSPnf4yLnaYzT0ZiMkarD52q4WU5dYHKq01GhqCrG82hgl7U3Z"/>
+</div>
+<div>
+<p class="font-label-md text-on-surface">Shikhar Dhawan</p>
+<p class="font-label-sm text-on-surface-variant">Punjab Kings</p>
+</div>
+</div>
+<div class="text-right">
+<span class="font-headline-md text-primary">82</span>
+<span class="block font-label-sm text-on-surface-variant">Fours</span>
+</div>
+</div>
+<div class="flex items-center justify-between p-sm rounded-lg hover:bg-surface-container-low transition-colors">
+<div class="flex items-center gap-sm">
+<div class="w-12 h-12 rounded-full overflow-hidden bg-outline-variant">
+<img alt="Player 4" class="w-full h-full object-cover" data-alt="Minimalist digital art of a cricketer in a celebratory pose, using a limited color palette of solar oranges and clean grays. The lighting is diffused and professional, creating a clean light-mode visual that is both modern and energetic. The overall mood is triumphant and efficient." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCWA1elamgthosagGr2HW2mSoLM50ZAd7IYkmb6KPWANExgs3VbgwBb8nPS46RB0LbNfMTn1q6uBSbvtEVBHZTK6N-zzaf-4FcbrewfHV8CfafiDtV0YhFUYkAqdimmtMq1s6Rbi5jDiuQZPQFvH8REj--3wf7ZMDeWQC7_EBL3ZfHVqqlmhjB26u-N4bUeKiHv6UjqVwdQJVs8Og4VLOVoo9aHn3u7dWFXg9RZlOYpjRhrHBPByU0SfovLJLx0eXGlGgSFneJDNU_d"/>
+</div>
+<div>
+<p class="font-label-md text-on-surface">David Warner</p>
+<p class="font-label-sm text-on-surface-variant">Delhi Capitals</p>
+</div>
+</div>
+<div class="text-right">
+<span class="font-headline-md text-primary">76</span>
+<span class="block font-label-sm text-on-surface-variant">Fours</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Side Cards (Desktop Only) -->
+<div class="hidden lg:block lg:col-span-4 space-y-gutter">
+<div class="bg-primary-container text-on-primary-container p-lg rounded-xl shadow-lg relative overflow-hidden">
+<div class="relative z-10">
+<h4 class="font-headline-md text-headline-md mb-sm">Pro Insights</h4>
+<p class="font-body-md opacity-90 mb-md">This season's boundaries are 15% higher than previous records. High-altitude venues are contributing to record sixes.</p>
+<button class="bg-surface-container-lowest text-primary px-md py-sm rounded-full font-label-md hover:shadow-md transition-all active:scale-95">View Deep Dive</button>
+</div>
+<!-- Decorative Element -->
+<div class="absolute -right-8 -bottom-8 opacity-10 scale-150">
+<span class="material-symbols-outlined !text-9xl" style="font-variation-settings: 'FILL' 1;">insights</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-lg rounded-xl border border-outline-variant">
+<h4 class="font-label-md text-on-surface-variant mb-md uppercase tracking-wider">Top Strike Rates</h4>
+<div class="space-y-md">
+<div class="flex items-center gap-md">
+<span class="font-headline-md text-outline">01</span>
+<div class="flex-1">
+<div class="flex justify-between items-center mb-xs">
+<span class="font-label-md">Glenn Maxwell</span>
+<span class="text-primary font-bold">186.4</span>
+</div>
+<div class="w-full bg-surface-variant h-1.5 rounded-full overflow-hidden">
+<div class="bg-primary h-full w-[85%]"></div>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-md">
+<span class="font-headline-md text-outline">02</span>
+<div class="flex-1">
+<div class="flex justify-between items-center mb-xs">
+<span class="font-label-md">Suryakumar Yadav</span>
+<span class="text-primary font-bold">174.2</span>
+</div>
+<div class="w-full bg-surface-variant h-1.5 rounded-full overflow-hidden">
+<div class="bg-primary h-full w-[78%]"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-2 bg-surface-container-lowest dark:bg-inverse-surface shadow-[0px_-4px_20px_rgba(255,107,0,0.08)]">
+<!-- Matches -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-surface-variant opacity-70 hover:bg-surface-container dark:hover:bg-surface-container-high transition-all p-2 rounded-xl" href="#">
+<span class="material-symbols-outlined">sports_cricket</span>
+<span class="font-label-sm text-label-sm">Matches</span>
+</a>
+<!-- Teams -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-surface-variant opacity-70 hover:bg-surface-container dark:hover:bg-surface-container-high transition-all p-2 rounded-xl" href="#">
+<span class="material-symbols-outlined">groups</span>
+<span class="font-label-sm text-label-sm">Teams</span>
+</a>
+<!-- Points Table -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-surface-variant opacity-70 hover:bg-surface-container dark:hover:bg-surface-container-high transition-all p-2 rounded-xl" href="#">
+<span class="material-symbols-outlined">leaderboard</span>
+<span class="font-label-sm text-label-sm">Points Table</span>
+</a>
+<!-- Leaderboard -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-surface-variant opacity-70 hover:bg-surface-container dark:hover:bg-surface-container-high transition-all p-2 rounded-xl" href="#">
+<span class="material-symbols-outlined">emoji_events</span>
+<span class="font-label-sm text-label-sm">Leaderboard</span>
+</a>
+<!-- Stats (ACTIVE) -->
+<a class="flex flex-col items-center justify-center bg-secondary-container dark:bg-secondary text-on-secondary-container dark:text-on-secondary rounded-full px-4 py-1 active:scale-90 duration-200 transition-transform" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">query_stats</span>
+<span class="font-label-sm text-label-sm">Stats</span>
+</a>
+</nav>
+<!-- Micro-interaction for Bar Chart -->
+<script>
+        document.querySelectorAll('.flex-1.bg-primary-container').forEach(bar => {
+            bar.addEventListener('mouseenter', function() {
+                this.classList.add('scale-y-105');
+            });
+            bar.addEventListener('mouseleave', function() {
+                this.classList.remove('scale-y-105');
+            });
+        });
+    </script>
+</body></html>

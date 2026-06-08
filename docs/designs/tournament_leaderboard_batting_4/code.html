@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport"/>
+<title>Tournament Leaderboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "primary": "#a04100",
+                    "outline-variant": "#e2bfb0",
+                    "on-tertiary-fixed-variant": "#00497b",
+                    "inverse-surface": "#2f3133",
+                    "primary-fixed-dim": "#ffb693",
+                    "inverse-primary": "#ffb693",
+                    "surface-container-lowest": "#ffffff",
+                    "on-surface-variant": "#5a4136",
+                    "secondary-container": "#fdd400",
+                    "outline": "#8e7164",
+                    "on-tertiary": "#ffffff",
+                    "surface-container": "#eeeef0",
+                    "on-secondary-container": "#6f5c00",
+                    "tertiary-fixed": "#d0e4ff",
+                    "secondary-fixed": "#ffe170",
+                    "secondary": "#705d00",
+                    "tertiary-container": "#059eff",
+                    "on-surface": "#1a1c1e",
+                    "surface-container-highest": "#e2e2e5",
+                    "on-tertiary-fixed": "#001d35",
+                    "tertiary": "#0062a1",
+                    "surface-container-low": "#f3f3f6",
+                    "on-primary": "#ffffff",
+                    "error-container": "#ffdad6",
+                    "surface-tint": "#a04100",
+                    "on-primary-fixed-variant": "#7a3000",
+                    "surface-variant": "#e2e2e5",
+                    "primary-container": "#ff6b00",
+                    "on-error-container": "#93000a",
+                    "surface-dim": "#dadadc",
+                    "tertiary-fixed-dim": "#9ccaff",
+                    "on-tertiary-container": "#003357",
+                    "on-primary-fixed": "#351000",
+                    "surface-container-high": "#e8e8ea",
+                    "on-secondary": "#ffffff",
+                    "on-background": "#1a1c1e",
+                    "primary-fixed": "#ffdbcc",
+                    "inverse-on-surface": "#f0f0f3",
+                    "on-secondary-fixed-variant": "#544600",
+                    "on-secondary-fixed": "#221b00",
+                    "secondary-fixed-dim": "#e9c400",
+                    "on-primary-container": "#572000",
+                    "surface-bright": "#f9f9fc",
+                    "background": "#f4f4f8",
+                    "surface": "#f9f9fc",
+                    "error": "#ba1a1a",
+                    "on-error": "#ffffff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "margin-desktop": "auto",
+                    "xl": "64px",
+                    "gutter": "24px",
+                    "sm": "12px",
+                    "max-width": "1280px",
+                    "xs": "4px",
+                    "lg": "40px",
+                    "margin-mobile": "16px",
+                    "md": "24px",
+                    "base": "8px"
+            },
+            "fontFamily": {
+                    "headline-md": ["Plus Jakarta Sans"],
+                    "label-md": ["Plus Jakarta Sans"],
+                    "headline-lg": ["Plus Jakarta Sans"],
+                    "body-lg": ["Plus Jakarta Sans"],
+                    "label-sm": ["Plus Jakarta Sans"],
+                    "body-sm": ["Plus Jakarta Sans"],
+                    "headline-xl": ["Plus Jakarta Sans"],
+                    "headline-xl-mobile": ["Plus Jakarta Sans"],
+                    "body-md": ["Plus Jakarta Sans"]
+            },
+            "fontSize": {
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                    "label-md": ["14px", {"lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "600"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                    "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                    "label-sm": ["12px", {"lineHeight": "14px", "letterSpacing": "0.04em", "fontWeight": "600"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "headline-xl": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                    "headline-xl-mobile": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #f4f4f8;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-header {
+            backdrop-filter: blur(20px);
+            background: rgba(249, 249, 252, 0.85);
+        }
+        .scroll-hide::-webkit-scrollbar {
+            display: none;
+        }
+        .active-tab-indicator {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 3px;
+            width: 100%;
+            background-color: #a04100;
+            border-radius: 3px 3px 0 0;
+        }
+        .card-shadow {
+            box-shadow: 0px 4px 20px rgba(255, 107, 0, 0.04);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="text-on-background min-h-screen flex flex-col items-center">
+<!-- Top Navigation Header -->
+<header class="fixed top-0 z-50 w-full max-w-max-width glass-header h-16 flex items-center justify-between px-margin-mobile">
+<div class="flex items-center gap-4">
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container-high transition-colors active:scale-95 duration-150">
+<span class="material-symbols-outlined text-on-surface" data-icon="arrow_back">arrow_back</span>
+</button>
+<h1 class="font-headline-md text-headline-md text-on-surface">Leaderboard</h1>
+</div>
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container-high transition-colors active:scale-95 duration-150">
+<span class="material-symbols-outlined text-on-surface" data-icon="filter_list">filter_list</span>
+</button>
+</header>
+<!-- Content Container -->
+<main class="w-full max-w-[600px] mt-16 mb-24 flex flex-col">
+<!-- Custom Tab Bar -->
+<div class="sticky top-16 z-40 bg-background pt-2">
+<div class="flex w-full px-margin-mobile border-b border-outline-variant">
+<button class="flex-1 relative py-4 flex flex-col items-center justify-center group active:scale-95 transition-all">
+<span class="font-label-md text-label-md text-primary">Bat</span>
+<div class="active-tab-indicator"></div>
+</button>
+<button class="flex-1 relative py-4 flex flex-col items-center justify-center group hover:bg-surface-container-low transition-all">
+<span class="font-label-md text-label-md text-on-surface-variant">Bowl</span>
+</button>
+</div>
+<!-- Team Filter Dropdown -->
+<div class="px-margin-mobile py-4">
+<div class="relative w-full">
+<select class="w-full h-12 bg-surface border border-outline-variant rounded-lg px-4 appearance-none font-body-md text-on-surface focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all">
+<option>Filter by Team</option>
+<option>India</option>
+<option>Australia</option>
+<option>England</option>
+<option>South Africa</option>
+</select>
+<span class="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant" data-icon="expand_more">expand_more</span>
+</div>
+</div>
+</div>
+<!-- Players List -->
+<div class="flex flex-col gap-4 px-margin-mobile pb-base">
+<!-- Player Card 1 (Top Ranked) -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-lg p-4 card-shadow relative overflow-hidden group hover:border-primary transition-colors cursor-pointer">
+<div class="absolute top-0 right-0 p-2">
+<div class="bg-secondary-container text-on-secondary-container px-3 py-1 rounded-full flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]" data-icon="workspace_premium" style="font-variation-settings: 'FILL' 1;">workspace_premium</span>
+<span class="font-label-sm text-label-sm">#1</span>
+</div>
+</div>
+<div class="flex items-center gap-4 mb-4">
+<div class="relative">
+<img alt="Cricket Player Portrait" class="w-14 h-14 rounded-full object-cover border-2 border-primary" data-alt="A professional studio portrait of a confident athlete in cricket sporting attire against a clean, warm background. The lighting is bright and optimistic, echoing a solar minimalism aesthetic with soft orange undertones. The player has a determined expression, captured in high-definition photography style, with shallow depth of field focusing on his facial features." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAs08SXDdfmmtAk5C4j6SrHNvdfl-7v-cU8R-nvVqhR_m9p-Vg0PizEm51iDG-99qP0ScyOLTf0MSrQL_edCE0AFf0ubQXmS8mqHnV1KWu_8KyM9sdjFM2GoPb97jAjdsGwW11apYcIJnDFBEuSP_ur_WN0EZtF-TmDT3RNRPXdUfF5AJshkARQr2qSlmU05UVKnLAWILrV57xAHHYOegY2aL8_kyMMJe4awJU9Lq8Rw7sCQn5mQkDc_XFhMACJ19Gn3qaa17KiDNRK"/>
+</div>
+<div class="flex flex-col flex-1">
+<h3 class="font-headline-md text-[18px] text-on-surface leading-tight">Virat Kohli</h3>
+<span class="font-body-sm text-on-surface-variant">India</span>
+</div>
+<div class="flex flex-col items-end">
+<span class="font-headline-lg text-primary">540</span>
+<span class="font-label-sm text-on-surface-variant uppercase tracking-wider">Runs</span>
+</div>
+</div>
+<div class="grid grid-cols-4 border-t border-surface-container pt-3">
+<div class="flex flex-col">
+<span class="font-label-sm text-on-surface-variant">M</span>
+<span class="font-body-md font-bold text-on-surface">9</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-on-surface-variant">R</span>
+<span class="font-body-md font-bold text-on-surface">540</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-on-surface-variant">Avg</span>
+<span class="font-body-md font-bold text-on-surface">67.5</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-on-surface-variant">SR</span>
+<span class="font-body-md font-bold text-on-surface">112.4</span>
+</div>
+</div>
+</div>
+<!-- Player Card 2 -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-lg p-4 card-shadow relative overflow-hidden group hover:border-primary transition-colors cursor-pointer">
+<div class="absolute top-0 right-0 p-2">
+<div class="bg-surface-container-high text-on-surface-variant px-3 py-1 rounded-full flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]" data-icon="workspace_premium">workspace_premium</span>
+<span class="font-label-sm text-label-sm">#2</span>
+</div>
+</div>
+<div class="flex items-center gap-4 mb-4">
+<div class="relative">
+<img alt="Cricket Player Portrait" class="w-14 h-14 rounded-full object-cover border-2 border-transparent" data-alt="A cinematic portrait of a professional sportsman with a serene and focused look, set against a bright modern gallery background. The aesthetic is clean and minimal, using a warm palette of oranges and pristine whites. High-key lighting emphasizes clear skin tones and sharp details of the sports jersey, representing a professional and high-energy startup brand identity." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAGY9qNgStqYNi3Cx4-XXUPmtVSxltJtSzj_UjRZzHRj3K21yKkGv86MEj5ez1G4iTEh9fr9O_Md6nkCIePrVV6kI9n3UilDmAXVWOJewRzlwnIN4AA5sL4sldWS7HXDYCXdL2-NCoZwnsTHgqMGsIzkRPcWoiXCLZBXaIme5iWHXGR-8SldzNpPh9Ek28IkqZ4WcZvfoSBshlQaG5yoj74UXbhQOvcwWrbV1LrdzcF-L2-RFNPVxOqpEgM14_bmo14a0opEGoPIIhI"/>
+</div>
+<div class="flex flex-col flex-1">
+<h3 class="font-headline-md text-[18px] text-on-surface leading-tight">Steve Smith</h3>
+<span class="font-body-sm text-on-surface-variant">Australia</span>
+</div>
+<div class="flex flex-col items-end">
+<span class="font-headline-lg text-primary">512</span>
+<span class="font-label-sm text-on-surface-variant uppercase tracking-wider">Runs</span>
+</div>
+</div>
+<div class="grid grid-cols-4 border-t border-surface-container pt-3">
+<div class="flex flex-col">
+<span class="font-label-sm text-on-surface-variant">M</span>
+<span class="font-body-md font-bold text-on-surface">9</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-on-surface-variant">R</span>
+<span class="font-body-md font-bold text-on-surface">512</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-on-surface-variant">Avg</span>
+<span class="font-body-md font-bold text-on-surface">56.8</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-on-surface-variant">SR</span>
+<span class="font-body-md font-bold text-on-surface">89.2</span>
+</div>
+</div>
+</div>
+<!-- Player Card 3 -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-lg p-4 card-shadow relative overflow-hidden group hover:border-primary transition-colors cursor-pointer">
+<div class="absolute top-0 right-0 p-2">
+<div class="bg-surface-container-high text-on-surface-variant px-3 py-1 rounded-full flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]" data-icon="workspace_premium">workspace_premium</span>
+<span class="font-label-sm text-label-sm">#3</span>
+</div>
+</div>
+<div class="flex items-center gap-4 mb-4">
+<div class="relative">
+<img alt="Cricket Player Portrait" class="w-14 h-14 rounded-full object-cover border-2 border-transparent" data-alt="A sharp, vibrant studio shot of a premier cricket player looking towards the camera with leadership qualities. The environment is a minimalist professional sports facility with bright, natural-looking lighting and an airy atmosphere. The visual style follows a modern minimalism theme with secondary yellow and primary orange accents, creating a high-contrast and energetic feel." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB_Gm_1l6GfOOddNBAo5j4lqR7eV3_vwyeQzhhtDfIqNbjZ_nTPlCvARxsmBGCzbSeUQR2EuB9Te63BFoalGeVzo37D9nnD1M8rjCC8-H0e_GD7FX6QTLT0j-7Mvhy_uO7jkOpsNxxbOCoRp1K5naM5dtXHRk59AAnrKrX4h93BFJPFR0YVF8G8UFVAFkFmkDHfcn25bPVVpPmqgQ2cvOIGvKGcOLW1kebuGZNinTIZH4LJxy1C-BHQCy_ZIkVDn701_nfdjm5L65Xp"/>
+</div>
+<div class="flex flex-col flex-1">
+<h3 class="font-headline-md text-[18px] text-on-surface leading-tight">Joe Root</h3>
+<span class="font-body-sm text-on-surface-variant">England</span>
+</div>
+<div class="flex flex-col items-end">
+<span class="font-headline-lg text-primary">488</span>
+<span class="font-label-sm text-on-surface-variant uppercase tracking-wider">Runs</span>
+</div>
+</div>
+<div class="grid grid-cols-4 border-t border-surface-container pt-3">
+<div class="flex flex-col">
+<span class="font-label-sm text-on-surface-variant">M</span>
+<span class="font-body-md font-bold text-on-surface">8</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-on-surface-variant">R</span>
+<span class="font-body-md font-bold text-on-surface">488</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-on-surface-variant">Avg</span>
+<span class="font-body-md font-bold text-on-surface">61.0</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-on-surface-variant">SR</span>
+<span class="font-body-md font-bold text-on-surface">94.5</span>
+</div>
+</div>
+</div>
+<!-- Player Card 4 -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-lg p-4 card-shadow relative overflow-hidden group hover:border-primary transition-colors cursor-pointer">
+<div class="flex items-center gap-4 mb-4">
+<div class="relative w-14 flex items-center justify-center font-headline-md text-on-surface-variant">4</div>
+<div class="flex flex-col flex-1">
+<h3 class="font-headline-md text-[18px] text-on-surface leading-tight">Quinton de Kock</h3>
+<span class="font-body-sm text-on-surface-variant">South Africa</span>
+</div>
+<div class="flex flex-col items-end">
+<span class="font-headline-lg text-primary">450</span>
+<span class="font-label-sm text-on-surface-variant uppercase tracking-wider">Runs</span>
+</div>
+</div>
+<div class="grid grid-cols-4 border-t border-surface-container pt-3">
+<div class="flex flex-col">
+<span class="font-label-sm text-on-surface-variant">M</span>
+<span class="font-body-md font-bold text-on-surface">9</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-on-surface-variant">R</span>
+<span class="font-body-md font-bold text-on-surface">450</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-on-surface-variant">Avg</span>
+<span class="font-body-md font-bold text-on-surface">50.0</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-on-surface-variant">SR</span>
+<span class="font-body-md font-bold text-on-surface">115.7</span>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation Bar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 bg-surface border-t border-outline-variant px-2 py-3 pb-safe flex justify-around items-center rounded-t-xl shadow-lg">
+<a class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1 hover:bg-surface-container-low transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-label-sm text-label-sm">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1 hover:bg-surface-container-low transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="sports_cricket">sports_cricket</span>
+<span class="font-label-sm text-label-sm">Matches</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-full px-4 py-1 active:scale-95 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="leaderboard" style="font-variation-settings: 'FILL' 1;">leaderboard</span>
+<span class="font-label-sm text-label-sm">Leaderboard</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1 hover:bg-surface-container-low transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-label-sm text-label-sm">Profile</span>
+</a>
+</nav>
+<script>
+        // Micro-interactions for player cards
+        document.querySelectorAll('.card-shadow').forEach(card => {
+            card.addEventListener('mousedown', () => {
+                card.style.transform = 'scale(0.98)';
+            });
+            card.addEventListener('mouseup', () => {
+                card.style.transform = 'scale(1)';
+            });
+            card.addEventListener('mouseleave', () => {
+                card.style.transform = 'scale(1)';
+            });
+        });
+
+        // Tab switching simulation (visual only)
+        const tabs = document.querySelectorAll('.sticky button');
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                tabs.forEach(t => {
+                    t.querySelector('span').classList.remove('text-primary');
+                    t.querySelector('span').classList.add('text-on-surface-variant');
+                    const indicator = t.querySelector('.active-tab-indicator');
+                    if(indicator) indicator.remove();
+                });
+                tab.querySelector('span').classList.remove('text-on-surface-variant');
+                tab.querySelector('span').classList.add('text-primary');
+                const newIndicator = document.createElement('div');
+                newIndicator.className = 'active-tab-indicator';
+                tab.appendChild(newIndicator);
+            });
+        });
+    </script>
+</body></html>

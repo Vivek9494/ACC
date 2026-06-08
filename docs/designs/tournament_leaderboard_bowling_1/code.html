@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Cricket Solar - Leaderboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "primary": "#a04100",
+                    "surface-container-low": "#f3f3f6",
+                    "secondary": "#705d00",
+                    "outline-variant": "#e2bfb0",
+                    "on-tertiary": "#ffffff",
+                    "outline": "#8e7164",
+                    "on-background": "#1a1c1e",
+                    "on-surface": "#1a1c1e",
+                    "tertiary": "#0062a1",
+                    "inverse-on-surface": "#f0f0f3",
+                    "on-secondary-fixed": "#221b00",
+                    "inverse-primary": "#ffb693",
+                    "secondary-fixed": "#ffe170",
+                    "on-tertiary-fixed-variant": "#00497b",
+                    "surface-container-lowest": "#ffffff",
+                    "on-primary-container": "#572000",
+                    "surface-bright": "#f9f9fc",
+                    "on-primary": "#ffffff",
+                    "on-tertiary-container": "#003357",
+                    "surface-tint": "#a04100",
+                    "on-secondary-fixed-variant": "#544600",
+                    "on-error": "#ffffff",
+                    "surface-container": "#eeeef0",
+                    "tertiary-container": "#059eff",
+                    "surface": "#f9f9fc",
+                    "on-secondary-container": "#6f5c00",
+                    "tertiary-fixed-dim": "#9ccaff",
+                    "surface-dim": "#dadadc",
+                    "on-error-container": "#93000a",
+                    "on-primary-fixed-variant": "#7a3000",
+                    "primary-fixed-dim": "#ffb693",
+                    "primary-fixed": "#ffdbcc",
+                    "inverse-surface": "#2f3133",
+                    "surface-variant": "#e2e2e5",
+                    "tertiary-fixed": "#d0e4ff",
+                    "secondary-fixed-dim": "#e9c400",
+                    "primary-container": "#ff6b00",
+                    "on-secondary": "#ffffff",
+                    "error-container": "#ffdad6",
+                    "background": "#f9f9fc",
+                    "surface-container-high": "#e8e8ea",
+                    "on-primary-fixed": "#351000",
+                    "on-tertiary-fixed": "#001d35",
+                    "secondary-container": "#fdd400",
+                    "error": "#ba1a1a",
+                    "on-surface-variant": "#5a4136",
+                    "surface-container-highest": "#e2e2e5"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "margin-desktop": "auto",
+                    "xs": "4px",
+                    "max-width": "1280px",
+                    "margin-mobile": "16px",
+                    "md": "24px",
+                    "lg": "40px",
+                    "xl": "64px",
+                    "gutter": "24px",
+                    "sm": "12px",
+                    "base": "8px"
+            },
+            "fontFamily": {
+                    "body-md": ["Plus Jakarta Sans"],
+                    "headline-xl": ["Plus Jakarta Sans"],
+                    "headline-xl-mobile": ["Plus Jakarta Sans"],
+                    "headline-md": ["Plus Jakarta Sans"],
+                    "body-sm": ["Plus Jakarta Sans"],
+                    "label-md": ["Plus Jakarta Sans"],
+                    "headline-lg": ["Plus Jakarta Sans"],
+                    "body-lg": ["Plus Jakarta Sans"],
+                    "label-sm": ["Plus Jakarta Sans"]
+            },
+            "fontSize": {
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "headline-xl": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                    "headline-xl-mobile": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "label-md": ["14px", {"lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "600"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                    "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                    "label-sm": ["12px", {"lineHeight": "14px", "letterSpacing": "0.04em", "fontWeight": "600"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            background-color: #F4F4F8;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-effect {
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+        .solar-shadow {
+            box-shadow: 0px 4px 20px rgba(255, 107, 0, 0.08);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="text-on-background">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-surface/80 backdrop-blur-xl shadow-sm">
+<div class="flex justify-between items-center px-margin-mobile py-base w-full">
+<div class="flex items-center gap-base">
+<button class="material-symbols-outlined text-primary p-2 transition-all duration-300 ease-in-out active:scale-95 hover:bg-primary/10 rounded-full" data-icon="arrow_back">arrow_back</button>
+<h1 class="font-headline-md text-headline-md font-bold text-primary">Leaderboard</h1>
+</div>
+<div class="w-10 h-10 rounded-full overflow-hidden border-2 border-primary-fixed">
+<img alt="User profile photo" data-alt="A professional close-up studio portrait of a young male sports commentator with a warm smile. He has short dark hair and is wearing a clean white polo shirt. The background is a soft, out-of-focus stadium interior with warm orange and yellow lighting, maintaining a bright and optimistic Solar minimalism aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBACdsERNSnk6AtiBdddnBL__x2t4R-3C5yzLeWykz5g66esB8BrrTgEZS954PrIhEI55zbXXsq1zXQWUToE8oHCPBIuubuSE660O4SWdPwgQ2-sn_8wCX56gHRcUsJbF9u2S0NYhbfssO0I3AHf2U-rZR9US2Ff19M-ejUXIOjqucv1BTeMySNk-S-HxJhc_DPWnf_8vo-1JoLYMLx6nnd2uKA5VnCiRybyNoW4nLNzyCZ_oI3d-ELs8Es_-LV_axJB5pSoua2q6LO"/>
+</div>
+</div>
+</header>
+<main class="pt-[72px] pb-32 max-w-max-width mx-auto px-margin-mobile">
+<!-- Tabs Section -->
+<div class="mt-md mb-md flex border-b border-outline-variant">
+<button class="flex-1 py-4 font-label-md text-label-md text-on-surface-variant transition-colors">
+                Bat
+            </button>
+<button class="flex-1 py-4 font-label-md text-label-md text-primary border-b-2 border-primary transition-colors">
+                Bowl
+            </button>
+</div>
+<!-- Filter Section -->
+<div class="mb-lg">
+<div class="relative inline-block w-full md:w-64">
+<label class="block font-label-sm text-label-sm text-on-surface-variant mb-xs">Filter by Team</label>
+<div class="relative">
+<select class="appearance-none w-full bg-surface-container-lowest border border-outline-variant rounded-lg px-4 py-3 font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all cursor-pointer">
+<option>All Teams</option>
+<option>India</option>
+<option>Afghanistan</option>
+<option>Pakistan</option>
+<option>Australia</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-outline" data-icon="expand_more">expand_more</span>
+</div>
+</div>
+</div>
+<!-- Leaderboard List -->
+<div class="space-y-md">
+<!-- Rank 1: Jasprit Bumrah -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-md solar-shadow transition-all hover:scale-[1.01]">
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-md">
+<div class="flex items-center gap-md">
+<div class="relative">
+<div class="w-16 h-16 rounded-full overflow-hidden border-2 border-primary-container">
+<img alt="Jasprit Bumrah" data-alt="Professional sports portrait of an elite Indian cricketer with a focused expression. The visual style is clean and modern, featuring high-key lighting that emphasizes clarity. The background is a minimalist gradient of soft grays and warm oranges, reflecting a professional sports app identity. High detail, photorealistic textures." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDtdA_4qm3cbcFbCH5WU7TIv1QKPC46tXrrNvKZfxRtz7j8lJ-LfO0tEmrfTfWauUcAtsNJBfdK0VhcqQf7NGA5y8zpm7CwnnQUdbrpQjYqa9QB0nvxTxqr9G3203Pjp4WGIV7VQumfaoW0FQ2iHZyApj6GlerZ7k9lGaQIpDmcAsGhzlUW_w1ofUzWt5s9E4PmPexGaMHPEWEp_8spUy5VaXC-x5FahDpnih3wd5rk01Z4mjIdbxmepmUq0iRac3XLkNQYyQi7OppR"/>
+</div>
+<div class="absolute -bottom-1 -right-1 bg-primary text-white text-[10px] font-bold w-6 h-6 flex items-center justify-center rounded-full border-2 border-surface-container-lowest">1</div>
+</div>
+<div>
+<h3 class="font-headline-md text-headline-md text-on-surface">Jasprit Bumrah</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">India</p>
+</div>
+</div>
+<div class="grid grid-cols-3 gap-lg text-center bg-surface-container-low rounded-lg p-sm md:w-auto">
+<div>
+<p class="font-label-sm text-label-sm text-outline uppercase tracking-wider">M</p>
+<p class="font-headline-md text-headline-md text-primary">12</p>
+</div>
+<div>
+<p class="font-label-sm text-label-sm text-outline uppercase tracking-wider">W</p>
+<p class="font-headline-md text-headline-md text-primary">24</p>
+</div>
+<div>
+<p class="font-label-sm text-label-sm text-outline uppercase tracking-wider">Eco</p>
+<p class="font-headline-md text-headline-md text-primary">4.2</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Rank 2: Rashid Khan -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-md solar-shadow transition-all hover:scale-[1.01]">
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-md">
+<div class="flex items-center gap-md">
+<div class="relative">
+<div class="w-16 h-16 rounded-full overflow-hidden border-2 border-secondary-container">
+<img alt="Rashid Khan" data-alt="Athletic portrait of a top-tier Afghan cricketer, captured in a bright and energetic setting. The lighting is soft and directional, highlighting facial features against a clean, modern studio backdrop with subtle yellow accents. The mood is optimistic and professional, adhering to a minimalist design philosophy." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBw6zhoijBh7bzEKB_zKlDFnKslDafpP_r2nMADCn3eUH1bmxXJgzWiJWgp2DjcjC9pOwK_BhLn9FawC_hy4vB1pDaU6dE79-PczdxUYxCnbV8moy0h4NMP90iRUdhONz78aZ_2zHCv-30HLmfvV4GqsmbZvR2kuuSc0o4bN7xTKpLIsvlklpvosjOjEjneidY_MkpGpkdw2waZFEau95HtLVpLZhTeX4qT-BpdgYeDviRdV-LMK1G7Qc5na7qVYasu3NmZmLCQQbzG"/>
+</div>
+<div class="absolute -bottom-1 -right-1 bg-secondary text-on-secondary-fixed text-[10px] font-bold w-6 h-6 flex items-center justify-center rounded-full border-2 border-surface-container-lowest">2</div>
+</div>
+<div>
+<h3 class="font-headline-md text-headline-md text-on-surface">Rashid Khan</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Afghanistan</p>
+</div>
+</div>
+<div class="grid grid-cols-3 gap-lg text-center bg-surface-container-low rounded-lg p-sm md:w-auto">
+<div>
+<p class="font-label-sm text-label-sm text-outline uppercase tracking-wider">M</p>
+<p class="font-headline-md text-headline-md text-primary">11</p>
+</div>
+<div>
+<p class="font-label-sm text-label-sm text-outline uppercase tracking-wider">W</p>
+<p class="font-headline-md text-headline-md text-primary">21</p>
+</div>
+<div>
+<p class="font-label-sm text-label-sm text-outline uppercase tracking-wider">Eco</p>
+<p class="font-headline-md text-headline-md text-primary">5.1</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Rank 3: Shaheen Afridi -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-md solar-shadow transition-all hover:scale-[1.01]">
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-md">
+<div class="flex items-center gap-md">
+<div class="relative">
+<div class="w-16 h-16 rounded-full overflow-hidden border-2 border-outline">
+<img alt="Shaheen Afridi" data-alt="Dynamic portrait of a professional Pakistani fast bowler. The image has a bright, airy feel with high-key lighting. The background is a clean white space with abstract linear elements in soft orange, reflecting the brand's 'Solar' identity. The subject has a confident and determined look, ideal for a high-performance sports application." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCxlvhPboNM7RR_VkU8RfdiW8Yp8gKFMIknp47E550twzmc65ZqOYGGz2uULA4EIL3wx3zcwcXML0wrD8NPC-3ntg3DsoijZBGNJMRHOPBHf2fY55vwv-JS-lXsNKDGTBjy9CzfgTOazl5CusI--Jj-urT7NMoFTQnfoF73QxqYFQGbWaW0mv-fvF1JhNLrL3ZqPowHfUM9ngEj5j-xadnHf16TGzyKyfueMLcQ-VMIlV3Xx5ZklsAaLWjy4aAkZ6g1H8S626bhwSqy"/>
+</div>
+<div class="absolute -bottom-1 -right-1 bg-outline text-white text-[10px] font-bold w-6 h-6 flex items-center justify-center rounded-full border-2 border-surface-container-lowest">3</div>
+</div>
+<div>
+<h3 class="font-headline-md text-headline-md text-on-surface">Shaheen Afridi</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Pakistan</p>
+</div>
+</div>
+<div class="grid grid-cols-3 gap-lg text-center bg-surface-container-low rounded-lg p-sm md:w-auto">
+<div>
+<p class="font-label-sm text-label-sm text-outline uppercase tracking-wider">M</p>
+<p class="font-headline-md text-headline-md text-primary">10</p>
+</div>
+<div>
+<p class="font-label-sm text-label-sm text-outline uppercase tracking-wider">W</p>
+<p class="font-headline-md text-headline-md text-primary">18</p>
+</div>
+<div>
+<p class="font-label-sm text-label-sm text-outline uppercase tracking-wider">Eco</p>
+<p class="font-headline-md text-headline-md text-primary">5.5</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full bg-surface/80 backdrop-blur-xl flex justify-around items-center pt-base pb-[env(safe-area-inset-bottom,16px)] px-margin-mobile z-50">
+<a class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1 transition-transform duration-200 active:scale-90 hover:bg-primary/5 rounded-xl" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="home">home</span>
+<span class="font-label-sm text-label-sm">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1 transition-transform duration-200 active:scale-90 hover:bg-primary/5 rounded-xl" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="sports_cricket">sports_cricket</span>
+<span class="font-label-sm text-label-sm">Matches</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-xl px-4 py-1 transition-transform duration-200 active:scale-90 shadow-lg shadow-primary/20" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="leaderboard" style="font-variation-settings: 'FILL' 1;">leaderboard</span>
+<span class="font-label-sm text-label-sm">Stats</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1 transition-transform duration-200 active:scale-90 hover:bg-primary/5 rounded-xl" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="chat">chat</span>
+<span class="font-label-sm text-label-sm">Messages</span>
+</a>
+</nav>
+<script>
+        // Simple tab switching animation
+        document.querySelectorAll('button').forEach(button => {
+            button.addEventListener('click', function() {
+                if(this.textContent.trim() === 'Bat' || this.textContent.trim() === 'Bowl') {
+                    document.querySelectorAll('button').forEach(btn => {
+                        btn.classList.remove('text-primary', 'border-b-2', 'border-primary');
+                        btn.classList.add('text-on-surface-variant');
+                    });
+                    this.classList.remove('text-on-surface-variant');
+                    this.classList.add('text-primary', 'border-b-2', 'border-primary');
+                }
+            });
+        });
+
+        // Add micro-interaction to cards
+        const cards = document.querySelectorAll('.solar-shadow');
+        cards.forEach(card => {
+            card.addEventListener('mouseenter', () => {
+                card.style.transform = 'translateY(-2px)';
+            });
+            card.addEventListener('mouseleave', () => {
+                card.style.transform = 'translateY(0px)';
+            });
+        });
+    </script>
+</body></html>

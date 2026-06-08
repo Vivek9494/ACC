@@ -1,0 +1,324 @@
+<!DOCTYPE html><html class="light" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Edit Profile - SolarScore</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@100..900&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "tertiary-fixed": "#d0e4ff",
+                    "surface-bright": "#f9f9fc",
+                    "on-surface": "#1a1c1e",
+                    "on-surface-variant": "#5a4136",
+                    "on-secondary-container": "#6f5c00",
+                    "tertiary": "#0062a1",
+                    "secondary-container": "#fdd400",
+                    "primary-fixed-dim": "#ffb693",
+                    "on-tertiary": "#ffffff",
+                    "on-primary": "#ffffff",
+                    "surface-container-low": "#f3f3f6",
+                    "on-primary-fixed-variant": "#7a3000",
+                    "primary": "#a04100",
+                    "surface-dim": "#dadadc",
+                    "surface-container-high": "#e8e8ea",
+                    "surface-tint": "#a04100",
+                    "surface-container-highest": "#e2e2e5",
+                    "surface-container": "#eeeef0",
+                    "inverse-surface": "#2f3133",
+                    "background": "#f9f9fc",
+                    "tertiary-fixed-dim": "#9ccaff",
+                    "outline": "#8e7164",
+                    "error-container": "#ffdad6",
+                    "on-primary-container": "#572000",
+                    "secondary": "#705d00",
+                    "on-tertiary-fixed-variant": "#00497b",
+                    "on-error-container": "#93000a",
+                    "on-tertiary-fixed": "#001d35",
+                    "on-secondary-fixed": "#221b00",
+                    "inverse-primary": "#ffb693",
+                    "error": "#ba1a1a",
+                    "on-background": "#1a1c1e",
+                    "on-primary-fixed": "#351000",
+                    "on-error": "#ffffff",
+                    "primary-container": "#ff6b00",
+                    "secondary-fixed": "#ffe170",
+                    "on-secondary": "#ffffff",
+                    "tertiary-container": "#059eff",
+                    "surface-variant": "#e2e2e5",
+                    "on-secondary-fixed-variant": "#544600",
+                    "inverse-on-surface": "#f0f0f3",
+                    "surface-container-lowest": "#ffffff",
+                    "on-tertiary-container": "#003357",
+                    "surface": "#f9f9fc",
+                    "secondary-fixed-dim": "#e9c400",
+                    "primary-fixed": "#ffdbcc",
+                    "outline-variant": "#e2bfb0"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.8rem",
+                    "xl": "1rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "xl": "64px",
+                    "md": "24px",
+                    "margin-desktop": "auto",
+                    "base": "8px",
+                    "max-width": "1280px",
+                    "sm": "12px",
+                    "margin-mobile": "16px",
+                    "lg": "40px",
+                    "gutter": "24px",
+                    "xs": "4px"
+            },
+            "fontFamily": {
+                    "headline-xl": ["Plus Jakarta Sans"],
+                    "headline-md": ["Plus Jakarta Sans"],
+                    "headline-lg": ["Plus Jakarta Sans"],
+                    "label-sm": ["Plus Jakarta Sans"],
+                    "body-lg": ["Plus Jakarta Sans"],
+                    "body-md": ["Plus Jakarta Sans"],
+                    "headline-xl-mobile": ["Plus Jakarta Sans"],
+                    "label-md": ["Plus Jakarta Sans"],
+                    "body-sm": ["Plus Jakarta Sans"]
+            },
+            "fontSize": {
+                    "headline-xl": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                    "label-sm": ["12px", {"lineHeight": "14px", "letterSpacing": "0.04em", "fontWeight": "600"}],
+                    "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "headline-xl-mobile": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                    "label-md": ["14px", {"lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "600"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            background-color: #f9f9fc;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            color: #1a1c1e;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #e2e2e5;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="bg-surface custom-scrollbar pb-32">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-surface/80 backdrop-blur-xl shadow-sm border-b border-outline-variant/30 h-16">
+<div class="flex items-center justify-between px-md h-full w-full max-w-max-width mx-auto">
+<div class="flex items-center gap-4">
+<button class="active:scale-95 transition-transform duration-200 text-primary flex items-center justify-center p-2 rounded-full hover:bg-surface-container-high">
+<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
+</button>
+<h1 class="font-headline-md text-headline-md text-on-surface">Edit Profile</h1>
+</div>
+<div class="h-10 w-10 rounded-full bg-primary-fixed overflow-hidden border-2 border-primary-container">
+<img class="h-full w-full object-cover" data-alt="A professional and clean headshot of a young male athlete with a friendly smile, set against a blurred, minimalist architectural background. The lighting is bright and natural, reflecting a modern, optimistic brand identity. The photo uses a shallow depth of field to keep the focus sharp on the user's face while maintaining a high-key, sophisticated atmosphere." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAtc76SPxY8dZ4c1dyJFflIw0_x5SBbWUytB1zafcE64LNelmsrfG7be3mWkB9E_tOLBYQxzNLxe96vR-SggiOXRvt2HOqJTIU17pfymH67kEOK3z8aLJv9ufP1N8Mf3CDtzOmEHoP4CdUfBWfScEYfbqc94ab4UTHIjIiCgy8To8rWglUFdKWrB2JFJbCVbDdRrKW7GCNHFe23z0nVPaFCepf5xeGJtPgiyMmPDCMOT-FwRP0wuJOM5RoQW51YK2t8gVqdZapGkwxK">
+</div>
+</div>
+</header>
+<main class="mt-20 px-margin-mobile md:px-gutter max-w-max-width mx-auto">
+<!-- Profile Photo Section -->
+<section class="flex flex-col items-center py-8">
+<div class="relative group">
+<div class="w-32 h-32 rounded-full bg-white shadow-lg overflow-hidden border-4 border-white">
+<img class="h-full w-full object-cover" data-alt="Close up portrait of a modern user in a minimalist studio setting. Soft directional lighting highlights the features, with a clean and airy feeling consistent with a high-end health and sports application. The background is a soft, warm neutral tone, providing a premium feel." id="profile-preview" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB-cYwp8n083YafobQdXyXXRT44BWW9ufiMJMR8QRcfCBUWOqZ1i-J6GjPbWBx89PC0Riq3ZC5NCGxRGsVYsgqcFEsQFXZhsMEpVYvZ69xPfUK8wT5hvRkEvci3AeBq57dLhEkGRpMM6AxBrO-XscIJdxumbrwOe3n9HzhrzSH4JhK0RHnjp3g_aM_5LSYBPXH3ykPoVwArfApJyFVeWlmZu3OfHqtsuIOzJPg_w20gNF-KUKdRPw7LZY4SNg6b-ZfQ0B7mj5vMxseD">
+</div>
+<label class="absolute bottom-0 right-0 bg-primary-container text-white p-2 rounded-full shadow-lg cursor-pointer hover:scale-105 transition-transform active:scale-90" for="photo-upload">
+<span class="material-symbols-outlined" data-icon="photo_camera">photo_camera</span>
+<input accept="image/*" class="hidden" id="photo-upload" type="file">
+</label>
+</div>
+<p class="mt-4 font-label-md text-on-surface-variant">Tap to update photo</p>
+</section>
+<form class="space-y-8">
+<!-- Personal Info Section -->
+<div class="space-y-6">
+<h2 class="font-headline-md text-headline-md mb-6 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary" data-icon="person">person</span>
+                    Personal Info
+                </h2>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="flex flex-col gap-2">
+<label class="font-label-md text-label-md text-on-surface-variant">First Name</label>
+<input class="bg-surface-bright border border-outline-variant/50 rounded-lg p-3 text-on-surface focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all" type="text" value="Julian">
+</div>
+<div class="flex flex-col gap-2">
+<label class="font-label-md text-label-md text-on-surface-variant">Last Name</label>
+<input class="bg-surface-bright border border-outline-variant/50 rounded-lg p-3 text-on-surface focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all" type="text" value="Casablancas">
+</div>
+<div class="flex flex-col gap-2">
+<label class="font-label-md text-label-md text-on-surface-variant">Phone Number</label>
+<input class="bg-surface-bright border border-outline-variant/50 rounded-lg p-3 text-on-surface focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all" type="tel" value="+1 (555) 0123-456">
+</div>
+<div class="flex flex-col gap-2">
+<label class="font-label-md text-label-md text-on-surface-variant">Email</label>
+<input class="bg-surface-bright border border-outline-variant/50 rounded-lg p-3 text-on-surface focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all" type="email" value="julian.c@solarscore.com">
+</div>
+<div class="flex flex-col gap-2">
+<label class="font-label-md text-label-md text-on-surface-variant">Date of Birth</label>
+<div class="relative">
+<input class="w-full bg-surface-bright border border-outline-variant/50 rounded-lg p-3 text-on-surface focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all appearance-none" type="date" value="1992-08-23">
+</div>
+</div>
+</div>
+</div>
+<!-- Location Section -->
+<div class="space-y-6">
+<h2 class="font-headline-md text-headline-md mb-6 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary" data-icon="location_on">location_on</span>
+                    Location Details
+                </h2>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="flex flex-col gap-2">
+<label class="font-label-md text-label-md text-on-surface-variant">Province</label>
+<select class="bg-surface-bright border border-outline-variant/50 rounded-lg p-3 text-on-surface focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all">
+<option selected="">Ontario</option>
+<option>Quebec</option>
+<option>British Columbia</option>
+<option>Alberta</option>
+</select>
+</div>
+<div class="flex flex-col gap-2">
+<label class="font-label-md text-label-md text-on-surface-variant">Center</label>
+<select class="bg-surface-bright border border-outline-variant/50 rounded-lg p-3 text-on-surface focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all">
+<option selected="">Downtown Toronto Hub</option>
+<option>Scarborough West</option>
+<option>Mississauga North</option>
+</select>
+</div>
+</div>
+</div>
+<!-- Health Section -->
+<div class="space-y-6">
+<h2 class="font-headline-md text-headline-md mb-6 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary" data-icon="health_and_safety">health_and_safety</span>
+                    Health Section
+                </h2>
+<div class="flex items-center gap-4 bg-surface-bright p-4 rounded-lg border border-outline-variant/30">
+<input checked="" class="w-6 h-6 text-primary border-outline rounded focus:ring-primary focus:ring-offset-0" id="healthcard" type="checkbox">
+<label class="font-body-md text-body-md text-on-surface select-none" for="healthcard">Do you have a healthcard?</label>
+</div>
+</div>
+<!-- Emergency Contact -->
+<div class="space-y-6">
+<h2 class="font-headline-md text-headline-md mb-6 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary" data-icon="emergency">emergency</span>
+                    Emergency Contact
+                </h2>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="flex flex-col gap-2">
+<label class="font-label-md text-label-md text-on-surface-variant">Contact Name</label>
+<input class="bg-surface-bright border border-outline-variant/50 rounded-lg p-3 text-on-surface focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all" placeholder="Full Name" type="text">
+</div>
+<div class="flex flex-col gap-2">
+<label class="font-label-md text-label-md text-on-surface-variant">Contact Number</label>
+<input class="bg-surface-bright border border-outline-variant/50 rounded-lg p-3 text-on-surface focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all" placeholder="+1 (555) 000-0000" type="tel">
+</div>
+</div>
+</div>
+<!-- Equipment Section -->
+<div class="space-y-6">
+<h2 class="font-headline-md text-headline-md mb-6 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary" data-icon="sports_cricket">sports_cricket</span>
+                    Equipment &amp; Gear
+                </h2>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<div class="flex flex-col gap-2">
+<label class="font-label-md text-label-md text-on-surface-variant">Jersey Size</label>
+<select class="bg-surface-bright border border-outline-variant/50 rounded-lg p-3 text-on-surface focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all">
+<option>Small</option>
+<option selected="">Medium</option>
+<option>Large</option>
+<option>XL</option>
+</select>
+</div>
+<div class="flex flex-col gap-2 md:col-span-2">
+<label class="font-label-md text-label-md text-on-surface-variant">Jersey Name &amp; Number</label>
+<input class="bg-surface-bright border border-outline-variant/50 rounded-lg p-3 text-on-surface focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all" type="text" value="Casablancas #13">
+</div>
+</div>
+</div>
+<!-- Action Button -->
+<div class="pt-4 pb-12">
+<button class="w-full bg-primary-container text-white py-4 rounded-xl font-headline-md text-headline-md shadow-lg shadow-primary/20 hover:bg-primary transition-all active:scale-95 duration-200" type="button">
+                    Update Profile
+                </button>
+</div>
+</form>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 bg-surface/90 backdrop-blur-xl border-t border-outline-variant/20 shadow-[0_-4px_20px_rgba(255,107,0,0.08)] rounded-t-xl">
+<div class="fixed bottom-0 left-0 w-full flex justify-around items-center px-margin-mobile py-2 pb-safe">
+<a class="flex flex-col items-center justify-center text-on-surface-variant opacity-70 hover:text-primary transition-all active:scale-90" href="#">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-label-sm text-label-sm">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant opacity-70 hover:text-primary transition-all active:scale-90" href="#">
+<span class="material-symbols-outlined" data-icon="sports_cricket">sports_cricket</span>
+<span class="font-label-sm text-label-sm">Matches</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant opacity-70 hover:text-primary transition-all active:scale-90" href="#">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+<span class="font-label-sm text-label-sm">Stats</span>
+</a>
+<!-- Active Profile tab mapping -->
+<a class="flex flex-col items-center justify-center text-primary bg-primary-fixed/30 rounded-full px-4 py-1 transition-all active:scale-90" href="#">
+<span class="material-symbols-outlined" data-icon="chat" data-weight="fill" style="font-variation-settings: 'FILL' 1;">chat</span>
+<span class="font-label-sm text-label-sm">Messages</span>
+</a>
+</div>
+</nav>
+<script>
+        // Simple micro-interaction for photo upload preview
+        document.getElementById('photo-upload').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    document.getElementById('profile-preview').src = event.target.result;
+                }
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Feedback for Update Profile button
+        const updateBtn = document.querySelector('button[type="button"]');
+        updateBtn.addEventListener('click', () => {
+            const originalText = updateBtn.innerHTML;
+            updateBtn.innerHTML = '<span class="flex items-center justify-center gap-2"><span class="animate-spin material-symbols-outlined">progress_activity</span> Updating...</span>';
+            setTimeout(() => {
+                updateBtn.innerHTML = '<span class="flex items-center justify-center gap-2"><span class="material-symbols-outlined">check_circle</span> Profile Updated</span>';
+                setTimeout(() => {
+                    updateBtn.innerHTML = originalText;
+                }, 2000);
+            }, 1200);
+        });
+    </script>
+
+
+</body></html>

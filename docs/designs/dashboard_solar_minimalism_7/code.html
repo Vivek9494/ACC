@@ -1,0 +1,387 @@
+<!DOCTYPE html><html class="light" lang="en" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Admin Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-bright": "#F4F4F8",
+                    "on-primary": "#ffffff",
+                    "secondary-fixed": "#fdbf50",
+                    "surface-variant": "#e2e2e5",
+                    "surface-container-high": "#e8e8ea",
+                    "on-primary-fixed-variant": "#7a3000",
+                    "surface-container-low": "#f3f3f6",
+                    "secondary-fixed-dim": "#e9c400",
+                    "on-surface": "#2A2C41",
+                    "surface-tint": "#FF724C",
+                    "primary-fixed-dim": "#ffb693",
+                    "on-error-container": "#93000a",
+                    "surface": "#F4F4F8",
+                    "on-tertiary-fixed": "#001d35",
+                    "inverse-surface": "#2A2C41",
+                    "secondary": "#fdbf50",
+                    "on-surface-variant": "#5a4136",
+                    "on-primary-fixed": "#351000",
+                    "on-background": "#2A2C41",
+                    "on-secondary-fixed": "#221b00",
+                    "surface-container-lowest": "#ffffff",
+                    "on-error": "#ffffff",
+                    "tertiary-container": "#059eff",
+                    "on-tertiary": "#ffffff",
+                    "background": "#F4F4F8",
+                    "surface-container": "#eeeef0",
+                    "outline-variant": "#e2bfb0",
+                    "surface-dim": "#dadadc",
+                    "outline": "#8e7164",
+                    "surface-container-highest": "#e2e2e5",
+                    "on-secondary": "#ffffff",
+                    "primary-fixed": "#ffdbcc",
+                    "on-secondary-fixed-variant": "#544600",
+                    "tertiary": "#0062a1",
+                    "inverse-primary": "#ffb693",
+                    "error": "#FF724C",
+                    "on-secondary-container": "#6f5c00",
+                    "secondary-container": "#fdbf50",
+                    "primary": "#FF724C",
+                    "inverse-on-surface": "#f0f0f3",
+                    "tertiary-fixed-dim": "#9ccaff",
+                    "primary-container": "#FF724C",
+                    "tertiary-fixed": "#d0e4ff",
+                    "on-tertiary-container": "#003357",
+                    "on-tertiary-fixed-variant": "#00497b",
+                    "on-primary-container": "#ffffff",
+                    "error-container": "#ffdad6"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "1rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "gutter": "24px",
+                    "xl": "64px",
+                    "max-width": "1280px",
+                    "margin-mobile": "16px",
+                    "sm": "12px",
+                    "md": "24px",
+                    "xs": "4px",
+                    "margin-desktop": "auto",
+                    "lg": "40px",
+                    "base": "8px"
+            },
+            "fontFamily": {
+                    "headline-lg": ["Plus Jakarta Sans"],
+                    "label-md": ["Plus Jakarta Sans"],
+                    "headline-md": ["Plus Jakarta Sans"],
+                    "body-md": ["Plus Jakarta Sans"],
+                    "body-lg": ["Plus Jakarta Sans"],
+                    "label-sm": ["Plus Jakarta Sans"],
+                    "headline-xl": ["Plus Jakarta Sans"],
+                    "body-sm": ["Plus Jakarta Sans"],
+                    "headline-xl-mobile": ["Plus Jakarta Sans"]
+            },
+            "fontSize": {
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                    "label-md": ["14px", {"lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "600"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                    "label-sm": ["12px", {"lineHeight": "14px", "letterSpacing": "0.04em", "fontWeight": "600"}],
+                    "headline-xl": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "headline-xl-mobile": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "800"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            background-color: #F4F4F8;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            color: #2A2C41;
+        }
+        .glass-shadow {
+            box-shadow: 0px 8px 30px rgba(42, 44, 65, 0.04);
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="bg-surface-bright text-on-surface mb-24 md:mb-0">
+<!-- Top App Bar -->
+<header class="fixed top-0 w-full z-50">
+<div class="flex justify-between items-center px-gutter h-16 w-full max-w-max-width mx-margin-desktop">
+<div class="flex flex-col">
+<span class="text-on-surface/60 font-label-sm text-label-sm">Jay Swaminarayan,</span>
+<span class="text-primary font-bold font-headline-md text-headline-md">Rahul</span>
+</div>
+<div class="flex items-center gap-4">
+<button class="material-symbols-outlined text-on-surface/80 hover:bg-surface-container-high p-2 rounded-full transition-colors active:scale-95 duration-200" data-icon="notifications">notifications</button>
+<div class="relative profile-container">
+  <div class="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-on-primary overflow-hidden active:scale-95 duration-200 cursor-pointer border-2 border-white profile-trigger">
+    <img alt="User Profile" class="w-full h-full object-cover" data-alt="A professional close-up studio portrait of a young Indian man in sports attire, looking confident and cheerful. The background is a soft, out-of-focus cricket stadium in the evening light. The lighting is warm and golden, reflecting a high-energy, optimistic atmosphere consistent with the Solar design system." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAa7SNFopCk1F558uZcgrtXwUf3g_OumFyCbyRFNBdCsb_JirkRIuiNlgfvZewnX33wJXEJg2-nGIM8JQ2GN33oAMORs6413p55MFgliNvSGyrAqa9oIBXQQTjjtlI7H7rkZsCyJxD-5hH3CyHhd6MG1SeiHMQuSkZuuABz5KKpfIACagCvkKNJKSDW-G3GhVbbRG0Iv062EfEy3CUFwuQkcr-7ngtdu0OO9UWo2eD5gMOvHNfZ0jf_Hm4pIHoJJIpu4aBzkkQgP5Jt">
+  </div>
+  <div class="profile-tooltip hidden absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-surface-variant py-2 z-[60]">
+    <button class="w-full flex items-center gap-3 px-4 py-2 hover:bg-surface-container-low transition-colors text-on-surface text-left">
+      <span class="material-symbols-outlined text-[20px]">lock</span>
+      <span class="font-label-sm text-label-sm">Change Password</span>
+    </button>
+    <button class="w-full flex items-center gap-3 px-4 py-2 hover:bg-surface-container-low transition-colors text-error text-left">
+      <span class="material-symbols-outlined text-[20px]">logout</span>
+      <span class="font-label-sm text-label-sm">Logout</span>
+    </button>
+  </div>
+</div>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="pt-24 pb-12 px-margin-mobile md:px-gutter max-w-max-width mx-auto">
+<!-- Live Match Section (Bento Style Card) -->
+<section class="mb-10">
+<div class="bg-white border border-outline-variant rounded-xl p-6 shadow-[0px_4px_20px_rgba(255,107,0,0.08)] relative overflow-hidden">  <div class="absolute top-0 left-0 w-2 h-full bg-primary"></div>
+  
+  <div class="flex justify-between items-start mb-6">
+    <div class="flex items-center gap-2">
+      
+      <span class="font-label-md">Atmiya Premier League</span>
+    </div>
+    
+  </div>
+
+  <div class="flex justify-between items-center py-4 border-surface-container">
+    <div class="flex flex-col gap-4 w-full">
+      <div class="flex justify-between items-center w-full">
+        <div class="flex items-center gap-3">
+          <img alt="DC" class="w-8 h-8 object-contain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD0pWRBLdB9f5b9JwSANpVnvRytIuqwjrOGng2kqczzT-8uKAzo1p0Vtu8VLjEmQ2SxFrZzWI9EQdD_Oady21xpaL5pyIrQgekiOXF6qoYqBp4UnE6LZQj23uoEuoDuXII8hmuitwgdIoUpvaQIYBqNMffndWqIEQ_mbu0YdN6SqtYoM6Mk71LNPmeTJE9jr-hBzRXx9XDRWOvmsS9ae1tsCKcZQJfksFfJzkuxhpLysthffuledNu61KMuoNYuYgxxyUhCfdSsx89I">
+          <span class="font-headline-md text-headline-md">Barrie Cobras</span>
+        </div>
+        <div class="text-right">
+          <span class="font-headline-md text-headline-md text-primary">203/5</span>
+          <p class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">20.0 Overs</p>
+        </div>
+      </div><div class="w-full border-t my-1 border-surface-container"></div>
+      
+      <div class="flex justify-between items-center w-full">
+        <div class="flex items-center gap-3">
+          <img alt="KKR" class="w-8 h-8 object-contain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBMGrgBjum9gniFM5Diu1VAiF1oW-jm1xUZQUKAXjjwbEIXJ2xTpEiFjuPm1q4Rj4UpccUCYRPsIrwKZ0Jg9MvRpOD0MwoWNOwCGlbKgo3rtQA5w4k_wJ9zr5GaGIxP04E2jY4utHlehTmAIjCkX2LLpdX1pNZ9aQphKORoNdkc6kc11VZ5BpKx20eyZ4KKc-A5R5OQHhAyM_P5uUnl23LcwnmK4FN6eqb5Pz7Bgc3A7sD5CIYciDGCpcKIWMHLcS7mpeYpdl7spi-P">
+          <span class="font-headline-md text-headline-md">Scarborough Strikeforce</span>
+        </div>
+        <div class="text-right">
+          <span class="font-headline-md text-headline-md opacity-60">163</span>
+          <p class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">18.4 Overs</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="pt-4 flex justify-between items-center border-t border-surface-container">
+    <span class="font-body-sm font-bold text-tertiary">Barrie Cobras won by 40 runs</span>
+    
+  </div></div>
+</section>
+<!-- Stats Grid (High-end Row) -->
+<section class="mb-10">
+<div class="flex justify-between items-center mb-4">
+<h2 class="font-headline-md text-headline-md text-on-surface">Your Performance</h2>
+
+</div>
+<div class="bg-surface-container-lowest rounded-xl p-6 glass-shadow border border-surface-variant flex justify-between items-center text-center">
+<div class="flex-1 px-4">
+<p class="text-on-surface-variant font-label-sm text-label-sm mb-1 uppercase tracking-wider">Matches</p>
+<p class="font-headline-md text-headline-md text-on-surface">12</p>
+</div>
+<div class="h-10 w-px bg-surface-variant"></div>
+<div class="flex-1 px-4">
+<p class="text-on-surface-variant font-label-sm text-label-sm mb-1 uppercase tracking-wider">Runs</p>
+<p class="font-headline-md text-headline-md text-primary">450</p>
+</div>
+<div class="h-10 w-px bg-surface-variant"></div>
+<div class="flex-1 px-4">
+<p class="text-on-surface-variant font-label-sm text-label-sm mb-1 uppercase tracking-wider">Wickets</p>
+<p class="font-headline-md text-headline-md text-on-surface">08</p>
+</div>
+</div>
+</section>
+<!-- Tournaments (Asymmetric Layout) -->
+<section class="mb-10">
+<div class="flex justify-between items-center mb-4">
+<h2 class="font-headline-md text-headline-md text-on-surface">Tournaments</h2>
+<button class="w-10 h-10 flex items-center justify-center bg-secondary text-on-secondary rounded-full transition-all hover:scale-110 active:scale-95 shadow-md shadow-secondary/20"><span class="material-symbols-outlined text-[24px]" data-icon="add">add</span></button>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<!-- Upcoming Card -->
+<div class="group relative bg-surface-container-lowest rounded-xl overflow-hidden glass-shadow border border-surface-variant transition-all hover:scale-[1.02] cursor-pointer">
+<div class="absolute top-4 right-4 z-10 px-3 py-1 rounded-full font-label-sm text-label-sm shadow-sm bg-tertiary-container text-on-tertiary-container">
+                        Ongoing
+                    </div>
+<div class="h-48 overflow-hidden">
+<img alt="Inter-City Cup" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" data-alt="An action-oriented shot of a cricket game in progress at a city stadium. The focus is sharp on the batsman playing a lofted shot against a background of high-rise city buildings blurred by a shallow depth of field. The scene is illuminated by floodlights, giving a vibrant, professional aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD6mipWuKZxmCgRgqpOGlH3xzqXFPQyxz_x8b2eytiaPfjLR0OTCDd2nPRLO5hv8d-YEb53y8Qu3ZuFRRd4cGyiUPeQiu6J2Tc8U2R2TnRn2zc4TIgbkksHEDXtVGDcyYrOqyXcYBCIMk3BpPxciFuFH1XTBbnO_JkyNaiZvYuGEaMII2IXCn7dupt3O7w2S6pECvivAv-jPA5mte8L8OO6VrxJtPvETTxj7GFp18lc6W2frpqVY6uOmGOdn2BbcDbYcVEN5ReVLk2m">
+</div>
+<div class="p-6 relative">
+<h3 class="font-headline-md text-headline-md text-on-surface flex items-center flex-row justify-between">Inter-City Cup<img alt="Tennis Ball" class="w-7 h-7 object-contain inline-block align-middle ml-auto" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB8Z3LZlUHciYhYzbEP5cOEXddf7ZR2-y75NwW2QqbmNlHmwdFHeueqUDNKtf5iEoG9tLPyNCGiGFB7gc3kco5curBLcQ_kqW8Y6dpyR6EzqTbY_2Nuq50H03sfhMVL7r4HxBLaY2-Nwx3dgVGbKBhKPJK1QJjDCR-Xxwi6OPd9uxlk90FnSfF4GPpNOV5-Qe9njQ5R63P8ZqtdfQfR2IVXQVhu6A_pj4UtDYVu0e8fzWqqcgJK5xjoRZRPpjJCd1LkZ9ixWEtQRD0I"></h3>
+<div class="flex items-center gap-2 mt-2 text-on-surface/60">
+<span class="material-symbols-outlined text-[20px]" data-icon="location_on">location_on</span>
+<span class="font-body-sm text-body-sm">Surat District Arena</span>
+</div>
+<div class="absolute bottom-4 right-4 flex items-center justify-center">
+  <button class="p-1 cursor-pointer hover:bg-surface-container rounded-full transition-colors menu-trigger">
+    <span class="material-symbols-outlined text-on-surface-variant text-[24px]">more_vert</span>
+  </button>
+  <div class="dropdown-menu absolute bottom-12 right-0 bg-surface-container-highest shadow-lg rounded-lg border border-outline-variant py-2 w-48 z-50 hidden">
+    <button class="w-full flex items-center gap-3 px-4 py-2 hover:bg-surface-container-high transition-colors text-on-surface text-left">
+      <span class="material-symbols-outlined text-[20px]">edit</span>
+      <span class="font-label-sm">Edit tournament</span>
+    </button>
+    <button class="w-full flex items-center gap-3 px-4 py-2 hover:bg-surface-container-high transition-colors text-error text-left">
+      <span class="material-symbols-outlined text-[20px]">delete</span>
+      <span class="font-label-sm">Delete Tournament</span>
+    </button>
+  </div>
+</div></div>
+</div><div class="group relative bg-surface-container-lowest rounded-xl overflow-hidden glass-shadow border border-surface-variant transition-all hover:scale-[1.02] cursor-pointer">
+<div class="absolute top-4 right-4 z-10 px-3 py-1 rounded-full font-label-sm text-label-sm shadow-sm bg-secondary-container text-on-secondary-container">
+                        Upcoming
+                    </div>
+<div class="h-48 overflow-hidden">
+<img alt="Spring Trophy 2024" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" data-alt="A wide-angle landscape shot of a lush green cricket stadium under a clear spring morning sky. The dew is fresh on the grass, and the morning sunlight creates a warm, hopeful glow across the pitch. The style is bright and minimalist with crisp cool tones and vibrant green colors." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAkxjPYB-x4ISplNPOnJ7Mq6VBe9UPmAhF07Y8d1diZyd3w-jA9-c1KsyhrUEMWnt4pe_bfoi-148wacAY2VwuySnH_tdnAqP-cBK0l-N0MU1S1HSZtwbEYuQh8LuHksSySvlR2pt4hAQKHDxjoBh63smhp8FNa1ITumCwrdX_-G2z4Hn7toKtsyBhOjHnEBzatIHPRBrlN6O9lKBfKoVKiwnAweELqEL4lZ7oVUyoSrHAS4YFPdjr8qkoH_b-aPwGRtFPbwzKVzHXe">
+</div>
+<div class="p-6 relative">
+<h3 class="font-headline-md text-headline-md text-on-surface flex items-center flex-row justify-between">Spring Trophy 2024<img alt="Cricket Ball" class="w-7 h-7 object-contain inline-block align-middle ml-auto" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC7Ypl2UAbxnKL_m4aHdioFsXGXRFv8hdXwV13VFmfi3h8-YBepIjfv7TDnvACxZyy5MqCzOZ5SyssLg9dxjn-Q-aW4poJr5PaUrL90ffbc_BIqosYS9BycxKCDLXQcuJKRPIxY0PO7dd3QxubS0c85zhoCQr8D_pZshT1Bv5VsV_tcSKT0Moa8ROZtdPXHf6xDgol9kKlFdk00bIQgjqoIw3n8IZ7zS6PomPm6NQF-vpFLI-JdkRPyd2vxhZL4Qk6DANT4X4_1DACn"></h3>
+<div class="flex items-center gap-2 mt-2 text-on-surface/60">
+<span class="material-symbols-outlined text-[20px]" data-icon="calendar_today">calendar_today</span>
+<span class="font-body-sm text-body-sm">June 15 - June 20</span>
+</div>
+<div class="absolute bottom-4 right-4 flex items-center justify-center">
+  <button class="p-1 cursor-pointer hover:bg-surface-container rounded-full transition-colors menu-trigger">
+    <span class="material-symbols-outlined text-on-surface-variant text-[24px]">more_vert</span>
+  </button>
+  <div class="dropdown-menu hidden absolute bottom-12 right-0 bg-surface-container-highest shadow-lg rounded-lg border border-outline-variant py-2 w-48 z-50">
+    <button class="w-full flex items-center gap-3 px-4 py-2 hover:bg-surface-container-high transition-colors text-on-surface text-left">
+      <span class="material-symbols-outlined text-[20px]">edit</span>
+      <span class="font-label-sm">Edit tournament</span>
+    </button>
+    <button class="w-full flex items-center gap-3 px-4 py-2 hover:bg-surface-container-high transition-colors text-error text-left">
+      <span class="material-symbols-outlined text-[20px]">delete</span>
+      <span class="font-label-sm">Delete Tournament</span>
+    </button>
+  </div>
+</div></div>
+</div>
+<!-- Ongoing Card -->
+
+</div>
+</section>
+</main>
+<!-- Bottom Navigation Bar -->
+<nav class="md:hidden fixed bottom-0 w-full z-50 rounded-t-xl bg-surface-container-lowest shadow-[0px_-8px_30px_rgba(42,44,65,0.06)] border-t border-surface-variant/30">
+<div class="flex justify-around items-center h-20 px-4 w-full">
+<!-- Home (Active) -->
+<a class="flex flex-col items-center justify-center bg-primary text-white px-6 py-2 active:scale-90 transition-all duration-150 rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-label-sm text-label-sm">Home</span>
+</a>
+<!-- Matches -->
+<a class="flex flex-col items-center justify-center text-on-surface/60 hover:text-primary active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="sports_cricket">sports_cricket</span>
+<span class="font-label-sm text-label-sm">Matches</span>
+</a>
+<!-- Stats -->
+<a class="flex flex-col items-center justify-center text-on-surface/60 hover:text-primary active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="leaderboard">leaderboard</span>
+<span class="font-label-sm text-label-sm">Stats</span>
+</a>
+<!-- Messages -->
+<a class="flex flex-col items-center justify-center text-on-surface/60 hover:text-primary active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="forum">forum</span>
+<span class="font-label-sm text-label-sm">Messages</span>
+</a><a class="flex flex-col items-center justify-center text-on-surface/60 hover:text-primary active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-label-sm text-label-sm">Users</span>
+</a></div>
+</nav>
+<!-- Desktop Floating Action Button (FAB) -->
+<button class="hidden md:flex fixed bottom-8 right-8 w-14 h-14 bg-primary rounded-full items-center justify-center text-white shadow-lg transition-all hover:scale-110 hover:rotate-12 active:scale-95 z-50">
+<span class="material-symbols-outlined" data-icon="add">add</span>
+</button>
+<script>
+        // Smooth scroll behaviors and hover interactions could go here if needed
+    </script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script>
+  document.addEventListener('click', (e) => {
+    const trigger = e.target.closest('.menu-trigger');
+    const allMenus = document.querySelectorAll('.dropdown-menu');
+    
+    if (trigger) {
+      const menu = trigger.nextElementSibling;
+      const isOpen = !menu.classList.contains('hidden');
+      
+      allMenus.forEach(m => m.classList.add('hidden'));
+      
+      if (!isOpen) {
+        menu.classList.remove('hidden');
+      }
+      e.stopPropagation();
+    } else {
+      allMenus.forEach(m => m.classList.add('hidden'));
+    }
+  });
+</script>
+
+
+
+<script>
+  document.addEventListener('click', (e) => {
+    const trigger = e.target.closest('.profile-trigger');
+    const tooltip = document.querySelector('.profile-tooltip');
+    
+    if (trigger) {
+      tooltip.classList.toggle('hidden');
+      e.stopPropagation();
+    } else if (tooltip && !tooltip.contains(e.target)) {
+      tooltip.classList.add('hidden');
+    }
+  });
+</script>
+
+</body></html>

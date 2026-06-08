@@ -1,0 +1,16 @@
+---
+description: Core code conventions for the ACC monorepo.
+alwaysApply: true
+---
+
+# Code Conventions
+
+- **TypeScript strict mode everywhere.** No `any`, no `as unknown as` casts to silence the compiler. If a type is hard to express, ask before bypassing the type system.
+- **Shared types live in `packages/types`** (`@acc/types`) and are imported by both `apps/api` and `apps/mobile`. Never duplicate enums, constants, DTOs, or schemas across the apps.
+- **No business logic in controllers.** NestJS controllers only handle routing/request-response wiring; all business logic goes in services. Keep modules feature-scoped.
+- **All datetimes are stored in UTC** (spec §23). Transmit as ISO 8601 strings; format to the ground's local timezone only at display time on mobile. Aggregations and the 5-hour scorecard window are computed in UTC.
+- **Online-only. Offline scoring is OUT of scope** (spec §12.4, §30.2). Do not add offline queues, local write-then-sync layers, optimistic offline mutation caches, or any "works without network" scoring path.
+- Money/fees are stored in cents as BIGINT — never floats.
+- Derived cricket stats (averages, strike rate, economy) are computed at query time, never persisted denormalized.
+- all text inputs use the shared TextInput wrapper, which carries the white fill, 12px radius, soft shadow, and label styling, so screens should pass a label prop rather than styling fields inline. That keeps the later phases consistent without you policing each screen.
+- form field labels use the shared input components' default brown style (font-sans text-base leading-6 text-[#5A4136]), so screens shouldn't set label colors inline. 

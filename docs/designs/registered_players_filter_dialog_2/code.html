@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en" style=""><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Registered Users</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            line-height: 1;
+            text-transform: none;
+            letter-spacing: normal;
+            word-wrap: normal;
+            white-space: nowrap;
+            direction: ltr;
+        }
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #F4F4F8;
+        }
+        .glass-effect {
+            backdrop-filter: blur(20px);
+            background: rgba(255, 255, 255, 0.8);
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary-fixed": "#ffe170",
+                        "primary-container": "#ff6b00",
+                        "on-error-container": "#93000a",
+                        "secondary": "#705d00",
+                        "error": "#ba1a1a",
+                        "on-primary": "#ffffff",
+                        "surface-variant": "#e2e2e5",
+                        "surface-tint": "#a04100",
+                        "on-surface-variant": "#5a4136",
+                        "on-tertiary-fixed": "#001d35",
+                        "surface-container-highest": "#e2e2e5",
+                        "on-tertiary": "#ffffff",
+                        "on-secondary-fixed": "#221b00",
+                        "surface-container-lowest": "#ffffff",
+                        "secondary-container": "#fdd400",
+                        "primary-fixed": "#ffdbcc",
+                        "tertiary-fixed-dim": "#9ccaff",
+                        "tertiary-container": "#059eff",
+                        "surface-container-high": "#e8e8ea",
+                        "primary": "#a04100",
+                        "tertiary": "#0062a1",
+                        "on-secondary-fixed-variant": "#544600",
+                        "inverse-surface": "#2f3133",
+                        "error-container": "#ffdad6",
+                        "on-secondary-container": "#6f5c00",
+                        "tertiary-fixed": "#d0e4ff",
+                        "inverse-on-surface": "#f0f0f3",
+                        "surface-container-low": "#f3f3f6",
+                        "on-primary-container": "#572000",
+                        "secondary-fixed-dim": "#e9c400",
+                        "on-primary-fixed": "#351000",
+                        "outline-variant": "#e2bfb0",
+                        "outline": "#8e7164",
+                        "on-surface": "#1a1c1e",
+                        "surface-dim": "#dadadc",
+                        "surface": "#f9f9fc",
+                        "primary-fixed-dim": "#ffb693",
+                        "on-secondary": "#ffffff",
+                        "on-background": "#1a1c1e",
+                        "background": "#f9f9fc",
+                        "on-tertiary-container": "#003357",
+                        "on-primary-fixed-variant": "#7a3000",
+                        "inverse-primary": "#ffb693",
+                        "on-tertiary-fixed-variant": "#00497b",
+                        "on-error": "#ffffff",
+                        "surface-container": "#eeeef0",
+                        "surface-bright": "#f9f9fc"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-desktop": "auto",
+                        "lg": "40px",
+                        "xl": "64px",
+                        "xs": "4px",
+                        "gutter": "24px",
+                        "margin-mobile": "16px",
+                        "sm": "12px",
+                        "md": "24px",
+                        "max-width": "1280px",
+                        "base": "8px"
+                    },
+                    "fontFamily": {
+                        "headline-xl-mobile": ["Plus Jakarta Sans"],
+                        "body-md": ["Plus Jakarta Sans"],
+                        "label-md": ["Plus Jakarta Sans"],
+                        "body-sm": ["Plus Jakarta Sans"],
+                        "body-lg": ["Plus Jakarta Sans"],
+                        "headline-xl": ["Plus Jakarta Sans"],
+                        "headline-md": ["Plus Jakarta Sans"],
+                        "label-sm": ["Plus Jakarta Sans"],
+                        "headline-lg": ["Plus Jakarta Sans"]
+                    },
+                    "fontSize": {
+                        "headline-xl-mobile": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "label-md": ["14px", {"lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "600"}],
+                        "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                        "headline-xl": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                        "label-sm": ["12px", {"lineHeight": "14px", "letterSpacing": "0.04em", "fontWeight": "600"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}]
+                    }
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-background text-on-background min-h-screen pb-24 overflow-x-hidden">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-surface dark:bg-surface-dim dark:border-outline h-auto flex flex-col items-center">
+<div class="flex items-center justify-between px-margin-mobile h-16 w-full max-w-max-width mx-auto">
+<div class="flex items-center gap-4">
+<button class="active:scale-95 transition-transform p-2 rounded-full hover:bg-surface-container-high">
+<span class="material-symbols-outlined text-primary" data-icon="arrow_back">arrow_back</span>
+</button>
+<h1 class="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed-dim">Registered Players</h1>
+</div>
+<div class="flex items-center">
+<button class="active:scale-95 transition-transform p-2 rounded-full hover:bg-surface-container-high">
+</button>
+</div>
+</div>
+<!-- Search & Filter Bar (Integrated below header) -->
+<div class="w-full max-w-max-width mx-auto px-margin-mobile pb-4">
+<div class="flex items-center gap-3">
+<div class="relative flex-grow group">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]" data-icon="search">search</span>
+<input class="w-full h-12 pl-12 pr-4 bg-white border border-outline-variant rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-container focus:border-transparent transition-all placeholder:text-on-surface-variant placeholder:opacity-50" placeholder="Search players..." type="text"/>
+</div>
+<button class="h-12 w-12 flex items-center justify-center bg-white border border-outline-variant rounded-xl hover:bg-surface-container-low active:scale-95 transition-all text-primary shadow-sm" onclick="document.getElementById('filter-dialog').classList.remove('hidden')">
+<span class="material-symbols-outlined" data-icon="tune">tune</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Content Canvas -->
+<main class="pt-36 px-margin-mobile max-w-max-width mx-auto overflow-visible">
+<!-- Stats Summary (Asymmetric Layout Touch) -->
+<div class="mb-gutter grid grid-cols-2 gap-4 overflow-visible">
+</div>
+<div class="flex items-center justify-between mb-4">
+<h2 class="font-headline-md text-on-surface opacity-80">User Directory</h2>
+<span class="font-label-sm text-primary uppercase tracking-widest">Sort: Recent</span>
+</div>
+<!-- User List Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 overflow-visible">
+<!-- User Card 1 -->
+<div class="bg-white p-4 rounded-xl border border-outline-variant hover:shadow-[0px_4px_20px_rgba(255,107,0,0.08)] transition-all duration-300 group relative overflow-visible z-[50]">
+<div class="flex items-center gap-4">
+<div class="relative">
+<img class="w-14 h-14 rounded-full border-2 border-primary-fixed object-cover" data-alt="A professional portrait of a young adult male athlete with short dark hair, smiling warmly in soft daylight. The background is a clean, modern sports facility with bright, warm orange accents. The lighting is crisp and optimistic, following a high-key solar minimalism style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDENKYE6Dyc89fSJ1NckQAOGZKHJOdoPikIJjxlXPV9DhFkxTjFrU9-t9gRTF18ZgtSREZMWDVtdaAdoCQfKA1Sn6zS88IXyajTnuzEMKRQ8Sp2cABcyE-JjwT2834in7abWB61lO1RC9p24lEBmxUgn3Tn0gY02v-PrUhbRBan5XhMqUtFCtVAW6fC1ZL7K0dh2_4j2_Fu6CJjmTAGlh2TwfCeBWWk3U60yfqCWohO-hlhXZhDccF_Ua4MB1R39xlV7ivtllXXQte0"/>
+<div class="absolute bottom-0 right-0 w-4 h-4 bg-[#4CAF50] border-2 border-white rounded-full"></div>
+</div>
+<div class="flex-grow">
+<h3 class="font-label-md text-on-surface">Alex Rivera</h3>
+<p class="font-body-sm text-on-surface-variant">Central Midfielder</p>
+</div>
+<button class="p-2 hover:bg-surface-container-high rounded-full transition-colors text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="more_vert">more_vert</span>
+</button><div class="absolute right-0 top-full mt-2 w-48 bg-surface-container-lowest rounded-lg shadow-xl border border-outline-variant z-[60] hidden group-focus-within:block">
+<div class="flex flex-col py-1">
+<button class="flex items-center px-4 py-3 text-left font-label-sm text-on-surface-variant hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined mr-3 text-[18px]">edit</span>
+      Edit Profile
+    </button>
+<button class="flex items-center px-4 py-3 text-left font-label-sm text-on-surface-variant hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined mr-3 text-[18px]">visibility</span>
+      View Profile
+    </button>
+<div class="h-[1px] bg-outline-variant my-1"></div>
+<button class="flex items-center px-4 py-3 text-left font-label-sm text-error hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined mr-3 text-[18px]">block</span>
+      Deactivate
+    </button>
+</div>
+</div>
+</div>
+</div>
+<!-- User Card 2 -->
+<div class="bg-white p-4 rounded-xl border border-outline-variant hover:shadow-[0px_4px_20px_rgba(255,107,0,0.08)] transition-all duration-300 relative group overflow-visible z-[45]">
+<div class="flex items-center gap-4">
+<div class="relative">
+<img class="w-14 h-14 rounded-full border-2 border-primary-fixed object-cover" data-alt="A high-quality profile photo of a professional woman with a bright and energetic expression, wearing athletic apparel. The scene is bathed in warm, golden hour sunlight reflecting a solar-inspired palette. Minimalist white architecture forms the background, maintaining a clean and modern aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAeEY5B7wohob6Et_HnlSMbg4BU9WFWy_JAesnl-D4ajK47Mo7Y_zYuSYepFqvAL-6skQVxJI3109B8umeNdRSWJYjt9fbxEKa9Bm87LHggjuwkx3gmJ0H741BTicnKF1GcQ5ZSYjD2IJI6prRx8NnGsQxDFb6PnoahqZlzxDXQhEAFlLxchq4-_OjZpicFw_p_b_btmXpP-sz7gU_qmZuNRsBZ8AHkSdRevzeF03GVrXdOISxuiZHtDdHsVRQP62T9AggmpzmGKQiV"/>
+<div class="absolute bottom-0 right-0 w-4 h-4 bg-surface-variant border-2 border-white rounded-full"></div>
+</div>
+<div class="flex-grow">
+<h3 class="font-label-md text-on-surface">Elena Chen</h3>
+<p class="font-body-sm text-on-surface-variant">Point Guard</p>
+</div>
+<button class="p-2 hover:bg-surface-container-high rounded-full transition-colors text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="more_vert">more_vert</span>
+</button><div class="absolute right-0 top-full mt-2 w-48 bg-surface-container-lowest rounded-lg shadow-xl border border-outline-variant z-[60] hidden group-focus-within:block">
+<div class="flex flex-col py-1">
+<button class="flex items-center px-4 py-3 text-left font-label-sm text-on-surface-variant hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined mr-3 text-[18px]">edit</span>
+      Edit Profile
+    </button>
+<button class="flex items-center px-4 py-3 text-left font-label-sm text-on-surface-variant hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined mr-3 text-[18px]">visibility</span>
+      View Profile
+    </button>
+<div class="h-[1px] bg-outline-variant my-1"></div>
+<button class="flex items-center px-4 py-3 text-left font-label-sm text-error hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined mr-3 text-[18px]">block</span>
+      Deactivate
+    </button>
+</div>
+</div>
+</div>
+</div>
+<!-- User Card 3 -->
+<div class="bg-white p-4 rounded-xl border border-outline-variant hover:shadow-[0px_4px_20px_rgba(255,107,0,0.08)] transition-all duration-300 relative group overflow-visible z-[40]">
+<div class="flex items-center gap-4">
+<div class="relative">
+<img class="w-14 h-14 rounded-full border-2 border-primary-fixed object-cover" data-alt="A clean, studio-lit portrait of a mature male athlete with a determined gaze. He is wearing high-performance gear in a minimalist white and orange color scheme. The lighting is soft and even, highlighting a modern, efficient, and optimistic brand identity." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDCaJ0fiHjiOIGbFAfh-7n5TpHKCTGL3e4b697prvOX3BbKHSxCW5_SqfatpW7otSIfCY6BCiDP49CdBUVezcSMk8-NxgYnS7ivH38Dgukps13V91tT774KEB2sB3Xtb1C3hOjybvQEgZmelFxsIWZWB79oz5DvRen4WDKaas7h-6kpbn6kb17qY5JbO-Dd7O-JUol6Wytw33ZMCZibIiihn7H7xtFm3oypCigkpsrqT_yKcekBjSEV65bd1s2bkn_m4gdBIeeFSXjr"/>
+<div class="absolute bottom-0 right-0 w-4 h-4 bg-[#4CAF50] border-2 border-white rounded-full"></div>
+</div>
+<div class="flex-grow">
+<h3 class="font-label-md text-on-surface">Jordan Smyth</h3>
+<p class="font-body-sm text-on-surface-variant">Opening Batsman</p>
+</div>
+<button class="p-2 hover:bg-surface-container-high rounded-full transition-colors text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="more_vert">more_vert</span>
+</button><div class="absolute right-0 top-full mt-2 w-48 bg-surface-container-lowest rounded-lg shadow-xl border border-outline-variant z-[60] hidden group-focus-within:block">
+<div class="flex flex-col py-1">
+<button class="flex items-center px-4 py-3 text-left font-label-sm text-on-surface-variant hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined mr-3 text-[18px]">edit</span>
+      Edit Profile
+    </button>
+<button class="flex items-center px-4 py-3 text-left font-label-sm text-on-surface-variant hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined mr-3 text-[18px]">visibility</span>
+      View Profile
+    </button>
+<div class="h-[1px] bg-outline-variant my-1"></div>
+<button class="flex items-center px-4 py-3 text-left font-label-sm text-error hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined mr-3 text-[18px]">block</span>
+      Deactivate
+    </button>
+</div>
+</div>
+</div>
+</div>
+<!-- User Card 4 -->
+<div class="bg-white p-4 rounded-xl border border-outline-variant hover:shadow-[0px_4px_20px_rgba(255,107,0,0.08)] transition-all duration-300 relative group overflow-visible z-[35]">
+<div class="flex items-center gap-4">
+<div class="relative">
+<img class="w-14 h-14 rounded-full border-2 border-primary-fixed object-cover" data-alt="A bright profile picture of a cheerful young woman with curly hair against a soft-focus sunny backdrop. She represents a modern startup aesthetic with a vibrant personality. The colors are warm yellows and crisp whites, echoing a solar minimalism theme." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDYp74qhxCWZ5YuF4GE1TRl40cAGZl7GIBaz3WDqEYpgAhqMQIgeIUNji2K8e6mZD1oKEBJsJrB0mW-ahgKfUWFsv03fBV1A90T3chaBFTUO_Hl7ITRQIj59ktjJNlzviMa-JKQqBQvRY8XIRV2bmgNQWVEgQO2vSSNH-_PSpimxGXyp5a3uDMPJ_inTd7g9X-301nX4OOsKKPlX2kuJI0J0VY7iHOdwxgBlcI7vNQQzBkWXKfLJXdP1USAY7nTMUQrbAAk_HM9fovO"/>
+<div class="absolute bottom-0 right-0 w-4 h-4 bg-[#4CAF50] border-2 border-white rounded-full"></div>
+</div>
+<div class="flex-grow">
+<h3 class="font-label-md text-on-surface">Sarah Jenkins</h3>
+<p class="font-body-sm text-on-surface-variant">Team Captain</p>
+</div>
+<button class="p-2 hover:bg-surface-container-high rounded-full transition-colors text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="more_vert">more_vert</span>
+</button><div class="absolute right-0 top-full mt-2 w-48 bg-surface-container-lowest rounded-lg shadow-xl border border-outline-variant z-[60] hidden group-focus-within:block">
+<div class="flex flex-col py-1">
+<button class="flex items-center px-4 py-3 text-left font-label-sm text-on-surface-variant hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined mr-3 text-[18px]">edit</span>
+      Edit Profile
+    </button>
+<button class="flex items-center px-4 py-3 text-left font-label-sm text-on-surface-variant hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined mr-3 text-[18px]">visibility</span>
+      View Profile
+    </button>
+<div class="h-[1px] bg-outline-variant my-1"></div>
+<button class="flex items-center px-4 py-3 text-left font-label-sm text-error hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined mr-3 text-[18px]">block</span>
+      Deactivate
+    </button>
+</div>
+</div>
+</div>
+</div>
+<!-- User Card 5 -->
+<div class="bg-white p-4 rounded-xl border border-outline-variant hover:shadow-[0px_4px_20px_rgba(255,107,0,0.08)] transition-all duration-300 relative group overflow-visible z-[30]">
+<div class="flex items-center gap-4">
+<div class="relative">
+<img class="w-14 h-14 rounded-full border-2 border-primary-fixed object-cover" data-alt="A vibrant, professional headshot of a person with a friendly smile, set against a minimalist backdrop with splashes of orange and yellow. The lighting is airy and high-key, communicating high energy and optimism. Every detail reflects a high-end, clean user interface design style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBSjoCqid1xovseu511z3TqUvi9QuSJedBXZP6xn7RwIgNRZq8VHGnDVcTvcKqd-yXjT7RL1r4SYseprb9mMOIuDzWkXcb2mWjyV58TLr5AUEXLYd3y4pykYUyS4wtgBjWXZ8AxId530Ljd2l6Andi8-COI4VL__PAQkvWB3j4KLTj2cWLSBX3NdLBFzCwIROjrF4FYAXFQD0r8Aa8a9otz3FUe_2R4e6Vi9Wdks-V8kgc3jsLw6q8i6V3wMYYpKklSGMdhxCC0XaOn"/>
+<div class="absolute bottom-0 right-0 w-4 h-4 bg-surface-variant border-2 border-white rounded-full"></div>
+</div>
+<div class="flex-grow">
+<h3 class="font-label-md text-on-surface">Marcus Thompson</h3>
+<p class="font-body-sm text-on-surface-variant">Defender</p>
+</div>
+<button class="p-2 hover:bg-surface-container-high rounded-full transition-colors text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="more_vert">more_vert</span>
+</button><div class="absolute right-0 top-full mt-2 w-48 bg-surface-container-lowest rounded-lg shadow-xl border border-outline-variant z-[60] hidden group-focus-within:block">
+<div class="flex flex-col py-1">
+<button class="flex items-center px-4 py-3 text-left font-label-sm text-on-surface-variant hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined mr-3 text-[18px]">edit</span>
+      Edit Profile
+    </button>
+<button class="flex items-center px-4 py-3 text-left font-label-sm text-on-surface-variant hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined mr-3 text-[18px]">visibility</span>
+      View Profile
+    </button>
+<div class="h-[1px] bg-outline-variant my-1"></div>
+<button class="flex items-center px-4 py-3 text-left font-label-sm text-error hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined mr-3 text-[18px]">block</span>
+      Deactivate
+    </button>
+</div>
+</div>
+</div>
+</div>
+<!-- User Card 6 -->
+<div class="bg-white p-4 rounded-xl border border-outline-variant hover:shadow-[0px_4px_20px_rgba(255,107,0,0.08)] transition-all duration-300 relative group overflow-visible z-[25]">
+<div class="flex items-center gap-4">
+<div class="relative">
+<img class="w-14 h-14 rounded-full border-2 border-primary-fixed object-cover" data-alt="A portrait of a male professional athlete looking confident, captured in a bright, modern interior with expansive whitespace. The lighting is soft but directed, with warm primary orange highlights. The overall aesthetic is clean, minimalist, and forward-thinking." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBFALC_S7mjDBLZDMU4-MA4hb_-N_idQ9ewKxrZ0iKbccbetNh0mC2L_ieXGWUObHqSKQkhQfFFEhXVFS-DbvQgw3DiySYnJH2jFdZAWQWRaKp2R-psGW-0opzLb0mvlfgdzw4OUPpsPgrrpQJ4KTNW_UTVNz_rCRP7fQgPzBucBJYbnlvcgKIGj1ldLNZiYa0tV20v-Yv75-9Vgc9FPzQSH2eLVmZA_82SgoJBXfHlpMfDVJQehC4CR12I_gh1K-xhsrvStHhcR21s"/>
+<div class="absolute bottom-0 right-0 w-4 h-4 bg-[#4CAF50] border-2 border-white rounded-full"></div>
+</div>
+<div class="flex-grow">
+<h3 class="font-label-md text-on-surface">David Okafor</h3>
+<p class="font-body-sm text-on-surface-variant">Striker</p>
+</div>
+<button class="p-2 hover:bg-surface-container-high rounded-full transition-colors text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="more_vert">more_vert</span>
+</button><div class="absolute right-0 top-full mt-2 w-48 bg-surface-container-lowest rounded-lg shadow-xl border border-outline-variant z-[60] hidden group-focus-within:block">
+<div class="flex flex-col py-1">
+<button class="flex items-center px-4 py-3 text-left font-label-sm text-on-surface-variant hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined mr-3 text-[18px]">edit</span>
+      Edit Profile
+    </button>
+<button class="flex items-center px-4 py-3 text-left font-label-sm text-on-surface-variant hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined mr-3 text-[18px]">visibility</span>
+      View Profile
+    </button>
+<div class="h-[1px] bg-outline-variant my-1"></div>
+<button class="flex items-center px-4 py-3 text-left font-label-sm text-error hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined mr-3 text-[18px]">block</span>
+      Deactivate
+    </button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Pagination/Load More (Simplified for Mobile Feel) -->
+<div class="mt-8 flex justify-center pb-12">
+<button class="px-6 py-3 bg-secondary-container text-on-secondary-container font-label-md rounded-full shadow-sm active:scale-95 transition-all flex items-center gap-2">
+                Show More Players
+                <span class="material-symbols-outlined text-[18px]" data-icon="expand_more">expand_more</span>
+</button>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-2 bg-surface dark:bg-surface-dim shadow-[0px_-4px_20px_rgba(255,107,0,0.08)] rounded-t-xl">
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant hover:text-primary transition-all active:scale-90" href="#">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-label-sm text-label-sm">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-primary-container dark:bg-primary text-on-primary-container dark:text-on-primary rounded-full px-4 py-1 transition-all active:scale-90" href="#">
+<span class="material-symbols-outlined" data-icon="sports_cricket" style='font-variation-settings: "FILL" 1;'>sports_cricket</span>
+<span class="font-label-sm text-label-sm">Players</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant hover:text-primary transition-all active:scale-90" href="#">
+<span class="material-symbols-outlined" data-icon="event">event</span>
+<span class="font-label-sm text-label-sm">Matches</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant hover:text-primary transition-all active:scale-90" href="#">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-label-sm text-label-sm">Profile</span>
+</a>
+</nav>
+<script>
+        // Simple search interaction for demo
+        const searchInput = document.querySelector('input[type="text"]');
+        searchInput.addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase();
+            const cards = document.querySelectorAll('main > div.grid > div');
+            
+            cards.forEach(card => {
+                const name = card.querySelector('h3').textContent.toLowerCase();
+                if (name.includes(query)) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        });
+    </script>
+<div class="fixed inset-0 z-[100] flex items-center justify-center p-4 hidden" id="filter-dialog">
+<div class="absolute inset-0 bg-on-surface/20 backdrop-blur-sm"></div>
+<div class="relative w-full max-w-md bg-surface rounded-xl shadow-xl overflow-hidden border border-outline-variant">
+<div class="flex items-center justify-between p-4 border-b border-outline-variant">
+<h2 class="font-headline-md text-on-surface">Filter Players</h2>
+<button class="p-2 hover:bg-surface-container-high rounded-full transition-colors" onclick="document.getElementById('filter-dialog').classList.add('hidden')">
+<span class="material-symbols-outlined text-on-surface-variant">close</span>
+</button>
+</div>
+<div class="p-6 flex flex-col gap-6">
+<div>
+<h3 class="font-label-md text-on-surface mb-3">By Ball Type</h3>
+<div class="flex gap-3">
+<button class="px-4 py-2 rounded-full border border-primary text-primary font-label-sm hover:bg-primary-fixed transition-colors">Leather Ball</button>
+<button class="px-4 py-2 rounded-full border border-outline-variant text-on-surface-variant font-label-sm hover:bg-surface-container-low transition-colors">Tennis Ball</button>
+</div>
+</div>
+<div>
+<h3 class="font-label-md text-on-surface mb-3">By Center</h3>
+<div class="relative">
+<select class="w-full h-12 px-4 bg-white border border-outline-variant rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-container appearance-none text-on-surface">
+<option>All Centers</option>
+<option>Toronto East Central</option>
+<option>Surat District</option>
+<option>Mumbai Academy</option>
+</select>
+<span class="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant">expand_more</span>
+</div>
+</div>
+</div>
+<div class="flex items-center justify-end gap-4 p-4 bg-surface-container-lowest border-t border-outline-variant">
+<button class="px-4 py-2 text-primary font-label-md hover:bg-primary-fixed rounded-lg transition-colors">Clear All</button>
+<button class="px-6 py-2 bg-primary text-on-primary font-label-md rounded-lg shadow-sm active:scale-95 transition-all">Apply Filters</button>
+</div>
+</div>
+</div>
+</body></html>

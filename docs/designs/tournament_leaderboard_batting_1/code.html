@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Tournament Leaderboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-bright": "#f9f9fc",
+                        "surface-container-highest": "#e2e2e5",
+                        "on-error-container": "#93000a",
+                        "secondary": "#705d00",
+                        "on-surface-variant": "#5a4136",
+                        "primary": "#a04100",
+                        "on-primary-container": "#572000",
+                        "surface-container-low": "#f3f3f6",
+                        "outline": "#8e7164",
+                        "secondary-fixed-dim": "#e9c400",
+                        "on-background": "#1a1c1e",
+                        "on-surface": "#1a1c1e",
+                        "outline-variant": "#e2bfb0",
+                        "inverse-on-surface": "#f0f0f3",
+                        "background": "#f9f9fc",
+                        "secondary-container": "#fdd400",
+                        "on-error": "#ffffff",
+                        "on-tertiary-container": "#003357",
+                        "on-secondary-fixed-variant": "#544600",
+                        "on-primary-fixed-variant": "#7a3000",
+                        "primary-fixed": "#ffdbcc",
+                        "surface-container-lowest": "#ffffff",
+                        "surface": "#f9f9fc",
+                        "on-tertiary-fixed-variant": "#00497b",
+                        "surface-variant": "#e2e2e5",
+                        "on-secondary": "#ffffff",
+                        "inverse-primary": "#ffb693",
+                        "error-container": "#ffdad6",
+                        "tertiary-fixed": "#d0e4ff",
+                        "tertiary": "#0062a1",
+                        "on-primary-fixed": "#351000",
+                        "on-tertiary": "#ffffff",
+                        "surface-dim": "#dadadc",
+                        "primary-fixed-dim": "#ffb693",
+                        "on-secondary-fixed": "#221b00",
+                        "surface-container": "#eeeef0",
+                        "on-secondary-container": "#6f5c00",
+                        "error": "#ba1a1a",
+                        "secondary-fixed": "#ffe170",
+                        "tertiary-fixed-dim": "#9ccaff",
+                        "tertiary-container": "#059eff",
+                        "surface-tint": "#a04100",
+                        "on-primary": "#ffffff",
+                        "primary-container": "#ff6b00",
+                        "surface-container-high": "#e8e8ea",
+                        "inverse-surface": "#2f3133",
+                        "on-tertiary-fixed": "#001d35"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "lg": "40px",
+                        "margin-mobile": "16px",
+                        "md": "24px",
+                        "base": "8px",
+                        "sm": "12px",
+                        "max-width": "1280px",
+                        "xs": "4px",
+                        "margin-desktop": "auto",
+                        "gutter": "24px",
+                        "xl": "64px"
+                    },
+                    "fontFamily": {
+                        "label-sm": ["Plus Jakarta Sans"],
+                        "headline-md": ["Plus Jakarta Sans"],
+                        "headline-xl-mobile": ["Plus Jakarta Sans"],
+                        "body-md": ["Plus Jakarta Sans"],
+                        "body-sm": ["Plus Jakarta Sans"],
+                        "label-md": ["Plus Jakarta Sans"],
+                        "headline-lg": ["Plus Jakarta Sans"],
+                        "body-lg": ["Plus Jakarta Sans"],
+                        "headline-xl": ["Plus Jakarta Sans"]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: #F4F4F8;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .tab-active {
+            border-bottom: 3px solid #ff6b00;
+            color: #a04100;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            border: 1px solid #E2E2E9;
+        }
+        .rank-gold { color: #FFD600; }
+        .rank-silver { color: #C0C0C0; }
+        .rank-bronze { color: #CD7F32; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="text-on-background min-h-screen pb-24">
+<!-- Top AppBar Component -->
+<header class="w-full top-0 sticky z-40 bg-surface border-b border-outline-variant flex justify-between items-center px-margin-mobile md:px-max-width py-base">
+<div class="flex items-center gap-4">
+<button class="hover:bg-surface-container-high transition-colors p-2 rounded-full active:scale-95 duration-150">
+<span class="material-symbols-outlined text-primary">arrow_back</span>
+</button>
+<h1 class="font-headline-md text-headline-md font-bold text-on-surface">Leaderboard</h1>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full overflow-hidden border-2 border-primary-container">
+<img alt="User Profile" data-alt="A professional close-up studio portrait of a young male athlete with a confident expression. The lighting is soft and warm, reflecting a solar minimalism aesthetic with bright orange and white tones. The background is a clean, neutral light grey, emphasizing the modern and high-end feel of the interface." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD7eoZnwwYvdZTUcPSy-xNpeWMO4YglKcknaQCp6rjW8XikAaag5X3Wuwd5xzzPLYaxwfjsJdWgom2mFW9dNVbT9z5R2_SdRmMy1k2f9nAgjxCC3oyIPD2q0qsw00NPPifz1wVAyoj5wttOFJc9Hbtrn3bW1exDBPFfutI7xqH9n1mR7Ifm0CG1CM83eDR8pIIlk4HZnbymyT3eD0_EGD77vtRGJ84hP91lSe1Qh0kP5yl7MFl_i6WE3_X-fmEXdYKgk8jnkJWSoHcV"/>
+</div>
+</div>
+</header>
+<main class="max-w-[1280px] mx-auto px-margin-mobile md:px-gutter mt-6">
+<!-- Tab Navigation -->
+<nav class="flex w-full border-b border-outline-variant mb-6 bg-white rounded-t-xl overflow-hidden shadow-sm">
+<button class="flex-1 py-4 font-label-md text-label-md transition-all duration-200 tab-active" id="batTab" onclick="switchTab('bat')">
+                Bat
+            </button>
+<button class="flex-1 py-4 font-label-md text-label-md transition-all duration-200 text-on-surface-variant opacity-70" id="bowlTab" onclick="switchTab('bowl')">
+                Bowl
+            </button>
+</nav>
+<!-- Filter Bar -->
+<div class="flex items-center justify-between mb-6 gap-4">
+<div class="relative flex-1 max-w-xs">
+<select class="w-full bg-white border border-outline-variant rounded-lg px-4 py-3 font-body-sm text-body-sm appearance-none focus:ring-2 focus:ring-primary-container focus:border-primary outline-none transition-all">
+<option>All Teams</option>
+<option>India</option>
+<option>Australia</option>
+<option>England</option>
+<option>South Africa</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-outline">expand_more</span>
+</div>
+<div class="flex gap-2">
+<button class="bg-white border border-outline-variant p-3 rounded-lg hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined text-on-surface-variant">filter_list</span>
+</button>
+</div>
+</div>
+<!-- Leaderboard Lists -->
+<div class="space-y-4" id="batContent">
+<!-- Ranking Header -->
+<div class="grid grid-cols-12 px-6 py-2 text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider opacity-60">
+<div class="col-span-1">#</div>
+<div class="col-span-5 md:col-span-4">Player</div>
+<div class="col-span-2 text-center">M</div>
+<div class="col-span-2 text-center">Runs</div>
+<div class="hidden md:block col-span-1 text-center">Avg</div>
+<div class="col-span-2 md:col-span-1 text-center">SR</div>
+</div>
+<!-- Player Card 1 -->
+<div class="grid grid-cols-12 items-center bg-white p-4 md:p-6 rounded-xl border border-outline-variant shadow-sm hover:shadow-md transition-shadow group">
+<div class="col-span-1 font-headline-md text-headline-md rank-gold italic">1</div>
+<div class="col-span-5 md:col-span-4 flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-surface-container overflow-hidden shrink-0 border border-outline-variant">
+<img alt="Player" data-alt="A detailed digital illustration of a professional cricket player in an Indian national team jersey. The player has a focused, competitive gaze. The style is clean and minimalist with warm sunlight filters and high contrast. Soft ambient shadows define the depth against a clean white background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAyW1F2YRm0_iNYVAGILfDtZn3NIDlsgZEq3l12uyu5XzmJEgeOZBjnl2iYcZi-RwJ15Dd8hZHikL5hXESOQYF_kEtx5yxbTQICd4ZxyAwPCYyE27g1WP2GgaK1dyNWwtKYywgsIze9Na020WVAxFvp6pb0A1PvuKMcjfOYgqrtZBAMg5S59tksMYoMzb554IK_mzM0uoj5WVjWiYNCh4Kbx6gtXP3UnAuvXmc20uIK0OihYYty5yRzs4BLkGzKgDyG1e-cOYEl9lzr"/>
+</div>
+<div>
+<p class="font-label-md text-label-md text-on-surface group-hover:text-primary transition-colors">V. Kohli</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">India</p>
+</div>
+</div>
+<div class="col-span-2 text-center font-body-md text-body-md">9</div>
+<div class="col-span-2 text-center font-headline-md text-headline-md text-primary">765</div>
+<div class="hidden md:block col-span-1 text-center font-body-md text-body-md">95.62</div>
+<div class="col-span-2 md:col-span-1 text-center font-body-md text-body-md font-bold">103.2</div>
+</div>
+<!-- Player Card 2 -->
+<div class="grid grid-cols-12 items-center bg-white p-4 md:p-6 rounded-xl border border-outline-variant shadow-sm hover:shadow-md transition-shadow group">
+<div class="col-span-1 font-headline-md text-headline-md rank-silver italic">2</div>
+<div class="col-span-5 md:col-span-4 flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-surface-container overflow-hidden shrink-0 border border-outline-variant">
+<img alt="Player" data-alt="A portrait of a top-tier wicket-keeper batsman in a vibrant South African jersey. High-key lighting highlights the athletic features and the professional sporting gear. The aesthetic is contemporary and clean, matching a modern sports app interface with Solar Minimalism vibes." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAt6ji_4fRp8BtxR288-1XHH60HoM_94NSRRWJJf-CHt8iHkeZLm0XBu_EwMo13aX0Kb6ZG3nXk-6KooPhflfqLAg4hZkISJ7a04ZJeh6u77IdCs0msqifyUWGh1uW2P_xXYnH2wU5Js2ZyS2-RR8-IOocg2d0Xij9ilTJIqOxK3P9GkiPIoYEeu3A1fY4wFjBr19YkdvYOf1H4PHGtKSM-fTi59N9mySGRy4Y0IcoxPlc5f2Lqk3bcbevQ_pFDED1EiqkrtHmv7wDM"/>
+</div>
+<div>
+<p class="font-label-md text-label-md text-on-surface group-hover:text-primary transition-colors">Q. de Kock</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">South Africa</p>
+</div>
+</div>
+<div class="col-span-2 text-center font-body-md text-body-md">10</div>
+<div class="col-span-2 text-center font-headline-md text-headline-md text-primary">594</div>
+<div class="hidden md:block col-span-1 text-center font-body-md text-body-md">59.40</div>
+<div class="col-span-2 md:col-span-1 text-center font-body-md text-body-md font-bold">107.0</div>
+</div>
+<!-- Player Card 3 -->
+<div class="grid grid-cols-12 items-center bg-white p-4 md:p-6 rounded-xl border border-outline-variant shadow-sm hover:shadow-md transition-shadow group">
+<div class="col-span-1 font-headline-md text-headline-md rank-bronze italic">3</div>
+<div class="col-span-5 md:col-span-4 flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-surface-container overflow-hidden shrink-0 border border-outline-variant">
+<img alt="Player" data-alt="A high-quality 3D rendered avatar of an emerging cricket star in a New Zealand team kit. The image is bright with soft global illumination, featuring a palette of black, white, and subtle orange accents. The background is a soft-focus stadium setting under a setting sun." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDX4IMbaKRJH8eRTWRAd8QECImrU9EZUP_Z4mEk5QPNBbC2_htVvdLNJ8ZWnLw6Mamwp_JomHJwa7vb02x8MV32RgyWM56nGb31vDIRyYsEGgPgUijtnGiToAXcVbM8-magBOHcY5_XtYa5v11bWAC8pFjMj_R4vwKofo7JcYiDwCtwi2x1Frsf6a9ggy5pclX6UXIplTgSawHB_t2nxz02DXHfDwUQ7oR_c23q3mpe58l-XuGCX7bstt4VGWTsWXziHBRwQn_dh1sJ"/>
+</div>
+<div>
+<p class="font-label-md text-label-md text-on-surface group-hover:text-primary transition-colors">R. Ravindra</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">New Zealand</p>
+</div>
+</div>
+<div class="col-span-2 text-center font-body-md text-body-md">9</div>
+<div class="col-span-2 text-center font-headline-md text-headline-md text-primary">578</div>
+<div class="hidden md:block col-span-1 text-center font-body-md text-body-md">64.22</div>
+<div class="col-span-2 md:col-span-1 text-center font-body-md text-body-md font-bold">106.4</div>
+</div>
+</div>
+<div class="hidden space-y-4" id="bowlContent">
+<!-- Ranking Header Bowl -->
+<div class="grid grid-cols-12 px-6 py-2 text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider opacity-60">
+<div class="col-span-1">#</div>
+<div class="col-span-5">Player</div>
+<div class="col-span-2 text-center">M</div>
+<div class="col-span-2 text-center">W</div>
+<div class="col-span-2 text-center">ECO</div>
+</div>
+<!-- Player Card Bowl 1 -->
+<div class="grid grid-cols-12 items-center bg-white p-4 md:p-6 rounded-xl border border-outline-variant shadow-sm hover:shadow-md transition-shadow group">
+<div class="col-span-1 font-headline-md text-headline-md rank-gold italic">1</div>
+<div class="col-span-5 flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-surface-container overflow-hidden shrink-0 border border-outline-variant">
+<img alt="Player" data-alt="A cinematic portrait of a premier fast bowler in a blue India kit. The lighting is dramatic, highlighting the athletic intensity. The background is a minimalist, warm-toned stadium interior with glowing highlights that match the Solar Minimalism theme." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAbWNC__x2WalVuUwUgKjujeLl5IJnecZzf5SVeqKsYK1HGlEByNGq6y3elI2F0jrw1aBmBM6Ek_nhckEuTJPIgFSC0eCgJxefm6yC_xLtXbdpbKkDZi9BqY0i66PSeecqq6_q3LLXCR1nygnXi4xIR9euMGqqW43wHszxfeZz7tCpYBDpDj9RdhkVp3ayb0GDpjK8rpXZqVIAPa3pUqQcrJGFIfhQ7jO8-FV698C5MheMKiGg5qaJ9lQFDqR3N6rf0K9exd8wlthZr"/>
+</div>
+<div>
+<p class="font-label-md text-label-md text-on-surface group-hover:text-primary transition-colors">M. Shami</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">India</p>
+</div>
+</div>
+<div class="col-span-2 text-center font-body-md text-body-md">7</div>
+<div class="col-span-2 text-center font-headline-md text-headline-md text-primary">24</div>
+<div class="col-span-2 text-center font-body-md text-body-md font-bold">5.26</div>
+</div>
+<!-- Player Card Bowl 2 -->
+<div class="grid grid-cols-12 items-center bg-white p-4 md:p-6 rounded-xl border border-outline-variant shadow-sm hover:shadow-md transition-shadow group">
+<div class="col-span-1 font-headline-md text-headline-md rank-silver italic">2</div>
+<div class="col-span-5 flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-surface-container overflow-hidden shrink-0 border border-outline-variant">
+<img alt="Player" data-alt="A professional studio shot of an elite spin bowler in an Australian cricket jersey. Soft light creates a bright, optimistic vibe. The visual style is crisp and modern with high contrast and a palette of yellow and white. The character looks determined and sharp." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAMPpmj6nbrUcPBdY8xgs-a2L7dsNKD-Df9NBd6nbVj6xs17eF5PjE1C8cpQzFR7r_d3px05U8g4yoCB58dgvJHwFcQg_mjTIn0C_7vzN7uKd4Uey0MuCggsV9bkhM1zgecNy-D9HCPdhe0FurWr4_jU260hkQq66LPUBTQ5r3xCqObg6FA9LupdY0vfpgnC97tQA8d11ufLd_wNHeuHs6E1Gpsj_RxYvl0wePYxlHTkw2MP9hDY8IsGr-OgMuJxCyaFmqAKkVzjmES"/>
+</div>
+<div>
+<p class="font-label-md text-label-md text-on-surface group-hover:text-primary transition-colors">A. Zampa</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Australia</p>
+</div>
+</div>
+<div class="col-span-2 text-center font-body-md text-body-md">10</div>
+<div class="col-span-2 text-center font-headline-md text-headline-md text-primary">23</div>
+<div class="col-span-2 text-center font-body-md text-body-md font-bold">5.47</div>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation Bar Component -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-2 bg-surface-container-lowest shadow-[0px_-4px_20px_rgba(255,107,0,0.08)]">
+<a class="flex flex-col items-center justify-center text-on-surface-variant opacity-70 hover:bg-surface-container transition-all p-2 rounded-lg" href="#">
+<span class="material-symbols-outlined">sports_cricket</span>
+<span class="font-label-sm text-label-sm mt-1">Matches</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant opacity-70 hover:bg-surface-container transition-all p-2 rounded-lg" href="#">
+<span class="material-symbols-outlined">groups</span>
+<span class="font-label-sm text-label-sm mt-1">Teams</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-full px-4 py-1 active:scale-90 duration-200 transition-transform" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">leaderboard</span>
+<span class="font-label-sm text-label-sm mt-1">Leaderboard</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant opacity-70 hover:bg-surface-container transition-all p-2 rounded-lg" href="#">
+<span class="material-symbols-outlined">emoji_events</span>
+<span class="font-label-sm text-label-sm mt-1">Points Table</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant opacity-70 hover:bg-surface-container transition-all p-2 rounded-lg" href="#">
+<span class="material-symbols-outlined">query_stats</span>
+<span class="font-label-sm text-label-sm mt-1">Stats</span>
+</a>
+</nav>
+<script>
+        function switchTab(tab) {
+            const batBtn = document.getElementById('batTab');
+            const bowlBtn = document.getElementById('bowlTab');
+            const batContent = document.getElementById('batContent');
+            const bowlContent = document.getElementById('bowlContent');
+
+            if (tab === 'bat') {
+                batBtn.classList.add('tab-active');
+                batBtn.classList.remove('text-on-surface-variant', 'opacity-70');
+                bowlBtn.classList.remove('tab-active');
+                bowlBtn.classList.add('text-on-surface-variant', 'opacity-70');
+                
+                batContent.classList.remove('hidden');
+                bowlContent.classList.add('hidden');
+            } else {
+                bowlBtn.classList.add('tab-active');
+                bowlBtn.classList.remove('text-on-surface-variant', 'opacity-70');
+                batBtn.classList.remove('tab-active');
+                batBtn.classList.add('text-on-surface-variant', 'opacity-70');
+                
+                bowlContent.classList.remove('hidden');
+                batContent.classList.add('hidden');
+            }
+        }
+    </script>
+</body></html>

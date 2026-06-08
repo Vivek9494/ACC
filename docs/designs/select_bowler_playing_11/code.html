@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #F4F4F8;
+        }
+        .glass-effect {
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+    </style>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "primary-container": "#ff6b00",
+                    "on-surface-variant": "#5a4136",
+                    "secondary": "#705d00",
+                    "on-tertiary-fixed-variant": "#00497b",
+                    "on-tertiary-fixed": "#001d35",
+                    "on-secondary-container": "#6f5c00",
+                    "on-secondary-fixed": "#221b00",
+                    "secondary-fixed": "#ffe170",
+                    "surface-variant": "#e2e2e5",
+                    "inverse-primary": "#ffb693",
+                    "secondary-fixed-dim": "#e9c400",
+                    "primary-fixed": "#ffdbcc",
+                    "on-primary-fixed-variant": "#7a3000",
+                    "on-background": "#1a1c1e",
+                    "primary-fixed-dim": "#ffb693",
+                    "outline": "#8e7164",
+                    "primary": "#a04100",
+                    "surface-container-lowest": "#ffffff",
+                    "on-primary-fixed": "#351000",
+                    "on-primary-container": "#572000",
+                    "on-secondary": "#ffffff",
+                    "outline-variant": "#e2bfb0",
+                    "surface-container-high": "#e8e8ea",
+                    "inverse-surface": "#2f3133",
+                    "tertiary-container": "#059eff",
+                    "surface-container-highest": "#e2e2e5",
+                    "on-secondary-fixed-variant": "#544600",
+                    "on-error": "#ffffff",
+                    "on-tertiary-container": "#003357",
+                    "on-error-container": "#93000a",
+                    "inverse-on-surface": "#f0f0f3",
+                    "secondary-container": "#fdd400",
+                    "on-surface": "#1a1c1e",
+                    "error": "#ba1a1a",
+                    "surface-dim": "#dadadc",
+                    "tertiary-fixed": "#d0e4ff",
+                    "surface": "#f9f9fc",
+                    "surface-tint": "#a04100",
+                    "on-tertiary": "#ffffff",
+                    "error-container": "#ffdad6",
+                    "background": "#f9f9fc",
+                    "on-primary": "#ffffff",
+                    "surface-bright": "#f9f9fc",
+                    "tertiary": "#0062a1",
+                    "surface-container": "#eeeef0",
+                    "surface-container-low": "#f3f3f6",
+                    "tertiary-fixed-dim": "#9ccaff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "lg": "40px",
+                    "margin-mobile": "16px",
+                    "md": "24px",
+                    "max-width": "1280px",
+                    "xs": "4px",
+                    "base": "8px",
+                    "xl": "64px",
+                    "margin-desktop": "auto",
+                    "gutter": "24px",
+                    "sm": "12px"
+            },
+            "fontFamily": {
+                    "label-sm": ["Plus Jakarta Sans"],
+                    "label-md": ["Plus Jakarta Sans"],
+                    "headline-lg": ["Plus Jakarta Sans"],
+                    "body-md": ["Plus Jakarta Sans"],
+                    "headline-xl-mobile": ["Plus Jakarta Sans"],
+                    "body-sm": ["Plus Jakarta Sans"],
+                    "headline-xl": ["Plus Jakarta Sans"],
+                    "headline-md": ["Plus Jakarta Sans"],
+                    "body-lg": ["Plus Jakarta Sans"]
+            },
+            "fontSize": {
+                    "label-sm": ["12px", {"lineHeight": "14px", "letterSpacing": "0.04em", "fontWeight": "600"}],
+                    "label-md": ["14px", {"lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "600"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "headline-xl-mobile": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "headline-xl": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                    "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background min-h-screen flex flex-col items-center">
+<!-- Top App Bar -->
+<header class="fixed top-0 w-full z-50 bg-surface/60 backdrop-blur-xl border-b border-white/20 shadow-[0px_4px_24px_rgba(0,0,0,0.04)] h-16 flex items-center justify-between px-gutter max-w-md mx-auto">
+<div class="flex items-center gap-4">
+<button class="active:scale-95 transition-transform duration-200 text-on-surface-variant p-2 hover:bg-white/10 rounded-full">
+<span class="material-symbols-outlined">arrow_back</span>
+</button>
+<h1 class="font-headline-md text-headline-md text-on-surface">Select Bowler</h1>
+</div>
+<button class="active:scale-95 transition-transform duration-200 text-primary p-2 hover:bg-white/10 rounded-full">
+<span class="material-symbols-outlined">search</span>
+</button>
+</header>
+<!-- Content Area -->
+<main class="w-full max-w-md mt-16 mb-24 px-margin-mobile flex flex-col gap-4 py-6">
+<!-- Team Header -->
+<div class="flex items-center justify-between py-2">
+<div>
+<h2 class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Bowling Team</h2>
+<p class="font-headline-md text-headline-md text-primary">Titans XI</p>
+</div>
+<div class="bg-secondary-container text-on-secondary-container px-3 py-1 rounded-full font-label-sm text-label-sm">
+                Playing 11
+            </div>
+</div>
+<!-- Players List (Bento-style items) -->
+<div class="flex flex-col gap-3">
+<!-- Active/Suggest Player -->
+<button class="flex items-center justify-between p-4 bg-surface-container-lowest border border-outline-variant rounded-xl shadow-sm hover:shadow-md transition-shadow active:scale-[0.98] duration-150 text-left group">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full overflow-hidden border-2 border-primary-container relative">
+<img alt="Rashid Khan" class="w-full h-full object-cover" data-alt="A professional cricket player profile photo in a high-key studio lighting setting. The player is smiling confidently, wearing a modern sports jersey with vibrant orange and gold accents. The background is a clean, minimalist off-white with soft ambient shadows, echoing a solar minimalism aesthetic. The style is sharp, professional, and optimistic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAwjrzb9I-BzavbG6HtvOyHEKnkh3Ws38aW2AjjsdqwxrArP8MVaQu16ZkQeMgDcenk8afEpeDEG3cqrUcsVew9dNrHYKx8t_qSaH1BD3lxKVqryEgNaTZ6nuWOtLzTjdgB16WEbIT6j5s-Os-XQtxg6H8HumZ42bXyGhC-Bp-C9r18RccnRmKtDHjFZNpjLQhdSyy6C2RJtUQ7-1XrFn-Ff0Xuc1AQKFDK7ElzcFNiQVvlqcpI5cnfTB_n66KuwGguUIgWka0sz7X2"/>
+</div>
+<div>
+<p class="font-headline-md text-[18px] text-on-surface">Rashid Khan</p>
+<div class="flex items-center gap-2">
+<span class="font-label-sm text-label-sm text-primary">Leg Spinner</span>
+<span class="w-1 h-1 rounded-full bg-outline-variant"></span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">4-0-24-2</span>
+</div>
+</div>
+</div>
+<div class="w-8 h-8 rounded-full flex items-center justify-center bg-primary-container/10 group-hover:bg-primary-container transition-colors">
+<span class="material-symbols-outlined text-primary group-hover:text-white text-xl">sports_cricket</span>
+</div>
+</button>
+<!-- Regular Player -->
+<button class="flex items-center justify-between p-4 bg-surface-container-lowest border border-outline-variant rounded-xl shadow-sm hover:shadow-md transition-shadow active:scale-[0.98] duration-150 text-left group">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full overflow-hidden border border-outline-variant">
+<img alt="Mohammed Shami" class="w-full h-full object-cover" data-alt="A close-up portrait of a professional sportsman with a determined expression, captured in bright, airy natural light. He is wearing a high-performance athletic top in a clean white color with subtle orange piping. The lighting is soft and modern, creating a professional and high-end feel. The background is a minimalist gradient of soft grays and whites." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBrIika6TXX6Gtd6QYn27C4lH8AmzK44kehv09YbPy-_LxmMOZfNDveWox9KpxzsH0CkVFbMqhGU-IuXIp_MsihG0gVx1XpNgFXI_jK_StFRClTasPgc-i6dO3ATyuBmWY-J5PJKaLhLQn9vEL8KRyE5CA-QVRZ2Dwbkas44auG0J7X-erhzW3pf2VGVeJOOZKprvI3DedeiRQVyhMURIcE8Gg2u2Juh3iR0DHS8UYLQC4oTYmNySBSPusiGEiIveMz_-8ogy6Hkhbl"/>
+</div>
+<div>
+<p class="font-headline-md text-[18px] text-on-surface">Mohammed Shami</p>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Fast Bowler</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline-variant group-hover:text-primary">add_circle</span>
+</button>
+<!-- Regular Player -->
+<button class="flex items-center justify-between p-4 bg-surface-container-lowest border border-outline-variant rounded-xl shadow-sm hover:shadow-md transition-shadow active:scale-[0.98] duration-150 text-left group">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full overflow-hidden border border-outline-variant">
+<img alt="Noor Ahmad" class="w-full h-full object-cover" data-alt="A vibrant professional athlete profile picture. The subject is a young cricketer looking forward with an optimistic smile, dressed in a sleek sports uniform with orange details. The lighting is warm and high-key, emphasizing a clean and modern solar minimalism. The composition is centered with a soft-focus minimalist background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBPhslmChQ8zJBnGQOSdORptGvM5PzOFwAHKmS6oHQSHdOjCOJk56RylNBEZtOasvTFnUoiZSlQ3FlNNOLVW1IoRdl67lViY091BBaqiUu2YyC5boNDPDWZ0B0C2yHc3iS32X3D6wUurkDP7Yz_WAA0dTv9WkGsBMPgfEhJMH_AdJyn5Dq_mWO_Tgpwt80FxVikjM7TUWMr3arblusZnjrfRvAE9xiDv6w1l4ZSUKNEdcvPmXVQGW33pi0rpOW8qxYh7R5NdUVm-vVh"/>
+</div>
+<div>
+<p class="font-headline-md text-[18px] text-on-surface">Noor Ahmad</p>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Left-arm Spinner</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline-variant group-hover:text-primary">add_circle</span>
+</button>
+<!-- Regular Player -->
+<button class="flex items-center justify-between p-4 bg-surface-container-lowest border border-outline-variant rounded-xl shadow-sm hover:shadow-md transition-shadow active:scale-[0.98] duration-150 text-left group">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full overflow-hidden border border-outline-variant">
+<img alt="Mohit Sharma" class="w-full h-full object-cover" data-alt="A professional studio portrait of a sportsman wearing a high-end athletic jersey. The color scheme is dominated by whites and soft oranges, consistent with a solar minimalism design. The subject is illuminated by bright, diffused lighting that eliminates harsh shadows. The style is modern, efficient, and professional." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC_UZfMxSt-QZUoijUuqS0_mTYtPNZoJxkgjWe357OiEdke7UeC6IMlBblPSM38bImmBZbUfbX2uYv2ysER4ZIqKQeYMtKx5NvDP4YHBzQkxUcraRgPBXBrDqG6GKBrxJJNQLCaEWejvwDFS0lkSYElkxzWQeKuREJ3yOXHOKFG3m0Z16dPl5arqTylFA9Vm6WThC4ZzDoW9sxTqYpAqVCPG9cwuXNhewnCKGg710gpkYLBoAaHxRWwiyA0ZXgpY6XLRXP27LQWlCrF"/>
+</div>
+<div>
+<p class="font-headline-md text-[18px] text-on-surface">Mohit Sharma</p>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Medium Fast</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline-variant group-hover:text-primary">add_circle</span>
+</button>
+<!-- Regular Player -->
+<button class="flex items-center justify-between p-4 bg-surface-container-lowest border border-outline-variant rounded-xl shadow-sm hover:shadow-md transition-shadow active:scale-[0.98] duration-150 text-left group">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full overflow-hidden border border-outline-variant">
+<img alt="Josh Little" class="w-full h-full object-cover" data-alt="A portrait of an athlete in a professional sports kit, featuring bright orange and yellow accents against a crisp white background. The lighting is high-key and optimistic, creating a modern and clean aesthetic. The subject has a professional and ready expression. The image is minimalist and focused on the subject with high-end clarity." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDApjiKUamc8SzWI5duFpxB4eb56iuGFSr9zeORmwEuVbGx32mwLTjuU_K6U6xTQ-HfvEweIJIy4K1-IcZR-QobDH9BU88SUOai-m9DjLJ4lLA45_X5C_GwfVlX0af8-9EUpuiE8us4vQwni5Wo5S9xi6-zWEvhuUvKeaqP3OOegdUBYwk1lCVHbNoO5j8FP07ix0RRPtht64Zkco8nWKc32ydaZ-RQy3A9xNFjq9H-HojoZvUq1ZYQnPITF2uQ92CWrBxGv53QhaiD"/>
+</div>
+<div>
+<p class="font-headline-md text-[18px] text-on-surface">Josh Little</p>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Fast Bowler</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline-variant group-hover:text-primary">add_circle</span>
+</button>
+<!-- Regular Player -->
+<button class="flex items-center justify-between p-4 bg-surface-container-lowest border border-outline-variant rounded-xl shadow-sm hover:shadow-md transition-shadow active:scale-[0.98] duration-150 text-left group">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full overflow-hidden border border-outline-variant">
+<img alt="Sai Kishore" class="w-full h-full object-cover" data-alt="Professional athlete headshot in a bright, modern studio. The subject is wearing a team jersey with solar orange highlights. The background is a clean, minimalist off-white. The lighting is soft and enveloping, highlighting the subject's features with clarity. The overall mood is energetic and professional." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAKyCL7a-B1Zh2uvWC89pgrLPwQOGcz50zJf05oz6LabkOEZ8LSL_ZL7cJB3tQ46zzxub3ww0yN1wbYTtZ6aZrkxH-D2gmnqd2k2sBd36rAPSH8Vz0LWZL7uJKuUf2pJTjVApYoOZ9zFSpzb-Yl8EmPdqFsB9zCcxTB-EmBx3AXBP8hUr9zy3PrdVCTsf12_uD0unlGW4pb4MgTmx0r6piZXM-ifa7ND_KaE2NuM7yU9l00rismfY82TJpBAp2QtzgqBLiCREqcykis"/>
+</div>
+<div>
+<p class="font-headline-md text-[18px] text-on-surface">R. Sai Kishore</p>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Spinner</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline-variant group-hover:text-primary">add_circle</span>
+</button>
+</div>
+<!-- Optional Action -->
+<div class="mt-4 p-4 border-2 border-dashed border-outline-variant rounded-xl flex flex-col items-center justify-center gap-2 group cursor-pointer hover:border-primary-container transition-colors">
+<div class="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm text-on-surface-variant group-hover:text-primary">
+<span class="material-symbols-outlined">person_add</span>
+</div>
+<p class="font-label-md text-label-md text-on-surface-variant group-hover:text-primary">Add a substitute player</p>
+</div>
+</main>
+<!-- Footer Action Bar -->
+<footer class="fixed bottom-0 w-full z-50 bg-surface/80 backdrop-blur-xl border-t border-white/20 shadow-[0px_-4px_24px_rgba(0,0,0,0.04)] h-20 px-4 pb-safe max-w-md mx-auto flex items-center justify-center">
+<button class="w-full h-12 bg-primary-container text-white rounded-xl font-headline-md text-[16px] flex items-center justify-center gap-2 shadow-lg shadow-primary-container/20 active:scale-95 transition-transform duration-200">
+<span class="material-symbols-outlined">add</span>
+            Add New Bowler
+        </button>
+</footer>
+<!-- Interactive Layer: Simple Ripple Simulation -->
+<script>
+        document.querySelectorAll('button').forEach(button => {
+            button.addEventListener('mousedown', function(e) {
+                const rect = this.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                const ripple = document.createElement('span');
+                ripple.style.position = 'absolute';
+                ripple.style.width = '100px';
+                ripple.style.height = '100px';
+                ripple.style.background = 'rgba(255, 107, 0, 0.1)';
+                ripple.style.borderRadius = '50%';
+                ripple.style.left = `${x - 50}px`;
+                ripple.style.top = `${y - 50}px`;
+                ripple.style.transform = 'scale(0)';
+                ripple.style.transition = 'transform 0.5s ease-out, opacity 0.5s';
+                ripple.style.pointerEvents = 'none';
+                
+                this.style.position = 'relative';
+                this.style.overflow = 'hidden';
+                this.appendChild(ripple);
+                
+                setTimeout(() => {
+                    ripple.style.transform = 'scale(4)';
+                    ripple.style.opacity = '0';
+                }, 10);
+                
+                setTimeout(() => {
+                    ripple.remove();
+                }, 600);
+            });
+        });
+    </script>
+</body></html>

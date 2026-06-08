@@ -1,0 +1,39 @@
+---
+description: ACC domain glossary — tournament types and roles.
+alwaysApply: true
+---
+
+# Domain Glossary
+
+## Tournament types (spec §1, §1.1)
+
+- **ACC (Atmiya Cricket Club)** — Leather Ball. Four fixed teams (ACC 3, ACC 6, ACC 9, ACC 0) that collectively play the external BEDCL league. 25 overs, max 5 overs/bowler, 16 matches/team/season.
+- **APL (Atmiya Premier League)** — Tennis Ball. All cities of the province participate. Organized by Club Manager.
+- **Center-level** — Tennis Ball. One or multiple cities, but **not all** (all cities ⇒ it's APL). Organized by Center Sevak or Club Manager.
+
+### Type-resolution logic (on tournament creation, §1.1)
+
+1. Ball Type = **Leather** → **ACC** rules.
+2. Ball Type = **Tennis** AND creator is **Club Manager** AND city option is **ALL** → **APL** rules.
+3. Ball Type = **Tennis** AND (creator is **Center Sevak**) OR (creator is **Club Manager** with single/multi but not all cities) → **Center-level** rules.
+
+## Roles (spec §2)
+
+Eight first-class roles, plus the Scorer per-match grant and the unauthenticated Guest:
+
+- **Admin** — platform-wide; acts on any tournament, edits any scorecard, views the full audit log.
+- **Club Manager** — organizes ACC and APL; manages fees; reshuffles ACC teams; can edit ACC scorecards post-confirmation.
+- **Center Sevak** — organizes Center-level; approves registrations for their Center; updates ratings/availability for own-Center players in APL.
+- **Captain** — per-team; selects Playing 11 (ACC), assigns per-match Scorer (ACC), handles suspension overrides, confirms scorecards.
+- **Vice Captain** — inherits Captain permissions while Captain is suspended; can confirm scorecards and perform scoring.
+- **Manager** — **APL and Center-level ONLY.** Shares favouriting/player-add permissions with Captain/VC.
+- **Player** — registers, votes in availability polls, views own stats, edits own profile.
+- **Scorer (per-match grant)** — a permission granted to a Player for one specific match; auto-revoked at match completion. **Not a top-level role.**
+- **Guest** — read-only, no auth: live match, scorecards, leaderboards, YouTube embed.
+- *(System is an internal audit-attribution actor only — not a login-capable role.)*
+
+## Critical rule
+
+**Manager does NOT exist in ACC.** ACC teams have no Manager. Hide the Manager
+option from any Captain/Vice Captain/Manager UI when the tournament type is ACC
+(RBAC footnote D1).

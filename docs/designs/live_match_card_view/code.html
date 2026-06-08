@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Live Match Card - Solar Minimalism</title>
+<!-- Load Tailwind CSS v3 with relevant plugins -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Load Plus Jakarta Sans font as specified in Design System -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            solar: {
+              orange: '#ff6b00',
+              surface: '#f9f9fc',
+              'surface-dim': '#dadadc',
+              'surface-bright': '#f9f9fc',
+              'surface-container-lowest': '#ffffff',
+              'surface-container-low': '#f3f3f6',
+              'text-dark': '#1e293b',
+              'text-muted': '#64748b'
+            }
+          },
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'sans-serif'],
+          },
+          borderRadius: {
+            'solar-8': '2rem', // Representing the "ROUND_EIGHT" preset with a substantial curve
+          }
+        }
+      }
+    }
+  </script>
+<style data-purpose="layout-styling">
+    body {
+      background-color: #f9f9fc;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 1rem;
+    }
+
+    /* Custom shadow for the "Solar Minimalism" card feel */
+    .solar-card-shadow {
+      box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.05);
+    }
+  </style>
+</head>
+<body class="bg-solar-surface">
+<!-- BEGIN: LiveMatchFocusScreen -->
+<main class="w-full max-w-md" data-purpose="focused-match-container">
+<!-- BEGIN: LiveMatchCard -->
+<section class="bg-white rounded-solar-8 p-6 relative overflow-hidden solar-card-shadow border-l-8 border-solar-orange" data-purpose="live-match-card">
+<!-- Card Header: Tournament and Live Badge -->
+<div class="flex justify-between items-center mb-8">
+<h2 class="text-solar-text-dark font-bold text-lg">Atmiya Premier League</h2>
+<span class="flex items-center gap-1.5 bg-orange-100 text-[#ff6b00] px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
+<span class="w-2 h-2 bg-[#ff6b00] rounded-full animate-pulse"></span>
+          Live
+        </span>
+</div>
+<!-- Match Scores Container -->
+<div class="space-y-8 mb-8">
+<!-- Team 1: Barrie Cobras -->
+<div class="flex items-center justify-between" data-purpose="team-score-row">
+<div class="flex items-center gap-4">
+<!-- Team Logo Placeholder -->
+<div class="w-10 h-10 bg-slate-50 border border-slate-100 rounded-md flex items-center justify-center p-2">
+<img alt="Barrie Cobras Logo" class="w-full h-full object-contain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCO8G3gphg8uwyIzLrmDAto65Zy6DkfDIdgtYSyDZJUnRrQrd_-yw2ZdwTAyCHN4tsz4lJtTE92CTJT1hr89MqOIEy7za-VmPN_xO9kCuSJnjW-X8mp1taJkDYo5rw4RfBAYAoxyscdgV2KoUGzXHi9b_JCja_qKTVPLEso7QF_n9nyj2NC70zCvKX6m6O1HMg095tmxHskcHy1_vDYXL_70nNQ2zHTIsAOZ_axlE5Z-GSkKUs3OeXzaYKvhvDdH76LuwJ5krDGjnQk"/>
+</div>
+<span class="text-2xl font-extrabold text-solar-text-dark">Barrie Cobras</span>
+</div>
+<div class="text-right">
+<div class="text-2xl font-extrabold text-solar-orange leading-none">203/5</div>
+<div class="text-xs font-bold text-solar-text-muted mt-1 uppercase tracking-tight">20.0 OVERS</div>
+</div>
+</div>
+<!-- Team 2: Scarborough Strikeforce -->
+<div class="flex items-center justify-between" data-purpose="team-score-row">
+<div class="flex items-center gap-4">
+<!-- Team Logo Placeholder -->
+<div class="w-10 h-10 bg-slate-50 border border-slate-100 rounded-md flex items-center justify-center p-2">
+<img alt="Scarborough Strikeforce Logo" class="w-full h-full object-contain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBgdkyxXUr26f7CRdSP64htshMduHGCbcYT2JTtJ_T0GfvNhkIyz8is1OjnfzCkx4jhQBJ-blT7gNOKe97Hfbxm9PM_0JN1YAXAD-dbf2JJQxFdaVOKNdvyOJbfkHsufqsi4un-gQN6cP3Gag8prj0kGC6-6S1pJy1INgeWMYhZ90Gwnjc1xYpRyF9SFALclhCLXwnhv5xR4Zdh_M2VjYYbu6lQBXkQEvQfYbY6HGsXuza89pXRnle-Si0K-YADiYi8mB1BGFkHK-DK"/>
+</div>
+<span class="text-2xl font-extrabold text-solar-text-dark">Scarborough Strikeforce</span>
+</div>
+<div class="text-right">
+<div class="text-2xl font-extrabold text-solar-text-muted leading-none">163</div>
+<div class="text-xs font-bold text-solar-text-muted mt-1 uppercase tracking-tight">18.4 OVERS</div>
+</div>
+</div>
+</div>
+<!-- Divider -->
+<div class="h-px bg-slate-100 w-full mb-6"></div>
+<!-- Match Result Footer -->
+<div class="text-[#006699] font-bold text-base" data-purpose="match-result">
+        Barrie Cobras won by 40 runs
+      </div>
+</section>
+<!-- END: LiveMatchCard -->
+</main>
+<!-- END: LiveMatchFocusScreen -->
+</body></html>

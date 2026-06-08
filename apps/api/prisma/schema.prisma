@@ -1,0 +1,857 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+/// First-class platform roles (spec §2). Scorer (per-match grant) and Guest
+/// (unauthenticated) are intentionally not stored here. ADMIN and CLUB_MANAGER
+/// are platform-global and live on `User.role`; the others can also appear as
+/// scoped grants in `RoleAssignment`.
+enum UserRole {
+  ADMIN
+  CLUB_MANAGER
+  CENTER_SEVAK
+  CAPTAIN
+  VICE_CAPTAIN
+  MANAGER
+  PLAYER
+}
+
+/// Resolved tournament type (spec §1, §1.1).
+enum TournamentType {
+  ACC
+  APL
+  CENTER
+}
+
+/// Ball type drives ACC vs Tennis-ball rules (spec §1.1, §6.1).
+enum BallType {
+  LEATHER
+  TENNIS
+}
+
+/// Tournament lifecycle states (spec §5.1).
+enum TournamentState {
+  NEW
+  REGISTRATION_OPEN
+  REGISTRATION_CLOSED
+  TEAMS_FINALIZED
+  FIXTURE_PUBLISHED
+  LIVE
+  KNOCKOUT
+  COMPLETED
+}
+
+/// Supported tournament formats (spec §24).
+enum TournamentFormat {
+  LEAGUE_SINGLE_ROUND_ROBIN
+  LEAGUE_DOUBLE_ROUND_ROBIN
+  KNOCKOUT_SINGLE_ELIMINATION
+  KNOCKOUT_SEEDED
+  KNOCKOUT_DOUBLE_ELIMINATION
+  GROUP_STAGE_KNOCKOUT
+  SWISS
+  LADDER_CHALLENGE
+  POOL
+}
+
+/// Match states (spec §5.2).
+enum MatchState {
+  SCHEDULED
+  PLAYING_XI_LOCKED
+  TOSS_COMPLETED
+  LIVE
+  DELAYED
+  RAIN_INTERRUPTED
+  CANCELLED
+  NO_RESULT
+  COMPLETED
+  SCORECARD_LOCKED
+}
+
+/// Identifies one of a match's two sides without a hard FK (the away side may
+/// be an external, non-system team in ACC — spec §9.5).
+enum MatchSide {
+  TEAM_A
+  TEAM_B
+}
+
+/// Role of a player within a locked matchday squad (spec §9.7, §8).
+/// A suspended player may be in PLAYING_XI but never a SUBSTITUTE (§9.7).
+/// IMPACT_CANDIDATE rows exist only when the tournament enables Impact Player;
+/// exactly one candidate may be flagged the active 12th at lock time (§31 #4(a)).
+enum MatchSquadRole {
+  PLAYING_XI
+  SUBSTITUTE
+  IMPACT_CANDIDATE
+}
+
+/// Home/away indicator on ACC schedule entries (spec §27).
+enum HomeAway {
+  HOME
+  AWAY
+}
+
+/// Toss decision captured per match (spec §11.2).
+enum TossDecision {
+  BAT
+  BOWL
+}
+
+/// Registration status lifecycle (spec §7.3).
+enum RegistrationStatus {
+  IN_WAITLIST
+  CONFIRMED
+  DECLINED
+}
+
+/// Default registration form styles (spec §7.1).
+enum BattingStyle {
+  RHB
+  LHB
+}
+
+enum BowlingStyle {
+  PACE
+  SPIN
+}
+
+/// Field type of an Admin-built custom registration field (spec §7.2, §21).
+enum RegistrationFieldType {
+  TEXT
+  NUMBER
+  SELECT
+  BOOLEAN
+}
+
+/// Lifecycle of an organizer's request to Admin for a custom form (spec §7.2).
+enum CustomFormRequestStatus {
+  PENDING
+  FULFILLED
+  DECLINED
+}
+
+/// ACC player category (spec §9.2). Scoped to an ACC team membership.
+enum PlayerCategory {
+  FULLTIME
+  PARTTIME
+}
+
+/// Suspension lifecycle (spec §10.2–§10.5).
+enum SuspensionStatus {
+  PENDING
+  SERVED
+  CARRIED_FORWARD
+  CANCELLED
+}
+
+/// Per-player fee status (spec §20).
+enum FeeStatus {
+  PENDING
+  PAID
+}
+
+/// Innings kind — a chained Super Over (spec §14) produces extra innings.
+enum InningsType {
+  NORMAL
+  SUPER_OVER
+}
+
+/// Type of a scoring event. A single append-only stream carries both deliveries
+/// and discrete non-ball events (spec §12.1). `overNumber`/`ballNumber` are null
+/// for non-ball events such as penalty runs or an Impact Player coming in.
+enum DeliveryType {
+  LEGAL
+  WIDE
+  NO_BALL
+  BYE
+  LEG_BYE
+  PENALTY_RUNS
+  RETIRED_HURT
+  RETIRED_OUT
+  IMPACT_PLAYER_IN
+}
+
+/// Dismissal modes in scope (spec §12.1; §30.3 exclusions omitted).
+enum DismissalType {
+  BOWLED
+  CAUGHT
+  LBW
+  RUN_OUT
+  STUMPED
+  HIT_WICKET
+  RETIRED_OUT
+}
+
+// ---------------------------------------------------------------------------
+// Core identity & membership
+// ---------------------------------------------------------------------------
+
+/// A Province contains many city-level Centers (clubs).
+model Province {
+  id       String  @id @default(uuid())
+  name     String  @unique
+  isActive Boolean @default(true)
+
+  centers Center[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// A geographic Center (city-level club) players belong to (spec §3.1 signup field `centerId`).
+model Center {
+  id         String   @id @default(uuid())
+  name       String
+  provinceId String
+  province   Province @relation(fields: [provinceId], references: [id])
+  isActive   Boolean  @default(true)
+
+  users           User[]
+  registrations   Registration[]
+  tournamentLinks TournamentCenter[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([provinceId, name])
+  @@index([provinceId])
+}
+
+/// Platform user with the §3.1 signup fields.
+///
+/// `tokenVersion` powers single-device enforcement (§3.2): every login
+/// increments it and embeds the new value in issued JWTs, so any token minted
+/// for a prior session fails the guard's version check.
+///
+/// `role` holds the platform-global base role (PLAYER by default; ADMIN /
+/// CLUB_MANAGER set here). Tournament/team/center-scoped roles live in
+/// `RoleAssignment` (§2).
+model User {
+  id                     String    @id @default(uuid())
+  firstName              String
+  lastName               String
+  /// Login identifier; unique across the platform (§3.1).
+  mobileNumber           String    @unique
+  email                  String
+  /// Stored in UTC; the 18+ rule is derived from this (§3.1).
+  dateOfBirth            DateTime
+  centerId               String
+  center                 Center    @relation(fields: [centerId], references: [id])
+  jerseyNumber           Int
+  profilePhotoUrl        String?
+  emergencyContactName   String
+  emergencyContactNumber String
+  passwordHash           String
+  role                   UserRole  @default(PLAYER)
+  tokenVersion           Int       @default(0)
+  isActive               Boolean   @default(true)
+  /// Set when the account is locked from password reset after too many failed
+  /// OTP entries (§3.4). Cleared by an admin/captain/club-manager unlock.
+  passwordResetLockedAt  DateTime?
+
+  roleAssignments RoleAssignment[]
+  memberships     TeamMembership[]
+  registrations   Registration[]
+  suspensions     Suspension[]
+  pollVotes       PollVote[]
+  videos          PlayerVideo[]
+  fees            Fee[]
+  squadEntries    MatchSquadPlayer[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([centerId])
+}
+
+/// A scoped role grant (spec §2). Examples:
+/// - Center Sevak → `centerId` set.
+/// - Captain / Vice Captain / Manager → `teamId` + `tournamentId` set.
+/// Platform-global ADMIN / CLUB_MANAGER are represented on `User.role`, not here.
+model RoleAssignment {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id])
+  role         UserRole
+  /// Scope (any/all may be null depending on the role).
+  centerId     String?
+  tournamentId String?
+  teamId       String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, role, tournamentId, teamId, centerId])
+  @@index([tournamentId])
+  @@index([teamId])
+  @@index([centerId])
+}
+
+// ---------------------------------------------------------------------------
+// Tournament structure
+// ---------------------------------------------------------------------------
+
+/// A tournament instance. Type/state/format and the §6.1 Add-Tournament fields.
+model Tournament {
+  id                  String           @id @default(uuid())
+  name                String
+  year                Int
+  posterUrl           String?
+  /// Overs per innings; max overs per bowler is derived but editable (§6.1).
+  oversPerInnings     Int
+  maxOversPerBowler   Int
+  location            String?
+  /// All datetimes UTC (§23).
+  startAt             DateTime
+  endAt               DateTime
+  registrationOpenAt  DateTime?
+  registrationCloseAt DateTime?
+  ballType            BallType
+  type                TournamentType
+  state               TournamentState  @default(NEW)
+  format              TournamentFormat
+  impactPlayerEnabled Boolean          @default(false)
+  videoRequired       Boolean          @default(false)
+  /// Must be after registration close when videos are required (§19).
+  videoUploadEndDate  DateTime?
+  /// Optional tournament-level stream; per-match URLs live on Match (§22).
+  youtubeUrl          String?
+  /// Platform-global organizer (Club Manager / Center Sevak); not a hard FK.
+  createdByUserId     String
+
+  teams              Team[]
+  centerLinks        TournamentCenter[]
+  registrations      Registration[]
+  registrationFields RegistrationFieldDefinition[]
+  customFormRequests CustomFormRequest[]
+  matches            Match[]
+  memberships        TeamMembership[]
+  suspensions        Suspension[]
+  videos             PlayerVideo[]
+  fees               Fee[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([type])
+  @@index([state])
+}
+
+/// Which Centers (cities) participate — drives the §1.1 type-resolution logic
+/// (APL = all cities; Center-level = a subset).
+model TournamentCenter {
+  tournamentId String
+  centerId     String
+  tournament   Tournament @relation(fields: [tournamentId], references: [id])
+  center       Center     @relation(fields: [centerId], references: [id])
+
+  @@id([tournamentId, centerId])
+  @@index([centerId])
+}
+
+/// A team scoped to a single tournament (spec §6.3). Display-name overlap with
+/// past tournaments is allowed; each tournament gets its own team rows, so the
+/// uniqueness is only within a tournament.
+model Team {
+  id           String     @id @default(uuid())
+  tournamentId String
+  tournament   Tournament @relation(fields: [tournamentId], references: [id])
+  name         String
+
+  memberships TeamMembership[]
+  homeMatches Match[]          @relation("HomeTeam")
+  awayMatches Match[]          @relation("AwayTeam")
+  matchSquads MatchSquad[]
+  fees        Fee[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tournamentId, name])
+  @@index([tournamentId])
+}
+
+/// A player's team assignment within a tournament. The `(tournamentId, userId)`
+/// unique enforces "one player belongs to exactly one team per tournament"
+/// (§26), while allowing the same player on different teams across simultaneous
+/// tournaments.
+model TeamMembership {
+  id             String          @id @default(uuid())
+  tournamentId   String
+  tournament     Tournament      @relation(fields: [tournamentId], references: [id])
+  teamId         String
+  team           Team            @relation(fields: [teamId], references: [id])
+  userId         String
+  user           User            @relation(fields: [userId], references: [id])
+  /// ACC only (§9.2); null for APL / Center-level.
+  playerCategory PlayerCategory?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tournamentId, userId])
+  @@index([teamId])
+}
+
+/// A player's registration into a tournament with the §7.3 status lifecycle.
+/// Default §7.1 fields are columns; `customFields` holds any §7.2/§21 custom
+/// form data. Ratings are per-tournament (Center Sevak updates them — §7.5).
+model Registration {
+  id           String             @id @default(uuid())
+  tournamentId String
+  tournament   Tournament         @relation(fields: [tournamentId], references: [id])
+  userId       String
+  user         User               @relation(fields: [userId], references: [id])
+  centerId     String
+  center       Center             @relation(fields: [centerId], references: [id])
+  status       RegistrationStatus @default(IN_WAITLIST)
+
+  battingStyle     BattingStyle?
+  battingRating    Int?
+  bowlingStyle     BowlingStyle?
+  bowlingRating    Int?
+  fieldingRating   Int?
+  fieldingPosition String?
+  /// APL availability for tournament dates, recorded by Center Sevak (§7.5).
+  /// Null = not yet contacted; true/false = available / unavailable.
+  isAvailable      Boolean?
+  availabilityNote String?
+  /// Additional/modified fields from a tournament-specific custom form (§7.2).
+  customFields     Json?
+
+  /// Center Sevak who approved/declined (§7.3); not a hard FK.
+  reviewedByUserId String?
+  reviewedAt       DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tournamentId, userId])
+  @@index([centerId])
+  @@index([status])
+}
+
+/// An Admin-built custom registration field, scoped to one tournament (§7.2,
+/// §21). Other tournaments are unaffected. The player's answer is stored under
+/// `Registration.customFields[key]`.
+model RegistrationFieldDefinition {
+  id           String                @id @default(uuid())
+  tournamentId String
+  tournament   Tournament            @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  /// Machine key used in `Registration.customFields`.
+  key          String
+  label        String
+  fieldType    RegistrationFieldType  @default(TEXT)
+  required     Boolean                @default(false)
+  /// Choices for a SELECT field (array of strings).
+  options      Json?
+  /// Display order on the form.
+  position     Int                    @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tournamentId, key])
+  @@index([tournamentId])
+}
+
+/// An organizer's (Club Manager / Center Sevak) request to Admin to add or
+/// modify registration fields for a specific tournament (§7.2). Admin fulfils
+/// it by building the `RegistrationFieldDefinition` rows.
+model CustomFormRequest {
+  id                String                  @id @default(uuid())
+  tournamentId      String
+  tournament        Tournament              @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  /// Requesting organizer; not a hard FK.
+  requestedByUserId String
+  note              String?
+  /// Proposed field specs (array of { key, label, fieldType, required, options }).
+  requestedFields   Json?
+  status            CustomFormRequestStatus @default(PENDING)
+  resolvedByUserId  String?
+  resolvedAt        DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tournamentId])
+  @@index([status])
+}
+
+// ---------------------------------------------------------------------------
+// Matches, scoring & results
+// ---------------------------------------------------------------------------
+
+/// A match. For APL / Center-level both sides are system Teams. For ACC the
+/// home side is one of the four fixed teams and the opponent is external
+/// (`externalOpponentName`, no system Team — §9.5). `matchCode` is the
+/// organizer/captain-entered "Match ID" from the schedule (§27), distinct from
+/// the database `id`.
+model Match {
+  id           String     @id @default(uuid())
+  tournamentId String
+  tournament   Tournament @relation(fields: [tournamentId], references: [id])
+  matchCode    String?
+  state        MatchState @default(SCHEDULED)
+
+  homeTeamId           String?
+  homeTeam             Team?   @relation("HomeTeam", fields: [homeTeamId], references: [id])
+  awayTeamId           String?
+  awayTeam             Team?   @relation("AwayTeam", fields: [awayTeamId], references: [id])
+  /// ACC opponent — free text, no external registry maintained (§9.5).
+  externalOpponentName String?
+
+  /// ACC schedule inputs (§27). All datetimes UTC (§23).
+  division       String?
+  homeAway       HomeAway?
+  groundLocation String?
+  geofenceLat    Float?
+  geofenceLng    Float?
+  matchDate      DateTime?
+  startTime      DateTime?
+  reportingTime  DateTime?
+
+  /// Toss data (§11.2) — the animated flip is out of scope but the data isn't.
+  tossWinner   MatchSide?
+  tossDecision TossDecision?
+
+  /// Per-match stream URL (§22).
+  youtubeUrl String?
+
+  /// Original and DLS-revised targets shown together on the scorecard (§12.1).
+  originalTarget Int?
+  dlsTarget      Int?
+
+  /// Optimistic-concurrency token for scorecard writes (§12.3). Every accepted
+  /// scoring mutation bumps this; a stale save is rejected with
+  /// "Scorecard got updated."
+  scorecardVersion Int @default(0)
+
+  /// Result/outcome (an explicit decision, not a derived stat).
+  isNoResult          Boolean @default(false)
+  winningTeamId       String?
+  manOfTheMatchUserId String?
+  resultNote          String?
+
+  /// Scorecard confirmation (§13.1). `completedAt` starts the 5-hour window
+  /// (measured in UTC — §23). `confirmedByUserId` is null when the System
+  /// auto-confirms; `autoConfirmed` records that path for the audit trail.
+  completedAt       DateTime?
+  confirmedAt       DateTime?
+  confirmedByUserId String?
+  autoConfirmed     Boolean   @default(false)
+
+  innings         Innings[]
+  scorerGrants    MatchScorerGrant[]
+  externalPlayers ExternalPlayer[]
+  squads          MatchSquad[]
+  poll            AvailabilityPoll?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tournamentId])
+  @@index([state])
+}
+
+/// Per-match Scorer grant (§2, §11.1). A Player is granted scoring for one
+/// match; auto-revoked at match completion (System, via `revokedAt`) or revoked
+/// on handover by Captain/VC. An active grant (`revokedAt IS NULL`) satisfies
+/// the SCORER subject in the permission matrix. History is retained — handovers
+/// create new rows.
+model MatchScorerGrant {
+  id              String    @id @default(uuid())
+  matchId         String
+  match           Match     @relation(fields: [matchId], references: [id])
+  /// The granted player (platform-global ref; not a hard FK to keep grants
+  /// decoupled from user deletion semantics).
+  userId          String
+  grantedByUserId String?
+  grantedAt       DateTime  @default(now())
+  revokedAt       DateTime?
+
+  @@index([matchId])
+  @@index([userId])
+}
+
+/// A team's locked matchday squad for a match (spec §5.2, §9.7). One row per
+/// participating system team; locking it moves the match toward
+/// "Playing 11 Locked". For ACC only the single system side has a squad (the
+/// opponent is external — §9.5).
+model MatchSquad {
+  id             String   @id @default(uuid())
+  matchId        String
+  match          Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  teamId         String
+  team           Team     @relation(fields: [teamId], references: [id])
+  /// Captain / VC who posted the 11 (or Club Manager fallback — §31 #1).
+  lockedByUserId String
+  lockedAt       DateTime @default(now())
+
+  players MatchSquadPlayer[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([matchId, teamId])
+  @@index([teamId])
+}
+
+/// One player in a locked squad. `isActiveImpact` marks the chosen active 12th
+/// among up to three IMPACT_CANDIDATE rows (§31 #4(a) — pick at lock time).
+model MatchSquadPlayer {
+  id             String         @id @default(uuid())
+  squadId        String
+  squad          MatchSquad     @relation(fields: [squadId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User           @relation(fields: [userId], references: [id])
+  role           MatchSquadRole
+  isActiveImpact Boolean        @default(false)
+  /// Optional batting-order hint captured at selection.
+  battingOrder   Int?
+
+  @@unique([squadId, userId])
+  @@index([userId])
+}
+
+/// External (non-system) opponent players for an ACC match. Names may start as
+/// placeholders "Player 1".."Player 11" and be updated live (§9.5). Deliveries
+/// reference these by `externalPlayerId` instead of a `userId`.
+model ExternalPlayer {
+  id      String @id @default(uuid())
+  matchId String
+  match   Match  @relation(fields: [matchId], references: [id])
+  slot    Int
+  name    String
+
+  @@unique([matchId, slot])
+}
+
+/// One innings of a match. A chained Super Over (§14) adds further innings with
+/// `inningsType = SUPER_OVER` and an incrementing `sequence`. The batting/
+/// bowling side may be external in ACC, so team refs are nullable scalars with
+/// `*IsExternal` flags. Totals/wickets are NOT stored — derived from deliveries
+/// at query time (conventions).
+model Innings {
+  id                String      @id @default(uuid())
+  matchId           String
+  match             Match       @relation(fields: [matchId], references: [id])
+  sequence          Int
+  inningsType       InningsType @default(NORMAL)
+  battingTeamId     String?
+  bowlingTeamId     String?
+  battingIsExternal Boolean     @default(false)
+  bowlingIsExternal Boolean     @default(false)
+  /// Overs allotted may be revised after a rain interruption (§12.2).
+  oversAllotted     Int?
+  revisedTarget     Int?
+
+  deliveries Delivery[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([matchId, sequence])
+}
+
+/// Append-only ball-by-ball / scoring event (Phase 3; spec §12.1).
+///
+/// Append-only: balls are never updated or deleted. A correction within the
+/// edit window (§12.2) inserts a NEW row and marks the prior row
+/// `isVoided = true` with `supersededByDeliveryId` pointing at the replacement;
+/// the live scorecard is the set of non-voided rows. `revision` increments
+/// across a correction chain. Participants may be system users (`*UserId`) or
+/// external players (`*ExternalId`) per §9.5.
+model Delivery {
+  id         String       @id @default(uuid())
+  inningsId  String
+  innings    Innings      @relation(fields: [inningsId], references: [id])
+  type       DeliveryType
+  /// Monotonically increasing append order within the innings (§12.1). Never
+  /// reused; corrections append a new row with a higher sequence.
+  sequence   Int
+  /// Over (1-indexed) and the delivery's index within the over INCLUDING
+  /// illegal balls (so wides/no-balls keep a stable position). Null only for
+  /// non-ball events (penalty runs, retirements, Impact Player in).
+  overNumber Int?
+  ballNumber Int?
+
+  strikerUserId        String?
+  strikerExternalId    String?
+  nonStrikerUserId     String?
+  nonStrikerExternalId String?
+  bowlerUserId         String?
+  bowlerExternalId     String?
+
+  /// Runs off the bat (boundaries + running + overthrows on the same ball).
+  runsBat   Int     @default(0)
+  /// Wide / no-ball / bye / leg-bye / penalty runs credited to the batting team.
+  extraRuns Int     @default(0)
+  /// True for a 4/6 off the bat. Boundaries never rotate strike (§32), so this
+  /// is required to derive rotation correctly when overthrows inflate runsBat.
+  isBoundary Boolean @default(false)
+  /// Set after any no-ball; the next legal delivery is a free hit (§12.1).
+  isFreeHit Boolean @default(false)
+
+  /// Dismissal, including combinations (wide+stumping, no-ball+run-out — §12.1).
+  dismissalType       DismissalType?
+  dismissedUserId     String?
+  dismissedExternalId String?
+  fielderUserId       String?
+  fielderExternalId   String?
+
+  /// Append-only correction tracking.
+  revision               Int       @default(1)
+  isVoided               Boolean   @default(false)
+  supersededByDeliveryId String?   @unique
+  supersededBy           Delivery? @relation("DeliveryCorrection", fields: [supersededByDeliveryId], references: [id])
+  supersedes             Delivery? @relation("DeliveryCorrection")
+
+  /// Who recorded the event (the active Scorer); not a hard FK.
+  createdByUserId String
+
+  createdAt DateTime @default(now())
+
+  @@index([inningsId])
+  @@index([inningsId, sequence])
+  @@index([inningsId, overNumber, ballNumber])
+}
+
+// ---------------------------------------------------------------------------
+// Geofence suspension, polls, fees, videos (ACC + tournament features)
+// ---------------------------------------------------------------------------
+
+/// A geofence-driven 1-match suspension (§10). Triggered by late arrival at
+/// `triggeredByMatchId`, served at `servingMatchId`; may extend or carry forward
+/// per §10.3. Cancellation is captain-driven and audited (§10.5). Cross-
+/// tournament carry-over is out of scope (§26), so it is scoped to one
+/// tournament.
+model Suspension {
+  id                 String           @id @default(uuid())
+  tournamentId       String
+  tournament         Tournament       @relation(fields: [tournamentId], references: [id])
+  userId             String
+  user               User             @relation(fields: [userId], references: [id])
+  teamId             String?
+  status             SuspensionStatus @default(PENDING)
+  /// The match whose late arrival triggered it, and where it is to be served.
+  triggeredByMatchId String?
+  servingMatchId     String?
+  reason             String?
+  cancelledByUserId  String?
+  cancelledAt        DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([tournamentId])
+  @@index([status])
+}
+
+/// 5-days-before availability poll for an ACC match (§9.7). Closes at 5 PM
+/// (ground-local) the day before — stored in UTC.
+model AvailabilityPoll {
+  id       String   @id @default(uuid())
+  matchId  String   @unique
+  match    Match    @relation(fields: [matchId], references: [id])
+  opensAt  DateTime
+  closesAt DateTime
+
+  votes PollVote[]
+
+  createdAt DateTime @default(now())
+}
+
+/// A player's Yes/No availability vote (§9.7).
+model PollVote {
+  id          String           @id @default(uuid())
+  pollId      String
+  poll        AvailabilityPoll @relation(fields: [pollId], references: [id])
+  userId      String
+  user        User             @relation(fields: [userId], references: [id])
+  isAvailable Boolean
+  votedAt     DateTime         @default(now())
+
+  @@unique([pollId, userId])
+}
+
+/// A single ~1-minute showcase video per player per tournament, uploadable
+/// between Registration Closed and the Video Upload End Date (§19).
+model PlayerVideo {
+  id              String     @id @default(uuid())
+  tournamentId    String
+  tournament      Tournament @relation(fields: [tournamentId], references: [id])
+  userId          String
+  user            User       @relation(fields: [userId], references: [id])
+  url             String
+  durationSeconds Int?
+  uploadedAt      DateTime   @default(now())
+
+  @@unique([tournamentId, userId])
+}
+
+/// Manual fee record per player per tournament (§20). No payment gateway;
+/// amounts in cents (BIGINT), never floats (conventions).
+model Fee {
+  id               String     @id @default(uuid())
+  tournamentId     String
+  tournament       Tournament @relation(fields: [tournamentId], references: [id])
+  teamId           String?
+  team             Team?      @relation(fields: [teamId], references: [id])
+  userId           String
+  user             User       @relation(fields: [userId], references: [id])
+  amountCents      BigInt
+  status           FeeStatus  @default(PENDING)
+  paidAt           DateTime?
+  /// Club Manager who recorded the payment; not a hard FK.
+  recordedByUserId String?
+  note             String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tournamentId, userId])
+  @@index([teamId])
+}
+
+// ---------------------------------------------------------------------------
+// Audit log (§18)
+// ---------------------------------------------------------------------------
+
+/// Immutable audit trail (§18). Entries are append-only and viewable by Admin
+/// only (enforced in the app layer). Format per §18.2: timestamp (UTC), actor,
+/// action type, target entity, and a before/after snapshot for data mutations.
+model AuditLog {
+  id               String   @id @default(uuid())
+  /// Action type, e.g. "PASSWORD_RESET_UNLOCK", "SCORECARD_EDIT".
+  action           String
+  /// Acting user; null when the actor is the System internal actor (§2),
+  /// in which case `actorLabel` = "System".
+  actorUserId      String?
+  actorLabel       String?
+  /// Convenience pointer when the target is a user (kept for existing callers).
+  targetUserId     String?
+  /// Generic target entity (e.g. "match", "scorecard", "player").
+  targetEntityType String?
+  targetEntityId   String?
+  /// State snapshots for data-mutation events (§18.2).
+  before           Json?
+  after            Json?
+  /// Free-form structured context.
+  details          Json?
+  createdAt        DateTime @default(now())
+
+  @@index([targetUserId])
+  @@index([targetEntityType, targetEntityId])
+  @@index([action])
+}

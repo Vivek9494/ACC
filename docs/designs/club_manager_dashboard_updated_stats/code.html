@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Hariprabodham Sports Club - Manager Dashboard</title>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Plus Jakarta Sans -->
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-container": "#eeeef0",
+                    "on-primary-fixed-variant": "#7a3000",
+                    "on-primary-fixed": "#351000",
+                    "on-surface-variant": "#5a4136",
+                    "on-error": "#ffffff",
+                    "surface-container-high": "#e8e8ea",
+                    "secondary": "#705d00",
+                    "on-tertiary-fixed": "#001d35",
+                    "on-secondary-container": "#6f5c00",
+                    "primary-container": "#ff6b00",
+                    "error-container": "#ffdad6",
+                    "tertiary-fixed-dim": "#9ccaff",
+                    "on-tertiary-fixed-variant": "#00497b",
+                    "tertiary-fixed": "#d0e4ff",
+                    "tertiary-container": "#059eff",
+                    "outline": "#8e7164",
+                    "on-secondary": "#ffffff",
+                    "surface-bright": "#f9f9fc",
+                    "outline-variant": "#e2bfb0",
+                    "surface-variant": "#e2e2e5",
+                    "surface-container-low": "#f3f3f6",
+                    "secondary-fixed-dim": "#e9c400",
+                    "on-error-container": "#93000a",
+                    "inverse-surface": "#2f3133",
+                    "background": "#f9f9fc",
+                    "surface": "#f9f9fc",
+                    "primary-fixed-dim": "#ffb693",
+                    "surface-tint": "#a04100",
+                    "tertiary": "#0062a1",
+                    "on-primary": "#ffffff",
+                    "secondary-container": "#fdd400",
+                    "on-secondary-fixed": "#221b00",
+                    "primary-fixed": "#ffdbcc",
+                    "on-surface": "#1a1c1e",
+                    "on-tertiary-container": "#003357",
+                    "surface-container-highest": "#e2e2e5",
+                    "surface-container-lowest": "#ffffff",
+                    "secondary-fixed": "#ffe170",
+                    "inverse-primary": "#ffb693",
+                    "surface-dim": "#dadadc",
+                    "primary": "#a04100",
+                    "inverse-on-surface": "#f0f0f3",
+                    "error": "#ba1a1a",
+                    "on-primary-container": "#572000",
+                    "on-tertiary": "#ffffff",
+                    "on-background": "#1a1c1e",
+                    "on-secondary-fixed-variant": "#544600"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "margin-mobile": "16px",
+                    "xl": "64px",
+                    "xs": "4px",
+                    "md": "24px",
+                    "max-width": "1280px",
+                    "margin-desktop": "auto",
+                    "gutter": "24px",
+                    "sm": "12px",
+                    "base": "8px",
+                    "lg": "40px"
+            },
+            "fontFamily": {
+                    "body-lg": ["Plus Jakarta Sans"],
+                    "headline-lg": ["Plus Jakarta Sans"],
+                    "label-sm": ["Plus Jakarta Sans"],
+                    "headline-xl": ["Plus Jakarta Sans"],
+                    "body-sm": ["Plus Jakarta Sans"],
+                    "headline-md": ["Plus Jakarta Sans"],
+                    "headline-xl-mobile": ["Plus Jakarta Sans"],
+                    "body-md": ["Plus Jakarta Sans"],
+                    "label-md": ["Plus Jakarta Sans"]
+            },
+            "fontSize": {
+                    "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                    "label-sm": ["12px", {"lineHeight": "14px", "letterSpacing": "0.04em", "fontWeight": "600"}],
+                    "headline-xl": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                    "headline-xl-mobile": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "label-md": ["14px", {"lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "600"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    </style>
+</head>
+<body class="bg-background text-on-background min-h-screen pb-24">
+<!-- Top App Bar -->
+<header class="fixed top-0 w-full z-50 bg-surface">
+<div class="flex justify-between items-center px-gutter h-16 w-full max-w-max-width mx-margin-desktop">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full overflow-hidden border-2 border-primary-container">
+<img alt="User Profile Icon" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB_MeMOUV5iai8zVmg8dV1bc1O-UIWjcPvGEHj3IsamG_I3sSXGfix2L3PwEW07wSUijomsHXiIfvE4i73yXDxt5QJUM2oUcQop-Z2yoJ4jIr54bYHdpX6rmZyNTBfXM-7aCfRytIUGnmGlUzgEoGd-1tgrWhJGmFC2__mliK5juAQosAEqCvHDRHdyQjul43Bb2g4qW5DoCk3F7uNK8oduXWE0QoTWgNVtdWgqm9ATXQiuC66_VRWrWmkxiMduD92_Kl5d9J9U0rNC"/>
+</div>
+<h1 class="font-headline-md text-headline-md font-bold text-primary">Hariprabodham Sports Club</h1>
+</div>
+<button class="material-symbols-outlined text-primary p-2 hover:bg-surface-container-high transition-colors rounded-full active:scale-95 duration-200">
+                notifications
+            </button>
+</div>
+</header>
+<main class="pt-20 px-margin-mobile flex flex-col gap-8">
+<!-- Personalized Greeting -->
+<section class="mt-4">
+<h2 class="font-body-md text-body-md text-on-surface">Jay Swaminarayan, Rahul</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Here is what's happening at the club today.</p>
+</section>
+<!-- Live Match Card (Refined Row-based Layout) -->
+<section>
+<div class="bg-surface-container-lowest border border-surface-variant rounded-xl p-md shadow-sm relative overflow-hidden">
+<div class="flex justify-between items-start mb-4">
+<h3 class="font-label-md text-label-md text-primary">Inter-City Finals</h3>
+<span class="flex items-center gap-1 bg-error-container text-error px-2 py-0.5 rounded-full font-label-sm text-[10px] font-bold tracking-wider">
+<span class="material-symbols-outlined text-[10px]" style="font-variation-settings: 'FILL' 1;">fiber_manual_record</span>
+                        LIVE
+                    </span>
+</div>
+<div class="flex items-center justify-between mb-6">
+<div class="flex flex-col items-center gap-1">
+<div class="w-14 h-14 bg-surface-container rounded-full flex items-center justify-center border border-surface-variant">
+<span class="material-symbols-outlined text-primary text-2xl">sports_cricket</span>
+</div>
+<span class="font-label-md text-label-md">Titans XI</span>
+</div>
+<div class="flex flex-col items-center">
+<span class="font-headline-md text-headline-md text-on-surface">142/4</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">15.2 Overs</span>
+<span class="font-label-sm text-label-sm text-primary font-bold mt-1">vs</span>
+</div>
+<div class="flex flex-col items-center gap-1">
+<div class="w-14 h-14 bg-surface-container rounded-full flex items-center justify-center border border-surface-variant">
+<span class="material-symbols-outlined text-secondary text-2xl">local_fire_department</span>
+</div>
+<span class="font-label-md text-label-md">Lions CC</span>
+</div>
+</div>
+<div class="flex justify-between items-center border-t border-surface-variant pt-4">
+<p class="font-body-sm text-body-sm text-on-surface-variant italic">Titans XI need 34 runs in 28 balls</p>
+<a class="font-label-md text-label-md text-primary flex items-center gap-1 hover:underline" href="#">
+                        Schedule
+                        <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</a>
+</div>
+</div>
+</section>
+<!-- Your Performance (Management focused) -->
+<section>
+<div class="flex justify-between items-center mb-4">
+<h2 class="font-headline-md text-headline-md text-on-surface">Your Performance</h2>
+<span class="material-symbols-outlined text-on-surface-variant">trending_up</span>
+</div>
+<div class="grid grid-cols-2 gap-4 mb-4">
+<div class="bg-primary-container p-4 rounded-xl text-on-primary-container shadow-sm flex flex-col justify-between aspect-square">
+<span class="material-symbols-outlined text-3xl" style="font-variation-settings: 'FILL' 1;">sports_cricket</span>
+<div>
+<p class="font-label-sm text-label-sm opacity-90">Matches Played</p>
+<h4 class="font-headline-lg text-headline-lg leading-none mt-1">24<br/><span class="text-[18px]">Games</span></h4>
+</div>
+</div>
+<div class="bg-secondary-container p-4 rounded-xl text-on-secondary-container shadow-sm flex flex-col justify-between aspect-square">
+<span class="material-symbols-outlined text-3xl" style="font-variation-settings: 'FILL' 1;">emoji_events</span>
+<div>
+<p class="font-label-sm text-label-sm opacity-90">Win Rate</p>
+<h4 class="font-headline-lg text-headline-lg leading-none mt-1">78%</h4>
+</div>
+</div>
+</div>
+<div class="bg-white p-4 rounded-xl border border-outline-variant shadow-sm flex items-center justify-between">
+<div>
+<p class="font-label-sm text-label-sm text-on-surface-variant mb-1">Next Practice Session</p>
+<h4 class="font-label-md text-label-md text-on-surface">Tomorrow, 6:30 AM</h4>
+</div>
+<div class="bg-surface-container-high w-12 h-12 rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined text-primary">calendar_today</span>
+</div>
+</div></section>
+<!-- Tournaments List -->
+<section>
+<div class="flex justify-between items-center mb-4">
+<h3 class="font-headline-md text-headline-md text-on-surface">Tournaments</h3>
+<button class="font-label-md text-label-md text-primary">View All</button>
+</div>
+<div class="flex flex-col gap-3">
+<!-- Tournament Item 1 -->
+<div class="flex items-center gap-4 bg-surface-container-lowest p-3 rounded-xl border border-surface-variant hover:bg-surface-container-high transition-colors">
+<div class="w-16 h-16 bg-primary-fixed rounded-lg overflow-hidden shrink-0">
+<img alt="Cricket Cup" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBYfxth35VGEBJNyIBHz1LbkxRZ-YjkX83IRU6F4aqyl8sMJBMg4YJSvovPaGDkL5FylAzlpI_46fjmaW1-Y5-xEjp-tRDRwbO4GXqY10WGSxMmXc9505dqW4Ph8F76t17QuJ_8Aufz-5ARPeVY-T-H0L1KmNvd2yeLPAoSdzMmoNrGsYL04YP_11K0vYxPm-DxH1mptAvqKc-sAkNaEG1hjIfFnNrJ0TiTotdoak7UTK3e-qbth3Sq49M-Skw95SoXeY3r_zpsZp2H"/>
+</div>
+<div class="flex-1">
+<h4 class="font-label-md text-label-md text-on-surface">Summer League 2024</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Active • 12 Teams</p>
+</div>
+<span class="material-symbols-outlined text-outline-variant">chevron_right</span>
+</div>
+<!-- Tournament Item 2 -->
+<div class="flex items-center gap-4 bg-surface-container-lowest p-3 rounded-xl border border-surface-variant hover:bg-surface-container-high transition-colors">
+<div class="w-16 h-16 bg-secondary-fixed rounded-lg overflow-hidden shrink-0">
+<img alt="Football Tournament" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDzFRAujKns_xQBMqrRnhbynsCFdT7XtXoohEWiphv1woWRU4-pPENq5v1sOMPr8joM2ZoWpiEhFEoioYk0Tkf2dZ5LIiZ8xqUOzWDtupHG0fy9PMbTgCti7biJj8_CHIaFdK2f8kNgfRf1-d4o5ZPQBd-5-r9fQ1oFvthRvxu33jFYEUlua7g6QY-HJKAc4ueDQ1siIFh9zo3GWgPVhiz0FJDbXTTxJR2N_3LYjDl_Kl60bZaFaDaB2kerbiSierdb8-poaUBQvwOV"/>
+</div>
+<div class="flex-1">
+<h4 class="font-label-md text-label-md text-on-surface">Youth Championship</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Registration Open</p>
+</div>
+<span class="material-symbols-outlined text-outline-variant">chevron_right</span>
+</div>
+</div>
+</section>
+</main>
+<!-- Bottom Navigation Bar -->
+<nav class="fixed bottom-0 w-full z-50 bg-surface-container-lowest border-t border-surface-variant px-2">
+<div class="flex justify-around items-center h-20 w-full max-w-max-width mx-auto">
+<!-- Home (Active) -->
+<a class="flex flex-col items-center justify-center gap-1 min-w-[64px]" href="#">
+<div class="bg-primary-container text-on-primary-container rounded-full px-5 py-1">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">home</span>
+</div>
+<span class="font-label-sm text-label-sm font-bold text-on-surface">Home</span>
+</a>
+<!-- Matches -->
+<a class="flex flex-col items-center justify-center gap-1 min-w-[64px] text-on-surface-variant" href="#">
+<span class="material-symbols-outlined">sports_cricket</span>
+<span class="font-label-sm text-label-sm">Matches</span>
+</a>
+<!-- Stats -->
+<a class="flex flex-col items-center justify-center gap-1 min-w-[64px] text-on-surface-variant" href="#">
+<span class="material-symbols-outlined">leaderboard</span>
+<span class="font-label-sm text-label-sm">Stats</span>
+</a>
+<!-- Social -->
+<a class="flex flex-col items-center justify-center gap-1 min-w-[64px] text-on-surface-variant" href="#">
+<span class="material-symbols-outlined">groups</span>
+<span class="font-label-sm text-label-sm">Social</span>
+</a>
+</div>
+</nav>
+<script>
+        // Simple active state visual for bottom nav
+        document.querySelectorAll('nav a').forEach(link => {
+            link.addEventListener('click', (e) => {
+                // This is a placeholder for actual navigation logic
+                // In a real app, this would be handled by the router
+            });
+        });
+    </script>
+</body></html>

@@ -1,0 +1,302 @@
+<!DOCTYPE html><html class="light" lang="en" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Add New Group - Hariprabodham SC</title>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary-fixed-dim": "#e9c400",
+                        "secondary": "#705d00",
+                        "on-secondary": "#ffffff",
+                        "on-tertiary-fixed-variant": "#00497b",
+                        "surface-tint": "#a04100",
+                        "primary-fixed-dim": "#ffb693",
+                        "primary-container": "#ff6b00",
+                        "on-tertiary-fixed": "#001d35",
+                        "on-secondary-fixed": "#221b00",
+                        "tertiary-fixed": "#d0e4ff",
+                        "surface-container-lowest": "#ffffff",
+                        "on-error": "#ffffff",
+                        "on-background": "#1a1c1e",
+                        "primary-fixed": "#ffdbcc",
+                        "background": "#f9f9fc",
+                        "surface-container-highest": "#e2e2e5",
+                        "outline-variant": "#e2bfb0",
+                        "inverse-on-surface": "#f0f0f3",
+                        "on-secondary-fixed-variant": "#544600",
+                        "on-primary-container": "#572000",
+                        "surface-variant": "#e2e2e5",
+                        "on-primary-fixed": "#351000",
+                        "surface-container-high": "#e8e8ea",
+                        "on-surface": "#1a1c1e",
+                        "inverse-surface": "#2f3133",
+                        "surface-container-low": "#f3f3f6",
+                        "tertiary-fixed-dim": "#9ccaff",
+                        "tertiary-container": "#059eff",
+                        "on-secondary-container": "#6f5c00",
+                        "on-primary-fixed-variant": "#7a3000",
+                        "error": "#ba1a1a",
+                        "on-error-container": "#93000a",
+                        "on-surface-variant": "#5a4136",
+                        "on-tertiary-container": "#003357",
+                        "primary": "#a04100",
+                        "tertiary": "#0062a1",
+                        "surface-container": "#eeeef0",
+                        "inverse-primary": "#ffb693",
+                        "error-container": "#ffdad6",
+                        "secondary-fixed": "#ffe170",
+                        "on-tertiary": "#ffffff",
+                        "surface-bright": "#f9f9fc",
+                        "secondary-container": "#fdd400",
+                        "surface-dim": "#dadadc",
+                        "surface": "#f9f9fc",
+                        "outline": "#8e7164",
+                        "on-primary": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "max-width": "1280px",
+                        "md": "24px",
+                        "xl": "64px",
+                        "xs": "4px",
+                        "margin-desktop": "auto",
+                        "lg": "40px",
+                        "margin-mobile": "16px",
+                        "gutter": "24px",
+                        "base": "8px",
+                        "sm": "12px"
+                    },
+                    "fontFamily": {
+                        "headline-xl-mobile": ["Plus Jakarta Sans"],
+                        "headline-md": ["Plus Jakarta Sans"],
+                        "body-sm": ["Plus Jakarta Sans"],
+                        "body-md": ["Plus Jakarta Sans"],
+                        "body-lg": ["Plus Jakarta Sans"],
+                        "headline-xl": ["Plus Jakarta Sans"],
+                        "label-sm": ["Plus Jakarta Sans"],
+                        "headline-lg": ["Plus Jakarta Sans"],
+                        "label-md": ["Plus Jakarta Sans"]
+                    },
+                    "fontSize": {
+                        "headline-xl-mobile": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                        "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                        "headline-xl": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                        "label-sm": ["12px", {"lineHeight": "14px", "letterSpacing": "0.04em", "fontWeight": "600"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                        "label-md": ["14px", {"lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "600"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            line-height: 1;
+        }
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #f4f4f8; /* Forced by Style Guidance Over Background Token */
+        }
+        .form-input-focus:focus {
+            border-color: #ff6b00;
+            box-shadow: 0 0 0 2px rgba(255, 107, 0, 0.2);
+            outline: none;
+        }
+        .custom-checkbox:checked {
+            background-color: #ff6b00;
+            border-color: #ff6b00;
+        }
+    </style>
+</head>
+<body class="text-on-background min-h-screen pb-32">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-transparent">
+<div class="flex justify-between items-center px-gutter h-16 w-full max-w-max-width mx-auto">
+<div class="flex items-center">
+<button class="flex items-center justify-center w-10 h-10 rounded-full hover:bg-surface-container-high/50 transition-colors active:scale-95 duration-200">
+<span class="material-symbols-outlined text-[24px] text-primary-container">arrow_back</span>
+</button>
+</div>
+
+<div class="flex items-center">
+<div class="w-10 h-10 rounded-full overflow-hidden border-2 border-white shadow-sm shrink-0 active:scale-95 duration-200 cursor-pointer">
+<img alt="User Profile Icon" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDyFrSYyUaoggixyg7FbndRPENRZ7tsfFwvF_GvSLejnE5pryyvFbX4vUeNLv0ZSQrMAZtuc4-Eetdr0RXo42mMp0Thjdtagy8LwtuUv2qEaGYDz2D0dHGhGCuUoxmJczntSXc9NKIcZsUFzdo0bmpMd7zj_Fte9x_7Gq4SVgG4sDlurO9TT-TSYT_ARPzrSAKgRSg-bDEBOzX5k5u9t9nQ_DGXKfFBxDcIeGGMI58zeOuZVCUZSLBUgsbTq_AeIf4NtV0dv6lUU9c9">
+</div>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="pt-24 px-margin-mobile max-w-max-width mx-auto">
+<div class="space-y-lg"><div class="mb-8">
+<h1 class="font-headline-md text-[24px] font-bold text-on-surface mb-2">Add New Group</h1>
+<p class="text-on-surface-variant text-body-md mb-6">Fill in the details to create a new group for your tournament.</p>
+</div>
+<!-- Group Name Field -->
+<div class="space-y-base">
+<label class="font-label-md text-label-md text-on-surface-variant block ml-1" for="group-name">Group Name</label>
+<input class="w-full h-14 px-md bg-white border border-outline-variant rounded-lg font-body-md text-body-md form-input-focus transition-all" id="group-name" placeholder="e.g., Group A" type="text">
+</div>
+<!-- Team Selection Section -->
+<div class="space-y-md">
+<h2 class="font-label-md text-label-md text-on-surface-variant block ml-1">Select Teams</h2>
+<!-- Search Mockup -->
+<div class="relative">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant" data-icon="search">search</span>
+<input class="w-full h-12 pl-12 pr-md bg-white border border-outline-variant rounded-lg font-body-sm text-body-sm form-input-focus transition-all" placeholder="Search teams..." type="text">
+</div>
+<!-- Team Cards List -->
+<div class="space-y-sm">
+<!-- Team Card 1 -->
+<label class="flex items-center justify-between p-md bg-white border border-outline-variant rounded-lg transition-all duration-200 hover:border-primary cursor-pointer active:scale-[0.98]">
+<div class="flex items-center space-x-md">
+<div class="w-12 h-12 rounded-lg bg-surface-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined" data-icon="sports_cricket">sports_cricket</span>
+</div>
+<span class="font-headline-md text-[18px] text-on-surface">Mumbai Mavericks</span>
+</div>
+<input class="w-6 h-6 rounded border-outline-variant text-primary custom-checkbox focus:ring-primary transition-colors" type="checkbox">
+</label>
+<!-- Team Card 2 -->
+<label class="flex items-center justify-between p-md bg-white border border-outline-variant rounded-lg transition-all duration-200 hover:border-primary cursor-pointer active:scale-[0.98]">
+<div class="flex items-center space-x-md">
+<div class="w-12 h-12 rounded-lg bg-surface-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined" data-icon="sports_cricket">sports_cricket</span>
+</div>
+<span class="font-headline-md text-[18px] text-on-surface">Delhi Dynamos</span>
+</div>
+<input class="w-6 h-6 rounded border-outline-variant text-primary custom-checkbox focus:ring-primary transition-colors" type="checkbox">
+</label>
+<!-- Team Card 3 -->
+<label class="flex items-center justify-between p-md bg-white border border-outline-variant rounded-lg transition-all duration-200 hover:border-primary cursor-pointer active:scale-[0.98]">
+<div class="flex items-center space-x-md">
+<div class="w-12 h-12 rounded-lg bg-surface-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined" data-icon="sports_cricket">sports_cricket</span>
+</div>
+<span class="font-headline-md text-[18px] text-on-surface">Gujarat Gladiators</span>
+</div>
+<input class="w-6 h-6 rounded border-outline-variant text-primary custom-checkbox focus:ring-primary transition-colors" type="checkbox">
+</label>
+<!-- Team Card 4 -->
+<label class="flex items-center justify-between p-md bg-white border border-outline-variant rounded-lg transition-all duration-200 hover:border-primary cursor-pointer active:scale-[0.98]">
+<div class="flex items-center space-x-md">
+<div class="w-12 h-12 rounded-lg bg-surface-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined" data-icon="sports_cricket">sports_cricket</span>
+</div>
+<span class="font-headline-md text-[18px] text-on-surface">Chennai Kings</span>
+</div>
+<input class="w-6 h-6 rounded border-outline-variant text-primary custom-checkbox focus:ring-primary transition-colors" type="checkbox">
+</label>
+<!-- Team Card 5 -->
+<label class="flex items-center justify-between p-md bg-white border border-outline-variant rounded-lg transition-all duration-200 hover:border-primary cursor-pointer active:scale-[0.98]">
+<div class="flex items-center space-x-md">
+<div class="w-12 h-12 rounded-lg bg-surface-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined" data-icon="sports_cricket">sports_cricket</span>
+</div>
+<span class="font-headline-md text-[18px] text-on-surface">Bangalore Strikers</span>
+</div>
+<input class="w-6 h-6 rounded border-outline-variant text-primary custom-checkbox focus:ring-primary transition-colors" type="checkbox">
+</label>
+</div>
+</div>
+<!-- Spacer for Primary Button -->
+<div class="h-24"></div>
+</div>
+</main>
+<!-- Fixed Bottom Action Area -->
+<div class="fixed bottom-20 left-0 w-full px-margin-mobile py-4 bg-background/80 backdrop-blur-md z-40">
+<button class="w-full h-14 bg-primary-container text-white font-headline-md text-[18px] rounded-lg shadow-sm active:scale-95 transition-transform duration-200">
+            Create Group
+        </button>
+</div>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 w-full z-50 bg-surface-container-lowest border-t border-outline-variant/20 px-2 pb-safe shadow-[0px_-8px_30px_rgba(42,44,65,0.06)]">
+<div class="flex justify-around items-center h-20 px-4 w-full">
+<!-- Home (Active) -->
+<a class="flex flex-col items-center justify-center bg-primary-container text-white px-6 py-2 active:scale-90 transition-all duration-150 rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-label-sm text-label-sm">Home</span>
+</a>
+<!-- Matches -->
+<a class="flex flex-col items-center justify-center text-on-surface/60 hover:text-primary active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="sports_cricket">sports_cricket</span>
+<span class="font-label-sm text-label-sm">Matches</span>
+</a>
+<!-- Stats -->
+<a class="flex flex-col items-center justify-center text-on-surface/60 hover:text-primary active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="leaderboard">leaderboard</span>
+<span class="font-label-sm text-label-sm">Stats</span>
+</a>
+<!-- Messages -->
+<a class="flex flex-col items-center justify-center text-on-surface/60 hover:text-primary active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="forum">forum</span>
+<span class="font-label-sm text-label-sm">Messages</span>
+</a></div>
+</nav>
+<script>
+        // Simple Interaction logic for checkboxes to visually highlight selected cards
+        document.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                const card = this.closest('label');
+                if (this.checked) {
+                    card.classList.add('border-primary', 'bg-primary/5');
+                } else {
+                    card.classList.remove('border-primary', 'bg-primary/5');
+                }
+            });
+        });
+
+        // Atmospheric touch: Ripple effect on the primary button
+        const createBtn = document.querySelector('button.bg-primary-container');
+        createBtn.addEventListener('click', (e) => {
+            const circle = document.createElement('span');
+            const diameter = Math.max(createBtn.clientWidth, createBtn.clientHeight);
+            const radius = diameter / 2;
+            
+            circle.style.width = circle.style.height = `${diameter}px`;
+            circle.style.left = `${e.clientX - createBtn.getBoundingClientRect().left - radius}px`;
+            circle.style.top = `${e.clientY - createBtn.getBoundingClientRect().top - radius}px`;
+            circle.classList.add('ripple');
+            
+            const rippleStyle = document.createElement('style');
+            rippleStyle.innerHTML = `
+                .ripple {
+                    position: absolute;
+                    background: rgba(255, 255, 255, 0.3);
+                    border-radius: 50%;
+                    transform: scale(0);
+                    animation: ripple 0.6s linear;
+                    pointer-events: none;
+                }
+                @keyframes ripple {
+                    to { transform: scale(4); opacity: 0; }
+                }
+            `;
+            document.head.appendChild(rippleStyle);
+            createBtn.appendChild(circle);
+            
+            setTimeout(() => circle.remove(), 600);
+        });
+    </script>
+
+
+</body></html>

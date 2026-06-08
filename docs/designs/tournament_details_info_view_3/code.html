@@ -1,0 +1,322 @@
+<!DOCTYPE html><html class="light" lang="en" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Tournament Details</title>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&amp;display=swap" rel="stylesheet">
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "surface-container-high": "#e8e8ea",
+                      "surface-container-lowest": "#ffffff",
+                      "secondary-fixed": "#ffe170",
+                      "inverse-surface": "#2f3133",
+                      "on-surface": "#1a1c1e",
+                      "error": "#ba1a1a",
+                      "surface": "#f9f9fc",
+                      "on-surface-variant": "#5a4136",
+                      "tertiary-fixed-dim": "#9ccaff",
+                      "surface-bright": "#f9f9fc",
+                      "on-tertiary-fixed-variant": "#00497b",
+                      "surface-container-highest": "#e2e2e5",
+                      "on-error-container": "#93000a",
+                      "on-tertiary": "#ffffff",
+                      "inverse-primary": "#ffb693",
+                      "error-container": "#ffdad6",
+                      "tertiary-container": "#059eff",
+                      "surface-container": "#eeeef0",
+                      "on-secondary-fixed-variant": "#544600",
+                      "secondary-fixed-dim": "#e9c400",
+                      "secondary": "#705d00",
+                      "primary-fixed-dim": "#ffb693",
+                      "on-background": "#1a1c1e",
+                      "on-primary": "#ffffff",
+                      "outline": "#8e7164",
+                      "on-tertiary-fixed": "#001d35",
+                      "on-tertiary-container": "#003357",
+                      "tertiary": "#0062a1",
+                      "primary-container": "#ff6b00",
+                      "primary": "#a04100",
+                      "on-secondary-fixed": "#221b00",
+                      "on-primary-container": "#572000",
+                      "secondary-container": "#fdd400",
+                      "outline-variant": "#e2bfb0",
+                      "surface-tint": "#a04100",
+                      "on-primary-fixed-variant": "#7a3000",
+                      "inverse-on-surface": "#f0f0f3",
+                      "on-secondary-container": "#6f5c00",
+                      "surface-dim": "#dadadc",
+                      "on-secondary": "#ffffff",
+                      "surface-variant": "#e2e2e5",
+                      "tertiary-fixed": "#d0e4ff",
+                      "primary-fixed": "#ffdbcc",
+                      "surface-container-low": "#f3f3f6",
+                      "on-primary-fixed": "#351000",
+                      "background": "#f9f9fc",
+                      "on-error": "#ffffff"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "margin-desktop": "auto",
+                      "base": "8px",
+                      "margin-mobile": "16px",
+                      "gutter": "24px",
+                      "xs": "4px",
+                      "md": "24px",
+                      "sm": "12px",
+                      "lg": "40px",
+                      "max-width": "1280px",
+                      "xl": "64px"
+              },
+              "fontFamily": {
+                      "headline-lg": ["Plus Jakarta Sans"],
+                      "body-md": ["Plus Jakarta Sans"],
+                      "body-sm": ["Plus Jakarta Sans"],
+                      "headline-xl-mobile": ["Plus Jakarta Sans"],
+                      "label-sm": ["Plus Jakarta Sans"],
+                      "label-md": ["Plus Jakarta Sans"],
+                      "body-lg": ["Plus Jakarta Sans"],
+                      "headline-xl": ["Plus Jakarta Sans"],
+                      "headline-md": ["Plus Jakarta Sans"]
+              },
+              "fontSize": {
+                      "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                      "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                      "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                      "headline-xl-mobile": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                      "label-sm": ["12px", {"lineHeight": "14px", "letterSpacing": "0.04em", "fontWeight": "600"}],
+                      "label-md": ["14px", {"lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "600"}],
+                      "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                      "headline-xl": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                      "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "700"}]
+              }
+            },
+          },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .active-tab {
+            border-bottom: 2px solid #ff6b00 !important;
+            color: #ff6b00 !important;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: flex;
+        }
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .active-tab {
+            border-bottom: 2px solid #ff6b00 !important;
+            color: #ff6b00 !important;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: flex;
+        }
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style></head>
+<body class="bg-surface font-body-md text-on-background min-h-screen pb-20">
+<!-- TopAppBar -->
+<header class="w-full top-0 sticky z-50 bg-surface dark:bg-background dark:border-outline flex justify-between items-center px-margin-mobile md:px-margin-desktop py-base">
+<div class="flex items-center gap-4">
+<button class="material-symbols-outlined dark:text-primary-fixed hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors p-2 rounded-full active:scale-95 duration-150 text-primary-container">
+                arrow_back
+            </button>
+</div>
+<div class="w-10 h-10 rounded-full overflow-hidden border-2 border-outline-variant cursor-pointer hover:opacity-80 transition-opacity">
+<img alt="User profile avatar" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCLZ2RM3JXR_J22vYT-xVgQbnMVdAuOPaTLeoomI7bKZxip7zdPtrkLXgsyZcrjcofltynRJQmLCL22rzfNRvYhuSCJ2cGcU__zu3CzqpRsHjUH_4nBvzfY7NMFVdtcizVeyYV227nMhO20pFny40CR1jzWa99KYi_2lPCDYOO_DMPMoNwx2RwDMa9ZWqTwDiC8v5b0QdntAgDBuSHBRpJIP5HrZ-spmDIxl6zhkQxb2XWnxwIwhDCfx4410qtdJn8oiDm5Sv9Jnmew">
+</div>
+</header>
+<main class="max-w-[1280px] mx-auto px-margin-mobile md:px-margin-desktop py-base">
+<!-- Tournament Poster -->
+<section class="relative w-full aspect-[21/9] rounded-xl overflow-hidden shadow-sm mb-6">
+<img class="w-full h-full object-cover" data-alt="A sprawling, high-definition cricket stadium under a clear golden hour sky. The lush green field is perfectly manicured with vibrant white boundary lines. In the background, modern stadium architecture is bathed in warm sunlight, creating a high-energy, optimistic atmosphere. The visual style is crisp and professional, using a palette of deep greens and bright whites to emphasize professional sports quality." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAuFAt9Q_V9FHVev9pSg1x5FVQYaJ-VDmtqQan0gZ9HH7ftb6KSjX4IqyowLWlbSRu3wx3ClG5WD1DGRp5HAXhlvtZoKBhWYfso6WRXO7IcFHTbU-3LfL3VoLu0uDuvJDENqt0FYiS_mUJv5etejbRgYIB_34Sox5Dsa9QM7BLh1Gtj0E-QkyIll-GxJu-Jlv5SdJyqjxVEoFSbCSVZ1Oy7l2sLeq-Rg3PbEaC1Vn9pt6lOkYDSmERspp2S7BPyR2jgh_cUlHATfUB4">
+<div class="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"></div>
+</section>
+<!-- Tournament Info -->
+<section class="mb-gutter">
+<div class="flex justify-between items-center mb-xs">
+<h2 class="text-on-surface font-body-lg text-body-lg">Elite Pro Championship - 2024</h2>
+<div class="w-7 h-7">
+<img alt="Cricket Ball" class="w-full h-full object-contain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA6qm0A_EvmbuP9VdvFkCtyxENQJpeeEg01jFBf59FDBIQOAbAlCkfvqguy6iz3p1g4nAfx3gp5tX6_R6zbYMcq3_tZZ4k0QaXIPSLh7zGhAJ64yGPYyKuZNJ5M-s33AnxsYuK9PmQI9oSYJY5Wm2xM4ypbEDwrvNr0h4sZ6yfIa7k0wlGIsl_8i5rpPMe_J7sM8nUaK0XAjzV8GOvWs-GDc6Ri6-TjKhObtedvkn98o8bpNO6HoDaCAwlbSXtCcddVFalqDCaOrGze">
+</div>
+</div>
+<div class="flex items-center gap-2 text-on-surface-variant font-body-sm text-body-sm">
+<span class="material-symbols-outlined text-[18px]">calendar_today</span>
+<span class="">June 15 - June 20</span>
+</div>
+</section>
+<!-- Tabbed Navigation -->
+<nav class="flex border-b border-outline-variant mb-gutter overflow-x-auto no-scrollbar whitespace-nowrap"><button class="tab-btn py-4 font-label-md text-label-md text-on-surface-variant whitespace-nowrap hover:bg-surface-container-low transition-all flex-shrink-0 px-4 active-tab" id="tab-details" onclick="switchTab('details')">Details</button>
+<button class="tab-btn py-4 font-label-md text-label-md text-on-surface-variant whitespace-nowrap hover:bg-surface-container-low transition-all flex-shrink-0 px-4" id="tab-matches" onclick="switchTab('matches')">Matches</button>
+<button class="tab-btn py-4 font-label-md text-label-md text-on-surface-variant whitespace-nowrap hover:bg-surface-container-low transition-all flex-shrink-0 px-4" id="tab-teams" onclick="switchTab('teams')">Teams</button>
+<button class="tab-btn py-4 font-label-md text-label-md text-on-surface-variant whitespace-nowrap hover:bg-surface-container-low transition-all flex-shrink-0 px-4" id="tab-points-table" onclick="switchTab('points-table')">Points Table</button>
+<button class="tab-btn py-4 font-label-md text-label-md text-on-surface-variant whitespace-nowrap hover:bg-surface-container-low transition-all flex-shrink-0 px-4" id="tab-leaderboard" onclick="switchTab('leaderboard')">Leaderboard</button>
+<button class="tab-btn py-4 font-label-md text-label-md text-on-surface-variant whitespace-nowrap hover:bg-surface-container-low transition-all flex-shrink-0 px-4" id="tab-stats" onclick="switchTab('stats')">Stats</button>
+</nav>
+<!-- Tab Contents -->
+<div class="tab-content flex-col items-center justify-center py-20 text-center active mt-0 pt-0" id="content-details"><div class="w-full max-w-2xl mx-auto space-y-4 text-left px-4">
+<!-- Registration Info Card -->
+<div class="bg-surface-container-lowest p-5 rounded-xl border border-outline-variant shadow-sm">
+<div class="flex items-center gap-3 mb-4 text-primary">
+<span class="material-symbols-outlined">app_registration</span>
+<h3 class="font-headline-md text-headline-md">Registration Details</h3>
+</div>
+<div class="space-y-4">
+<div class="flex justify-between border-b border-surface-variant pb-2">
+<span class="text-on-surface-variant font-label-md">Open Date &amp; Time</span>
+<span class="text-on-surface font-body-md">June 01, 2024 • 10:00 AM</span>
+</div>
+<div class="flex justify-between border-b border-surface-variant pb-2">
+<span class="text-on-surface-variant font-label-md">Close Date &amp; Time</span>
+<span class="text-on-surface font-body-md">June 10, 2024 • 06:00 PM</span>
+</div>
+</div>
+</div>
+<!-- Tournament Schedule Card -->
+<div class="bg-surface-container-lowest p-5 rounded-xl border border-outline-variant shadow-sm">
+<div class="flex items-center gap-3 mb-4 text-primary">
+<span class="material-symbols-outlined">event_available</span>
+<h3 class="font-headline-md text-headline-md">Tournament Schedule</h3>
+</div>
+<div class="space-y-4">
+<div class="flex justify-between border-b border-surface-variant pb-2">
+<span class="text-on-surface-variant font-label-md">Auction Date</span>
+<span class="text-on-surface font-body-md">June 12, 2024</span>
+</div>
+<div class="flex justify-between border-b border-surface-variant pb-2">
+<span class="text-on-surface-variant font-label-md">Start Date</span>
+<span class="text-on-surface font-body-md">June 15, 2024</span>
+</div>
+<div class="flex justify-between border-b border-surface-variant pb-2">
+<span class="text-on-surface-variant font-label-md">End Date</span>
+<span class="text-on-surface font-body-md">June 20, 2024</span>
+</div>
+</div>
+</div>
+<!-- Location Card -->
+<div class="bg-surface-container-lowest p-5 rounded-xl border border-outline-variant shadow-sm">
+<div class="flex items-center gap-3 mb-4 text-primary">
+<span class="material-symbols-outlined">location_on</span>
+<h3 class="font-headline-md text-headline-md">Venue</h3>
+</div>
+<div class="flex flex-col">
+<span class="text-on-surface font-body-md">Surat District Arena, Gujarat</span>
+</div>
+</div><button class="w-full h-14 bg-primary-container text-white font-label-md text-label-md rounded-lg shadow-lg hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center gap-2 mt-4">
+    <span class="material-symbols-outlined">edit_note</span>Registration Form
+</button>
+</div></div><div class="tab-content flex-col items-center justify-center py-20 text-center animate-in fade-in duration-500" id="content-matches">
+<div class="mb-8 w-[150px] h-[150px]">
+<img alt="Cricket Graphic" class="w-full h-full object-contain opacity-80" src="https://lh3.googleusercontent.com/aida-public/AB6AXuChcy1cPDUk8MOf2MdnNFhyRuAn8sYT647SbcYuavtrnU5NjBNDKHcRgNwBBB-pSjFeFOT2mkB26aw7HaSFpFA84qxB5j0xQTgA6mz8QPobL5e9W4wP4JBN6j_2gvQX0jrndziQHXLARC7-ToTMTuJ_4xGZsEjcYG_OobzWIcbBg1kx8Bl_m5cSqo9ODGR6MowbNV5n1_5jCJnmGz758zxqMnlWkd7PeUJxLbV-FZt7jGNWGAVN04vXu9d5AATAw3-erUc4gFI4rCQ9">
+</div>
+<button class="text-white px-xl py-base font-label-md text-label-md shadow-lg hover:scale-[1.02] active:scale-95 transition-all rounded-lg" style="background-color: rgb(253, 191, 80);">Schedule Matches</button>
+</div>
+<div class="tab-content flex-col items-center justify-center py-20 text-center" id="content-teams">
+<div class="mb-8 w-[150px] h-[150px]">
+<img alt="Teams Graphic" class="w-full h-full object-contain opacity-80" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCHt7xXHWFuDlWfF1e7j2aRFBp7F3YZGPFZ1NhqgiGf7xZr7WjY2jxMvBYAiTWWiJGz2uyXLcMHStO-U-HkZqb5Votb8hb2iEHWu2Lykhza2gENkVxiE1e52L1UL47_P_xYWuDeSdKdHVxQUI0m4Cs7JHSOjgAqev2k18lAkAYP-ZCjd9ih9Cqz_LbEWzYkf5k9zoSJLC2GPrXWHiGc33OzCmAUEODsc82xtOLJQM8CtbpS0vsiiaYmdhAipxbvDGhoUmeiWr0BYt2M">
+</div>
+<button class="text-white px-xl py-base font-label-md text-label-md shadow-lg hover:scale-[1.02] active:scale-95 transition-all rounded-lg" style="background-color: rgb(255, 214, 0);">
+                Add Team
+            </button>
+</div>
+<div class="tab-content flex-col items-center justify-center py-20 text-center" id="content-points-table">
+<button class="text-white px-xl py-base font-label-md text-label-md shadow-lg shadow-primary-container/20 hover:scale-[1.02] active:scale-95 transition-all rounded-lg" style="background-color: rgb(255, 214, 0);">
+                Create Point table
+            </button>
+</div>
+<div class="tab-content flex-col items-center justify-center py-20 text-center" id="content-leaderboard">
+<div class="w-32 h-32 mb-6 text-outline-variant">
+<span class="material-symbols-outlined text-[96px]">emoji_events</span>
+</div>
+<p class="text-on-surface-variant text-body-lg opacity-60">No records found in Leaderboard</p>
+</div>
+<div class="tab-content flex-col items-center justify-center py-20 text-center" id="content-stats">
+<div class="w-32 h-32 mb-6 text-outline-variant">
+<span class="material-symbols-outlined text-[96px]">query_stats</span>
+</div>
+<p class="text-on-surface-variant text-body-lg opacity-60">No Statistics found in Stats.</p>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="md:hidden fixed bottom-0 w-full z-50 rounded-t-xl bg-surface-container-lowest shadow-[0px_-8px_30px_rgba(42,44,65,0.06)] border-t border-surface-variant/30">
+<div class="flex justify-around items-center h-20 px-4 w-full">
+<!-- Home -->
+<a class="flex flex-col items-center justify-center text-on-surface/60 hover:text-primary active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-label-sm text-label-sm">Home</span>
+</a>
+<!-- Matches (Active) -->
+<a class="flex flex-col items-center justify-center text-white px-6 py-2 active:scale-90 transition-all duration-150 rounded-lg bg-primary-container" href="#">
+<span class="material-symbols-outlined" data-icon="sports_cricket">sports_cricket</span>
+<span class="font-label-sm text-label-sm">Matches</span>
+</a>
+<!-- Stats -->
+<a class="flex flex-col items-center justify-center text-on-surface/60 hover:text-primary active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="leaderboard">leaderboard</span>
+<span class="font-label-sm text-label-sm">Stats</span>
+</a>
+<!-- Messages -->
+<a class="flex flex-col items-center justify-center text-on-surface/60 hover:text-primary active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="forum">forum</span>
+<span class="font-label-sm text-label-sm">Messages</span>
+</a></div>
+</nav>
+<script>
+        function switchTab(tabId) {
+            // Hide all tab contents
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            // Deactivate all tab buttons
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active-tab');
+            });
+            // Show selected tab content
+            document.getElementById('content-' + tabId).classList.add('active');
+            // Activate selected tab button
+            document.getElementById('tab-' + tabId).classList.add('active-tab');
+        }
+    </script>
+
+
+
+
+
+
+</body></html>

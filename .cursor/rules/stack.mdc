@@ -1,0 +1,23 @@
+---
+description: Locked technical stack for the ACC app (spec §29). These choices are fixed.
+alwaysApply: true
+---
+
+# Locked Tech Stack (spec §29)
+
+These choices are **fixed**. Do not substitute, swap, or introduce alternatives
+without an explicit, written decision from the user.
+
+- **Mobile**: React Native with Expo (single codebase iOS + Android; OTA via EAS Update).
+- **Backend / API**: NestJS (Node.js + TypeScript) with Prisma ORM.
+- **Primary DB**: PostgreSQL, hosted in AWS **ca-central-1 (Montreal)** for PIPEDA data residency. All data must remain in Canada.
+- **Cache & live state**: Redis — OTP rate limits, live match cache, and session/token state.
+- **Real-time**: Socket.IO for live match score push to subscribers.
+- **Authentication**: Custom auth — bcrypt password hashing, JWT access + refresh tokens, and token versioning for single-device enforcement. No third-party auth provider.
+- **OTP delivery**: Twilio (Canadian +1 numbers).
+- **Push notifications**: Firebase Cloud Messaging (FCM) only.
+- **Media storage**: AWS S3 in ca-central-1 (profile photos, posters, showcase videos).
+- **PDF generation**: Server-side Puppeteer rendering an HTML scorecard template.
+
+Do not propose Firebase Auth/Firestore, Supabase, Sequelize/TypeORM, MongoDB,
+Pusher/Ably, SendGrid, or any non-Canadian region as substitutes.

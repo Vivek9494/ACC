@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&amp;family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-tint": "#a04100",
+                    "on-secondary-fixed": "#251a00",
+                    "surface-bright": "#fff8f5",
+                    "primary-fixed": "#ffdbcc",
+                    "surface-container-high": "#f1e6e1",
+                    "on-tertiary-fixed": "#001d35",
+                    "on-tertiary-fixed-variant": "#00497b",
+                    "secondary": "#765b00",
+                    "on-surface": "#1f1b18",
+                    "error-container": "#ffdad6",
+                    "tertiary-fixed-dim": "#9ccaff",
+                    "on-secondary-container": "#6e5400",
+                    "on-error-container": "#93000a",
+                    "surface-container": "#f7ece6",
+                    "outline": "#8e7164",
+                    "on-error": "#ffffff",
+                    "on-primary": "#ffffff",
+                    "inverse-surface": "#352f2c",
+                    "surface-container-lowest": "#ffffff",
+                    "on-background": "#1f1b18",
+                    "on-secondary": "#ffffff",
+                    "primary-fixed-dim": "#ffb693",
+                    "primary-container": "#ff6b00",
+                    "tertiary-fixed": "#d0e4ff",
+                    "inverse-on-surface": "#f9efe9",
+                    "on-primary-fixed-variant": "#7a3000",
+                    "on-secondary-fixed-variant": "#594400",
+                    "background": "#fff8f2",
+                    "outline-variant": "#e2bfb0",
+                    "surface-variant": "#ebe0db",
+                    "surface-container-highest": "#ebe0db",
+                    "inverse-primary": "#ffb693",
+                    "secondary-fixed": "#ffdf94",
+                    "on-primary-container": "#572000",
+                    "primary": "#a04100",
+                    "on-tertiary-container": "#003357",
+                    "secondary-fixed-dim": "#f5bf00",
+                    "tertiary": "#0062a1",
+                    "on-tertiary": "#ffffff",
+                    "on-primary-fixed": "#351000",
+                    "surface-container-low": "#fcf1ec",
+                    "surface-dim": "#e2d8d3",
+                    "error": "#ba1a1a",
+                    "secondary-container": "#ffc703",
+                    "tertiary-container": "#059eff",
+                    "surface": "#fff8f5",
+                    "on-surface-variant": "#5a4136"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "gutter": "24px",
+                    "max-width": "1280px",
+                    "margin-desktop": "64px",
+                    "margin-mobile": "16px",
+                    "base": "8px"
+            },
+            "fontFamily": {
+                    "headline-md": ["Hanken Grotesk"],
+                    "headline-lg": ["Hanken Grotesk"],
+                    "body-md": ["Inter"],
+                    "label-md": ["JetBrains Mono"],
+                    "body-sm": ["Inter"],
+                    "headline-xl": ["Hanken Grotesk"],
+                    "headline-xl-mobile": ["Hanken Grotesk"],
+                    "body-lg": ["Inter"],
+                    "label-sm": ["JetBrains Mono"]
+            },
+            "fontSize": {
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "fontWeight": "600"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "label-md": ["14px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "headline-xl": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "headline-xl-mobile": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                    "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                    "label-sm": ["12px", {"lineHeight": "14px", "letterSpacing": "0.05em", "fontWeight": "500"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            background-color: #fff8f2;
+            color: #1f1b18;
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding-bottom: 80px; 
+            padding-top: 64px;
+        }
+        .tonal-layer-1 {
+            background-color: #ffffff;
+            border: 1px solid #e2bfb0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .active-border {
+            border: 2px solid #ff6b00;
+        }
+        .stat-card-gradient {
+            background: linear-gradient(135deg, #ffffff 0%, #fcf1ec 100%);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background">
+<!-- TopAppBar -->
+<header class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-margin-mobile h-16 bg-surface border-b border-outline-variant/30">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary transition-all duration-200 active:scale-95">menu</span>
+<h1 class="text-headline-md font-headline-md text-primary tracking-tighter">CRICKET LIVE</h1>
+</div>
+<div class="flex items-center">
+<span class="material-symbols-outlined text-primary transition-all duration-200 active:scale-95">settings</span>
+</div>
+</header>
+<main class="max-w-[1280px] mx-auto px-margin-mobile md:px-margin-desktop pt-gutter space-y-gutter">
+<!-- Profile Hero Section -->
+<section class="flex flex-col md:flex-row gap-gutter items-center md:items-end">
+<div class="relative group">
+<div class="w-32 h-32 md:w-48 md:h-48 rounded-xl overflow-hidden border-2 border-outline-variant active-border bg-surface-container">
+<img alt="Player Portrait" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBlHcE7vdCw3kpXfdidtsGW4ULNQlKiylUu_Y1LcCUmwDeDTKyqXDuWJ49_bqpvimcD793SNdjrKQH7qRowpWtsK7A1dBlSzNe3Pb5Hm3IBAX22dFiX7ke7sbW3AfIyvuuvUHPla5Q_X1FwbAU1gdCORRmg5mrOBnKzG95i-xeObfoY7UuYVgrI3AvX_EZrO-D8hGyU6WrsP-QoDKBOYW9GD1g-QMP_BqSHoA3yqS3RHG_BnYb2HhNQvG92VcqEHf9NvMhpXRQuRP2K"/>
+</div>
+<div class="absolute -bottom-2 -right-2 bg-secondary-container text-on-secondary-container px-2 py-1 rounded-lg text-label-sm font-label-sm uppercase tracking-wider shadow-sm">
+                PRO
+            </div>
+</div>
+<div class="text-center md:text-left flex-1">
+<div class="flex flex-wrap items-center justify-center md:justify-start gap-2 mb-2">
+<span class="bg-secondary/10 text-secondary px-2 py-0.5 rounded-full text-label-sm font-label-sm border border-secondary/20">BATSMAN</span>
+<span class="bg-primary/10 text-primary px-2 py-0.5 rounded-full text-label-sm font-label-sm border border-primary/20">RIGHT HAND</span>
+</div>
+<h2 class="text-headline-lg font-headline-lg text-on-surface">Alex "Thunder" Rivers</h2>
+<p class="text-body-md text-on-surface-variant">Global Strikers FC • National League</p>
+</div>
+<div class="flex gap-2">
+<button class="bg-primary-container text-on-primary-container px-6 py-2 rounded-xl font-label-md text-label-md transition-all duration-200 active:scale-95 shadow-sm hover:brightness-95">
+                FOLLOW
+            </button>
+<button class="border-2 border-secondary text-secondary px-6 py-2 rounded-xl font-label-md text-label-md transition-all duration-200 active:scale-95 hover:bg-secondary/5">
+                SHARE
+            </button>
+</div>
+</section>
+<!-- Key Stats Bento Grid -->
+<section class="grid grid-cols-2 md:grid-cols-4 gap-4">
+<div class="tonal-layer-1 p-6 rounded-xl stat-card-gradient flex flex-col justify-center">
+<span class="text-label-sm font-label-sm text-on-surface-variant uppercase mb-1">Total Runs</span>
+<span class="text-headline-md font-headline-md text-secondary">4,829</span>
+</div>
+<div class="tonal-layer-1 p-6 rounded-xl stat-card-gradient flex flex-col justify-center">
+<span class="text-label-sm font-label-sm text-on-surface-variant uppercase mb-1">Average</span>
+<span class="text-headline-md font-headline-md text-primary">52.4</span>
+</div>
+<div class="tonal-layer-1 p-6 rounded-xl stat-card-gradient flex flex-col justify-center">
+<span class="text-label-sm font-label-sm text-on-surface-variant uppercase mb-1">Highest Score</span>
+<span class="text-headline-md font-headline-md text-secondary">184*</span>
+</div>
+<div class="tonal-layer-1 p-6 rounded-xl stat-card-gradient flex flex-col justify-center">
+<span class="text-label-sm font-label-sm text-on-surface-variant uppercase mb-1">Strike Rate</span>
+<span class="text-headline-md font-headline-md text-on-surface">142.8</span>
+</div>
+</section>
+<!-- Performance Chart Section -->
+<section class="tonal-layer-1 p-6 md:p-8 rounded-xl bg-white">
+<div class="flex justify-between items-center mb-6">
+<h3 class="text-headline-md font-headline-md text-on-surface">Recent Performance</h3>
+<div class="flex gap-4">
+<span class="flex items-center gap-2 text-label-sm font-label-sm text-on-surface-variant">
+<span class="w-3 h-3 bg-primary rounded-full"></span> Runs
+                </span>
+</div>
+</div>
+<!-- Custom CSS Bar Chart -->
+<div class="h-64 flex items-end justify-between gap-3 md:gap-6 pt-8 border-b border-outline-variant/30">
+<div class="flex flex-col items-center flex-1 group">
+<div class="w-full bg-primary/20 group-hover:bg-primary rounded-t-lg transition-all duration-300 relative border-x border-t border-primary/30" style="height: 45%;">
+<span class="absolute -top-8 left-1/2 -translate-x-1/2 text-label-sm font-label-sm text-primary opacity-0 group-hover:opacity-100 transition-opacity">45</span>
+</div>
+<span class="text-label-sm font-label-sm text-on-surface-variant mt-4">M1</span>
+</div>
+<div class="flex flex-col items-center flex-1 group">
+<div class="w-full bg-primary/20 group-hover:bg-primary rounded-t-lg transition-all duration-300 relative border-x border-t border-primary/30" style="height: 82%;">
+<span class="absolute -top-8 left-1/2 -translate-x-1/2 text-label-sm font-label-sm text-primary opacity-0 group-hover:opacity-100 transition-opacity">82</span>
+</div>
+<span class="text-label-sm font-label-sm text-on-surface-variant mt-4">M2</span>
+</div>
+<div class="flex flex-col items-center flex-1 group">
+<div class="w-full bg-primary/20 group-hover:bg-primary rounded-t-lg transition-all duration-300 relative border-x border-t border-primary/30" style="height: 12%;">
+<span class="absolute -top-8 left-1/2 -translate-x-1/2 text-label-sm font-label-sm text-primary opacity-0 group-hover:opacity-100 transition-opacity">12</span>
+</div>
+<span class="text-label-sm font-label-sm text-on-surface-variant mt-4">M3</span>
+</div>
+<div class="flex flex-col items-center flex-1 group">
+<div class="w-full bg-primary/20 group-hover:bg-primary rounded-t-lg transition-all duration-300 relative border-x border-t border-primary/30" style="height: 94%;">
+<span class="absolute -top-8 left-1/2 -translate-x-1/2 text-label-sm font-label-sm text-primary opacity-0 group-hover:opacity-100 transition-opacity">94</span>
+</div>
+<span class="text-label-sm font-label-sm text-on-surface-variant mt-4">M4</span>
+</div>
+<div class="flex flex-col items-center flex-1 group">
+<div class="w-full bg-primary/20 group-hover:bg-primary rounded-t-lg transition-all duration-300 relative border-x border-t border-primary/30" style="height: 56%;">
+<span class="absolute -top-8 left-1/2 -translate-x-1/2 text-label-sm font-label-sm text-primary opacity-0 group-hover:opacity-100 transition-opacity">56</span>
+</div>
+<span class="text-label-sm font-label-sm text-on-surface-variant mt-4">M5</span>
+</div>
+<div class="flex flex-col items-center flex-1 group">
+<div class="w-full bg-primary/20 group-hover:bg-primary rounded-t-lg transition-all duration-300 relative border-x border-t border-primary/30" style="height: 38%;">
+<span class="absolute -top-8 left-1/2 -translate-x-1/2 text-label-sm font-label-sm text-primary opacity-0 group-hover:opacity-100 transition-opacity">38</span>
+</div>
+<span class="text-label-sm font-label-sm text-on-surface-variant mt-4">M6</span>
+</div>
+<div class="flex flex-col items-center flex-1 group">
+<div class="w-full bg-primary/20 group-hover:bg-primary rounded-t-lg transition-all duration-300 relative border-x border-t border-primary/30" style="height: 100%;">
+<span class="absolute -top-8 left-1/2 -translate-x-1/2 text-label-sm font-label-sm text-primary opacity-0 group-hover:opacity-100 transition-opacity">100</span>
+</div>
+<span class="text-label-sm font-label-sm text-on-surface-variant mt-4">M7</span>
+</div>
+</div>
+<p class="text-label-sm font-label-sm text-on-surface-variant mt-6 text-center">Score history for the last 7 competitive matches</p>
+</section>
+<!-- Milestones & Awards -->
+<section class="grid grid-cols-1 md:grid-cols-2 gap-gutter">
+<div class="tonal-layer-1 p-6 rounded-xl space-y-4">
+<h4 class="text-label-md font-label-md text-primary uppercase">Recent Milestones</h4>
+<div class="space-y-3">
+<div class="flex justify-between items-center p-3 bg-surface-container-low rounded-lg border border-outline-variant/20">
+<span class="text-body-md font-medium">5000 Club Access</span>
+<div class="h-2.5 w-24 bg-surface-container-high rounded-full overflow-hidden">
+<div class="h-full bg-secondary" style="width: 96%"></div>
+</div>
+</div>
+<div class="flex justify-between items-center p-3 bg-surface-container-low rounded-lg border border-outline-variant/20">
+<span class="text-body-md font-medium">10th Century</span>
+<div class="h-2.5 w-24 bg-surface-container-high rounded-full overflow-hidden">
+<div class="h-full bg-secondary" style="width: 70%"></div>
+</div>
+</div>
+</div>
+</div>
+<div class="tonal-layer-1 p-6 rounded-xl flex items-center justify-around">
+<div class="flex flex-col items-center">
+<div class="p-4 rounded-full bg-secondary/10 border border-secondary/30 mb-2 shadow-sm">
+<span class="material-symbols-outlined text-secondary" style="font-variation-settings: 'FILL' 1;">workspace_premium</span>
+</div>
+<span class="text-label-sm font-label-sm font-semibold">MVP 2023</span>
+</div>
+<div class="flex flex-col items-center">
+<div class="p-4 rounded-full bg-primary/10 border border-primary/30 mb-2 shadow-sm">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">military_tech</span>
+</div>
+<span class="text-label-sm font-label-sm font-semibold">Top Scorer</span>
+</div>
+<div class="flex flex-col items-center">
+<div class="p-4 rounded-full bg-tertiary-container/10 border border-tertiary/30 mb-2 shadow-sm">
+<span class="material-symbols-outlined text-tertiary" style="font-variation-settings: 'FILL' 1;">star</span>
+</div>
+<span class="text-label-sm font-label-sm font-semibold">All Star</span>
+</div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-margin-mobile py-3 bg-surface border-t border-outline-variant/30 shadow-[0_-4px_12px_rgba(0,0,0,0.03)]">
+<div class="flex flex-col items-center justify-center text-on-surface-variant transition-transform duration-200 active:scale-90 hover:text-primary">
+<span class="material-symbols-outlined" data-icon="sports_cricket">sports_cricket</span>
+<span class="text-label-sm font-label-sm">Live</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant transition-transform duration-200 active:scale-90 hover:text-primary">
+<span class="material-symbols-outlined" data-icon="assessment">assessment</span>
+<span class="text-label-sm font-label-sm">Scorecard</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant transition-transform duration-200 active:scale-90 hover:text-primary">
+<span class="material-symbols-outlined" data-icon="add_circle">add_circle</span>
+<span class="text-label-sm font-label-sm">Setup</span>
+</div>
+<div class="flex flex-col items-center justify-center bg-primary/10 text-primary rounded-xl px-4 py-1.5 transition-transform duration-200 active:scale-90 border border-primary/20">
+<span class="material-symbols-outlined" data-icon="person" style="font-variation-settings: 'FILL' 1;">person</span>
+<span class="text-label-sm font-label-sm font-bold">Profile</span>
+</div>
+</nav>
+<script>
+    // Simple micro-interaction for stats cards
+    document.querySelectorAll('.tonal-layer-1').forEach(card => {
+        card.addEventListener('mouseenter', () => {
+            card.style.transform = 'translateY(-2px)';
+            card.style.transition = 'transform 0.2s ease-out';
+            card.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)';
+        });
+        card.addEventListener('mouseleave', () => {
+            card.style.transform = 'translateY(0px)';
+            card.style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)';
+        });
+    });
+</script>
+</body></html>
