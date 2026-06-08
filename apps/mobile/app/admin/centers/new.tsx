@@ -9,7 +9,13 @@ import { FIELD_ORANGE } from '../../../src/components/ui/fieldStyles';
 import { Select } from '../../../src/components/ui/Select';
 import { Text } from '../../../src/components/ui/Text';
 import { TextInput } from '../../../src/components/ui/TextInput';
-import { ApiRequestError, createCenter, listProvincesAdmin } from '../../../src/lib/api';
+import {
+  ApiRequestError,
+  createCenter,
+  listProvincesAdmin,
+} from '../../../src/lib/api';
+
+const STRONG_LABEL = 'strong' as const;
 
 export default function NewCenterScreen(): React.ReactElement {
   const router = useRouter();
@@ -67,6 +73,7 @@ export default function NewCenterScreen(): React.ReactElement {
         <ScrollView contentContainerClassName="gap-5 px-4 py-6">
           <TextInput
             label="Center Name"
+            labelVariant={STRONG_LABEL}
             value={name}
             onChangeText={setName}
             placeholder="e.g. Brampton"
@@ -74,6 +81,7 @@ export default function NewCenterScreen(): React.ReactElement {
           />
           <Select
             label="Province"
+            labelVariant={STRONG_LABEL}
             placeholder="Select province"
             value={provinceId}
             options={provinceOptions}

@@ -1,6 +1,6 @@
 import { Link } from 'expo-router';
 import { useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { ActivityIndicator, ScrollView, View } from 'react-native';
 import { Button } from '../src/components/ui/Button';
 import { PasswordToggle } from '../src/components/ui/PasswordToggle';
 import { Text } from '../src/components/ui/Text';
@@ -71,7 +71,7 @@ export default function LoginScreen(): React.ReactElement {
             }
           />
 
-          <Link href="/forgot-password" className="self-end font-sans-semibold text-sm text-link">
+          <Link href="/forgot-password" className="self-end font-sans-semibold text-sm text-primary">
             Forgot password?
           </Link>
 
@@ -82,16 +82,23 @@ export default function LoginScreen(): React.ReactElement {
           ) : null}
 
           <Button
-            label="Log in"
             onPress={() => void onSubmit()}
-            loading={submitting}
+            disabled={submitting}
             className="mt-2 h-14"
-          />
+          >
+            {submitting ? (
+              <ActivityIndicator color="#ffffff" />
+            ) : (
+              <Text className="font-sans-medium text-sm uppercase tracking-wider text-on-primary">
+                Log in
+              </Text>
+            )}
+          </Button>
         </View>
 
         <View className="mt-auto flex-row justify-center gap-1 pt-10">
           <Text className="font-sans text-sm text-on-surface-variant">New to ACC?</Text>
-          <Link href="/signup" className="font-sans-semibold text-sm text-link">
+          <Link href="/signup" className="font-sans-semibold text-sm text-primary">
             Create an account
           </Link>
         </View>

@@ -39,10 +39,6 @@ module.exports = {
           container: '#ff6b00',
           tint: '#a04100',
         },
-        /** Inline links (Sign Up, Log in, Forgot password, etc.) */
-        link: '#a04100',
-        /** Field icons and signup accents — matches FIELD_ORANGE in fieldStyles.ts */
-        accent: '#F37021',
         'on-primary': {
           DEFAULT: '#ffffff',
           container: '#572000',

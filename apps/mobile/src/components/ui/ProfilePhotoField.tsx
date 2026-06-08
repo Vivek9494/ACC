@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { Image, Pressable, View } from 'react-native';
 
-import { FIELD_ORANGE, inputFieldShellStyle, labelClassName, type LabelVariant } from './fieldStyles';
+import { FIELD_ORANGE, INPUT_SHADOW_STYLE, labelClassName, type LabelVariant } from './fieldStyles';
 import { Text } from './Text';
 
 export interface ProfilePhotoFieldProps {
@@ -16,7 +16,7 @@ export interface ProfilePhotoFieldProps {
 /** Optional profile photo picker (spec §3.1). Local URI until upload is wired. */
 export function ProfilePhotoField({
   label = 'Profile Photo',
-  labelVariant = 'brand',
+  labelVariant = 'muted',
   uri,
   onChange,
   containerClassName,
@@ -42,8 +42,8 @@ export function ProfilePhotoField({
       {label ? <Text className={labelClassName(labelVariant)}>{label}</Text> : null}
       <Pressable
         onPress={() => void pick()}
-        className="flex-row items-center gap-4 px-5 py-4"
-        style={inputFieldShellStyle()}
+        className="flex-row items-center gap-4 rounded-xl border border-[#F1F1F1] bg-white px-5 py-4"
+        style={INPUT_SHADOW_STYLE}
       >
         {uri ? (
           <Image source={{ uri }} className="h-14 w-14 rounded-xl" />

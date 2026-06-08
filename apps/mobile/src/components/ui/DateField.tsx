@@ -8,12 +8,9 @@ import { Platform, Pressable, View } from 'react-native';
 
 import {
   FIELD_ORANGE,
-  fieldBodyPaddingClass,
-  FIELD_VALUE_TEXT_STYLE,
-  fieldValueTextClassName,
-  inputFieldShellStyle,
+  INPUT_SHADOW_STYLE,
   labelClassName,
-  mergeFieldShellClassName,
+  mergeFieldClassName,
   type LabelVariant,
 } from './fieldStyles';
 import { Text } from './Text';
@@ -59,7 +56,7 @@ export interface DateFieldProps {
  */
 export function DateField({
   label,
-  labelVariant = 'brand',
+  labelVariant = 'muted',
   value,
   onChange,
   placeholder = 'yyyy-mm-dd',
@@ -79,20 +76,17 @@ export function DateField({
   }
 
   return (
-    <View className={['w-full min-w-0', containerClassName].filter(Boolean).join(' ')}>
+    <View className={containerClassName}>
       {label ? <Text className={labelClassName(labelVariant)}>{label}</Text> : null}
       <Pressable
         onPress={() => setShowPicker(true)}
-        className={`${mergeFieldShellClassName()} ${fieldBodyPaddingClass({ hasLeadingIcon: true })}`}
-        style={inputFieldShellStyle()}
+        className={`relative ${mergeFieldClassName('flex-row items-center', { hasLeadingIcon: true })}`}
+        style={INPUT_SHADOW_STYLE}
       >
         <View className="absolute inset-y-0 left-5 justify-center">
           <Ionicons name="calendar-outline" size={20} color={FIELD_ORANGE} />
         </View>
-        <Text
-          className={fieldValueTextClassName(Boolean(parsed))}
-          style={FIELD_VALUE_TEXT_STYLE}
-        >
+        <Text className={`font-sans text-base ${parsed ? 'text-[#1A1A1A]' : 'text-[#9AA0A6]'}`}>
           {parsed ? value : placeholder}
         </Text>
       </Pressable>

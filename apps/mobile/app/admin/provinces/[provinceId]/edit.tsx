@@ -10,6 +10,8 @@ import { Text } from '../../../../src/components/ui/Text';
 import { TextInput } from '../../../../src/components/ui/TextInput';
 import { ApiRequestError, listProvincesAdmin, updateProvince } from '../../../../src/lib/api';
 
+const STRONG_LABEL = 'strong' as const;
+
 export default function EditProvinceScreen(): React.ReactElement {
   const router = useRouter();
   const { provinceId } = useLocalSearchParams<{ provinceId: string }>();
@@ -64,6 +66,7 @@ export default function EditProvinceScreen(): React.ReactElement {
         <ScrollView contentContainerClassName="gap-5 px-4 py-6">
           <TextInput
             label="Province Name"
+            labelVariant={STRONG_LABEL}
             value={name}
             onChangeText={setName}
             placeholder="Province name"

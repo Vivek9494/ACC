@@ -1,5 +1,5 @@
 import { forwardRef, type ReactNode } from 'react';
-import { ActivityIndicator, Pressable, type PressableProps, type View } from 'react-native';
+import { Pressable, type PressableProps, type View } from 'react-native';
 
 import { Text } from './Text';
 
@@ -13,10 +13,10 @@ const VARIANT_PRESSABLE: Record<ButtonVariant, string> = {
 };
 
 const VARIANT_TEXT: Record<ButtonVariant, string> = {
-  primary: 'font-sans-medium text-sm uppercase tracking-wider text-on-primary',
-  secondary: 'font-sans-semibold text-sm text-on-primary',
-  outline: 'font-sans-semibold text-sm text-on-surface',
-  destructive: 'font-sans-semibold text-sm text-[#c1121f]',
+  primary: 'text-on-primary',
+  secondary: 'text-on-primary',
+  outline: 'text-on-surface',
+  destructive: 'text-[#c1121f]',
 };
 
 function stripRadius(className?: string): string {
@@ -28,8 +28,6 @@ export interface ButtonProps extends PressableProps {
   variant?: ButtonVariant;
   /** Shorthand label; ignored when `children` is provided. */
   label?: string;
-  /** Shows a spinner and disables interaction. */
-  loading?: boolean;
   className?: string;
   textClassName?: string;
   children?: ReactNode;
@@ -44,7 +42,6 @@ export const Button = forwardRef<View, ButtonProps>(function Button(
     variant = 'primary',
     label,
     children,
-    loading = false,
     className,
     textClassName,
     disabled,
@@ -60,19 +57,16 @@ export const Button = forwardRef<View, ButtonProps>(function Button(
     .filter(Boolean)
     .join(' ');
 
-  const content =
-    loading && variant === 'primary' ? (
-      <ActivityIndicator color="#ffffff" />
-    ) : (
-      children ??
-      (label ? (
-        <Text className={`${VARIANT_TEXT[variant]} ${textClassName ?? ''}`.trim()}>{label}</Text>
-      ) : null)
-    );
-
   return (
-    <Pressable ref={ref} disabled={disabled || loading} className={pressableClass} {...props}>
-      {content}
+    <Pressable ref={ref} disabled={disabled} className={pressableClass} {...props}>
+      {children ??
+        (label ? (
+          <Text
+            className={`font-sans-semibold text-sm ${VARIANT_TEXT[variant]} ${textClassName ?? ''}`.trim()}
+          >
+            {label}
+          </Text>
+        ) : null)}
     </Pressable>
   );
 });

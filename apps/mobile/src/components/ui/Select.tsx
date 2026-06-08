@@ -4,12 +4,9 @@ import { FlatList, Modal, Pressable, View } from 'react-native';
 
 import {
   DEFAULT_PLACEHOLDER_COLOR,
-  fieldBodyPaddingClass,
-  FIELD_VALUE_TEXT_STYLE,
-  fieldValueTextClassName,
-  inputFieldShellStyle,
+  INPUT_SHADOW_STYLE,
   labelClassName,
-  mergeFieldShellClassName,
+  mergeFieldClassName,
   type LabelVariant,
 } from './fieldStyles';
 import { Text } from './Text';
@@ -35,7 +32,7 @@ export interface SelectProps {
  */
 export function Select({
   label,
-  labelVariant = 'brand',
+  labelVariant = 'muted',
   placeholder = 'Select…',
   value,
   options,
@@ -47,20 +44,24 @@ export function Select({
   const selected = options.find((o) => o.value === value);
 
   return (
-    <View className={['w-full min-w-0', containerClassName].filter(Boolean).join(' ')}>
+    <View className={containerClassName}>
       {label ? <Text className={labelClassName(labelVariant)}>{label}</Text> : null}
       <Pressable
         disabled={disabled}
         onPress={() => setOpen(true)}
-        className={`${mergeFieldShellClassName()} ${fieldBodyPaddingClass({ hasTrailingAccessory: true })}`}
-        style={inputFieldShellStyle()}
+        className={`relative ${mergeFieldClassName('flex-row items-center justify-between', {
+          hasTrailingAccessory: true,
+        })}`}
+        style={INPUT_SHADOW_STYLE}
       >
-        <Text className={fieldValueTextClassName(Boolean(selected))} style={FIELD_VALUE_TEXT_STYLE}>
+        <Text
+          className={`flex-1 font-sans text-base ${
+            selected ? 'text-[#1A1A1A]' : 'text-[#9AA0A6]'
+          }`}
+        >
           {selected?.label ?? placeholder}
         </Text>
-        <View className="absolute inset-y-0 right-4 justify-center">
-          <Ionicons name="chevron-down" size={20} color={DEFAULT_PLACEHOLDER_COLOR} />
-        </View>
+        <Ionicons name="chevron-down" size={20} color={DEFAULT_PLACEHOLDER_COLOR} />
       </Pressable>
 
       <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
