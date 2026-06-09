@@ -4,6 +4,7 @@ import { AuthErrorCode, MOBILE_NUMBER_EXISTS_MESSAGE } from '@acc/types';
 import { BadRequestException, ConflictException, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
+import { Reflector } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
 import type { ExecutionContext } from '@nestjs/common';
 import type { User } from '@prisma/client';
@@ -59,6 +60,8 @@ function executionContextWithAuth(header: string | undefined): ExecutionContext 
   const request = { headers: { authorization: header } } as unknown as Record<string, unknown>;
   return {
     switchToHttp: () => ({ getRequest: () => request }),
+    getHandler: () => ({}),
+    getClass: () => ({}),
   } as unknown as ExecutionContext;
 }
 
@@ -158,14 +161,17 @@ describe('JwtAuthGuard (tokenVersion enforcement)', () => {
   let guard: JwtAuthGuard;
   let prisma: { user: { findUnique: jest.Mock } };
   let jwt: { verifyAsync: jest.Mock };
+  let reflector: { getAllAndOverride: jest.Mock };
 
   beforeEach(async () => {
     prisma = { user: { findUnique: jest.fn() } };
     jwt = { verifyAsync: jest.fn() };
+    reflector = { getAllAndOverride: jest.fn().mockReturnValue(false) };
 
     const moduleRef = await Test.createTestingModule({
       providers: [
         JwtAuthGuard,
+        { provide: Reflector, useValue: reflector },
         { provide: PrismaService, useValue: prisma },
         { provide: JwtService, useValue: jwt },
         { provide: ConfigService, useValue: { getOrThrow: () => 'secret' } },
@@ -173,6 +179,12 @@ describe('JwtAuthGuard (tokenVersion enforcement)', () => {
     }).compile();
 
     guard = moduleRef.get(JwtAuthGuard);
+  });
+
+  it('allows public routes without a token', async () => {
+    reflector.getAllAndOverride.mockReturnValue(true);
+    await expect(guard.canActivate(executionContextWithAuth(undefined))).resolves.toBe(true);
+    expect(jwt.verifyAsync).not.toHaveBeenCalled();
   });
 
   it('rejects a token whose embedded tokenVersion is stale', async () => {

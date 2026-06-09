@@ -4,7 +4,9 @@ import { FlatList, Modal, Pressable, View } from 'react-native';
 
 import {
   DEFAULT_PLACEHOLDER_COLOR,
+  FIELD_VALUE_TEXT_CLASS,
   INPUT_SHADOW_STYLE,
+  INPUT_TEXT_STYLE,
   labelClassName,
   mergeFieldClassName,
   type LabelVariant,
@@ -32,7 +34,7 @@ export interface SelectProps {
  */
 export function Select({
   label,
-  labelVariant = 'muted',
+  labelVariant = 'brand',
   placeholder = 'Select…',
   value,
   options,
@@ -49,19 +51,21 @@ export function Select({
       <Pressable
         disabled={disabled}
         onPress={() => setOpen(true)}
-        className={`relative ${mergeFieldClassName('flex-row items-center justify-between', {
-          hasTrailingAccessory: true,
-        })}`}
+        className={`relative ${mergeFieldClassName(undefined, { hasTrailingAccessory: true })}`}
         style={INPUT_SHADOW_STYLE}
       >
         <Text
-          className={`flex-1 font-sans text-base ${
+          className={`${FIELD_VALUE_TEXT_CLASS} ${
             selected ? 'text-[#1A1A1A]' : 'text-[#9AA0A6]'
           }`}
+          style={INPUT_TEXT_STYLE}
+          numberOfLines={1}
         >
           {selected?.label ?? placeholder}
         </Text>
-        <Ionicons name="chevron-down" size={20} color={DEFAULT_PLACEHOLDER_COLOR} />
+        <View className="absolute bottom-0 right-4 top-0 justify-center">
+          <Ionicons name="chevron-down" size={20} color={DEFAULT_PLACEHOLDER_COLOR} />
+        </View>
       </Pressable>
 
       <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>

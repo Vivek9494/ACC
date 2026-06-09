@@ -41,7 +41,8 @@ export class SignupDto implements SignupRequest {
 
   @IsInt()
   @Min(0)
-  jerseyNumber!: number;
+  @IsOptional()
+  jerseyNumber?: number;
 
   @IsOptional()
   @IsUrl()

@@ -15,8 +15,6 @@ import {
   listProvincesAdmin,
 } from '../../../src/lib/api';
 
-const STRONG_LABEL = 'strong' as const;
-
 export default function NewCenterScreen(): React.ReactElement {
   const router = useRouter();
   const { provinceId: initialProvinceId } = useLocalSearchParams<{ provinceId?: string }>();
@@ -73,7 +71,6 @@ export default function NewCenterScreen(): React.ReactElement {
         <ScrollView contentContainerClassName="gap-5 px-4 py-6">
           <TextInput
             label="Center Name"
-            labelVariant={STRONG_LABEL}
             value={name}
             onChangeText={setName}
             placeholder="e.g. Brampton"
@@ -81,7 +78,6 @@ export default function NewCenterScreen(): React.ReactElement {
           />
           <Select
             label="Province"
-            labelVariant={STRONG_LABEL}
             placeholder="Select province"
             value={provinceId}
             options={provinceOptions}

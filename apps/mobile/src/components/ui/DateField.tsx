@@ -8,7 +8,9 @@ import { Platform, Pressable, View } from 'react-native';
 
 import {
   FIELD_ORANGE,
+  FIELD_VALUE_TEXT_CLASS,
   INPUT_SHADOW_STYLE,
+  INPUT_TEXT_STYLE,
   labelClassName,
   mergeFieldClassName,
   type LabelVariant,
@@ -22,6 +24,15 @@ function pad2(n: number): string {
 /** Format a Date as YYYY-MM-DD in local time. */
 export function formatIsoDate(date: Date): string {
   return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
+}
+
+/** Format a Date for display: e.g. "June 8, 2026". */
+export function formatDisplayDate(date: Date): string {
+  return date.toLocaleDateString('en-US', {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  });
 }
 
 function parseIsoDate(value: string): Date | null {
@@ -56,10 +67,10 @@ export interface DateFieldProps {
  */
 export function DateField({
   label,
-  labelVariant = 'muted',
+  labelVariant = 'brand',
   value,
   onChange,
-  placeholder = 'yyyy-mm-dd',
+  placeholder = 'Month D, YYYY',
   containerClassName,
 }: DateFieldProps): React.ReactElement {
   const [showPicker, setShowPicker] = useState(false);
@@ -86,8 +97,11 @@ export function DateField({
         <View className="absolute inset-y-0 left-5 justify-center">
           <Ionicons name="calendar-outline" size={20} color={FIELD_ORANGE} />
         </View>
-        <Text className={`font-sans text-base ${parsed ? 'text-[#1A1A1A]' : 'text-[#9AA0A6]'}`}>
-          {parsed ? value : placeholder}
+        <Text
+          className={`${FIELD_VALUE_TEXT_CLASS} ${parsed ? 'text-[#1A1A1A]' : 'text-[#9AA0A6]'}`}
+          style={INPUT_TEXT_STYLE}
+        >
+          {parsed ? formatDisplayDate(parsed) : placeholder}
         </Text>
       </Pressable>
 

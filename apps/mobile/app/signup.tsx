@@ -8,11 +8,10 @@ import {
 } from '@acc/types';
 import { Link, useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Linking, Pressable, ScrollView, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '../src/components/ui/Button';
-import { Checkbox } from '../src/components/ui/Checkbox';
 import { DateField } from '../src/components/ui/DateField';
 import { FIELD_ORANGE } from '../src/components/ui/fieldStyles';
 import { PasswordToggle } from '../src/components/ui/PasswordToggle';
@@ -25,7 +24,6 @@ import { ApiRequestError, getCenters, getProvinces } from '../src/lib/api';
 import { useAuth } from '../src/lib/auth-context';
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-const STRONG_LABEL = 'strong' as const;
 
 function ageInYears(dob: Date, today: Date): number {
   let age = today.getFullYear() - dob.getFullYear();
@@ -47,7 +45,6 @@ export default function SignupScreen(): React.ReactElement {
   const [dateOfBirth, setDateOfBirth] = useState('');
   const [province, setProvince] = useState<string | null>(null);
   const [centerId, setCenterId] = useState<string | null>(null);
-  const [jerseyNumber, setJerseyNumber] = useState('');
   const [profilePhotoUri, setProfilePhotoUri] = useState<string | null>(null);
   const [emergencyContactName, setEmergencyContactName] = useState('');
   const [emergencyContactNumber, setEmergencyContactNumber] = useState('');
@@ -55,13 +52,15 @@ export default function SignupScreen(): React.ReactElement {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [termsAccepted, setTermsAccepted] = useState(false);
 
   const [provinces, setProvinces] = useState<ProvinceSummary[]>([]);
   const [centers, setCenters] = useState<CenterSummary[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [provincesError, setProvincesError] = useState<string | null>(null);
+  const [centersError, setCentersError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [loadingLocations, setLoadingLocations] = useState(true);
+  const [loadingProvinces, setLoadingProvinces] = useState(true);
+  const [loadingCenters, setLoadingCenters] = useState(false);
 
   const provinceOptions = useMemo(
     () => provinces.map((p) => ({ value: p.id, label: p.name })),
@@ -74,15 +73,25 @@ export default function SignupScreen(): React.ReactElement {
 
   useEffect(() => {
     let cancelled = false;
+    setLoadingProvinces(true);
+    setProvincesError(null);
     getProvinces()
       .then((list) => {
-        if (!cancelled) setProvinces(list);
+        if (cancelled) return;
+        setProvinces(list);
+        if (list.length === 0) {
+          setProvincesError('No provinces available');
+        }
       })
-      .catch(() => {
-        if (!cancelled) setError('Could not load provinces. Check your connection.');
+      .catch((err: unknown) => {
+        console.error('Failed to load provinces for signup', err);
+        if (!cancelled) {
+          setProvinces([]);
+          setProvincesError("Couldn't load provinces");
+        }
       })
       .finally(() => {
-        if (!cancelled) setLoadingLocations(false);
+        if (!cancelled) setLoadingProvinces(false);
       });
     return () => {
       cancelled = true;
@@ -93,15 +102,30 @@ export default function SignupScreen(): React.ReactElement {
     if (!province) {
       setCenters([]);
       setCenterId(null);
+      setCentersError(null);
+      setLoadingCenters(false);
       return;
     }
     let cancelled = false;
+    setLoadingCenters(true);
+    setCentersError(null);
     getCenters(province)
       .then((list) => {
-        if (!cancelled) setCenters(list);
+        if (cancelled) return;
+        setCenters(list);
+        if (list.length === 0) {
+          setCentersError('No centers available');
+        }
       })
-      .catch(() => {
-        if (!cancelled) setError('Could not load centers. Check your connection.');
+      .catch((err: unknown) => {
+        console.error('Failed to load centers for signup', err);
+        if (!cancelled) {
+          setCenters([]);
+          setCentersError("Couldn't load centers");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingCenters(false);
       });
     return () => {
       cancelled = true;
@@ -134,22 +158,19 @@ export default function SignupScreen(): React.ReactElement {
     if (!province) {
       return 'Please select your province.';
     }
-    if (!centerId) {
-      return centers.length === 0
-        ? 'No centers are available in the selected province yet.'
-        : 'Please select your center.';
+    if (provincesError || provinces.length === 0) {
+      return provincesError ?? 'No provinces available';
     }
-    if (!/^\d+$/.test(jerseyNumber)) {
-      return 'Jersey number must be a number.';
+    if (!centerId) {
+      return centersError ?? (centers.length === 0
+        ? 'No centers are available in the selected province yet.'
+        : 'Please select your center.');
     }
     if (password.length < PASSWORD_MIN_LENGTH || !/[0-9]/.test(password)) {
       return `Password must be at least ${PASSWORD_MIN_LENGTH} characters and include a digit.`;
     }
     if (password !== confirmPassword) {
       return 'Passwords do not match.';
-    }
-    if (!termsAccepted) {
-      return 'Please accept the Terms of Service and Privacy Policy.';
     }
     return null;
   }
@@ -170,7 +191,6 @@ export default function SignupScreen(): React.ReactElement {
         email: email.trim(),
         dateOfBirth,
         centerId: centerId as string,
-        jerseyNumber: Number(jerseyNumber),
         emergencyContactName: emergencyContactName.trim(),
         emergencyContactNumber: emergencyContactNumber.trim(),
         password,
@@ -184,18 +204,6 @@ export default function SignupScreen(): React.ReactElement {
     } finally {
       setSubmitting(false);
     }
-  }
-
-  function openTerms(): void {
-    void Linking.openURL('https://atmiyacricketclub.ca/terms').catch(() => {
-      Alert.alert('Terms of Service', 'Terms link will be available on the club website.');
-    });
-  }
-
-  function openPrivacy(): void {
-    void Linking.openURL('https://atmiyacricketclub.ca/privacy').catch(() => {
-      Alert.alert('Privacy Policy', 'Privacy link will be available on the club website.');
-    });
   }
 
   return (
@@ -225,11 +233,16 @@ export default function SignupScreen(): React.ReactElement {
         </View>
 
         <View className="gap-5">
+          <ProfilePhotoField
+            label="Profile Photo"
+            uri={profilePhotoUri}
+            onChange={setProfilePhotoUri}
+          />
+
           <View className="flex-row gap-3">
             <View className="flex-1">
               <TextInput
                 label="First Name"
-                labelVariant={STRONG_LABEL}
                 value={firstName}
                 onChangeText={setFirstName}
                 placeholder="e.g. Rahul"
@@ -239,7 +252,6 @@ export default function SignupScreen(): React.ReactElement {
             <View className="flex-1">
               <TextInput
                 label="Last Name"
-                labelVariant={STRONG_LABEL}
                 value={lastName}
                 onChangeText={setLastName}
                 placeholder="e.g. Sharma"
@@ -250,18 +262,16 @@ export default function SignupScreen(): React.ReactElement {
 
           <TextInput
             label="Mobile Number"
-            labelVariant={STRONG_LABEL}
             value={mobileNumber}
             onChangeText={setMobileNumber}
             keyboardType="phone-pad"
             autoCapitalize="none"
-            placeholder="+91 00000 00000"
+            placeholder="0000000000"
             leadingIcon={<Ionicons name="call-outline" size={20} color={FIELD_ORANGE} />}
           />
 
           <TextInput
             label="Email"
-            labelVariant={STRONG_LABEL}
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
@@ -272,57 +282,47 @@ export default function SignupScreen(): React.ReactElement {
 
           <DateField
             label="Date of Birth"
-            labelVariant={STRONG_LABEL}
             value={dateOfBirth}
             onChange={setDateOfBirth}
-            placeholder="yyyy-mm-dd"
           />
 
           <Select
             label="Province"
-            labelVariant={STRONG_LABEL}
-            placeholder={loadingLocations ? 'Loading…' : 'Select Province'}
+            placeholder={
+              loadingProvinces
+                ? 'Loading…'
+                : provincesError ?? (provinces.length === 0 ? 'No provinces available' : 'Select Province')
+            }
             value={province}
             options={provinceOptions}
             onChange={onProvinceChange}
-            disabled={loadingLocations}
+            disabled={loadingProvinces || Boolean(provincesError) || provinces.length === 0}
           />
+          {provincesError ? (
+            <Text className="-mt-3 font-sans text-sm text-error">{provincesError}</Text>
+          ) : null}
 
           <Select
             label="Center"
-            labelVariant={STRONG_LABEL}
             placeholder={
-              province
-                ? centers.length === 0
-                  ? 'No centers in this province'
-                  : 'Select Center'
-                : 'Select Province first'
+              !province
+                ? 'Select Province first'
+                : loadingCenters
+                  ? 'Loading…'
+                  : centersError ??
+                    (centers.length === 0 ? 'No centers available' : 'Select Center')
             }
             value={centerId}
             options={centerSelectOptions}
             onChange={setCenterId}
-            disabled={!province || centers.length === 0}
+            disabled={!province || loadingCenters || Boolean(centersError) || centers.length === 0}
           />
-
-          <TextInput
-            label="Jersey Number"
-            labelVariant={STRONG_LABEL}
-            value={jerseyNumber}
-            onChangeText={setJerseyNumber}
-            keyboardType="number-pad"
-            placeholder="7"
-          />
-
-          <ProfilePhotoField
-            label="Profile Photo"
-            labelVariant={STRONG_LABEL}
-            uri={profilePhotoUri}
-            onChange={setProfilePhotoUri}
-          />
+          {centersError && province ? (
+            <Text className="-mt-3 font-sans text-sm text-error">{centersError}</Text>
+          ) : null}
 
           <TextInput
             label="Password"
-            labelVariant={STRONG_LABEL}
             value={password}
             onChangeText={setPassword}
             secureTextEntry={!showPassword}
@@ -338,7 +338,6 @@ export default function SignupScreen(): React.ReactElement {
 
           <TextInput
             label="Confirm Password"
-            labelVariant={STRONG_LABEL}
             value={confirmPassword}
             onChangeText={setConfirmPassword}
             secureTextEntry={!showConfirmPassword}
@@ -358,36 +357,20 @@ export default function SignupScreen(): React.ReactElement {
           >
             <TextInput
               label="Contact Name"
-              labelVariant={STRONG_LABEL}
               value={emergencyContactName}
               onChangeText={setEmergencyContactName}
               placeholder="Relation / Name"
             />
             <TextInput
               label="Contact Number"
-              labelVariant={STRONG_LABEL}
               value={emergencyContactNumber}
               onChangeText={setEmergencyContactNumber}
               keyboardType="phone-pad"
               autoCapitalize="none"
-              placeholder="+91 00000 00000"
+              placeholder="0000000000"
               leadingIcon={<Ionicons name="call-outline" size={20} color={FIELD_ORANGE} />}
             />
           </SectionCard>
-
-          <Checkbox checked={termsAccepted} onChange={setTermsAccepted}>
-            <Text className="font-sans text-sm leading-5 text-[#5A4136]">
-              I agree to the{' '}
-              <Text className="font-sans-bold text-[#F37021]" onPress={openTerms}>
-                Terms of Service
-              </Text>{' '}
-              and{' '}
-              <Text className="font-sans-bold text-[#F37021]" onPress={openPrivacy}>
-                Privacy Policy
-              </Text>{' '}
-              regarding my participation in sports activities.
-            </Text>
-          </Checkbox>
 
           {error ? (
             <View className="rounded-xl bg-error-container px-4 py-3">
@@ -397,7 +380,7 @@ export default function SignupScreen(): React.ReactElement {
 
           <Button
             onPress={() => void onSubmit()}
-            disabled={submitting || !termsAccepted}
+            disabled={submitting}
             className="mt-2 h-14"
           >
             {submitting ? (
@@ -411,7 +394,7 @@ export default function SignupScreen(): React.ReactElement {
             <Text className="font-sans text-sm text-on-surface-variant">
               Already have an account?
             </Text>
-            <Link href="/login" className="font-sans-semibold text-sm text-[#F37021]">
+            <Link href="/login" className="font-sans-semibold text-sm text-primary">
               Log in
             </Link>
           </View>

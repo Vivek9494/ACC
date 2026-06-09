@@ -84,7 +84,8 @@ export interface SignupRequest {
   /** ISO 8601 date (YYYY-MM-DD). Stored in UTC. */
   dateOfBirth: string;
   centerId: string;
-  jerseyNumber: number;
+  /** Optional at signup; defaults to 0 when omitted. */
+  jerseyNumber?: number;
   profilePhotoUrl?: string | null;
   emergencyContactName: string;
   emergencyContactNumber: string;

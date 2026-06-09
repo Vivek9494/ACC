@@ -16,7 +16,7 @@ export interface ProfilePhotoFieldProps {
 /** Optional profile photo picker (spec §3.1). Local URI until upload is wired. */
 export function ProfilePhotoField({
   label = 'Profile Photo',
-  labelVariant = 'muted',
+  labelVariant = 'brand',
   uri,
   onChange,
   containerClassName,

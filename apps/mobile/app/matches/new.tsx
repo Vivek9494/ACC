@@ -146,7 +146,7 @@ export default function NewMatchScreen(): React.ReactElement {
               value={externalOpponentName}
               onChangeText={setExternalOpponentName}
               placeholder="e.g. Scarborough Strikeforce"
-              className="border border-outline-variant bg-surface-container-lowest px-4 py-3 text-base text-on-surface"
+              className="border border-outline-variant bg-surface-container-lowest px-4 py-3 text-on-surface"
             />
           </View>
         )}
@@ -159,7 +159,7 @@ export default function NewMatchScreen(): React.ReactElement {
             value={matchCode}
             onChangeText={setMatchCode}
             placeholder="e.g. M14"
-            className="border border-outline-variant bg-surface-container-lowest px-4 py-3 text-base text-on-surface"
+            className="border border-outline-variant bg-surface-container-lowest px-4 py-3 text-on-surface"
           />
         </View>
 
@@ -171,7 +171,7 @@ export default function NewMatchScreen(): React.ReactElement {
             value={groundLocation}
             onChangeText={setGroundLocation}
             placeholder="Ground / venue"
-            className="border border-outline-variant bg-surface-container-lowest px-4 py-3 text-base text-on-surface"
+            className="border border-outline-variant bg-surface-container-lowest px-4 py-3 text-on-surface"
           />
         </View>
 

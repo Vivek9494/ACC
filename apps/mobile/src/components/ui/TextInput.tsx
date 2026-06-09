@@ -1,6 +1,7 @@
 import { forwardRef, type ReactNode } from 'react';
 import {
   TextInput as RNTextInput,
+  Platform,
   View,
   type TextInputProps as RNTextInputProps,
 } from 'react-native';
@@ -8,6 +9,7 @@ import {
 import {
   DEFAULT_PLACEHOLDER_COLOR,
   INPUT_SHADOW_STYLE,
+  INPUT_TEXT_STYLE,
   labelClassName,
   mergeFieldClassName,
   type LabelVariant,
@@ -31,7 +33,7 @@ export interface TextInputProps extends RNTextInputProps {
 export const TextInput = forwardRef<RNTextInput, TextInputProps>(function TextInput(
   {
     label,
-    labelVariant = 'muted',
+    labelVariant = 'brand',
     leadingIcon,
     rightAccessory,
     className,
@@ -53,8 +55,10 @@ export const TextInput = forwardRef<RNTextInput, TextInputProps>(function TextIn
       ref={ref}
       className={inputClassName}
       placeholderTextColor={placeholderTextColor}
-      style={[INPUT_SHADOW_STYLE, style]}
+      style={[INPUT_SHADOW_STYLE, INPUT_TEXT_STYLE, style]}
+      textAlignVertical="center"
       {...props}
+      {...(Platform.OS === 'android' ? { includeFontPadding: false as const } : {})}
     />
   );
 

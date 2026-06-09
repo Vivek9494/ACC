@@ -86,7 +86,7 @@ export class AuthService {
         email: dto.email,
         dateOfBirth: dob,
         centerId: dto.centerId,
-        jerseyNumber: dto.jerseyNumber,
+        jerseyNumber: dto.jerseyNumber ?? 0,
         profilePhotoUrl: dto.profilePhotoUrl ?? null,
         emergencyContactName: dto.emergencyContactName,
         emergencyContactNumber: dto.emergencyContactNumber,

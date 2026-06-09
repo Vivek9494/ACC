@@ -55,7 +55,7 @@ export default function LoginScreen(): React.ReactElement {
             onChangeText={setMobileNumber}
             keyboardType="phone-pad"
             autoCapitalize="none"
-            placeholder="+1 555 000 0000"
+            placeholder="Enter Mobile Number"
           />
           <TextInput
             label="Password"

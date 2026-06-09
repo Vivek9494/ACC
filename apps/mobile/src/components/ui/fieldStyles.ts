@@ -11,19 +11,37 @@ export const INPUT_SHADOW_STYLE = {
   elevation: 2,
 } as const;
 
+/** 16px field text without lineHeight — avoids iOS TextInput selection highlight gap. */
+export const INPUT_TEXT_STYLE = { fontSize: 16 } as const;
+
 export const DEFAULT_INPUT_CLASS =
-  'bg-white rounded-xl border border-[#F1F1F1] px-5 py-4 text-base text-[#1A1A1A] font-sans';
+  'bg-white rounded-xl border border-[#F1F1F1] px-5 py-4 text-[#1A1A1A] font-sans';
+
+/** Display text for Select/DateField values (same typography rules as TextInput). */
+export const FIELD_VALUE_TEXT_CLASS = 'font-sans';
+
+function stripInputTypography(className: string): string {
+  return className
+    .replace(
+      /\btext-(xs|sm|base|lg|xl|2xl|3xl|4xl|5xl|6xl|7xl|8xl|9xl)\b/g,
+      '',
+    )
+    .replace(/\bleading-[\w-]+\b/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
 
 export const DEFAULT_PLACEHOLDER_COLOR = '#9AA0A6';
 
-export type LabelVariant = 'muted' | 'strong';
+export type LabelVariant = 'brand' | 'muted' | 'strong';
 
 const LABEL_CLASSES: Record<LabelVariant, string> = {
+  brand: 'font-sans text-base leading-6 text-[#5A4136] mb-2 ml-1',
   muted: 'text-[#A0A0A0] text-sm font-sans-medium tracking-wide mb-2 ml-1',
   strong: 'text-[#1A1A1A] font-sans-bold text-sm mb-2 ml-1',
 };
 
-export function labelClassName(variant: LabelVariant = 'muted'): string {
+export function labelClassName(variant: LabelVariant = 'brand'): string {
   return LABEL_CLASSES[variant];
 }
 
@@ -45,7 +63,7 @@ export function mergeFieldClassName(
   if (options?.hasTrailingAccessory && !/\bpr-\d/.test(merged)) {
     merged = `${merged} pr-12`;
   }
-  return merged;
+  return stripInputTypography(merged);
 }
 
 export interface FieldChromeOptions {

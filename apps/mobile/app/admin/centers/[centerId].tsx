@@ -16,8 +16,6 @@ import {
   updateCenter,
 } from '../../../src/lib/api';
 
-const STRONG_LABEL = 'strong' as const;
-
 export default function EditCenterScreen(): React.ReactElement {
   const router = useRouter();
   const { centerId } = useLocalSearchParams<{ centerId: string }>();
@@ -79,7 +77,6 @@ export default function EditCenterScreen(): React.ReactElement {
         <ScrollView contentContainerClassName="gap-5 px-4 py-6">
           <TextInput
             label="Center Name"
-            labelVariant={STRONG_LABEL}
             value={name}
             onChangeText={setName}
             placeholder="Center name"
@@ -87,7 +84,6 @@ export default function EditCenterScreen(): React.ReactElement {
           />
           <Select
             label="Province"
-            labelVariant={STRONG_LABEL}
             placeholder="Select province"
             value={provinceId}
             options={provinceOptions}
