@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 
+import { AdminModule } from './admin/admin.module';
 import { AuditModule } from './audit/audit.module';
 import { AuthModule } from './auth/auth.module';
 import { AuthzModule } from './authz/authz.module';
@@ -32,6 +33,7 @@ import { TournamentsModule } from './tournaments/tournaments.module';
     AuthzModule,
     NotificationsModule,
     AuthModule,
+    AdminModule,
     CentersModule,
     TournamentsModule,
     RegistrationsModule,

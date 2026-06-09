@@ -113,6 +113,7 @@ export const Permission = {
   VIEW_LOCKED_ACCOUNTS_ALL: 'VIEW_LOCKED_ACCOUNTS_ALL',
   UNLOCK_ACCOUNT: 'UNLOCK_ACCOUNT',
   // N. Audit & Announcements
+  VIEW_ADMIN_OVERVIEW: 'VIEW_ADMIN_OVERVIEW',
   VIEW_AUDIT_LOG: 'VIEW_AUDIT_LOG',
   SEND_ANNOUNCEMENT: 'SEND_ANNOUNCEMENT',
   ADD_YOUTUBE_URL: 'ADD_YOUTUBE_URL',
@@ -566,6 +567,9 @@ export const PERMISSION_MATRIX: Record<Permission, PermissionRule> = {
   },
 
   // N. Audit & Announcements
+  [Permission.VIEW_ADMIN_OVERVIEW]: {
+    grants: [{ subject: R.Admin }],
+  },
   [Permission.VIEW_AUDIT_LOG]: {
     grants: [{ subject: R.Admin }],
   },

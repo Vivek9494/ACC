@@ -3,7 +3,7 @@ import { Redirect, Stack } from 'expo-router';
 
 import { useAuth } from '../../src/lib/auth-context';
 
-/** Admin-only section gate. */
+/** Admin-only section: dashboard tabs + management stack screens. */
 export default function AdminLayout(): React.ReactElement {
   const { user } = useAuth();
 
@@ -11,5 +11,11 @@ export default function AdminLayout(): React.ReactElement {
     return <Redirect href="/home" />;
   }
 
-  return <Stack screenOptions={{ headerShown: false }} />;
+  return (
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="provinces" />
+      <Stack.Screen name="centers" />
+    </Stack>
+  );
 }

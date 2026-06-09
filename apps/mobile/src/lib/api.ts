@@ -12,6 +12,7 @@ import {
   type AuthResponse,
   type AuthTokens,
   type AuthUser,
+  type AdminOverview,
   type AssignScorerRequest,
   type AvailabilitySummary,
   type CenterDetail,
@@ -214,6 +215,10 @@ export function updateCenter(id: string, body: UpdateCenterRequest): Promise<Cen
 
 export function deleteCenter(id: string): Promise<void> {
   return apiFetch<void>(`/centers/${id}`, { method: 'DELETE' });
+}
+
+export function getAdminOverview(): Promise<AdminOverview> {
+  return apiFetch<AdminOverview>('/admin/overview');
 }
 
 export function signup(body: SignupRequest): Promise<AuthResponse> {

@@ -151,6 +151,7 @@ export interface TournamentSummary {
   posterUrl: string | null;
   startAt: string;
   endAt: string;
+  location: string | null;
   teamCount: number;
 }
 

@@ -1,5 +1,6 @@
 import '../global.css';
 
+import { UserRole } from '@acc/types';
 import {
   Montserrat_400Regular,
   Montserrat_500Medium,
@@ -32,7 +33,7 @@ const AUTH_ROUTES = new Set([
 
 /** Redirects between the auth screens and the app based on session state. */
 function RootNavigator(): React.ReactElement {
-  const { status } = useAuth();
+  const { status, user } = useAuth();
   const segments = useSegments();
   const router = useRouter();
 
@@ -42,11 +43,11 @@ function RootNavigator(): React.ReactElement {
     }
     const onAuthRoute = AUTH_ROUTES.has(segments[0]);
     if (status === 'authenticated' && onAuthRoute) {
-      router.replace('/home');
+      router.replace(user?.role === UserRole.Admin ? '/admin' : '/home');
     } else if (status === 'unauthenticated' && !onAuthRoute) {
       router.replace('/login');
     }
-  }, [status, segments, router]);
+  }, [status, user?.role, segments, router]);
 
   return (
     <Stack screenOptions={{ headerShown: false }}>

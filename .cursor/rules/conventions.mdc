@@ -14,3 +14,4 @@ alwaysApply: true
 - Derived cricket stats (averages, strike rate, economy) are computed at query time, never persisted denormalized.
 - all text inputs use the shared TextInput wrapper, which carries the white fill, 12px radius, soft shadow, and label styling, so screens should pass a label prop rather than styling fields inline. That keeps the later phases consistent without you policing each screen.
 - form field labels use the shared input components' default brown style (font-sans text-base leading-6 text-[#5A4136]), so screens shouldn't set label colors inline. 
+- form fields show validation via the shared TextInput error prop (red text below + red border), not custom per-screen error UI.

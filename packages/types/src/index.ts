@@ -9,6 +9,7 @@
  */
 export const ACC_TYPES_PACKAGE = '@acc/types';
 
+export * from './admin';
 export * from './auth';
 export * from './center';
 export * from './province';

@@ -441,6 +441,7 @@ export class TournamentsService {
       posterUrl: row.posterUrl,
       startAt: row.startAt.toISOString(),
       endAt: row.endAt.toISOString(),
+      location: row.location,
       teamCount: row._count.teams,
     };
   }
