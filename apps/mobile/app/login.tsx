@@ -1,35 +1,79 @@
+import { AuthErrorCode } from '@acc/types';
 import { Link } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, ScrollView, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
 import { Button } from '../src/components/ui/Button';
 import { PasswordToggle } from '../src/components/ui/PasswordToggle';
 import { Text } from '../src/components/ui/Text';
 import { TextInput } from '../src/components/ui/TextInput';
-import { SafeAreaView } from 'react-native-safe-area-context';
-
 import { ApiRequestError } from '../src/lib/api';
 import { useAuth } from '../src/lib/auth-context';
+import {
+  LOGIN_MESSAGES,
+  loginMobileForApi,
+  validateLoginMobile,
+  validateLoginPassword,
+} from '../src/lib/login-messages';
+
+function mapLoginApiError(err: unknown): string {
+  if (!(err instanceof ApiRequestError)) {
+    return LOGIN_MESSAGES.genericError;
+  }
+  if (err.status === 429 || err.error.code === AuthErrorCode.TooManyAttempts) {
+    return LOGIN_MESSAGES.tooManyAttempts;
+  }
+  if (err.status === 401 && err.error.code === AuthErrorCode.InvalidCredentials) {
+    return LOGIN_MESSAGES.invalidCredentials;
+  }
+  return LOGIN_MESSAGES.genericError;
+}
 
 export default function LoginScreen(): React.ReactElement {
   const { signIn } = useAuth();
   const [mobileNumber, setMobileNumber] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [mobileError, setMobileError] = useState<string | undefined>();
+  const [passwordError, setPasswordError] = useState<string | undefined>();
+  const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  function onMobileChange(text: string): void {
+    setMobileNumber(text);
+    if (mobileError !== undefined) {
+      setMobileError(validateLoginMobile(text));
+    }
+  }
+
+  function onPasswordChange(text: string): void {
+    setPassword(text);
+    if (passwordError !== undefined) {
+      setPasswordError(validateLoginPassword(text));
+    }
+  }
+
   async function onSubmit(): Promise<void> {
-    setError(null);
+    const nextMobileError = validateLoginMobile(mobileNumber);
+    const nextPasswordError = validateLoginPassword(password);
+    setMobileError(nextMobileError);
+    setPasswordError(nextPasswordError);
+    if (nextMobileError || nextPasswordError) {
+      setFormError(null);
+      return;
+    }
+
+    setFormError(null);
     setSubmitting(true);
     try {
-      await signIn({ mobileNumber: mobileNumber.trim(), password });
+      await signIn({
+        mobileNumber: loginMobileForApi(mobileNumber),
+        password,
+      });
       // Navigation to /home is handled by the root navigator on status change.
     } catch (err) {
-      setError(
-        err instanceof ApiRequestError
-          ? err.message
-          : 'Something went wrong. Please try again.',
-      );
+      setFormError(mapLoginApiError(err));
     } finally {
       setSubmitting(false);
     }
@@ -52,17 +96,20 @@ export default function LoginScreen(): React.ReactElement {
           <TextInput
             label="Mobile number"
             value={mobileNumber}
-            onChangeText={setMobileNumber}
+            onChangeText={onMobileChange}
             keyboardType="phone-pad"
             autoCapitalize="none"
+            maxLength={10}
             placeholder="Enter Mobile Number"
+            error={mobileError}
           />
           <TextInput
             label="Password"
             value={password}
-            onChangeText={setPassword}
+            onChangeText={onPasswordChange}
             secureTextEntry={!showPassword}
             placeholder="••••••••"
+            error={passwordError}
             rightAccessory={
               <PasswordToggle
                 visible={showPassword}
@@ -75,17 +122,13 @@ export default function LoginScreen(): React.ReactElement {
             Forgot password?
           </Link>
 
-          {error ? (
+          {formError ? (
             <View className="rounded-lg bg-error-container px-4 py-3">
-              <Text className="font-sans text-sm text-on-error-container">{error}</Text>
+              <Text className="font-sans text-sm text-on-error-container">{formError}</Text>
             </View>
           ) : null}
 
-          <Button
-            onPress={() => void onSubmit()}
-            disabled={submitting}
-            className="mt-2 h-14"
-          >
+          <Button onPress={() => void onSubmit()} disabled={submitting} className="mt-2 h-14">
             {submitting ? (
               <ActivityIndicator color="#ffffff" />
             ) : (

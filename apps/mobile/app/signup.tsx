@@ -208,7 +208,7 @@ export default function SignupScreen(): React.ReactElement {
 
   return (
     <SafeAreaView className="flex-1 bg-surface" edges={['top']}>
-      <View className="flex-row items-center gap-3 border-b border-[#F1F1F1] px-4 py-3">
+      <View className="flex-row items-center gap-3 px-4 py-3">
         <Pressable
           onPress={() => router.back()}
           className="h-10 w-10 items-center justify-center rounded-full active:bg-black/5"

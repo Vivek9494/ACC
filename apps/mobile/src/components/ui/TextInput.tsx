@@ -23,6 +23,8 @@ export interface TextInputProps extends RNTextInputProps {
   leadingIcon?: ReactNode;
   /** Rendered inside the field on the right (e.g. password visibility toggle). */
   rightAccessory?: ReactNode;
+  /** When set, shows red border and message below the field. */
+  error?: string;
   containerClassName?: string;
 }
 
@@ -36,6 +38,7 @@ export const TextInput = forwardRef<RNTextInput, TextInputProps>(function TextIn
     labelVariant = 'brand',
     leadingIcon,
     rightAccessory,
+    error,
     className,
     containerClassName,
     style,
@@ -44,11 +47,14 @@ export const TextInput = forwardRef<RNTextInput, TextInputProps>(function TextIn
   },
   ref,
 ) {
-  const hasChrome = Boolean(label || leadingIcon || rightAccessory);
-  const inputClassName = mergeFieldClassName(className, {
+  const hasChrome = Boolean(label || leadingIcon || rightAccessory || error);
+  let inputClassName = mergeFieldClassName(className, {
     hasLeadingIcon: Boolean(leadingIcon),
     hasTrailingAccessory: Boolean(rightAccessory),
   });
+  if (error) {
+    inputClassName = inputClassName.replace(/\bborder-\[#F1F1F1\]/, 'border-error');
+  }
 
   const input = (
     <RNTextInput
@@ -85,6 +91,7 @@ export const TextInput = forwardRef<RNTextInput, TextInputProps>(function TextIn
     <View className={containerClassName}>
       {label ? <Text className={labelClassName(labelVariant)}>{label}</Text> : null}
       {fieldBody}
+      {error ? <Text className="ml-1 mt-1 font-sans text-sm text-error">{error}</Text> : null}
     </View>
   );
 });

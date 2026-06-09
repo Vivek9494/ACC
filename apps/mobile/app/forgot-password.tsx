@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
@@ -7,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { FormField } from '../src/components/FormField';
 import { ApiRequestError, forgotPassword } from '../src/lib/api';
+import { FIELD_ORANGE } from '@/components/ui/fieldStyles';
 
 export default function ForgotPasswordScreen(): React.ReactElement {
   const router = useRouter();
@@ -35,11 +37,23 @@ export default function ForgotPasswordScreen(): React.ReactElement {
 
   return (
     <SafeAreaView className="flex-1 bg-surface">
-      <ScrollView contentContainerClassName="flex-grow px-6 py-12" keyboardShouldPersistTaps="handled">
-        <Pressable onPress={() => router.back()} className="mb-6 self-start">
-          <Text className="font-sans-medium text-sm text-primary">← Back</Text>
+      <View className="flex-row items-center gap-3 px-4 py-3">
+        <Pressable
+          onPress={() => router.back()}
+          className="h-10 w-10 items-center justify-center rounded-full active:bg-black/5"
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+        >
+          <Ionicons name="arrow-back" size={24} color={FIELD_ORANGE} />
         </Pressable>
-
+        <Text className="font-sans-bold text-xl text-[#1A1A1A]">Welcome</Text>
+      </View>
+  
+      <ScrollView
+        contentContainerClassName="px-4 pb-12 pt-6"
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         <View className="gap-2">
           <Text className="font-sans-bold text-3xl text-on-surface">Forgot password</Text>
           <Text className="font-sans text-base text-on-surface-variant">
@@ -54,7 +68,7 @@ export default function ForgotPasswordScreen(): React.ReactElement {
             onChangeText={setMobileNumber}
             keyboardType="phone-pad"
             autoCapitalize="none"
-            placeholder="+1 555 000 0000"
+            placeholder="0000000000"
           />
 
           {error ? (
