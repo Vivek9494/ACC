@@ -11,6 +11,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { Button } from '../../../src/components/ui/Button';
 import { Text } from '../../../src/components/ui/Text';
+import { FIELD_ORANGE } from '../../../src/components/ui/fieldStyles';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { LiveScorecard, type NameResolver } from '../../../src/components/LiveScorecard';
@@ -176,7 +177,7 @@ export default function ScorerDashboardScreen(): React.ReactElement {
   if (loading) {
     return (
       <SafeAreaView className="flex-1 items-center justify-center bg-surface">
-        <ActivityIndicator color="#a04100" />
+        <ActivityIndicator color={FIELD_ORANGE} />
       </SafeAreaView>
     );
   }

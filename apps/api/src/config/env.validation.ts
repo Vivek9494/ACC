@@ -26,6 +26,11 @@ export class EnvironmentVariables {
   @Max(65535)
   PORT = 3000;
 
+  /** HTTP bind address; 0.0.0.0 allows Expo Go on a physical device on the same LAN. */
+  @IsOptional()
+  @IsString()
+  HOST?: string;
+
   @IsString()
   DATABASE_URL!: string;
 

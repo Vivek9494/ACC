@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 
-/** App orange used for field icons and accents. */
-export const FIELD_ORANGE = '#F37021';
+/** Mirrors tailwind `primary` — use for non-className APIs (ActivityIndicator, Ionicons). */
+export const FIELD_ORANGE = '#FF6B00';
 
 export const INPUT_SHADOW_STYLE = {
   shadowColor: '#000',

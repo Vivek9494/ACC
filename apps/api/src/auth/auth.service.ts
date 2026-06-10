@@ -3,10 +3,14 @@ import {
   type AuthResponse,
   type AuthTokens,
   type AuthUser,
+  INVALID_POSTAL_CODE_MESSAGE,
+  isValidCanadianPostalCode,
   LOGIN_RATE_LIMIT,
   MIN_SIGNUP_AGE,
   MOBILE_NUMBER_EXISTS_MESSAGE,
+  normalizeCanadianPostalCode,
   REFRESH_IDLE_DAYS,
+  SIGNUP_VALIDATION_MESSAGES,
 } from '@acc/types';
 import {
   BadRequestException,
@@ -60,7 +64,7 @@ export class AuthService {
     const dob = new Date(dto.dateOfBirth);
     if (this.ageInYears(dob, new Date()) < MIN_SIGNUP_AGE) {
       throw new BadRequestException({
-        message: `You must be at least ${MIN_SIGNUP_AGE} years old to register`,
+        message: SIGNUP_VALIDATION_MESSAGES.dateOfBirth.underage,
         error: AuthErrorCode.Underage,
       });
     }
@@ -76,6 +80,19 @@ export class AuthService {
       });
     }
 
+    const address = dto.address?.trim() || null;
+    const postalCodeRaw = dto.postalCode?.trim() ?? '';
+    let postalCode: string | null = null;
+    if (postalCodeRaw) {
+      if (!isValidCanadianPostalCode(postalCodeRaw)) {
+        throw new BadRequestException({
+          message: INVALID_POSTAL_CODE_MESSAGE,
+          error: 'INVALID_POSTAL_CODE',
+        });
+      }
+      postalCode = normalizeCanadianPostalCode(postalCodeRaw);
+    }
+
     const passwordHash = await bcrypt.hash(dto.password, BCRYPT_SALT_ROUNDS);
 
     const user = await this.prisma.user.create({
@@ -83,8 +100,10 @@ export class AuthService {
         firstName: dto.firstName,
         lastName: dto.lastName,
         mobileNumber: dto.mobileNumber,
-        email: dto.email,
+        email: dto.email?.trim() || '',
         dateOfBirth: dob,
+        address,
+        postalCode,
         centerId: dto.centerId,
         jerseyNumber: dto.jerseyNumber ?? 0,
         profilePhotoUrl: dto.profilePhotoUrl ?? null,

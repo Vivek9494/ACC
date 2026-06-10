@@ -1,14 +1,25 @@
 import { Ionicons } from '@expo/vector-icons';
 import {
-  MIN_SIGNUP_AGE,
-  PASSWORD_MIN_LENGTH,
-  type CenterSummary,
-  type ProvinceSummary,
+  CANADIAN_POSTAL_CODE_DISPLAY_MAX_LENGTH,
+  SIGNUP_MOBILE_LENGTH,
+  SIGNUP_NAME_MAX_LENGTH,
+  formatCanadianPostalCodeInput,
+  normalizeCanadianPostalCode,
+  formatSignupAddressInput,
+  formatSignupMobileInput,
+  formatSignupNameInput,
+  type SignupFieldKey,
   type SignupRequest,
 } from '@acc/types';
 import { Link, useRouter } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
+import { useCallback, useMemo, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  type LayoutChangeEvent,
+  Pressable,
+  ScrollView,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '../src/components/ui/Button';
@@ -20,32 +31,33 @@ import { SectionCard } from '../src/components/ui/SectionCard';
 import { Select } from '../src/components/ui/Select';
 import { Text } from '../src/components/ui/Text';
 import { TextInput } from '../src/components/ui/TextInput';
-import { ApiRequestError, getCenters, getProvinces } from '../src/lib/api';
+import { ApiRequestError } from '../src/lib/api';
 import { useAuth } from '../src/lib/auth-context';
-
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-
-function ageInYears(dob: Date, today: Date): number {
-  let age = today.getFullYear() - dob.getFullYear();
-  const monthDiff = today.getMonth() - dob.getMonth();
-  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
-    age -= 1;
-  }
-  return age;
-}
+import {
+  firstSignupFieldError,
+  mapApiErrorsToSignupFields,
+  validateSignupForm,
+  type SignupFieldErrors,
+} from '../src/lib/signup-form-validation';
+import { useSignupGeography } from '../src/lib/signup-geography';
 
 export default function SignupScreen(): React.ReactElement {
   const router = useRouter();
   const { register } = useAuth();
+  const scrollRef = useRef<ScrollView>(null);
+  const fieldOffsets = useRef<Partial<Record<SignupFieldKey, number>>>({});
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [mobileNumber, setMobileNumber] = useState('');
   const [email, setEmail] = useState('');
   const [dateOfBirth, setDateOfBirth] = useState('');
+  const [address, setAddress] = useState('');
+  const [postalCode, setPostalCode] = useState('');
   const [province, setProvince] = useState<string | null>(null);
   const [centerId, setCenterId] = useState<string | null>(null);
   const [profilePhotoUri, setProfilePhotoUri] = useState<string | null>(null);
+  const [profilePhotoError, setProfilePhotoError] = useState<string | null>(null);
   const [emergencyContactName, setEmergencyContactName] = useState('');
   const [emergencyContactNumber, setEmergencyContactNumber] = useState('');
   const [password, setPassword] = useState('');
@@ -53,14 +65,11 @@ export default function SignupScreen(): React.ReactElement {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const [provinces, setProvinces] = useState<ProvinceSummary[]>([]);
-  const [centers, setCenters] = useState<CenterSummary[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [provincesError, setProvincesError] = useState<string | null>(null);
-  const [centersError, setCentersError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<SignupFieldErrors>({});
+  const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [loadingProvinces, setLoadingProvinces] = useState(true);
-  const [loadingCenters, setLoadingCenters] = useState(false);
+
+  const { provinces, centers, provinceField, centerField } = useSignupGeography(province);
 
   const provinceOptions = useMemo(
     () => provinces.map((p) => ({ value: p.id, label: p.name })),
@@ -71,139 +80,122 @@ export default function SignupScreen(): React.ReactElement {
     [centers],
   );
 
-  useEffect(() => {
-    let cancelled = false;
-    setLoadingProvinces(true);
-    setProvincesError(null);
-    getProvinces()
-      .then((list) => {
-        if (cancelled) return;
-        setProvinces(list);
-        if (list.length === 0) {
-          setProvincesError('No provinces available');
-        }
-      })
-      .catch((err: unknown) => {
-        console.error('Failed to load provinces for signup', err);
-        if (!cancelled) {
-          setProvinces([]);
-          setProvincesError("Couldn't load provinces");
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoadingProvinces(false);
-      });
-    return () => {
-      cancelled = true;
-    };
+  const clearFieldError = useCallback((key: SignupFieldKey) => {
+    setFieldErrors((prev) => {
+      if (!prev[key]) {
+        return prev;
+      }
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
   }, []);
 
-  useEffect(() => {
-    if (!province) {
-      setCenters([]);
-      setCenterId(null);
-      setCentersError(null);
-      setLoadingCenters(false);
-      return;
+  const registerFieldLayout = useCallback((key: SignupFieldKey, event: LayoutChangeEvent) => {
+    fieldOffsets.current[key] = event.nativeEvent.layout.y;
+  }, []);
+
+  const scrollToField = useCallback((key: SignupFieldKey) => {
+    const y = fieldOffsets.current[key];
+    if (y !== undefined) {
+      scrollRef.current?.scrollTo({ y: Math.max(0, y - 16), animated: true });
     }
-    let cancelled = false;
-    setLoadingCenters(true);
-    setCentersError(null);
-    getCenters(province)
-      .then((list) => {
-        if (cancelled) return;
-        setCenters(list);
-        if (list.length === 0) {
-          setCentersError('No centers available');
-        }
-      })
-      .catch((err: unknown) => {
-        console.error('Failed to load centers for signup', err);
-        if (!cancelled) {
-          setCenters([]);
-          setCentersError("Couldn't load centers");
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoadingCenters(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [province]);
+  }, []);
 
   function onProvinceChange(next: string): void {
     setProvince(next);
     setCenterId(null);
+    clearFieldError('province');
+    clearFieldError('center');
   }
 
-  function validate(): string | null {
-    if (
-      !firstName.trim() ||
-      !lastName.trim() ||
-      !mobileNumber.trim() ||
-      !email.trim() ||
-      !emergencyContactName.trim() ||
-      !emergencyContactNumber.trim()
-    ) {
-      return 'Please fill in all required fields.';
-    }
-    if (!DATE_RE.test(dateOfBirth)) {
-      return 'Date of birth must be in YYYY-MM-DD format.';
-    }
-    const dob = new Date(dateOfBirth);
-    if (ageInYears(dob, new Date()) < MIN_SIGNUP_AGE) {
-      return `You must be at least ${MIN_SIGNUP_AGE} years old to register.`;
-    }
-    if (!province) {
-      return 'Please select your province.';
-    }
-    if (provincesError || provinces.length === 0) {
-      return provincesError ?? 'No provinces available';
-    }
-    if (!centerId) {
-      return centersError ?? (centers.length === 0
-        ? 'No centers are available in the selected province yet.'
-        : 'Please select your center.');
-    }
-    if (password.length < PASSWORD_MIN_LENGTH || !/[0-9]/.test(password)) {
-      return `Password must be at least ${PASSWORD_MIN_LENGTH} characters and include a digit.`;
-    }
-    if (password !== confirmPassword) {
-      return 'Passwords do not match.';
-    }
-    return null;
+  function onPostalCodeChange(text: string): void {
+    setPostalCode(formatCanadianPostalCodeInput(text));
+    clearFieldError('postalCode');
   }
 
   async function onSubmit(): Promise<void> {
-    const validationError = validate();
-    if (validationError) {
-      setError(validationError);
+    const errors = validateSignupForm({
+      profilePhotoError,
+      firstName,
+      lastName,
+      mobileNumber,
+      email,
+      dateOfBirth,
+      postalCode,
+      province,
+      centerId,
+      password,
+      confirmPassword,
+      emergencyContactName,
+      emergencyContactNumber,
+    });
+
+    setFieldErrors(errors);
+    const firstError = firstSignupFieldError(errors);
+    if (firstError) {
+      setFormError(null);
+      scrollToField(firstError);
       return;
     }
-    setError(null);
+
+    setFormError(null);
     setSubmitting(true);
+    const trimmedPostalCode = postalCode.trim();
+    const trimmedEmail = email.trim();
     try {
       const payload: SignupRequest = {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
-        mobileNumber: mobileNumber.trim(),
-        email: email.trim(),
+        mobileNumber: mobileNumber.replace(/\D/g, ''),
         dateOfBirth,
         centerId: centerId as string,
         emergencyContactName: emergencyContactName.trim(),
-        emergencyContactNumber: emergencyContactNumber.trim(),
+        emergencyContactNumber: emergencyContactNumber.replace(/\D/g, ''),
         password,
-        // profilePhotoUrl omitted until S3 upload is wired; local URI kept in UI only.
+        ...(trimmedEmail ? { email: trimmedEmail } : {}),
+        ...(address.trim() ? { address: address.trim() } : {}),
+        ...(trimmedPostalCode
+          ? { postalCode: normalizeCanadianPostalCode(trimmedPostalCode) }
+          : {}),
       };
       await register(payload);
     } catch (err) {
-      setError(
+      if (err instanceof ApiRequestError) {
+        const mapped = mapApiErrorsToSignupFields(err);
+        if (Object.keys(mapped).length > 0) {
+          setFieldErrors((prev) => ({ ...prev, ...mapped }));
+          const apiFirst = firstSignupFieldError(mapped);
+          if (apiFirst) {
+            scrollToField(apiFirst);
+          }
+          return;
+        }
+      }
+      setFormError(
         err instanceof ApiRequestError ? err.message : 'Something went wrong. Please try again.',
       );
     } finally {
       setSubmitting(false);
     }
+  }
+
+  const provinceSelectError =
+    fieldErrors.province ??
+    (provinceField.errorType === 'network' || provinceField.errorType === 'empty'
+      ? provinceField.errorMessage
+      : null);
+
+  const centerSelectError =
+    fieldErrors.center ??
+    (province && (centerField.errorType === 'network' || centerField.errorType === 'empty')
+      ? centerField.errorMessage
+      : null);
+
+  function fieldWrap(key: SignupFieldKey, children: React.ReactNode): React.ReactElement {
+    return (
+      <View onLayout={(event) => registerFieldLayout(key, event)}>{children}</View>
+    );
   }
 
   return (
@@ -221,160 +213,266 @@ export default function SignupScreen(): React.ReactElement {
       </View>
 
       <ScrollView
+        ref={scrollRef}
         contentContainerClassName="px-4 pb-12 pt-6"
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
         <View className="mb-8 gap-2">
-          <Text className="font-sans-bold text-3xl text-[#F37021]">Join the Club</Text>
+          <Text className="font-sans-bold text-3xl text-primary">Join the Club</Text>
           <Text className="font-sans text-base leading-6 text-[#5A4136]">
             Complete your profile to start your journey with Hariprabodham Sports Club.
           </Text>
         </View>
 
         <View className="gap-5">
-          <ProfilePhotoField
-            label="Profile Photo"
-            uri={profilePhotoUri}
-            onChange={setProfilePhotoUri}
-          />
+          {fieldWrap(
+            'profilePhoto',
+            <ProfilePhotoField
+              label="Profile Photo"
+              uri={profilePhotoUri}
+              onChange={setProfilePhotoUri}
+              onValidationError={setProfilePhotoError}
+              error={fieldErrors.profilePhoto ?? profilePhotoError ?? undefined}
+            />,
+          )}
 
           <View className="flex-row gap-3">
-            <View className="flex-1">
-              <TextInput
-                label="First Name"
-                value={firstName}
-                onChangeText={setFirstName}
-                placeholder="e.g. Rahul"
-                autoCapitalize="words"
-              />
-            </View>
-            <View className="flex-1">
-              <TextInput
-                label="Last Name"
-                value={lastName}
-                onChangeText={setLastName}
-                placeholder="e.g. Sharma"
-                autoCapitalize="words"
-              />
-            </View>
+            {fieldWrap(
+              'firstName',
+              <View className="flex-1">
+                <TextInput
+                  label="First Name"
+                  value={firstName}
+                  onChangeText={(text) => {
+                    setFirstName(formatSignupNameInput(text));
+                    clearFieldError('firstName');
+                  }}
+                  placeholder="e.g. Rahul"
+                  autoCapitalize="words"
+                  maxLength={SIGNUP_NAME_MAX_LENGTH}
+                  error={fieldErrors.firstName}
+                />
+              </View>,
+            )}
+            {fieldWrap(
+              'lastName',
+              <View className="flex-1">
+                <TextInput
+                  label="Last Name"
+                  value={lastName}
+                  onChangeText={(text) => {
+                    setLastName(formatSignupNameInput(text));
+                    clearFieldError('lastName');
+                  }}
+                  placeholder="e.g. Sharma"
+                  autoCapitalize="words"
+                  maxLength={SIGNUP_NAME_MAX_LENGTH}
+                  error={fieldErrors.lastName}
+                />
+              </View>,
+            )}
           </View>
 
-          <TextInput
-            label="Mobile Number"
-            value={mobileNumber}
-            onChangeText={setMobileNumber}
-            keyboardType="phone-pad"
-            autoCapitalize="none"
-            placeholder="0000000000"
-            leadingIcon={<Ionicons name="call-outline" size={20} color={FIELD_ORANGE} />}
-          />
-
-          <TextInput
-            label="Email"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            placeholder="rahul@example.com"
-            leadingIcon={<Ionicons name="mail-outline" size={20} color={FIELD_ORANGE} />}
-          />
-
-          <DateField
-            label="Date of Birth"
-            value={dateOfBirth}
-            onChange={setDateOfBirth}
-          />
-
-          <Select
-            label="Province"
-            placeholder={
-              loadingProvinces
-                ? 'Loading…'
-                : provincesError ?? (provinces.length === 0 ? 'No provinces available' : 'Select Province')
-            }
-            value={province}
-            options={provinceOptions}
-            onChange={onProvinceChange}
-            disabled={loadingProvinces || Boolean(provincesError) || provinces.length === 0}
-          />
-          {provincesError ? (
-            <Text className="-mt-3 font-sans text-sm text-error">{provincesError}</Text>
-          ) : null}
-
-          <Select
-            label="Center"
-            placeholder={
-              !province
-                ? 'Select Province first'
-                : loadingCenters
-                  ? 'Loading…'
-                  : centersError ??
-                    (centers.length === 0 ? 'No centers available' : 'Select Center')
-            }
-            value={centerId}
-            options={centerSelectOptions}
-            onChange={setCenterId}
-            disabled={!province || loadingCenters || Boolean(centersError) || centers.length === 0}
-          />
-          {centersError && province ? (
-            <Text className="-mt-3 font-sans text-sm text-error">{centersError}</Text>
-          ) : null}
-
-          <TextInput
-            label="Password"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry={!showPassword}
-            placeholder="••••••••"
-            leadingIcon={<Ionicons name="lock-closed-outline" size={20} color={FIELD_ORANGE} />}
-            rightAccessory={
-              <PasswordToggle
-                visible={showPassword}
-                onToggle={() => setShowPassword((v) => !v)}
-              />
-            }
-          />
-
-          <TextInput
-            label="Confirm Password"
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
-            secureTextEntry={!showConfirmPassword}
-            placeholder="••••••••"
-            leadingIcon={<Ionicons name="lock-closed-outline" size={20} color={FIELD_ORANGE} />}
-            rightAccessory={
-              <PasswordToggle
-                visible={showConfirmPassword}
-                onToggle={() => setShowConfirmPassword((v) => !v)}
-              />
-            }
-          />
-
-          <SectionCard
-            icon={<Ionicons name="alert-circle" size={20} color={FIELD_ORANGE} />}
-            heading="Emergency Contact"
-          >
+          {fieldWrap(
+            'mobileNumber',
             <TextInput
-              label="Contact Name"
-              value={emergencyContactName}
-              onChangeText={setEmergencyContactName}
-              placeholder="Relation / Name"
-            />
-            <TextInput
-              label="Contact Number"
-              value={emergencyContactNumber}
-              onChangeText={setEmergencyContactNumber}
+              label="Mobile Number"
+              value={mobileNumber}
+              onChangeText={(text) => {
+                setMobileNumber(formatSignupMobileInput(text));
+                clearFieldError('mobileNumber');
+              }}
               keyboardType="phone-pad"
               autoCapitalize="none"
               placeholder="0000000000"
+              maxLength={SIGNUP_MOBILE_LENGTH}
               leadingIcon={<Ionicons name="call-outline" size={20} color={FIELD_ORANGE} />}
-            />
-          </SectionCard>
+              error={fieldErrors.mobileNumber}
+            />,
+          )}
 
-          {error ? (
+          {fieldWrap(
+            'email',
+            <TextInput
+              label="Email"
+              value={email}
+              onChangeText={(text) => {
+                setEmail(text);
+                clearFieldError('email');
+              }}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              placeholder="rahul@example.com"
+              leadingIcon={<Ionicons name="mail-outline" size={20} color={FIELD_ORANGE} />}
+              error={fieldErrors.email}
+            />,
+          )}
+
+          {fieldWrap(
+            'dateOfBirth',
+            <DateField
+              label="Date of Birth"
+              value={dateOfBirth}
+              onChange={(value) => {
+                setDateOfBirth(value);
+                clearFieldError('dateOfBirth');
+              }}
+              error={fieldErrors.dateOfBirth}
+            />,
+          )}
+
+          {fieldWrap(
+            'address',
+            <TextInput
+              label="Address"
+              value={address}
+              onChangeText={(text) => setAddress(formatSignupAddressInput(text))}
+              placeholder="Street address"
+            />,
+          )}
+
+          {fieldWrap(
+            'postalCode',
+            <TextInput
+              label="Postal Code"
+              value={postalCode}
+              onChangeText={onPostalCodeChange}
+              placeholder="A1A 1A1"
+              autoCapitalize="characters"
+              autoCorrect={false}
+              maxLength={CANADIAN_POSTAL_CODE_DISPLAY_MAX_LENGTH}
+              error={fieldErrors.postalCode}
+            />,
+          )}
+
+          {fieldWrap(
+            'province',
+            <Select
+              label="Province"
+              placeholder="Select Province"
+              value={province}
+              options={provinceOptions}
+              onChange={onProvinceChange}
+              loading={provinceField.loading}
+              error={provinceSelectError}
+              onRetry={provinceField.errorType === 'network' ? provinceField.retry : undefined}
+              emptyMessage={
+                provinceField.errorType === 'network'
+                  ? provinceField.errorMessage ?? 'No options available.'
+                  : 'No provinces available.'
+              }
+              disabled={provinceField.errorType === 'empty'}
+            />,
+          )}
+
+          {fieldWrap(
+            'center',
+            <Select
+              label="Center"
+              placeholder={province ? 'Select Center' : 'Select province first'}
+              value={centerId}
+              options={centerSelectOptions}
+              onChange={(value) => {
+                setCenterId(value);
+                clearFieldError('center');
+              }}
+              loading={Boolean(province) && centerField.loading}
+              error={centerSelectError}
+              onRetry={
+                province && centerField.errorType === 'network' ? centerField.retry : undefined
+              }
+              emptyMessage={
+                centerField.errorType === 'network'
+                  ? centerField.errorMessage ?? 'No options available.'
+                  : 'No centers available in this province.'
+              }
+              disabled={!province || centerField.errorType === 'empty'}
+            />,
+          )}
+
+          {fieldWrap(
+            'password',
+            <TextInput
+              label="Password"
+              value={password}
+              onChangeText={(text) => {
+                setPassword(text);
+                clearFieldError('password');
+              }}
+              secureTextEntry={!showPassword}
+              placeholder="••••••••"
+              leadingIcon={<Ionicons name="lock-closed-outline" size={20} color={FIELD_ORANGE} />}
+              rightAccessory={
+                <PasswordToggle
+                  visible={showPassword}
+                  onToggle={() => setShowPassword((v) => !v)}
+                />
+              }
+              error={fieldErrors.password}
+            />,
+          )}
+
+          {fieldWrap(
+            'confirmPassword',
+            <TextInput
+              label="Confirm Password"
+              value={confirmPassword}
+              onChangeText={(text) => {
+                setConfirmPassword(text);
+                clearFieldError('confirmPassword');
+              }}
+              secureTextEntry={!showConfirmPassword}
+              placeholder="••••••••"
+              leadingIcon={<Ionicons name="lock-closed-outline" size={20} color={FIELD_ORANGE} />}
+              rightAccessory={
+                <PasswordToggle
+                  visible={showConfirmPassword}
+                  onToggle={() => setShowConfirmPassword((v) => !v)}
+                />
+              }
+              error={fieldErrors.confirmPassword}
+            />,
+          )}
+
+          <View onLayout={(event) => registerFieldLayout('emergencyContactName', event)}>
+            <SectionCard
+              icon={<Ionicons name="alert-circle" size={20} color={FIELD_ORANGE} />}
+              heading="Emergency Contact"
+            >
+              <TextInput
+                label="Contact Name"
+                value={emergencyContactName}
+                onChangeText={(text) => {
+                  setEmergencyContactName(formatSignupNameInput(text));
+                  clearFieldError('emergencyContactName');
+                }}
+                placeholder="Relation / Name"
+                maxLength={SIGNUP_NAME_MAX_LENGTH}
+                error={fieldErrors.emergencyContactName}
+              />
+              <View onLayout={(event) => registerFieldLayout('emergencyContactNumber', event)}>
+                <TextInput
+                  label="Contact Number"
+                  value={emergencyContactNumber}
+                  onChangeText={(text) => {
+                    setEmergencyContactNumber(formatSignupMobileInput(text));
+                    clearFieldError('emergencyContactNumber');
+                  }}
+                  keyboardType="phone-pad"
+                  autoCapitalize="none"
+                  placeholder="0000000000"
+                  maxLength={SIGNUP_MOBILE_LENGTH}
+                  leadingIcon={<Ionicons name="call-outline" size={20} color={FIELD_ORANGE} />}
+                  error={fieldErrors.emergencyContactNumber}
+                />
+              </View>
+            </SectionCard>
+          </View>
+
+          {formError ? (
             <View className="rounded-xl bg-error-container px-4 py-3">
-              <Text className="font-sans text-sm text-on-error-container">{error}</Text>
+              <Text className="font-sans text-sm text-on-error-container">{formError}</Text>
             </View>
           ) : null}
 

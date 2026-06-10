@@ -80,9 +80,14 @@ export interface SignupRequest {
   firstName: string;
   lastName: string;
   mobileNumber: string;
-  email: string;
+  /** Optional; omitted or empty when not provided. */
+  email?: string;
   /** ISO 8601 date (YYYY-MM-DD). Stored in UTC. */
   dateOfBirth: string;
+  /** Optional street address (product extension; not in spec §3.1). */
+  address?: string;
+  /** Optional Canadian postal code (A1A 1A1). Normalized on save. */
+  postalCode?: string;
   centerId: string;
   /** Optional at signup; defaults to 0 when omitted. */
   jerseyNumber?: number;

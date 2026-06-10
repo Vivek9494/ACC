@@ -1,12 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image, Pressable, View } from 'react-native';
-import { BallType, type TournamentSummary } from '@acc/types';
+import type { TournamentSummary } from '@acc/types';
 
 import {
   formatTournamentDateRange,
   tournamentLocation,
   tournamentStatusPill,
 } from '../../lib/tournament-display';
+import { BallTypeIcon } from './BallTypeIcon';
 import { Card } from './Card';
 import { StatusPill } from './StatusPill';
 import { Text } from './Text';
@@ -23,8 +24,6 @@ export function TournamentDashboardCard({
   onOverflowPress,
 }: TournamentDashboardCardProps): React.ReactElement {
   const pill = tournamentStatusPill(tournament.state);
-  const ballIcon =
-    tournament.ballType === BallType.Tennis ? 'tennisball-outline' : 'baseball-outline';
 
   return (
     <Card className="overflow-hidden p-0" onPress={onPress}>
@@ -72,7 +71,7 @@ export function TournamentDashboardCard({
               {formatTournamentDateRange(tournament.startAt, tournament.endAt)}
             </Text>
           </View>
-          <Ionicons name={ballIcon} size={18} color="#a04100" />
+          <BallTypeIcon ballType={tournament.ballType} size={24} />
         </View>
       </View>
     </Card>

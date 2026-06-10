@@ -31,6 +31,17 @@ const AUTH_ROUTES = new Set([
   'reset-password',
 ]);
 
+/** Post-login home route by role. */
+function homeRouteForRole(role: UserRole | undefined): '/admin' | '/club-manager' | '/home' {
+  if (role === UserRole.Admin) {
+    return '/admin';
+  }
+  if (role === UserRole.ClubManager) {
+    return '/club-manager';
+  }
+  return '/home';
+}
+
 /** Redirects between the auth screens and the app based on session state. */
 function RootNavigator(): React.ReactElement {
   const { status, user } = useAuth();
@@ -43,7 +54,7 @@ function RootNavigator(): React.ReactElement {
     }
     const onAuthRoute = AUTH_ROUTES.has(segments[0]);
     if (status === 'authenticated' && onAuthRoute) {
-      router.replace(user?.role === UserRole.Admin ? '/admin' : '/home');
+      router.replace(homeRouteForRole(user?.role));
     } else if (status === 'unauthenticated' && !onAuthRoute) {
       router.replace('/login');
     }
@@ -73,6 +84,7 @@ function RootNavigator(): React.ReactElement {
       <Stack.Screen name="matches/[matchId]/scorecard" />
       <Stack.Screen name="geofence-poc" />
       <Stack.Screen name="admin" options={{ headerShown: false }} />
+      <Stack.Screen name="club-manager" options={{ headerShown: false }} />
     </Stack>
   );
 }

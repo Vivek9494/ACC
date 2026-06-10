@@ -35,9 +35,10 @@ module.exports = {
           variant: '#e2bfb0',
         },
         primary: {
-          DEFAULT: '#a04100',
-          container: '#ff6b00',
-          tint: '#a04100',
+          DEFAULT: '#FF6B00',
+          /** Soft peach tint — SectionCard, profile photo tile. */
+          container: '#FDF1EA',
+          tint: '#FF6B00',
         },
         'on-primary': {
           DEFAULT: '#ffffff',

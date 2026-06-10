@@ -1,8 +1,16 @@
 import { Ionicons } from '@expo/vector-icons';
+import { cssInterop } from 'nativewind';
 import { Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Text } from './Text';
+
+cssInterop(Ionicons, {
+  className: {
+    target: 'style',
+    nativeStyleToProp: { color: true },
+  },
+});
 
 export interface BottomTabItem {
   key: string;
@@ -17,7 +25,7 @@ export interface BottomTabBarProps {
 }
 
 /**
- * Configurable bottom tab bar — active tab uses a filled primary-orange pill with
+ * Configurable bottom tab bar — active tab uses a solid primary-orange pill with
  * white icon and label (dashboard design).
  */
 export function BottomTabBar({
@@ -41,12 +49,16 @@ export function BottomTabBar({
               onPress={() => onTabPress(tab.key)}
               accessibilityRole="button"
               accessibilityState={{ selected: active }}
-              className={`flex-1 items-center py-1 ${active ? 'rounded-xl bg-primary px-1' : ''}`}
+              className={
+                active
+                  ? 'flex-1 items-center rounded-xl bg-primary px-1 py-1'
+                  : 'flex-1 items-center bg-transparent py-1'
+              }
             >
               <Ionicons
                 name={tab.icon}
                 size={22}
-                color={active ? '#ffffff' : '#5a4136'}
+                className={active ? 'text-on-primary' : 'text-on-surface-variant'}
               />
               <Text
                 className={`mt-0.5 font-sans-semibold text-[10px] ${

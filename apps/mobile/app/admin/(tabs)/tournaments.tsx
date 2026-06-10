@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Text } from '../../../src/components/ui/Text';
 import { TournamentDashboardCard } from '../../../src/components/ui/TournamentDashboardCard';
+import { FIELD_ORANGE } from '../../../src/components/ui/fieldStyles';
 import { ApiRequestError, listTournaments } from '../../../src/lib/api';
 
 export default function AdminTournamentsTabScreen(): React.ReactElement {
@@ -46,7 +47,7 @@ export default function AdminTournamentsTabScreen(): React.ReactElement {
       </View>
       <ScrollView contentContainerClassName="gap-4 px-4 py-4 pb-8">
         {loading ? (
-          <ActivityIndicator color="#a04100" className="py-12" />
+          <ActivityIndicator color={FIELD_ORANGE} className="py-12" />
         ) : error ? (
           <View className="rounded-xl bg-error-container px-4 py-3">
             <Text className="font-sans text-sm text-on-error-container">{error}</Text>

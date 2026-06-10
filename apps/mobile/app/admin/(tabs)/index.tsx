@@ -15,6 +15,7 @@ import { Card } from '../../../src/components/ui/Card';
 import { StatTile } from '../../../src/components/ui/StatTile';
 import { Text } from '../../../src/components/ui/Text';
 import { TournamentDashboardCard } from '../../../src/components/ui/TournamentDashboardCard';
+import { FIELD_ORANGE } from '../../../src/components/ui/fieldStyles';
 import { ApiRequestError, getAdminOverview, listTournaments } from '../../../src/lib/api';
 import { useAuth } from '../../../src/lib/auth-context';
 
@@ -110,7 +111,7 @@ export default function AdminDashboardScreen(): React.ReactElement {
                 elevation: 2,
               }}
             >
-              <Ionicons name="notifications-outline" size={22} color="#a04100" />
+              <Ionicons name="notifications-outline" size={22} color={FIELD_ORANGE} />
             </Pressable>
             {user?.profilePhotoUrl ? (
               <Image source={{ uri: user.profilePhotoUrl }} className="h-11 w-11 rounded-full" />
@@ -126,7 +127,7 @@ export default function AdminDashboardScreen(): React.ReactElement {
 
         {loading ? (
           <View className="items-center py-16">
-            <ActivityIndicator color="#a04100" />
+            <ActivityIndicator color={FIELD_ORANGE} />
           </View>
         ) : error ? (
           <View className="rounded-xl bg-error-container px-4 py-3">

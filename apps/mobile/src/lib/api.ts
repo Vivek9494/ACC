@@ -13,6 +13,7 @@ import {
   type AuthTokens,
   type AuthUser,
   type AdminOverview,
+  type ClubManagerDashboard,
   type AssignScorerRequest,
   type AvailabilitySummary,
   type CenterDetail,
@@ -62,6 +63,40 @@ import {
 } from '@acc/types';
 
 export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3001';
+
+/** Serialize fetch/network errors for logs (Error objects often print as `{}`). */
+export function describeApiError(err: unknown): string {
+  if (err instanceof Error) {
+    return err.message;
+  }
+  if (typeof err === 'string') {
+    return err;
+  }
+  try {
+    return JSON.stringify(err);
+  } catch {
+    return 'Unknown error';
+  }
+}
+
+function warnIfApiBaseUrlLooksMalformed(url: string): void {
+  if (!__DEV__) {
+    return;
+  }
+  try {
+    const parsed = new URL(url);
+    const lastLabel = parsed.hostname.split('.').pop() ?? '';
+    if (/^\d{4,5}$/.test(lastLabel) && !parsed.port) {
+      console.warn(
+        `[ACC] EXPO_PUBLIC_API_URL looks malformed (${url}). Use a colon before the port, e.g. http://192.168.x.x:3001`,
+      );
+    }
+  } catch {
+    console.warn(`[ACC] EXPO_PUBLIC_API_URL is not a valid URL: ${url}`);
+  }
+}
+
+warnIfApiBaseUrlLooksMalformed(API_BASE_URL);
 
 let authToken: string | null = null;
 
@@ -219,6 +254,10 @@ export function deleteCenter(id: string): Promise<void> {
 
 export function getAdminOverview(): Promise<AdminOverview> {
   return apiFetch<AdminOverview>('/admin/overview');
+}
+
+export function getClubManagerDashboard(): Promise<ClubManagerDashboard> {
+  return apiFetch<ClubManagerDashboard>('/club-manager/dashboard');
 }
 
 export function signup(body: SignupRequest): Promise<AuthResponse> {

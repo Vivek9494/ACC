@@ -27,5 +27,6 @@ import { ScoringService } from './scoring.service';
     ScorecardPdfService,
     ScorecardAutoConfirmTask,
   ],
+  exports: [ScorecardReader],
 })
 export class ScoringModule {}

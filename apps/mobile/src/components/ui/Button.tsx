@@ -6,7 +6,8 @@ import { Text } from './Text';
 export type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'destructive';
 
 const VARIANT_PRESSABLE: Record<ButtonVariant, string> = {
-  primary: 'bg-primary-container',
+  /** Solid orange — main CTAs (Create Account, Log in, Save). */
+  primary: 'bg-primary',
   secondary: 'bg-primary',
   outline: 'border border-outline-variant bg-transparent',
   destructive: 'border border-[#c1121f] bg-transparent',

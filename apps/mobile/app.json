@@ -10,11 +10,16 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.atmiya.acc",
       "infoPlist": {
-        "UIBackgroundModes": ["location"]
+        "UIBackgroundModes": ["location"],
+        "NSLocalNetworkUsageDescription": "ACC connects to the development API on your local network.",
+        "NSAppTransportSecurity": {
+          "NSAllowsLocalNetworking": true
+        }
       }
     },
     "android": {
-      "package": "com.atmiya.acc"
+      "package": "com.atmiya.acc",
+      "usesCleartextTraffic": true
     },
     "plugins": [
       "expo-router",

@@ -244,6 +244,10 @@ model User {
   email                  String
   /// Stored in UTC; the 18+ rule is derived from this (§3.1).
   dateOfBirth            DateTime
+  /// Optional street address (product extension; not in spec §3.1).
+  address                String?
+  /// Optional Canadian postal code (A1A 1A1), normalized on save.
+  postalCode             String?
   centerId               String
   center                 Center    @relation(fields: [centerId], references: [id])
   jerseyNumber           Int

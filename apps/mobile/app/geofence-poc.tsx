@@ -15,6 +15,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { Button } from '../src/components/ui/Button';
 import { Text } from '../src/components/ui/Text';
+import { FIELD_ORANGE } from '../src/components/ui/fieldStyles';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
@@ -234,7 +235,7 @@ export default function GeofencePocScreen(): React.ReactElement {
           </Pressable>
         </View>
 
-        {busy ? <ActivityIndicator color="#a04100" /> : null}
+        {busy ? <ActivityIndicator color={FIELD_ORANGE} /> : null}
 
         {log.length === 0 ? (
           <Text className="font-sans text-sm text-on-surface-variant">

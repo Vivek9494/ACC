@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { Button } from '../../../src/components/ui/Button';
 import { Text } from '../../../src/components/ui/Text';
+import { FIELD_ORANGE } from '../../../src/components/ui/fieldStyles';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AvailabilityBar } from '../../../src/components/AvailabilityBar';
@@ -97,7 +98,7 @@ export default function RegisteredPlayersScreen(): React.ReactElement {
       <ScrollView contentContainerClassName="px-6 py-5 gap-4">
         {loading ? (
           <View className="items-center py-16">
-            <ActivityIndicator color="#a04100" />
+            <ActivityIndicator color={FIELD_ORANGE} />
           </View>
         ) : (
           <>

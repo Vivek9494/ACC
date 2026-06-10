@@ -23,6 +23,8 @@ function makeUser(overrides: Partial<User> = {}): User {
     mobileNumber: '+15555550100',
     email: 'test@example.com',
     dateOfBirth: new Date('1990-01-01T00:00:00.000Z'),
+    address: null,
+    postalCode: null,
     centerId: 'center-1',
     jerseyNumber: 7,
     profilePhotoUrl: null,
@@ -124,15 +126,37 @@ describe('AuthService', () => {
     tenYearsAgo.setUTCFullYear(tenYearsAgo.getUTCFullYear() - 10);
     const dateOfBirth = tenYearsAgo.toISOString().slice(0, 10);
 
-    expect.assertions(3);
+    expect.assertions(4);
     try {
       await service.signup(baseSignupDto({ dateOfBirth }));
     } catch (err) {
       expect(err).toBeInstanceOf(BadRequestException);
-      const response = (err as BadRequestException).getResponse() as { error: string };
+      const response = (err as BadRequestException).getResponse() as {
+        error: string;
+        message: string;
+      };
       expect(response.error).toBe(AuthErrorCode.Underage);
+      expect(response.message).toBe('You must be at least 18 years old');
       // center lookup must never run when the age check already failed
       expect(prisma.center.findUnique).not.toHaveBeenCalled();
+    }
+  });
+
+  it('rejects signup with an invalid postal code', async () => {
+    prisma.user.findUnique.mockResolvedValue(null);
+    prisma.center.findUnique.mockResolvedValue({ id: 'center-1', isActive: true });
+
+    expect.assertions(3);
+    try {
+      await service.signup(baseSignupDto({ postalCode: 'INVALID' }));
+    } catch (err) {
+      expect(err).toBeInstanceOf(BadRequestException);
+      const response = (err as BadRequestException).getResponse() as {
+        message: string;
+        error: string;
+      };
+      expect(response.message).toBe('Enter a valid postal code');
+      expect(response.error).toBe('INVALID_POSTAL_CODE');
     }
   });
 

@@ -23,7 +23,7 @@ export function Checkbox({
       <Pressable
         onPress={() => onChange(!checked)}
         className={`mt-0.5 h-5 w-5 items-center justify-center rounded-md border ${
-          checked ? 'border-[#F37021] bg-[#F37021]' : 'border-[#D1D1D1] bg-white'
+          checked ? 'border-primary bg-primary' : 'border-[#D1D1D1] bg-white'
         }`}
         accessibilityRole="checkbox"
         accessibilityState={{ checked }}

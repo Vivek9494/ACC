@@ -74,7 +74,7 @@ async function upsertUser(args: {
 }): Promise<void> {
   await prisma.user.upsert({
     where: { mobileNumber: args.mobileNumber },
-    update: { role: args.role },
+    update: { role: args.role, firstName: args.firstName, lastName: args.lastName },
     create: {
       firstName: args.firstName,
       lastName: args.lastName,
@@ -129,6 +129,94 @@ async function seedAccTournament(createdByUserId: string): Promise<void> {
   }
 }
 
+async function seedPlayerRegistration(
+  userId: string,
+  tournamentId: string,
+  centerId: string,
+): Promise<void> {
+  await prisma.registration.upsert({
+    where: {
+      tournamentId_userId: { tournamentId, userId },
+    },
+    update: {},
+    create: {
+      tournamentId,
+      userId,
+      centerId,
+      status: 'CONFIRMED',
+    },
+  });
+}
+
+async function seedAplTournament(
+  createdByUserId: string,
+  primaryCenterId: string,
+): Promise<string> {
+  const year = new Date().getUTCFullYear();
+  const name = 'Atmiya Premier League';
+
+  let tournament = await prisma.tournament.findFirst({
+    where: { name, year, type: 'APL' },
+  });
+  if (!tournament) {
+    tournament = await prisma.tournament.create({
+      data: {
+        name,
+        year,
+        oversPerInnings: 20,
+        maxOversPerBowler: 4,
+        location: 'Surat District Arena',
+        startAt: new Date(`${year}-06-15T00:00:00.000Z`),
+        endAt: new Date(`${year}-06-20T00:00:00.000Z`),
+        ballType: 'TENNIS',
+        type: 'APL',
+        state: 'LIVE',
+        format: 'LEAGUE_SINGLE_ROUND_ROBIN',
+        createdByUserId,
+      },
+    });
+
+    await prisma.tournamentCenter.upsert({
+      where: {
+        tournamentId_centerId: { tournamentId: tournament.id, centerId: primaryCenterId },
+      },
+      update: {},
+      create: { tournamentId: tournament.id, centerId: primaryCenterId },
+    });
+  }
+
+  const teamNames = ['Barrie Cobras', 'Scarborough Strikeforce'];
+  const teams: { id: string; name: string }[] = [];
+  for (const teamName of teamNames) {
+    let team = await prisma.team.findFirst({
+      where: { tournamentId: tournament.id, name: teamName },
+    });
+    if (!team) {
+      team = await prisma.team.create({
+        data: { tournamentId: tournament.id, name: teamName },
+      });
+    }
+    teams.push({ id: team.id, name: team.name });
+  }
+
+  const existingMatch = await prisma.match.findFirst({
+    where: { tournamentId: tournament.id },
+  });
+  if (!existingMatch && teams.length >= 2) {
+    await prisma.match.create({
+      data: {
+        tournamentId: tournament.id,
+        homeTeamId: teams[0]!.id,
+        awayTeamId: teams[1]!.id,
+        matchDate: new Date(`${year}-06-08T14:00:00.000Z`),
+        state: 'SCHEDULED',
+      },
+    });
+  }
+
+  return tournament.id;
+}
+
 async function main(): Promise<void> {
   const primaryCenterId = await seedProvincesAndCenters();
   const passwordHash = await bcrypt.hash(SEED_PASSWORD, BCRYPT_SALT_ROUNDS);
@@ -143,11 +231,23 @@ async function main(): Promise<void> {
     passwordHash,
   });
 
+  // Club Manager only (no tournament registration — dashboard hides Your Performance).
   await upsertUser({
     mobileNumber: '+15555550002',
-    firstName: 'Club',
+    firstName: 'Rahul',
     lastName: 'Manager',
     email: 'manager@acc.local',
+    role: 'CLUB_MANAGER',
+    centerId: primaryCenterId,
+    passwordHash,
+  });
+
+  // Club Manager who is also a registered player (Your Performance shows 0/0/00).
+  await upsertUser({
+    mobileNumber: '+15555550003',
+    firstName: 'Priya',
+    lastName: 'Manager',
+    email: 'manager-player@acc.local',
     role: 'CLUB_MANAGER',
     centerId: primaryCenterId,
     passwordHash,
@@ -156,8 +256,13 @@ async function main(): Promise<void> {
   const clubManager = await prisma.user.findFirstOrThrow({
     where: { mobileNumber: '+15555550002' },
   });
+  const clubManagerPlayer = await prisma.user.findFirstOrThrow({
+    where: { mobileNumber: '+15555550003' },
+  });
 
   await seedAccTournament(clubManager.id);
+  const aplTournamentId = await seedAplTournament(clubManager.id, primaryCenterId);
+  await seedPlayerRegistration(clubManagerPlayer.id, aplTournamentId, primaryCenterId);
 
   const [provinces, centers, users, teams] = await Promise.all([
     prisma.province.count(),
@@ -167,7 +272,9 @@ async function main(): Promise<void> {
   ]);
   console.log(
     `Seed complete. Provinces: ${provinces}, Centers: ${centers}, Users: ${users}, Teams: ${teams}. ` +
-      `Admin/Manager login password: "${SEED_PASSWORD}".`,
+      `Password: "${SEED_PASSWORD}". ` +
+      `Club Manager (no player reg): 55555550002. ` +
+      `Club Manager + player: 55555550003.`,
   );
 }
 

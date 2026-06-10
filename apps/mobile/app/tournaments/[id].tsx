@@ -12,7 +12,9 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, ScrollView, View } from 'react-native';
 import { Button } from '../../src/components/ui/Button';
+import { BallTypeIcon } from '../../src/components/ui/BallTypeIcon';
 import { Text } from '../../src/components/ui/Text';
+import { FIELD_ORANGE } from '../../src/components/ui/fieldStyles';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { MatchStateBadge } from '../../src/components/MatchStateBadge';
@@ -144,7 +146,7 @@ export default function TournamentDetailScreen(): React.ReactElement {
   if (loading) {
     return (
       <SafeAreaView className="flex-1 items-center justify-center bg-surface">
-        <ActivityIndicator color="#a04100" />
+        <ActivityIndicator color={FIELD_ORANGE} />
       </SafeAreaView>
     );
   }
@@ -165,7 +167,6 @@ export default function TournamentDetailScreen(): React.ReactElement {
   }
 
   const nextStates = TOURNAMENT_STATE_TRANSITIONS[tournament.state];
-  const isLeather = tournament.ballType === 'LEATHER';
 
   return (
     <SafeAreaView className="flex-1 bg-surface">
@@ -195,9 +196,7 @@ export default function TournamentDetailScreen(): React.ReactElement {
                 {formatDate(tournament.startAt)} – {formatDate(tournament.endAt)}
               </Text>
             </View>
-            <View
-              className={`h-6 w-6 rounded-full ${isLeather ? 'bg-[#c1121f]' : 'bg-secondary-container'}`}
-            />
+            <BallTypeIcon ballType={tournament.ballType} size={24} />
           </View>
 
           <View className="mt-3 flex-row items-center gap-2">
@@ -283,7 +282,10 @@ export default function TournamentDetailScreen(): React.ReactElement {
                 <InfoRow label="Format" value={TOURNAMENT_FORMAT_LABELS[tournament.format]} />
                 <InfoRow label="Overs / innings" value={String(tournament.oversPerInnings)} />
                 <InfoRow label="Max overs / bowler" value={String(tournament.maxOversPerBowler)} />
-                <InfoRow label="Ball" value={isLeather ? 'Leather' : 'Tennis'} />
+                <InfoRow
+                  label="Ball"
+                  value={tournament.ballType === 'LEATHER' ? 'Leather' : 'Tennis'}
+                />
                 <InfoRow
                   label="Impact Player"
                   value={tournament.impactPlayerEnabled ? 'Enabled' : 'Off'}

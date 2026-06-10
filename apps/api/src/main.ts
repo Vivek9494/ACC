@@ -1,4 +1,4 @@
-import { ValidationPipe } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 
@@ -19,9 +19,19 @@ async function bootstrap(): Promise<void> {
   app.useGlobalFilters(new AllExceptionsFilter());
 
   const configService = app.get(ConfigService);
-  const port = configService.get<number>('PORT', 3000);
+  const port = configService.get<number>('PORT', 3001);
+  const host = '0.0.0.0';
 
-  await app.listen(port);
+  // Reflect the request origin so Expo Go on a physical device (any LAN IP) can call the API.
+  app.enableCors({
+    origin: true,
+    credentials: true,
+  });
+
+  await app.listen(port, host);
+
+  const logger = new Logger('Bootstrap');
+  logger.log(`API listening on http://${host}:${port}`);
 }
 
 void bootstrap();

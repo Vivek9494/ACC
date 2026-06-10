@@ -1,8 +1,20 @@
-import { PASSWORD_MIN_LENGTH, type SignupRequest } from '@acc/types';
+import {
+  PASSWORD_MIN_LENGTH,
+  CANADIAN_POSTAL_CODE_REGEX,
+  SIGNUP_ADDRESS_MAX_LENGTH,
+  SIGNUP_MOBILE_LENGTH,
+  SIGNUP_MOBILE_REGEX,
+  SIGNUP_NAME_MAX_LENGTH,
+  SIGNUP_NAME_REGEX,
+  SIGNUP_VALIDATION_MESSAGES,
+  type SignupRequest,
+} from '@acc/types';
+import { Transform } from 'class-transformer';
 import {
   IsDateString,
   IsEmail,
   IsInt,
+  IsNotEmpty,
   IsOptional,
   IsString,
   IsUrl,
@@ -10,33 +22,59 @@ import {
   MaxLength,
   Min,
   MinLength,
+  ValidateIf,
 } from 'class-validator';
 
 export class SignupDto implements SignupRequest {
   @IsString()
-  @MinLength(1)
-  @MaxLength(100)
+  @IsNotEmpty({ message: SIGNUP_VALIDATION_MESSAGES.firstName.required })
+  @MaxLength(SIGNUP_NAME_MAX_LENGTH, { message: SIGNUP_VALIDATION_MESSAGES.firstName.max })
+  @Matches(SIGNUP_NAME_REGEX, { message: SIGNUP_VALIDATION_MESSAGES.firstName.invalid })
   firstName!: string;
 
   @IsString()
-  @MinLength(1)
-  @MaxLength(100)
+  @IsNotEmpty({ message: SIGNUP_VALIDATION_MESSAGES.lastName.required })
+  @MaxLength(SIGNUP_NAME_MAX_LENGTH, { message: SIGNUP_VALIDATION_MESSAGES.lastName.max })
+  @Matches(SIGNUP_NAME_REGEX, { message: SIGNUP_VALIDATION_MESSAGES.lastName.invalid })
   lastName!: string;
 
   @IsString()
-  @Matches(/^\+?[0-9]{7,15}$/, {
-    message: 'mobileNumber must be a valid phone number',
-  })
+  @IsNotEmpty({ message: SIGNUP_VALIDATION_MESSAGES.mobileNumber.required })
+  @Matches(SIGNUP_MOBILE_REGEX, { message: SIGNUP_VALIDATION_MESSAGES.mobileNumber.invalid })
+  @MaxLength(SIGNUP_MOBILE_LENGTH)
   mobileNumber!: string;
 
-  @IsEmail()
-  email!: string;
+  @IsOptional()
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim() : value,
+  )
+  @ValidateIf((_, value: unknown) => typeof value === 'string' && value.length > 0)
+  @IsEmail({}, { message: SIGNUP_VALIDATION_MESSAGES.email.invalid })
+  email?: string;
 
-  @IsDateString()
+  @IsDateString({}, { message: SIGNUP_VALIDATION_MESSAGES.dateOfBirth.required })
+  @IsNotEmpty({ message: SIGNUP_VALIDATION_MESSAGES.dateOfBirth.required })
   dateOfBirth!: string;
 
+  @IsOptional()
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim() : value,
+  )
+  @ValidateIf((_, value: unknown) => typeof value === 'string' && value.length > 0)
   @IsString()
-  @MinLength(1)
+  @MaxLength(SIGNUP_ADDRESS_MAX_LENGTH)
+  address?: string;
+
+  @IsOptional()
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim() : value,
+  )
+  @ValidateIf((_, value: unknown) => typeof value === 'string' && value.length > 0)
+  @Matches(CANADIAN_POSTAL_CODE_REGEX, { message: SIGNUP_VALIDATION_MESSAGES.postalCode.invalid })
+  postalCode?: string;
+
+  @IsString()
+  @IsNotEmpty({ message: SIGNUP_VALIDATION_MESSAGES.center.required })
   centerId!: string;
 
   @IsInt()
@@ -49,22 +87,28 @@ export class SignupDto implements SignupRequest {
   profilePhotoUrl?: string | null;
 
   @IsString()
-  @MinLength(1)
-  @MaxLength(100)
+  @IsNotEmpty({ message: SIGNUP_VALIDATION_MESSAGES.emergencyContactName.required })
+  @MaxLength(SIGNUP_NAME_MAX_LENGTH, {
+    message: SIGNUP_VALIDATION_MESSAGES.emergencyContactName.max,
+  })
+  @Matches(SIGNUP_NAME_REGEX, {
+    message: SIGNUP_VALIDATION_MESSAGES.emergencyContactName.invalid,
+  })
   emergencyContactName!: string;
 
   @IsString()
-  @Matches(/^\+?[0-9]{7,15}$/, {
-    message: 'emergencyContactNumber must be a valid phone number',
+  @IsNotEmpty({ message: SIGNUP_VALIDATION_MESSAGES.emergencyContactNumber.required })
+  @Matches(SIGNUP_MOBILE_REGEX, {
+    message: SIGNUP_VALIDATION_MESSAGES.emergencyContactNumber.invalid,
   })
+  @MaxLength(SIGNUP_MOBILE_LENGTH)
   emergencyContactNumber!: string;
 
-  // Security mitigation (§31): min 8 chars with at least one digit, overriding
-  // the 6-char default.
   @IsString()
+  @IsNotEmpty({ message: SIGNUP_VALIDATION_MESSAGES.password.required })
   @MinLength(PASSWORD_MIN_LENGTH, {
-    message: `password must be at least ${PASSWORD_MIN_LENGTH} characters`,
+    message: SIGNUP_VALIDATION_MESSAGES.password.invalid,
   })
-  @Matches(/[0-9]/, { message: 'password must contain at least one digit' })
+  @Matches(/[0-9]/, { message: SIGNUP_VALIDATION_MESSAGES.password.invalid })
   password!: string;
 }

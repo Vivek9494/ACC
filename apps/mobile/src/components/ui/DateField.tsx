@@ -59,6 +59,7 @@ export interface DateFieldProps {
   value: string;
   onChange: (isoDate: string) => void;
   placeholder?: string;
+  error?: string;
   containerClassName?: string;
 }
 
@@ -71,6 +72,7 @@ export function DateField({
   value,
   onChange,
   placeholder = 'Month D, YYYY',
+  error,
   containerClassName,
 }: DateFieldProps): React.ReactElement {
   const [showPicker, setShowPicker] = useState(false);
@@ -86,12 +88,17 @@ export function DateField({
     onChange(formatIsoDate(selected));
   }
 
+  let fieldClassName = mergeFieldClassName('flex-row items-center', { hasLeadingIcon: true });
+  if (error) {
+    fieldClassName = fieldClassName.replace(/\bborder-\[#F1F1F1\]/, 'border-error');
+  }
+
   return (
     <View className={containerClassName}>
       {label ? <Text className={labelClassName(labelVariant)}>{label}</Text> : null}
       <Pressable
         onPress={() => setShowPicker(true)}
-        className={`relative ${mergeFieldClassName('flex-row items-center', { hasLeadingIcon: true })}`}
+        className={`relative ${fieldClassName}`}
         style={INPUT_SHADOW_STYLE}
       >
         <View className="absolute inset-y-0 left-5 justify-center">
@@ -105,12 +112,14 @@ export function DateField({
         </Text>
       </Pressable>
 
+      {error ? <Text className="mt-1 font-sans text-sm text-error">{error}</Text> : null}
+
       {showPicker ? (
         Platform.OS === 'ios' ? (
           <View className="mt-2 overflow-hidden rounded-xl border border-[#F1F1F1] bg-white">
             <View className="flex-row justify-end border-b border-[#F1F1F1] px-3 py-2">
               <Pressable onPress={() => setShowPicker(false)} hitSlop={8}>
-                <Text className="font-sans-semibold text-sm text-[#F37021]">Done</Text>
+                <Text className="font-sans-semibold text-sm text-primary">Done</Text>
               </Pressable>
             </View>
             <DateTimePicker

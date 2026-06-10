@@ -1,4 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
+import {
+  SIGNUP_VALIDATION_MESSAGES,
+  isAllowedSignupProfilePhotoMime,
+  isAllowedSignupProfilePhotoSize,
+} from '@acc/types';
 import * as ImagePicker from 'expo-image-picker';
 import { Image, Pressable, View } from 'react-native';
 
@@ -10,6 +15,8 @@ export interface ProfilePhotoFieldProps {
   labelVariant?: LabelVariant;
   uri: string | null;
   onChange: (uri: string | null) => void;
+  onValidationError?: (message: string | null) => void;
+  error?: string;
   containerClassName?: string;
 }
 
@@ -19,6 +26,8 @@ export function ProfilePhotoField({
   labelVariant = 'brand',
   uri,
   onChange,
+  onValidationError,
+  error,
   containerClassName,
 }: ProfilePhotoFieldProps): React.ReactElement {
   async function pick(): Promise<void> {
@@ -33,8 +42,23 @@ export function ProfilePhotoField({
     });
 
     if (!result.canceled && result.assets[0]) {
-      onChange(result.assets[0].uri);
+      const asset = result.assets[0];
+      if (!isAllowedSignupProfilePhotoMime(asset.mimeType)) {
+        onValidationError?.(SIGNUP_VALIDATION_MESSAGES.profilePhoto.type);
+        return;
+      }
+      if (!isAllowedSignupProfilePhotoSize(asset.fileSize)) {
+        onValidationError?.(SIGNUP_VALIDATION_MESSAGES.profilePhoto.size);
+        return;
+      }
+      onValidationError?.(null);
+      onChange(asset.uri);
     }
+  }
+
+  let borderClass = 'border border-[#F1F1F1]';
+  if (error) {
+    borderClass = 'border border-error';
   }
 
   return (
@@ -42,7 +66,7 @@ export function ProfilePhotoField({
       {label ? <Text className={labelClassName(labelVariant)}>{label}</Text> : null}
       <Pressable
         onPress={() => void pick()}
-        className="flex-row items-center gap-4 rounded-xl border border-[#F1F1F1] bg-white px-5 py-4"
+        className={`flex-row items-center gap-4 rounded-xl bg-white px-5 py-4 ${borderClass}`}
         style={INPUT_SHADOW_STYLE}
       >
         {uri ? (
@@ -56,11 +80,14 @@ export function ProfilePhotoField({
           <Text className="font-sans-semibold text-sm text-[#1A1A1A]">
             {uri ? 'Change photo' : 'Add profile photo'}
           </Text>
-          <Text className="font-sans text-xs text-[#9AA0A6]">Optional</Text>
+          <Text className="font-sans text-xs text-[#9AA0A6]">Optional · JPG only · max 5MB</Text>
         </View>
         {uri ? (
           <Pressable
-            onPress={() => onChange(null)}
+            onPress={() => {
+              onChange(null);
+              onValidationError?.(null);
+            }}
             hitSlop={8}
             accessibilityRole="button"
             accessibilityLabel="Remove profile photo"
@@ -69,6 +96,7 @@ export function ProfilePhotoField({
           </Pressable>
         ) : null}
       </Pressable>
+      {error ? <Text className="mt-1 font-sans text-sm text-error">{error}</Text> : null}
     </View>
   );
 }
