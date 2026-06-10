@@ -1,10 +1,12 @@
-import { Link } from 'expo-router';
-import { View } from 'react-native';
+import { Link, useRouter } from 'expo-router';
+import { Pressable, View } from 'react-native';
 import { Button } from '../src/components/ui/Button';
 import { Text } from '../src/components/ui/Text';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function WelcomeScreen() {
+  const router = useRouter();
+
   return (
     <SafeAreaView className="flex-1 bg-surface">
       <View className="flex-1 justify-between px-6 py-12">
@@ -38,6 +40,14 @@ export default function WelcomeScreen() {
               label="Log in"
             />
           </Link>
+          <Pressable
+            onPress={() => router.replace('/guest')}
+            accessibilityRole="button"
+            accessibilityLabel="Continue as Guest"
+            className="items-center py-3 active:opacity-80"
+          >
+            <Text className="font-sans-semibold text-sm text-primary">Continue as Guest</Text>
+          </Pressable>
         </View>
       </View>
     </SafeAreaView>

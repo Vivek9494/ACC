@@ -1,8 +1,9 @@
-import type { AuthResponse, AuthTokens, AuthUser } from '@acc/types';
+import type { AuthResponse, AuthTokens, AuthUser, ChangePasswordResponse } from '@acc/types';
 import { Body, Controller, Get, HttpCode, HttpStatus, Post, UseGuards } from '@nestjs/common';
 
 import { AuthService } from './auth.service';
 import { CurrentUser } from './current-user.decorator';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshDto } from './dto/refresh.dto';
 import { SignupDto } from './dto/signup.dto';
@@ -29,9 +30,28 @@ export class AuthController {
     return this.authService.refresh(dto.refreshToken);
   }
 
+  @Post('logout')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @UseGuards(JwtAuthGuard)
+  logout(@CurrentUser() user: AuthUser): Promise<void> {
+    return this.authService.logout(user.id);
+  }
+
   @Get('me')
   @UseGuards(JwtAuthGuard)
-  me(@CurrentUser() user: AuthUser): AuthUser {
-    return user;
+  me(@CurrentUser() user: AuthUser): Promise<AuthUser> {
+    return this.authService.getMe(user.id);
+  }
+
+  @Post('change-password')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  changePassword(
+    @CurrentUser() user: AuthUser,
+    @Body() dto: ChangePasswordDto,
+  ): Promise<ChangePasswordResponse> {
+    return this.authService.changePassword(user.id, dto.currentPassword, dto.newPassword).then(() => ({
+      success: true as const,
+    }));
   }
 }

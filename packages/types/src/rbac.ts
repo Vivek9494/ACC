@@ -114,6 +114,9 @@ export const Permission = {
   UNLOCK_ACCOUNT: 'UNLOCK_ACCOUNT',
   // N. Audit & Announcements
   VIEW_CLUB_MANAGER_DASHBOARD: 'VIEW_CLUB_MANAGER_DASHBOARD',
+  VIEW_CENTER_SEVAK_DASHBOARD: 'VIEW_CENTER_SEVAK_DASHBOARD',
+  VIEW_CAPTAIN_DASHBOARD: 'VIEW_CAPTAIN_DASHBOARD',
+  VIEW_PLAYER_DASHBOARD: 'VIEW_PLAYER_DASHBOARD',
   VIEW_ADMIN_OVERVIEW: 'VIEW_ADMIN_OVERVIEW',
   VIEW_AUDIT_LOG: 'VIEW_AUDIT_LOG',
   SEND_ANNOUNCEMENT: 'SEND_ANNOUNCEMENT',
@@ -218,6 +221,7 @@ export const PERMISSION_MATRIX: Record<Permission, PermissionRule> = {
       { subject: R.Admin },
       { subject: R.ClubManager, scope: PermissionScope.Organizer },
       { subject: R.CenterSevak, scope: PermissionScope.Organizer },
+      { subject: R.CenterSevak, scope: PermissionScope.OwnCenter },
     ],
   },
   [Permission.CHANGE_TOURNAMENT_STATUS]: {
@@ -570,6 +574,18 @@ export const PERMISSION_MATRIX: Record<Permission, PermissionRule> = {
   // N. Audit & Announcements
   [Permission.VIEW_CLUB_MANAGER_DASHBOARD]: {
     grants: [{ subject: R.ClubManager }],
+  },
+  [Permission.VIEW_CENTER_SEVAK_DASHBOARD]: {
+    grants: [{ subject: R.CenterSevak }],
+  },
+  [Permission.VIEW_CAPTAIN_DASHBOARD]: {
+    grants: [
+      { subject: R.Captain, scope: PermissionScope.OwnTeam },
+      { subject: R.ViceCaptain, scope: PermissionScope.OwnTeam },
+    ],
+  },
+  [Permission.VIEW_PLAYER_DASHBOARD]: {
+    grants: [{ subject: R.Player }],
   },
   [Permission.VIEW_ADMIN_OVERVIEW]: {
     grants: [{ subject: R.Admin }],

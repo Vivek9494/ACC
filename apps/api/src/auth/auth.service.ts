@@ -3,14 +3,19 @@ import {
   type AuthResponse,
   type AuthTokens,
   type AuthUser,
+  CHANGE_PASSWORD_MESSAGES,
+  type TeamLeadAssignment,
   INVALID_POSTAL_CODE_MESSAGE,
+  isPasswordPolicyCompliant,
   isValidCanadianPostalCode,
   LOGIN_RATE_LIMIT,
   MIN_SIGNUP_AGE,
   MOBILE_NUMBER_EXISTS_MESSAGE,
   normalizeCanadianPostalCode,
+  PASSWORD_POLICY_INVALID_MESSAGE,
   REFRESH_IDLE_DAYS,
   SIGNUP_VALIDATION_MESSAGES,
+  UserRole,
 } from '@acc/types';
 import {
   BadRequestException,
@@ -114,7 +119,7 @@ export class AuthService {
     });
 
     const tokens = await this.startSession(user);
-    return { user: toAuthUser(user), tokens };
+    return { user: await loadAuthUser(this.prisma, user), tokens };
   }
 
   async login(dto: LoginDto): Promise<AuthResponse> {
@@ -148,7 +153,7 @@ export class AuthService {
     // Single-device enforcement (§3.2): bumping tokenVersion on every login
     // invalidates any token still held by a previously logged-in device.
     const tokens = await this.startSession(user);
-    return { user: toAuthUser(user), tokens };
+    return { user: await loadAuthUser(this.prisma, user), tokens };
   }
 
   async refresh(refreshToken: string): Promise<AuthTokens> {
@@ -193,6 +198,67 @@ export class AuthService {
     return this.rotateTokens(user);
   }
 
+  async getMe(userId: string): Promise<AuthUser> {
+    const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
+    return loadAuthUser(this.prisma, user);
+  }
+
+  /** Invalidates the current session (§3.2 single-device logout). */
+  async logout(userId: string): Promise<void> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { tokenVersion: { increment: 1 } },
+    });
+    await this.redis.del(refreshKey(userId));
+  }
+
+  /**
+   * Verifies the current password, enforces the shared policy, bumps tokenVersion, and
+   * clears the refresh session — invalidating every device including the caller.
+   */
+  async changePassword(
+    userId: string,
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<void> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      throw new UnauthorizedException({
+        message: 'Authentication required',
+        error: AuthErrorCode.InvalidCredentials,
+      });
+    }
+
+    const currentOk = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!currentOk) {
+      throw new UnauthorizedException({
+        message: CHANGE_PASSWORD_MESSAGES.currentIncorrect,
+        error: AuthErrorCode.CurrentPasswordIncorrect,
+      });
+    }
+
+    if (currentPassword === newPassword) {
+      throw new BadRequestException({
+        message: CHANGE_PASSWORD_MESSAGES.sameAsCurrent,
+        error: AuthErrorCode.SamePassword,
+      });
+    }
+
+    if (!isPasswordPolicyCompliant(newPassword)) {
+      throw new BadRequestException({
+        message: PASSWORD_POLICY_INVALID_MESSAGE,
+        error: 'INVALID_PASSWORD',
+      });
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, BCRYPT_SALT_ROUNDS);
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash, tokenVersion: { increment: 1 } },
+    });
+    await this.redis.del(refreshKey(userId));
+  }
+
   /** Bumps tokenVersion, then mints a fresh token pair (login/signup entry). */
   private async startSession(user: User): Promise<AuthTokens> {
     const updated = await this.prisma.user.update({
@@ -224,7 +290,7 @@ export class AuthService {
     // value is a plain string so assert it to the option's own type.
     const expiresIn = this.config.get<string>(
       'JWT_ACCESS_TTL',
-      '15m',
+      '1h',
     ) as JwtSignOptions['expiresIn'];
     const accessToken = await this.jwt.signAsync(accessPayload, {
       secret: this.config.getOrThrow<string>('JWT_ACCESS_SECRET'),
@@ -250,7 +316,11 @@ export class AuthService {
   }
 }
 
-export function toAuthUser(user: User): AuthUser {
+export function toAuthUser(
+  user: User,
+  teamLeadAssignments: TeamLeadAssignment[] = [],
+  centerSevakCenterIds: string[] = [],
+): AuthUser {
   return {
     id: user.id,
     firstName: user.firstName,
@@ -262,5 +332,45 @@ export function toAuthUser(user: User): AuthUser {
     profilePhotoUrl: user.profilePhotoUrl,
     role: user.role,
     isActive: user.isActive,
+    teamLeadAssignments,
+    centerSevakCenterIds,
   };
+}
+
+export async function loadAuthUser(prisma: PrismaService, user: User): Promise<AuthUser> {
+  const [leadAssignments, sevakAssignments] = await Promise.all([
+    prisma.roleAssignment.findMany({
+      where: {
+        userId: user.id,
+        role: { in: [UserRole.Captain, UserRole.ViceCaptain] },
+      },
+      select: { role: true, tournamentId: true, teamId: true },
+    }),
+    prisma.roleAssignment.findMany({
+      where: { userId: user.id, role: UserRole.CenterSevak },
+      select: { centerId: true },
+    }),
+  ]);
+
+  const teamLeadAssignments: TeamLeadAssignment[] = leadAssignments.flatMap((row) => {
+    if (!row.tournamentId || !row.teamId) {
+      return [];
+    }
+    if (row.role !== UserRole.Captain && row.role !== UserRole.ViceCaptain) {
+      return [];
+    }
+    return [
+      {
+        role: row.role,
+        tournamentId: row.tournamentId,
+        teamId: row.teamId,
+      },
+    ];
+  });
+
+  const centerSevakCenterIds = sevakAssignments
+    .map((row) => row.centerId)
+    .filter((id): id is string => id !== null);
+
+  return toAuthUser(user, teamLeadAssignments, centerSevakCenterIds);
 }

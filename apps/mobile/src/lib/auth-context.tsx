@@ -3,8 +3,9 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 
 import {
   getMe,
+  isSessionExpiredError,
   login as apiLogin,
-  refreshTokens,
+  logout as apiLogout,
   setAuthToken,
   setUnauthorizedHandler,
   signup as apiSignup,
@@ -19,6 +20,12 @@ interface AuthContextValue {
   signIn: (credentials: LoginRequest) => Promise<void>;
   register: (payload: SignupRequest) => Promise<void>;
   signOut: () => Promise<void>;
+  /** Clears persisted tokens and local auth state without calling the logout API. */
+  endSession: () => Promise<void>;
+  /** Removes stored tokens only — keeps status authenticated (e.g. post password-change dialog). */
+  clearCredentials: () => Promise<void>;
+  /** Drops user/auth status after credentials are already cleared. */
+  markUnauthenticated: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -33,12 +40,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
     setStatus('authenticated');
   }, []);
 
-  const signOut = useCallback(async () => {
+  const clearSession = useCallback(async () => {
     await clearTokens();
     setAuthToken(null);
     setUser(null);
     setStatus('unauthenticated');
   }, []);
+
+  const clearCredentials = useCallback(async () => {
+    await clearTokens();
+    setAuthToken(null);
+  }, []);
+
+  const markUnauthenticated = useCallback(() => {
+    setUser(null);
+    setStatus('unauthenticated');
+  }, []);
+
+  const signOut = useCallback(async () => {
+    try {
+      await apiLogout();
+    } catch {
+      // Best-effort server invalidation; always clear local session.
+    }
+    await clearSession();
+  }, [clearSession]);
 
   const signIn = useCallback(
     async (credentials: LoginRequest) => {
@@ -58,8 +84,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
     [applySession],
   );
 
-  // Restore a persisted session on launch: try the stored access token, and
-  // if it has expired, fall back to one refresh before giving up.
+  // Restore a persisted session on launch: try the stored access token; the
+  // shared api client refreshes automatically on 401.
   useEffect(() => {
     let cancelled = false;
 
@@ -77,24 +103,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
           setUser(me);
           setStatus('authenticated');
         }
-        return;
-      } catch {
-        // fall through to a refresh attempt
-      }
-
-      try {
-        const refreshed = await refreshTokens(tokens.refreshToken);
-        await saveTokens(refreshed);
-        setAuthToken(refreshed.accessToken);
-        const me = await getMe();
-        if (!cancelled) {
-          setUser(me);
-          setStatus('authenticated');
+      } catch (err) {
+        if (cancelled) {
+          return;
         }
-      } catch {
-        await clearTokens();
-        setAuthToken(null);
-        if (!cancelled) setStatus('unauthenticated');
+        if (!isSessionExpiredError(err)) {
+          await clearSession();
+        }
       }
     }
 
@@ -102,19 +117,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [clearSession]);
 
-  // When the api reports a token-version mismatch, drop the session.
+  // When refresh fails or tokenVersion mismatches, drop the session locally.
   useEffect(() => {
     setUnauthorizedHandler(() => {
-      void signOut();
+      void clearSession();
     });
     return () => setUnauthorizedHandler(null);
-  }, [signOut]);
+  }, [clearSession]);
 
   const value = useMemo<AuthContextValue>(
-    () => ({ status, user, signIn, register, signOut }),
-    [status, user, signIn, register, signOut],
+    () => ({
+      status,
+      user,
+      signIn,
+      register,
+      signOut,
+      endSession: clearSession,
+      clearCredentials,
+      markUnauthenticated,
+    }),
+    [status, user, signIn, register, signOut, clearSession, clearCredentials, markUnauthenticated],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

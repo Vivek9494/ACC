@@ -212,7 +212,19 @@ export class PermissionService {
       teamId = contextTeamIds.find((id) => captainTeamIds.has(id));
     }
 
-    const sameCenter = targetCenterId !== undefined && sevakCenterIds.has(targetCenterId);
+    const sameCenterFromTarget =
+      targetCenterId !== undefined && sevakCenterIds.has(targetCenterId);
+    let sameCenter = sameCenterFromTarget;
+    if (!sameCenter && tournamentId && sevakCenterIds.size > 0) {
+      const centerLink = await this.prisma.tournamentCenter.findFirst({
+        where: {
+          tournamentId,
+          centerId: { in: [...sevakCenterIds] },
+        },
+        select: { centerId: true },
+      });
+      sameCenter = centerLink !== null;
+    }
     const isSelf = targetUserId !== undefined && targetUserId === actor.id;
     const { captainSuspended, leadersSuspended } = await this.leaderSuspensionFacts(
       teamId,

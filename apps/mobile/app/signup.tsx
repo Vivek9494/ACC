@@ -25,6 +25,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '../src/components/ui/Button';
 import { DateField } from '../src/components/ui/DateField';
 import { FIELD_ORANGE } from '../src/components/ui/fieldStyles';
+import { PasswordRequirements } from '../src/components/ui/PasswordRequirements';
 import { PasswordToggle } from '../src/components/ui/PasswordToggle';
 import { ProfilePhotoField } from '../src/components/ui/ProfilePhotoField';
 import { SectionCard } from '../src/components/ui/SectionCard';
@@ -192,9 +193,15 @@ export default function SignupScreen(): React.ReactElement {
       ? centerField.errorMessage
       : null);
 
-  function fieldWrap(key: SignupFieldKey, children: React.ReactNode): React.ReactElement {
+  function fieldWrap(
+    key: SignupFieldKey,
+    children: React.ReactNode,
+    className?: string,
+  ): React.ReactElement {
     return (
-      <View onLayout={(event) => registerFieldLayout(key, event)}>{children}</View>
+      <View className={className} onLayout={(event) => registerFieldLayout(key, event)}>
+        {children}
+      </View>
     );
   }
 
@@ -237,40 +244,42 @@ export default function SignupScreen(): React.ReactElement {
             />,
           )}
 
-          <View className="flex-row gap-3">
+          <View className="w-full flex-row items-start gap-3">
             {fieldWrap(
               'firstName',
-              <View className="flex-1">
-                <TextInput
-                  label="First Name"
-                  value={firstName}
-                  onChangeText={(text) => {
-                    setFirstName(formatSignupNameInput(text));
-                    clearFieldError('firstName');
-                  }}
-                  placeholder="e.g. Rahul"
-                  autoCapitalize="words"
-                  maxLength={SIGNUP_NAME_MAX_LENGTH}
-                  error={fieldErrors.firstName}
-                />
-              </View>,
+              <TextInput
+                label="First Name"
+                containerClassName="w-full"
+                className="w-full"
+                value={firstName}
+                onChangeText={(text) => {
+                  setFirstName(formatSignupNameInput(text));
+                  clearFieldError('firstName');
+                }}
+                placeholder="e.g. Rahul"
+                autoCapitalize="words"
+                maxLength={SIGNUP_NAME_MAX_LENGTH}
+                error={fieldErrors.firstName}
+              />,
+              'min-w-0 flex-1',
             )}
             {fieldWrap(
               'lastName',
-              <View className="flex-1">
-                <TextInput
-                  label="Last Name"
-                  value={lastName}
-                  onChangeText={(text) => {
-                    setLastName(formatSignupNameInput(text));
-                    clearFieldError('lastName');
-                  }}
-                  placeholder="e.g. Sharma"
-                  autoCapitalize="words"
-                  maxLength={SIGNUP_NAME_MAX_LENGTH}
-                  error={fieldErrors.lastName}
-                />
-              </View>,
+              <TextInput
+                label="Last Name"
+                containerClassName="w-full"
+                className="w-full"
+                value={lastName}
+                onChangeText={(text) => {
+                  setLastName(formatSignupNameInput(text));
+                  clearFieldError('lastName');
+                }}
+                placeholder="e.g. Sharma"
+                autoCapitalize="words"
+                maxLength={SIGNUP_NAME_MAX_LENGTH}
+                error={fieldErrors.lastName}
+              />,
+              'min-w-0 flex-1',
             )}
           </View>
 
@@ -412,6 +421,8 @@ export default function SignupScreen(): React.ReactElement {
               error={fieldErrors.password}
             />,
           )}
+
+          <PasswordRequirements password={password} />
 
           {fieldWrap(
             'confirmPassword',

@@ -29,7 +29,7 @@ export interface TextInputProps extends RNTextInputProps {
 }
 
 /**
- * App-wide TextInput wrapper. White field, soft shadow, 12px corners (`rounded-xl`),
+ * App-wide TextInput wrapper. White field, soft shadow, 8px corners (`rounded-control`),
  * optional label, leading icon, and trailing accessory.
  */
 export const TextInput = forwardRef<RNTextInput, TextInputProps>(function TextInput(

@@ -19,6 +19,7 @@ describe('PermissionService', () => {
     registration: { findUnique: jest.Mock };
     match: { findUnique: jest.Mock };
     tournament: { findUnique: jest.Mock };
+    tournamentCenter: { findFirst: jest.Mock };
     roleAssignment: { findMany: jest.Mock; findFirst: jest.Mock };
     suspension: { findFirst: jest.Mock };
   };
@@ -29,6 +30,7 @@ describe('PermissionService', () => {
       registration: { findUnique: jest.fn() },
       match: { findUnique: jest.fn() },
       tournament: { findUnique: jest.fn() },
+      tournamentCenter: { findFirst: jest.fn().mockResolvedValue(null) },
       roleAssignment: { findMany: jest.fn().mockResolvedValue([]), findFirst: jest.fn() },
       suspension: { findFirst: jest.fn().mockResolvedValue(null) },
     };

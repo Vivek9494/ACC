@@ -50,6 +50,7 @@
     "@types/jest": "^30.0.0",
     "@types/node": "^25.9.1",
     "jest": "^30.4.2",
+    "jest-environment-node": "^30.4.1",
     "kill-port": "^2.0.1",
     "prisma": "^6.19.3",
     "source-map-support": "^0.5.21",

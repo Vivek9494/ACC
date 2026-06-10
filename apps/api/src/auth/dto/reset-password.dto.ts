@@ -1,5 +1,7 @@
-import { OTP_LENGTH, PASSWORD_MIN_LENGTH, type ResetPasswordRequest } from '@acc/types';
+import { OTP_LENGTH, type ResetPasswordRequest } from '@acc/types';
 import { IsString, Length, Matches, MinLength } from 'class-validator';
+
+import { IsPasswordPolicy } from '../validators/is-password-policy.decorator';
 
 export class ResetPasswordDto implements ResetPasswordRequest {
   @IsString()
@@ -12,9 +14,6 @@ export class ResetPasswordDto implements ResetPasswordRequest {
   otp!: string;
 
   @IsString()
-  @MinLength(PASSWORD_MIN_LENGTH, {
-    message: `newPassword must be at least ${PASSWORD_MIN_LENGTH} characters`,
-  })
-  @Matches(/[0-9]/, { message: 'newPassword must contain at least one digit' })
+  @IsPasswordPolicy()
   newPassword!: string;
 }

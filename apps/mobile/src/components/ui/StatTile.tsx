@@ -23,14 +23,14 @@ export function StatTile({ title, items, className }: StatTileProps): React.Reac
   }
 
   return (
-    <Card className={className}>
+    <Card className={`rounded-control${className ? ` ${className}` : ''}`}>
       {title ? (
         <Text className="mb-4 font-sans-bold text-lg text-on-surface">{title}</Text>
       ) : null}
       <View className="flex-row">
         {items.map((item, index) => (
           <View key={item.label} className="flex-1 flex-row">
-            {index > 0 ? <View className="mr-4 w-px self-stretch bg-outline-variant" /> : null}
+            {index > 0 ? <View className="mr-4 w-0.5 self-stretch bg-separator" /> : null}
             <View className={`flex-1 ${index > 0 ? 'pl-4' : ''}`.trim()}>
               <Text className="font-sans-medium text-[11px] uppercase tracking-wider text-on-surface-variant">
                 {item.label}

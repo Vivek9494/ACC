@@ -1,5 +1,4 @@
 import {
-  PASSWORD_MIN_LENGTH,
   CANADIAN_POSTAL_CODE_REGEX,
   SIGNUP_ADDRESS_MAX_LENGTH,
   SIGNUP_MOBILE_LENGTH,
@@ -24,6 +23,8 @@ import {
   MinLength,
   ValidateIf,
 } from 'class-validator';
+
+import { IsPasswordPolicy } from '../validators/is-password-policy.decorator';
 
 export class SignupDto implements SignupRequest {
   @IsString()
@@ -106,9 +107,6 @@ export class SignupDto implements SignupRequest {
 
   @IsString()
   @IsNotEmpty({ message: SIGNUP_VALIDATION_MESSAGES.password.required })
-  @MinLength(PASSWORD_MIN_LENGTH, {
-    message: SIGNUP_VALIDATION_MESSAGES.password.invalid,
-  })
-  @Matches(/[0-9]/, { message: SIGNUP_VALIDATION_MESSAGES.password.invalid })
+  @IsPasswordPolicy()
   password!: string;
 }

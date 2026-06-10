@@ -5,6 +5,7 @@ import {
   Permission,
   TournamentState,
   TOURNAMENT_STATE_TRANSITIONS,
+  type TournamentDashboardPermissions,
   type TournamentDetail,
   type TournamentSummary,
   type TournamentType,
@@ -179,11 +180,13 @@ export class TournamentsService {
   }
 
   /** Applies mid-tournament edits (§6.4) and notifies if registration is open. */
-  async update(id: string, dto: UpdateTournamentDto): Promise<TournamentDetail> {
+  async update(actor: AuthUser, id: string, dto: UpdateTournamentDto): Promise<TournamentDetail> {
     const existing = await this.prisma.tournament.findUnique({ where: { id } });
     if (!existing) {
       throw new NotFoundException({ message: 'Tournament not found', error: 'NOT_FOUND' });
     }
+
+    await this.assertCenterSevakTournamentAccess(actor, existing);
 
     const data: Prisma.TournamentUpdateInput = {};
     if (dto.name !== undefined) data.name = dto.name;
@@ -220,11 +223,14 @@ export class TournamentsService {
   }
 
   /** Deletes a tournament; notifies registrants if registration was open (§6.4). */
-  async remove(id: string): Promise<void> {
+  async remove(actor: AuthUser, id: string): Promise<void> {
     const existing = await this.prisma.tournament.findUnique({ where: { id } });
     if (!existing) {
       throw new NotFoundException({ message: 'Tournament not found', error: 'NOT_FOUND' });
     }
+
+    await this.assertCenterSevakTournamentAccess(actor, existing);
+
     if (existing.state === TournamentState.RegistrationOpen) {
       await this.notifyRegistrants(id, NotificationTrigger.TournamentDeletedMidRegistration);
     }
@@ -250,6 +256,86 @@ export class TournamentsService {
   }
 
   // --- helpers -------------------------------------------------------------
+
+  /**
+   * Center Sevak may edit/delete only tournaments they created or that belong to
+   * one of their scoped centers (§7.4). Other roles rely on RBAC at the guard.
+   */
+  async assertCenterSevakTournamentAccess(
+    actor: AuthUser,
+    tournament: { id: string; createdByUserId: string },
+  ): Promise<void> {
+    if (actor.role !== UserRole.CenterSevak) {
+      return;
+    }
+    const allowed = await this.centerSevakCanModifyTournament(actor.id, tournament);
+    if (!allowed) {
+      throw new ForbiddenException({
+        message: 'You can only edit or delete tournaments you created or that belong to your center',
+        error: 'FORBIDDEN',
+      });
+    }
+  }
+
+  /** Ownership check for dashboard permissions and service-layer enforcement. */
+  async centerSevakCanModifyTournament(
+    userId: string,
+    tournament: { id: string; createdByUserId: string },
+  ): Promise<boolean> {
+    if (tournament.createdByUserId === userId) {
+      return true;
+    }
+    const centerIds = await this.resolveCenterSevakCenterIds(userId);
+    if (centerIds.length === 0) {
+      return false;
+    }
+    const link = await this.prisma.tournamentCenter.findFirst({
+      where: {
+        tournamentId: tournament.id,
+        centerId: { in: centerIds },
+      },
+      select: { centerId: true },
+    });
+    return link !== null;
+  }
+
+  async resolveCenterSevakCenterIds(userId: string): Promise<string[]> {
+    const rows = await this.prisma.roleAssignment.findMany({
+      where: { userId, role: UserRole.CenterSevak, centerId: { not: null } },
+      select: { centerId: true },
+    });
+    return rows.map((row) => row.centerId).filter((id): id is string => id !== null);
+  }
+
+  /** Resolves tournament card permissions for the Center Sevak dashboard. */
+  async resolveDashboardPermissions(
+    actor: AuthUser,
+    tournament: { id: string; createdByUserId: string },
+    actionCenterId: string,
+  ): Promise<TournamentDashboardPermissions> {
+    const refs = { tournamentId: tournament.id, targetCenterId: actionCenterId };
+    const canManageCenterPlayers = await this.permissions.check(
+      Permission.VIEW_REGISTRATIONS_OWN_CENTER,
+      actor,
+      refs,
+    );
+
+    if (actor.role !== UserRole.CenterSevak) {
+      const canEdit = await this.permissions.check(Permission.EDIT_TOURNAMENT, actor, refs);
+      return {
+        canEdit,
+        canDelete: canEdit,
+        canManageCenterPlayers,
+      };
+    }
+
+    const canModify = await this.centerSevakCanModifyTournament(actor.id, tournament);
+    return {
+      canEdit: canModify,
+      canDelete: canModify,
+      canManageCenterPlayers,
+    };
+  }
 
   /** Maps the actor to the effective creator role for §1.1 resolution. */
   private async resolveCreatorRole(actor: AuthUser): Promise<UserRole> {

@@ -34,6 +34,8 @@ module.exports = {
           DEFAULT: '#8e7164',
           variant: '#e2bfb0',
         },
+        /** Thin divider lines between rows/columns (0.5px). */
+        separator: '#eeeef0',
         primary: {
           DEFAULT: '#FF6B00',
           /** Soft peach tint — SectionCard, profile photo tile. */
@@ -84,7 +86,15 @@ module.exports = {
         md: '0.75rem',
         lg: '1rem',
         xl: '0.75rem',
+        /** Text inputs, dropdowns, date fields, and buttons (8px). */
+        control: '8px',
         full: '9999px',
+      },
+      height: {
+        '0.75': '0.75px',
+      },
+      width: {
+        '0.5': '0.5px',
       },
     },
   },

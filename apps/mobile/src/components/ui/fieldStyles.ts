@@ -15,7 +15,7 @@ export const INPUT_SHADOW_STYLE = {
 export const INPUT_TEXT_STYLE = { fontSize: 16 } as const;
 
 export const DEFAULT_INPUT_CLASS =
-  'bg-white rounded-xl border border-[#F1F1F1] px-5 py-4 text-[#1A1A1A] font-sans';
+  'bg-white rounded-control border border-[#F1F1F1] px-5 py-4 text-[#1A1A1A] font-sans';
 
 /** Display text for Select/DateField values (same typography rules as TextInput). */
 export const FIELD_VALUE_TEXT_CLASS = 'font-sans';
@@ -56,7 +56,7 @@ export function mergeFieldClassName(
 ): string {
   const stripped = stripRadius(className ?? '');
   let merged = stripped ? `${DEFAULT_INPUT_CLASS} ${stripped}` : DEFAULT_INPUT_CLASS;
-  merged = `${stripRadius(merged)} rounded-xl`.trim();
+  merged = `${stripRadius(merged)} rounded-control`.trim();
   if (options?.hasLeadingIcon && !/\bpl-\d/.test(merged)) {
     merged = `${merged} pl-14`;
   }

@@ -7,7 +7,7 @@
  */
 
 /** Password policy — security mitigation override of the 6-char default (§31). */
-export const PASSWORD_MIN_LENGTH = 8;
+export { PASSWORD_MIN_LENGTH } from './password-policy';
 
 /** Minimum age to register, derived from `dateOfBirth` (§3.1). */
 export const MIN_SIGNUP_AGE = 18;
@@ -52,6 +52,10 @@ export const AuthErrorCode = {
   PasswordResetLocked: 'PASSWORD_RESET_LOCKED',
   /** Caller lacks the role required for this action. */
   Forbidden: 'FORBIDDEN',
+  /** Authenticated change-password: current password did not match. */
+  CurrentPasswordIncorrect: 'CURRENT_PASSWORD_INCORRECT',
+  /** New password equals the current password. */
+  SamePassword: 'SAME_PASSWORD',
 } as const;
 
 export type AuthErrorCode = (typeof AuthErrorCode)[keyof typeof AuthErrorCode];
@@ -116,6 +120,15 @@ export interface ResetPasswordRequest {
   newPassword: string;
 }
 
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
+}
+
+export interface ChangePasswordResponse {
+  success: true;
+}
+
 export interface UnlockAccountRequest {
   userId: string;
 }
@@ -124,6 +137,13 @@ export interface UnlockAccountRequest {
 export interface AuthTokens {
   accessToken: string;
   refreshToken: string;
+}
+
+/** Scoped Captain / Vice-Captain team leadership (from RoleAssignment). */
+export interface TeamLeadAssignment {
+  role: typeof UserRole.Captain | typeof UserRole.ViceCaptain;
+  tournamentId: string;
+  teamId: string;
 }
 
 /** Public, non-sensitive projection of a user (never includes passwordHash). */
@@ -138,6 +158,10 @@ export interface AuthUser {
   profilePhotoUrl: string | null;
   role: UserRole;
   isActive: boolean;
+  /** Present on login/me responses; empty when the user leads no team. */
+  teamLeadAssignments?: TeamLeadAssignment[];
+  /** Center ids where the user holds a scoped Center Sevak assignment. */
+  centerSevakCenterIds?: string[];
 }
 
 /** Response body for signup and login. */

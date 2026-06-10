@@ -21,6 +21,7 @@ import {
 
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { Public } from '../auth/public.decorator';
 import { PermissionGuard } from '../authz/permission.guard';
 import { RequirePermission } from '../authz/require-permission.decorator';
 import { CreateTournamentDto } from './dto/create-tournament.dto';
@@ -43,6 +44,7 @@ export class TournamentsController {
   }
 
   @Get()
+  @Public()
   list(): Promise<TournamentSummary[]> {
     return this.tournaments.list();
   }
@@ -54,6 +56,7 @@ export class TournamentsController {
   }
 
   @Get(':tournamentId')
+  @Public()
   detail(@Param('tournamentId') tournamentId: string): Promise<TournamentDetail> {
     return this.tournaments.getDetail(tournamentId);
   }
@@ -63,10 +66,11 @@ export class TournamentsController {
   @RequirePermission(Permission.EDIT_TOURNAMENT)
   @UseGuards(PermissionGuard)
   update(
+    @CurrentUser() user: AuthUser,
     @Param('tournamentId') tournamentId: string,
     @Body() dto: UpdateTournamentDto,
   ): Promise<TournamentDetail> {
-    return this.tournaments.update(tournamentId, dto);
+    return this.tournaments.update(user, tournamentId, dto);
   }
 
   /** Lifecycle transition (§5.1). */
@@ -85,7 +89,10 @@ export class TournamentsController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @RequirePermission(Permission.EDIT_TOURNAMENT)
   @UseGuards(PermissionGuard)
-  async remove(@Param('tournamentId') tournamentId: string): Promise<void> {
-    await this.tournaments.remove(tournamentId);
+  async remove(
+    @CurrentUser() user: AuthUser,
+    @Param('tournamentId') tournamentId: string,
+  ): Promise<void> {
+    await this.tournaments.remove(user, tournamentId);
   }
 }

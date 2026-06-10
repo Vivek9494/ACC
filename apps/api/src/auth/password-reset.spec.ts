@@ -55,7 +55,7 @@ describe('PasswordResetService', () => {
   const dto = (overrides: Partial<ResetPasswordDto> = {}): ResetPasswordDto => ({
     mobileNumber: '+15555550100',
     otp: '000000',
-    newPassword: 'password1',
+    newPassword: 'Password1!',
     ...overrides,
   });
 

@@ -10,6 +10,13 @@ export interface CardProps extends Omit<PressableProps, 'children'> {
   className?: string;
 }
 
+function stripRadius(className?: string): string {
+  if (!className) {
+    return '';
+  }
+  return className.replace(/\brounded-[\w[\]-]+\b/g, '').replace(/\s+/g, ' ').trim();
+}
+
 /** White elevated surface used across dashboard sections. */
 export function Card({
   children,
@@ -19,9 +26,11 @@ export function Card({
   disabled,
   ...props
 }: CardProps): React.ReactElement {
+  const restClass = stripRadius(className);
+  const radiusClass = className?.includes('rounded-control') ? 'rounded-control' : 'rounded-2xl';
   const shell = (
     <View
-      className={`rounded-2xl bg-white p-4 ${accent ? 'border-l-4 border-l-primary' : ''} ${className ?? ''}`.trim()}
+      className={`${radiusClass} bg-white p-4 ${accent ? 'border-l-4 border-l-primary' : ''} ${restClass}`.trim()}
       style={INPUT_SHADOW_STYLE}
     >
       {children}

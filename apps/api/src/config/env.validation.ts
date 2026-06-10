@@ -45,9 +45,9 @@ export class EnvironmentVariables {
   @MinLength(16)
   JWT_REFRESH_SECRET!: string;
 
-  /** Access token lifetime, e.g. "15m". */
+  /** Access token lifetime, e.g. "15m" or "1h". */
   @IsString()
-  JWT_ACCESS_TTL = '15m';
+  JWT_ACCESS_TTL = '1h';
 
   // Twilio (optional). When all three are set the app sends real SMS; otherwise
   // it logs OTPs to the console (local dev).

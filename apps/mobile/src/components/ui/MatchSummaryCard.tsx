@@ -4,6 +4,8 @@ import { Card } from './Card';
 import { StatusPill } from './StatusPill';
 import { Text } from './Text';
 
+export type MatchSummaryCardStatus = 'UPCOMING' | 'LIVE' | 'COMPLETED';
+
 export interface MatchSummaryTeamProps {
   name: string;
   logoUrl?: string | null;
@@ -16,12 +18,11 @@ export interface MatchSummaryCardProps {
   tournamentName: string;
   teamA: MatchSummaryTeamProps;
   teamB: MatchSummaryTeamProps;
-  /** e.g. "Barrie Cobras won by 40 runs". Omit for live/upcoming. */
-  resultNote?: string | null;
-  /** When true, shows a Live StatusPill and hides the result line. */
-  live?: boolean;
-  /** When true, shows an Upcoming StatusPill and hides scores/result. */
-  upcoming?: boolean;
+  status: MatchSummaryCardStatus;
+  /** Toss / pre-match status line (blue). Shown for LIVE (and UPCOMING when set). */
+  infoLine?: string | null;
+  /** Completed-match result line (blue). Shown for COMPLETED only. */
+  resultLine?: string | null;
   onPress?: () => void;
 }
 
@@ -73,36 +74,42 @@ function TeamRow({
   );
 }
 
-/** Featured match card with orange left accent (Club Manager / player home). */
+/** Featured match card with orange left accent (dashboard home screens). */
 export function MatchSummaryCard({
   tournamentName,
   teamA,
   teamB,
-  resultNote,
-  live = false,
-  upcoming = false,
+  status,
+  infoLine,
+  resultLine,
   onPress,
 }: MatchSummaryCardProps): React.ReactElement {
-  const showScore = !upcoming;
+  const showScore = status !== 'UPCOMING';
+  const footerLine =
+    status === 'LIVE' || status === 'UPCOMING'
+      ? infoLine
+      : status === 'COMPLETED'
+        ? resultLine
+        : null;
 
   return (
-    <Card accent onPress={onPress} className="gap-4">
+    <Card accent onPress={onPress} className="gap-4 rounded-control">
       <View className="flex-row items-start justify-between gap-2">
         <Text className="flex-1 font-sans-medium text-sm text-on-surface-variant" numberOfLines={1}>
           {tournamentName}
         </Text>
-        {live ? <StatusPill variant="ongoing" label="Live" /> : null}
-        {upcoming ? <StatusPill variant="upcoming" label="Upcoming" /> : null}
+        {status === 'LIVE' ? <StatusPill variant="live" label="Live" /> : null}
+        {status === 'UPCOMING' ? <StatusPill variant="upcoming" label="Upcoming" /> : null}
       </View>
 
       <TeamRow team={teamA} showScore={showScore} />
 
-      <View className="h-px bg-outline-variant" />
+      <View className="h-0.75 bg-separator" />
 
       <TeamRow team={teamB} showScore={showScore} />
 
-      {resultNote && !live && !upcoming ? (
-        <Text className="font-sans-semibold text-sm text-[#1565C0]">{resultNote}</Text>
+      {footerLine ? (
+        <Text className="font-sans-semibold text-sm text-tertiary">{footerLine}</Text>
       ) : null}
     </Card>
   );

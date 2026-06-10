@@ -12,8 +12,14 @@ import {
   type AuthResponse,
   type AuthTokens,
   type AuthUser,
+  type ChangePasswordRequest,
+  type ChangePasswordResponse,
   type AdminOverview,
+  type CaptainDashboard,
+  type CenterSevakDashboard,
   type ClubManagerDashboard,
+  type GuestDashboard,
+  type PlayerDashboard,
   type AssignScorerRequest,
   type AvailabilitySummary,
   type CenterDetail,
@@ -61,6 +67,8 @@ import {
   type UpdateRatingsRequest,
   type UpdateTournamentRequest,
 } from '@acc/types';
+
+import { loadTokens, saveTokens } from './session';
 
 export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3001';
 
@@ -141,20 +149,107 @@ export class ApiRequestError extends Error {
   }
 }
 
+/**
+ * Thrown after a failed refresh / token-version mismatch when the session has
+ * been cleared and the app is routing to Login. Callers should not surface this
+ * as a user-visible error.
+ */
+export class SessionExpiredError extends Error {
+  constructor() {
+    super('Session expired');
+    this.name = 'SessionExpiredError';
+  }
+}
+
+export function isSessionExpiredError(err: unknown): boolean {
+  return err instanceof SessionExpiredError;
+}
+
 export interface RequestOptions extends Omit<RequestInit, 'body'> {
   body?: unknown;
+}
+
+interface InternalRequestOptions extends RequestOptions {
+  /** When true, a 401 does not trigger refresh-and-retry (auth endpoints). */
+  skipAuthRetry?: boolean;
+  /** When true, omits Authorization even if a token is in memory (public guest reads). */
+  skipAuthHeader?: boolean;
+  /** Internal guard — each request is retried at most once after refresh. */
+  _authRetried?: boolean;
 }
 
 function isEnvelope(value: unknown): value is ApiEnvelope<unknown> {
   return typeof value === 'object' && value !== null && 'data' in value && 'error' in value;
 }
 
-/**
- * Perform a JSON request against the api and return the parsed body as `T`.
- * Throws `ApiRequestError` on non-2xx responses.
- */
-export async function apiFetch<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const { body, headers, ...rest } = options;
+const AUTH_NO_RETRY_PREFIXES = [
+  '/auth/login',
+  '/auth/signup',
+  '/auth/refresh',
+  '/auth/forgot-password',
+  '/auth/reset-password',
+  '/auth/change-password',
+];
+
+function shouldAttemptAccessTokenRefresh(path: string, status: number, error: ApiError): boolean {
+  if (status !== 401) {
+    return false;
+  }
+  if (error.code === AuthErrorCode.TokenVersionMismatch) {
+    return false;
+  }
+  return !AUTH_NO_RETRY_PREFIXES.some((prefix) => path.startsWith(prefix));
+}
+
+function isRefreshTerminalFailure(status: number, error: ApiError): boolean {
+  return (
+    status === 401 &&
+    (error.code === AuthErrorCode.RefreshExpired ||
+      error.code === AuthErrorCode.TokenVersionMismatch)
+  );
+}
+
+let refreshInFlight: Promise<boolean> | null = null;
+
+async function refreshAccessTokenOnce(): Promise<boolean> {
+  const stored = await loadTokens();
+  if (!stored?.refreshToken) {
+    return false;
+  }
+
+  try {
+    const tokens = await apiFetchInternal<AuthTokens>('/auth/refresh', {
+      method: 'POST',
+      body: { refreshToken: stored.refreshToken } satisfies RefreshRequest,
+      skipAuthRetry: true,
+    });
+    await saveTokens(tokens);
+    setAuthToken(tokens.accessToken);
+    return true;
+  } catch (err) {
+    if (err instanceof ApiRequestError && isRefreshTerminalFailure(err.status, err.error)) {
+      return false;
+    }
+    throw err;
+  }
+}
+
+async function ensureFreshAccessToken(): Promise<boolean> {
+  if (!refreshInFlight) {
+    refreshInFlight = refreshAccessTokenOnce().finally(() => {
+      refreshInFlight = null;
+    });
+  }
+  return refreshInFlight;
+}
+
+async function forceSessionLogout(): Promise<never> {
+  onUnauthorized?.();
+  throw new SessionExpiredError();
+}
+
+async function apiFetchInternal<T>(path: string, options: InternalRequestOptions = {}): Promise<T> {
+  const { body, headers, skipAuthRetry, skipAuthHeader, _authRetried, ...rest } = options;
 
   const finalHeaders: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -162,7 +257,7 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
     ...(headers as Record<string, string> | undefined),
   };
 
-  if (authToken) {
+  if (authToken && !skipAuthHeader) {
     finalHeaders.Authorization = `Bearer ${authToken}`;
   }
 
@@ -180,20 +275,44 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
       ? (parsed.error ?? { code: 'UNKNOWN', message: response.statusText })
       : { code: 'UNKNOWN', message: response.statusText };
 
-    // A token-version mismatch means another device logged in; drop the
-    // session and let the app route back to Login.
-    if (response.status === 401 && error.code === AuthErrorCode.TokenVersionMismatch) {
-      onUnauthorized?.();
+    if (!skipAuthRetry && !_authRetried) {
+      if (error.code === AuthErrorCode.TokenVersionMismatch) {
+        return forceSessionLogout();
+      }
+      if (shouldAttemptAccessTokenRefresh(path, response.status, error)) {
+        const refreshed = await ensureFreshAccessToken();
+        if (!refreshed) {
+          return forceSessionLogout();
+        }
+        return apiFetchInternal<T>(path, { ...options, _authRetried: true });
+      }
     }
 
     throw new ApiRequestError(response.status, error);
   }
 
-  // The api returns either a raw payload or an `{ data }` envelope.
   if (isEnvelope(parsed)) {
     return parsed.data as T;
   }
   return parsed as T;
+}
+
+/**
+ * Perform a JSON request against the api and return the parsed body as `T`.
+ * On 401, transparently refreshes the access token (single-flight) and retries
+ * once. When refresh is impossible, clears the session and throws
+ * {@link SessionExpiredError}.
+ */
+export async function apiFetch<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  return apiFetchInternal<T>(path, options);
+}
+
+/**
+ * Public read-only fetch for guest flows (spec §2). Skips auth header and does not
+ * attempt token refresh on 401 — avoids redirect-to-login loops when no session exists.
+ */
+export async function apiFetchPublic<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  return apiFetchInternal<T>(path, { ...options, skipAuthHeader: true, skipAuthRetry: true });
 }
 
 export interface HealthStatus {
@@ -260,6 +379,22 @@ export function getClubManagerDashboard(): Promise<ClubManagerDashboard> {
   return apiFetch<ClubManagerDashboard>('/club-manager/dashboard');
 }
 
+export function getCaptainDashboard(): Promise<CaptainDashboard> {
+  return apiFetch<CaptainDashboard>('/captain/dashboard');
+}
+
+export function getCenterSevakDashboard(): Promise<CenterSevakDashboard> {
+  return apiFetch<CenterSevakDashboard>('/center-sevak/dashboard');
+}
+
+export function getPlayerDashboard(): Promise<PlayerDashboard> {
+  return apiFetch<PlayerDashboard>('/player/dashboard');
+}
+
+export function getGuestDashboard(): Promise<GuestDashboard> {
+  return apiFetchPublic<GuestDashboard>('/guest/dashboard');
+}
+
 export function signup(body: SignupRequest): Promise<AuthResponse> {
   return apiFetch<AuthResponse>('/auth/signup', { method: 'POST', body });
 }
@@ -268,9 +403,17 @@ export function login(body: LoginRequest): Promise<AuthResponse> {
   return apiFetch<AuthResponse>('/auth/login', { method: 'POST', body });
 }
 
+export function logout(): Promise<void> {
+  return apiFetchInternal<void>('/auth/logout', { method: 'POST', skipAuthRetry: true });
+}
+
 export function refreshTokens(refreshToken: string): Promise<AuthTokens> {
   const body: RefreshRequest = { refreshToken };
-  return apiFetch<AuthTokens>('/auth/refresh', { method: 'POST', body });
+  return apiFetchInternal<AuthTokens>('/auth/refresh', {
+    method: 'POST',
+    body,
+    skipAuthRetry: true,
+  });
 }
 
 export function getMe(): Promise<AuthUser> {
@@ -285,6 +428,14 @@ export function resetPassword(body: ResetPasswordRequest): Promise<{ success: bo
   return apiFetch<{ success: boolean }>('/auth/reset-password', { method: 'POST', body });
 }
 
+export function changePassword(body: ChangePasswordRequest): Promise<ChangePasswordResponse> {
+  return apiFetchInternal<ChangePasswordResponse>('/auth/change-password', {
+    method: 'POST',
+    body,
+    skipAuthRetry: true,
+  });
+}
+
 // --- Tournaments (§6, §24) -------------------------------------------------
 
 export function listTournaments(): Promise<TournamentSummary[]> {
@@ -292,7 +443,7 @@ export function listTournaments(): Promise<TournamentSummary[]> {
 }
 
 export function getTournament(id: string): Promise<TournamentDetail> {
-  return apiFetch<TournamentDetail>(`/tournaments/${id}`);
+  return apiFetchPublic<TournamentDetail>(`/tournaments/${id}`);
 }
 
 export function createTournament(body: CreateTournamentRequest): Promise<TournamentDetail> {
@@ -304,6 +455,10 @@ export function updateTournament(
   body: UpdateTournamentRequest,
 ): Promise<TournamentDetail> {
   return apiFetch<TournamentDetail>(`/tournaments/${id}`, { method: 'PATCH', body });
+}
+
+export function deleteTournament(id: string): Promise<void> {
+  return apiFetch<void>(`/tournaments/${id}`, { method: 'DELETE' });
 }
 
 export function transitionTournamentState(
@@ -498,7 +653,7 @@ export function revokeScorer(matchId: string, userId: string): Promise<MatchDeta
 
 /** §2/§28: public, guest-readable live scorecard snapshot. */
 export function getScorecard(matchId: string): Promise<ScorecardResponse> {
-  return apiFetch<ScorecardResponse>(`/matches/${matchId}/scorecard`);
+  return apiFetchPublic<ScorecardResponse>(`/matches/${matchId}/scorecard`);
 }
 
 /** §14: open a new innings (normal or Super Over). */

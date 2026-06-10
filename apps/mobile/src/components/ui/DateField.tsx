@@ -116,7 +116,7 @@ export function DateField({
 
       {showPicker ? (
         Platform.OS === 'ios' ? (
-          <View className="mt-2 overflow-hidden rounded-xl border border-[#F1F1F1] bg-white">
+          <View className="mt-2 overflow-hidden rounded-control border border-[#F1F1F1] bg-white">
             <View className="flex-row justify-end border-b border-[#F1F1F1] px-3 py-2">
               <Pressable onPress={() => setShowPicker(false)} hitSlop={8}>
                 <Text className="font-sans-semibold text-sm text-primary">Done</Text>

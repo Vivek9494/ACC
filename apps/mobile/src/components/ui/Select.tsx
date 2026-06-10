@@ -125,7 +125,7 @@ export function Select({
                   const active = item.value === value;
                   return (
                     <Pressable
-                      className={`rounded-xl px-4 py-3 ${active ? 'bg-[#FDF1EA]' : ''}`}
+                      className={`rounded-control px-4 py-3 ${active ? 'bg-[#FDF1EA]' : ''}`}
                       onPress={() => {
                         onChange(item.value);
                         setOpen(false);

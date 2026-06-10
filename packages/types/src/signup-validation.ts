@@ -1,4 +1,8 @@
 import { MIN_SIGNUP_AGE, PASSWORD_MIN_LENGTH } from './auth';
+import {
+  isPasswordPolicyCompliant,
+  PASSWORD_POLICY_INVALID_MESSAGE,
+} from './password-policy';
 import { CANADIAN_POSTAL_CODE_REGEX } from './postal-code';
 
 export const SIGNUP_NAME_MAX_LENGTH = 20;
@@ -49,7 +53,7 @@ export const SIGNUP_VALIDATION_MESSAGES = {
   },
   password: {
     required: 'Password is required',
-    invalid: 'Password must be at least 8 characters and include a number',
+    invalid: PASSWORD_POLICY_INVALID_MESSAGE,
   },
   confirmPassword: {
     required: 'Please confirm your password',
@@ -199,7 +203,7 @@ export function validateSignupPassword(value: string): string | null {
   if (!value) {
     return SIGNUP_VALIDATION_MESSAGES.password.required;
   }
-  if (value.length < PASSWORD_MIN_LENGTH || !/[0-9]/.test(value)) {
+  if (!isPasswordPolicyCompliant(value)) {
     return SIGNUP_VALIDATION_MESSAGES.password.invalid;
   }
   return null;

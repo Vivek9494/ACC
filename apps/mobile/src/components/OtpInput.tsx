@@ -30,7 +30,7 @@ export function OtpInput({
           return (
             <View
               key={i}
-              className={`h-14 w-12 items-center justify-center rounded-xl border bg-surface-container-lowest ${
+              className={`h-14 w-12 items-center justify-center rounded-control border bg-surface-container-lowest ${
                 active ? 'border-primary' : 'border-outline-variant'
               }`}
             >

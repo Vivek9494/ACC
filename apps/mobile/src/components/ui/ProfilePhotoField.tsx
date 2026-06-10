@@ -66,7 +66,7 @@ export function ProfilePhotoField({
       {label ? <Text className={labelClassName(labelVariant)}>{label}</Text> : null}
       <Pressable
         onPress={() => void pick()}
-        className={`flex-row items-center gap-4 rounded-xl bg-white px-5 py-4 ${borderClass}`}
+        className={`flex-row items-center gap-4 rounded-control bg-white px-5 py-4 ${borderClass}`}
         style={INPUT_SHADOW_STYLE}
       >
         {uri ? (

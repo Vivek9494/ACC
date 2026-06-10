@@ -1,12 +1,18 @@
-import { PASSWORD_MIN_LENGTH } from '@acc/types';
+import {
+  CHANGE_PASSWORD_MESSAGES,
+  isPasswordPolicyCompliant,
+  SIGNUP_VALIDATION_MESSAGES,
+} from '@acc/types';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
-import { Button } from '../src/components/ui/Button';
-import { Text } from '../src/components/ui/Text';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { FormField } from '../src/components/FormField';
+import { PasswordRequirements } from '../src/components/ui/PasswordRequirements';
+import { PasswordToggle } from '../src/components/ui/PasswordToggle';
+import { Button } from '../src/components/ui/Button';
+import { Text } from '../src/components/ui/Text';
+import { TextInput } from '../src/components/ui/TextInput';
 import { ApiRequestError, resetPassword } from '../src/lib/api';
 
 export default function ResetPasswordScreen(): React.ReactElement {
@@ -14,30 +20,43 @@ export default function ResetPasswordScreen(): React.ReactElement {
   const { mobile, otp } = useLocalSearchParams<{ mobile?: string; otp?: string }>();
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | undefined>();
+  const [confirmError, setConfirmError] = useState<string | undefined>();
+  const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
 
+  const canSubmit = useMemo(
+    () => isPasswordPolicyCompliant(password) && password === confirmPassword && confirmPassword.length > 0,
+    [confirmPassword, password],
+  );
+
   async function onSubmit(): Promise<void> {
-    if (password.length < PASSWORD_MIN_LENGTH || !/[0-9]/.test(password)) {
-      setError(`Password must be at least ${PASSWORD_MIN_LENGTH} characters and include a digit.`);
+    setPasswordError(undefined);
+    setConfirmError(undefined);
+    setFormError(null);
+
+    if (!isPasswordPolicyCompliant(password)) {
+      setPasswordError(SIGNUP_VALIDATION_MESSAGES.password.invalid);
       return;
     }
     if (password !== confirmPassword) {
-      setError('Passwords do not match.');
+      setConfirmError(CHANGE_PASSWORD_MESSAGES.confirmMismatch);
       return;
     }
     if (!mobile || !otp) {
-      setError('Missing verification details. Please restart the reset flow.');
+      setFormError('Missing verification details. Please restart the reset flow.');
       return;
     }
-    setError(null);
+
     setSubmitting(true);
     try {
       await resetPassword({ mobileNumber: mobile, otp, newPassword: password });
       setDone(true);
     } catch (err) {
-      setError(
+      setFormError(
         err instanceof ApiRequestError ? err.message : 'Something went wrong. Please try again.',
       );
     } finally {
@@ -84,30 +103,50 @@ export default function ResetPasswordScreen(): React.ReactElement {
         </View>
 
         <View className="mt-10 gap-5">
-          <FormField
+          <TextInput
             label="New password"
             value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            placeholder="At least 8 chars, 1 digit"
-          />
-          <FormField
-            label="Confirm password"
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
-            secureTextEntry
+            onChangeText={(text) => {
+              setPassword(text);
+              if (passwordError) setPasswordError(undefined);
+            }}
+            secureTextEntry={!showPassword}
             placeholder="••••••••"
+            rightAccessory={
+              <PasswordToggle visible={showPassword} onToggle={() => setShowPassword((v) => !v)} />
+            }
+            error={passwordError}
           />
 
-          {error ? (
+          <TextInput
+            label="Confirm password"
+            value={confirmPassword}
+            onChangeText={(text) => {
+              setConfirmPassword(text);
+              if (confirmError) setConfirmError(undefined);
+            }}
+            secureTextEntry={!showConfirmPassword}
+            placeholder="••••••••"
+            rightAccessory={
+              <PasswordToggle
+                visible={showConfirmPassword}
+                onToggle={() => setShowConfirmPassword((v) => !v)}
+              />
+            }
+            error={confirmError}
+          />
+
+          <PasswordRequirements password={password} />
+
+          {formError ? (
             <View className="rounded-lg bg-error-container px-4 py-3">
-              <Text className="font-sans text-sm text-on-error-container">{error}</Text>
+              <Text className="font-sans text-sm text-on-error-container">{formError}</Text>
             </View>
           ) : null}
 
           <Button
             onPress={() => void onSubmit()}
-            disabled={submitting}
+            disabled={!canSubmit || submitting}
             className="mt-2 h-14"
           >
             {submitting ? (

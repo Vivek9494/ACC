@@ -1,6 +1,6 @@
 import '../global.css';
 
-import { UserRole } from '@acc/types';
+import { UserRole, type AuthUser } from '@acc/types';
 import {
   Montserrat_400Regular,
   Montserrat_500Medium,
@@ -15,6 +15,8 @@ import { useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AuthProvider, useAuth } from '../src/lib/auth-context';
+import { hasCenterSevakAccess } from '../src/lib/center-sevak-access';
+import { hasTeamLeadAccess } from '../src/lib/team-lead-access';
 // THROWAWAY geofence spike: side-effect import registers the background task at
 // startup so the OS can relaunch into it after a kill (see geofence-task.ts).
 import '../src/geofence/geofence-task';
@@ -29,15 +31,42 @@ const AUTH_ROUTES = new Set([
   'forgot-password',
   'enter-otp',
   'reset-password',
+  'guest',
 ]);
 
+/** Routes an unauthenticated guest may browse read-only (spec §2). */
+function isGuestAccessibleRoute(segments: readonly string[]): boolean {
+  const [root, second, third] = segments;
+  if (root === 'guest') {
+    return true;
+  }
+  if (root === 'matches' && third === 'live') {
+    return true;
+  }
+  if (root === 'matches' && third === 'scorecard') {
+    return true;
+  }
+  if (root === 'tournaments' && second && second !== 'new') {
+    return true;
+  }
+  return false;
+}
+
 /** Post-login home route by role. */
-function homeRouteForRole(role: UserRole | undefined): '/admin' | '/club-manager' | '/home' {
-  if (role === UserRole.Admin) {
+function homeRouteForRole(
+  user: AuthUser | null | undefined,
+): '/admin' | '/club-manager' | '/captain' | '/center-sevak' | '/home' {
+  if (user?.role === UserRole.Admin) {
     return '/admin';
   }
-  if (role === UserRole.ClubManager) {
+  if (user?.role === UserRole.ClubManager) {
     return '/club-manager';
+  }
+  if (hasTeamLeadAccess(user)) {
+    return '/captain';
+  }
+  if (hasCenterSevakAccess(user)) {
+    return '/center-sevak';
   }
   return '/home';
 }
@@ -53,12 +82,13 @@ function RootNavigator(): React.ReactElement {
       return;
     }
     const onAuthRoute = AUTH_ROUTES.has(segments[0]);
+    const guestRoute = isGuestAccessibleRoute(segments);
     if (status === 'authenticated' && onAuthRoute) {
-      router.replace(homeRouteForRole(user?.role));
-    } else if (status === 'unauthenticated' && !onAuthRoute) {
+      router.replace(homeRouteForRole(user));
+    } else if (status === 'unauthenticated' && !onAuthRoute && !guestRoute) {
       router.replace('/login');
     }
-  }, [status, user?.role, segments, router]);
+  }, [status, user, segments, router]);
 
   return (
     <Stack screenOptions={{ headerShown: false }}>
@@ -68,6 +98,8 @@ function RootNavigator(): React.ReactElement {
       <Stack.Screen name="forgot-password" />
       <Stack.Screen name="enter-otp" />
       <Stack.Screen name="reset-password" />
+      <Stack.Screen name="change-password" />
+      <Stack.Screen name="guest" options={{ headerShown: false }} />
       <Stack.Screen name="home" />
       <Stack.Screen name="tournaments/index" />
       <Stack.Screen name="tournaments/new" />
@@ -85,6 +117,8 @@ function RootNavigator(): React.ReactElement {
       <Stack.Screen name="geofence-poc" />
       <Stack.Screen name="admin" options={{ headerShown: false }} />
       <Stack.Screen name="club-manager" options={{ headerShown: false }} />
+      <Stack.Screen name="captain" options={{ headerShown: false }} />
+      <Stack.Screen name="center-sevak" options={{ headerShown: false }} />
     </Stack>
   );
 }

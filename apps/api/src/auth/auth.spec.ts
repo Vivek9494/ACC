@@ -72,6 +72,7 @@ describe('AuthService', () => {
   let prisma: {
     user: { findUnique: jest.Mock; create: jest.Mock; update: jest.Mock };
     center: { findUnique: jest.Mock };
+    roleAssignment: { findMany: jest.Mock };
   };
   let redis: { get: jest.Mock; incrementWithTtl: jest.Mock; del: jest.Mock; setWithTtl: jest.Mock };
 
@@ -79,6 +80,7 @@ describe('AuthService', () => {
     prisma = {
       user: { findUnique: jest.fn(), create: jest.fn(), update: jest.fn() },
       center: { findUnique: jest.fn() },
+      roleAssignment: { findMany: jest.fn().mockResolvedValue([]) },
     };
     redis = {
       get: jest.fn(),
@@ -178,6 +180,18 @@ describe('AuthService', () => {
       expect.objectContaining({ data: { tokenVersion: { increment: 1 } } }),
     );
     jestBcrypt.mockRestore();
+  });
+
+  it('increments tokenVersion and clears refresh on logout', async () => {
+    prisma.user.update.mockResolvedValue(makeUser({ tokenVersion: 6 }));
+
+    await service.logout('user-1');
+
+    expect(prisma.user.update).toHaveBeenCalledWith({
+      where: { id: 'user-1' },
+      data: { tokenVersion: { increment: 1 } },
+    });
+    expect(redis.del).toHaveBeenCalledWith('refresh:user-1');
   });
 });
 

@@ -1,7 +1,7 @@
 import { AuthErrorCode } from '@acc/types';
-import { Link } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, ScrollView, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '../src/components/ui/Button';
@@ -32,6 +32,7 @@ function mapLoginApiError(err: unknown): string {
 
 export default function LoginScreen(): React.ReactElement {
   const { signIn } = useAuth();
+  const router = useRouter();
   const [mobileNumber, setMobileNumber] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -137,9 +138,18 @@ export default function LoginScreen(): React.ReactElement {
               </Text>
             )}
           </Button>
+
+          <Pressable
+            onPress={() => router.replace('/guest')}
+            accessibilityRole="button"
+            accessibilityLabel="Continue as Guest"
+            className="items-center py-3 active:opacity-80"
+          >
+            <Text className="font-sans-semibold text-sm text-primary">Continue as Guest</Text>
+          </Pressable>
         </View>
 
-        <View className="mt-auto flex-row justify-center gap-1 pt-10">
+        <View className="mt-auto flex-row justify-center gap-1 pt-6">
           <Text className="font-sans text-sm text-on-surface-variant">New to ACC?</Text>
           <Link href="/signup" className="font-sans-semibold text-sm text-primary">
             Create an account

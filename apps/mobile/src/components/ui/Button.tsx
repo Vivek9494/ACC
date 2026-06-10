@@ -35,7 +35,7 @@ export interface ButtonProps extends PressableProps {
 }
 
 /**
- * App-wide button wrapper. All variants share `rounded-xl` (12px). Text uses the
+ * App-wide button wrapper. All variants share `rounded-control` (8px). Text uses the
  * shared Text component with `font-sans-semibold` unless overridden via `textClassName`.
  */
 export const Button = forwardRef<View, ButtonProps>(function Button(
@@ -51,9 +51,10 @@ export const Button = forwardRef<View, ButtonProps>(function Button(
   ref,
 ) {
   const pressableClass = [
-    'items-center justify-center rounded-xl active:opacity-80 disabled:opacity-60',
+    'items-center justify-center active:opacity-80 disabled:opacity-60',
     VARIANT_PRESSABLE[variant],
     stripRadius(className),
+    'rounded-control',
   ]
     .filter(Boolean)
     .join(' ');

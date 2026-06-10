@@ -12,6 +12,6 @@ alwaysApply: true
 - **Online-only. Offline scoring is OUT of scope** (spec §12.4, §30.2). Do not add offline queues, local write-then-sync layers, optimistic offline mutation caches, or any "works without network" scoring path.
 - Money/fees are stored in cents as BIGINT — never floats.
 - Derived cricket stats (averages, strike rate, economy) are computed at query time, never persisted denormalized.
-- all text inputs use the shared TextInput wrapper, which carries the white fill, 12px radius, soft shadow, and label styling, so screens should pass a label prop rather than styling fields inline. That keeps the later phases consistent without you policing each screen.
+- all text inputs use the shared TextInput wrapper, which carries the white fill, 8px radius (`rounded-control` via `fieldStyles`), soft shadow, and label styling, so screens should pass a label prop rather than styling fields inline. Buttons use the shared Button wrapper with the same `rounded-control` token — do not set radius on inputs or buttons inline.
 - form field labels use the shared input components' default brown style (font-sans text-base leading-6 text-[#5A4136]), so screens shouldn't set label colors inline. 
 - form fields show validation via the shared TextInput error prop (red text below + red border), not custom per-screen error UI.

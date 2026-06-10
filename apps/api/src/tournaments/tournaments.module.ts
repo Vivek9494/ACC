@@ -12,5 +12,6 @@ import { TournamentsService } from './tournaments.service';
   imports: [AuthModule],
   controllers: [TournamentsController],
   providers: [TournamentsService],
+  exports: [TournamentsService],
 })
 export class TournamentsModule {}
