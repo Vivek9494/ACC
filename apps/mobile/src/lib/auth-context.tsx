@@ -1,4 +1,4 @@
-import type { AuthResponse, AuthUser, LoginRequest, SignupRequest } from '@acc/types';
+import type { AuthResponse, AuthUser, LoginRequest, ProfileDetail, SignupRequest } from '@acc/types';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 import {
@@ -26,6 +26,8 @@ interface AuthContextValue {
   clearCredentials: () => Promise<void>;
   /** Drops user/auth status after credentials are already cleared. */
   markUnauthenticated: () => void;
+  /** Merge profile fields into the in-memory user after a successful profile save. */
+  applyProfileUpdate: (profile: ProfileDetail) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -55,6 +57,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
   const markUnauthenticated = useCallback(() => {
     setUser(null);
     setStatus('unauthenticated');
+  }, []);
+
+  const applyProfileUpdate = useCallback((profile: ProfileDetail) => {
+    setUser((prev) => {
+      if (!prev) {
+        return prev;
+      }
+      return {
+        ...prev,
+        firstName: profile.firstName,
+        lastName: profile.lastName,
+        mobileNumber: profile.mobileNumber,
+        email: profile.email,
+        centerId: profile.centerId,
+        jerseyNumber: profile.jerseyNumber,
+        profilePhotoUrl: profile.profilePhotoUrl,
+      };
+    });
   }, []);
 
   const signOut = useCallback(async () => {
@@ -137,8 +157,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
       endSession: clearSession,
       clearCredentials,
       markUnauthenticated,
+      applyProfileUpdate,
     }),
-    [status, user, signIn, register, signOut, clearSession, clearCredentials, markUnauthenticated],
+    [status, user, signIn, register, signOut, clearSession, clearCredentials, markUnauthenticated, applyProfileUpdate],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

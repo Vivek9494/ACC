@@ -23,6 +23,7 @@
   },
   "dependencies": {
     "@acc/types": "workspace:*",
+    "@aws-sdk/client-s3": "^3.1065.0",
     "@nestjs/common": "^11.1.24",
     "@nestjs/config": "^4.0.4",
     "@nestjs/core": "^11.1.24",
@@ -48,6 +49,7 @@
     "@types/bcrypt": "^6.0.0",
     "@types/express": "^5.0.6",
     "@types/jest": "^30.0.0",
+    "@types/multer": "^2.1.0",
     "@types/node": "^25.9.1",
     "jest": "^30.4.2",
     "jest-environment-node": "^30.4.1",

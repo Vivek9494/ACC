@@ -1,9 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
-import { UserRole } from '@acc/types';
 import { useRouter } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 import {
-  Alert,
   Dimensions,
   Image,
   Modal,
@@ -51,15 +49,12 @@ export function ProfileMenu(): React.ReactElement {
   const [open, setOpen] = useState(false);
   const [menuLayout, setMenuLayout] = useState<LayoutRectangle | null>(null);
 
-  const profileRoute = user?.role === UserRole.Admin ? '/admin/profile' : null;
-
   const close = useCallback(() => {
     setOpen(false);
   }, []);
 
   const openMenu = useCallback(() => {
     anchorRef.current?.measureInWindow((x, y, width, height) => {
-      const windowWidth = Dimensions.get('window').width;
       setMenuLayout({
         x: Math.max(16, x + width - MENU_WIDTH),
         y: y + height + MENU_GAP,
@@ -72,12 +67,8 @@ export function ProfileMenu(): React.ReactElement {
 
   const onProfile = useCallback(() => {
     close();
-    if (profileRoute) {
-      router.push(profileRoute);
-      return;
-    }
-    Alert.alert('Profile', 'Profile coming soon');
-  }, [close, profileRoute, router]);
+    router.push('/edit-profile');
+  }, [close, router]);
 
   const onChangePassword = useCallback(() => {
     close();

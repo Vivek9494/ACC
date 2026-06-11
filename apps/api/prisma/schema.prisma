@@ -25,6 +25,15 @@ enum UserRole {
   PLAYER
 }
 
+enum JerseySize {
+  XS
+  S
+  M
+  L
+  XL
+  XXL
+}
+
 /// Resolved tournament type (spec §1, §1.1).
 enum TournamentType {
   ACC
@@ -251,6 +260,11 @@ model User {
   centerId               String
   center                 Center    @relation(fields: [centerId], references: [id])
   jerseyNumber           Int
+  /// Display name on jersey (e.g. "Casablancas"); separate from jerseyNumber.
+  jerseyName             String?
+  jerseySize             JerseySize?
+  /// Sensitive health data — not logged; exposed only to the user and permitted roles.
+  hasHealthCard          Boolean   @default(false)
   profilePhotoUrl        String?
   emergencyContactName   String
   emergencyContactNumber String

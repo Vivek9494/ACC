@@ -56,6 +56,8 @@ export const AuthErrorCode = {
   CurrentPasswordIncorrect: 'CURRENT_PASSWORD_INCORRECT',
   /** New password equals the current password. */
   SamePassword: 'SAME_PASSWORD',
+  /** Profile mobile change requires OTP verification of the new number. */
+  MobileChangeOtpRequired: 'MOBILE_CHANGE_OTP_REQUIRED',
 } as const;
 
 export type AuthErrorCode = (typeof AuthErrorCode)[keyof typeof AuthErrorCode];

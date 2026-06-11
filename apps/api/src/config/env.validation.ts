@@ -62,6 +62,28 @@ export class EnvironmentVariables {
   @IsOptional()
   @IsString()
   TWILIO_FROM_NUMBER?: string;
+
+  /** AWS S3 bucket for profile photos (ca-central-1). When unset, dev stores under uploads/. */
+  @IsOptional()
+  @IsString()
+  AWS_S3_BUCKET?: string;
+
+  @IsOptional()
+  @IsString()
+  AWS_REGION?: string;
+
+  @IsOptional()
+  @IsString()
+  AWS_ACCESS_KEY_ID?: string;
+
+  @IsOptional()
+  @IsString()
+  AWS_SECRET_ACCESS_KEY?: string;
+
+  /** Public base URL for locally served uploads (dev fallback). */
+  @IsOptional()
+  @IsString()
+  PUBLIC_API_URL?: string;
 }
 
 export function validateEnv(config: Record<string, unknown>): EnvironmentVariables {

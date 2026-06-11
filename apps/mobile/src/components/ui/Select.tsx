@@ -24,7 +24,7 @@ export interface SelectProps {
   labelVariant?: LabelVariant;
   placeholder?: string;
   value: string | null;
-  options: SelectOption[];
+  options?: SelectOption[];
   onChange: (value: string) => void;
   disabled?: boolean;
   /** Shows spinner in the field and blocks open while true (unless options already loaded). */
@@ -46,7 +46,7 @@ export function Select({
   labelVariant = 'brand',
   placeholder = 'Select…',
   value,
-  options,
+  options = [],
   onChange,
   disabled = false,
   loading = false,
@@ -56,8 +56,9 @@ export function Select({
   containerClassName,
 }: SelectProps): React.ReactElement {
   const [open, setOpen] = useState(false);
-  const selected = options.find((o) => o.value === value);
-  const showLoading = loading && options.length === 0;
+  const safeOptions = options ?? [];
+  const selected = safeOptions.find((o) => o.value === value);
+  const showLoading = loading && safeOptions.length === 0;
   const fieldDisabled = disabled || showLoading;
 
   let fieldClassName = mergeFieldClassName(undefined, { hasTrailingAccessory: true });
@@ -118,7 +119,7 @@ export function Select({
               </View>
             ) : (
               <FlatList
-                data={options}
+                data={safeOptions}
                 keyExtractor={(item) => item.value}
                 keyboardShouldPersistTaps="handled"
                 renderItem={({ item }) => {

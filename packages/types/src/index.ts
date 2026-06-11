@@ -10,7 +10,9 @@
 export const ACC_TYPES_PACKAGE = '@acc/types';
 
 export * from './postal-code';
+export * from './jersey-size';
 export * from './signup-validation';
+export * from './profile';
 export * from './admin';
 export * from './auth';
 export * from './password-policy';

@@ -21,6 +21,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { RedisModule } from './redis/redis.module';
 import { RegistrationsModule } from './registrations/registrations.module';
 import { ScoringModule } from './scoring/scoring.module';
+import { ProfileModule } from './profile/profile.module';
 import { SmsModule } from './sms/sms.module';
 import { TournamentsModule } from './tournaments/tournaments.module';
 
@@ -51,6 +52,7 @@ import { TournamentsModule } from './tournaments/tournaments.module';
     ScoringModule,
     LiveModule,
     HealthModule,
+    ProfileModule,
   ],
 })
 export class AppModule {}

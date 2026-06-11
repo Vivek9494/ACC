@@ -20,6 +20,10 @@ import {
   type ClubManagerDashboard,
   type GuestDashboard,
   type PlayerDashboard,
+  type ProfileDetail,
+  type RequestProfileMobileOtpRequest,
+  type UpdateProfileRequest,
+  type UploadProfilePhotoResponse,
   type AssignScorerRequest,
   type AvailabilitySummary,
   type CenterDetail,
@@ -434,6 +438,54 @@ export function changePassword(body: ChangePasswordRequest): Promise<ChangePassw
     body,
     skipAuthRetry: true,
   });
+}
+
+export function getProfile(): Promise<ProfileDetail> {
+  return apiFetch<ProfileDetail>('/profile');
+}
+
+export function updateProfile(body: UpdateProfileRequest): Promise<ProfileDetail> {
+  return apiFetch<ProfileDetail>('/profile', { method: 'PATCH', body });
+}
+
+export function requestProfileMobileOtp(body: RequestProfileMobileOtpRequest): Promise<void> {
+  return apiFetch<void>('/profile/mobile/request-otp', { method: 'POST', body });
+}
+
+/** Upload a local JPG profile photo; returns the persisted URL. */
+export async function uploadProfilePhoto(localUri: string): Promise<string> {
+  const formData = new FormData();
+  formData.append('photo', {
+    uri: localUri,
+    name: 'profile.jpg',
+    type: 'image/jpeg',
+  } as unknown as Blob);
+
+  const headers: Record<string, string> = { Accept: 'application/json' };
+  if (authToken) {
+    headers.Authorization = `Bearer ${authToken}`;
+  }
+
+  const response = await fetch(`${API_BASE_URL}/profile/photo`, {
+    method: 'POST',
+    headers,
+    body: formData,
+  });
+
+  const text = await response.text();
+  const parsed: unknown = text.length > 0 ? JSON.parse(text) : null;
+
+  if (!response.ok) {
+    const error: ApiError = isEnvelope(parsed)
+      ? (parsed.error ?? { code: 'UNKNOWN', message: response.statusText })
+      : { code: 'UNKNOWN', message: response.statusText };
+    throw new ApiRequestError(response.status, error);
+  }
+
+  if (isEnvelope(parsed)) {
+    return (parsed.data as UploadProfilePhotoResponse).profilePhotoUrl;
+  }
+  return (parsed as UploadProfilePhotoResponse).profilePhotoUrl;
 }
 
 // --- Tournaments (§6, §24) -------------------------------------------------

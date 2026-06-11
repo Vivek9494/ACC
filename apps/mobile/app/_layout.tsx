@@ -99,6 +99,7 @@ function RootNavigator(): React.ReactElement {
       <Stack.Screen name="enter-otp" />
       <Stack.Screen name="reset-password" />
       <Stack.Screen name="change-password" />
+      <Stack.Screen name="edit-profile" />
       <Stack.Screen name="guest" options={{ headerShown: false }} />
       <Stack.Screen name="home" />
       <Stack.Screen name="tournaments/index" />
