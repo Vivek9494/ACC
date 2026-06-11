@@ -8,6 +8,7 @@ import { validateSync } from 'class-validator';
 
 import { PermissionService } from '../authz/permission.service';
 import { TournamentTypeResolverService } from '../authz/tournament-type-resolver.service';
+import { MediaService } from '../media/media.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTournamentDto } from './dto/create-tournament.dto';
@@ -34,6 +35,9 @@ function detailRow(overrides: Record<string, unknown> = {}): Record<string, unkn
     endAt: new Date('2026-09-30T00:00:00.000Z'),
     oversPerInnings: 25,
     maxOversPerBowler: 5,
+    numberOfTeams: 4,
+    playersPerTeam: 15,
+    substitutesAllowed: 2,
     location: null,
     format: 'LEAGUE_SINGLE_ROUND_ROBIN',
     impactPlayerEnabled: false,
@@ -42,6 +46,7 @@ function detailRow(overrides: Record<string, unknown> = {}): Record<string, unkn
     youtubeUrl: null,
     registrationOpenAt: null,
     registrationCloseAt: null,
+    auctionAt: null,
     createdByUserId: 'cm-1',
     teams: [],
     _count: { teams: 0 },
@@ -88,6 +93,7 @@ describe('TournamentsService', () => {
   };
   let permissions: { check: jest.Mock };
   let notifications: { notify: jest.Mock };
+  let media: { uploadTournamentPoster: jest.Mock };
   let tx: TxMock;
 
   beforeEach(async () => {
@@ -131,6 +137,7 @@ describe('TournamentsService', () => {
     };
     permissions = { check: jest.fn().mockResolvedValue(true) };
     notifications = { notify: jest.fn().mockResolvedValue(undefined) };
+    media = { uploadTournamentPoster: jest.fn().mockResolvedValue('https://example.com/poster.jpg') };
 
     const moduleRef = await Test.createTestingModule({
       providers: [
@@ -139,6 +146,7 @@ describe('TournamentsService', () => {
         { provide: PrismaService, useValue: prisma },
         { provide: PermissionService, useValue: permissions },
         { provide: NotificationsService, useValue: notifications },
+        { provide: MediaService, useValue: media },
       ],
     }).compile();
 
@@ -151,6 +159,9 @@ describe('TournamentsService', () => {
       year: 2026,
       oversPerInnings: 25,
       maxOversPerBowler: 5,
+      numberOfTeams: 4,
+      playersPerTeam: 15,
+      substitutesAllowed: 2,
       startAt: '2026-05-01T00:00:00.000Z',
       endAt: '2026-09-30T00:00:00.000Z',
       ballType: 'LEATHER',
@@ -161,9 +172,9 @@ describe('TournamentsService', () => {
       ...overrides,
     }) as CreateTournamentDto;
 
-  describe('type resolution drives the create permission (§1.1)', () => {
+  describe('type resolution drives the create permission', () => {
     it('resolves a Leather tournament to ACC and checks CREATE_ACC_TOURNAMENT', async () => {
-      await service.create(actor, baseDto({ ballType: 'LEATHER' }));
+      await service.create(actor, baseDto({ ballType: 'LEATHER', citySelection: undefined }));
       expect(permissions.check).toHaveBeenCalledWith(
         Permission.CREATE_ACC_TOURNAMENT,
         actor,
@@ -181,6 +192,50 @@ describe('TournamentsService', () => {
         actor,
         {},
       );
+    });
+
+    it('resolves Tennis + Multi-centers to CENTER and checks CREATE_CENTER_TOURNAMENT', async () => {
+      tx.center.findMany.mockResolvedValue([{ id: 'center-A' }, { id: 'center-B' }]);
+      await service.create(
+        actor,
+        baseDto({
+          ballType: 'TENNIS',
+          citySelection: 'MULTI',
+          provinceId: 'prov-1',
+          centerIds: ['center-A'],
+        }),
+      );
+      expect(permissions.check).toHaveBeenCalledWith(
+        Permission.CREATE_CENTER_TOURNAMENT,
+        actor,
+        {},
+      );
+    });
+
+    it('rejects Center Sevak creating Leather/ACC (CREATE_ACC_TOURNAMENT)', async () => {
+      permissions.check.mockResolvedValueOnce(false);
+      await expect(
+        service.create(sevak, baseDto({ ballType: 'LEATHER' })),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      expect(permissions.check).toHaveBeenCalledWith(
+        Permission.CREATE_ACC_TOURNAMENT,
+        sevak,
+        {},
+      );
+    });
+
+    it('rejects Multi-centers without selected centers', async () => {
+      await expect(
+        service.create(
+          actor,
+          baseDto({
+            ballType: 'TENNIS',
+            citySelection: 'MULTI',
+            provinceId: 'prov-1',
+            centerIds: [],
+          }),
+        ),
+      ).rejects.toBeInstanceOf(BadRequestException);
     });
   });
 
@@ -334,6 +389,9 @@ describe('CreateTournamentDto', () => {
       year: 2026,
       oversPerInnings: 25,
       maxOversPerBowler: 5,
+      numberOfTeams: 4,
+      playersPerTeam: 15,
+      substitutesAllowed: 2,
       startAt: '2026-05-01T00:00:00.000Z',
       endAt: '2026-09-30T00:00:00.000Z',
       ballType: 'LEATHER',
@@ -348,20 +406,65 @@ describe('CreateTournamentDto', () => {
     expect(powerplayError).toBeDefined();
   });
 
-  it('accepts a valid payload without powerplay', () => {
+  it('accepts a valid leather payload without tournament scope', () => {
     const dto = plainToInstance(CreateTournamentDto, {
       name: 'X',
       year: 2026,
       oversPerInnings: 25,
       maxOversPerBowler: 5,
+      numberOfTeams: 4,
+      playersPerTeam: 15,
+      substitutesAllowed: 2,
       startAt: '2026-05-01T00:00:00.000Z',
       endAt: '2026-09-30T00:00:00.000Z',
       ballType: 'LEATHER',
-      citySelection: 'SINGLE',
       format: 'LEAGUE_SINGLE_ROUND_ROBIN',
       impactPlayerEnabled: false,
       videoRequired: false,
     });
     expect(validateSync(dto)).toHaveLength(0);
+  });
+
+  it('accepts a valid tennis payload with scope', () => {
+    const dto = plainToInstance(CreateTournamentDto, {
+      name: 'X',
+      year: 2026,
+      oversPerInnings: 25,
+      maxOversPerBowler: 5,
+      numberOfTeams: 4,
+      playersPerTeam: 15,
+      substitutesAllowed: 2,
+      startAt: '2026-05-01T00:00:00.000Z',
+      endAt: '2026-09-30T00:00:00.000Z',
+      ballType: 'TENNIS',
+      citySelection: 'ALL',
+      provinceId: 'prov-1',
+      format: 'LEAGUE_SINGLE_ROUND_ROBIN',
+      impactPlayerEnabled: false,
+      videoRequired: false,
+    });
+    expect(validateSync(dto)).toHaveLength(0);
+  });
+
+  it('requires centers for Multi-centers tennis payload', () => {
+    const dto = plainToInstance(CreateTournamentDto, {
+      name: 'X',
+      year: 2026,
+      oversPerInnings: 20,
+      maxOversPerBowler: 4,
+      numberOfTeams: 8,
+      playersPerTeam: 15,
+      substitutesAllowed: 2,
+      startAt: '2026-05-01T00:00:00.000Z',
+      endAt: '2026-09-30T00:00:00.000Z',
+      ballType: 'TENNIS',
+      citySelection: 'MULTI',
+      provinceId: 'prov-1',
+      format: 'LEAGUE_SINGLE_ROUND_ROBIN',
+      impactPlayerEnabled: false,
+      videoRequired: false,
+    });
+    const errors = validateSync(dto);
+    expect(errors.some((e) => e.property === 'centerIds')).toBe(true);
   });
 });

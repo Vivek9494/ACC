@@ -1,8 +1,7 @@
 import type { PlayerDashboard } from '@acc/types';
 import type { Router } from 'expo-router';
 import type { ReactNode } from 'react';
-import { Pressable, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { View } from 'react-native';
 
 import { MatchSummaryCard } from '../ui/MatchSummaryCard';
 import { StatTile } from '../ui/StatTile';
@@ -40,17 +39,7 @@ export function buildPlayerDashboardSections(
       <StatTile items={performanceItems} />
     </View>,
     <View key="tournaments" className="gap-3">
-      <View className="flex-row items-center justify-between">
-        <Text className="font-sans-bold text-xl text-on-surface">Tournaments</Text>
-        <Pressable
-          onPress={() => router.push('/tournaments/new')}
-          accessibilityRole="button"
-          accessibilityLabel="Add tournament"
-          className="h-10 w-10 items-center justify-center rounded-full bg-primary"
-        >
-          <Ionicons name="add" size={24} color="#ffffff" />
-        </Pressable>
-      </View>
+      <Text className="font-sans-bold text-xl text-on-surface">Tournaments</Text>
       {dashboard.tournaments.length === 0 ? (
         <Text className="font-sans text-sm text-on-surface-variant">No tournaments yet.</Text>
       ) : (

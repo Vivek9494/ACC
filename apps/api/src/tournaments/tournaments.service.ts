@@ -3,6 +3,7 @@ import {
   BallType,
   type CloneSuggestion,
   Permission,
+  PLAYING_XI_SIZE,
   TournamentState,
   TOURNAMENT_STATE_TRANSITIONS,
   type TournamentDashboardPermissions,
@@ -26,6 +27,7 @@ import {
   NotificationTrigger,
 } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { MediaService } from '../media/media.service';
 import type { CreateTournamentDto } from './dto/create-tournament.dto';
 import type { UpdateTournamentDto } from './dto/update-tournament.dto';
 
@@ -44,21 +46,14 @@ export class TournamentsService {
     private readonly typeResolver: TournamentTypeResolverService,
     private readonly permissions: PermissionService,
     private readonly notifications: NotificationsService,
+    private readonly media: MediaService,
   ) {}
 
-  /** Creates a tournament (§6.1), deriving the type via §1.1 and RBAC-gating it. */
+  /** Creates a tournament (§6.1), deriving the type server-side and RBAC-gating it. */
   async create(actor: AuthUser, dto: CreateTournamentDto): Promise<TournamentDetail> {
-    const creatorRole = await this.resolveCreatorRole(actor);
-    const allProvinceCentersSelected =
-      dto.ballType === BallType.Tennis
-        ? await this.resolveAllProvinceCentersSelected(dto, actor)
-        : false;
-
     const type = this.typeResolver.resolve({
       ballType: dto.ballType,
-      creatorRole,
-      citySelection: dto.citySelection,
-      allProvinceCentersSelected,
+      ...(dto.ballType === BallType.Tennis ? { citySelection: dto.citySelection } : {}),
     });
 
     const allowed = await this.permissions.check(CREATE_PERMISSION[type], actor, {});
@@ -70,6 +65,8 @@ export class TournamentsService {
     }
 
     this.validateDates(dto);
+    this.validateSquadFields(dto);
+    this.validateCenterParticipation(dto, type);
 
     const created = await this.prisma.$transaction(async (tx) => {
       const tournament = await tx.tournament.create({
@@ -79,6 +76,9 @@ export class TournamentsService {
           posterUrl: dto.posterUrl ?? null,
           oversPerInnings: dto.oversPerInnings,
           maxOversPerBowler: dto.maxOversPerBowler,
+          numberOfTeams: dto.numberOfTeams,
+          playersPerTeam: dto.playersPerTeam,
+          substitutesAllowed: dto.substitutesAllowed,
           location: dto.location ?? null,
           startAt: new Date(dto.startAt),
           endAt: new Date(dto.endAt),
@@ -92,6 +92,7 @@ export class TournamentsService {
           youtubeUrl: dto.youtubeUrl ?? null,
           registrationOpenAt: dto.registrationOpenAt ? new Date(dto.registrationOpenAt) : null,
           registrationCloseAt: dto.registrationCloseAt ? new Date(dto.registrationCloseAt) : null,
+          auctionAt: dto.auctionAt ? new Date(dto.auctionAt) : null,
           createdByUserId: actor.id,
         },
       });
@@ -111,6 +112,10 @@ export class TournamentsService {
     });
 
     return this.getDetail(created);
+  }
+
+  async uploadPoster(actor: AuthUser, buffer: Buffer): Promise<string> {
+    return this.media.uploadTournamentPoster(actor.id, buffer);
   }
 
   /** Lists tournaments newest-first for the dashboard list. */
@@ -137,6 +142,9 @@ export class TournamentsService {
       ...this.toSummary(row),
       oversPerInnings: row.oversPerInnings,
       maxOversPerBowler: row.maxOversPerBowler,
+      numberOfTeams: row.numberOfTeams,
+      playersPerTeam: row.playersPerTeam,
+      substitutesAllowed: row.substitutesAllowed,
       location: row.location,
       format: row.format,
       impactPlayerEnabled: row.impactPlayerEnabled,
@@ -145,6 +153,7 @@ export class TournamentsService {
       youtubeUrl: row.youtubeUrl,
       registrationOpenAt: row.registrationOpenAt?.toISOString() ?? null,
       registrationCloseAt: row.registrationCloseAt?.toISOString() ?? null,
+      auctionAt: row.auctionAt?.toISOString() ?? null,
       teams: row.teams,
     };
   }
@@ -193,6 +202,9 @@ export class TournamentsService {
     if (dto.posterUrl !== undefined) data.posterUrl = dto.posterUrl;
     if (dto.oversPerInnings !== undefined) data.oversPerInnings = dto.oversPerInnings;
     if (dto.maxOversPerBowler !== undefined) data.maxOversPerBowler = dto.maxOversPerBowler;
+    if (dto.numberOfTeams !== undefined) data.numberOfTeams = dto.numberOfTeams;
+    if (dto.playersPerTeam !== undefined) data.playersPerTeam = dto.playersPerTeam;
+    if (dto.substitutesAllowed !== undefined) data.substitutesAllowed = dto.substitutesAllowed;
     if (dto.location !== undefined) data.location = dto.location;
     if (dto.startAt !== undefined) data.startAt = new Date(dto.startAt);
     if (dto.endAt !== undefined) data.endAt = new Date(dto.endAt);
@@ -337,24 +349,20 @@ export class TournamentsService {
     };
   }
 
-  /** Maps the actor to the effective creator role for §1.1 resolution. */
-  private async resolveCreatorRole(actor: AuthUser): Promise<UserRole> {
-    if (actor.role === UserRole.Admin || actor.role === UserRole.ClubManager) {
-      return actor.role;
-    }
-    const sevak = await this.prisma.roleAssignment.findFirst({
-      where: { userId: actor.id, role: UserRole.CenterSevak },
-      select: { id: true },
-    });
-    return sevak ? UserRole.CenterSevak : UserRole.Player;
-  }
-
   private validateDates(dto: CreateTournamentDto): void {
     if (new Date(dto.endAt) < new Date(dto.startAt)) {
       throw new BadRequestException({
         message: 'End date must be on or after the start date',
         error: 'INVALID_DATE_RANGE',
       });
+    }
+    if (dto.registrationOpenAt && dto.registrationCloseAt) {
+      if (new Date(dto.registrationCloseAt) <= new Date(dto.registrationOpenAt)) {
+        throw new BadRequestException({
+          message: 'Registration must close after it opens',
+          error: 'INVALID_REGISTRATION_WINDOW',
+        });
+      }
     }
     // §19: when videos are required the upload end date must be after reg close.
     if (dto.videoRequired) {
@@ -368,6 +376,40 @@ export class TournamentsService {
         throw new BadRequestException({
           message: 'Video Upload End Date must be after the registration close date',
           error: 'INVALID_VIDEO_DATE',
+        });
+      }
+    }
+  }
+
+  private validateSquadFields(dto: CreateTournamentDto): void {
+    if (dto.playersPerTeam < PLAYING_XI_SIZE + dto.substitutesAllowed) {
+      throw new BadRequestException({
+        message: `Players per team must be at least ${PLAYING_XI_SIZE} (Playing XI) plus substitutes allowed`,
+        error: 'INVALID_SQUAD_SIZE',
+      });
+    }
+  }
+
+  private validateCenterParticipation(
+    dto: CreateTournamentDto,
+    type: TournamentType,
+  ): void {
+    if (type === 'ACC') {
+      return;
+    }
+
+    if (!dto.provinceId) {
+      throw new BadRequestException({
+        message: 'provinceId is required for tennis-ball tournaments',
+        error: 'PROVINCE_REQUIRED',
+      });
+    }
+
+    if (dto.citySelection === 'MULTI' || type === 'CENTER') {
+      if (!dto.centerIds || dto.centerIds.length === 0) {
+        throw new BadRequestException({
+          message: 'Select at least one center',
+          error: 'CENTERS_REQUIRED',
         });
       }
     }
@@ -400,7 +442,13 @@ export class TournamentsService {
     if (dto.citySelection === 'ALL') {
       centerIds = activeInProvince.map((c) => c.id);
     } else {
-      centerIds = dto.centerIds && dto.centerIds.length > 0 ? dto.centerIds : [actor.centerId];
+      if (!dto.centerIds || dto.centerIds.length === 0) {
+        throw new BadRequestException({
+          message: 'Select at least one center',
+          error: 'CENTERS_REQUIRED',
+        });
+      }
+      centerIds = dto.centerIds;
       const invalid = centerIds.filter((id) => !activeIds.has(id));
       if (invalid.length > 0) {
         throw new BadRequestException({
@@ -416,45 +464,6 @@ export class TournamentsService {
       data: centerIds.map((centerId) => ({ tournamentId, centerId })),
       skipDuplicates: true,
     });
-  }
-
-  private async resolveAllProvinceCentersSelected(
-    dto: CreateTournamentDto,
-    actor: AuthUser,
-  ): Promise<boolean> {
-    if (!dto.provinceId) {
-      throw new BadRequestException({
-        message: 'provinceId is required for tennis-ball tournaments',
-        error: 'PROVINCE_REQUIRED',
-      });
-    }
-
-    const province = await this.prisma.province.findUnique({
-      where: { id: dto.provinceId },
-      select: { id: true, isActive: true },
-    });
-    if (!province || !province.isActive) {
-      throw new BadRequestException({
-        message: 'Province not found or inactive',
-        error: 'INVALID_PROVINCE',
-      });
-    }
-
-    const activeInProvince = await this.prisma.center.findMany({
-      where: { provinceId: dto.provinceId, isActive: true },
-      select: { id: true },
-    });
-    if (dto.citySelection === 'ALL') {
-      return activeInProvince.length > 0;
-    }
-
-    const selected =
-      dto.centerIds && dto.centerIds.length > 0 ? dto.centerIds : [actor.centerId];
-    if (selected.length !== activeInProvince.length) {
-      return false;
-    }
-    const activeSet = new Set(activeInProvince.map((c) => c.id));
-    return selected.every((id) => activeSet.has(id));
   }
 
   /**

@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 
 import { AuthModule } from '../auth/auth.module';
+import { MediaModule } from '../media/media.module';
 import { TournamentsController } from './tournaments.controller';
 import { TournamentsService } from './tournaments.service';
 
@@ -9,7 +10,7 @@ import { TournamentsService } from './tournaments.service';
  * (permission engine, type resolver) and NotificationsModule.
  */
 @Module({
-  imports: [AuthModule],
+  imports: [AuthModule, MediaModule],
   controllers: [TournamentsController],
   providers: [TournamentsService],
   exports: [TournamentsService],

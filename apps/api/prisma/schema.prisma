@@ -333,6 +333,13 @@ model Tournament {
   endAt               DateTime
   registrationOpenAt  DateTime?
   registrationCloseAt DateTime?
+  auctionAt           DateTime?
+  /// Expected team count for fixture/setup (§6.1).
+  numberOfTeams       Int              @default(4)
+  /// Squad size per team; Playing XI remains 11 (§9.7).
+  playersPerTeam      Int              @default(15)
+  /// Substitutes allowed per match squad (§9.7; default 2).
+  substitutesAllowed  Int              @default(2)
   ballType            BallType
   type                TournamentType
   state               TournamentState  @default(NEW)

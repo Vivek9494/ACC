@@ -1,0 +1,4 @@
+-- AlterTable
+ALTER TABLE "Tournament" ADD COLUMN     "numberOfTeams" INTEGER NOT NULL DEFAULT 4,
+ADD COLUMN     "playersPerTeam" INTEGER NOT NULL DEFAULT 15,
+ADD COLUMN     "substitutesAllowed" INTEGER NOT NULL DEFAULT 2;

@@ -10,14 +10,19 @@ import {
   Controller,
   Delete,
   Get,
+  BadRequestException,
   HttpCode,
   HttpStatus,
   Param,
   Patch,
   Post,
   Query,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { TOURNAMENT_POSTER_MAX_BYTES, type UploadTournamentPosterResponse } from '@acc/types';
 
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -41,6 +46,21 @@ export class TournamentsController {
     @Body() dto: CreateTournamentDto,
   ): Promise<TournamentDetail> {
     return this.tournaments.create(user, dto);
+  }
+
+  @Post('poster')
+  @UseInterceptors(
+    FileInterceptor('poster', { limits: { fileSize: TOURNAMENT_POSTER_MAX_BYTES } }),
+  )
+  async uploadPoster(
+    @CurrentUser() user: AuthUser,
+    @UploadedFile() file: { buffer: Buffer } | undefined,
+  ): Promise<UploadTournamentPosterResponse> {
+    if (!file?.buffer?.length) {
+      throw new BadRequestException({ message: 'Tournament poster is required' });
+    }
+    const posterUrl = await this.tournaments.uploadPoster(user, file.buffer);
+    return { posterUrl };
   }
 
   @Get()

@@ -1,4 +1,4 @@
-import { SIGNUP_PROFILE_PHOTO_MAX_BYTES } from '@acc/types';
+import { SIGNUP_PROFILE_PHOTO_MAX_BYTES, TOURNAMENT_POSTER_MAX_BYTES } from '@acc/types';
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
@@ -6,6 +6,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 const JPEG_MAGIC = Buffer.from([0xff, 0xd8, 0xff]);
+const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47]);
 
 @Injectable()
 export class MediaService {
@@ -69,6 +70,49 @@ export class MediaService {
     await writeFile(join(dir, filename), buffer);
     const url = `${this.publicApiUrl}/uploads/profiles/${filename}`;
     this.logger.log(`Stored profile photo locally for ${userId} (S3 not configured)`);
+    return url;
+  }
+
+  validateTournamentPosterBuffer(buffer: Buffer): 'image/jpeg' | 'image/png' {
+    if (buffer.length === 0 || buffer.length > TOURNAMENT_POSTER_MAX_BYTES) {
+      throw new BadRequestException({
+        message: 'Tournament poster must be JPG or PNG and no larger than 5MB',
+      });
+    }
+    if (buffer.subarray(0, 3).compare(JPEG_MAGIC) === 0) {
+      return 'image/jpeg';
+    }
+    if (buffer.subarray(0, 4).compare(PNG_MAGIC) === 0) {
+      return 'image/png';
+    }
+    throw new BadRequestException({
+      message: 'Tournament poster must be JPG or PNG',
+    });
+  }
+
+  async uploadTournamentPoster(userId: string, buffer: Buffer): Promise<string> {
+    const contentType = this.validateTournamentPosterBuffer(buffer);
+    const ext = contentType === 'image/png' ? 'png' : 'jpg';
+
+    if (this.s3 && this.bucket) {
+      const key = `posters/${userId}/${Date.now()}.${ext}`;
+      await this.s3.send(
+        new PutObjectCommand({
+          Bucket: this.bucket,
+          Key: key,
+          Body: buffer,
+          ContentType: contentType,
+        }),
+      );
+      return `https://${this.bucket}.s3.${this.region}.amazonaws.com/${key}`;
+    }
+
+    const dir = join(process.cwd(), 'uploads', 'posters');
+    await mkdir(dir, { recursive: true });
+    const filename = `${userId}-${Date.now()}.${ext}`;
+    await writeFile(join(dir, filename), buffer);
+    const url = `${this.publicApiUrl}/uploads/posters/${filename}`;
+    this.logger.log(`Stored tournament poster locally (S3 not configured)`);
     return url;
   }
 }

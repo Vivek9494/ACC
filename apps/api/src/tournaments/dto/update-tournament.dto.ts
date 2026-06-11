@@ -41,6 +41,24 @@ export class UpdateTournamentDto implements UpdateTournamentRequest {
   maxOversPerBowler?: number;
 
   @IsOptional()
+  @IsInt()
+  @Min(2)
+  @Max(64)
+  numberOfTeams?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(11)
+  @Max(30)
+  playersPerTeam?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(11)
+  substitutesAllowed?: number;
+
+  @IsOptional()
   @IsString()
   @MaxLength(200)
   location?: string | null;

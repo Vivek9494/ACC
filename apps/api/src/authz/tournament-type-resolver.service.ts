@@ -1,30 +1,21 @@
-import { BallType, CitySelection, TournamentType, UserRole } from '@acc/types';
+import { BallType, CitySelection, TournamentType } from '@acc/types';
 import { BadRequestException, Injectable } from '@nestjs/common';
 
-/** Inputs to the §1.1 type-resolution logic. */
+/** Inputs to tournament-type resolution (ball type + scope only). */
 export interface TournamentTypeInput {
   ballType: BallType;
-  /** The platform-global role of the creating user (Club Manager / Center Sevak). */
-  creatorRole: UserRole;
-  /** City coverage chosen on the form. Ignored for Leather (ACC). */
-  citySelection: CitySelection;
-  /**
-   * True when every active Center in the selected Province is included — either
-   * via citySelection=ALL or an explicit centerIds list covering the full set.
-   */
-  allProvinceCentersSelected?: boolean;
+  /** City coverage; required for tennis, ignored for leather (always ACC). */
+  citySelection?: CitySelection;
 }
 
 /**
- * Resolves the tournament type from the Add Tournament inputs (spec §1.1):
+ * Resolves tournament type from ball type + scope (creator role is NOT a factor):
  *
- * 1. Leather → ACC.
- * 2. Tennis + Club Manager + ALL cities → APL.
- * 3. Tennis + Center Sevak, OR Tennis + Club Manager with single/multi (not all)
- *    → Center-level.
+ * - Leather Ball → ACC (scope ignored)
+ * - Tennis Ball + ALL → APL
+ * - Tennis Ball + MULTI or SINGLE → CENTER (Center-level)
  *
- * This resolves the *type* only; whether the caller may create that type is a
- * separate permission check (CREATE_ACC/APL/CENTER_TOURNAMENT).
+ * Whether the caller may create that type is enforced separately via RBAC.
  */
 @Injectable()
 export class TournamentTypeResolverService {
@@ -33,30 +24,24 @@ export class TournamentTypeResolverService {
       return TournamentType.ACC;
     }
 
-    // Tennis ball from here.
-    const allCities =
-      input.citySelection === CitySelection.All || input.allProvinceCentersSelected === true;
-
-    if (allCities) {
-      if (input.creatorRole === UserRole.ClubManager || input.creatorRole === UserRole.Admin) {
-        return TournamentType.APL;
-      }
-      // A Center Sevak choosing all cities would be APL territory, which they
-      // cannot organize (§1.1, §2).
-      throw new BadRequestException(
-        'All-cities tennis tournaments are APL and can only be created by a Club Manager',
-      );
+    if (!input.citySelection) {
+      throw new BadRequestException({
+        message: 'Tournament scope is required for tennis-ball tournaments',
+        error: 'CITY_SELECTION_REQUIRED',
+      });
     }
 
-    // Tennis + proper subset (not all active Centers in the Province).
+    if (input.citySelection === CitySelection.All) {
+      return TournamentType.APL;
+    }
+
     if (
-      input.creatorRole === UserRole.CenterSevak ||
-      input.creatorRole === UserRole.ClubManager ||
-      input.creatorRole === UserRole.Admin
+      input.citySelection === CitySelection.Multi ||
+      input.citySelection === CitySelection.Single
     ) {
       return TournamentType.Center;
     }
 
-    throw new BadRequestException('Only a Club Manager or Center Sevak can create a tournament');
+    throw new BadRequestException('Invalid tournament city scope');
   }
 }

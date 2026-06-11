@@ -1,15 +1,17 @@
-import { type TournamentSummary, UserRole } from '@acc/types';
+import { type TournamentSummary } from '@acc/types';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, ScrollView, View } from 'react-native';
 import { Button } from '../../src/components/ui/Button';
 import { Text } from '../../src/components/ui/Text';
+import { BallTypeIcon } from '../../src/components/ui/BallTypeIcon';
 import { FIELD_ORANGE } from '../../src/components/ui/fieldStyles';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { StateBadge } from '../../src/components/StateBadge';
 import { ApiRequestError, listTournaments } from '../../src/lib/api';
 import { useAuth } from '../../src/lib/auth-context';
+import { canCreateTournament } from '../../src/lib/can-create-tournament';
 
 const TYPE_LABELS: Record<TournamentSummary['type'], string> = {
   ACC: 'ACC',
@@ -24,7 +26,7 @@ export default function TournamentsScreen(): React.ReactElement {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const canCreate = user?.role === UserRole.Admin || user?.role === UserRole.ClubManager;
+  const canCreate = canCreateTournament(user);
 
   const load = useCallback(() => {
     let cancelled = false;
@@ -107,9 +109,12 @@ export default function TournamentsScreen(): React.ReactElement {
                 </View>
               )}
               <View className="flex-1 gap-1">
-                <Text className="font-sans-semibold text-base text-on-surface" numberOfLines={1}>
-                  {t.name}
-                </Text>
+                <View className="flex-row items-center gap-2">
+                  <BallTypeIcon ballType={t.ballType} size={20} />
+                  <Text className="flex-1 font-sans-semibold text-base text-on-surface" numberOfLines={1}>
+                    {t.name}
+                  </Text>
+                </View>
                 <Text className="font-sans text-sm text-on-surface-variant">
                   {TYPE_LABELS[t.type]} • {t.year} • {t.teamCount}{' '}
                   {t.teamCount === 1 ? 'team' : 'teams'}

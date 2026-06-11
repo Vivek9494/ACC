@@ -84,8 +84,8 @@ export function managerRoleAllowed(type: TournamentType): boolean {
 
 /**
  * Add Tournament form payload (spec §6.1). `type` is NOT provided by the client;
- * the api derives it from `ballType` + `citySelection` + the creator's role
- * (§1.1). Powerplay Overs is intentionally absent (removed per §6.1).
+ * the api derives it from `ballType` + `citySelection`. Powerplay Overs is
+ * intentionally absent (removed per §6.1).
  */
 export interface CreateTournamentRequest {
   name: string;
@@ -98,8 +98,14 @@ export interface CreateTournamentRequest {
   startAt: string;
   endAt: string;
   ballType: BallType;
-  /** City coverage; drives §1.1 type resolution (ignored for Leather/ACC). */
-  citySelection: CitySelection;
+  /** City coverage; required for tennis-ball tournaments; ignored for leather/ACC. */
+  citySelection?: CitySelection;
+  /** Expected teams for fixture/setup (§6.1). */
+  numberOfTeams: number;
+  /** Squad size per team; Playing XI remains {@link PLAYING_XI_SIZE}. */
+  playersPerTeam: number;
+  /** Substitutes allowed per match (§9.7). */
+  substitutesAllowed: number;
   /** Province whose Centers participate (tennis tournaments only). */
   provinceId?: string;
   /** Participating Center ids for MULTI/SINGLE; ignored when citySelection=ALL. */
@@ -112,6 +118,8 @@ export interface CreateTournamentRequest {
   youtubeUrl?: string | null;
   registrationOpenAt?: string | null;
   registrationCloseAt?: string | null;
+  /** Optional player auction date (§6.1 extension). */
+  auctionAt?: string | null;
   /** Optional: clone team names (never players, §6.2) from this past tournament. */
   cloneFromTournamentId?: string | null;
   /** When cloning, also copy Captain/VC/Manager assignments (§6.2). */
@@ -124,6 +132,9 @@ export interface UpdateTournamentRequest {
   posterUrl?: string | null;
   oversPerInnings?: number;
   maxOversPerBowler?: number;
+  numberOfTeams?: number;
+  playersPerTeam?: number;
+  substitutesAllowed?: number;
   location?: string | null;
   startAt?: string;
   endAt?: string;
@@ -159,6 +170,9 @@ export interface TournamentSummary {
 export interface TournamentDetail extends TournamentSummary {
   oversPerInnings: number;
   maxOversPerBowler: number;
+  numberOfTeams: number;
+  playersPerTeam: number;
+  substitutesAllowed: number;
   location: string | null;
   format: TournamentFormat;
   impactPlayerEnabled: boolean;
@@ -167,6 +181,7 @@ export interface TournamentDetail extends TournamentSummary {
   youtubeUrl: string | null;
   registrationOpenAt: string | null;
   registrationCloseAt: string | null;
+  auctionAt: string | null;
   teams: { id: string; name: string }[];
 }
 

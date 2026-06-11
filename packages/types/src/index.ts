@@ -29,4 +29,8 @@ export * from './rbac';
 export * from './registration';
 export * from './scorecard';
 export * from './scoring';
+export * from './tournament-create-defaults';
 export * from './tournament';
+export * from './tournament-media';
+export * from './tournament-validation';
+export * from './tournament-field-limits';

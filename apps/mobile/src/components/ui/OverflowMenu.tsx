@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useRef, useState, type ComponentProps } from 'react';
 import {
   Dimensions,
   Modal,
@@ -14,10 +14,12 @@ import { Text } from './Text';
 const MENU_WIDTH = 220;
 const MENU_GAP = 8;
 
+type IoniconName = ComponentProps<typeof Ionicons>['name'];
+
 export interface OverflowMenuAction {
   key: string;
   label: string;
-  icon: keyof typeof Ionicons.glyphMap;
+  icon: IoniconName;
   onPress: () => void;
 }
 
@@ -32,7 +34,7 @@ function MenuItem({
   onPress,
 }: {
   label: string;
-  icon: keyof typeof Ionicons.glyphMap;
+  icon: IoniconName;
   onPress: () => void;
 }): React.ReactElement {
   return (

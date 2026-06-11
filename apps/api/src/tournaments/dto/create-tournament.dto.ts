@@ -19,6 +19,7 @@ import {
   MaxLength,
   Min,
   MinLength,
+  ValidateIf,
 } from 'class-validator';
 
 const BALL_TYPES = Object.values(BallType);
@@ -56,6 +57,21 @@ export class CreateTournamentDto implements CreateTournamentRequest {
   @Max(50)
   maxOversPerBowler!: number;
 
+  @IsInt()
+  @Min(2)
+  @Max(64)
+  numberOfTeams!: number;
+
+  @IsInt()
+  @Min(11)
+  @Max(30)
+  playersPerTeam!: number;
+
+  @IsInt()
+  @Min(0)
+  @Max(11)
+  substitutesAllowed!: number;
+
   @IsOptional()
   @IsString()
   @MaxLength(200)
@@ -70,16 +86,22 @@ export class CreateTournamentDto implements CreateTournamentRequest {
   @IsIn(BALL_TYPES)
   ballType!: BallType;
 
+  /** Required for tennis-ball tournaments; ignored when ball type is leather. */
+  @ValidateIf((dto: CreateTournamentDto) => dto.ballType === BallType.Tennis)
   @IsIn(CITY_SELECTIONS)
-  citySelection!: CitySelection;
+  citySelection?: CitySelection;
 
-  @IsOptional()
+  @ValidateIf((dto: CreateTournamentDto) => dto.ballType === BallType.Tennis)
   @IsString()
+  @MinLength(1)
   provinceId?: string;
 
-  @IsOptional()
+  @ValidateIf(
+    (dto: CreateTournamentDto) =>
+      dto.ballType === BallType.Tennis && dto.citySelection === CitySelection.Multi,
+  )
   @IsArray()
-  @ArrayNotEmpty()
+  @ArrayNotEmpty({ message: 'Select at least one center' })
   @IsString({ each: true })
   centerIds?: string[];
 
@@ -107,6 +129,10 @@ export class CreateTournamentDto implements CreateTournamentRequest {
   @IsOptional()
   @IsDateString()
   registrationCloseAt?: string | null;
+
+  @IsOptional()
+  @IsDateString()
+  auctionAt?: string | null;
 
   @IsOptional()
   @IsString()

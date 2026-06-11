@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useRef, useState, type ComponentProps } from 'react';
 import {
   Dimensions,
   Image,
@@ -17,9 +17,11 @@ import { Text } from './Text';
 const MENU_WIDTH = 192;
 const MENU_GAP = 8;
 
+type IoniconName = ComponentProps<typeof Ionicons>['name'];
+
 interface MenuItemProps {
   label: string;
-  icon: keyof typeof Ionicons.glyphMap;
+  icon: IoniconName;
   onPress: () => void;
   destructive?: boolean;
 }

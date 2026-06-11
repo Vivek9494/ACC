@@ -24,6 +24,7 @@ import {
   type RequestProfileMobileOtpRequest,
   type UpdateProfileRequest,
   type UploadProfilePhotoResponse,
+  type UploadTournamentPosterResponse,
   type AssignScorerRequest,
   type AvailabilitySummary,
   type CenterDetail,
@@ -486,6 +487,51 @@ export async function uploadProfilePhoto(localUri: string): Promise<string> {
     return (parsed.data as UploadProfilePhotoResponse).profilePhotoUrl;
   }
   return (parsed as UploadProfilePhotoResponse).profilePhotoUrl;
+}
+
+function posterMimeFromUri(uri: string): { mime: string; ext: string } {
+  const lower = uri.toLowerCase();
+  if (lower.endsWith('.png')) {
+    return { mime: 'image/png', ext: 'png' };
+  }
+  return { mime: 'image/jpeg', ext: 'jpg' };
+}
+
+/** Upload a local JPG/PNG tournament poster; returns the persisted URL. */
+export async function uploadTournamentPoster(localUri: string): Promise<string> {
+  const { mime, ext } = posterMimeFromUri(localUri);
+  const formData = new FormData();
+  formData.append('poster', {
+    uri: localUri,
+    name: `poster.${ext}`,
+    type: mime,
+  } as unknown as Blob);
+
+  const headers: Record<string, string> = { Accept: 'application/json' };
+  if (authToken) {
+    headers.Authorization = `Bearer ${authToken}`;
+  }
+
+  const response = await fetch(`${API_BASE_URL}/tournaments/poster`, {
+    method: 'POST',
+    headers,
+    body: formData,
+  });
+
+  const text = await response.text();
+  const parsed: unknown = text.length > 0 ? JSON.parse(text) : null;
+
+  if (!response.ok) {
+    const error: ApiError = isEnvelope(parsed)
+      ? (parsed.error ?? { code: 'UNKNOWN', message: response.statusText })
+      : { code: 'UNKNOWN', message: response.statusText };
+    throw new ApiRequestError(response.status, error);
+  }
+
+  if (isEnvelope(parsed)) {
+    return (parsed.data as UploadTournamentPosterResponse).posterUrl;
+  }
+  return (parsed as UploadTournamentPosterResponse).posterUrl;
 }
 
 // --- Tournaments (§6, §24) -------------------------------------------------
