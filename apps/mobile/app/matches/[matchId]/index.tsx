@@ -10,6 +10,7 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { Button } from '../../../src/components/ui/Button';
+import { Select } from '../../../src/components/ui/Select';
 import { Text } from '../../../src/components/ui/Text';
 import { FIELD_ORANGE } from '../../../src/components/ui/fieldStyles';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -57,6 +58,7 @@ export default function MatchDetailScreen(): React.ReactElement {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [working, setWorking] = useState(false);
+  const [assignScorerUserId, setAssignScorerUserId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!matchId) return;
@@ -121,6 +123,12 @@ export default function MatchDetailScreen(): React.ReactElement {
   const candidates: SquadPlayerView[] = match.squads.flatMap((s) =>
     s.players.filter((p) => p.role === 'PLAYING_XI' || p.role === 'SUBSTITUTE'),
   );
+  const assignScorerOptions = candidates
+    .filter((player) => !activeScorerIds.has(player.userId))
+    .map((player) => ({
+      value: player.userId,
+      label: `${player.firstName} ${player.lastName}`,
+    }));
 
   const toss = tossSummary(match);
 
@@ -271,27 +279,32 @@ export default function MatchDetailScreen(): React.ReactElement {
               ))
             ) : (
               <Text className="font-sans text-sm text-on-surface-variant">
-                No scorer assigned. Grant scoring to a squad player.
+                No scorer assigned. Choose a squad player below.
               </Text>
             )}
-            <View className="gap-2">
-              {candidates
-                .filter((p) => !activeScorerIds.has(p.userId))
-                .map((p) => (
-                  <Button
-                    key={p.userId}
-                    disabled={working}
-                    onPress={() => void run(() => assignScorer(match.id, { userId: p.userId }))}
-                    variant="outline"
-                    className="h-11 flex-row justify-between px-4"
-                  >
-                    <Text className="font-sans text-sm text-on-surface">
-                      {p.firstName} {p.lastName}
-                    </Text>
-                    <Text className="font-sans text-xs text-primary">Grant Scorer</Text>
-                  </Button>
-                ))}
-            </View>
+            {assignScorerOptions.length > 0 ? (
+              <Select
+                label="Assign Scorer"
+                placeholder="Select player"
+                value={assignScorerUserId}
+                options={assignScorerOptions}
+                onChange={setAssignScorerUserId}
+              />
+            ) : null}
+            {assignScorerUserId ? (
+              <Button
+                disabled={working}
+                onPress={() =>
+                  void run(async () => {
+                    const updated = await assignScorer(match.id, { userId: assignScorerUserId });
+                    setAssignScorerUserId(null);
+                    return updated;
+                  })
+                }
+                className="h-12"
+                label="Grant Scorer"
+              />
+            ) : null}
           </View>
         ) : null}
 

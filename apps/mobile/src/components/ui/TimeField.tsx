@@ -5,6 +5,7 @@ import DateTimePicker, {
 import { useMemo, useState } from 'react';
 import { Platform, Pressable, View } from 'react-native';
 
+import { DateTimePickerSheet } from './DateTimePickerSheet';
 import {
   FIELD_ORANGE,
   FIELD_VALUE_TEXT_CLASS,
@@ -75,10 +76,8 @@ export function TimeField({
   const parsed = value ? parseTimeValue(value) : null;
   const pickerValue = useMemo(() => parsed ?? new Date(), [parsed]);
 
-  function onPickerChange(event: DateTimePickerEvent, selected?: Date): void {
-    if (Platform.OS === 'android') {
-      setShowPicker(false);
-    }
+  function onAndroidPickerChange(event: DateTimePickerEvent, selected?: Date): void {
+    setShowPicker(false);
     if (event.type === 'dismissed' || !selected) {
       return;
     }
@@ -109,29 +108,25 @@ export function TimeField({
         </Text>
       </Pressable>
       {error ? <Text className="mt-1 font-sans text-sm text-error">{error}</Text> : null}
-      {showPicker ? (
-        Platform.OS === 'ios' ? (
-          <View className="mt-2 overflow-hidden rounded-control border border-[#F1F1F1] bg-white">
-            <View className="flex-row justify-end border-b border-[#F1F1F1] px-3 py-2">
-              <Pressable onPress={() => setShowPicker(false)} hitSlop={8}>
-                <Text className="font-sans-semibold text-sm text-primary">Done</Text>
-              </Pressable>
-            </View>
-            <DateTimePicker
-              value={pickerValue}
-              mode="time"
-              display="spinner"
-              onChange={onPickerChange}
-            />
-          </View>
-        ) : (
-          <DateTimePicker
-            value={pickerValue}
-            mode="time"
-            display="default"
-            onChange={onPickerChange}
-          />
-        )
+
+      <DateTimePickerSheet
+        visible={showPicker}
+        mode="time"
+        value={pickerValue}
+        onConfirm={(selected) => {
+          onChange(formatTimeValue(selected));
+          setShowPicker(false);
+        }}
+        onCancel={() => setShowPicker(false)}
+      />
+
+      {showPicker && Platform.OS === 'android' ? (
+        <DateTimePicker
+          value={pickerValue}
+          mode="time"
+          display="default"
+          onChange={onAndroidPickerChange}
+        />
       ) : null}
     </View>
   );

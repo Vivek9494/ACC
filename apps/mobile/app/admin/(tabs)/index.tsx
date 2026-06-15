@@ -1,15 +1,16 @@
 import { Ionicons } from '@expo/vector-icons';
-import type { AdminOverview, TournamentSummary } from '@acc/types';
+import type { AdminOverview, TournamentDashboardEntry } from '@acc/types';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, View } from 'react-native';
 
+import { buildTournamentMenuActions } from '../../../src/components/dashboard/buildTournamentMenuActions';
 import { DashboardScaffold } from '../../../src/components/dashboard/DashboardScaffold';
 import { Card } from '../../../src/components/ui/Card';
 import { StatTile } from '../../../src/components/ui/StatTile';
 import { Text } from '../../../src/components/ui/Text';
 import { TournamentDashboardCard } from '../../../src/components/ui/TournamentDashboardCard';
-import { getAdminOverview, listTournaments } from '../../../src/lib/api';
+import { getAdminOverview, listTournamentDashboardEntries } from '../../../src/lib/api';
 import { dashboardFetchError, logFetchError } from '../../../src/lib/fetch-error';
 
 function OverviewMetric({
@@ -32,7 +33,7 @@ function OverviewMetric({
 export default function AdminDashboardScreen(): React.ReactElement {
   const router = useRouter();
   const [overview, setOverview] = useState<AdminOverview | null>(null);
-  const [tournaments, setTournaments] = useState<TournamentSummary[]>([]);
+  const [tournaments, setTournaments] = useState<TournamentDashboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -40,7 +41,7 @@ export default function AdminDashboardScreen(): React.ReactElement {
     let cancelled = false;
     setLoading(true);
     setError(null);
-    Promise.all([getAdminOverview(), listTournaments()])
+    Promise.all([getAdminOverview(), listTournamentDashboardEntries()])
       .then(([stats, tourList]) => {
         if (cancelled) return;
         setOverview(stats);
@@ -130,11 +131,18 @@ export default function AdminDashboardScreen(): React.ReactElement {
         {tournaments.length === 0 ? (
           <Text className="font-sans text-sm text-on-surface-variant">No tournaments yet.</Text>
         ) : (
-          tournaments.map((tournament) => (
+          tournaments.map(({ tournament, permissions }) => (
             <TournamentDashboardCard
               key={tournament.id}
               tournament={tournament}
               onPress={() => router.push(`/tournaments/${tournament.id}`)}
+              menuActions={buildTournamentMenuActions(
+                permissions,
+                tournament.id,
+                tournament.name,
+                router,
+                { onDeleted: load },
+              )}
             />
           ))
         )}

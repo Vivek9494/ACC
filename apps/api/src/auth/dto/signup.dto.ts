@@ -24,6 +24,7 @@ import {
   ValidateIf,
 } from 'class-validator';
 
+import { APP_URL_VALIDATION_OPTIONS } from '../../common/validation/url-options';
 import { IsPasswordPolicy } from '../validators/is-password-policy.decorator';
 
 export class SignupDto implements SignupRequest {
@@ -84,7 +85,7 @@ export class SignupDto implements SignupRequest {
   jerseyNumber?: number;
 
   @IsOptional()
-  @IsUrl()
+  @IsUrl(APP_URL_VALIDATION_OPTIONS)
   profilePhotoUrl?: string | null;
 
   @IsString()

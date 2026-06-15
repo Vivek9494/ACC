@@ -1,4 +1,9 @@
-import { SIGNUP_PROFILE_PHOTO_MAX_BYTES, TOURNAMENT_POSTER_MAX_BYTES } from '@acc/types';
+import {
+  SIGNUP_PROFILE_PHOTO_MAX_BYTES,
+  TOURNAMENT_POSTER_MAX_BYTES,
+  tournamentPosterSizeError,
+  tournamentPosterTypeError,
+} from '@acc/types';
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
@@ -73,26 +78,27 @@ export class MediaService {
     return url;
   }
 
-  validateTournamentPosterBuffer(buffer: Buffer): 'image/jpeg' | 'image/png' {
+  validateTournamentPosterBuffer(buffer: Buffer): 'image/jpeg' {
     if (buffer.length === 0 || buffer.length > TOURNAMENT_POSTER_MAX_BYTES) {
       throw new BadRequestException({
-        message: 'Tournament poster must be JPG or PNG and no larger than 5MB',
+        message: tournamentPosterSizeError(),
+        error: 'POSTER_SIZE',
+        fields: { poster: tournamentPosterSizeError() },
       });
     }
     if (buffer.subarray(0, 3).compare(JPEG_MAGIC) === 0) {
       return 'image/jpeg';
     }
-    if (buffer.subarray(0, 4).compare(PNG_MAGIC) === 0) {
-      return 'image/png';
-    }
     throw new BadRequestException({
-      message: 'Tournament poster must be JPG or PNG',
+      message: tournamentPosterTypeError(),
+      error: 'POSTER_TYPE',
+      fields: { poster: tournamentPosterTypeError() },
     });
   }
 
   async uploadTournamentPoster(userId: string, buffer: Buffer): Promise<string> {
     const contentType = this.validateTournamentPosterBuffer(buffer);
-    const ext = contentType === 'image/png' ? 'png' : 'jpg';
+    const ext = 'jpg';
 
     if (this.s3 && this.bucket) {
       const key = `posters/${userId}/${Date.now()}.${ext}`;
@@ -113,6 +119,36 @@ export class MediaService {
     await writeFile(join(dir, filename), buffer);
     const url = `${this.publicApiUrl}/uploads/posters/${filename}`;
     this.logger.log(`Stored tournament poster locally (S3 not configured)`);
+    return url;
+  }
+
+  validateTeamLogoBuffer(buffer: Buffer): 'image/jpeg' {
+    return this.validateTournamentPosterBuffer(buffer);
+  }
+
+  async uploadTeamLogo(userId: string, buffer: Buffer): Promise<string> {
+    const contentType = this.validateTeamLogoBuffer(buffer);
+    const ext = 'jpg';
+
+    if (this.s3 && this.bucket) {
+      const key = `team-logos/${userId}/${Date.now()}.${ext}`;
+      await this.s3.send(
+        new PutObjectCommand({
+          Bucket: this.bucket,
+          Key: key,
+          Body: buffer,
+          ContentType: contentType,
+        }),
+      );
+      return `https://${this.bucket}.s3.${this.region}.amazonaws.com/${key}`;
+    }
+
+    const dir = join(process.cwd(), 'uploads', 'team-logos');
+    await mkdir(dir, { recursive: true });
+    const filename = `${userId}-${Date.now()}.${ext}`;
+    await writeFile(join(dir, filename), buffer);
+    const url = `${this.publicApiUrl}/uploads/team-logos/${filename}`;
+    this.logger.log(`Stored team logo locally (S3 not configured)`);
     return url;
   }
 }

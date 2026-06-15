@@ -30,6 +30,8 @@ export function SuccessDialog({
 }: SuccessDialogProps): React.ReactElement {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dismissedRef = useRef(false);
+  const onDismissRef = useRef(onDismiss);
+  onDismissRef.current = onDismiss;
 
   const dismiss = useCallback(() => {
     if (dismissedRef.current) {
@@ -40,8 +42,8 @@ export function SuccessDialog({
       clearTimeout(timerRef.current);
       timerRef.current = null;
     }
-    onDismiss();
-  }, [onDismiss]);
+    onDismissRef.current();
+  }, []);
 
   useEffect(() => {
     if (!visible) {

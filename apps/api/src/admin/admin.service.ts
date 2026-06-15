@@ -3,6 +3,7 @@ import { RegistrationStatus, TournamentState } from '@acc/types';
 import { Injectable } from '@nestjs/common';
 
 import { PrismaService } from '../prisma/prisma.service';
+import { activeTournamentWhere, activeTournamentRelationWhere } from '../tournaments/tournament-query';
 
 @Injectable()
 export class AdminService {
@@ -26,13 +27,14 @@ export class AdminService {
       this.prisma.province.count({ where: { isActive: true } }),
       this.prisma.center.count({ where: { isActive: true } }),
       this.prisma.tournament.count({
-        where: { state: { not: TournamentState.Completed } },
+        where: { ...activeTournamentWhere, state: { not: TournamentState.Completed } },
       }),
       this.prisma.user.count({ where: { isActive: true } }),
-      this.prisma.tournament.count(),
+      this.prisma.tournament.count({ where: activeTournamentWhere }),
       this.prisma.match.count({
         where: {
           matchDate: { gte: todayStart, lt: todayEnd },
+          ...activeTournamentRelationWhere,
         },
       }),
       this.prisma.registration.count({

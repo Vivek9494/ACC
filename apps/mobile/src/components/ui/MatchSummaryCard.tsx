@@ -1,7 +1,8 @@
-import { Image, View } from 'react-native';
+import { View } from 'react-native';
 
 import { Card } from './Card';
 import { StatusPill } from './StatusPill';
+import { TeamAvatar } from './TeamAvatar';
 import { Text } from './Text';
 
 export type MatchSummaryCardStatus = 'UPCOMING' | 'LIVE' | 'COMPLETED';
@@ -26,24 +27,6 @@ export interface MatchSummaryCardProps {
   onPress?: () => void;
 }
 
-function TeamLogo({
-  name,
-  logoUrl,
-}: {
-  name: string;
-  logoUrl?: string | null;
-}): React.ReactElement {
-  if (logoUrl) {
-    return <Image source={{ uri: logoUrl }} className="h-9 w-9 rounded-full" />;
-  }
-
-  return (
-    <View className="h-9 w-9 items-center justify-center rounded-full bg-surface-container-high">
-      <Text className="font-sans-bold text-sm text-primary">{name.slice(0, 1).toUpperCase()}</Text>
-    </View>
-  );
-}
-
 function TeamRow({
   team,
   showScore,
@@ -56,7 +39,7 @@ function TeamRow({
 
   return (
     <View className="flex-row items-center gap-3">
-      <TeamLogo name={team.name} logoUrl={team.logoUrl} />
+      <TeamAvatar name={team.name} logoUrl={team.logoUrl} size="xs" />
       <Text className="flex-1 font-sans-bold text-base text-on-surface" numberOfLines={1}>
         {team.name}
       </Text>

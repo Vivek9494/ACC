@@ -1,19 +1,19 @@
 import {
+  type AuthUser,
   type ClubManagerDashboard,
   type FeaturedMatchSummary,
   type ManagerPlayerStats,
   MatchState,
   type MatchSummaryTeamView,
-  type TournamentSummary,
   TournamentType,
 } from '@acc/types';
 import { Injectable } from '@nestjs/common';
-import type { Match, Tournament } from '@prisma/client';
+import type { Match } from '@prisma/client';
 
 import { PrismaService } from '../prisma/prisma.service';
 import { ScorecardReader } from '../scoring/scorecard-reader';
-
-type TournamentWithCounts = Tournament & { _count: { teams: number } };
+import { activeTournamentRelationWhere } from '../tournaments/tournament-query';
+import { TournamentsService } from '../tournaments/tournaments.service';
 
 type MatchWithTeams = Match & {
   homeTeam: { id: string; name: string } | null;
@@ -42,30 +42,22 @@ export class ClubManagerService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly scorecardReader: ScorecardReader,
+    private readonly tournaments: TournamentsService,
   ) {}
 
-  async getDashboard(managerId: string): Promise<ClubManagerDashboard> {
+  async getDashboard(actor: AuthUser): Promise<ClubManagerDashboard> {
     const [tournaments, featuredMatch, playerStats] = await Promise.all([
-      this.listAplTournaments(),
+      this.tournaments.listDashboardEntries(actor),
       this.loadFeaturedMatch(),
-      this.loadPlayerStats(managerId),
+      this.loadPlayerStats(actor.id),
     ]);
 
     return { featuredMatch, playerStats, tournaments };
   }
 
-  private async listAplTournaments(): Promise<TournamentSummary[]> {
-    const rows = await this.prisma.tournament.findMany({
-      where: { type: TournamentType.APL },
-      orderBy: [{ startAt: 'desc' }, { createdAt: 'desc' }],
-      include: { _count: { select: { teams: true } } },
-    });
-    return rows.map((row) => this.toTournamentSummary(row));
-  }
-
   private async loadFeaturedMatch(): Promise<FeaturedMatchSummary | null> {
     const match = await this.prisma.match.findFirst({
-      where: { tournament: { type: TournamentType.APL } },
+      where: { tournament: { type: TournamentType.APL, isDeleted: false } },
       orderBy: [{ matchDate: 'desc' }, { createdAt: 'desc' }],
       include: {
         homeTeam: { select: { id: true, name: true } },
@@ -218,21 +210,5 @@ export class ClubManagerService {
     }
 
     return { matches: matchIds.length, runs, wickets };
-  }
-
-  private toTournamentSummary(row: TournamentWithCounts): TournamentSummary {
-    return {
-      id: row.id,
-      name: row.name,
-      year: row.year,
-      type: row.type,
-      state: row.state,
-      ballType: row.ballType,
-      posterUrl: row.posterUrl,
-      startAt: row.startAt.toISOString(),
-      endAt: row.endAt.toISOString(),
-      location: row.location,
-      teamCount: row._count.teams,
-    };
   }
 }

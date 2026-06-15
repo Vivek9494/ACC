@@ -2,14 +2,28 @@ import {
   type AuthUser,
   BallType,
   type CloneSuggestion,
+  compareIsoDateOnly,
+  DEFAULT_PLAYERS_PER_TEAM,
+  deriveTournamentWindowFromDates,
+  formatUtcIsoDate,
+  isIsoDateOnly,
+  isTournamentRegistrationOpen,
+  type MatchSchedulingFormat,
+  normalizeTournamentDates,
+  normalizeTeamName,
   Permission,
-  PLAYING_XI_SIZE,
+  TOURNAMENT_FORM_MESSAGES,
   TournamentState,
   TOURNAMENT_STATE_TRANSITIONS,
+  tournamentHasRegistrationWindow,
   type TournamentDashboardPermissions,
+  type TournamentDashboardEntry,
   type TournamentDetail,
+  type TournamentEditFormData,
+  type TournamentScopeDisplay,
   type TournamentSummary,
-  type TournamentType,
+  CitySelection,
+  TournamentType,
   UserRole,
 } from '@acc/types';
 import {
@@ -30,6 +44,17 @@ import { PrismaService } from '../prisma/prisma.service';
 import { MediaService } from '../media/media.service';
 import type { CreateTournamentDto } from './dto/create-tournament.dto';
 import type { UpdateTournamentDto } from './dto/update-tournament.dto';
+import {
+  activeTournamentWhere,
+  assertTournamentActive,
+  withActiveTournamentWhere,
+} from './tournament-query';
+import {
+  assertCreateTournamentFormValid,
+  registrationCloseBeforeOpenFields,
+  videoDateAfterRegistrationFields,
+  videoDateRequiredFields,
+} from './tournament-create-validation';
 
 const CREATE_PERMISSION: Record<TournamentType, Permission> = {
   ACC: Permission.CREATE_ACC_TOURNAMENT,
@@ -64,24 +89,32 @@ export class TournamentsService {
       });
     }
 
-    this.validateDates(dto);
-    this.validateSquadFields(dto);
+    assertCreateTournamentFormValid(dto);
+
+    this.validateTournamentDates(dto.dates);
+    const { startAt, endAt, normalizedDates } = this.deriveTournamentSchedule(dto.dates);
+    const dtoWithWindow = { ...dto, startAt, endAt };
+
+    this.validateDates(dtoWithWindow);
     this.validateCenterParticipation(dto, type);
+
+    const playersPerTeam = dto.playersPerTeam ?? DEFAULT_PLAYERS_PER_TEAM;
 
     const created = await this.prisma.$transaction(async (tx) => {
       const tournament = await tx.tournament.create({
         data: {
           name: dto.name,
           year: dto.year,
-          posterUrl: dto.posterUrl ?? null,
-          oversPerInnings: dto.oversPerInnings,
+          posterUrl: dto.posterUrl,
           maxOversPerBowler: dto.maxOversPerBowler,
           numberOfTeams: dto.numberOfTeams,
-          playersPerTeam: dto.playersPerTeam,
+          playersPerTeam,
           substitutesAllowed: dto.substitutesAllowed,
-          location: dto.location ?? null,
-          startAt: new Date(dto.startAt),
-          endAt: new Date(dto.endAt),
+          locationAddress: dto.locationAddress ?? null,
+          latitude: dto.latitude ?? null,
+          longitude: dto.longitude ?? null,
+          startAt: new Date(startAt),
+          endAt: new Date(endAt),
           ballType: dto.ballType,
           type,
           state: TournamentState.New,
@@ -95,6 +128,13 @@ export class TournamentsService {
           auctionAt: dto.auctionAt ? new Date(dto.auctionAt) : null,
           createdByUserId: actor.id,
         },
+      });
+
+      await tx.tournamentDate.createMany({
+        data: normalizedDates.map((date) => ({
+          tournamentId: tournament.id,
+          date: new Date(`${date}T00:00:00.000Z`),
+        })),
       });
 
       await this.linkCenters(tx, tournament.id, type, dto, actor);
@@ -121,6 +161,7 @@ export class TournamentsService {
   /** Lists tournaments newest-first for the dashboard list. */
   async list(): Promise<TournamentSummary[]> {
     const rows = await this.prisma.tournament.findMany({
+      where: activeTournamentWhere,
       include: { _count: { select: { teams: true } } },
       orderBy: [{ year: 'desc' }, { createdAt: 'desc' }],
     });
@@ -131,22 +172,41 @@ export class TournamentsService {
     const row = await this.prisma.tournament.findUnique({
       where: { id },
       include: {
-        _count: { select: { teams: true } },
-        teams: { select: { id: true, name: true }, orderBy: { name: 'asc' } },
+        _count: { select: { teams: true, groups: true } },
+        groups: {
+          orderBy: { name: 'asc' },
+          include: {
+            teams: {
+              orderBy: { name: 'asc' },
+              include: { _count: { select: { memberships: true } } },
+            },
+          },
+        },
+        teams: {
+          select: {
+            id: true,
+            name: true,
+            logoUrl: true,
+            groupId: true,
+            group: { select: { name: true } },
+            _count: { select: { memberships: true } },
+          },
+          orderBy: { name: 'asc' },
+        },
+        scheduledDates: { select: { date: true }, orderBy: { date: 'asc' } },
       },
     });
-    if (!row) {
-      throw new NotFoundException({ message: 'Tournament not found', error: 'NOT_FOUND' });
-    }
-    return {
+    assertTournamentActive(row);
+    const detailBase = {
       ...this.toSummary(row),
+      dates: row.scheduledDates.map((entry) => formatUtcIsoDate(entry.date)),
       oversPerInnings: row.oversPerInnings,
       maxOversPerBowler: row.maxOversPerBowler,
       numberOfTeams: row.numberOfTeams,
       playersPerTeam: row.playersPerTeam,
       substitutesAllowed: row.substitutesAllowed,
-      location: row.location,
       format: row.format,
+      matchSchedulingFormat: row.matchSchedulingFormat ?? null,
       impactPlayerEnabled: row.impactPlayerEnabled,
       videoRequired: row.videoRequired,
       videoUploadEndDate: row.videoUploadEndDate?.toISOString() ?? null,
@@ -154,7 +214,31 @@ export class TournamentsService {
       registrationOpenAt: row.registrationOpenAt?.toISOString() ?? null,
       registrationCloseAt: row.registrationCloseAt?.toISOString() ?? null,
       auctionAt: row.auctionAt?.toISOString() ?? null,
-      teams: row.teams,
+      groupCount: row._count.groups,
+      groups: row.groups.map((group) => ({
+        id: group.id,
+        tournamentId: row.id,
+        name: group.name,
+        teams: group.teams.map((team) => ({
+          id: team.id,
+          name: team.name,
+          logoUrl: team.logoUrl,
+          memberCount: team._count.memberships,
+        })),
+      })),
+      teams: row.teams.map((team) => ({
+        id: team.id,
+        name: team.name,
+        logoUrl: team.logoUrl,
+        memberCount: team._count.memberships,
+        groupId: team.groupId,
+        groupName: team.group?.name ?? null,
+      })),
+    };
+    return {
+      ...detailBase,
+      hasRegistrationWindow: tournamentHasRegistrationWindow(detailBase),
+      registrationIsOpen: isTournamentRegistrationOpen(detailBase),
     };
   }
 
@@ -164,7 +248,9 @@ export class TournamentsService {
    */
   async cloneSuggestion(name: string): Promise<CloneSuggestion | null> {
     const past = await this.prisma.tournament.findFirst({
-      where: { name: { equals: name.trim(), mode: 'insensitive' } },
+      where: withActiveTournamentWhere({
+        name: { equals: name.trim(), mode: 'insensitive' },
+      }),
       orderBy: [{ year: 'desc' }, { createdAt: 'desc' }],
       include: {
         teams: { select: { id: true, name: true } },
@@ -188,14 +274,80 @@ export class TournamentsService {
     };
   }
 
-  /** Applies mid-tournament edits (§6.4) and notifies if registration is open. */
+  /** Applies mid-tournament edits (§6.4) and notifies when warranted. */
   async update(actor: AuthUser, id: string, dto: UpdateTournamentDto): Promise<TournamentDetail> {
-    const existing = await this.prisma.tournament.findUnique({ where: { id } });
+    const existing = await this.prisma.tournament.findUnique({
+      where: { id },
+      include: {
+        _count: { select: { teams: true } },
+        scheduledDates: { select: { date: true }, orderBy: { date: 'asc' } },
+      },
+    });
     if (!existing) {
       throw new NotFoundException({ message: 'Tournament not found', error: 'NOT_FOUND' });
     }
 
+    assertTournamentActive(existing);
+
     await this.assertCenterSevakTournamentAccess(actor, existing);
+
+    const existingDates = existing.scheduledDates.map((entry) => formatUtcIsoDate(entry.date));
+    const merged = {
+      startAt: existing.startAt.toISOString(),
+      endAt: existing.endAt.toISOString(),
+      registrationOpenAt:
+        dto.registrationOpenAt !== undefined
+          ? dto.registrationOpenAt
+          : existing.registrationOpenAt?.toISOString() ?? null,
+      registrationCloseAt:
+        dto.registrationCloseAt !== undefined
+          ? dto.registrationCloseAt
+          : existing.registrationCloseAt?.toISOString() ?? null,
+      videoRequired:
+        dto.videoRequired !== undefined ? dto.videoRequired : existing.videoRequired,
+      videoUploadEndDate:
+        dto.videoUploadEndDate !== undefined
+          ? dto.videoUploadEndDate
+          : existing.videoUploadEndDate?.toISOString() ?? null,
+    };
+
+    if (dto.numberOfTeams !== undefined && dto.numberOfTeams < existing._count.teams) {
+      throw new BadRequestException({
+        message: TOURNAMENT_FORM_MESSAGES.numberOfTeams.belowExisting(existing._count.teams),
+        error: 'TEAM_COUNT_TOO_LOW',
+        fields: {
+          numberOfTeams: TOURNAMENT_FORM_MESSAGES.numberOfTeams.belowExisting(
+            existing._count.teams,
+          ),
+        },
+      });
+    }
+
+    let normalizedDates: string[] | undefined;
+    if (dto.dates !== undefined) {
+      this.validateTournamentDatesForUpdate(existingDates, dto.dates);
+      normalizedDates = normalizeTournamentDates(dto.dates);
+      const removed = existingDates.filter((date) => !normalizedDates!.includes(date));
+      if (removed.length > 0) {
+        const datesWithMatches = await this.getDatesWithScheduledMatches(id);
+        for (const date of removed) {
+          if (datesWithMatches.includes(date)) {
+            throw new BadRequestException({
+              message: TOURNAMENT_FORM_MESSAGES.tournamentDates.hasScheduledMatch(date),
+              error: 'DATE_HAS_SCHEDULED_MATCH',
+              fields: {
+                tournamentDates: TOURNAMENT_FORM_MESSAGES.tournamentDates.hasScheduledMatch(date),
+              },
+            });
+          }
+        }
+      }
+      const { startAt, endAt } = deriveTournamentWindowFromDates(normalizedDates);
+      merged.startAt = startAt;
+      merged.endAt = endAt;
+    }
+
+    this.validateDates(merged);
 
     const data: Prisma.TournamentUpdateInput = {};
     if (dto.name !== undefined) data.name = dto.name;
@@ -205,9 +357,13 @@ export class TournamentsService {
     if (dto.numberOfTeams !== undefined) data.numberOfTeams = dto.numberOfTeams;
     if (dto.playersPerTeam !== undefined) data.playersPerTeam = dto.playersPerTeam;
     if (dto.substitutesAllowed !== undefined) data.substitutesAllowed = dto.substitutesAllowed;
-    if (dto.location !== undefined) data.location = dto.location;
-    if (dto.startAt !== undefined) data.startAt = new Date(dto.startAt);
-    if (dto.endAt !== undefined) data.endAt = new Date(dto.endAt);
+    if (dto.locationAddress !== undefined) data.locationAddress = dto.locationAddress;
+    if (dto.latitude !== undefined) data.latitude = dto.latitude;
+    if (dto.longitude !== undefined) data.longitude = dto.longitude;
+    if (normalizedDates !== undefined) {
+      data.startAt = new Date(merged.startAt);
+      data.endAt = new Date(merged.endAt);
+    }
     if (dto.format !== undefined) data.format = dto.format;
     if (dto.impactPlayerEnabled !== undefined) data.impactPlayerEnabled = dto.impactPlayerEnabled;
     if (dto.videoRequired !== undefined) data.videoRequired = dto.videoRequired;
@@ -223,38 +379,118 @@ export class TournamentsService {
         ? new Date(dto.registrationCloseAt)
         : null;
     }
-
-    await this.prisma.tournament.update({ where: { id }, data });
-
-    // §6.4: editing a tournament with open registration notifies all registrants.
-    if (existing.state === TournamentState.RegistrationOpen) {
-      await this.notifyRegistrants(id, NotificationTrigger.TournamentEditedMidRegistration);
+    if (dto.auctionAt !== undefined) {
+      data.auctionAt = dto.auctionAt ? new Date(dto.auctionAt) : null;
     }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.tournament.update({ where: { id }, data });
+
+      if (normalizedDates !== undefined) {
+        await tx.tournamentDate.deleteMany({ where: { tournamentId: id } });
+        await tx.tournamentDate.createMany({
+          data: normalizedDates.map((date) => ({
+            tournamentId: id,
+            date: new Date(`${date}T00:00:00.000Z`),
+          })),
+        });
+      }
+    });
+
+    await this.notifyOnTournamentEdit(existing, dto, normalizedDates);
 
     return this.getDetail(id);
   }
 
-  /** Deletes a tournament; notifies registrants if registration was open (§6.4). */
+  /** Edit-form payload with locked scope display and scheduling constraints. */
+  async getEditForm(actor: AuthUser, id: string): Promise<TournamentEditFormData> {
+    const existing = await this.prisma.tournament.findUnique({ where: { id } });
+    assertTournamentActive(existing);
+
+    await this.assertCenterSevakTournamentAccess(actor, existing);
+
+    const [detail, scopeDisplay, datesWithMatches] = await Promise.all([
+      this.getDetail(id),
+      this.buildScopeDisplay(id, existing.type as TournamentType, existing.ballType as BallType),
+      this.getDatesWithScheduledMatches(id),
+    ]);
+
+    return { ...detail, scopeDisplay, datesWithMatches };
+  }
+
+  /** Dashboard tournament rows with per-record permissions for the current user. */
+  async listDashboardEntries(actor: AuthUser): Promise<TournamentDashboardEntry[]> {
+    const rows = await this.prisma.tournament.findMany({
+      where: withActiveTournamentWhere(
+        actor.role === UserRole.ClubManager ? { type: TournamentType.APL } : {},
+      ),
+      include: { _count: { select: { teams: true } } },
+      orderBy: [{ year: 'desc' }, { createdAt: 'desc' }],
+    });
+
+    return Promise.all(
+      rows.map(async (row) => ({
+        tournament: this.toSummary(row),
+        permissions: await this.resolveTournamentMenuPermissions(actor, row),
+      })),
+    );
+  }
+
+  /**
+   * Records the coarse scheduling mode chosen in the Schedule Matches modal.
+   * Does not overwrite {@link TournamentFormat} from creation (§24).
+   */
+  async selectMatchSchedulingFormat(
+    actor: AuthUser,
+    tournamentId: string,
+    schedulingFormat: MatchSchedulingFormat,
+  ): Promise<TournamentDetail> {
+    const existing = await this.prisma.tournament.findUnique({ where: { id: tournamentId } });
+    assertTournamentActive(existing);
+
+    const allowed = await this.permissions.check(Permission.CREATE_MATCH, actor, { tournamentId });
+    if (!allowed) {
+      throw new ForbiddenException({
+        message: 'You do not have permission to schedule matches',
+        error: 'FORBIDDEN',
+      });
+    }
+
+    await this.assertCenterSevakTournamentAccess(actor, existing);
+
+    await this.prisma.tournament.update({
+      where: { id: tournamentId },
+      data: { matchSchedulingFormat: schedulingFormat },
+    });
+
+    return this.getDetail(tournamentId);
+  }
+
+  /** Soft-deletes a tournament; related rows are retained (§6.4 notifications). */
   async remove(actor: AuthUser, id: string): Promise<void> {
     const existing = await this.prisma.tournament.findUnique({ where: { id } });
-    if (!existing) {
-      throw new NotFoundException({ message: 'Tournament not found', error: 'NOT_FOUND' });
-    }
+    assertTournamentActive(existing);
 
     await this.assertCenterSevakTournamentAccess(actor, existing);
 
     if (existing.state === TournamentState.RegistrationOpen) {
       await this.notifyRegistrants(id, NotificationTrigger.TournamentDeletedMidRegistration);
     }
-    await this.prisma.tournament.delete({ where: { id } });
+
+    await this.prisma.tournament.update({
+      where: { id },
+      data: {
+        isDeleted: true,
+        deletedAt: new Date(),
+        deletedById: actor.id,
+      },
+    });
   }
 
   /** Validates and applies a §5.1 lifecycle transition. */
   async transition(id: string, next: TournamentState): Promise<TournamentDetail> {
     const existing = await this.prisma.tournament.findUnique({ where: { id } });
-    if (!existing) {
-      throw new NotFoundException({ message: 'Tournament not found', error: 'NOT_FOUND' });
-    }
+    assertTournamentActive(existing);
     const current = existing.state as TournamentState;
     const allowedNext = TOURNAMENT_STATE_TRANSITIONS[current];
     if (!allowedNext.includes(next)) {
@@ -319,37 +555,59 @@ export class TournamentsService {
     return rows.map((row) => row.centerId).filter((id): id is string => id !== null);
   }
 
+  /** Resolves tournament card permissions for role dashboards. */
+  async resolveTournamentMenuPermissions(
+    actor: AuthUser,
+    tournament: { id: string; createdByUserId: string },
+    targetCenterId?: string,
+  ): Promise<TournamentDashboardPermissions> {
+    const refs = targetCenterId
+      ? { tournamentId: tournament.id, targetCenterId }
+      : { tournamentId: tournament.id };
+
+    const canManageCenterPlayers =
+      actor.role === UserRole.CenterSevak && targetCenterId
+        ? await this.permissions.check(
+            Permission.VIEW_REGISTRATIONS_OWN_CENTER,
+            actor,
+            refs,
+          )
+        : false;
+
+    if (actor.role === UserRole.CenterSevak) {
+      const canModify = await this.centerSevakCanModifyTournament(actor.id, tournament);
+      return {
+        canEdit: canModify,
+        canDelete: canModify,
+        canManageCenterPlayers,
+      };
+    }
+
+    const canEdit = await this.permissions.check(Permission.EDIT_TOURNAMENT, actor, refs);
+    return {
+      canEdit,
+      canDelete: canEdit,
+      canManageCenterPlayers,
+    };
+  }
+
   /** Resolves tournament card permissions for the Center Sevak dashboard. */
   async resolveDashboardPermissions(
     actor: AuthUser,
     tournament: { id: string; createdByUserId: string },
     actionCenterId: string,
   ): Promise<TournamentDashboardPermissions> {
-    const refs = { tournamentId: tournament.id, targetCenterId: actionCenterId };
-    const canManageCenterPlayers = await this.permissions.check(
-      Permission.VIEW_REGISTRATIONS_OWN_CENTER,
-      actor,
-      refs,
-    );
-
-    if (actor.role !== UserRole.CenterSevak) {
-      const canEdit = await this.permissions.check(Permission.EDIT_TOURNAMENT, actor, refs);
-      return {
-        canEdit,
-        canDelete: canEdit,
-        canManageCenterPlayers,
-      };
-    }
-
-    const canModify = await this.centerSevakCanModifyTournament(actor.id, tournament);
-    return {
-      canEdit: canModify,
-      canDelete: canModify,
-      canManageCenterPlayers,
-    };
+    return this.resolveTournamentMenuPermissions(actor, tournament, actionCenterId);
   }
 
-  private validateDates(dto: CreateTournamentDto): void {
+  private validateDates(dto: {
+    startAt: string;
+    endAt: string;
+    registrationOpenAt?: string | null;
+    registrationCloseAt?: string | null;
+    videoRequired?: boolean;
+    videoUploadEndDate?: string | null;
+  }): void {
     if (new Date(dto.endAt) < new Date(dto.startAt)) {
       throw new BadRequestException({
         message: 'End date must be on or after the start date',
@@ -359,35 +617,178 @@ export class TournamentsService {
     if (dto.registrationOpenAt && dto.registrationCloseAt) {
       if (new Date(dto.registrationCloseAt) <= new Date(dto.registrationOpenAt)) {
         throw new BadRequestException({
-          message: 'Registration must close after it opens',
+          message: TOURNAMENT_FORM_MESSAGES.registration.closeBeforeOpen,
           error: 'INVALID_REGISTRATION_WINDOW',
+          fields: registrationCloseBeforeOpenFields(),
         });
       }
     }
-    // §19: when videos are required the upload end date must be after reg close.
     if (dto.videoRequired) {
       if (!dto.videoUploadEndDate) {
         throw new BadRequestException({
-          message: 'Video Upload End Date is required when Video Required is checked',
+          message: TOURNAMENT_FORM_MESSAGES.videoUploadEndDate.required,
           error: 'VIDEO_DATE_REQUIRED',
+          fields: videoDateRequiredFields(),
         });
       }
-      if (dto.registrationCloseAt && new Date(dto.videoUploadEndDate) <= new Date(dto.registrationCloseAt)) {
+      if (
+        dto.registrationCloseAt &&
+        new Date(dto.videoUploadEndDate) <= new Date(dto.registrationCloseAt)
+      ) {
         throw new BadRequestException({
-          message: 'Video Upload End Date must be after the registration close date',
+          message: TOURNAMENT_FORM_MESSAGES.videoUploadEndDate.afterRegistrationClose,
           error: 'INVALID_VIDEO_DATE',
+          fields: videoDateAfterRegistrationFields(),
         });
       }
     }
   }
 
-  private validateSquadFields(dto: CreateTournamentDto): void {
-    if (dto.playersPerTeam < PLAYING_XI_SIZE + dto.substitutesAllowed) {
+  private validateTournamentDates(dates: string[]): void {
+    if (!dates || dates.length === 0) {
       throw new BadRequestException({
-        message: `Players per team must be at least ${PLAYING_XI_SIZE} (Playing XI) plus substitutes allowed`,
-        error: 'INVALID_SQUAD_SIZE',
+        message: TOURNAMENT_FORM_MESSAGES.tournamentDates.required,
+        error: 'TOURNAMENT_DATES_REQUIRED',
+        fields: { tournamentDates: TOURNAMENT_FORM_MESSAGES.tournamentDates.required },
       });
     }
+
+    const todayUtc = formatUtcIsoDate(new Date());
+    for (const raw of dates) {
+      if (!isIsoDateOnly(raw)) {
+        throw new BadRequestException({
+          message: TOURNAMENT_FORM_MESSAGES.tournamentDates.required,
+          error: 'INVALID_TOURNAMENT_DATE',
+          fields: { tournamentDates: TOURNAMENT_FORM_MESSAGES.tournamentDates.required },
+        });
+      }
+      if (compareIsoDateOnly(raw, todayUtc) < 0) {
+        throw new BadRequestException({
+          message: TOURNAMENT_FORM_MESSAGES.tournamentDates.required,
+          error: 'PAST_TOURNAMENT_DATE',
+          fields: { tournamentDates: TOURNAMENT_FORM_MESSAGES.tournamentDates.required },
+        });
+      }
+    }
+  }
+
+  /** Allows keeping existing past dates; only validates newly added calendar days. */
+  private validateTournamentDatesForUpdate(existingDates: string[], dates: string[]): void {
+    if (!dates || dates.length === 0) {
+      throw new BadRequestException({
+        message: TOURNAMENT_FORM_MESSAGES.tournamentDates.required,
+        error: 'TOURNAMENT_DATES_REQUIRED',
+        fields: { tournamentDates: TOURNAMENT_FORM_MESSAGES.tournamentDates.required },
+      });
+    }
+
+    const todayUtc = formatUtcIsoDate(new Date());
+    const existingSet = new Set(existingDates);
+    for (const raw of dates) {
+      if (!isIsoDateOnly(raw)) {
+        throw new BadRequestException({
+          message: TOURNAMENT_FORM_MESSAGES.tournamentDates.required,
+          error: 'INVALID_TOURNAMENT_DATE',
+          fields: { tournamentDates: TOURNAMENT_FORM_MESSAGES.tournamentDates.required },
+        });
+      }
+      if (!existingSet.has(raw) && compareIsoDateOnly(raw, todayUtc) < 0) {
+        throw new BadRequestException({
+          message: TOURNAMENT_FORM_MESSAGES.tournamentDates.required,
+          error: 'PAST_TOURNAMENT_DATE',
+          fields: { tournamentDates: TOURNAMENT_FORM_MESSAGES.tournamentDates.required },
+        });
+      }
+    }
+  }
+
+  private async getDatesWithScheduledMatches(tournamentId: string): Promise<string[]> {
+    const rows = await this.prisma.match.findMany({
+      where: { tournamentId, matchDate: { not: null } },
+      select: { matchDate: true },
+    });
+    const unique = new Set<string>();
+    for (const row of rows) {
+      if (row.matchDate) {
+        unique.add(formatUtcIsoDate(row.matchDate));
+      }
+    }
+    return [...unique].sort();
+  }
+
+  private async buildScopeDisplay(
+    tournamentId: string,
+    type: TournamentType,
+    ballType: BallType,
+  ): Promise<TournamentScopeDisplay> {
+    if (type === TournamentType.ACC || ballType === BallType.Leather) {
+      return { citySelection: null, provinceName: null, centerNames: [] };
+    }
+
+    const links = await this.prisma.tournamentCenter.findMany({
+      where: { tournamentId },
+      include: { center: { include: { province: true } } },
+      orderBy: { center: { name: 'asc' } },
+    });
+
+    const provinceName = links[0]?.center.province.name ?? null;
+    const centerNames = links.map((link) => link.center.name);
+    let citySelection: CitySelection | null = CitySelection.All;
+    if (type === TournamentType.Center) {
+      citySelection =
+        centerNames.length === 1 ? CitySelection.Single : CitySelection.Multi;
+    }
+
+    return { citySelection, provinceName, centerNames };
+  }
+
+  private async notifyOnTournamentEdit(
+    existing: Tournament,
+    dto: UpdateTournamentDto,
+    normalizedDates: string[] | undefined,
+  ): Promise<void> {
+    const tournamentId = existing.id;
+    const registrationOpen = existing.state === TournamentState.RegistrationOpen;
+
+    if (registrationOpen) {
+      await this.notifyRegistrants(
+        tournamentId,
+        NotificationTrigger.TournamentEditedMidRegistration,
+      );
+    }
+
+    if (normalizedDates !== undefined) {
+      await this.notifyRegistrants(tournamentId, NotificationTrigger.TournamentDatesChanged);
+    }
+
+    if (
+      dto.locationAddress !== undefined ||
+      dto.latitude !== undefined ||
+      dto.longitude !== undefined
+    ) {
+      await this.notifyRegistrants(tournamentId, NotificationTrigger.TournamentLocationChanged);
+    }
+
+    if (dto.registrationOpenAt !== undefined || dto.registrationCloseAt !== undefined) {
+      await this.notifyRegistrants(
+        tournamentId,
+        NotificationTrigger.TournamentRegistrationWindowChanged,
+      );
+    }
+
+    if (dto.videoRequired !== undefined || dto.videoUploadEndDate !== undefined) {
+      await this.notifyRegistrants(tournamentId, NotificationTrigger.TournamentVideoPolicyChanged);
+    }
+  }
+
+  private deriveTournamentSchedule(dates: string[]): {
+    normalizedDates: string[];
+    startAt: string;
+    endAt: string;
+  } {
+    const normalizedDates = normalizeTournamentDates(dates);
+    const { startAt, endAt } = deriveTournamentWindowFromDates(normalizedDates);
+    return { normalizedDates, startAt, endAt };
   }
 
   private validateCenterParticipation(
@@ -400,16 +801,18 @@ export class TournamentsService {
 
     if (!dto.provinceId) {
       throw new BadRequestException({
-        message: 'provinceId is required for tennis-ball tournaments',
+        message: TOURNAMENT_FORM_MESSAGES.province.required,
         error: 'PROVINCE_REQUIRED',
+        fields: { province: TOURNAMENT_FORM_MESSAGES.province.required },
       });
     }
 
     if (dto.citySelection === 'MULTI' || type === 'CENTER') {
       if (!dto.centerIds || dto.centerIds.length === 0) {
         throw new BadRequestException({
-          message: 'Select at least one center',
+          message: TOURNAMENT_FORM_MESSAGES.centers.required,
           error: 'CENTERS_REQUIRED',
+          fields: { centers: TOURNAMENT_FORM_MESSAGES.centers.required },
         });
       }
     }
@@ -483,7 +886,11 @@ export class TournamentsService {
     });
     for (const source of sourceTeams) {
       const newTeam = await tx.team.create({
-        data: { tournamentId: targetTournamentId, name: source.name },
+        data: {
+          tournamentId: targetTournamentId,
+          name: source.name,
+          nameNormalized: normalizeTeamName(source.name),
+        },
       });
       if (copyRoleAssignments) {
         const assignments = await tx.roleAssignment.findMany({
@@ -536,7 +943,9 @@ export class TournamentsService {
       posterUrl: row.posterUrl,
       startAt: row.startAt.toISOString(),
       endAt: row.endAt.toISOString(),
-      location: row.location,
+      locationAddress: row.locationAddress,
+      latitude: row.latitude,
+      longitude: row.longitude,
       teamCount: row._count.teams,
     };
   }

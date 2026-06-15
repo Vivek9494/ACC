@@ -17,6 +17,6 @@ export class ClubManagerController {
   @UseGuards(PermissionGuard)
   @RequirePermission(Permission.VIEW_CLUB_MANAGER_DASHBOARD)
   dashboard(@Req() req: AuthenticatedRequest): Promise<ClubManagerDashboard> {
-    return this.clubManager.getDashboard(req.user.id);
+    return this.clubManager.getDashboard(req.user);
   }
 }

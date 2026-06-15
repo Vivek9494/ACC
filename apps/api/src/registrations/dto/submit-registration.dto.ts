@@ -1,7 +1,11 @@
 import {
   BattingStyle,
+  BATTING_POSITION_OPTIONS,
   BowlingStyle,
+  BOWLING_TYPE_OPTIONS,
+  FIELDING_POSITION_OPTIONS,
   type LateRegistrationRequest,
+  PlayerRegistrationRole,
   RATING_MAX,
   RATING_MIN,
   type SubmitRegistrationRequest,
@@ -9,9 +13,11 @@ import {
 import {
   IsIn,
   IsInt,
+  IsNotEmpty,
   IsObject,
   IsOptional,
   IsString,
+  IsUUID,
   Max,
   MaxLength,
   Min,
@@ -19,12 +25,30 @@ import {
 
 const BATTING_STYLES = Object.values(BattingStyle);
 const BOWLING_STYLES = Object.values(BowlingStyle);
+const PLAYER_ROLES = Object.values(PlayerRegistrationRole);
 
-/** Default §7.1 registration form. Name/phone/Center come from the profile. */
+/** Default §7.1 registration form. Profile name/center may be updated on submit. */
 export class SubmitRegistrationDto implements SubmitRegistrationRequest {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(60)
+  firstName!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(60)
+  lastName!: string;
+
+  @IsUUID()
+  centerId!: string;
+
   @IsOptional()
   @IsIn(BATTING_STYLES)
   battingStyle?: BattingStyle | null;
+
+  @IsOptional()
+  @IsIn(PLAYER_ROLES)
+  playerRole?: PlayerRegistrationRole | null;
 
   @IsOptional()
   @IsInt()
@@ -33,8 +57,16 @@ export class SubmitRegistrationDto implements SubmitRegistrationRequest {
   battingRating?: number | null;
 
   @IsOptional()
+  @IsIn([...BATTING_POSITION_OPTIONS])
+  battingPosition?: string | null;
+
+  @IsOptional()
   @IsIn(BOWLING_STYLES)
   bowlingStyle?: BowlingStyle | null;
+
+  @IsOptional()
+  @IsIn([...BOWLING_TYPE_OPTIONS])
+  bowlingType?: string | null;
 
   @IsOptional()
   @IsInt()
@@ -49,8 +81,7 @@ export class SubmitRegistrationDto implements SubmitRegistrationRequest {
   fieldingRating?: number | null;
 
   @IsOptional()
-  @IsString()
-  @MaxLength(60)
+  @IsIn([...FIELDING_POSITION_OPTIONS])
   fieldingPosition?: string | null;
 
   @IsOptional()

@@ -2,9 +2,8 @@ import { PLAYING_XI_SIZE } from './match';
 
 /** Sensible bounds for Add Tournament §6.1 numeric fields. */
 export const TOURNAMENT_FIELD_LIMITS = {
-  oversPerInnings: { min: 1, max: 50 },
-  numberOfTeams: { min: 2, max: 64 },
-  playersPerTeam: { min: PLAYING_XI_SIZE, max: 30 },
+  numberOfTeams: { min: 2, max: 30 },
+  playersPerTeam: { max: 15 },
   substitutesAllowed: { min: 0, max: 11 },
 } as const;
 
@@ -22,6 +21,9 @@ export function parsePositiveInt(value: string): number | null {
   return Number(trimmed);
 }
 
+/** Bounds for overs per innings at match setup (scoring engine dependency). */
+export const MATCH_OVERS_PER_INNINGS_LIMITS = { min: 1, max: 50 } as const;
+
 export function validateOversPerInnings(value: string): string | null {
   if (!value.trim()) {
     return 'Overs per innings is required';
@@ -30,20 +32,20 @@ export function validateOversPerInnings(value: string): string | null {
   if (num === null) {
     return 'Enter a valid number of overs';
   }
-  const { min, max } = TOURNAMENT_FIELD_LIMITS.oversPerInnings;
+  const { min, max } = MATCH_OVERS_PER_INNINGS_LIMITS;
   if (num < min || num > max) {
     return `Overs per innings must be between ${min} and ${max}`;
   }
   return null;
 }
 
-export function validateNumberOfTeams(value: string): string | null {
-  if (!value.trim()) {
-    return 'Number of teams is required';
+export function validateNumberOfTeams(value: string | null): string | null {
+  if (!value || !value.trim()) {
+    return 'Please select the number of teams';
   }
   const num = parsePositiveInt(value);
   if (num === null) {
-    return 'Enter a valid team count';
+    return 'Please select the number of teams';
   }
   const { min, max } = TOURNAMENT_FIELD_LIMITS.numberOfTeams;
   if (num < min || num > max) {
@@ -54,15 +56,14 @@ export function validateNumberOfTeams(value: string): string | null {
 
 export function validatePlayersPerTeam(value: string): string | null {
   if (!value.trim()) {
-    return 'Players per team is required';
+    return null;
   }
   const num = parsePositiveInt(value);
   if (num === null) {
-    return 'Enter a valid player count';
+    return 'Players per team must be a number';
   }
-  const { min, max } = TOURNAMENT_FIELD_LIMITS.playersPerTeam;
-  if (num < min || num > max) {
-    return `Players per team must be at least ${min} (Playing XI) and at most ${max}`;
+  if (num > TOURNAMENT_FIELD_LIMITS.playersPerTeam.max) {
+    return 'Maximum 15 players per team';
   }
   return null;
 }

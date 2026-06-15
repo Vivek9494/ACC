@@ -72,6 +72,14 @@ enum TournamentFormat {
   POOL
 }
 
+/// Coarse fixture mode chosen at Schedule Matches (mobile modal). Not the same as
+/// {@link TournamentFormat} set at tournament creation (§24).
+enum MatchSchedulingFormat {
+  ROUND_ROBIN
+  GROUP_STAGE_KNOCKOUT
+  MANUAL
+}
+
 /// Match states (spec §5.2).
 enum MatchState {
   SCHEDULED
@@ -84,6 +92,20 @@ enum MatchState {
   NO_RESULT
   COMPLETED
   SCORECARD_LOCKED
+}
+
+/** Knockout / league stage of a fixture (§11 manual match setup). */
+enum MatchType {
+  LEAGUE_MATCH
+  PRE_QUARTER_FINAL
+  QUARTER_FINAL
+  SEMI_FINAL
+  FINAL
+  SUPER_LEAGUE
+  QUALIFIER_1
+  QUALIFIER_2
+  ELIMINATOR
+  SUPER_EIGHT
 }
 
 /// Identifies one of a match's two sides without a hard FK (the away side may
@@ -131,6 +153,13 @@ enum BattingStyle {
 enum BowlingStyle {
   PACE
   SPIN
+}
+
+/// Player role self-reported at registration (§7.1 form).
+enum PlayerRegistrationRole {
+  BATSMAN
+  BOWLER
+  ALL_ROUNDER
 }
 
 /// Field type of an Admin-built custom registration field (spec §7.2, §21).
@@ -324,10 +353,14 @@ model Tournament {
   name                String
   year                Int
   posterUrl           String?
-  /// Overs per innings; max overs per bowler is derived but editable (§6.1).
-  oversPerInnings     Int
+  /// Set at match setup (overs vary per match, e.g. a shorter final). Required for the
+  /// scoring engine (run rate, projected score, chase equation, innings length).
+  /// TODO(match-setup): collect on each match, not at tournament create.
+  oversPerInnings     Int?
   maxOversPerBowler   Int
-  location            String?
+  locationAddress     String?
+  latitude            Float?
+  longitude           Float?
   /// All datetimes UTC (§23).
   startAt             DateTime
   endAt               DateTime
@@ -344,17 +377,28 @@ model Tournament {
   type                TournamentType
   state               TournamentState  @default(NEW)
   format              TournamentFormat
+  /// Chosen when the organizer schedules fixtures (Schedule Matches modal).
+  matchSchedulingFormat MatchSchedulingFormat?
   impactPlayerEnabled Boolean          @default(false)
   videoRequired       Boolean          @default(false)
   /// Must be after registration close when videos are required (§19).
   videoUploadEndDate  DateTime?
   /// Optional tournament-level stream; per-match URLs live on Match (§22).
   youtubeUrl          String?
+  /// Default per-player tournament fee in cents (§20). Overridable per registration.
+  defaultPlayerFeeCents BigInt?
   /// Platform-global organizer (Club Manager / Center Sevak); not a hard FK.
   createdByUserId     String
 
+  /// Soft-delete — row and relations are retained for audit / future restore.
+  isDeleted           Boolean          @default(false)
+  deletedAt           DateTime?
+  deletedById         String?
+
   teams              Team[]
+  groups             TournamentGroup[]
   centerLinks        TournamentCenter[]
+  scheduledDates     TournamentDate[]
   registrations      Registration[]
   registrationFields RegistrationFieldDefinition[]
   customFormRequests CustomFormRequest[]
@@ -369,6 +413,21 @@ model Tournament {
 
   @@index([type])
   @@index([state])
+  @@index([isDeleted])
+}
+
+/// Calendar days on which matches may be scheduled for a tournament (source of truth).
+/// `Tournament.startAt` / `endAt` are derived from min/max of these rows.
+/// TODO(match-scheduling): fixture creation must only allow dates present here.
+model TournamentDate {
+  id           String     @id @default(uuid())
+  tournamentId String
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  /// UTC midnight for the calendar day (§23).
+  date         DateTime
+
+  @@unique([tournamentId, date])
+  @@index([tournamentId])
 }
 
 /// Which Centers (cities) participate — drives the §1.1 type-resolution logic
@@ -391,6 +450,11 @@ model Team {
   tournamentId String
   tournament   Tournament @relation(fields: [tournamentId], references: [id])
   name         String
+  /// Lowercase trimmed `name` — enforces case-insensitive uniqueness per tournament.
+  nameNormalized String
+  logoUrl      String?
+  groupId      String?
+  group        TournamentGroup? @relation(fields: [groupId], references: [id])
 
   memberships TeamMembership[]
   homeMatches Match[]          @relation("HomeTeam")
@@ -401,7 +465,25 @@ model Team {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([tournamentId, name])
+  @@unique([tournamentId, nameNormalized])
+  @@index([tournamentId])
+  @@index([groupId])
+}
+
+/// A group within a tournament (Group Stage + Knockout scheduling).
+model TournamentGroup {
+  id             String     @id @default(uuid())
+  tournamentId   String
+  tournament     Tournament @relation(fields: [tournamentId], references: [id])
+  name           String
+  nameNormalized String
+  teams          Team[]
+  matches        Match[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tournamentId, nameNormalized])
   @@index([tournamentId])
 }
 
@@ -441,8 +523,12 @@ model Registration {
   status       RegistrationStatus @default(IN_WAITLIST)
 
   battingStyle     BattingStyle?
+  /// Self-reported at registration; Center Sevak may overwrite after window closes (§7.5).
   battingRating    Int?
+  battingPosition  String?
+  playerRole       PlayerRegistrationRole?
   bowlingStyle     BowlingStyle?
+  bowlingType      String?
   bowlingRating    Int?
   fieldingRating   Int?
   fieldingPosition String?
@@ -452,6 +538,8 @@ model Registration {
   availabilityNote String?
   /// Additional/modified fields from a tournament-specific custom form (§7.2).
   customFields     Json?
+  /// Per-player fee owed for this tournament in cents (§20). Falls back to tournament default.
+  feeAmountCents   BigInt?
 
   /// Center Sevak who approved/declined (§7.3); not a hard FK.
   reviewedByUserId String?
@@ -459,6 +547,8 @@ model Registration {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  fees Fee[]
 
   @@unique([tournamentId, userId])
   @@index([centerId])
@@ -527,6 +617,7 @@ model Match {
   tournament   Tournament @relation(fields: [tournamentId], references: [id])
   matchCode    String?
   state        MatchState @default(SCHEDULED)
+  matchType    MatchType  @default(LEAGUE_MATCH)
 
   homeTeamId           String?
   homeTeam             Team?   @relation("HomeTeam", fields: [homeTeamId], references: [id])
@@ -536,6 +627,15 @@ model Match {
   externalOpponentName String?
 
   /// ACC schedule inputs (§27). All datetimes UTC (§23).
+  groupId            String?
+  group              TournamentGroup? @relation(fields: [groupId], references: [id])
+  /// Per-match innings length — required at match setup (§6.1 deferred from tournament create).
+  oversPerInnings    Int?
+  maxOversPerBowler  Int?
+  /// Fielding-restriction phase length (match-level; §31 #2). Nullable = none configured.
+  powerplayOvers         Int?
+  /// Tennis-ball batting powerplay phase (match-level). Null for leather / unset.
+  battingPowerplayOvers  Int?
   division       String?
   homeAway       HomeAway?
   groundLocation String?
@@ -548,6 +648,11 @@ model Match {
   /// Toss data (§11.2) — the animated flip is out of scope but the data isn't.
   tossWinner   MatchSide?
   tossDecision TossDecision?
+
+  /// Opening players recorded at match start before the first ball (§11).
+  openingStrikerUserId    String?
+  openingNonStrikerUserId String?
+  openingBowlerUserId     String?
 
   /// Per-match stream URL (§22).
   youtubeUrl String?
@@ -575,6 +680,13 @@ model Match {
   confirmedByUserId String?
   autoConfirmed     Boolean   @default(false)
 
+  /// Soft-delete — row kept; excluded from schedules and round-robin pair guard when true.
+  isDeleted           Boolean   @default(false)
+  deletedAt           DateTime?
+  deletedById         String?
+  /// Sorted `teamId:teamId` for round-robin duplicate guard; null for non-RR / external fixtures.
+  roundRobinPairKey   String?
+
   innings         Innings[]
   scorerGrants    MatchScorerGrant[]
   externalPlayers ExternalPlayer[]
@@ -586,6 +698,8 @@ model Match {
 
   @@index([tournamentId])
   @@index([state])
+  @@index([isDeleted])
+  @@index([tournamentId, roundRobinPairKey])
 }
 
 /// Per-match Scorer grant (§2, §11.1). A Player is granted scoring for one
@@ -831,6 +945,8 @@ model Fee {
   id               String     @id @default(uuid())
   tournamentId     String
   tournament       Tournament @relation(fields: [tournamentId], references: [id])
+  registrationId   String?
+  registration     Registration? @relation(fields: [registrationId], references: [id])
   teamId           String?
   team             Team?      @relation(fields: [teamId], references: [id])
   userId           String
@@ -847,6 +963,7 @@ model Fee {
 
   @@unique([tournamentId, userId])
   @@index([teamId])
+  @@index([registrationId])
 }
 
 // ---------------------------------------------------------------------------

@@ -13,6 +13,7 @@ import { Injectable } from '@nestjs/common';
 import type { Match, Tournament } from '@prisma/client';
 
 import { PrismaService } from '../prisma/prisma.service';
+import { activeTournamentRelationWhere, activeTournamentWhere } from '../tournaments/tournament-query';
 import { ScorecardReader } from '../scoring/scorecard-reader';
 
 type TournamentWithCounts = Tournament & { _count: { teams: number } };
@@ -83,7 +84,7 @@ export class CaptainService {
     };
 
     const liveMatch = await this.prisma.match.findFirst({
-      where: { ...teamFilter, state: { in: LIVE_STATES } },
+      where: { ...teamFilter, state: { in: LIVE_STATES }, ...activeTournamentRelationWhere },
       orderBy: [{ matchDate: 'desc' }, { createdAt: 'desc' }],
       include: {
         homeTeam: { select: { id: true, name: true } },
@@ -95,7 +96,7 @@ export class CaptainService {
     const match =
       liveMatch ??
       (await this.prisma.match.findFirst({
-        where: { ...teamFilter, state: { in: UPCOMING_STATES } },
+        where: { ...teamFilter, state: { in: UPCOMING_STATES }, ...activeTournamentRelationWhere },
         orderBy: [{ matchDate: 'asc' }, { createdAt: 'asc' }],
         include: {
           homeTeam: { select: { id: true, name: true } },
@@ -280,7 +281,7 @@ export class CaptainService {
     }
 
     const rows = await this.prisma.tournament.findMany({
-      where: { id: { in: tournamentIds } },
+      where: { id: { in: tournamentIds }, ...activeTournamentWhere },
       orderBy: [{ startAt: 'desc' }, { createdAt: 'desc' }],
       include: { _count: { select: { teams: true } } },
     });
@@ -299,7 +300,9 @@ export class CaptainService {
       posterUrl: row.posterUrl,
       startAt: row.startAt.toISOString(),
       endAt: row.endAt.toISOString(),
-      location: row.location,
+      locationAddress: row.locationAddress,
+      latitude: row.latitude,
+      longitude: row.longitude,
       teamCount: row._count.teams,
     };
   }

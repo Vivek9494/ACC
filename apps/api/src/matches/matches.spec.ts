@@ -12,7 +12,13 @@ type AnyMock = jest.Mock;
 
 interface PrismaMock {
   tournament: { findUnique: AnyMock };
-  match: { findUnique: AnyMock; create: AnyMock; update: AnyMock; findMany: AnyMock };
+  match: {
+    findUnique: AnyMock;
+    create: AnyMock;
+    update: AnyMock;
+    findMany: AnyMock;
+    count: AnyMock;
+  };
   team: { count: AnyMock };
   teamMembership: { findMany: AnyMock };
   registration: { findMany: AnyMock };
@@ -46,10 +52,17 @@ function buildService(): {
   permissions: { check: AnyMock };
   scorerGrants: Record<string, AnyMock>;
   notifications: { notify: AnyMock };
+  scoring: { startInnings: AnyMock };
 } {
   const prisma: PrismaMock = {
     tournament: { findUnique: jest.fn() },
-    match: { findUnique: jest.fn(), create: jest.fn(), update: jest.fn(), findMany: jest.fn() },
+    match: {
+      findUnique: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      findMany: jest.fn(),
+      count: jest.fn().mockResolvedValue(0),
+    },
     team: { count: jest.fn().mockResolvedValue(2) },
     teamMembership: { findMany: jest.fn().mockResolvedValue([]) },
     registration: { findMany: jest.fn().mockResolvedValue([]) },
@@ -71,6 +84,8 @@ function buildService(): {
   };
   const notifications = { notify: jest.fn().mockResolvedValue(undefined) };
   const audit = { record: jest.fn().mockResolvedValue(undefined) };
+  const standings = { getStandings: jest.fn().mockResolvedValue({ tables: [], dataErrors: [] }) };
+  const scoring = { startInnings: jest.fn().mockResolvedValue(undefined) };
 
   const service = new MatchesService(
     prisma as never,
@@ -78,8 +93,10 @@ function buildService(): {
     scorerGrants as never,
     notifications as never,
     audit as never,
+    standings as never,
+    scoring as never,
   );
-  return { service, prisma, permissions, scorerGrants, notifications };
+  return { service, prisma, permissions, scorerGrants, notifications, scoring };
 }
 
 function matchRow(overrides: Record<string, unknown> = {}): Record<string, unknown> {

@@ -3,12 +3,14 @@ import { Pressable, type PressableProps, type View } from 'react-native';
 
 import { Text } from './Text';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'destructive';
+export type ButtonVariant = 'primary' | 'secondary' | 'amber' | 'outline' | 'destructive';
 
 const VARIANT_PRESSABLE: Record<ButtonVariant, string> = {
   /** Solid orange — main CTAs (Create Account, Log in, Save). */
   primary: 'bg-primary',
   secondary: 'bg-primary',
+  /** Softer amber — secondary actions (e.g. Schedule Matches on tournament details). */
+  amber: 'bg-[#FFAB4D]',
   outline: 'border border-outline-variant bg-transparent',
   destructive: 'border border-[#c1121f] bg-transparent',
 };
@@ -16,6 +18,7 @@ const VARIANT_PRESSABLE: Record<ButtonVariant, string> = {
 const VARIANT_TEXT: Record<ButtonVariant, string> = {
   primary: 'text-on-primary',
   secondary: 'text-on-primary',
+  amber: 'text-on-primary',
   outline: 'text-on-surface',
   destructive: 'text-[#c1121f]',
 };

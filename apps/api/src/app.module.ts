@@ -17,6 +17,7 @@ import { HealthModule } from './health/health.module';
 import { LiveModule } from './live/live.module';
 import { MatchesModule } from './matches/matches.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { PlacesModule } from './places/places.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { RedisModule } from './redis/redis.module';
 import { RegistrationsModule } from './registrations/registrations.module';
@@ -24,6 +25,11 @@ import { ScoringModule } from './scoring/scoring.module';
 import { ProfileModule } from './profile/profile.module';
 import { SmsModule } from './sms/sms.module';
 import { TournamentsModule } from './tournaments/tournaments.module';
+import { TeamsModule } from './teams/teams.module';
+import { FeesModule } from './fees/fees.module';
+import { GroupsModule } from './groups/groups.module';
+import { LeaderboardModule } from './leaderboard/leaderboard.module';
+import { StandingsModule } from './standings/standings.module';
 
 @Module({
   imports: [
@@ -47,12 +53,18 @@ import { TournamentsModule } from './tournaments/tournaments.module';
     ClubManagerModule,
     CentersModule,
     TournamentsModule,
+    TeamsModule,
+    GroupsModule,
     RegistrationsModule,
+    FeesModule,
     MatchesModule,
     ScoringModule,
+    StandingsModule,
+    LeaderboardModule,
     LiveModule,
     HealthModule,
     ProfileModule,
+    PlacesModule,
   ],
 })
 export class AppModule {}

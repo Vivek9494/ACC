@@ -6,6 +6,7 @@ import { MIN_SIGNUP_AGE } from '@acc/types';
 import { useMemo, useState } from 'react';
 import { Platform, Pressable, View } from 'react-native';
 
+import { DateTimePickerSheet } from './DateTimePickerSheet';
 import {
   FIELD_ORANGE,
   FIELD_VALUE_TEXT_CLASS,
@@ -88,10 +89,8 @@ export function DateField({
   const parsed = value ? parseIsoDate(value) : null;
   const pickerValue = parsed ?? effectiveMaximumDate ?? new Date();
 
-  function onPickerChange(event: DateTimePickerEvent, selected?: Date): void {
-    if (Platform.OS === 'android') {
-      setShowPicker(false);
-    }
+  function onAndroidPickerChange(event: DateTimePickerEvent, selected?: Date): void {
+    setShowPicker(false);
     if (event.type === 'dismissed' || !selected) return;
     onChange(formatIsoDate(selected));
   }
@@ -122,33 +121,28 @@ export function DateField({
 
       {error ? <Text className="mt-1 font-sans text-sm text-error">{error}</Text> : null}
 
-      {showPicker ? (
-        Platform.OS === 'ios' ? (
-          <View className="mt-2 overflow-hidden rounded-control border border-[#F1F1F1] bg-white">
-            <View className="flex-row justify-end border-b border-[#F1F1F1] px-3 py-2">
-              <Pressable onPress={() => setShowPicker(false)} hitSlop={8}>
-                <Text className="font-sans-semibold text-sm text-primary">Done</Text>
-              </Pressable>
-            </View>
-            <DateTimePicker
-              value={pickerValue}
-              mode="date"
-              display="spinner"
-              minimumDate={minimumDate}
-              maximumDate={effectiveMaximumDate}
-              onChange={onPickerChange}
-            />
-          </View>
-        ) : (
-          <DateTimePicker
-            value={pickerValue}
-            mode="date"
-            display="default"
-            minimumDate={minimumDate}
-            maximumDate={effectiveMaximumDate}
-            onChange={onPickerChange}
-          />
-        )
+      <DateTimePickerSheet
+        visible={showPicker}
+        mode="date"
+        value={pickerValue}
+        minimumDate={minimumDate}
+        maximumDate={effectiveMaximumDate}
+        onConfirm={(selected) => {
+          onChange(formatIsoDate(selected));
+          setShowPicker(false);
+        }}
+        onCancel={() => setShowPicker(false)}
+      />
+
+      {showPicker && Platform.OS === 'android' ? (
+        <DateTimePicker
+          value={pickerValue}
+          mode="date"
+          display="default"
+          minimumDate={minimumDate}
+          maximumDate={effectiveMaximumDate}
+          onChange={onAndroidPickerChange}
+        />
       ) : null}
     </View>
   );

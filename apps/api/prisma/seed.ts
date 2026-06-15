@@ -1,5 +1,8 @@
 import { PrismaClient } from '@prisma/client';
+import { expandUtcDateRange, normalizeTeamName } from '@acc/types';
 import * as bcrypt from 'bcrypt';
+
+import { logScorerCardSeedInstructions, seedScorerStartMatchCard } from './lib/seed-scorer-card';
 
 const prisma = new PrismaClient();
 
@@ -92,6 +95,24 @@ async function upsertUser(args: {
   });
 }
 
+async function seedTournamentDates(
+  tournamentId: string,
+  startAt: Date,
+  endAt: Date,
+): Promise<void> {
+  const existing = await prisma.tournamentDate.count({ where: { tournamentId } });
+  if (existing > 0) {
+    return;
+  }
+  const dates = expandUtcDateRange(startAt, endAt);
+  await prisma.tournamentDate.createMany({
+    data: dates.map((date) => ({
+      tournamentId,
+      date: new Date(`${date}T00:00:00.000Z`),
+    })),
+  });
+}
+
 async function seedAccTournament(createdByUserId: string): Promise<void> {
   const year = new Date().getUTCFullYear();
   const name = `ACC ${year}`;
@@ -105,7 +126,7 @@ async function seedAccTournament(createdByUserId: string): Promise<void> {
         // ACC: 25 overs, max 5 overs/bowler (spec §9.4).
         oversPerInnings: 25,
         maxOversPerBowler: 5,
-        location: 'Toronto',
+        locationAddress: 'Toronto',
         startAt: new Date(`${year}-05-01T00:00:00.000Z`),
         endAt: new Date(`${year}-09-30T00:00:00.000Z`),
         ballType: 'LEATHER',
@@ -117,13 +138,20 @@ async function seedAccTournament(createdByUserId: string): Promise<void> {
     });
   }
 
+  await seedTournamentDates(
+    tournament.id,
+    new Date(`${year}-05-01T00:00:00.000Z`),
+    new Date(`${year}-09-30T00:00:00.000Z`),
+  );
+
   for (const teamName of ACC_TEAMS) {
+    const nameNormalized = normalizeTeamName(teamName);
     const existing = await prisma.team.findFirst({
-      where: { tournamentId: tournament.id, name: teamName },
+      where: { tournamentId: tournament.id, nameNormalized },
     });
     if (!existing) {
       await prisma.team.create({
-        data: { tournamentId: tournament.id, name: teamName },
+        data: { tournamentId: tournament.id, name: teamName, nameNormalized },
       });
     }
   }
@@ -165,7 +193,7 @@ async function seedAplTournament(
         year,
         oversPerInnings: 20,
         maxOversPerBowler: 4,
-        location: 'Surat District Arena',
+        locationAddress: 'Surat District Arena',
         startAt: new Date(`${year}-06-15T00:00:00.000Z`),
         endAt: new Date(`${year}-06-20T00:00:00.000Z`),
         ballType: 'TENNIS',
@@ -185,15 +213,22 @@ async function seedAplTournament(
     });
   }
 
+  await seedTournamentDates(
+    tournament.id,
+    new Date(`${year}-06-15T00:00:00.000Z`),
+    new Date(`${year}-06-20T00:00:00.000Z`),
+  );
+
   const teamNames = ['Barrie Cobras', 'Scarborough Strikeforce'];
   const teams: { id: string; name: string }[] = [];
   for (const teamName of teamNames) {
+    const nameNormalized = normalizeTeamName(teamName);
     let team = await prisma.team.findFirst({
-      where: { tournamentId: tournament.id, name: teamName },
+      where: { tournamentId: tournament.id, nameNormalized },
     });
     if (!team) {
       team = await prisma.team.create({
-        data: { tournamentId: tournament.id, name: teamName },
+        data: { tournamentId: tournament.id, name: teamName, nameNormalized },
       });
     }
     teams.push({ id: team.id, name: team.name });
@@ -448,7 +483,7 @@ async function seedSevakOwnedCenterTournament(
         year,
         oversPerInnings: 20,
         maxOversPerBowler: 4,
-        location: 'North York',
+        locationAddress: 'North York',
         startAt: new Date(`${year}-07-01T00:00:00.000Z`),
         endAt: new Date(`${year}-07-05T00:00:00.000Z`),
         ballType: 'TENNIS',
@@ -468,6 +503,12 @@ async function seedSevakOwnedCenterTournament(
       create: { tournamentId: tournament.id, centerId },
     });
   }
+
+  await seedTournamentDates(
+    tournament.id,
+    new Date(`${year}-07-01T00:00:00.000Z`),
+    new Date(`${year}-07-05T00:00:00.000Z`),
+  );
 }
 
 type SeedPlayerIds = {
@@ -884,6 +925,11 @@ async function main(): Promise<void> {
   );
   await seedSevakOwnedCenterTournament(sevakPlayer.id, primaryCenterId);
 
+  const scorerCardSeed = await seedScorerStartMatchCard(prisma);
+  if (scorerCardSeed) {
+    logScorerCardSeedInstructions(scorerCardSeed);
+  }
+
   const [provinces, centers, users, teams] = await Promise.all([
     prisma.province.count(),
     prisma.center.count(),
@@ -898,7 +944,8 @@ async function main(): Promise<void> {
       `Captain (live match + stats): 55555550004. ` +
       `Center Sevak + player stats: 55555550005. ` +
       `Center Sevak (zeros performance): 55555550006. ` +
-      `Plain Player (LIVE chase dashboard): 55555550007.`,
+      `Plain Player (LIVE chase dashboard): 55555550007. ` +
+      `Scorer Start Match card (today only): 55555550007 after db:seed or db:seed-scorer-card.`,
   );
 }
 

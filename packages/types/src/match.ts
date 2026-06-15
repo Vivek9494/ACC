@@ -73,6 +73,34 @@ export const TossDecision = {
 } as const;
 export type TossDecision = (typeof TossDecision)[keyof typeof TossDecision];
 
+/** Fixture stage for manual match setup (§11). */
+export const MatchType = {
+  LeagueMatch: 'LEAGUE_MATCH',
+  PreQuarterFinal: 'PRE_QUARTER_FINAL',
+  QuarterFinal: 'QUARTER_FINAL',
+  SemiFinal: 'SEMI_FINAL',
+  Final: 'FINAL',
+  SuperLeague: 'SUPER_LEAGUE',
+  Qualifier1: 'QUALIFIER_1',
+  Qualifier2: 'QUALIFIER_2',
+  Eliminator: 'ELIMINATOR',
+  SuperEight: 'SUPER_EIGHT',
+} as const;
+export type MatchType = (typeof MatchType)[keyof typeof MatchType];
+
+export const MATCH_TYPE_LABELS: Record<MatchType, string> = {
+  LEAGUE_MATCH: 'League Match',
+  PRE_QUARTER_FINAL: 'Pre Quarter Final',
+  QUARTER_FINAL: 'Quarter Final',
+  SEMI_FINAL: 'Semi Final',
+  FINAL: 'Final',
+  SUPER_LEAGUE: 'Super League',
+  QUALIFIER_1: 'Qualifier 1',
+  QUALIFIER_2: 'Qualifier 2',
+  ELIMINATOR: 'Eliminator',
+  SUPER_EIGHT: 'Super Eight',
+};
+
 /** Role of a player within a locked matchday squad (spec §9.7, §8). */
 export const MatchSquadRole = {
   PlayingXi: 'PLAYING_XI',
@@ -99,17 +127,31 @@ export const IMPACT_PLAYER_SELECTION_MODEL = 'LOCK_TIME_SINGLE_ACTIVE' as const;
 
 /** Create a match / fixture entry (§11, §27). */
 export interface CreateMatchRequest {
-  /** Home/system side. Required for a system-vs-system match. */
+  /** Home/system side (Team A). Required for system-vs-system fixtures. */
   homeTeamId?: string | null;
-  /** Away/system side; omit for an ACC match against an external opponent. */
+  /** Away/system side (Team B); omit for an ACC match against an external opponent. */
   awayTeamId?: string | null;
   /** ACC external opponent name (§9.5) when there is no system away team. */
   externalOpponentName?: string | null;
+  /** Group-stage fixture group (nullable for round robin / manual). */
+  groupId?: string | null;
   matchCode?: string | null;
+  /** Fixture stage (required for all scheduling variants). */
+  matchType?: MatchType | null;
+  /** Tournament calendar day (YYYY-MM-DD, UTC). */
   matchDate?: string | null;
+  /** Scheduled start (ISO 8601 UTC). */
   startTime?: string | null;
   reportingTime?: string | null;
   groundLocation?: string | null;
+  geofenceLat?: number | null;
+  geofenceLng?: number | null;
+  oversPerInnings?: number | null;
+  maxOversPerBowler?: number | null;
+  /** Fielding-restriction powerplay length; optional (0 = none). */
+  powerplayOvers?: number | null;
+  /** Tennis-ball batting powerplay; optional (0 = none). Ignored for leather. */
+  battingPowerplayOvers?: number | null;
   youtubeUrl?: string | null;
 }
 
@@ -130,6 +172,18 @@ export interface LockPlayingXiRequest {
 export interface RecordTossRequest {
   tossWinner: MatchSide;
   decision: TossDecision;
+}
+
+/** Scorer flow: record toss, derive innings sides, and begin Live scoring (§11.2). */
+export type StartScoringRequest = RecordTossRequest;
+
+/** Toss + opening players at match start; transitions the match to Live (§11). */
+export interface StartMatchSetupRequest {
+  tossWinner: MatchSide;
+  tossDecision: TossDecision;
+  strikerUserId: string;
+  nonStrikerUserId: string;
+  bowlerUserId: string;
 }
 
 export interface TransitionMatchStateRequest {
@@ -153,6 +207,7 @@ export interface MatchSummary {
   id: string;
   tournamentId: string;
   matchCode: string | null;
+  matchType: MatchType;
   state: MatchState;
   homeTeamId: string | null;
   homeTeamName: string | null;
@@ -191,9 +246,20 @@ export interface ScorerGrantView {
 export interface MatchDetail extends MatchSummary {
   reportingTime: string | null;
   groundLocation: string | null;
+  oversPerInnings: number | null;
+  maxOversPerBowler: number | null;
+  powerplayOvers: number | null;
+  battingPowerplayOvers: number | null;
   youtubeUrl: string | null;
   tossWinner: MatchSide | null;
   tossDecision: TossDecision | null;
+  /** Derived from toss when recorded — team batting first in innings 1. */
+  battingFirstTeamId: string | null;
+  /** Derived from toss when recorded — team bowling first in innings 1. */
+  bowlingFirstTeamId: string | null;
+  openingStrikerUserId: string | null;
+  openingNonStrikerUserId: string | null;
+  openingBowlerUserId: string | null;
   impactPlayerEnabled: boolean;
   squads: SquadView[];
   activeScorers: ScorerGrantView[];

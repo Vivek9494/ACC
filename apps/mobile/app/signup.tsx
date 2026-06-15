@@ -33,6 +33,7 @@ import { Select } from '../src/components/ui/Select';
 import { Text } from '../src/components/ui/Text';
 import { TextInput } from '../src/components/ui/TextInput';
 import { ApiRequestError } from '../src/lib/api';
+import type { PickedImageFile } from '../src/lib/imagePicker';
 import { useAuth } from '../src/lib/auth-context';
 import {
   firstSignupFieldError,
@@ -57,7 +58,7 @@ export default function SignupScreen(): React.ReactElement {
   const [postalCode, setPostalCode] = useState('');
   const [province, setProvince] = useState<string | null>(null);
   const [centerId, setCenterId] = useState<string | null>(null);
-  const [profilePhotoUri, setProfilePhotoUri] = useState<string | null>(null);
+  const [profilePhoto, setProfilePhoto] = useState<PickedImageFile | null>(null);
   const [profilePhotoError, setProfilePhotoError] = useState<string | null>(null);
   const [emergencyContactName, setEmergencyContactName] = useState('');
   const [emergencyContactNumber, setEmergencyContactNumber] = useState('');
@@ -237,8 +238,13 @@ export default function SignupScreen(): React.ReactElement {
             'profilePhoto',
             <ProfilePhotoField
               label="Profile Photo"
-              uri={profilePhotoUri}
-              onChange={setProfilePhotoUri}
+              uri={profilePhoto?.uri ?? null}
+              onChange={(file) => {
+                setProfilePhoto(file);
+                if (file) {
+                  clearFieldError('profilePhoto');
+                }
+              }}
               onValidationError={setProfilePhotoError}
               error={fieldErrors.profilePhoto ?? profilePhotoError ?? undefined}
             />,

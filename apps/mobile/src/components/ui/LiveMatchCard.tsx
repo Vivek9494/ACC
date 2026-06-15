@@ -3,19 +3,12 @@ import { View } from 'react-native';
 
 import { Card } from './Card';
 import { StatusPill } from './StatusPill';
+import { TeamAvatar } from './TeamAvatar';
 import { Text } from './Text';
 
 export interface LiveMatchCardProps {
   match: GuestFeaturedLiveMatch;
   onPress?: () => void;
-}
-
-function TeamLogo({ name }: { name: string }): React.ReactElement {
-  return (
-    <View className="h-9 w-9 items-center justify-center rounded-full bg-surface-container-high">
-      <Text className="font-sans-bold text-sm text-primary">{name.slice(0, 1).toUpperCase()}</Text>
-    </View>
-  );
 }
 
 function BatterLine({
@@ -79,7 +72,7 @@ export function LiveMatchCard({ match, onPress }: LiveMatchCardProps): React.Rea
 
       <View className="flex-row items-center justify-between gap-3">
         <View className="flex-1 flex-row items-center gap-3">
-          <TeamLogo name={match.battingTeamName} />
+          <TeamAvatar name={match.battingTeamName} size="xs" />
           <Text className="flex-1 font-sans-bold text-base text-on-surface" numberOfLines={1}>
             {match.battingTeamName}
           </Text>

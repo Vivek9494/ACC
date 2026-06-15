@@ -1,6 +1,7 @@
 import {
   BallType,
   CitySelection,
+  TOURNAMENT_FORM_MESSAGES,
   type CreateTournamentRequest,
   TournamentFormat,
 } from '@acc/types';
@@ -12,9 +13,12 @@ import {
   IsEmpty,
   IsIn,
   IsInt,
+  IsNotEmpty,
+  IsNumber,
   IsOptional,
   IsString,
   IsUrl,
+  Matches,
   Max,
   MaxLength,
   Min,
@@ -22,9 +26,12 @@ import {
   ValidateIf,
 } from 'class-validator';
 
+import { APP_URL_VALIDATION_OPTIONS } from '../../common/validation/url-options';
+
 const BALL_TYPES = Object.values(BallType);
 const CITY_SELECTIONS = Object.values(CitySelection);
 const FORMATS = Object.values(TournamentFormat);
+const M = TOURNAMENT_FORM_MESSAGES;
 
 /**
  * Add Tournament form (§6.1). `type` is omitted — the service derives it via the
@@ -34,7 +41,7 @@ const FORMATS = Object.values(TournamentFormat);
  */
 export class CreateTournamentDto implements CreateTournamentRequest {
   @IsString()
-  @MinLength(1)
+  @MinLength(1, { message: M.name.required })
   @MaxLength(120)
   name!: string;
 
@@ -43,14 +50,9 @@ export class CreateTournamentDto implements CreateTournamentRequest {
   @Max(2100)
   year!: number;
 
-  @IsOptional()
-  @IsUrl()
-  posterUrl?: string | null;
-
-  @IsInt()
-  @Min(1)
-  @Max(50)
-  oversPerInnings!: number;
+  @IsUrl(APP_URL_VALIDATION_OPTIONS, { message: M.poster.required })
+  @IsNotEmpty({ message: M.poster.required })
+  posterUrl!: string;
 
   @IsInt()
   @Min(1)
@@ -58,14 +60,15 @@ export class CreateTournamentDto implements CreateTournamentRequest {
   maxOversPerBowler!: number;
 
   @IsInt()
-  @Min(2)
-  @Max(64)
+  @Min(2, { message: M.numberOfTeams.range })
+  @Max(30, { message: M.numberOfTeams.range })
   numberOfTeams!: number;
 
+  @IsOptional()
   @IsInt()
-  @Min(11)
-  @Max(30)
-  playersPerTeam!: number;
+  @Min(1)
+  @Max(15, { message: M.playersPerTeam.max })
+  playersPerTeam?: number;
 
   @IsInt()
   @Min(0)
@@ -75,25 +78,44 @@ export class CreateTournamentDto implements CreateTournamentRequest {
   @IsOptional()
   @IsString()
   @MaxLength(200)
-  location?: string | null;
+  locationAddress?: string | null;
 
-  @IsDateString()
-  startAt!: string;
+  @IsOptional()
+  @IsNumber()
+  @Min(-90)
+  @Max(90)
+  latitude?: number | null;
 
-  @IsDateString()
-  endAt!: string;
+  @IsOptional()
+  @IsNumber()
+  @Min(-180)
+  @Max(180)
+  longitude?: number | null;
 
-  @IsIn(BALL_TYPES)
+  /** YYYY-MM-DD calendar days; server derives startAt/endAt from min/max. */
+  @IsArray()
+  @ArrayNotEmpty({ message: M.tournamentDates.required })
+  @IsString({ each: true })
+  @Matches(/^\d{4}-\d{2}-\d{2}$/, {
+    each: true,
+    message: M.tournamentDates.required,
+  })
+  dates!: string[];
+
+  @IsIn(BALL_TYPES, { message: M.ballType.required })
   ballType!: BallType;
 
   /** Required for tennis-ball tournaments; ignored when ball type is leather. */
   @ValidateIf((dto: CreateTournamentDto) => dto.ballType === BallType.Tennis)
-  @IsIn(CITY_SELECTIONS)
+  @IsIn(CITY_SELECTIONS, { message: M.citySelection.required })
   citySelection?: CitySelection;
 
-  @ValidateIf((dto: CreateTournamentDto) => dto.ballType === BallType.Tennis)
+  @ValidateIf(
+    (dto: CreateTournamentDto) =>
+      dto.ballType === BallType.Tennis && dto.citySelection === CitySelection.Multi,
+  )
   @IsString()
-  @MinLength(1)
+  @MinLength(1, { message: M.province.required })
   provinceId?: string;
 
   @ValidateIf(
@@ -101,7 +123,7 @@ export class CreateTournamentDto implements CreateTournamentRequest {
       dto.ballType === BallType.Tennis && dto.citySelection === CitySelection.Multi,
   )
   @IsArray()
-  @ArrayNotEmpty({ message: 'Select at least one center' })
+  @ArrayNotEmpty({ message: M.centers.required })
   @IsString({ each: true })
   centerIds?: string[];
 
@@ -114,12 +136,12 @@ export class CreateTournamentDto implements CreateTournamentRequest {
   @IsBoolean()
   videoRequired!: boolean;
 
-  @IsOptional()
-  @IsDateString()
+  @ValidateIf((dto: CreateTournamentDto) => dto.videoRequired)
+  @IsDateString({}, { message: M.videoUploadEndDate.required })
   videoUploadEndDate?: string | null;
 
   @IsOptional()
-  @IsUrl()
+  @IsUrl(APP_URL_VALIDATION_OPTIONS)
   youtubeUrl?: string | null;
 
   @IsOptional()
@@ -130,8 +152,8 @@ export class CreateTournamentDto implements CreateTournamentRequest {
   @IsDateString()
   registrationCloseAt?: string | null;
 
-  @IsOptional()
-  @IsDateString()
+  @ValidateIf((dto: CreateTournamentDto) => dto.auctionAt != null)
+  @IsDateString({}, { message: M.auctionDate.required })
   auctionAt?: string | null;
 
   @IsOptional()
@@ -142,8 +164,9 @@ export class CreateTournamentDto implements CreateTournamentRequest {
   @IsBoolean()
   copyRoleAssignments?: boolean;
 
-  // §6.1: Powerplay Overs was removed from the Add Tournament form. Reject any
-  // attempt to set it. `@IsEmpty` passes only when the value is absent.
   @IsEmpty({ message: 'Powerplay Overs was removed per spec §6.1 and is not accepted' })
   powerplayOvers?: never;
+
+  @IsEmpty({ message: 'Overs per innings is set at match setup, not on tournament create' })
+  oversPerInnings?: never;
 }

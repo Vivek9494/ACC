@@ -13,6 +13,7 @@ import {
 import { Injectable } from '@nestjs/common';
 
 import { PrismaService } from '../prisma/prisma.service';
+import { activeTournamentRelationWhere } from '../tournaments/tournament-query';
 import { MatchScorerGrantService } from './match-scorer.service';
 
 /**
@@ -153,9 +154,9 @@ export class PermissionService {
     if (tournamentId) {
       const tournament = await this.prisma.tournament.findUnique({
         where: { id: tournamentId },
-        select: { type: true, createdByUserId: true },
+        select: { type: true, createdByUserId: true, isDeleted: true },
       });
-      if (tournament) {
+      if (tournament && !tournament.isDeleted) {
         tournamentType = tournament.type as TournamentType;
         isOrganizer = tournament.createdByUserId === actor.id;
       }

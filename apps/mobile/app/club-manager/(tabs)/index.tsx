@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, View } from 'react-native';
 
+import { buildTournamentMenuActions } from '../../../src/components/dashboard/buildTournamentMenuActions';
 import { DashboardScaffold } from '../../../src/components/dashboard/DashboardScaffold';
 import { MatchSummaryCard } from '../../../src/components/ui/MatchSummaryCard';
 import { StatTile } from '../../../src/components/ui/StatTile';
@@ -100,11 +101,18 @@ export default function ClubManagerDashboardScreen(): React.ReactElement {
         {dashboard.tournaments.length === 0 ? (
           <Text className="font-sans text-sm text-on-surface-variant">No tournaments yet.</Text>
         ) : (
-          dashboard.tournaments.map((tournament) => (
+          dashboard.tournaments.map(({ tournament, permissions }) => (
             <TournamentDashboardCard
               key={tournament.id}
               tournament={tournament}
               onPress={() => router.push(`/tournaments/${tournament.id}`)}
+              menuActions={buildTournamentMenuActions(
+                permissions,
+                tournament.id,
+                tournament.name,
+                router,
+                { onDeleted: load },
+              )}
             />
           ))
         )}

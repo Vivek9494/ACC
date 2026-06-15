@@ -1,5 +1,8 @@
 import type { MatchState } from './match';
+import type { TournamentDashboardEntry } from './center-sevak';
 import type { TournamentSummary } from './tournament';
+
+export type { TournamentDashboardEntry, TournamentDashboardPermissions } from './center-sevak';
 
 /** One team row on the manager dashboard featured match card. */
 export interface MatchSummaryTeamView {
@@ -35,5 +38,5 @@ export interface ClubManagerDashboard {
   featuredMatch: FeaturedMatchSummary | null;
   /** Null when the manager has no tournament registration (not a player); zeros allowed. */
   playerStats: ManagerPlayerStats | null;
-  tournaments: TournamentSummary[];
+  tournaments: TournamentDashboardEntry[];
 }

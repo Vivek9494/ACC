@@ -2,7 +2,9 @@ import {
   type AuthUser,
   type CloneSuggestion,
   Permission,
+  type TournamentDashboardEntry,
   type TournamentDetail,
+  type TournamentEditFormData,
   type TournamentSummary,
 } from '@acc/types';
 import {
@@ -22,7 +24,7 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { TOURNAMENT_POSTER_MAX_BYTES, type UploadTournamentPosterResponse } from '@acc/types';
+import { TOURNAMENT_FORM_MESSAGES, TOURNAMENT_POSTER_MAX_BYTES, type UploadTournamentPosterResponse } from '@acc/types';
 
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -30,6 +32,7 @@ import { Public } from '../auth/public.decorator';
 import { PermissionGuard } from '../authz/permission.guard';
 import { RequirePermission } from '../authz/require-permission.decorator';
 import { CreateTournamentDto } from './dto/create-tournament.dto';
+import { SelectMatchSchedulingFormatDto } from './dto/select-match-scheduling-format.dto';
 import { TransitionStateDto } from './dto/transition-state.dto';
 import { UpdateTournamentDto } from './dto/update-tournament.dto';
 import { TournamentsService } from './tournaments.service';
@@ -57,7 +60,11 @@ export class TournamentsController {
     @UploadedFile() file: { buffer: Buffer } | undefined,
   ): Promise<UploadTournamentPosterResponse> {
     if (!file?.buffer?.length) {
-      throw new BadRequestException({ message: 'Tournament poster is required' });
+      throw new BadRequestException({
+        message: TOURNAMENT_FORM_MESSAGES.poster.required,
+        error: 'POSTER_REQUIRED',
+        fields: { poster: TOURNAMENT_FORM_MESSAGES.poster.required },
+      });
     }
     const posterUrl = await this.tournaments.uploadPoster(user, file.buffer);
     return { posterUrl };
@@ -73,6 +80,22 @@ export class TournamentsController {
   @Get('clone-suggestion')
   cloneSuggestion(@Query('name') name: string): Promise<CloneSuggestion | null> {
     return this.tournaments.cloneSuggestion(name ?? '');
+  }
+
+  /** Tournament rows with per-record permissions for dashboard menus. */
+  @Get('dashboard-entries')
+  listDashboardEntries(@CurrentUser() user: AuthUser): Promise<TournamentDashboardEntry[]> {
+    return this.tournaments.listDashboardEntries(user);
+  }
+
+  @Get(':tournamentId/edit-form')
+  @RequirePermission(Permission.EDIT_TOURNAMENT)
+  @UseGuards(PermissionGuard)
+  getEditForm(
+    @CurrentUser() user: AuthUser,
+    @Param('tournamentId') tournamentId: string,
+  ): Promise<TournamentEditFormData> {
+    return this.tournaments.getEditForm(user, tournamentId);
   }
 
   @Get(':tournamentId')
@@ -91,6 +114,19 @@ export class TournamentsController {
     @Body() dto: UpdateTournamentDto,
   ): Promise<TournamentDetail> {
     return this.tournaments.update(user, tournamentId, dto);
+  }
+
+  /** Records the scheduling mode chosen in the Schedule Matches modal. */
+  @Post(':tournamentId/match-scheduling-format')
+  @HttpCode(HttpStatus.OK)
+  @RequirePermission(Permission.CREATE_MATCH)
+  @UseGuards(PermissionGuard)
+  selectMatchSchedulingFormat(
+    @CurrentUser() user: AuthUser,
+    @Param('tournamentId') tournamentId: string,
+    @Body() dto: SelectMatchSchedulingFormatDto,
+  ): Promise<TournamentDetail> {
+    return this.tournaments.selectMatchSchedulingFormat(user, tournamentId, dto.schedulingFormat);
   }
 
   /** Lifecycle transition (§5.1). */

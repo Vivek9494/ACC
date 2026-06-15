@@ -34,36 +34,54 @@ import {
   type CreateCenterRequest,
   type CreateMatchRequest,
   type CreateProvinceRequest,
+  type CreateGroupRequest,
+  type CreateTeamRequest,
   type CreateTournamentRequest,
   type ForgotPasswordRequest,
+  type GroupSummary,
   type HandoverScorerRequest,
   type LateRegistrationRequest,
   type LockPlayingXiRequest,
   type LoginRequest,
   type MatchDetail,
+  type MatchSchedulingFormat,
   type MatchState,
-  type MatchSummary,
+  type MatchListItem,
+  type PlaceDetails,
+  type PlaceSuggestion,
   type ProvinceDetail,
   type ProvinceSummary,
   type RecordDeliveryRequest,
   type RecordTossRequest,
+  type StartMatchSetupRequest,
   type RefreshRequest,
+  type ReverseGeocodeResult,
   type ScorecardConfirmationView,
   type ScorecardResponse,
   type SelectManOfMatchRequest,
+  type SelectMatchSchedulingFormatRequest,
   type SetDlsTargetRequest,
   type StartInningsRequest,
   type UpdateOversAllottedRequest,
   type RegistrationDetail,
   type RegistrationFieldDefinition,
+  type RoundRobinMatchSetupContext,
   type RegistrationSortKey,
   type RegistrationStatus,
   type RegistrationSummary,
+  type RegistrationVerificationQueue,
   type ResetPasswordRequest,
   type SignupRequest,
   type SquadCandidate,
   type SubmitRegistrationRequest,
+  type TeamSummary,
+  type TournamentFeeEntry,
+  type TournamentFeesTracker,
   type TournamentDetail,
+  type TournamentLeaderboard,
+  type TournamentStandings,
+  type TournamentDashboardEntry,
+  type TournamentEditFormData,
   type TournamentState,
   type TournamentSummary,
   type UpdateAvailabilityRequest,
@@ -71,6 +89,7 @@ import {
   type UpdateProvinceRequest,
   type UpdateRatingsRequest,
   type UpdateTournamentRequest,
+  type UploadTeamLogoResponse,
 } from '@acc/types';
 
 import { loadTokens, saveTokens } from './session';
@@ -134,6 +153,7 @@ export interface ApiError {
   code: string;
   message: string | string[];
   requestId?: string;
+  fields?: Record<string, string>;
 }
 
 /** Uniform response envelope returned by the api: `{ data, error }`. */
@@ -489,23 +509,18 @@ export async function uploadProfilePhoto(localUri: string): Promise<string> {
   return (parsed as UploadProfilePhotoResponse).profilePhotoUrl;
 }
 
-function posterMimeFromUri(uri: string): { mime: string; ext: string } {
-  const lower = uri.toLowerCase();
-  if (lower.endsWith('.png')) {
-    return { mime: 'image/png', ext: 'png' };
-  }
-  return { mime: 'image/jpeg', ext: 'jpg' };
+function posterUploadFile(localUri: string): { uri: string; name: string; type: string } {
+  return {
+    uri: localUri,
+    name: 'poster.jpg',
+    type: 'image/jpeg',
+  };
 }
 
-/** Upload a local JPG/PNG tournament poster; returns the persisted URL. */
+/** Upload a local tournament poster; returns the persisted URL. */
 export async function uploadTournamentPoster(localUri: string): Promise<string> {
-  const { mime, ext } = posterMimeFromUri(localUri);
   const formData = new FormData();
-  formData.append('poster', {
-    uri: localUri,
-    name: `poster.${ext}`,
-    type: mime,
-  } as unknown as Blob);
+  formData.append('poster', posterUploadFile(localUri) as unknown as Blob);
 
   const headers: Record<string, string> = { Accept: 'application/json' };
   if (authToken) {
@@ -534,14 +549,112 @@ export async function uploadTournamentPoster(localUri: string): Promise<string> 
   return (parsed as UploadTournamentPosterResponse).posterUrl;
 }
 
+// --- Google Places proxy (server-side key) ---------------------------------
+
+export function placesAutocomplete(
+  q: string,
+  sessionToken: string,
+): Promise<PlaceSuggestion[]> {
+  const params = new URLSearchParams({ q, sessionToken });
+  return apiFetch<PlaceSuggestion[]>(`/places/autocomplete?${params.toString()}`);
+}
+
+export function placesDetails(placeId: string, sessionToken: string): Promise<PlaceDetails> {
+  const params = new URLSearchParams({ placeId, sessionToken });
+  return apiFetch<PlaceDetails>(`/places/details?${params.toString()}`);
+}
+
+export function placesReverse(latitude: number, longitude: number): Promise<ReverseGeocodeResult> {
+  const params = new URLSearchParams({
+    lat: String(latitude),
+    lng: String(longitude),
+  });
+  return apiFetch<ReverseGeocodeResult>(`/places/reverse?${params.toString()}`);
+}
+
 // --- Tournaments (§6, §24) -------------------------------------------------
 
 export function listTournaments(): Promise<TournamentSummary[]> {
   return apiFetch<TournamentSummary[]>('/tournaments');
 }
 
+export function listTournamentDashboardEntries(): Promise<TournamentDashboardEntry[]> {
+  return apiFetch<TournamentDashboardEntry[]>('/tournaments/dashboard-entries');
+}
+
 export function getTournament(id: string): Promise<TournamentDetail> {
   return apiFetchPublic<TournamentDetail>(`/tournaments/${id}`);
+}
+
+export function getTournamentEditForm(id: string): Promise<TournamentEditFormData> {
+  return apiFetch<TournamentEditFormData>(`/tournaments/${id}/edit-form`);
+}
+
+export function listTeams(tournamentId: string): Promise<TeamSummary[]> {
+  return apiFetchPublic<TeamSummary[]>(`/tournaments/${tournamentId}/teams`);
+}
+
+export function createTeam(tournamentId: string, body: CreateTeamRequest): Promise<TeamSummary> {
+  return apiFetch<TeamSummary>(`/tournaments/${tournamentId}/teams`, { method: 'POST', body });
+}
+
+export function listGroups(tournamentId: string): Promise<GroupSummary[]> {
+  return apiFetchPublic<GroupSummary[]>(`/tournaments/${tournamentId}/groups`);
+}
+
+export function getTournamentStandings(tournamentId: string): Promise<TournamentStandings> {
+  return apiFetchPublic<TournamentStandings>(`/tournaments/${tournamentId}/standings`);
+}
+
+/**
+ * Tournament player leaderboard (§15.5). Optional `teamId` filters to one team's players.
+ */
+export function getTournamentLeaderboard(
+  tournamentId: string,
+  teamId?: string | null,
+): Promise<TournamentLeaderboard> {
+  const query = teamId ? `?teamId=${encodeURIComponent(teamId)}` : '';
+  return apiFetchPublic<TournamentLeaderboard>(`/tournaments/${tournamentId}/leaderboard${query}`);
+}
+
+export function createGroup(tournamentId: string, body: CreateGroupRequest): Promise<GroupSummary> {
+  return apiFetch<GroupSummary>(`/tournaments/${tournamentId}/groups`, { method: 'POST', body });
+}
+
+/** Upload a local team logo JPG; returns the persisted URL. */
+export async function uploadTeamLogo(localUri: string): Promise<string> {
+  const formData = new FormData();
+  formData.append('logo', {
+    uri: localUri,
+    name: 'logo.jpg',
+    type: 'image/jpeg',
+  } as unknown as Blob);
+
+  const headers: Record<string, string> = { Accept: 'application/json' };
+  if (authToken) {
+    headers.Authorization = `Bearer ${authToken}`;
+  }
+
+  const response = await fetch(`${API_BASE_URL}/tournaments/team-logo`, {
+    method: 'POST',
+    headers,
+    body: formData,
+  });
+
+  const text = await response.text();
+  const parsed: unknown = text.length > 0 ? JSON.parse(text) : null;
+
+  if (!response.ok) {
+    const error: ApiError = isEnvelope(parsed)
+      ? (parsed.error ?? { code: 'UNKNOWN', message: response.statusText })
+      : { code: 'UNKNOWN', message: response.statusText };
+    throw new ApiRequestError(response.status, error);
+  }
+
+  if (isEnvelope(parsed)) {
+    return (parsed.data as UploadTeamLogoResponse).logoUrl;
+  }
+  return (parsed as UploadTeamLogoResponse).logoUrl;
 }
 
 export function createTournament(body: CreateTournamentRequest): Promise<TournamentDetail> {
@@ -553,6 +666,17 @@ export function updateTournament(
   body: UpdateTournamentRequest,
 ): Promise<TournamentDetail> {
   return apiFetch<TournamentDetail>(`/tournaments/${id}`, { method: 'PATCH', body });
+}
+
+export function selectMatchSchedulingFormat(
+  tournamentId: string,
+  schedulingFormat: MatchSchedulingFormat,
+): Promise<TournamentDetail> {
+  const body: SelectMatchSchedulingFormatRequest = { schedulingFormat };
+  return apiFetch<TournamentDetail>(`/tournaments/${tournamentId}/match-scheduling-format`, {
+    method: 'POST',
+    body,
+  });
 }
 
 export function deleteTournament(id: string): Promise<void> {
@@ -598,6 +722,30 @@ export function submitRegistration(
 /** §7.3: the current player's registration status, or null if not registered. */
 export function getMyRegistration(tournamentId: string): Promise<RegistrationDetail | null> {
   return apiFetch<RegistrationDetail | null>(`/tournaments/${tournamentId}/registrations/me`);
+}
+
+/** §7.3/§7.4: Center Sevak own-center verification queue + pending count. */
+export function getRegistrationVerificationQueue(
+  tournamentId: string,
+): Promise<RegistrationVerificationQueue> {
+  return apiFetch<RegistrationVerificationQueue>(
+    `/tournaments/${tournamentId}/registrations/verification-queue`,
+  );
+}
+
+/** §20: Center Sevak fees tracker (paid / remaining), own-center scope. */
+export function getTournamentFeesTracker(tournamentId: string): Promise<TournamentFeesTracker> {
+  return apiFetch<TournamentFeesTracker>(`/tournaments/${tournamentId}/fees/tracker`);
+}
+
+/** §20: manually record offline fee payment received. */
+export function markTournamentFeePaid(
+  tournamentId: string,
+  feeId: string,
+): Promise<TournamentFeeEntry> {
+  return apiFetch<TournamentFeeEntry>(`/tournaments/${tournamentId}/fees/${feeId}/pay`, {
+    method: 'POST',
+  });
 }
 
 /** §7.4: Center-scoped registration list with optional filters/sort. */
@@ -686,8 +834,16 @@ export function listRegistrationFields(
 
 // --- Match setup (§5.2, §11) -----------------------------------------------
 
-export function listMatches(tournamentId: string): Promise<MatchSummary[]> {
-  return apiFetch<MatchSummary[]>(`/tournaments/${tournamentId}/matches`);
+export function listMatches(tournamentId: string): Promise<MatchListItem[]> {
+  return apiFetch<MatchListItem[]>(`/tournaments/${tournamentId}/matches`);
+}
+
+export function getRoundRobinMatchSetupContext(
+  tournamentId: string,
+): Promise<RoundRobinMatchSetupContext> {
+  return apiFetch<RoundRobinMatchSetupContext>(
+    `/tournaments/${tournamentId}/matches/round-robin-setup`,
+  );
 }
 
 export function getMatch(matchId: string): Promise<MatchDetail> {
@@ -722,6 +878,14 @@ export function lockPlayingXi(
 /** §11.2: record toss data (winner + bat/bowl decision). */
 export function recordToss(matchId: string, body: RecordTossRequest): Promise<MatchDetail> {
   return apiFetch<MatchDetail>(`/matches/${matchId}/toss`, { method: 'POST', body });
+}
+
+/** §11: toss + opening players, transition to Live, and open the first innings. */
+export function startMatchSetup(
+  matchId: string,
+  body: StartMatchSetupRequest,
+): Promise<MatchDetail> {
+  return apiFetch<MatchDetail>(`/matches/${matchId}/start-setup`, { method: 'POST', body });
 }
 
 /** §5.2: drive the match state machine (start, complete, delay, cancel, …). */

@@ -12,6 +12,7 @@ import { Injectable } from '@nestjs/common';
 import type { Match, Tournament } from '@prisma/client';
 
 import { PrismaService } from '../prisma/prisma.service';
+import { activeTournamentRelationWhere, activeTournamentWhere } from '../tournaments/tournament-query';
 import { ScorecardReader } from '../scoring/scorecard-reader';
 
 type TournamentWithCounts = Tournament & { _count: { teams: number } };
@@ -43,7 +44,7 @@ export class GuestService {
 
   private async loadFeaturedLiveMatch(): Promise<GuestFeaturedLiveMatch | null> {
     const match = await this.prisma.match.findFirst({
-      where: { state: { in: LIVE_STATES } },
+      where: { state: { in: LIVE_STATES }, ...activeTournamentRelationWhere },
       orderBy: [{ matchDate: 'desc' }, { createdAt: 'desc' }],
       include: {
         homeTeam: { select: { id: true, name: true } },
@@ -208,6 +209,7 @@ export class GuestService {
   private async listPublicTournaments(): Promise<TournamentSummary[]> {
     const rows = await this.prisma.tournament.findMany({
       where: {
+        ...activeTournamentWhere,
         state: { in: ['LIVE', 'TEAMS_FINALIZED', 'REGISTRATION_OPEN', 'REGISTRATION_CLOSED'] },
       },
       orderBy: [{ startAt: 'desc' }, { createdAt: 'desc' }],
@@ -228,7 +230,9 @@ export class GuestService {
       posterUrl: row.posterUrl,
       startAt: row.startAt.toISOString(),
       endAt: row.endAt.toISOString(),
-      location: row.location,
+      locationAddress: row.locationAddress,
+      latitude: row.latitude,
+      longitude: row.longitude,
       teamCount: row._count.teams,
     };
   }

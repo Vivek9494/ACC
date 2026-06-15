@@ -2,6 +2,8 @@ import {
   type AuthUser,
   type AvailabilitySummary,
   type CustomFormRequestSummary,
+  isTournamentRegistrationOpen,
+  isTournamentRegistrationWindowClosed,
   Permission,
   type RegistrationDetail,
   type RegistrationFieldDefinition,
@@ -9,7 +11,10 @@ import {
   RegistrationSortKey,
   RegistrationStatus,
   type RegistrationSummary,
-  TournamentState,
+  type RegistrationVerificationQueue,
+  type CenterPlayerRosterEntry,
+  RegistrationVerificationPhase,
+  bowlingStyleFromType,
   UserRole,
 } from '@acc/types';
 import {
@@ -27,6 +32,7 @@ import {
   NotificationTrigger,
 } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { assertTournamentActive } from '../tournaments/tournament-query';
 import type { BuildCustomFormDto, CreateCustomFormRequestDto } from './dto/custom-form.dto';
 import type { ListRegistrationsDto } from './dto/list-registrations.dto';
 import type { SubmitRegistrationDto, LateRegistrationDto } from './dto/submit-registration.dto';
@@ -79,14 +85,35 @@ export class RegistrationsService {
     dto: SubmitRegistrationDto,
   ): Promise<RegistrationDetail> {
     const tournament = await this.requireTournament(tournamentId);
-    if (tournament.state !== TournamentState.RegistrationOpen) {
-      throw new BadRequestException({
-        message: 'Registration is not open for this tournament',
-        error: 'REGISTRATION_NOT_OPEN',
+    this.assertRegistrationWindowOpen(tournament);
+    if (actor.role !== UserRole.Player) {
+      throw new ForbiddenException({
+        message: 'Only players may register for tournaments',
+        error: 'FORBIDDEN',
       });
     }
+
+    const existing = await this.prisma.registration.findUnique({
+      where: { tournamentId_userId: { tournamentId, userId: actor.id } },
+      select: { status: true },
+    });
+    if (existing?.status === RegistrationStatus.Confirmed) {
+      throw new BadRequestException({
+        message: 'You are already registered for this tournament',
+        error: 'ALREADY_REGISTERED',
+      });
+    }
+
     await this.validateCustomFields(tournamentId, dto.customFields ?? null);
-    return this.upsertRegistration(tournamentId, actor.id, actor.centerId, dto);
+    const centerId = await this.resolveRegistrationCenterForUser(actor.id, dto.centerId);
+    await this.syncPlayerProfile(actor.id, dto.firstName, dto.lastName, centerId);
+    return this.upsertRegistration(
+      tournamentId,
+      actor.id,
+      centerId,
+      dto,
+      tournament.defaultPlayerFeeCents,
+    );
   }
 
   /** Late registration of a missed player by Organizer / Center Sevak (§7.6). */
@@ -96,12 +123,8 @@ export class RegistrationsService {
     dto: LateRegistrationDto,
   ): Promise<RegistrationDetail> {
     const tournament = await this.requireTournament(tournamentId);
-    if (tournament.state !== TournamentState.RegistrationClosed) {
-      throw new BadRequestException({
-        message: 'Late registration is only allowed after Registration Closed',
-        error: 'NOT_REGISTRATION_CLOSED',
-      });
-    }
+    this.assertRegistrationWindowClosed(tournament);
+
     const player = await this.prisma.user.findUnique({
       where: { id: dto.userId },
       select: { id: true, centerId: true },
@@ -109,10 +132,21 @@ export class RegistrationsService {
     if (!player) {
       throw new NotFoundException({ message: 'Player not found', error: 'NOT_FOUND' });
     }
-    // §7.6: Organizer (CM/CS-organizer) anywhere, or a Center Sevak for own Center.
+
+    const existing = await this.prisma.registration.findUnique({
+      where: { tournamentId_userId: { tournamentId, userId: dto.userId } },
+      select: { id: true },
+    });
+    if (existing) {
+      throw new BadRequestException({
+        message: 'Player is already registered for this tournament',
+        error: 'ALREADY_REGISTERED',
+      });
+    }
+
     const allowed = await this.permissions.check(Permission.REGISTER_LATE_PLAYER, actor, {
       tournamentId,
-      targetCenterId: player.centerId,
+      targetCenterId: dto.centerId,
       targetUserId: player.id,
     });
     if (!allowed) {
@@ -121,16 +155,94 @@ export class RegistrationsService {
         error: 'FORBIDDEN',
       });
     }
-    const detail = await this.upsertRegistration(tournamentId, player.id, player.centerId, dto);
+
+    if (player.centerId !== dto.centerId) {
+      throw new BadRequestException({
+        message: 'Late registration must use the player\'s own center',
+        error: 'INVALID_CENTER',
+      });
+    }
+
+    await this.assertSevakOwnCenter(actor, player.centerId);
+
+    await this.validateCustomFields(tournamentId, dto.customFields ?? null);
+    const centerId = await this.resolveRegistrationCenterForUser(player.id, dto.centerId);
+    await this.syncPlayerProfile(player.id, dto.firstName, dto.lastName, centerId);
+
+    const detail = await this.createConfirmedLateRegistration(
+      tournamentId,
+      player.id,
+      centerId,
+      dto,
+      actor.id,
+      tournament.defaultPlayerFeeCents,
+    );
+
     await this.audit.record({
-      action: 'REGISTRATION_LATE_ADD',
+      action: 'REGISTRATION_LATE_CONFIRM',
       actorUserId: actor.id,
       targetUserId: player.id,
       targetEntityType: 'registration',
       targetEntityId: detail.id,
-      after: { tournamentId, status: detail.status },
+      after: {
+        tournamentId,
+        status: RegistrationStatus.Confirmed,
+        centerId: detail.centerId,
+        battingRating: detail.battingRating,
+        bowlingRating: detail.bowlingRating,
+        fieldingRating: detail.fieldingRating,
+        reviewedByUserId: actor.id,
+        source: 'CENTER_SEVAK_LATE',
+      },
     });
+
+    await this.notifications.notify(NotificationTrigger.RegistrationConfirmed, {
+      recipientUserIds: [player.id],
+      data: { tournamentId },
+    });
+
     return detail;
+  }
+
+  private async createConfirmedLateRegistration(
+    tournamentId: string,
+    userId: string,
+    centerId: string,
+    dto: SubmitRegistrationDto,
+    reviewedByUserId: string,
+    feeAmountCents: bigint | null,
+  ): Promise<RegistrationDetail> {
+    const customFields =
+      dto.customFields === undefined
+        ? undefined
+        : (dto.customFields as Prisma.InputJsonValue | null);
+    const bowlingStyle =
+      dto.bowlingStyle ?? bowlingStyleFromType(dto.bowlingType ?? null);
+    const reviewedAt = new Date();
+
+    const row = await this.prisma.registration.create({
+      data: {
+        tournamentId,
+        userId,
+        centerId,
+        status: RegistrationStatus.Confirmed,
+        reviewedByUserId,
+        reviewedAt,
+        battingStyle: dto.battingStyle ?? null,
+        battingRating: dto.battingRating ?? null,
+        battingPosition: dto.battingPosition ?? null,
+        playerRole: dto.playerRole ?? null,
+        bowlingStyle,
+        bowlingType: dto.bowlingType ?? null,
+        bowlingRating: dto.bowlingRating ?? null,
+        fieldingRating: dto.fieldingRating ?? null,
+        fieldingPosition: dto.fieldingPosition ?? null,
+        customFields: customFields ?? Prisma.JsonNull,
+        feeAmountCents,
+      },
+      include: REGISTRATION_INCLUDE,
+    });
+    return this.toDetail(row);
   }
 
   private async upsertRegistration(
@@ -138,11 +250,14 @@ export class RegistrationsService {
     userId: string,
     centerId: string,
     dto: SubmitRegistrationDto,
+    feeAmountCents: bigint | null,
   ): Promise<RegistrationDetail> {
     const customFields =
       dto.customFields === undefined
         ? undefined
         : (dto.customFields as Prisma.InputJsonValue | null);
+    const bowlingStyle =
+      dto.bowlingStyle ?? bowlingStyleFromType(dto.bowlingType ?? null);
 
     const row = await this.prisma.registration.upsert({
       where: { tournamentId_userId: { tournamentId, userId } },
@@ -153,24 +268,32 @@ export class RegistrationsService {
         status: RegistrationStatus.InWaitlist,
         battingStyle: dto.battingStyle ?? null,
         battingRating: dto.battingRating ?? null,
-        bowlingStyle: dto.bowlingStyle ?? null,
+        battingPosition: dto.battingPosition ?? null,
+        playerRole: dto.playerRole ?? null,
+        bowlingStyle,
+        bowlingType: dto.bowlingType ?? null,
         bowlingRating: dto.bowlingRating ?? null,
         fieldingRating: dto.fieldingRating ?? null,
         fieldingPosition: dto.fieldingPosition ?? null,
         customFields: customFields ?? Prisma.JsonNull,
+        feeAmountCents,
       },
-      // Re-submitting before review updates the answers and resets to waitlist.
       update: {
+        centerId,
         status: RegistrationStatus.InWaitlist,
         battingStyle: dto.battingStyle ?? null,
         battingRating: dto.battingRating ?? null,
-        bowlingStyle: dto.bowlingStyle ?? null,
+        battingPosition: dto.battingPosition ?? null,
+        playerRole: dto.playerRole ?? null,
+        bowlingStyle,
+        bowlingType: dto.bowlingType ?? null,
         bowlingRating: dto.bowlingRating ?? null,
         fieldingRating: dto.fieldingRating ?? null,
         fieldingPosition: dto.fieldingPosition ?? null,
         ...(customFields !== undefined ? { customFields: customFields ?? Prisma.JsonNull } : {}),
         reviewedByUserId: null,
         reviewedAt: null,
+        feeAmountCents,
       },
       include: REGISTRATION_INCLUDE,
     });
@@ -199,6 +322,9 @@ export class RegistrationsService {
     if (!existing) {
       throw new NotFoundException({ message: 'Registration not found', error: 'NOT_FOUND' });
     }
+    const tournament = await this.requireTournament(existing.tournamentId);
+    this.assertRegistrationWindowClosed(tournament);
+
     const row = await this.prisma.registration.update({
       where: { id: registrationId },
       data: { status, reviewedByUserId: actor.id, reviewedAt: new Date() },
@@ -225,17 +351,67 @@ export class RegistrationsService {
 
   // --- Ratings & availability (§7.5, APL) ----------------------------------
 
-  async updateRatings(registrationId: string, dto: UpdateRatingsDto): Promise<RegistrationDetail> {
-    await this.requireRegistration(registrationId);
+  async updateRatings(
+    actor: AuthUser,
+    tournamentId: string,
+    registrationId: string,
+    dto: UpdateRatingsDto,
+  ): Promise<RegistrationDetail> {
+    const tournament = await this.requireTournament(tournamentId);
+    this.assertRegistrationWindowClosed(tournament);
+
+    const existing = await this.prisma.registration.findUnique({
+      where: { id: registrationId },
+      select: {
+        id: true,
+        userId: true,
+        tournamentId: true,
+        centerId: true,
+        battingRating: true,
+        bowlingRating: true,
+        fieldingRating: true,
+      },
+    });
+    if (!existing || existing.tournamentId !== tournamentId) {
+      throw new NotFoundException({ message: 'Registration not found', error: 'NOT_FOUND' });
+    }
+    await this.assertSevakOwnCenter(actor, existing.centerId);
+
     const data: Prisma.RegistrationUpdateInput = {};
-    if (dto.battingRating !== undefined) data.battingRating = dto.battingRating;
-    if (dto.bowlingRating !== undefined) data.bowlingRating = dto.bowlingRating;
-    if (dto.fieldingRating !== undefined) data.fieldingRating = dto.fieldingRating;
+    if (dto.battingRating !== undefined) {
+      data.battingRating = dto.battingRating;
+    }
+    if (dto.bowlingRating !== undefined) {
+      data.bowlingRating = dto.bowlingRating;
+    }
+    if (dto.fieldingRating !== undefined) {
+      data.fieldingRating = dto.fieldingRating;
+    }
+
     const row = await this.prisma.registration.update({
       where: { id: registrationId },
       data,
       include: REGISTRATION_INCLUDE,
     });
+
+    await this.audit.record({
+      action: 'REGISTRATION_RATINGS_ADJUST',
+      actorUserId: actor.id,
+      targetUserId: existing.userId,
+      targetEntityType: 'registration',
+      targetEntityId: registrationId,
+      before: {
+        battingRating: existing.battingRating,
+        bowlingRating: existing.bowlingRating,
+        fieldingRating: existing.fieldingRating,
+      },
+      after: {
+        battingRating: row.battingRating,
+        bowlingRating: row.bowlingRating,
+        fieldingRating: row.fieldingRating,
+      },
+    });
+
     return this.toDetail(row);
   }
 
@@ -297,6 +473,90 @@ export class RegistrationsService {
     return this.sort(rows.map((row) => this.toSummary(row)), query.sort);
   }
 
+  /** §7.3/§7.4: Center Sevak roster — own-center registered + not registered. */
+  async getVerificationQueue(
+    actor: AuthUser,
+    tournamentId: string,
+  ): Promise<RegistrationVerificationQueue> {
+    const tournament = await this.requireTournament(tournamentId);
+    const centerIds = await this.requireCenterSevakCenterIds(actor);
+
+    const registrationRows = await this.prisma.registration.findMany({
+      where: { tournamentId, centerId: { in: centerIds } },
+      include: REGISTRATION_INCLUDE,
+    });
+
+    const windowConfigured =
+      tournament.registrationOpenAt !== null && tournament.registrationCloseAt !== null;
+    const windowClosed =
+      windowConfigured &&
+      isTournamentRegistrationWindowClosed({
+        registrationOpenAt: tournament.registrationOpenAt!.toISOString(),
+        registrationCloseAt: tournament.registrationCloseAt!.toISOString(),
+      });
+
+    const registrationSummaries = registrationRows.map((row) => this.toSummary(row));
+    const registered = windowClosed
+      ? this.sortVerificationQueue(registrationSummaries)
+      : this.sort(registrationSummaries, RegistrationSortKey.Name);
+    const registeredUserIds = new Set(registrationRows.map((row) => row.userId));
+
+    const centerUsers = await this.prisma.user.findMany({
+      where: {
+        centerId: { in: centerIds },
+        isActive: true,
+        role: UserRole.Player,
+      },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        mobileNumber: true,
+        profilePhotoUrl: true,
+        centerId: true,
+      },
+      orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
+    });
+
+    const notRegistered: CenterPlayerRosterEntry[] = centerUsers
+      .filter((user) => !registeredUserIds.has(user.id))
+      .map((user) => ({
+        userId: user.id,
+        centerId: user.centerId,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        mobileNumber: user.mobileNumber,
+        profilePhotoUrl: user.profilePhotoUrl,
+      }));
+
+    const pendingCount = registered.filter(
+      (row) => row.status === RegistrationStatus.InWaitlist,
+    ).length;
+    const phase = windowClosed
+      ? RegistrationVerificationPhase.Manage
+      : RegistrationVerificationPhase.ViewOnly;
+    const actionCount = windowClosed ? pendingCount : registered.length;
+    const canManage = windowClosed;
+
+    const canLateRegister =
+      canManage &&
+      notRegistered.length > 0 &&
+      (await this.permissions.check(Permission.REGISTER_LATE_PLAYER, actor, {
+        tournamentId,
+        targetCenterId: centerIds[0],
+      }));
+
+    return {
+      phase,
+      actionCount,
+      registered,
+      notRegistered,
+      registeredCount: registered.length,
+      canManage,
+      canLateRegister,
+    };
+  }
+
   async getMine(actor: AuthUser, tournamentId: string): Promise<RegistrationDetail | null> {
     const row = await this.prisma.registration.findUnique({
       where: { tournamentId_userId: { tournamentId, userId: actor.id } },
@@ -339,6 +599,44 @@ export class RegistrationsService {
       message: 'You do not have permission to view registrations',
       error: 'FORBIDDEN',
     });
+  }
+
+  /** Center Sevak only — returns assigned center ids or throws. */
+  private async requireCenterSevakCenterIds(actor: AuthUser): Promise<string[]> {
+    const sevakAssignments = await this.prisma.roleAssignment.findMany({
+      where: { userId: actor.id, role: UserRole.CenterSevak, centerId: { not: null } },
+      select: { centerId: true },
+    });
+    const centerIds = sevakAssignments
+      .map((assignment) => assignment.centerId)
+      .filter((id): id is string => id !== null);
+    if (centerIds.length === 0) {
+      throw new ForbiddenException({
+        message: 'Center Sevak access is required',
+        error: 'FORBIDDEN',
+      });
+    }
+    return centerIds;
+  }
+
+  /** When the actor is a Center Sevak, the target must belong to one of their centers. */
+  private async assertSevakOwnCenter(actor: AuthUser, targetCenterId: string): Promise<void> {
+    const sevakAssignments = await this.prisma.roleAssignment.findMany({
+      where: { userId: actor.id, role: UserRole.CenterSevak, centerId: { not: null } },
+      select: { centerId: true },
+    });
+    const centerIds = sevakAssignments
+      .map((assignment) => assignment.centerId)
+      .filter((id): id is string => id !== null);
+    if (centerIds.length === 0) {
+      return;
+    }
+    if (!centerIds.includes(targetCenterId)) {
+      throw new ForbiddenException({
+        message: 'You can only manage players from your own center',
+        error: 'FORBIDDEN',
+      });
+    }
   }
 
   // --- Custom forms (§7.2, §21) --------------------------------------------
@@ -421,15 +719,113 @@ export class RegistrationsService {
 
   private async requireTournament(
     tournamentId: string,
-  ): Promise<{ id: string; state: string; type: string }> {
+  ): Promise<{
+    id: string;
+    state: string;
+    type: string;
+    registrationOpenAt: Date | null;
+    registrationCloseAt: Date | null;
+    defaultPlayerFeeCents: bigint | null;
+  }> {
     const tournament = await this.prisma.tournament.findUnique({
       where: { id: tournamentId },
-      select: { id: true, state: true, type: true },
+      select: {
+        id: true,
+        state: true,
+        type: true,
+        isDeleted: true,
+        registrationOpenAt: true,
+        registrationCloseAt: true,
+        defaultPlayerFeeCents: true,
+      },
     });
-    if (!tournament) {
-      throw new NotFoundException({ message: 'Tournament not found', error: 'NOT_FOUND' });
-    }
+    assertTournamentActive(tournament);
     return tournament;
+  }
+
+  private assertRegistrationWindowClosed(tournament: {
+    registrationOpenAt: Date | null;
+    registrationCloseAt: Date | null;
+  }): void {
+    if (!tournament.registrationOpenAt || !tournament.registrationCloseAt) {
+      throw new BadRequestException({
+        message: 'Registration window is not configured for this tournament',
+        error: 'REGISTRATION_WINDOW_NOT_CONFIGURED',
+      });
+    }
+    if (
+      !isTournamentRegistrationWindowClosed({
+        registrationOpenAt: tournament.registrationOpenAt.toISOString(),
+        registrationCloseAt: tournament.registrationCloseAt.toISOString(),
+      })
+    ) {
+      throw new BadRequestException({
+        message: 'Ratings can only be adjusted after the registration window closes',
+        error: 'REGISTRATION_WINDOW_STILL_OPEN',
+      });
+    }
+  }
+
+  private assertRegistrationWindowOpen(tournament: {
+    registrationOpenAt: Date | null;
+    registrationCloseAt: Date | null;
+  }): void {
+    if (!tournament.registrationOpenAt || !tournament.registrationCloseAt) {
+      throw new BadRequestException({
+        message: 'Registration window is not configured for this tournament',
+        error: 'REGISTRATION_WINDOW_NOT_CONFIGURED',
+      });
+    }
+    if (
+      !isTournamentRegistrationOpen({
+        registrationOpenAt: tournament.registrationOpenAt.toISOString(),
+        registrationCloseAt: tournament.registrationCloseAt.toISOString(),
+      })
+    ) {
+      throw new BadRequestException({
+        message: 'Registration is not open for this tournament',
+        error: 'REGISTRATION_WINDOW_CLOSED',
+      });
+    }
+  }
+
+  private async resolveRegistrationCenterForUser(
+    userId: string,
+    centerId: string,
+  ): Promise<string> {
+    const player = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { center: { select: { provinceId: true } } },
+    });
+    if (!player) {
+      throw new NotFoundException({ message: 'User not found', error: 'NOT_FOUND' });
+    }
+    const center = await this.prisma.center.findUnique({
+      where: { id: centerId },
+      select: { id: true, provinceId: true },
+    });
+    if (!center) {
+      throw new BadRequestException({ message: 'Center not found', error: 'INVALID_CENTER' });
+    }
+    if (center.provinceId !== player.center.provinceId) {
+      throw new BadRequestException({
+        message: 'Selected center must belong to your province',
+        error: 'INVALID_CENTER',
+      });
+    }
+    return center.id;
+  }
+
+  private async syncPlayerProfile(
+    userId: string,
+    firstName: string,
+    lastName: string,
+    centerId: string,
+  ): Promise<void> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { firstName: firstName.trim(), lastName: lastName.trim(), centerId },
+    });
   }
 
   private async requireRegistration(registrationId: string): Promise<void> {
@@ -483,6 +879,28 @@ export class RegistrationsService {
     return null;
   }
 
+  /** Post-window Verify Players list: pending → verified → declined, then name within each group. */
+  private sortVerificationQueue(rows: RegistrationSummary[]): RegistrationSummary[] {
+    const statusRank = (status: RegistrationStatus): number => {
+      switch (status) {
+        case RegistrationStatus.InWaitlist:
+          return 0;
+        case RegistrationStatus.Confirmed:
+          return 1;
+        case RegistrationStatus.Declined:
+          return 2;
+        default:
+          return 3;
+      }
+    };
+    const byName = (a: RegistrationSummary, b: RegistrationSummary): number =>
+      `${a.lastName} ${a.firstName}`.localeCompare(`${b.lastName} ${b.firstName}`) ||
+      a.createdAt.localeCompare(b.createdAt);
+    return [...rows].sort(
+      (a, b) => statusRank(a.status) - statusRank(b.status) || byName(a, b),
+    );
+  }
+
   private sort(
     rows: RegistrationSummary[],
     key: RegistrationSortKey | undefined,
@@ -531,7 +949,10 @@ export class RegistrationsService {
       profilePhotoUrl: row.user.profilePhotoUrl,
       battingStyle: row.battingStyle,
       battingRating: row.battingRating,
+      battingPosition: row.battingPosition,
+      playerRole: row.playerRole,
       bowlingStyle: row.bowlingStyle,
+      bowlingType: row.bowlingType,
       bowlingRating: row.bowlingRating,
       fieldingRating: row.fieldingRating,
       fieldingPosition: row.fieldingPosition,

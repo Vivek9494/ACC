@@ -1,0 +1,40 @@
+import { Ionicons } from '@expo/vector-icons';
+import { RegistrationStatus, type RegistrationStatus as RegistrationStatusType } from '@acc/types';
+import { View } from 'react-native';
+
+import { Text } from '../../ui/Text';
+
+/** Post-window verification status pill — distinct from the Approve action button. */
+export function VerifyPlayerVerificationBadge({
+  status,
+}: {
+  status: RegistrationStatusType;
+}): React.ReactElement | null {
+  if (status === RegistrationStatus.Confirmed) {
+    return (
+      <View
+        className="mt-1.5 flex-row items-center gap-1 self-start rounded-full bg-[#16a34a]/10 px-2.5 py-1"
+        accessibilityRole="text"
+        accessibilityLabel="Verified"
+      >
+        <Ionicons name="checkmark-circle" size={14} color="#16a34a" />
+        <Text className="font-sans-semibold text-xs text-[#16a34a]">Verified</Text>
+      </View>
+    );
+  }
+
+  if (status === RegistrationStatus.InWaitlist) {
+    return (
+      <View
+        className="mt-1.5 flex-row items-center gap-1 self-start rounded-full bg-[#FFAB4D]/25 px-2.5 py-1"
+        accessibilityRole="text"
+        accessibilityLabel="Pending verification"
+      >
+        <Ionicons name="time-outline" size={14} color="#b45309" />
+        <Text className="font-sans-semibold text-xs text-[#b45309]">Pending</Text>
+      </View>
+    );
+  }
+
+  return null;
+}

@@ -45,14 +45,18 @@ import {
   validateProfileForm,
   type ProfileFieldErrors,
 } from '../src/lib/profile-form-validation';
+import {
+  ensureUploadableUri,
+  isLocalImageUri,
+  pickedToStored,
+  storedImageFromRemoteUrl,
+  type PickedImageFile,
+  type StoredImageFile,
+} from '../src/lib/imagePicker';
 import { useSignupGeography } from '../src/lib/signup-geography';
 
 /** Fallback when @acc/types export is unavailable before a rebuild. */
 const FALLBACK_JERSEY_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL'] as const;
-
-function isLocalPhotoUri(uri: string): boolean {
-  return !uri.startsWith('http://') && !uri.startsWith('https://');
-}
 
 export default function EditProfileScreen(): React.ReactElement {
   const router = useRouter();
@@ -73,7 +77,7 @@ export default function EditProfileScreen(): React.ReactElement {
   const [postalCode, setPostalCode] = useState('');
   const [provinceId, setProvinceId] = useState<string | null>(null);
   const [centerId, setCenterId] = useState<string | null>(null);
-  const [profilePhotoUri, setProfilePhotoUri] = useState<string | null>(null);
+  const [profilePhoto, setProfilePhoto] = useState<StoredImageFile | null>(null);
   const [profilePhotoError, setProfilePhotoError] = useState<string | null>(null);
   const [emergencyContactName, setEmergencyContactName] = useState('');
   const [emergencyContactNumber, setEmergencyContactNumber] = useState('');
@@ -164,7 +168,9 @@ export default function EditProfileScreen(): React.ReactElement {
       setProvinceId(profile.provinceId);
       setCenterId(profile.centerId);
       setSavedPhotoUrl(profile.profilePhotoUrl);
-      setProfilePhotoUri(profile.profilePhotoUrl);
+      setProfilePhoto(
+        profile.profilePhotoUrl ? storedImageFromRemoteUrl(profile.profilePhotoUrl) : null,
+      );
       setEmergencyContactName(profile.emergencyContactName);
       setEmergencyContactNumber(profileMobileDisplay(profile.emergencyContactNumber));
       setHasHealthCard(profile.hasHealthCard);
@@ -231,10 +237,13 @@ export default function EditProfileScreen(): React.ReactElement {
     setSubmitting(true);
     try {
       let photoUrl = savedPhotoUrl;
-      if (profilePhotoUri && isLocalPhotoUri(profilePhotoUri)) {
-        photoUrl = await uploadProfilePhoto(profilePhotoUri);
-      } else if (profilePhotoUri !== savedPhotoUrl) {
-        photoUrl = profilePhotoUri;
+      if (profilePhoto) {
+        if (isLocalImageUri(profilePhoto.uri)) {
+          const uploadUri = await ensureUploadableUri(profilePhoto.uri, 'profile-photo');
+          photoUrl = await uploadProfilePhoto(uploadUri);
+        } else if (profilePhoto.uri !== savedPhotoUrl) {
+          photoUrl = profilePhoto.uri;
+        }
       }
 
       const trimmedPostal = postalCode.trim();
@@ -263,7 +272,9 @@ export default function EditProfileScreen(): React.ReactElement {
 
       applyProfileUpdate(updated);
       setSavedPhotoUrl(updated.profilePhotoUrl);
-      setProfilePhotoUri(updated.profilePhotoUrl);
+      setProfilePhoto(
+        updated.profilePhotoUrl ? storedImageFromRemoteUrl(updated.profilePhotoUrl) : null,
+      );
       setProvinceId(updated.provinceId);
       setCenterId(updated.centerId);
       setShowSuccessDialog(true);
@@ -324,8 +335,13 @@ export default function EditProfileScreen(): React.ReactElement {
       >
         <View className="mb-6 items-center">
           <EditProfilePhoto
-            uri={profilePhotoUri}
-            onChange={setProfilePhotoUri}
+            uri={profilePhoto?.uri ?? null}
+            onChange={(file: PickedImageFile | null) => {
+              setProfilePhoto(file ? pickedToStored(file) : null);
+              if (file) {
+                clearFieldError('profilePhoto');
+              }
+            }}
             onValidationError={setProfilePhotoError}
             error={fieldErrors.profilePhoto ?? profilePhotoError ?? undefined}
           />

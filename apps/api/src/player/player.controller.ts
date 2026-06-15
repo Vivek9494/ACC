@@ -1,4 +1,4 @@
-import type { PlayerDashboard } from '@acc/types';
+import type { PlayerDashboard, ScorerStartableMatch } from '@acc/types';
 import { Controller, Get, Req, UseGuards } from '@nestjs/common';
 
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -14,5 +14,10 @@ export class PlayerController {
   @Get('dashboard')
   dashboard(@Req() req: AuthenticatedRequest): Promise<PlayerDashboard> {
     return this.player.getDashboard(req.user.id);
+  }
+
+  @Get('scorer-match')
+  scorerMatch(@Req() req: AuthenticatedRequest): Promise<ScorerStartableMatch | null> {
+    return this.player.getScorerMatch(req.user.id);
   }
 }

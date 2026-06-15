@@ -16,6 +16,7 @@ import { TournamentsService } from './tournaments.service';
 
 interface TxMock {
   tournament: { create: jest.Mock };
+  tournamentDate: { createMany: jest.Mock };
   center: { findMany: jest.Mock };
   tournamentCenter: { createMany: jest.Mock };
   team: { findMany: jest.Mock; create: jest.Mock };
@@ -38,7 +39,7 @@ function detailRow(overrides: Record<string, unknown> = {}): Record<string, unkn
     numberOfTeams: 4,
     playersPerTeam: 15,
     substitutesAllowed: 2,
-    location: null,
+    locationAddress: null,
     format: 'LEAGUE_SINGLE_ROUND_ROBIN',
     impactPlayerEnabled: false,
     videoRequired: false,
@@ -48,7 +49,14 @@ function detailRow(overrides: Record<string, unknown> = {}): Record<string, unkn
     registrationCloseAt: null,
     auctionAt: null,
     createdByUserId: 'cm-1',
+    isDeleted: false,
+    deletedAt: null,
+    deletedById: null,
     teams: [],
+    scheduledDates: [
+      { date: new Date('2026-06-15T00:00:00.000Z') },
+      { date: new Date('2026-09-30T00:00:00.000Z') },
+    ],
     _count: { teams: 0 },
     ...overrides,
   };
@@ -99,6 +107,7 @@ describe('TournamentsService', () => {
   beforeEach(async () => {
     tx = {
       tournament: { create: jest.fn().mockResolvedValue({ id: 'tid' }) },
+      tournamentDate: { createMany: jest.fn().mockResolvedValue({ count: 0 }) },
       center: { findMany: jest.fn().mockResolvedValue([]) },
       tournamentCenter: { createMany: jest.fn().mockResolvedValue({ count: 0 }) },
       team: {
@@ -157,13 +166,12 @@ describe('TournamentsService', () => {
     ({
       name: 'ACC 2026',
       year: 2026,
-      oversPerInnings: 25,
+      posterUrl: 'https://example.com/poster.jpg',
       maxOversPerBowler: 5,
       numberOfTeams: 4,
       playersPerTeam: 15,
       substitutesAllowed: 2,
-      startAt: '2026-05-01T00:00:00.000Z',
-      endAt: '2026-09-30T00:00:00.000Z',
+      dates: ['2026-06-15', '2026-07-01', '2026-09-30'],
       ballType: 'LEATHER',
       citySelection: 'SINGLE',
       format: 'LEAGUE_SINGLE_ROUND_ROBIN',
@@ -237,6 +245,34 @@ describe('TournamentsService', () => {
         ),
       ).rejects.toBeInstanceOf(BadRequestException);
     });
+
+    it('rejects create without tournament dates', async () => {
+      await expect(
+        service.create(actor, baseDto({ dates: [] })),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('stores tournament dates and derives start/end window', async () => {
+      await service.create(
+        actor,
+        baseDto({ dates: ['2026-06-20', '2026-06-15', '2026-07-10'] }),
+      );
+      expect(tx.tournament.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            startAt: new Date('2026-06-15T00:00:00.000Z'),
+            endAt: new Date('2026-07-10T00:00:00.000Z'),
+          }),
+        }),
+      );
+      expect(tx.tournamentDate.createMany).toHaveBeenCalledWith({
+        data: [
+          { tournamentId: 'tid', date: new Date('2026-06-15T00:00:00.000Z') },
+          { tournamentId: 'tid', date: new Date('2026-06-20T00:00:00.000Z') },
+          { tournamentId: 'tid', date: new Date('2026-07-10T00:00:00.000Z') },
+        ],
+      });
+    });
   });
 
   describe('clone-from-past copies team names only (§6.2)', () => {
@@ -253,10 +289,10 @@ describe('TournamentsService', () => {
 
       expect(tx.team.create).toHaveBeenCalledTimes(2);
       expect(tx.team.create).toHaveBeenCalledWith({
-        data: { tournamentId: 'tid', name: 'Titans XI' },
+        data: { tournamentId: 'tid', name: 'Titans XI', nameNormalized: 'titans xi' },
       });
       expect(tx.team.create).toHaveBeenCalledWith({
-        data: { tournamentId: 'tid', name: 'Lions CC' },
+        data: { tournamentId: 'tid', name: 'Lions CC', nameNormalized: 'lions cc' },
       });
       // Role assignments only copied when explicitly requested.
       expect(tx.roleAssignment.createMany).not.toHaveBeenCalled();
@@ -308,7 +344,7 @@ describe('TournamentsService', () => {
       prisma.tournament.findUnique.mockResolvedValueOnce(detailRow({ state: 'REGISTRATION_OPEN' }));
       prisma.registration.findMany.mockResolvedValue([{ userId: 'p1' }, { userId: 'p2' }]);
 
-      await service.update(actor, 'tid', { location: 'New Ground' });
+      await service.update(actor, 'tid', { locationAddress: 'New Ground' });
 
       expect(notifications.notify).toHaveBeenCalledWith(
         'TOURNAMENT_EDITED_MID_REGISTRATION',
@@ -318,7 +354,7 @@ describe('TournamentsService', () => {
 
     it('does not notify when the tournament is not in registration', async () => {
       prisma.tournament.findUnique.mockResolvedValueOnce(detailRow({ state: 'LIVE' }));
-      await service.update(actor, 'tid', { location: 'New Ground' });
+      await service.update(actor, 'tid', { locationAddress: 'New Ground' });
       expect(notifications.notify).not.toHaveBeenCalled();
     });
   });
@@ -329,7 +365,7 @@ describe('TournamentsService', () => {
         detailRow({ createdByUserId: 'sevak-1' }),
       );
 
-      await service.update(sevak, 'tid', { location: 'New Ground' });
+      await service.update(sevak, 'tid', { locationAddress: 'New Ground' });
 
       expect(prisma.tournament.update).toHaveBeenCalled();
     });
@@ -341,7 +377,7 @@ describe('TournamentsService', () => {
       prisma.roleAssignment.findMany.mockResolvedValueOnce([{ centerId: 'center-A' }]);
       prisma.tournamentCenter.findFirst.mockResolvedValueOnce({ centerId: 'center-A' });
 
-      await service.update(sevak, 'tid', { location: 'New Ground' });
+      await service.update(sevak, 'tid', { locationAddress: 'New Ground' });
 
       expect(prisma.tournament.update).toHaveBeenCalled();
     });
@@ -354,7 +390,7 @@ describe('TournamentsService', () => {
       prisma.tournamentCenter.findFirst.mockResolvedValueOnce(null);
 
       await expect(
-        service.update(sevak, 'tid', { location: 'New Ground' }),
+        service.update(sevak, 'tid', { locationAddress: 'New Ground' }),
       ).rejects.toBeInstanceOf(ForbiddenException);
       expect(prisma.tournament.update).not.toHaveBeenCalled();
     });
@@ -366,7 +402,14 @@ describe('TournamentsService', () => {
 
       await service.remove(sevak, 'tid');
 
-      expect(prisma.tournament.delete).toHaveBeenCalledWith({ where: { id: 'tid' } });
+      expect(prisma.tournament.update).toHaveBeenCalledWith({
+        where: { id: 'tid' },
+        data: expect.objectContaining({
+          isDeleted: true,
+          deletedAt: expect.any(Date),
+          deletedById: 'sevak-1',
+        }),
+      });
     });
 
     it('denies a Center Sevak deleting a tournament from another center they did not create', async () => {
@@ -377,7 +420,7 @@ describe('TournamentsService', () => {
       prisma.tournamentCenter.findFirst.mockResolvedValueOnce(null);
 
       await expect(service.remove(sevak, 'tid')).rejects.toBeInstanceOf(ForbiddenException);
-      expect(prisma.tournament.delete).not.toHaveBeenCalled();
+      expect(prisma.tournament.update).not.toHaveBeenCalled();
     });
   });
 });
@@ -387,13 +430,12 @@ describe('CreateTournamentDto', () => {
     const dto = plainToInstance(CreateTournamentDto, {
       name: 'X',
       year: 2026,
-      oversPerInnings: 25,
+      posterUrl: 'https://example.com/poster.jpg',
       maxOversPerBowler: 5,
       numberOfTeams: 4,
       playersPerTeam: 15,
       substitutesAllowed: 2,
-      startAt: '2026-05-01T00:00:00.000Z',
-      endAt: '2026-09-30T00:00:00.000Z',
+      dates: ['2026-06-15', '2026-09-30'],
       ballType: 'LEATHER',
       citySelection: 'SINGLE',
       format: 'LEAGUE_SINGLE_ROUND_ROBIN',
@@ -406,17 +448,55 @@ describe('CreateTournamentDto', () => {
     expect(powerplayError).toBeDefined();
   });
 
-  it('accepts a valid leather payload without tournament scope', () => {
+  it('rejects overs per innings on tournament create (set at match setup)', () => {
     const dto = plainToInstance(CreateTournamentDto, {
       name: 'X',
       year: 2026,
-      oversPerInnings: 25,
+      posterUrl: 'https://example.com/poster.jpg',
       maxOversPerBowler: 5,
       numberOfTeams: 4,
       playersPerTeam: 15,
       substitutesAllowed: 2,
-      startAt: '2026-05-01T00:00:00.000Z',
-      endAt: '2026-09-30T00:00:00.000Z',
+      dates: ['2026-06-15', '2026-09-30'],
+      ballType: 'LEATHER',
+      format: 'LEAGUE_SINGLE_ROUND_ROBIN',
+      impactPlayerEnabled: false,
+      videoRequired: false,
+      oversPerInnings: 25,
+    });
+    const errors = validateSync(dto);
+    expect(errors.some((e) => e.property === 'oversPerInnings')).toBe(true);
+  });
+
+  it('rejects numberOfTeams above 30', () => {
+    const dto = plainToInstance(CreateTournamentDto, {
+      name: 'X',
+      year: 2026,
+      posterUrl: 'https://example.com/poster.jpg',
+      maxOversPerBowler: 5,
+      numberOfTeams: 31,
+      playersPerTeam: 15,
+      substitutesAllowed: 2,
+      dates: ['2026-06-15', '2026-09-30'],
+      ballType: 'LEATHER',
+      format: 'LEAGUE_SINGLE_ROUND_ROBIN',
+      impactPlayerEnabled: false,
+      videoRequired: false,
+    });
+    const errors = validateSync(dto);
+    expect(errors.some((e) => e.property === 'numberOfTeams')).toBe(true);
+  });
+
+  it('accepts a valid leather payload without tournament scope', () => {
+    const dto = plainToInstance(CreateTournamentDto, {
+      name: 'X',
+      year: 2026,
+      posterUrl: 'https://example.com/poster.jpg',
+      maxOversPerBowler: 5,
+      numberOfTeams: 4,
+      playersPerTeam: 15,
+      substitutesAllowed: 2,
+      dates: ['2026-06-15', '2026-09-30'],
       ballType: 'LEATHER',
       format: 'LEAGUE_SINGLE_ROUND_ROBIN',
       impactPlayerEnabled: false,
@@ -429,13 +509,12 @@ describe('CreateTournamentDto', () => {
     const dto = plainToInstance(CreateTournamentDto, {
       name: 'X',
       year: 2026,
-      oversPerInnings: 25,
+      posterUrl: 'https://example.com/poster.jpg',
       maxOversPerBowler: 5,
       numberOfTeams: 4,
       playersPerTeam: 15,
       substitutesAllowed: 2,
-      startAt: '2026-05-01T00:00:00.000Z',
-      endAt: '2026-09-30T00:00:00.000Z',
+      dates: ['2026-06-15', '2026-09-30'],
       ballType: 'TENNIS',
       citySelection: 'ALL',
       provinceId: 'prov-1',
@@ -446,17 +525,35 @@ describe('CreateTournamentDto', () => {
     expect(validateSync(dto)).toHaveLength(0);
   });
 
+  it('requires at least one tournament date', () => {
+    const dto = plainToInstance(CreateTournamentDto, {
+      name: 'X',
+      year: 2026,
+      posterUrl: 'https://example.com/poster.jpg',
+      maxOversPerBowler: 5,
+      numberOfTeams: 4,
+      playersPerTeam: 15,
+      substitutesAllowed: 2,
+      dates: [],
+      ballType: 'LEATHER',
+      format: 'LEAGUE_SINGLE_ROUND_ROBIN',
+      impactPlayerEnabled: false,
+      videoRequired: false,
+    });
+    const errors = validateSync(dto);
+    expect(errors.some((e) => e.property === 'dates')).toBe(true);
+  });
+
   it('requires centers for Multi-centers tennis payload', () => {
     const dto = plainToInstance(CreateTournamentDto, {
       name: 'X',
       year: 2026,
-      oversPerInnings: 20,
+      posterUrl: 'https://example.com/poster.jpg',
       maxOversPerBowler: 4,
       numberOfTeams: 8,
       playersPerTeam: 15,
       substitutesAllowed: 2,
-      startAt: '2026-05-01T00:00:00.000Z',
-      endAt: '2026-09-30T00:00:00.000Z',
+      dates: ['2026-06-15', '2026-09-30'],
       ballType: 'TENNIS',
       citySelection: 'MULTI',
       provinceId: 'prov-1',

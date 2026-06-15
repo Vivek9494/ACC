@@ -9,7 +9,7 @@
   },
   "scripts": {
     "dev:api": "pnpm --filter @acc/api dev",
-    "dev:mobile": "pnpm --filter @acc/mobile dev",
+    "dev:mobile": "pnpm --filter @acc/types build && pnpm --filter @acc/mobile dev",
     "build": "pnpm -r --if-present build",
     "typecheck": "pnpm -r --if-present typecheck",
     "lint": "eslint .",

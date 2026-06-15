@@ -3,6 +3,7 @@ import type { Router } from 'expo-router';
 import type { ReactNode } from 'react';
 import { View } from 'react-native';
 
+import { ScorerStartMatchCard } from './ScorerStartMatchCard';
 import { MatchSummaryCard } from '../ui/MatchSummaryCard';
 import { StatTile } from '../ui/StatTile';
 import { Text } from '../ui/Text';
@@ -22,6 +23,13 @@ export function buildPlayerDashboardSections(
   ];
 
   return [
+    dashboard.scorerMatch ? (
+      <ScorerStartMatchCard
+        key="scorer-match"
+        match={dashboard.scorerMatch}
+        onStartPress={() => router.push(`/matches/${dashboard.scorerMatch!.matchId}/start-setup`)}
+      />
+    ) : null,
     dashboard.featuredMatch ? (
       <MatchSummaryCard
         key="featured-match"

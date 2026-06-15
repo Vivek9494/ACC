@@ -7,6 +7,7 @@ import {
   type MatchSummaryTeamView,
   type PlayerDashboard,
   type PlayerFeaturedMatchSummary,
+  type ScorerStartableMatch,
   type ScorecardResponse,
   type TournamentSummary,
   TossDecision,
@@ -16,6 +17,12 @@ import { Injectable } from '@nestjs/common';
 import type { Match, Tournament } from '@prisma/client';
 
 import { PrismaService } from '../prisma/prisma.service';
+import { activeTournamentRelationWhere, activeTournamentWhere } from '../tournaments/tournament-query';
+import {
+  formatScorerMatchDateTimeLine,
+  isScorerMatchDayToday,
+  SCORER_STARTABLE_MATCH_STATES,
+} from '../matches/match-start.utils';
 import { ScorecardReader } from '../scoring/scorecard-reader';
 
 type TournamentWithCounts = Tournament & { _count: { teams: number } };
@@ -23,7 +30,7 @@ type TournamentWithCounts = Tournament & { _count: { teams: number } };
 type MatchWithTeams = Match & {
   homeTeam: { id: string; name: string } | null;
   awayTeam: { id: string; name: string } | null;
-  tournament: { name: string; oversPerInnings: number };
+  tournament: { name: string; oversPerInnings: number | null };
 };
 
 const UPCOMING_STATES: MatchState[] = [
@@ -71,13 +78,81 @@ export class PlayerService {
       ]),
     ];
 
-    const [featuredMatch, playerStats, tournaments] = await Promise.all([
+    const [featuredMatch, scorerMatch, playerStats, tournaments] = await Promise.all([
       this.loadFeaturedMatch(teamIds),
+      this.loadScorerStartableMatch(userId),
       this.loadPlayerStats(userId, tournamentIds),
       this.listTournaments(tournamentIds),
     ]);
 
-    return { featuredMatch, playerStats, tournaments };
+    return { featuredMatch, scorerMatch, playerStats, tournaments };
+  }
+
+  /** Active per-match Scorer grant for a fixture on today's calendar day (§11.1). */
+  async getScorerMatch(userId: string): Promise<ScorerStartableMatch | null> {
+    return this.loadScorerStartableMatch(userId);
+  }
+
+  private async loadScorerStartableMatch(userId: string): Promise<ScorerStartableMatch | null> {
+    // Requires BOTH an active grant AND today's UTC calendar day on the fixture.
+    // Pre-live states only — completed/live matches never surface the card.
+    const grants = await this.prisma.matchScorerGrant.findMany({
+      where: {
+        userId,
+        revokedAt: null,
+        match: {
+          isDeleted: false,
+          state: { in: [...SCORER_STARTABLE_MATCH_STATES] },
+          ...activeTournamentRelationWhere,
+        },
+      },
+      include: {
+        match: {
+          include: {
+            homeTeam: { select: { id: true, name: true, logoUrl: true } },
+            awayTeam: { select: { id: true, name: true, logoUrl: true } },
+            tournament: { select: { name: true } },
+          },
+        },
+      },
+      orderBy: [{ match: { matchDate: 'asc' } }, { match: { startTime: 'asc' } }],
+    });
+
+    for (const grant of grants) {
+      if (!isScorerMatchDayToday(grant.match)) {
+        continue;
+      }
+      const match = grant.match;
+      const homeName = match.homeTeam?.name ?? 'TBD';
+      const awayName = match.awayTeam?.name ?? match.externalOpponentName ?? 'TBD';
+      const state = match.state as MatchState;
+      return {
+        matchId: match.id,
+        tournamentName: match.tournament.name.toUpperCase(),
+        dateTimeLine: formatScorerMatchDateTimeLine(match),
+        teamA: {
+          name: homeName,
+          logoUrl: match.homeTeam?.logoUrl ?? null,
+          score: null,
+          overs: null,
+          isWinner: false,
+        },
+        teamB: {
+          name: awayName,
+          logoUrl: match.awayTeam?.logoUrl ?? null,
+          score: null,
+          overs: null,
+          isWinner: false,
+        },
+        state,
+        playingXiLocked:
+          state === MatchState.PlayingXiLocked ||
+          state === MatchState.TossCompleted ||
+          state === MatchState.Delayed,
+      };
+    }
+
+    return null;
   }
 
   private async loadFeaturedMatch(teamIds: string[]): Promise<PlayerFeaturedMatchSummary | null> {
@@ -96,7 +171,7 @@ export class PlayerService {
     };
 
     const liveMatch = await this.prisma.match.findFirst({
-      where: { ...teamFilter, state: { in: LIVE_STATES } },
+      where: { ...teamFilter, state: { in: LIVE_STATES }, ...activeTournamentRelationWhere },
       orderBy: [{ matchDate: 'desc' }, { createdAt: 'desc' }],
       include,
     });
@@ -104,12 +179,12 @@ export class PlayerService {
     const match =
       liveMatch ??
       (await this.prisma.match.findFirst({
-        where: { ...teamFilter, state: { in: UPCOMING_STATES } },
+        where: { ...teamFilter, state: { in: UPCOMING_STATES }, ...activeTournamentRelationWhere },
         orderBy: [{ matchDate: 'asc' }, { createdAt: 'asc' }],
         include,
       })) ??
       (await this.prisma.match.findFirst({
-        where: { ...teamFilter, state: { in: PLAYED_STATES } },
+        where: { ...teamFilter, state: { in: PLAYED_STATES }, ...activeTournamentRelationWhere },
         orderBy: [{ matchDate: 'desc' }, { createdAt: 'desc' }],
         include,
       }));
@@ -242,6 +317,9 @@ export class PlayerService {
       chaseInnings.oversAllotted ??
       firstInnings.oversAllotted ??
       match.tournament.oversPerInnings;
+    if (oversPerInnings == null) {
+      return null;
+    }
     const ballsRemaining = Math.max(
       0,
       oversPerInnings * BALLS_PER_OVER - chaseInnings.legalBalls,
@@ -352,7 +430,7 @@ export class PlayerService {
     }
 
     const rows = await this.prisma.tournament.findMany({
-      where: { id: { in: tournamentIds } },
+      where: { id: { in: tournamentIds }, ...activeTournamentWhere },
       orderBy: [{ startAt: 'desc' }, { createdAt: 'desc' }],
       include: { _count: { select: { teams: true } } },
     });
@@ -371,7 +449,9 @@ export class PlayerService {
       posterUrl: row.posterUrl,
       startAt: row.startAt.toISOString(),
       endAt: row.endAt.toISOString(),
-      location: row.location,
+      locationAddress: row.locationAddress,
+      latitude: row.latitude,
+      longitude: row.longitude,
       teamCount: row._count.teams,
     };
   }

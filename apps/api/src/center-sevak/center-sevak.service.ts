@@ -12,6 +12,7 @@ import { ForbiddenException, Injectable } from '@nestjs/common';
 import type { Match, Tournament } from '@prisma/client';
 
 import { TournamentsService } from '../tournaments/tournaments.service';
+import { activeTournamentRelationWhere, activeTournamentWhere } from '../tournaments/tournament-query';
 import { PrismaService } from '../prisma/prisma.service';
 import { ScorecardReader } from '../scoring/scorecard-reader';
 
@@ -80,7 +81,7 @@ export class CenterSevakService {
 
   private async listCenterTournamentIds(centerIds: string[]): Promise<string[]> {
     const links = await this.prisma.tournamentCenter.findMany({
-      where: { centerId: { in: centerIds } },
+      where: { centerId: { in: centerIds }, tournament: activeTournamentWhere },
       select: { tournamentId: true },
     });
     return [...new Set(links.map((row) => row.tournamentId))];
@@ -95,6 +96,7 @@ export class CenterSevakService {
       where: {
         tournamentId: { in: tournamentIds },
         state: { in: COMPLETED_STATES },
+        ...activeTournamentRelationWhere,
       },
       orderBy: [{ matchDate: 'desc' }, { createdAt: 'desc' }],
       include: {
@@ -259,7 +261,7 @@ export class CenterSevakService {
     }
 
     const rows = await this.prisma.tournament.findMany({
-      where: { id: { in: tournamentIds } },
+      where: { id: { in: tournamentIds }, ...activeTournamentWhere },
       orderBy: [{ startAt: 'desc' }, { createdAt: 'desc' }],
       include: { _count: { select: { teams: true } } },
     });
@@ -302,7 +304,9 @@ export class CenterSevakService {
       posterUrl: row.posterUrl,
       startAt: row.startAt.toISOString(),
       endAt: row.endAt.toISOString(),
-      location: row.location,
+      locationAddress: row.locationAddress,
+      latitude: row.latitude,
+      longitude: row.longitude,
       teamCount: row._count.teams,
     };
   }

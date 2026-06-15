@@ -1,12 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
-import {
-  SIGNUP_VALIDATION_MESSAGES,
-  isAllowedSignupProfilePhotoMime,
-  isAllowedSignupProfilePhotoSize,
-} from '@acc/types';
-import * as ImagePicker from 'expo-image-picker';
 import { Image, Pressable, View } from 'react-native';
 
+import { pickImage, profilePhotoPickOptions, type PickedImageFile } from '../../lib/imagePicker';
 import { FIELD_ORANGE, INPUT_SHADOW_STYLE, labelClassName, type LabelVariant } from './fieldStyles';
 import { Text } from './Text';
 
@@ -14,13 +9,13 @@ export interface ProfilePhotoFieldProps {
   label?: string;
   labelVariant?: LabelVariant;
   uri: string | null;
-  onChange: (uri: string | null) => void;
+  onChange: (file: PickedImageFile | null) => void;
   onValidationError?: (message: string | null) => void;
   error?: string;
   containerClassName?: string;
 }
 
-/** Optional profile photo picker (spec §3.1). Local URI until upload is wired. */
+/** Optional profile photo picker (spec §3.1). Local file until upload on submit. */
 export function ProfilePhotoField({
   label = 'Profile Photo',
   labelVariant = 'brand',
@@ -31,29 +26,16 @@ export function ProfilePhotoField({
   containerClassName,
 }: ProfilePhotoFieldProps): React.ReactElement {
   async function pick(): Promise<void> {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) return;
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.85,
-    });
-
-    if (!result.canceled && result.assets[0]) {
-      const asset = result.assets[0];
-      if (!isAllowedSignupProfilePhotoMime(asset.mimeType)) {
-        onValidationError?.(SIGNUP_VALIDATION_MESSAGES.profilePhoto.type);
-        return;
-      }
-      if (!isAllowedSignupProfilePhotoSize(asset.fileSize)) {
-        onValidationError?.(SIGNUP_VALIDATION_MESSAGES.profilePhoto.size);
-        return;
-      }
-      onValidationError?.(null);
-      onChange(asset.uri);
+    const result = await pickImage(profilePhotoPickOptions());
+    if (result === null) {
+      return;
     }
+    if (!result.ok) {
+      onValidationError?.(result.error);
+      return;
+    }
+    onValidationError?.(null);
+    onChange(result.file);
   }
 
   let borderClass = 'border border-[#F1F1F1]';

@@ -6,6 +6,7 @@ import {
   type RegistrationDetail,
   type RegistrationFieldDefinition,
   type RegistrationSummary,
+  type RegistrationVerificationQueue,
 } from '@acc/types';
 import {
   Body,
@@ -69,6 +70,17 @@ export class RegistrationsController {
     @Param('tournamentId') tournamentId: string,
   ): Promise<RegistrationDetail | null> {
     return this.registrations.getMine(user, tournamentId);
+  }
+
+  /** §7.3/§7.4: Center Sevak verification queue for own-center registrations. */
+  @Get('verification-queue')
+  @RequirePermission(Permission.VIEW_REGISTRATIONS_OWN_CENTER)
+  @UseGuards(PermissionGuard)
+  verificationQueue(
+    @CurrentUser() user: AuthUser,
+    @Param('tournamentId') tournamentId: string,
+  ): Promise<RegistrationVerificationQueue> {
+    return this.registrations.getVerificationQueue(user, tournamentId);
   }
 
   /** §7.5: availability bar-chart aggregate (APL). */
@@ -156,15 +168,17 @@ export class RegistrationsController {
     return this.registrations.decline(user, registrationId);
   }
 
-  /** §7.5: Center Sevak updates ratings for an own-Center player (APL). */
+  /** §7.5: Center Sevak updates adjusted ratings for an own-Center player (APL). */
   @Patch(':registrationId/ratings')
   @RequirePermission(Permission.UPDATE_PLAYER_RATINGS)
   @UseGuards(PermissionGuard)
   updateRatings(
+    @CurrentUser() user: AuthUser,
+    @Param('tournamentId') tournamentId: string,
     @Param('registrationId') registrationId: string,
     @Body() dto: UpdateRatingsDto,
   ): Promise<RegistrationDetail> {
-    return this.registrations.updateRatings(registrationId, dto);
+    return this.registrations.updateRatings(user, tournamentId, registrationId, dto);
   }
 
   /** §7.5: Center Sevak records availability for an own-Center player (APL). */

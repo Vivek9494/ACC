@@ -9,4 +9,5 @@ declare module '@expo/vector-icons' {
   }
 
   export const Ionicons: ComponentType<IconProps>;
+  export const MaterialIcons: ComponentType<IconProps>;
 }

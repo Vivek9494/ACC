@@ -4,6 +4,8 @@
  * read shapes.
  */
 
+import type { GroupSummary } from './group';
+import type { MatchSchedulingFormat } from './match-scheduling-format';
 import type { BallType, CitySelection, TournamentType } from './rbac';
 
 /** Tournament lifecycle states (spec §5.1). */
@@ -90,20 +92,21 @@ export function managerRoleAllowed(type: TournamentType): boolean {
 export interface CreateTournamentRequest {
   name: string;
   year: number;
-  posterUrl?: string | null;
-  oversPerInnings: number;
+  posterUrl: string;
   maxOversPerBowler: number;
-  location?: string | null;
-  /** ISO 8601, UTC. */
-  startAt: string;
-  endAt: string;
+  locationAddress?: string | null;
+  /** Set when the user picks a place or adjusts the map marker. */
+  latitude?: number | null;
+  longitude?: number | null;
+  /** YYYY-MM-DD calendar days matches may be scheduled on. Server derives startAt/endAt. */
+  dates: string[];
   ballType: BallType;
   /** City coverage; required for tennis-ball tournaments; ignored for leather/ACC. */
   citySelection?: CitySelection;
   /** Expected teams for fixture/setup (§6.1). */
   numberOfTeams: number;
-  /** Squad size per team; Playing XI remains {@link PLAYING_XI_SIZE}. */
-  playersPerTeam: number;
+  /** Squad size per team; defaults to 15 when omitted. Max 15 when provided. */
+  playersPerTeam?: number;
   /** Substitutes allowed per match (§9.7). */
   substitutesAllowed: number;
   /** Province whose Centers participate (tennis tournaments only). */
@@ -135,9 +138,12 @@ export interface UpdateTournamentRequest {
   numberOfTeams?: number;
   playersPerTeam?: number;
   substitutesAllowed?: number;
-  location?: string | null;
-  startAt?: string;
-  endAt?: string;
+  locationAddress?: string | null;
+  /** Set when the user picks a place or adjusts the map marker. */
+  latitude?: number | null;
+  longitude?: number | null;
+  /** Calendar days matches may be scheduled on; server derives startAt/endAt. */
+  dates?: string[];
   format?: TournamentFormat;
   impactPlayerEnabled?: boolean;
   videoRequired?: boolean;
@@ -145,6 +151,21 @@ export interface UpdateTournamentRequest {
   youtubeUrl?: string | null;
   registrationOpenAt?: string | null;
   registrationCloseAt?: string | null;
+  auctionAt?: string | null;
+}
+
+/** Locked scope summary for the edit form (type/ball/centers cannot change). */
+export interface TournamentScopeDisplay {
+  citySelection: CitySelection | null;
+  provinceName: string | null;
+  centerNames: string[];
+}
+
+/** Payload for GET /tournaments/:id/edit-form (authenticated, EDIT_TOURNAMENT). */
+export interface TournamentEditFormData extends TournamentDetail {
+  scopeDisplay: TournamentScopeDisplay;
+  /** Dates that already have scheduled matches — cannot be removed. */
+  datesWithMatches: string[];
 }
 
 export interface TransitionStateRequest {
@@ -160,20 +181,25 @@ export interface TournamentSummary {
   state: TournamentState;
   ballType: BallType;
   posterUrl: string | null;
+  /** Derived min/max of scheduled dates; ISO 8601 UTC midnight. */
   startAt: string;
   endAt: string;
-  location: string | null;
+  locationAddress: string | null;
+  latitude: number | null;
+  longitude: number | null;
   teamCount: number;
 }
 
 /** Full tournament detail (spec tournament_details mockups). */
 export interface TournamentDetail extends TournamentSummary {
-  oversPerInnings: number;
+  /** Selected tournament calendar days (YYYY-MM-DD), source of truth for scheduling. */
+  dates: string[];
+  /** Null until set at match setup; scoring reads per-match overs when available. */
+  oversPerInnings: number | null;
   maxOversPerBowler: number;
   numberOfTeams: number;
   playersPerTeam: number;
   substitutesAllowed: number;
-  location: string | null;
   format: TournamentFormat;
   impactPlayerEnabled: boolean;
   videoRequired: boolean;
@@ -182,7 +208,22 @@ export interface TournamentDetail extends TournamentSummary {
   registrationOpenAt: string | null;
   registrationCloseAt: string | null;
   auctionAt: string | null;
-  teams: { id: string; name: string }[];
+  /** True when both registrationOpenAt and registrationCloseAt are set. */
+  hasRegistrationWindow: boolean;
+  /** Whether the current instant is within the registration window. */
+  registrationIsOpen: boolean;
+  /** Set when the organizer picks a scheduling mode (Schedule Matches modal). */
+  matchSchedulingFormat: MatchSchedulingFormat | null;
+  groupCount: number;
+  groups: GroupSummary[];
+  teams: {
+    id: string;
+    name: string;
+    logoUrl: string | null;
+    memberCount: number;
+    groupId: string | null;
+    groupName: string | null;
+  }[];
 }
 
 /** Clone suggestion returned when a name matches a past tournament (§6.2). */

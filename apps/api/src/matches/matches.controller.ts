@@ -1,8 +1,10 @@
 import {
   type AuthUser,
   type MatchDetail,
+  type MatchListItem,
   type MatchSummary,
   Permission,
+  type RoundRobinMatchSetupContext,
   type SquadCandidate,
 } from '@acc/types';
 import {
@@ -25,6 +27,7 @@ import { CreateMatchDto } from './dto/create-match.dto';
 import { LockPlayingXiDto } from './dto/lock-playing-xi.dto';
 import { RecordTossDto } from './dto/record-toss.dto';
 import { AssignScorerDto, HandoverScorerDto } from './dto/scorer.dto';
+import { StartMatchSetupDto } from './dto/start-match-setup.dto';
 import { TransitionMatchStateDto } from './dto/transition-match-state.dto';
 import { MatchesService } from './matches.service';
 
@@ -43,8 +46,15 @@ export class MatchesController {
     return this.matches.create(user, tournamentId, dto);
   }
 
+  @Get('tournaments/:tournamentId/matches/round-robin-setup')
+  roundRobinSetup(
+    @Param('tournamentId') tournamentId: string,
+  ): Promise<RoundRobinMatchSetupContext> {
+    return this.matches.getRoundRobinSetupContext(tournamentId);
+  }
+
   @Get('tournaments/:tournamentId/matches')
-  list(@Param('tournamentId') tournamentId: string): Promise<MatchSummary[]> {
+  list(@Param('tournamentId') tournamentId: string): Promise<MatchListItem[]> {
     return this.matches.list(tournamentId);
   }
 
@@ -83,6 +93,17 @@ export class MatchesController {
     @Body() dto: RecordTossDto,
   ): Promise<MatchDetail> {
     return this.matches.recordToss(matchId, dto);
+  }
+
+  @Post('matches/:matchId/start-setup')
+  @RequirePermission(Permission.START_MATCH)
+  @UseGuards(PermissionGuard)
+  startMatchSetup(
+    @CurrentUser() user: AuthUser,
+    @Param('matchId') matchId: string,
+    @Body() dto: StartMatchSetupDto,
+  ): Promise<MatchDetail> {
+    return this.matches.startMatchSetup(user, matchId, dto);
   }
 
   @Post('matches/:matchId/status')

@@ -1,23 +1,24 @@
-import { RATING_MAX, RATING_MIN, type UpdateRatingsRequest } from '@acc/types';
-import { IsInt, IsOptional, Max, Min } from 'class-validator';
+import {
+  REGISTRATION_FIELDING_RATING_VALUES,
+  REGISTRATION_SKILL_RATING_VALUES,
+  type UpdateRatingsRequest,
+} from '@acc/types';
+import { IsIn, IsInt, IsOptional } from 'class-validator';
 
-/** Center Sevak rating update for an own-Center player (§7.5, APL only). */
+/** Center Sevak rating update after the registration window closes (§7.5). */
 export class UpdateRatingsDto implements UpdateRatingsRequest {
   @IsOptional()
   @IsInt()
-  @Min(RATING_MIN)
-  @Max(RATING_MAX)
+  @IsIn(REGISTRATION_SKILL_RATING_VALUES)
   battingRating?: number | null;
 
   @IsOptional()
   @IsInt()
-  @Min(RATING_MIN)
-  @Max(RATING_MAX)
+  @IsIn(REGISTRATION_SKILL_RATING_VALUES)
   bowlingRating?: number | null;
 
   @IsOptional()
   @IsInt()
-  @Min(RATING_MIN)
-  @Max(RATING_MAX)
+  @IsIn(REGISTRATION_FIELDING_RATING_VALUES)
   fieldingRating?: number | null;
 }

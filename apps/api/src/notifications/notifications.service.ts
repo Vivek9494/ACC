@@ -7,6 +7,14 @@ import { Injectable, Logger } from '@nestjs/common';
 export const NotificationTrigger = {
   TournamentEditedMidRegistration: 'TOURNAMENT_EDITED_MID_REGISTRATION',
   TournamentDeletedMidRegistration: 'TOURNAMENT_DELETED_MID_REGISTRATION',
+  /** §6.4: tournament calendar dates changed mid-season. */
+  TournamentDatesChanged: 'TOURNAMENT_DATES_CHANGED',
+  /** §6.4: venue/location changed. */
+  TournamentLocationChanged: 'TOURNAMENT_LOCATION_CHANGED',
+  /** §6.4: registration window changed. */
+  TournamentRegistrationWindowChanged: 'TOURNAMENT_REGISTRATION_WINDOW_CHANGED',
+  /** §6.4: video upload policy or deadline changed. */
+  TournamentVideoPolicyChanged: 'TOURNAMENT_VIDEO_POLICY_CHANGED',
   PlayerAddedToTeam: 'PLAYER_ADDED_TO_TEAM',
   PlayerRemovedFromTeam: 'PLAYER_REMOVED_FROM_TEAM',
   CaptainRosterChanged: 'CAPTAIN_ROSTER_CHANGED',

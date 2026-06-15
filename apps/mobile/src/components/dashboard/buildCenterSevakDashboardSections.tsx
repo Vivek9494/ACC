@@ -1,87 +1,14 @@
-import type { CenterSevakDashboard, TournamentDashboardPermissions } from '@acc/types';
+import type { CenterSevakDashboard } from '@acc/types';
 import type { Router } from 'expo-router';
 import type { ReactNode } from 'react';
-import { Alert, Pressable, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-import { ApiRequestError, deleteTournament } from '../../lib/api';
-import type { OverflowMenuAction } from '../ui/OverflowMenu';
 import { MatchSummaryCard } from '../ui/MatchSummaryCard';
 import { StatTile } from '../ui/StatTile';
 import { Text } from '../ui/Text';
 import { TournamentDashboardCard } from '../ui/TournamentDashboardCard';
-
-function tournamentMenuActions(
-  permissions: TournamentDashboardPermissions,
-  tournamentId: string,
-  tournamentName: string,
-  router: Router,
-  onDeleted?: () => void,
-): OverflowMenuAction[] {
-  const actions: OverflowMenuAction[] = [
-    {
-      key: 'view-details',
-      label: 'View details',
-      icon: 'eye-outline',
-      onPress: () => router.push(`/tournaments/${tournamentId}`),
-    },
-  ];
-
-  if (permissions.canManageCenterPlayers) {
-    actions.push({
-      key: 'manage-center-players',
-      label: 'Manage center players',
-      icon: 'people-outline',
-      onPress: () => router.push(`/registrations/${tournamentId}/players`),
-    });
-  }
-
-  if (permissions.canEdit) {
-    actions.push({
-      key: 'edit-tournament',
-      label: 'Edit tournament',
-      icon: 'create-outline',
-      onPress: () => router.push(`/tournaments/${tournamentId}`),
-    });
-  }
-
-  if (permissions.canDelete) {
-    actions.push({
-      key: 'delete-tournament',
-      label: 'Delete tournament',
-      icon: 'trash-outline',
-      onPress: () => {
-        Alert.alert(
-          'Delete tournament',
-          `Delete "${tournamentName}"? This cannot be undone.`,
-          [
-            { text: 'Cancel', style: 'cancel' },
-            {
-              text: 'Delete',
-              style: 'destructive',
-              onPress: () => {
-                void deleteTournament(tournamentId)
-                  .then(() => {
-                    onDeleted?.();
-                  })
-                  .catch((err: unknown) => {
-                    Alert.alert(
-                      'Could not delete tournament',
-                      err instanceof ApiRequestError
-                        ? err.message
-                        : 'You do not have permission to delete this tournament.',
-                    );
-                  });
-              },
-            },
-          ],
-        );
-      },
-    });
-  }
-
-  return actions;
-}
+import { buildTournamentMenuActions } from './buildTournamentMenuActions';
 
 export function buildCenterSevakDashboardSections(
   dashboard: CenterSevakDashboard,
@@ -133,12 +60,12 @@ export function buildCenterSevakDashboardSections(
             key={tournament.id}
             tournament={tournament}
             onPress={() => router.push(`/tournaments/${tournament.id}`)}
-            menuActions={tournamentMenuActions(
+            menuActions={buildTournamentMenuActions(
               permissions,
               tournament.id,
               tournament.name,
               router,
-              onTournamentDeleted,
+              { onDeleted: onTournamentDeleted, includeManageCenterPlayers: true },
             )}
           />
         ))

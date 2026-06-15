@@ -9,6 +9,9 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.atmiya.acc",
+      "config": {
+        "googleMapsApiKey": "AIzaSyBhBCpky5whHbOUxGC2-kJM8KlBJno7y2I"
+      },
       "infoPlist": {
         "UIBackgroundModes": ["location"],
         "NSLocalNetworkUsageDescription": "ACC connects to the development API on your local network.",
@@ -19,7 +22,12 @@
     },
     "android": {
       "package": "com.atmiya.acc",
-      "usesCleartextTraffic": true
+      "usesCleartextTraffic": true,
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyBhBCpky5whHbOUxGC2-kJM8KlBJno7y2I"
+        }
+      }
     },
     "plugins": [
       "expo-router",

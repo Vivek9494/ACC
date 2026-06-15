@@ -1,147 +1,167 @@
-import {
-  managerRoleAllowed,
-  type MatchSummary,
-  TOURNAMENT_FORMAT_LABELS,
-  TOURNAMENT_STATE_LABELS,
-  TOURNAMENT_STATE_TRANSITIONS,
-  type TournamentDetail,
-  type TournamentState,
-  UserRole,
-} from '@acc/types';
-import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, ScrollView, View } from 'react-native';
-import { Button } from '../../src/components/ui/Button';
-import { BallTypeIcon } from '../../src/components/ui/BallTypeIcon';
-import { Text } from '../../src/components/ui/Text';
-import { FIELD_ORANGE } from '../../src/components/ui/fieldStyles';
+import { Ionicons } from '@expo/vector-icons';
+import { type TournamentDetail, UserRole, type RegistrationDetail, canShowTournamentFeesTracker } from '@acc/types';
+import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { MatchStateBadge } from '../../src/components/MatchStateBadge';
-import { StateBadge } from '../../src/components/StateBadge';
+import { BallTypeIcon } from '../../src/components/ui/BallTypeIcon';
+import { BottomTabBar } from '../../src/components/ui/BottomTabBar';
+import { Button } from '../../src/components/ui/Button';
 import {
-  ApiRequestError,
-  getTournament,
-  listMatches,
-  transitionTournamentState,
-} from '../../src/lib/api';
+  TournamentDetailInfoRow,
+  TournamentDetailSectionCard,
+} from '../../src/components/ui/TournamentDetailSectionCard';
+import { ProfileMenu } from '../../src/components/ui/ProfileMenu';
+import { Text } from '../../src/components/ui/Text';
+import { TournamentPosterBanner } from '../../src/components/ui/TournamentPosterBanner';
+import { TournamentVenueCardContent } from '../../src/components/ui/TournamentVenueCard';
+import { FIELD_ORANGE } from '../../src/components/ui/fieldStyles';
+import { ApiRequestError, getMyRegistration, getRegistrationVerificationQueue, getTournament } from '../../src/lib/api';
 import { useAuth } from '../../src/lib/auth-context';
-
-const TABS = ['Details', 'Matches', 'Teams', 'Points Table'] as const;
-type Tab = (typeof TABS)[number];
-
-function formatDate(iso: string | null): string {
-  if (!iso) return '—';
-  return new Date(iso).toLocaleDateString(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  });
-}
-
-function formatDateTime(iso: string | null): string {
-  if (!iso) return '—';
-  return new Date(iso).toLocaleString(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
-
-function InfoRow({ label, value }: { label: string; value: string }): React.ReactElement {
-  return (
-    <View className="flex-row items-start justify-between gap-4 py-2">
-      <Text className="font-sans text-sm text-on-surface-variant">{label}</Text>
-      <Text className="flex-1 text-right font-sans-semibold text-sm text-on-surface">{value}</Text>
-    </View>
-  );
-}
-
-function Card({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}): React.ReactElement {
-  return (
-    <View className="rounded-xl border border-outline-variant bg-surface-container-lowest p-4">
-      <Text className="mb-1 font-sans-bold text-lg text-primary">{title}</Text>
-      {children}
-    </View>
-  );
-}
+import { hasCenterSevakAccess } from '../../src/lib/center-sevak-access';
+import { useRoleTabConfig } from '../../src/lib/role-tab-config';
+import {
+  formatRegistrationOpensLabel,
+  formatTournamentCalendarDate,
+  formatTournamentDateTimeLabel,
+  formatTournamentMatchDay,
+  sortTournamentDates,
+} from '../../src/lib/tournament-display';
+import { TournamentGroupsTab } from '../../src/components/tournament/TournamentGroupsTab';
+import { RegistrationStatusIndicator } from '../../src/components/tournament/RegistrationStatusIndicator';
+import { TournamentLeaderboardTab } from '../../src/components/tournament/TournamentLeaderboardTab';
+import { TournamentMatchesTab } from '../../src/components/tournament/TournamentMatchesTab';
+import { TournamentPointsTableTab } from '../../src/components/tournament/TournamentPointsTableTab';
+import { TournamentTeamsTab } from '../../src/components/tournament/TournamentTeamsTab';
+import {
+  buildTournamentDetailTabs,
+  parseTournamentDetailTab,
+  type TournamentDetailTab,
+} from '../../src/lib/tournament-detail-tabs';
+import { resolveRegistrationCta } from '../../src/lib/tournament-registration-cta';
 
 export default function TournamentDetailScreen(): React.ReactElement {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, tab: tabParam } = useLocalSearchParams<{ id: string; tab?: string }>();
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, status } = useAuth();
+  const tabConfig = useRoleTabConfig('index');
+
   const [tournament, setTournament] = useState<TournamentDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [tab, setTab] = useState<Tab>('Details');
-  const [working, setWorking] = useState(false);
-  const [matches, setMatches] = useState<MatchSummary[]>([]);
-  const [matchesLoaded, setMatchesLoaded] = useState(false);
+  const [tab, setTab] = useState<TournamentDetailTab>('Details');
+  const [myRegistration, setMyRegistration] = useState<RegistrationDetail | null>(null);
+  const [registrationChecked, setRegistrationChecked] = useState(false);
+  const [verifyActionCount, setVerifyActionCount] = useState(0);
+  const [verifyQueueChecked, setVerifyQueueChecked] = useState(false);
 
-  const canManage = user?.role === UserRole.Admin || user?.role === UserRole.ClubManager;
+  const showVerifyPlayers = hasCenterSevakAccess(user) && tournament?.hasRegistrationWindow === true;
+  const showFeesTracker =
+    status === 'authenticated' && tournament ? canShowTournamentFeesTracker(user, tournament) : false;
 
-  const load = useCallback(async () => {
-    if (!id) return;
-    setLoading(true);
+  const load = useCallback(async (options?: { silent?: boolean }) => {
+    if (!id) {
+      setError('Tournament not found.');
+      setLoading(false);
+      return;
+    }
+
+    if (!options?.silent) {
+      setLoading(true);
+    }
+    setError(null);
     try {
-      setTournament(await getTournament(id));
-      setError(null);
+      const detail = await getTournament(id);
+      setTournament(detail);
+
+      const playerRegistrationPromise =
+        status === 'authenticated' && user?.role === UserRole.Player
+          ? getMyRegistration(id).catch(() => null)
+          : Promise.resolve(null);
+
+      const verificationQueuePromise =
+        status === 'authenticated' && hasCenterSevakAccess(user) && detail.hasRegistrationWindow
+          ? getRegistrationVerificationQueue(id).catch(() => null)
+          : Promise.resolve(null);
+
+      const [mine, verificationQueue] = await Promise.all([
+        playerRegistrationPromise,
+        verificationQueuePromise,
+      ]);
+
+      setMyRegistration(mine);
+      setVerifyActionCount(verificationQueue?.actionCount ?? 0);
     } catch (err) {
+      setTournament(null);
+      setMyRegistration(null);
+      setVerifyActionCount(0);
       setError(err instanceof ApiRequestError ? err.message : 'Could not load tournament.');
     } finally {
-      setLoading(false);
+      if (!options?.silent) {
+        setLoading(false);
+      }
+      setRegistrationChecked(true);
+      setVerifyQueueChecked(true);
     }
-  }, [id]);
+  }, [id, status, user]);
+
+  const visibleTabs = useMemo(
+    () =>
+      tournament
+        ? buildTournamentDetailTabs(tournament)
+        : (['Details', 'Matches', 'Teams', 'Points Table', 'Leaderboard'] as TournamentDetailTab[]),
+    [tournament],
+  );
 
   useEffect(() => {
     void load();
   }, [load]);
 
-  const loadMatches = useCallback(async () => {
-    if (!id) return;
-    try {
-      setMatches(await listMatches(id));
-    } catch {
-      // The Matches tab simply shows an empty state on failure.
-    } finally {
-      setMatchesLoaded(true);
+  useEffect(() => {
+    const raw = Array.isArray(tabParam) ? tabParam[0] : tabParam;
+    if (raw) {
+      setTab(parseTournamentDetailTab(raw, visibleTabs));
     }
-  }, [id]);
+  }, [tabParam, visibleTabs]);
 
   useEffect(() => {
-    if (tab === 'Matches' && !matchesLoaded) {
-      void loadMatches();
+    if (tournament && !visibleTabs.includes(tab)) {
+      setTab('Details');
     }
-  }, [tab, matchesLoaded, loadMatches]);
+  }, [tournament, tab, visibleTabs]);
 
-  // Refresh fixtures when returning from match creation / setup.
   useFocusEffect(
     useCallback(() => {
-      if (tab === 'Matches') {
-        void loadMatches();
+      if (id) {
+        void load(tournament ? { silent: true } : undefined);
       }
-    }, [tab, loadMatches]),
+    }, [id, load, tournament]),
   );
 
-  async function advance(next: TournamentState): Promise<void> {
-    if (!id) return;
-    setWorking(true);
-    try {
-      setTournament(await transitionTournamentState(id, next));
-    } catch (err) {
-      setError(err instanceof ApiRequestError ? err.message : 'Could not change state.');
-    } finally {
-      setWorking(false);
+  useEffect(() => {
+    if ((tab === 'Matches' || tab === 'Teams' || tab === 'Groups') && id && tournament) {
+      void load({ silent: true });
     }
+  }, [tab, id, load, tournament]);
+
+  function selectTab(nextTab: TournamentDetailTab): void {
+    setTab(nextTab);
+    router.setParams({ tab: nextTab });
   }
+
+  const registrationCta = useMemo(() => {
+    if (!tournament || !registrationChecked) {
+      return { kind: 'hidden' as const };
+    }
+    return resolveRegistrationCta({
+      tournament,
+      isAuthenticated: status === 'authenticated',
+      userRole: user?.role,
+      registrationStatus: myRegistration?.status ?? null,
+      formatOpensLabel: formatRegistrationOpensLabel,
+    });
+  }, [myRegistration?.status, registrationChecked, status, tournament, user?.role]);
 
   if (loading) {
     return (
@@ -154,250 +174,248 @@ export default function TournamentDetailScreen(): React.ReactElement {
   if (error || !tournament) {
     return (
       <SafeAreaView className="flex-1 bg-surface">
-        <View className="px-6 py-12">
-          <Pressable onPress={() => router.back()}>
-            <Text className="font-sans text-primary">← Back</Text>
+        <View className="flex-row items-center justify-between px-4 py-3">
+          <Pressable
+            onPress={() => router.back()}
+            className="h-10 w-10 items-center justify-center rounded-full active:bg-black/5"
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+          >
+            <Ionicons name="arrow-back" size={24} color={FIELD_ORANGE} />
           </Pressable>
-          <Text className="mt-6 font-sans text-base text-on-surface-variant">
+          <ProfileMenu />
+        </View>
+        <View className="flex-1 items-center justify-center px-6">
+          <Text className="text-center font-sans text-base text-on-surface-variant">
             {error ?? 'Tournament not found.'}
           </Text>
+          <Button onPress={() => void load()} label="Retry" className="mt-4 h-12 px-8" />
         </View>
       </SafeAreaView>
     );
   }
 
-  const nextStates = TOURNAMENT_STATE_TRANSITIONS[tournament.state];
-
   return (
-    <SafeAreaView className="flex-1 bg-surface">
-      <ScrollView contentContainerClassName="pb-12">
-        <View className="px-6 pt-4">
-          <Pressable onPress={() => router.back()} className="mb-3">
-            <Text className="font-sans text-primary">← Back</Text>
+    <SafeAreaView className="flex-1 bg-surface" edges={['top']}>
+      <View className="flex-1">
+        <View className="flex-row items-center justify-between px-4 py-3">
+          <Pressable
+            onPress={() => router.back()}
+            className="h-10 w-10 items-center justify-center rounded-full active:bg-black/5"
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+          >
+            <Ionicons name="arrow-back" size={24} color={FIELD_ORANGE} />
           </Pressable>
-          {tournament.posterUrl ? (
-            <Image
-              source={{ uri: tournament.posterUrl }}
-              className="h-44 w-full rounded-2xl"
-              resizeMode="cover"
+          <ProfileMenu />
+        </View>
+
+        <ScrollView
+          contentContainerClassName="pb-28"
+          showsVerticalScrollIndicator={false}
+        >
+          <View className="px-4">
+            <TournamentPosterBanner
+              posterUrl={tournament.posterUrl}
+              name={tournament.name}
             />
-          ) : (
-            <View className="h-44 w-full items-center justify-center rounded-2xl bg-surface-container-high">
-              <Text className="font-sans-bold text-4xl text-on-surface-variant">
-                {tournament.name.slice(0, 1).toUpperCase()}
-              </Text>
-            </View>
-          )}
-
-          <View className="mt-4 flex-row items-start justify-between gap-3">
-            <View className="flex-1 gap-1">
-              <Text className="font-sans-bold text-2xl text-on-surface">{tournament.name}</Text>
-              <Text className="font-sans text-sm text-on-surface-variant">
-                {formatDate(tournament.startAt)} – {formatDate(tournament.endAt)}
-              </Text>
-            </View>
-            <BallTypeIcon ballType={tournament.ballType} size={24} />
           </View>
 
-          <View className="mt-3 flex-row items-center gap-2">
-            <StateBadge state={tournament.state} />
-            <View className="rounded-full bg-surface-container-high px-3 py-1">
-              <Text className="font-sans-medium text-[11px] uppercase tracking-wider text-on-surface-variant">
-                {tournament.type}
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Tabs */}
-        <View className="mt-5 flex-row border-b border-outline-variant px-6">
-          {TABS.map((t) => (
-            <Pressable key={t} onPress={() => setTab(t)} className="mr-5 pb-3">
-              <Text
-                className={`font-sans-semibold text-sm ${
-                  tab === t ? 'text-primary' : 'text-on-surface-variant'
-                }`}
-              >
-                {t}
-              </Text>
-              {tab === t ? <View className="mt-2 h-0.5 rounded-full bg-primary" /> : null}
-            </Pressable>
-          ))}
-        </View>
-
-        <View className="gap-4 px-6 pt-5">
-          {tab === 'Details' ? (
-            <>
-              <Card title="Registration Details">
-                <InfoRow
-                  label="Open Date & Time"
-                  value={formatDateTime(tournament.registrationOpenAt)}
-                />
-                <InfoRow
-                  label="Close Date & Time"
-                  value={formatDateTime(tournament.registrationCloseAt)}
-                />
-                <Button
-                  onPress={() => router.push(`/registrations/${tournament.id}`)}
-                  className="mt-3 h-12"
-                  label="My Registration"
-                />
-              </Card>
-
-              {/* §7.3–§7.5: Center Sevak / organizer registration tools. */}
-              <Card title="Organizer Tools">
-                <Text className="mb-3 font-sans text-sm text-on-surface-variant">
-                  Approve players and manage ratings & availability for your Center.
-                </Text>
-                <View className="gap-2">
-                  <Button
-                    onPress={() => router.push(`/registrations/${tournament.id}/queue`)}
-                    variant="outline"
-                    className="h-12 border-primary"
-                    textClassName="text-primary"
-                    label="Verify Players"
-                  />
-                  <Button
-                    onPress={() => router.push(`/registrations/${tournament.id}/players`)}
-                    variant="outline"
-                    className="h-12 border-primary"
-                    textClassName="text-primary"
-                    label={`Registered Players${tournament.type === 'APL' ? ' & Availability' : ''}`}
-                  />
-                </View>
-              </Card>
-
-              <Card title="Tournament Schedule">
-                <InfoRow label="Start Date" value={formatDate(tournament.startAt)} />
-                <InfoRow label="End Date" value={formatDate(tournament.endAt)} />
-                {tournament.videoRequired ? (
-                  <InfoRow
-                    label="Video Upload End"
-                    value={formatDate(tournament.videoUploadEndDate)}
-                  />
-                ) : null}
-              </Card>
-
-              <Card title="Format & Rules">
-                <InfoRow label="Format" value={TOURNAMENT_FORMAT_LABELS[tournament.format]} />
-                <InfoRow label="Overs / innings" value={String(tournament.oversPerInnings)} />
-                <InfoRow label="Max overs / bowler" value={String(tournament.maxOversPerBowler)} />
-                <InfoRow
-                  label="Ball"
-                  value={tournament.ballType === 'LEATHER' ? 'Leather' : 'Tennis'}
-                />
-                <InfoRow
-                  label="Impact Player"
-                  value={tournament.impactPlayerEnabled ? 'Enabled' : 'Off'}
-                />
-                <InfoRow
-                  label="Video Required"
-                  value={tournament.videoRequired ? 'Yes' : 'No'}
-                />
-              </Card>
-
-              <Card title="Team Roles">
-                {/* Manager does not exist in ACC (§2, D1). */}
-                <Text className="font-sans text-sm text-on-surface-variant">
-                  Captain, Vice Captain{managerRoleAllowed(tournament.type) ? ', Manager' : ''}
-                </Text>
-                {!managerRoleAllowed(tournament.type) ? (
-                  <Text className="mt-1 font-sans text-xs text-on-surface-variant">
-                    ACC teams have no Manager role.
-                  </Text>
-                ) : null}
-              </Card>
-
-              <Card title="Venue">
-                <Text className="font-sans text-base text-on-surface">
-                  {tournament.location ?? 'To be announced'}
-                </Text>
-              </Card>
-
-              {canManage && nextStates.length > 0 ? (
-                <View className="gap-2">
-                  <Text className="font-sans-medium text-xs uppercase tracking-wider text-on-surface-variant">
-                    Advance state
-                  </Text>
-                  <View className="flex-row flex-wrap gap-2">
-                    {nextStates.map((next) => (
-                      <Button
-                        key={next}
-                        disabled={working}
-                        onPress={() => void advance(next)}
-                        variant="outline"
-                        className="border-primary px-4 py-2"
-                        textClassName="text-primary"
-                        label={TOURNAMENT_STATE_LABELS[next]}
-                      />
-                    ))}
-                  </View>
-                </View>
-              ) : null}
-            </>
-          ) : tab === 'Matches' ? (
-            <>
-              {canManage ? (
-                <Button
-                  onPress={() => router.push(`/matches/new?tournamentId=${tournament.id}`)}
-                  className="h-12"
-                  label="+ New Match"
-                />
-              ) : null}
-              {matches.length === 0 ? (
-                <Text className="py-10 text-center font-sans text-base text-on-surface-variant">
-                  No matches scheduled yet.
-                </Text>
-              ) : (
-                matches.map((m) => (
-                  <Pressable
-                    key={m.id}
-                    onPress={() => router.push(`/matches/${m.id}`)}
-                    className="gap-2 rounded-xl border border-outline-variant bg-surface-container-lowest p-4 active:opacity-80"
-                  >
-                    <View className="flex-row items-center justify-between gap-3">
-                      <Text className="flex-1 font-sans-semibold text-base text-on-surface">
-                        {m.homeTeamName ?? 'TBD'} vs{' '}
-                        {m.awayTeamName ?? m.externalOpponentName ?? 'TBD'}
-                      </Text>
-                      <MatchStateBadge state={m.state} />
-                    </View>
-                    {m.matchCode ? (
-                      <Text className="font-sans-medium text-xs uppercase tracking-wider text-on-surface-variant">
-                        {m.matchCode}
-                      </Text>
-                    ) : null}
-                    {m.matchDate ? (
-                      <Text className="font-sans text-sm text-on-surface-variant">
-                        {formatDateTime(m.matchDate)}
-                      </Text>
-                    ) : null}
-                  </Pressable>
-                ))
-              )}
-            </>
-          ) : tab === 'Teams' ? (
-            tournament.teams.length === 0 ? (
-              <Text className="py-10 text-center font-sans text-base text-on-surface-variant">
-                No teams yet.
-              </Text>
-            ) : (
-              tournament.teams.map((team) => (
-                <View
-                  key={team.id}
-                  className="rounded-xl border border-outline-variant bg-surface-container-lowest px-4 py-3"
-                >
-                  <Text className="font-sans-semibold text-base text-on-surface">{team.name}</Text>
-                </View>
-              ))
-            )
-          ) : (
-            <Text className="py-10 text-center font-sans text-base text-on-surface-variant">
-              No records found in {tab}.
+          <View className="flex-row items-start justify-between gap-3 px-4 pt-4">
+            <Text className="flex-1 font-sans-bold text-2xl text-on-surface">
+              {tournament.name}
             </Text>
-          )}
-        </View>
-      </ScrollView>
+            <BallTypeIcon ballType={tournament.ballType} size={28} />
+          </View>
+
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            className="mt-5 border-b border-outline-variant"
+            contentContainerClassName="px-4"
+          >
+            {visibleTabs.map((item) => (
+              <Pressable
+                key={item}
+                onPress={() => selectTab(item)}
+                className="mr-5 pb-3"
+                accessibilityRole="tab"
+                accessibilityState={{ selected: tab === item }}
+              >
+                <Text
+                  className={`font-sans-semibold text-sm ${
+                    tab === item ? 'text-primary' : 'text-on-surface-variant'
+                  }`}
+                >
+                  {item}
+                </Text>
+                {tab === item ? (
+                  <View className="mt-2 h-0.5 rounded-full bg-primary" />
+                ) : null}
+              </Pressable>
+            ))}
+          </ScrollView>
+
+          <View className="gap-4 px-4 pt-5">
+            {tab === 'Details' ? (
+              <>
+                {tournament.hasRegistrationWindow ? (
+                  <TournamentDetailSectionCard
+                    title="Registration Details"
+                    icon={<Ionicons name="clipboard-outline" size={20} color={FIELD_ORANGE} />}
+                  >
+                    <TournamentDetailInfoRow
+                      label="Open Date & Time"
+                      value={formatTournamentDateTimeLabel(tournament.registrationOpenAt)}
+                    />
+                    <TournamentDetailInfoRow
+                      label="Close Date & Time"
+                      value={formatTournamentDateTimeLabel(tournament.registrationCloseAt)}
+                    />
+                  </TournamentDetailSectionCard>
+                ) : (
+                  <TournamentDetailSectionCard
+                    title="Registration Details"
+                    icon={<Ionicons name="clipboard-outline" size={20} color={FIELD_ORANGE} />}
+                  >
+                    <Text className="font-sans text-base text-on-surface-variant">
+                      No registration window set
+                    </Text>
+                  </TournamentDetailSectionCard>
+                )}
+
+                <TournamentDetailSectionCard
+                  title="Tournament Schedule"
+                  icon={<Ionicons name="calendar-outline" size={20} color={FIELD_ORANGE} />}
+                >
+                  {tournament.auctionAt ? (
+                    <TournamentDetailInfoRow
+                      label="Auction Date"
+                      value={formatTournamentCalendarDate(tournament.auctionAt)}
+                    />
+                  ) : null}
+                  <View className="gap-1">
+                    <Text className="font-sans text-sm text-on-surface-variant">Match Days</Text>
+                    {tournament.dates.length > 0 ? (
+                      <View className="gap-2">
+                        {sortTournamentDates(tournament.dates).map((date) => (
+                          <Text
+                            key={date}
+                            className="font-sans-semibold text-base text-on-surface"
+                          >
+                            {formatTournamentMatchDay(date)}
+                          </Text>
+                        ))}
+                      </View>
+                    ) : (
+                      <Text className="font-sans-semibold text-base text-on-surface">—</Text>
+                    )}
+                  </View>
+                </TournamentDetailSectionCard>
+
+                <TournamentDetailSectionCard
+                  title="Venue"
+                  icon={<Ionicons name="location-outline" size={20} color={FIELD_ORANGE} />}
+                >
+                  <TournamentVenueCardContent tournament={tournament} />
+                </TournamentDetailSectionCard>
+
+                {registrationCta.kind === 'active' ? (
+                  <Button
+                    onPress={() => router.push(`/registrations/${tournament.id}/register`)}
+                    className="mt-2 h-14 w-full"
+                    label={registrationCta.label}
+                  />
+                ) : null}
+                {registrationCta.kind === 'status' ? (
+                  <RegistrationStatusIndicator
+                    className="mt-2"
+                    label={registrationCta.label}
+                    variant={registrationCta.variant}
+                  />
+                ) : null}
+                {registrationCta.kind === 'disabled' ? (
+                  <View className="mt-2 gap-1">
+                    <Button
+                      disabled
+                      className="h-14 w-full opacity-60"
+                      label={registrationCta.label}
+                    />
+                    <Text className="text-center font-sans text-sm text-on-surface-variant">
+                      {registrationCta.reason}
+                    </Text>
+                  </View>
+                ) : null}
+
+                {showVerifyPlayers && verifyQueueChecked && verifyActionCount > 0 ? (
+                  <Button
+                    variant="amber"
+                    className="mt-4 h-14 w-full"
+                    label={`Verify Players (${verifyActionCount})`}
+                    onPress={() => router.push(`/registrations/${tournament.id}/queue`)}
+                  />
+                ) : null}
+
+                {showFeesTracker ? (
+                  <Button
+                    className="mt-4 h-14 w-full flex-row gap-2 bg-secondary-container"
+                    textClassName="font-sans-semibold text-on-secondary-container"
+                    onPress={() => router.push(`/tournaments/${tournament.id}/fees`)}
+                  >
+                    <Ionicons name="cash-outline" size={22} color="#6f5c00" />
+                    <Text className="font-sans-semibold text-base text-on-secondary-container">
+                      ACC Fees Tracker
+                    </Text>
+                  </Button>
+                ) : null}
+              </>
+            ) : null}
+
+            {tab === 'Matches' && id ? (
+              <TournamentMatchesTab
+                tournamentId={id}
+                active={tab === 'Matches'}
+                teamCount={tournament.teamCount}
+              />
+            ) : null}
+            {tab === 'Teams' && id ? (
+              <TournamentTeamsTab
+                tournamentId={id}
+                numberOfTeams={tournament.numberOfTeams}
+                teams={tournament.teams.map((team) => ({
+                  id: team.id,
+                  tournamentId: tournament.id,
+                  name: team.name,
+                  logoUrl: team.logoUrl,
+                  memberCount: team.memberCount,
+                  groupId: team.groupId,
+                  groupName: team.groupName,
+                }))}
+              />
+            ) : null}
+            {tab === 'Groups' && id ? (
+              <TournamentGroupsTab tournamentId={id} groups={tournament.groups} />
+            ) : null}
+            {tab === 'Points Table' && id && tournament ? (
+              <TournamentPointsTableTab
+                tournamentId={id}
+                active={tab === 'Points Table'}
+                matchSchedulingFormat={tournament.matchSchedulingFormat}
+                groupCount={tournament.groupCount}
+              />
+            ) : null}
+            {tab === 'Leaderboard' && id ? (
+              <TournamentLeaderboardTab tournamentId={id} active={tab === 'Leaderboard'} />
+            ) : null}
+          </View>
+        </ScrollView>
+      </View>
+
+      <BottomTabBar
+        tabs={tabConfig.tabs}
+        activeKey={tabConfig.activeKey}
+        onTabPress={tabConfig.onTabPress}
+      />
     </SafeAreaView>
   );
 }

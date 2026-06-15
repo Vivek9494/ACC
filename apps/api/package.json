@@ -15,6 +15,7 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
     "db:seed": "ts-node prisma/seed.ts",
+    "db:seed-scorer-card": "ts-node prisma/seed-scorer-card.ts",
     "db:up": "docker compose -f ../../docker/docker-compose.yml up -d",
     "db:down": "docker compose -f ../../docker/docker-compose.yml down"
   },

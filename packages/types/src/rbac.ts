@@ -62,6 +62,11 @@ export const Permission = {
   VIEW_AVAILABILITY_CHART: 'VIEW_AVAILABILITY_CHART',
   REGISTER_LATE_PLAYER: 'REGISTER_LATE_PLAYER',
   REQUEST_CUSTOM_FORM: 'REQUEST_CUSTOM_FORM',
+  VIEW_FEES_OWN_CENTER: 'VIEW_FEES_OWN_CENTER',
+  RECORD_FEE_PAYMENT_OWN_CENTER: 'RECORD_FEE_PAYMENT_OWN_CENTER',
+  /** §20: view tournament fee tracker (role + ball-type scoped in service). */
+  VIEW_TOURNAMENT_FEES: 'VIEW_TOURNAMENT_FEES',
+  RECORD_TOURNAMENT_FEE_PAYMENT: 'RECORD_TOURNAMENT_FEE_PAYMENT',
   // D. Teams & Roster
   ASSIGN_TEAM_ROLES: 'ASSIGN_TEAM_ROLES',
   ADD_PLAYER_TO_TEAM: 'ADD_PLAYER_TO_TEAM',
@@ -289,6 +294,30 @@ export const PERMISSION_MATRIX: Record<Permission, PermissionRule> = {
       { subject: R.Admin },
       { subject: R.ClubManager, scope: PermissionScope.Organizer },
       { subject: R.CenterSevak, scope: PermissionScope.OwnCenter },
+    ],
+  },
+  [Permission.VIEW_FEES_OWN_CENTER]: {
+    grants: [{ subject: R.Admin }, { subject: R.CenterSevak, scope: PermissionScope.OwnCenter }],
+  },
+  [Permission.RECORD_FEE_PAYMENT_OWN_CENTER]: {
+    grants: [{ subject: R.Admin }, { subject: R.CenterSevak, scope: PermissionScope.OwnCenter }],
+  },
+  [Permission.VIEW_TOURNAMENT_FEES]: {
+    grants: [
+      { subject: R.Admin },
+      { subject: R.ClubManager },
+      { subject: R.CenterSevak, scope: PermissionScope.OwnCenter },
+      { subject: R.Captain, scope: PermissionScope.OwnTeam },
+      { subject: R.ViceCaptain, scope: PermissionScope.OwnTeam },
+    ],
+  },
+  [Permission.RECORD_TOURNAMENT_FEE_PAYMENT]: {
+    grants: [
+      { subject: R.Admin },
+      { subject: R.ClubManager },
+      { subject: R.CenterSevak, scope: PermissionScope.OwnCenter },
+      { subject: R.Captain, scope: PermissionScope.OwnTeam },
+      { subject: R.ViceCaptain, scope: PermissionScope.OwnTeam },
     ],
   },
   [Permission.REQUEST_CUSTOM_FORM]: {

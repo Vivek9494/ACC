@@ -1,0 +1,112 @@
+import { Ionicons } from '@expo/vector-icons';
+import { RegistrationStatus, type RegistrationSummary } from '@acc/types';
+import { ActivityIndicator, Pressable, View } from 'react-native';
+
+import { FIELD_ORANGE, INPUT_SHADOW_STYLE } from '../../ui/fieldStyles';
+import { Text } from '../../ui/Text';
+import { PlayerAvatarWithStatus } from './PlayerAvatarWithStatus';
+import { VerifyPlayerRatingsRow } from './VerifyPlayerRatingsRow';
+import { VerifyPlayerVerificationBadge } from './VerifyPlayerVerificationBadge';
+
+export interface VerifyPlayerCardProps {
+  row: RegistrationSummary;
+  canManage: boolean;
+  busy: boolean;
+  onApprove: () => void;
+  onDecline: () => void;
+  onEdit: () => void;
+}
+
+export function VerifyPlayerCard({
+  row,
+  canManage,
+  busy,
+  onApprove,
+  onDecline,
+  onEdit,
+}: VerifyPlayerCardProps): React.ReactElement {
+  const isDeclined = row.status === RegistrationStatus.Declined;
+  const isPending = row.status === RegistrationStatus.InWaitlist;
+  const canApprove = canManage && isPending;
+  const canDecline = canManage && isPending;
+  const showVerificationBadge = canManage && !isDeclined;
+
+  return (
+    <View
+      className={`flex-row items-center justify-between rounded-lg border px-4 py-3 ${
+        isDeclined
+          ? 'border-[#c1121f]/30 bg-surface-container-high opacity-90'
+          : 'border-outline-variant bg-white'
+      }`}
+      style={INPUT_SHADOW_STYLE}
+    >
+      <View className="min-w-0 flex-1 flex-row items-center gap-3">
+        <PlayerAvatarWithStatus
+          firstName={row.firstName}
+          profilePhotoUrl={row.profilePhotoUrl}
+          status={canManage ? null : row.status}
+        />
+        <View className="min-w-0 flex-1">
+          <Text
+            className={`font-sans-bold text-base ${isDeclined ? 'text-on-surface-variant' : 'text-on-surface'}`}
+            numberOfLines={1}
+          >
+            {row.firstName} {row.lastName}
+          </Text>
+          <Text className="font-sans text-sm text-on-surface-variant" numberOfLines={1}>
+            {row.mobileNumber}
+          </Text>
+          {showVerificationBadge ? <VerifyPlayerVerificationBadge status={row.status} /> : null}
+          {isDeclined ? (
+            <Text className="mt-1 font-sans-medium text-xs text-error">Declined</Text>
+          ) : null}
+          <VerifyPlayerRatingsRow
+            batting={row.battingRating}
+            bowling={row.bowlingRating}
+            fielding={row.fieldingRating}
+          />
+        </View>
+      </View>
+
+      {canManage && !isDeclined ? (
+        <View className="ml-2 flex-row items-center gap-1.5">
+          {canApprove ? (
+            <>
+              <Pressable
+                onPress={onApprove}
+                disabled={busy}
+                accessibilityRole="button"
+                accessibilityLabel="Approve player"
+                className="h-10 w-10 items-center justify-center rounded-full bg-primary-container shadow-md active:scale-90"
+              >
+                {busy ? (
+                  <ActivityIndicator color="#ffffff" size="small" />
+                ) : (
+                  <Ionicons name="checkmark" size={22} color="#ffffff" />
+                )}
+              </Pressable>
+              <Pressable
+                onPress={onDecline}
+                disabled={busy}
+                accessibilityRole="button"
+                accessibilityLabel="Decline player"
+                className="h-10 w-10 items-center justify-center rounded-full border border-[#c1121f]/40 bg-surface-container-high active:scale-90"
+              >
+                <Ionicons name="close" size={22} color="#c1121f" />
+              </Pressable>
+            </>
+          ) : null}
+          <Pressable
+            onPress={onEdit}
+            disabled={busy}
+            accessibilityRole="button"
+            accessibilityLabel="Edit ratings"
+            className="h-10 w-10 items-center justify-center rounded-full bg-surface-container-high active:scale-90"
+          >
+            <Ionicons name="pencil" size={18} color={FIELD_ORANGE} />
+          </Pressable>
+        </View>
+      ) : null}
+    </View>
+  );
+}

@@ -1,167 +1,104 @@
+import type { MutableRefObject } from 'react';
+import type { LayoutChangeEvent } from 'react-native';
+
 import {
-  BallType,
-  CitySelection,
-  DEFAULT_PLAYERS_PER_TEAM,
-  DEFAULT_SUBSTITUTES_ALLOWED,
-  TOURNAMENT_FORM_MESSAGES,
+  firstTournamentFieldError,
+  mapApiFieldsToTournamentForm,
+  TOURNAMENT_FIELD_ORDER,
+  validateCreateTournamentForm,
+  validateUpdateTournamentForm,
+  type CreateTournamentFormInput,
+  type TournamentFormFieldErrors,
   type TournamentFormFieldKey,
-  validateNumberOfTeams,
-  validateOversPerInnings,
-  validatePlayersPerTeam,
-  validateSquadCapacity,
 } from '@acc/types';
 
-import {
-  combineLocalDateAndTimeToIso,
-  compareIsoDates,
-  dateOnlyToUtcIso,
-} from './tournament-datetime';
+import type { ApiRequestError } from './api';
 
-export type TournamentFieldErrors = Partial<Record<TournamentFormFieldKey, string>>;
+export type { CreateTournamentFormInput, TournamentFormFieldErrors, TournamentFormFieldKey };
+export {
+  DEFAULT_PLAYERS_PER_TEAM,
+  DEFAULT_SUBSTITUTES_ALLOWED,
+  TOURNAMENT_FIELD_ORDER,
+  TOURNAMENT_FORM_MESSAGES,
+} from '@acc/types';
 
-export interface TournamentFormValues {
-  name: string;
-  year: string | null;
-  startDate: string;
-  endDate: string;
-  ballType: BallType | null;
-  citySelection: CitySelection | null;
-  tournamentProvinceId: string | null;
-  selectedCenterIds: string[];
+export interface TournamentFormValues extends Omit<CreateTournamentFormInput, 'hasPoster'> {
+  /** When omitted, derived from posterUri. */
+  hasPoster?: boolean;
+  posterUri: string | null;
   defaultProvinceId: string | null;
-  oversPerInnings: string;
-  numberOfTeams: string;
-  playersPerTeam: string;
-  hasRegistrationWindow: boolean;
-  registrationOpenDate: string;
-  registrationOpenTime: string;
-  registrationCloseDate: string;
-  registrationCloseTime: string;
-  hasAuctionDate: boolean;
-  auctionDate: string;
-  videoRequired: boolean;
-  videoUploadEndDate: string;
-  posterError: string | null;
 }
 
-export function validateTournamentForm(values: TournamentFormValues): TournamentFieldErrors {
-  const errors: TournamentFieldErrors = {};
-
-  if (values.posterError) {
-    errors.poster = values.posterError;
-  }
-
-  const trimmedName = values.name.trim();
-  if (!trimmedName) {
-    errors.name = TOURNAMENT_FORM_MESSAGES.name.required;
-  } else if (trimmedName.length > 120) {
-    errors.name = TOURNAMENT_FORM_MESSAGES.name.max;
-  }
-
-  if (!values.year) {
-    errors.year = TOURNAMENT_FORM_MESSAGES.year.required;
-  }
-
-  if (!values.startDate) {
-    errors.startDate = TOURNAMENT_FORM_MESSAGES.startDate.required;
-  }
-
-  if (!values.endDate) {
-    errors.endDate = TOURNAMENT_FORM_MESSAGES.endDate.required;
-  } else if (values.startDate) {
-    const startIso = dateOnlyToUtcIso(values.startDate);
-    const endIso = dateOnlyToUtcIso(values.endDate);
-    if (startIso && endIso && compareIsoDates(endIso, startIso) < 0) {
-      errors.endDate = TOURNAMENT_FORM_MESSAGES.endDate.beforeStart;
-    }
-  }
-
-  if (!values.ballType) {
-    errors.ballType = TOURNAMENT_FORM_MESSAGES.ballType.required;
-  }
-
-  if (values.ballType === BallType.Tennis && !values.citySelection) {
-    errors.citySelection = TOURNAMENT_FORM_MESSAGES.citySelection.required;
-  }
-
-  const isMultiCenters =
-    values.ballType === BallType.Tennis && values.citySelection === CitySelection.Multi;
-
-  if (isMultiCenters) {
-    if (!values.tournamentProvinceId) {
-      errors.province = TOURNAMENT_FORM_MESSAGES.province.required;
-    }
-    if (values.selectedCenterIds.length === 0) {
-      errors.centers = TOURNAMENT_FORM_MESSAGES.centers.required;
-    }
-  }
-
-  const isAllCenters =
-    values.ballType === BallType.Tennis && values.citySelection === CitySelection.All;
-
-  if (isAllCenters && !values.defaultProvinceId) {
-    errors.province = TOURNAMENT_FORM_MESSAGES.province.required;
-  }
-
-  const oversError = validateOversPerInnings(values.oversPerInnings);
-  if (oversError) {
-    errors.oversPerInnings = oversError;
-  }
-
-  const teamsError = validateNumberOfTeams(values.numberOfTeams);
-  if (teamsError) {
-    errors.numberOfTeams = teamsError;
-  }
-
-  const playersError = validatePlayersPerTeam(values.playersPerTeam);
-  if (playersError) {
-    errors.playersPerTeam = playersError;
-  }
-
-  const playersNum = Number(values.playersPerTeam);
-  if (!errors.playersPerTeam && Number.isInteger(playersNum)) {
-    const squadError = validateSquadCapacity(playersNum, DEFAULT_SUBSTITUTES_ALLOWED);
-    if (squadError) {
-      errors.playersPerTeam = squadError;
-    }
-  }
-
-  if (values.hasRegistrationWindow) {
-    if (!values.registrationOpenDate) {
-      errors.registrationOpenDate = TOURNAMENT_FORM_MESSAGES.registrationOpenDate.required;
-    }
-    if (!values.registrationOpenTime) {
-      errors.registrationOpenTime = TOURNAMENT_FORM_MESSAGES.registrationOpenTime.required;
-    }
-    if (!values.registrationCloseDate) {
-      errors.registrationCloseDate = TOURNAMENT_FORM_MESSAGES.registrationCloseDate.required;
-    }
-    if (!values.registrationCloseTime) {
-      errors.registrationCloseTime = TOURNAMENT_FORM_MESSAGES.registrationCloseTime.required;
-    }
-
-    const openIso = combineLocalDateAndTimeToIso(
-      values.registrationOpenDate,
-      values.registrationOpenTime,
-    );
-    const closeIso = combineLocalDateAndTimeToIso(
-      values.registrationCloseDate,
-      values.registrationCloseTime,
-    );
-    if (openIso && closeIso && compareIsoDates(closeIso, openIso) <= 0) {
-      errors.registrationCloseTime = TOURNAMENT_FORM_MESSAGES.registrationCloseTime.beforeOpen;
-    }
-  }
-
-  if (values.hasAuctionDate && !values.auctionDate) {
-    errors.auctionDate = TOURNAMENT_FORM_MESSAGES.auctionDate.required;
-  }
-
-  if (values.videoRequired && !values.videoUploadEndDate) {
-    errors.videoUploadEndDate = TOURNAMENT_FORM_MESSAGES.videoUploadEndDate.required;
-  }
-
-  return errors;
+export function validateTournamentForm(values: TournamentFormValues): TournamentFormFieldErrors {
+  return validateCreateTournamentForm({
+    hasPoster: values.hasPoster ?? Boolean(values.posterUri),
+    posterPickError: values.posterPickError,
+    name: values.name,
+    year: values.year,
+    tournamentDates: values.tournamentDates,
+    ballType: values.ballType,
+    citySelection: values.citySelection,
+    tournamentProvinceId: values.tournamentProvinceId,
+    selectedCenterIds: values.selectedCenterIds,
+    numberOfTeams: values.numberOfTeams,
+    playersPerTeam: values.playersPerTeam,
+    hasRegistrationWindow: values.hasRegistrationWindow,
+    registrationOpenDate: values.registrationOpenDate,
+    registrationOpenTime: values.registrationOpenTime,
+    registrationCloseDate: values.registrationCloseDate,
+    registrationCloseTime: values.registrationCloseTime,
+    hasAuctionDate: values.hasAuctionDate,
+    auctionDate: values.auctionDate,
+    videoRequired: values.videoRequired,
+    videoUploadEndDate: values.videoUploadEndDate,
+  });
 }
 
-export { DEFAULT_PLAYERS_PER_TEAM, DEFAULT_SUBSTITUTES_ALLOWED };
+export function validateUpdateTournamentFormValues(
+  values: TournamentFormValues & { minTeamCount: number; datesWithMatches: string[] },
+): TournamentFormFieldErrors {
+  return validateUpdateTournamentForm({
+    hasPoster: values.hasPoster ?? Boolean(values.posterUri),
+    posterPickError: values.posterPickError,
+    name: values.name,
+    year: values.year,
+    tournamentDates: values.tournamentDates,
+    ballType: values.ballType,
+    citySelection: values.citySelection,
+    tournamentProvinceId: values.tournamentProvinceId,
+    selectedCenterIds: values.selectedCenterIds,
+    numberOfTeams: values.numberOfTeams,
+    playersPerTeam: values.playersPerTeam,
+    hasRegistrationWindow: values.hasRegistrationWindow,
+    registrationOpenDate: values.registrationOpenDate,
+    registrationOpenTime: values.registrationOpenTime,
+    registrationCloseDate: values.registrationCloseDate,
+    registrationCloseTime: values.registrationCloseTime,
+    hasAuctionDate: values.hasAuctionDate,
+    auctionDate: values.auctionDate,
+    videoRequired: values.videoRequired,
+    videoUploadEndDate: values.videoUploadEndDate,
+    minTeamCount: values.minTeamCount,
+    datesWithMatches: values.datesWithMatches,
+  });
+}
+
+export function firstTournamentFormFieldError(
+  errors: TournamentFormFieldErrors,
+): TournamentFormFieldKey | null {
+  return firstTournamentFieldError(errors);
+}
+
+export function registerTournamentFieldLayout(
+  offsets: MutableRefObject<Partial<Record<TournamentFormFieldKey, number>>>,
+  key: TournamentFormFieldKey,
+  event: LayoutChangeEvent,
+): void {
+  offsets.current[key] = event.nativeEvent.layout.y;
+}
+
+export function mapApiErrorsToTournamentFields(
+  err: ApiRequestError,
+): TournamentFormFieldErrors {
+  return mapApiFieldsToTournamentForm(err.error.fields);
+}

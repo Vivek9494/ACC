@@ -84,6 +84,11 @@ export class EnvironmentVariables {
   @IsOptional()
   @IsString()
   PUBLIC_API_URL?: string;
+
+  /** Google Places / Geocoding API key (server-side proxy only). */
+  @IsOptional()
+  @IsString()
+  GOOGLE_PLACES_KEY?: string;
 }
 
 export function validateEnv(config: Record<string, unknown>): EnvironmentVariables {

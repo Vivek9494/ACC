@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 
 import { AuthModule } from '../auth/auth.module';
+import { ScoringModule } from '../scoring/scoring.module';
+import { StandingsModule } from '../standings/standings.module';
 import { MatchesController } from './matches.controller';
 import { MatchesService } from './matches.service';
 
@@ -10,7 +12,7 @@ import { MatchesService } from './matches.service';
  * NotificationsModule and AuditModule; imports AuthModule for JwtAuthGuard.
  */
 @Module({
-  imports: [AuthModule],
+  imports: [AuthModule, StandingsModule, ScoringModule],
   controllers: [MatchesController],
   providers: [MatchesService],
 })

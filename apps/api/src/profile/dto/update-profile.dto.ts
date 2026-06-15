@@ -27,6 +27,8 @@ import {
   ValidateIf,
 } from 'class-validator';
 
+import { APP_URL_VALIDATION_OPTIONS } from '../../common/validation/url-options';
+
 export class UpdateProfileDto implements UpdateProfileRequest {
   @IsString()
   @IsNotEmpty({ message: SIGNUP_VALIDATION_MESSAGES.firstName.required })
@@ -78,7 +80,7 @@ export class UpdateProfileDto implements UpdateProfileRequest {
   postalCode?: string;
 
   @IsOptional()
-  @IsUrl()
+  @IsUrl(APP_URL_VALIDATION_OPTIONS)
   profilePhotoUrl?: string | null;
 
   @IsString()

@@ -12,8 +12,8 @@ export const BattingStyle = {
 export type BattingStyle = (typeof BattingStyle)[keyof typeof BattingStyle];
 
 export const BATTING_STYLE_LABELS: Record<BattingStyle, string> = {
-  RHB: 'Right-hand bat',
-  LHB: 'Left-hand bat',
+  RHB: 'Right Hand (RHB/RHB)',
+  LHB: 'Left Hand (LHB/LAB)',
 };
 
 /** Bowling style (spec §7.1). */
@@ -28,6 +28,77 @@ export const BOWLING_STYLE_LABELS: Record<BowlingStyle, string> = {
   SPIN: 'Spin',
 };
 
+/** Self-reported primary role at registration (§7.1 form). */
+export const PlayerRegistrationRole = {
+  Batsman: 'BATSMAN',
+  Bowler: 'BOWLER',
+  AllRounder: 'ALL_ROUNDER',
+} as const;
+export type PlayerRegistrationRole =
+  (typeof PlayerRegistrationRole)[keyof typeof PlayerRegistrationRole];
+
+export const PLAYER_REGISTRATION_ROLE_LABELS: Record<PlayerRegistrationRole, string> = {
+  BATSMAN: 'Batsman',
+  BOWLER: 'Bowler',
+  ALL_ROUNDER: 'All-rounder',
+};
+
+export const BATTING_POSITION_OPTIONS = [
+  'Opener',
+  'Middle Order',
+  'Finisher',
+  'Tail-ender',
+] as const;
+export type BattingPositionOption = (typeof BATTING_POSITION_OPTIONS)[number];
+
+export const BOWLING_TYPE_OPTIONS = ['Fast', 'Medium', 'Leg Spin', 'Off Spin'] as const;
+export type BowlingTypeOption = (typeof BOWLING_TYPE_OPTIONS)[number];
+
+export const FIELDING_POSITION_OPTIONS = [
+  'Slips',
+  'Inner Circle',
+  'Outfield',
+  'Wicketkeeper',
+] as const;
+export type FieldingPositionOption = (typeof FIELDING_POSITION_OPTIONS)[number];
+
+/** Skill rating labels shown on the registration form; stored as 0–5 integers. */
+export const REGISTRATION_SKILL_RATING_OPTIONS: readonly { value: number; label: string }[] = [
+  { value: 5, label: 'Star' },
+  { value: 4, label: 'A' },
+  { value: 3, label: 'B' },
+  { value: 2, label: 'C' },
+];
+
+export const REGISTRATION_FIELDING_RATING_OPTIONS: readonly { value: number; label: string }[] = [
+  { value: 5, label: 'Excellent' },
+  { value: 3, label: 'Good' },
+  { value: 1, label: 'Average' },
+];
+
+/** Allowed stored values for batting/bowling ratings (matches registration Select options). */
+export const REGISTRATION_SKILL_RATING_VALUES: readonly number[] =
+  REGISTRATION_SKILL_RATING_OPTIONS.map((option) => option.value);
+
+/** Allowed stored values for fielding ratings (matches registration Select options). */
+export const REGISTRATION_FIELDING_RATING_VALUES: readonly number[] =
+  REGISTRATION_FIELDING_RATING_OPTIONS.map((option) => option.value);
+
+/** Maps detailed bowling type to coarse {@link BowlingStyle} for legacy queries. */
+export function bowlingStyleFromType(type: string | null | undefined): BowlingStyle | null {
+  if (!type) {
+    return null;
+  }
+  const normalized = type.trim().toLowerCase();
+  if (normalized === 'fast' || normalized === 'medium') {
+    return BowlingStyle.PACE;
+  }
+  if (normalized === 'leg spin' || normalized === 'off spin') {
+    return BowlingStyle.SPIN;
+  }
+  return null;
+}
+
 /** Registration status lifecycle (spec §7.3). */
 export const RegistrationStatus = {
   InWaitlist: 'IN_WAITLIST',
@@ -40,6 +111,13 @@ export const REGISTRATION_STATUS_LABELS: Record<RegistrationStatus, string> = {
   IN_WAITLIST: 'In Waitlist',
   CONFIRMED: 'Confirmed',
   DECLINED: 'Declined',
+};
+
+/** Labels for the non-interactive status indicator on tournament details. */
+export const TOURNAMENT_REGISTRATION_STATUS_INDICATOR_LABELS: Record<RegistrationStatus, string> = {
+  IN_WAITLIST: 'In Waitlist',
+  CONFIRMED: 'Confirmed',
+  DECLINED: 'Registration Declined',
 };
 
 /**
@@ -119,14 +197,21 @@ export interface CustomFormRequestSummary {
 // --- Registration submission & review --------------------------------------
 
 /**
- * Default §7.1 registration form payload. First/last name, phone and Center are
- * taken from the authenticated user's profile, so only the cricket attributes
- * plus any custom answers are submitted here.
+ * Default §7.1 registration form payload. Phone is taken from the authenticated
+ * user's profile. Name and Center may be updated here when the player edits them
+ * on the form. Ratings are stored on the registration row and may be overwritten
+ * later by the Center Sevak after the window closes (§7.5); audit log retains history.
  */
 export interface SubmitRegistrationRequest {
+  firstName: string;
+  lastName: string;
+  centerId: string;
   battingStyle?: BattingStyle | null;
+  playerRole?: PlayerRegistrationRole | null;
   battingRating?: number | null;
+  battingPosition?: string | null;
   bowlingStyle?: BowlingStyle | null;
+  bowlingType?: string | null;
   bowlingRating?: number | null;
   fieldingRating?: number | null;
   fieldingPosition?: string | null;
@@ -142,7 +227,7 @@ export interface LateRegistrationRequest extends SubmitRegistrationRequest {
   userId: string;
 }
 
-/** Center Sevak rating update for an own-Center player (§7.5, APL only). */
+/** Center Sevak rating update after the registration window closes (§7.5). Overwrites the single rating field. */
 export interface UpdateRatingsRequest {
   battingRating?: number | null;
   bowlingRating?: number | null;
@@ -171,7 +256,10 @@ export interface RegistrationSummary {
   profilePhotoUrl: string | null;
   battingStyle: BattingStyle | null;
   battingRating: number | null;
+  battingPosition: string | null;
+  playerRole: PlayerRegistrationRole | null;
   bowlingStyle: BowlingStyle | null;
+  bowlingType: string | null;
   bowlingRating: number | null;
   fieldingRating: number | null;
   fieldingPosition: string | null;
@@ -194,6 +282,47 @@ export interface AvailabilitySummary {
   /** Confirmed players the Center Sevak has not yet contacted. */
   pending: number;
   total: number;
+}
+
+/** Center Sevak verification queue for a tournament (§7.3, §7.4). */
+export const RegistrationVerificationPhase = {
+  /** Registration window open — view-only roster. */
+  ViewOnly: 'VIEW_ONLY',
+  /** Registration window closed — ratings + approve/decline. */
+  Manage: 'MANAGE',
+} as const;
+export type RegistrationVerificationPhase =
+  (typeof RegistrationVerificationPhase)[keyof typeof RegistrationVerificationPhase];
+
+/** Center player who has not registered for the tournament yet. */
+export interface CenterPlayerRosterEntry {
+  userId: string;
+  centerId: string;
+  firstName: string;
+  lastName: string;
+  mobileNumber: string;
+  profilePhotoUrl: string | null;
+}
+
+/** Center Sevak roster + verification state for a tournament (§7.3, §7.4). */
+export interface RegistrationVerificationQueue {
+  phase: RegistrationVerificationPhase;
+  /**
+   * Button count for the current phase. Hide the Verify Players button when 0.
+   * VIEW_ONLY: registered count. MANAGE: In Waitlist pending verification only
+   * (Sevak late-confirmed registrations are excluded).
+   */
+  actionCount: number;
+  /** Own-center registrations with submitted details. */
+  registered: RegistrationSummary[];
+  /** Own-center players (profile center) without a registration row. */
+  notRegistered: CenterPlayerRosterEntry[];
+  /** Count shown in the screen subtitle. */
+  registeredCount: number;
+  /** Ratings edit + approve/decline allowed (post-window only). */
+  canManage: boolean;
+  /** §7.6: Center Sevak may late-register after tournament Registration Closed. */
+  canLateRegister: boolean;
 }
 
 /** Sort keys for the registered-players list (§7.5). */

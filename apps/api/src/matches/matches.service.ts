@@ -4,16 +4,31 @@ import {
   type HandoverScorerRequest,
   MATCH_END_STATES,
   MATCH_STATE_TRANSITIONS,
+  MatchSchedulingFormat,
   MatchSquadRole,
   MatchState,
+  MatchType,
   type MatchDetail,
+  type MatchListItem,
   type MatchSummary,
   Permission,
+  prepareMatchListForDisplay,
   type RecordTossRequest,
   type ScorerGrantView,
   type SquadCandidate,
   type SquadView,
+  MatchSide,
+  TossDecision,
+  type StartMatchSetupRequest,
   TournamentType,
+  BallType,
+  formatUtcIsoDate,
+  isIsoDateOnly,
+  validateBattingPowerplayOvers,
+  validateMaxOversPerBowler,
+  validatePowerplayOvers,
+  normalizeTeamPairKey,
+  type RoundRobinMatchSetupContext,
 } from '@acc/types';
 import {
   BadRequestException,
@@ -31,6 +46,13 @@ import {
   NotificationTrigger,
 } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { StandingsService } from '../standings/standings.service';
+import { ScoringService } from '../scoring/scoring.service';
+import { assertTournamentActive } from '../tournaments/tournament-query';
+import {
+  deriveInningsTeamsFromToss,
+  SCORER_STARTABLE_MATCH_STATES,
+} from './match-start.utils';
 import type { CreateMatchDto } from './dto/create-match.dto';
 import type { LockPlayingXiDto } from './dto/lock-playing-xi.dto';
 
@@ -52,6 +74,9 @@ const STATE_PERMISSION: Partial<Record<MatchState, Permission>> = {
 
 /** States that record the completion timestamp that starts the §13.1 window. */
 const COMPLETION_STATES: MatchState[] = [MatchState.Completed, MatchState.NoResult];
+
+/** Excludes soft-deleted rows from schedules and round-robin pair guards. */
+const ACTIVE_MATCH_WHERE = { isDeleted: false } as const satisfies Prisma.MatchWhereInput;
 
 type MatchRow = Prisma.MatchGetPayload<{
   include: {
@@ -85,6 +110,21 @@ const MATCH_INCLUDE = {
   scorerGrants: true,
 } as const;
 
+const MATCH_LIST_INCLUDE = {
+  homeTeam: { select: { name: true, logoUrl: true } },
+  awayTeam: { select: { name: true, logoUrl: true } },
+} as const;
+
+type MatchListRow = Prisma.MatchGetPayload<{
+  include: typeof MATCH_LIST_INCLUDE;
+}>;
+
+const LIST_COMPLETED_STATES: MatchState[] = [
+  MatchState.Completed,
+  MatchState.ScorecardLocked,
+  MatchState.NoResult,
+];
+
 type NameMap = Map<string, { firstName: string; lastName: string }>;
 
 /**
@@ -100,12 +140,14 @@ export class MatchesService {
     private readonly scorerGrants: MatchScorerGrantService,
     private readonly notifications: NotificationsService,
     private readonly audit: AuditService,
+    private readonly standings: StandingsService,
+    private readonly scoring: ScoringService,
   ) {}
 
   // --- Creation & reads ----------------------------------------------------
 
   async create(actor: AuthUser, tournamentId: string, dto: CreateMatchDto): Promise<MatchDetail> {
-    await this.requireTournament(tournamentId);
+    const tournament = await this.requireTournamentRecord(tournamentId);
     const allowed = await this.permissions.check(Permission.CREATE_MATCH, actor, { tournamentId });
     if (!allowed) {
       throw new ForbiddenException({
@@ -113,12 +155,13 @@ export class MatchesService {
         error: 'FORBIDDEN',
       });
     }
+
     if (!dto.homeTeamId) {
-      throw new BadRequestException({ message: 'A home team is required', error: 'HOME_TEAM_REQUIRED' });
+      throw new BadRequestException({ message: 'Team A is required', error: 'HOME_TEAM_REQUIRED' });
     }
     if (!dto.awayTeamId && !dto.externalOpponentName) {
       throw new BadRequestException({
-        message: 'Provide an away team or an external opponent name',
+        message: 'Team B or an external opponent is required',
         error: 'OPPONENT_REQUIRED',
       });
     }
@@ -128,33 +171,300 @@ export class MatchesService {
         error: 'AMBIGUOUS_OPPONENT',
       });
     }
+    if (dto.awayTeamId && dto.homeTeamId === dto.awayTeamId) {
+      throw new BadRequestException({
+        message: 'Team A and Team B must be different teams',
+        error: 'DUPLICATE_TEAMS',
+        fields: { teamBId: 'Team A and Team B must be different teams' },
+      });
+    }
+
+    const isLeatherBall = tournament.ballType === BallType.Leather;
+    const isTennisBall = tournament.ballType === BallType.Tennis;
+    const isRoundRobin =
+      tournament.matchSchedulingFormat === MatchSchedulingFormat.RoundRobin;
+
+    if (isRoundRobin) {
+      if (dto.groupId) {
+        throw new BadRequestException({
+          message: 'Group is not used for round-robin fixtures',
+          error: 'GROUP_NOT_ALLOWED',
+          fields: { groupId: 'Round robin matches are not assigned to a group' },
+        });
+      }
+      if (dto.externalOpponentName) {
+        throw new BadRequestException({
+          message: 'Round robin requires two registered teams',
+          error: 'EXTERNAL_OPPONENT_NOT_ALLOWED',
+          fields: { teamBId: 'Select a registered team for Team B' },
+        });
+      }
+      if (!dto.awayTeamId) {
+        throw new BadRequestException({
+          message: 'Team B is required',
+          error: 'AWAY_TEAM_REQUIRED',
+          fields: { teamBId: 'Team B is required' },
+        });
+      }
+      await this.assertRoundRobinPairNotDuplicate(
+        tournamentId,
+        dto.homeTeamId,
+        dto.awayTeamId,
+      );
+    }
+
+    if (isLeatherBall && !isRoundRobin) {
+      if (dto.externalOpponentName && !dto.externalOpponentName.trim()) {
+        throw new BadRequestException({
+          message: 'External opponent name cannot be blank',
+          error: 'EXTERNAL_OPPONENT_BLANK',
+          fields: { externalOpponentName: 'Enter Team B name' },
+        });
+      }
+    }
+    if (isTennisBall && !isRoundRobin) {
+      if (!dto.awayTeamId) {
+        throw new BadRequestException({
+          message: 'Team B is required',
+          error: 'AWAY_TEAM_REQUIRED',
+          fields: { teamBId: 'Team B is required' },
+        });
+      }
+      if (dto.externalOpponentName) {
+        throw new BadRequestException({
+          message: 'Tennis-ball fixtures require a registered Team B',
+          error: 'EXTERNAL_OPPONENT_NOT_ALLOWED',
+          fields: { externalOpponentName: 'Select a registered team for Team B' },
+        });
+      }
+    }
+
     await this.assertTeamsInTournament(tournamentId, [dto.homeTeamId, dto.awayTeamId]);
 
-    const match = await this.prisma.match.create({
-      data: {
-        tournamentId,
-        matchCode: dto.matchCode ?? null,
-        state: MatchState.Scheduled,
-        homeTeamId: dto.homeTeamId,
-        awayTeamId: dto.awayTeamId ?? null,
-        externalOpponentName: dto.externalOpponentName ?? null,
-        matchDate: dto.matchDate ? new Date(dto.matchDate) : null,
-        startTime: dto.startTime ? new Date(dto.startTime) : null,
-        reportingTime: dto.reportingTime ? new Date(dto.reportingTime) : null,
-        groundLocation: dto.groundLocation ?? null,
-        youtubeUrl: dto.youtubeUrl ?? null,
-      },
-    });
+    const isGroupStage =
+      tournament.matchSchedulingFormat === MatchSchedulingFormat.GroupStageKnockout;
+    if (isGroupStage) {
+      if (!dto.groupId) {
+        throw new BadRequestException({
+          message: 'Group is required for group-stage fixtures',
+          error: 'GROUP_REQUIRED',
+          fields: { groupId: 'Group is required' },
+        });
+      }
+      await this.assertTeamsInGroup(tournamentId, dto.groupId, [dto.homeTeamId, dto.awayTeamId]);
+    } else if (dto.groupId) {
+      throw new BadRequestException({
+        message: 'Group is only allowed for group-stage tournaments',
+        error: 'GROUP_NOT_ALLOWED',
+      });
+    }
+
+    if (!dto.groundLocation?.trim()) {
+      throw new BadRequestException({
+        message: 'Ground location is required',
+        error: 'GROUND_REQUIRED',
+        fields: { groundLocation: 'Ground location is required' },
+      });
+    }
+    if (dto.geofenceLat == null || dto.geofenceLng == null) {
+      throw new BadRequestException({
+        message: 'Ground coordinates are required for geofencing',
+        error: 'GEOFENCE_REQUIRED',
+        fields: { groundLocation: 'Select a location from search or the map' },
+      });
+    }
+
+    if (dto.oversPerInnings == null) {
+      throw new BadRequestException({
+        message: 'Overs per innings is required',
+        error: 'OVERS_REQUIRED',
+        fields: { oversPerInnings: 'Overs is required' },
+      });
+    }
+    if (dto.maxOversPerBowler == null) {
+      throw new BadRequestException({
+        message: 'Overs per bowler is required',
+        error: 'OVERS_PER_BOWLER_REQUIRED',
+        fields: { maxOversPerBowler: 'Overs per bowler is required' },
+      });
+    }
+    const oversPerBowlerError = validateMaxOversPerBowler(
+      dto.oversPerInnings,
+      dto.maxOversPerBowler,
+    );
+    if (oversPerBowlerError) {
+      throw new BadRequestException({
+        message: oversPerBowlerError,
+        error: 'INVALID_OVERS_PER_BOWLER',
+        fields: { maxOversPerBowler: oversPerBowlerError },
+      });
+    }
+
+    if (dto.powerplayOvers != null) {
+      const powerplayError = validatePowerplayOvers(dto.oversPerInnings, dto.powerplayOvers);
+      if (powerplayError) {
+        throw new BadRequestException({
+          message: powerplayError,
+          error: 'INVALID_POWERPLAY_OVERS',
+          fields: { powerplayOvers: powerplayError },
+        });
+      }
+    }
+
+    if (isTennisBall && dto.battingPowerplayOvers != null) {
+      const battingPowerplayError = validateBattingPowerplayOvers(
+        dto.oversPerInnings,
+        dto.battingPowerplayOvers,
+      );
+      if (battingPowerplayError) {
+        throw new BadRequestException({
+          message: battingPowerplayError,
+          error: 'INVALID_BATTING_POWERPLAY_OVERS',
+          fields: { battingPowerplayOvers: battingPowerplayError },
+        });
+      }
+    }
+
+    if (!dto.matchDate || !isIsoDateOnly(dto.matchDate)) {
+      throw new BadRequestException({
+        message: 'Match date is required',
+        error: 'MATCH_DATE_REQUIRED',
+        fields: { matchDate: 'Match date is required' },
+      });
+    }
+    await this.assertMatchDateAllowed(tournamentId, dto.matchDate);
+
+    if (!dto.startTime) {
+      throw new BadRequestException({
+        message: 'Match time is required',
+        error: 'START_TIME_REQUIRED',
+        fields: { matchTime: 'Match time is required' },
+      });
+    }
+
+    if (!dto.matchType) {
+      throw new BadRequestException({
+        message: 'Match type is required',
+        error: 'MATCH_TYPE_REQUIRED',
+        fields: { matchType: 'Match type is required' },
+      });
+    }
+    if (!Object.values(MatchType).includes(dto.matchType)) {
+      throw new BadRequestException({
+        message: 'Invalid match type',
+        error: 'INVALID_MATCH_TYPE',
+        fields: { matchType: 'Select a valid match type' },
+      });
+    }
+    const matchType = dto.matchType;
+
+    const roundRobinPairKey =
+      isRoundRobin && dto.homeTeamId && dto.awayTeamId
+        ? normalizeTeamPairKey(dto.homeTeamId, dto.awayTeamId)
+        : null;
+
+    let match;
+    try {
+      match = await this.prisma.match.create({
+        data: {
+          tournamentId,
+          groupId: dto.groupId ?? null,
+          matchCode: dto.matchCode ?? null,
+          matchType,
+          state: MatchState.Scheduled,
+          homeTeamId: dto.homeTeamId,
+          awayTeamId: dto.awayTeamId ?? null,
+          externalOpponentName: dto.externalOpponentName?.trim() || null,
+          roundRobinPairKey,
+          matchDate: new Date(`${dto.matchDate}T00:00:00.000Z`),
+          startTime: new Date(dto.startTime),
+          reportingTime:
+            !isRoundRobin && dto.reportingTime ? new Date(dto.reportingTime) : null,
+          groundLocation: dto.groundLocation.trim(),
+          geofenceLat: dto.geofenceLat,
+          geofenceLng: dto.geofenceLng,
+          oversPerInnings: dto.oversPerInnings,
+          maxOversPerBowler: dto.maxOversPerBowler,
+          powerplayOvers: dto.powerplayOvers ?? null,
+          battingPowerplayOvers: isTennisBall ? (dto.battingPowerplayOvers ?? null) : null,
+          youtubeUrl: dto.youtubeUrl ?? null,
+        },
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002' &&
+        roundRobinPairKey
+      ) {
+        throw new BadRequestException({
+          message: 'These teams are already scheduled to play in this round robin',
+          error: 'DUPLICATE_ROUND_ROBIN_PAIRING',
+          fields: {
+            teamBId: 'These teams are already scheduled to play in this round robin.',
+          },
+        });
+      }
+      throw error;
+    }
+
     return this.getDetail(match.id);
   }
 
-  async list(tournamentId: string): Promise<MatchSummary[]> {
+  async list(tournamentId: string): Promise<MatchListItem[]> {
     const rows = await this.prisma.match.findMany({
-      where: { tournamentId },
-      include: MATCH_INCLUDE,
-      orderBy: [{ matchDate: 'asc' }, { createdAt: 'asc' }],
+      where: {
+        tournamentId,
+        ...ACTIVE_MATCH_WHERE,
+        state: { not: MatchState.Cancelled },
+      },
+      include: MATCH_LIST_INCLUDE,
+      orderBy: [{ matchDate: 'asc' }, { startTime: 'asc' }, { createdAt: 'asc' }],
     });
-    return rows.map((row) => this.toSummary(row));
+    return prepareMatchListForDisplay(rows.map((row) => this.toListItem(row)));
+  }
+
+  /** Round-robin Match Setup info card: fixture count, standings preview, existing pairings. */
+  async getRoundRobinSetupContext(tournamentId: string): Promise<RoundRobinMatchSetupContext> {
+    const tournament = await this.requireTournamentRecord(tournamentId);
+    if (tournament.matchSchedulingFormat !== MatchSchedulingFormat.RoundRobin) {
+      throw new BadRequestException({
+        message: 'This tournament is not configured for round robin scheduling',
+        error: 'NOT_ROUND_ROBIN',
+      });
+    }
+
+    const scheduledMatchCount = await this.prisma.match.count({
+      where: { tournamentId, ...ACTIVE_MATCH_WHERE, state: { not: MatchState.Cancelled } },
+    });
+
+    const pairRows = await this.prisma.match.findMany({
+      where: {
+        tournamentId,
+        ...ACTIVE_MATCH_WHERE,
+        homeTeamId: { not: null },
+        awayTeamId: { not: null },
+        state: { not: MatchState.Cancelled },
+      },
+      select: { homeTeamId: true, awayTeamId: true },
+    });
+    const existingPairKeys = pairRows.map((row) =>
+      normalizeTeamPairKey(row.homeTeamId!, row.awayTeamId!),
+    );
+
+    const standingsResult = await this.standings.getStandings(tournamentId);
+    const table = standingsResult.tables[0];
+    const standings = (table?.teams ?? []).map((row) => ({
+      teamId: row.teamId,
+      teamName: row.teamName,
+      points: row.points,
+    }));
+
+    return {
+      scheduledMatchCount,
+      nextMatchNumber: scheduledMatchCount + 1,
+      standings,
+      existingPairKeys,
+    };
   }
 
   async getDetail(matchId: string): Promise<MatchDetail> {
@@ -328,6 +638,239 @@ export class MatchesService {
     return this.getDetail(matchId);
   }
 
+  /**
+   * Scorer Match Setup dialog (§11.2): capture toss, derive first-innings sides,
+   * move Live, and open innings 1. Idempotent before the first ball — toss can
+   * be updated while no deliveries exist.
+   */
+  async startScoring(
+    actor: AuthUser,
+    matchId: string,
+    dto: RecordTossRequest,
+  ): Promise<MatchDetail> {
+    const match = await this.requireMatchRow(matchId);
+    const allowed = await this.permissions.check(Permission.START_MATCH, actor, { matchId });
+    if (!allowed) {
+      throw new ForbiddenException({
+        message: 'You do not have permission to start scoring for this match',
+        error: 'FORBIDDEN',
+      });
+    }
+
+    const state = match.state as MatchState;
+    const deliveryCount =
+      state === MatchState.Live
+        ? await this.prisma.delivery.count({ where: { innings: { matchId } } })
+        : 0;
+
+    if (state === MatchState.Live && deliveryCount > 0) {
+      throw new BadRequestException({
+        message: 'Toss cannot be changed after the first ball has been bowled',
+        error: 'TOSS_LOCKED',
+      });
+    }
+
+    const allowedStates: MatchState[] = [
+      MatchState.PlayingXiLocked,
+      MatchState.TossCompleted,
+      MatchState.Delayed,
+      MatchState.Live,
+    ];
+    if (!allowedStates.includes(state)) {
+      if (state === MatchState.Scheduled) {
+        throw new BadRequestException({
+          message: 'Lock the Playing 11 for all teams before starting the match',
+          error: 'PLAYING_XI_REQUIRED',
+          fields: { playingXi: 'Playing 11 must be locked before match start' },
+        });
+      }
+      throw new BadRequestException({
+        message: 'The match is not in a state where scoring can begin',
+        error: 'INVALID_MATCH_STATE',
+      });
+    }
+
+    const inningsTeams = deriveInningsTeamsFromToss(match, dto.tossWinner, dto.decision);
+
+    await this.prisma.match.update({
+      where: { id: matchId },
+      data: {
+        tossWinner: dto.tossWinner,
+        tossDecision: dto.decision,
+        openingStrikerUserId: null,
+        openingNonStrikerUserId: null,
+        openingBowlerUserId: null,
+        state: MatchState.Live,
+      },
+    });
+
+    const existingInnings = await this.prisma.innings.findFirst({
+      where: { matchId },
+      orderBy: { sequence: 'asc' },
+    });
+
+    if (existingInnings) {
+      await this.prisma.innings.update({
+        where: { id: existingInnings.id },
+        data: {
+          battingTeamId: inningsTeams.battingTeamId,
+          bowlingTeamId: inningsTeams.bowlingTeamId,
+          battingIsExternal: inningsTeams.battingIsExternal,
+          bowlingIsExternal: inningsTeams.bowlingIsExternal,
+        },
+      });
+    } else {
+      await this.scoring.startInnings(actor, matchId, {
+        battingTeamId: inningsTeams.battingTeamId,
+        bowlingTeamId: inningsTeams.bowlingTeamId,
+        battingIsExternal: inningsTeams.battingIsExternal,
+        bowlingIsExternal: inningsTeams.bowlingIsExternal,
+        oversAllotted: match.oversPerInnings,
+        expectedVersion: match.scorecardVersion,
+      });
+    }
+
+    await this.audit.record({
+      action: 'MATCH_SCORING_STARTED',
+      actorUserId: actor.id,
+      targetEntityType: 'match',
+      targetEntityId: matchId,
+      after: {
+        tossWinner: dto.tossWinner,
+        tossDecision: dto.decision,
+        battingFirstTeamId: inningsTeams.battingTeamId,
+        bowlingFirstTeamId: inningsTeams.bowlingTeamId,
+      },
+    });
+
+    return this.getDetail(matchId);
+  }
+
+  /**
+   * Pre-scoring setup (§11): record toss, opening players, go Live, and open the
+   * first innings. Guarded to the assigned Scorer (or other START_MATCH holders).
+   */
+  async startMatchSetup(
+    actor: AuthUser,
+    matchId: string,
+    dto: StartMatchSetupRequest,
+  ): Promise<MatchDetail> {
+    const match = await this.requireMatchRow(matchId);
+    const allowed = await this.permissions.check(Permission.START_MATCH, actor, { matchId });
+    if (!allowed) {
+      throw new ForbiddenException({
+        message: 'You do not have permission to start this match',
+        error: 'FORBIDDEN',
+      });
+    }
+
+    if (
+      match.state !== MatchState.PlayingXiLocked &&
+      match.state !== MatchState.TossCompleted &&
+      match.state !== MatchState.Delayed
+    ) {
+      throw new BadRequestException({
+        message: 'Lock the Playing 11 for all teams before starting the match',
+        error: 'PLAYING_XI_REQUIRED',
+        fields: { playingXi: 'Playing 11 must be locked before match start' },
+      });
+    }
+
+    if (dto.strikerUserId === dto.nonStrikerUserId) {
+      throw new BadRequestException({
+        message: 'Striker and non-striker must be different players',
+        error: 'OPENERS_INVALID',
+        fields: { nonStrikerUserId: 'Select a different non-striker' },
+      });
+    }
+
+    const inningsTeams = deriveInningsTeamsFromToss(match, dto.tossWinner, dto.tossDecision);
+    this.assertOpenerInSquad(
+      match,
+      dto.strikerUserId,
+      inningsTeams.battingTeamId,
+      'strikerUserId',
+      'Striker must be in the batting Playing 11',
+    );
+    this.assertOpenerInSquad(
+      match,
+      dto.nonStrikerUserId,
+      inningsTeams.battingTeamId,
+      'nonStrikerUserId',
+      'Non-striker must be in the batting Playing 11',
+    );
+    this.assertOpenerInSquad(
+      match,
+      dto.bowlerUserId,
+      inningsTeams.bowlingTeamId,
+      'bowlerUserId',
+      'Bowler must be in the bowling Playing 11',
+    );
+
+    await this.prisma.match.update({
+      where: { id: matchId },
+      data: {
+        tossWinner: dto.tossWinner,
+        tossDecision: dto.tossDecision,
+        openingStrikerUserId: dto.strikerUserId,
+        openingNonStrikerUserId: dto.nonStrikerUserId,
+        openingBowlerUserId: dto.bowlerUserId,
+        state: MatchState.Live,
+      },
+    });
+
+    await this.scoring.startInnings(actor, matchId, {
+      battingTeamId: inningsTeams.battingTeamId,
+      bowlingTeamId: inningsTeams.bowlingTeamId,
+      battingIsExternal: inningsTeams.battingIsExternal,
+      bowlingIsExternal: inningsTeams.bowlingIsExternal,
+      oversAllotted: match.oversPerInnings,
+      expectedVersion: match.scorecardVersion,
+    });
+
+    await this.audit.record({
+      action: 'MATCH_STARTED',
+      actorUserId: actor.id,
+      targetEntityType: 'match',
+      targetEntityId: matchId,
+      after: {
+        tossWinner: dto.tossWinner,
+        tossDecision: dto.tossDecision,
+        openingStrikerUserId: dto.strikerUserId,
+        openingNonStrikerUserId: dto.nonStrikerUserId,
+        openingBowlerUserId: dto.bowlerUserId,
+      },
+    });
+
+    return this.getDetail(matchId);
+  }
+
+  private assertOpenerInSquad(
+    match: MatchRow,
+    userId: string,
+    teamId: string | null,
+    field: string,
+    message: string,
+  ): void {
+    if (!teamId) {
+      throw new BadRequestException({
+        message: 'Opening players cannot be validated for an external-only side',
+        error: 'EXTERNAL_OPENER_NOT_SUPPORTED',
+      });
+    }
+    const squad = match.squads.find((row) => row.teamId === teamId);
+    const inXi = squad?.players.some(
+      (player) => player.userId === userId && player.role === MatchSquadRole.PlayingXi,
+    );
+    if (!inXi) {
+      throw new BadRequestException({
+        message,
+        error: 'OPENERS_INVALID',
+        fields: { [field]: message },
+      });
+    }
+  }
+
   // --- State machine -------------------------------------------------------
 
   async transition(actor: AuthUser, matchId: string, next: MatchState): Promise<MatchDetail> {
@@ -477,10 +1020,84 @@ export class MatchesService {
   private async requireTournament(tournamentId: string): Promise<void> {
     const tournament = await this.prisma.tournament.findUnique({
       where: { id: tournamentId },
-      select: { id: true },
+      select: { id: true, isDeleted: true },
     });
-    if (!tournament) {
-      throw new NotFoundException({ message: 'Tournament not found', error: 'NOT_FOUND' });
+    assertTournamentActive(tournament);
+  }
+
+  private async requireTournamentRecord(tournamentId: string): Promise<{
+    id: string;
+    type: TournamentType;
+    ballType: BallType;
+    matchSchedulingFormat: MatchSchedulingFormat | null;
+  }> {
+    const tournament = await this.prisma.tournament.findUnique({
+      where: { id: tournamentId },
+      select: {
+        id: true,
+        type: true,
+        ballType: true,
+        matchSchedulingFormat: true,
+        isDeleted: true,
+      },
+    });
+    assertTournamentActive(tournament);
+    return {
+      id: tournament.id,
+      type: tournament.type as TournamentType,
+      ballType: tournament.ballType as BallType,
+      matchSchedulingFormat: tournament.matchSchedulingFormat as MatchSchedulingFormat | null,
+    };
+  }
+
+  private async assertMatchDateAllowed(tournamentId: string, matchDate: string): Promise<void> {
+    const rows = await this.prisma.tournamentDate.findMany({
+      where: { tournamentId },
+      select: { date: true },
+    });
+    if (rows.length === 0) {
+      throw new BadRequestException({
+        message: 'This tournament has no match days configured',
+        error: 'NO_TOURNAMENT_DATES',
+        fields: { matchDate: 'No tournament match days are configured' },
+      });
+    }
+    const allowed = new Set(rows.map((row) => formatUtcIsoDate(row.date)));
+    if (!allowed.has(matchDate)) {
+      throw new BadRequestException({
+        message: 'Match date must be one of the tournament match days',
+        error: 'MATCH_DATE_NOT_ALLOWED',
+        fields: { matchDate: 'Choose one of the tournament match days' },
+      });
+    }
+  }
+
+  private async assertTeamsInGroup(
+    tournamentId: string,
+    groupId: string,
+    teamIds: (string | null | undefined)[],
+  ): Promise<void> {
+    const ids = teamIds.filter((id): id is string => Boolean(id));
+    const group = await this.prisma.tournamentGroup.findFirst({
+      where: { id: groupId, tournamentId },
+      include: { teams: { select: { id: true } } },
+    });
+    if (!group) {
+      throw new BadRequestException({
+        message: 'Group not found in this tournament',
+        error: 'GROUP_NOT_FOUND',
+        fields: { groupId: 'Invalid group' },
+      });
+    }
+    const groupTeamIds = new Set(group.teams.map((team) => team.id));
+    for (const teamId of ids) {
+      if (!groupTeamIds.has(teamId)) {
+        throw new BadRequestException({
+          message: 'Both teams must belong to the selected group',
+          error: 'TEAM_NOT_IN_GROUP',
+          fields: { groupId: 'Teams must belong to the selected group' },
+        });
+      }
     }
   }
 
@@ -511,6 +1128,17 @@ export class MatchesService {
     return match;
   }
 
+  private async requireMatchRow(matchId: string): Promise<MatchRow> {
+    const match = await this.prisma.match.findUnique({
+      where: { id: matchId },
+      include: MATCH_INCLUDE,
+    });
+    if (!match) {
+      throw new NotFoundException({ message: 'Match not found', error: 'NOT_FOUND' });
+    }
+    return match;
+  }
+
   private assertTeamInMatch(
     match: { homeTeamId: string | null; awayTeamId: string | null },
     teamId: string,
@@ -520,6 +1148,39 @@ export class MatchesService {
         message: 'Team is not part of this match',
         error: 'TEAM_NOT_IN_MATCH',
       });
+    }
+  }
+
+  private async assertRoundRobinPairNotDuplicate(
+    tournamentId: string,
+    homeTeamId: string,
+    awayTeamId: string,
+  ): Promise<void> {
+    const pairKey = normalizeTeamPairKey(homeTeamId, awayTeamId);
+    const rows = await this.prisma.match.findMany({
+      where: {
+        tournamentId,
+        ...ACTIVE_MATCH_WHERE,
+        homeTeamId: { not: null },
+        awayTeamId: { not: null },
+      },
+      select: { homeTeamId: true, awayTeamId: true },
+    });
+
+    for (const row of rows) {
+      if (
+        row.homeTeamId &&
+        row.awayTeamId &&
+        normalizeTeamPairKey(row.homeTeamId, row.awayTeamId) === pairKey
+      ) {
+        throw new BadRequestException({
+          message: 'These teams are already scheduled to play in this round robin',
+          error: 'DUPLICATE_ROUND_ROBIN_PAIRING',
+          fields: {
+            teamBId: 'These teams are already scheduled to play in this round robin.',
+          },
+        });
+      }
     }
   }
 
@@ -621,6 +1282,7 @@ export class MatchesService {
       id: row.id,
       tournamentId: row.tournamentId,
       matchCode: row.matchCode,
+      matchType: row.matchType as MatchType,
       state: row.state as MatchState,
       homeTeamId: row.homeTeamId,
       homeTeamName: row.homeTeam?.name ?? null,
@@ -630,6 +1292,64 @@ export class MatchesService {
       matchDate: row.matchDate?.toISOString() ?? null,
       startTime: row.startTime?.toISOString() ?? null,
     };
+  }
+
+  private toListItem(row: MatchListRow): Omit<MatchListItem, 'displayState'> {
+    const homeName = row.homeTeam?.name ?? 'TBD';
+    const awayName = row.awayTeam?.name ?? row.externalOpponentName ?? 'TBD';
+
+    return {
+      id: row.id,
+      tournamentId: row.tournamentId,
+      matchCode: row.matchCode,
+      state: row.state as MatchState,
+      matchDate: row.matchDate ? formatUtcIsoDate(row.matchDate) : null,
+      startTime: row.startTime?.toISOString() ?? null,
+      teamA: {
+        id: row.homeTeamId,
+        name: homeName,
+        logoUrl: row.homeTeam?.logoUrl ?? null,
+      },
+      teamB: {
+        id: row.awayTeamId,
+        name: awayName,
+        logoUrl: row.awayTeam?.logoUrl ?? null,
+      },
+      groundLocation: row.groundLocation,
+      resultSummary: this.buildListResultSummary(row, homeName, awayName),
+      liveScore: null,
+      completedAt: row.completedAt?.toISOString() ?? null,
+    };
+  }
+
+  private buildListResultSummary(
+    row: MatchListRow,
+    homeName: string,
+    awayName: string,
+  ): string | null {
+    const state = row.state as MatchState;
+    if (!LIST_COMPLETED_STATES.includes(state)) {
+      return null;
+    }
+    if (row.isNoResult) {
+      return 'No Result';
+    }
+    const note = row.resultNote?.trim();
+    if (note) {
+      return note;
+    }
+    if (row.winningTeamId) {
+      const winnerName =
+        row.winningTeamId === row.homeTeamId
+          ? homeName
+          : row.winningTeamId === row.awayTeamId
+            ? awayName
+            : null;
+      if (winnerName) {
+        return `${winnerName} won`;
+      }
+    }
+    return null;
   }
 
   private toDetail(row: MatchRow, scorerNames: NameMap): MatchDetail {
@@ -663,9 +1383,16 @@ export class MatchesService {
       ...this.toSummary(row),
       reportingTime: row.reportingTime?.toISOString() ?? null,
       groundLocation: row.groundLocation,
+      oversPerInnings: row.oversPerInnings,
+      maxOversPerBowler: row.maxOversPerBowler,
+      powerplayOvers: row.powerplayOvers,
+      battingPowerplayOvers: row.battingPowerplayOvers,
       youtubeUrl: row.youtubeUrl,
       tossWinner: row.tossWinner,
       tossDecision: row.tossDecision,
+      openingStrikerUserId: row.openingStrikerUserId,
+      openingNonStrikerUserId: row.openingNonStrikerUserId,
+      openingBowlerUserId: row.openingBowlerUserId,
       impactPlayerEnabled: row.tournament.impactPlayerEnabled,
       squads,
       activeScorers,

@@ -22,6 +22,7 @@ import {
   recordDelivery,
   startInnings,
 } from '../../../src/lib/api';
+import { deriveInningsTeamsFromToss } from '../../../src/lib/match-start';
 
 type WicketChoice =
   | { label: string; dismissal: DismissalType }
@@ -64,6 +65,16 @@ export default function ScorerDashboardScreen(): React.ReactElement {
         if (!active) return;
         setMatch(m);
         setCard(c);
+        const liveInnings = c.innings.at(-1);
+        if (liveInnings) {
+          setStrikerId(liveInnings.currentStrikerId);
+          setNonStrikerId(liveInnings.currentNonStrikerId);
+          setBowlerId(m?.openingBowlerUserId ?? null);
+        } else if (m?.openingStrikerUserId) {
+          setStrikerId(m.openingStrikerUserId);
+          setNonStrikerId(m.openingNonStrikerUserId);
+          setBowlerId(m.openingBowlerUserId);
+        }
       } catch (err) {
         if (active) setError(err instanceof ApiRequestError ? err.message : 'Could not load match.');
       } finally {
@@ -115,13 +126,24 @@ export default function ScorerDashboardScreen(): React.ReactElement {
     if (!matchId || !match) return;
     setWorking(true);
     try {
+      const teams =
+        match.tossWinner && match.tossDecision
+          ? deriveInningsTeamsFromToss(match, match.tossWinner, match.tossDecision)
+          : {
+              battingTeamId: match.homeTeamId,
+              bowlingTeamId: match.awayTeamId,
+            };
       const updated = await startInnings(matchId, {
-        battingTeamId: match.homeTeamId ?? null,
-        bowlingTeamId: match.awayTeamId ?? null,
-        bowlingIsExternal: !match.awayTeamId,
+        battingTeamId: teams.battingTeamId ?? null,
+        bowlingTeamId: teams.bowlingTeamId ?? null,
+        bowlingIsExternal: !teams.bowlingTeamId,
         expectedVersion: card?.version ?? 0,
       });
       setCard(updated);
+      syncStrike(updated);
+      if (match.openingBowlerUserId) {
+        setBowlerId(match.openingBowlerUserId);
+      }
       setError(null);
     } catch (err) {
       setError(err instanceof ApiRequestError ? err.message : 'Could not start the innings.');

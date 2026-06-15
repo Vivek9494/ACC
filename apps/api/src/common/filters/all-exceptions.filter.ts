@@ -18,6 +18,7 @@ interface ErrorResponseBody {
     path: string;
     timestamp: string;
     requestId: string;
+    fields?: Record<string, string>;
   };
 }
 
@@ -37,6 +38,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
     let statusCode = HttpStatus.INTERNAL_SERVER_ERROR;
     let message: string | string[] = 'Internal server error';
     let code = 'INTERNAL_SERVER_ERROR';
+    let fields: Record<string, string> | undefined;
 
     if (exception instanceof HttpException) {
       statusCode = exception.getStatus();
@@ -46,11 +48,16 @@ export class AllExceptionsFilter implements ExceptionFilter {
       if (typeof res === 'string') {
         message = res;
       } else if (typeof res === 'object' && res !== null) {
-        const body = res as { message?: string | string[]; error?: string };
+        const body = res as {
+          message?: string | string[];
+          error?: string;
+          fields?: Record<string, string>;
+        };
         message = body.message ?? exception.message;
         if (body.error) {
           code = body.error.toUpperCase().replace(/\s+/g, '_');
         }
+        fields = body.fields;
       }
     } else if (exception instanceof Error) {
       message = exception.message;
@@ -72,6 +79,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
         path: request.url,
         timestamp: new Date().toISOString(),
         requestId,
+        ...(fields ? { fields } : {}),
       },
     };
 

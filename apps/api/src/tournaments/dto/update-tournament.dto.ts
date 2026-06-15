@@ -1,10 +1,12 @@
 import { TournamentFormat, type UpdateTournamentRequest } from '@acc/types';
 import {
+  IsArray,
   IsBoolean,
   IsDateString,
   IsEmpty,
   IsIn,
   IsInt,
+  IsNumber,
   IsOptional,
   IsString,
   IsUrl,
@@ -12,7 +14,10 @@ import {
   MaxLength,
   Min,
   MinLength,
+  ArrayMinSize,
 } from 'class-validator';
+
+import { APP_URL_VALIDATION_OPTIONS } from '../../common/validation/url-options';
 
 const FORMATS = Object.values(TournamentFormat);
 
@@ -25,7 +30,7 @@ export class UpdateTournamentDto implements UpdateTournamentRequest {
   name?: string;
 
   @IsOptional()
-  @IsUrl()
+  @IsUrl(APP_URL_VALIDATION_OPTIONS)
   posterUrl?: string | null;
 
   @IsOptional()
@@ -61,15 +66,25 @@ export class UpdateTournamentDto implements UpdateTournamentRequest {
   @IsOptional()
   @IsString()
   @MaxLength(200)
-  location?: string | null;
+  locationAddress?: string | null;
 
   @IsOptional()
-  @IsDateString()
-  startAt?: string;
+  @IsNumber()
+  @Min(-90)
+  @Max(90)
+  latitude?: number | null;
 
   @IsOptional()
-  @IsDateString()
-  endAt?: string;
+  @IsNumber()
+  @Min(-180)
+  @Max(180)
+  longitude?: number | null;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMinSize(1)
+  @IsString({ each: true })
+  dates?: string[];
 
   @IsOptional()
   @IsIn(FORMATS)
@@ -88,7 +103,7 @@ export class UpdateTournamentDto implements UpdateTournamentRequest {
   videoUploadEndDate?: string | null;
 
   @IsOptional()
-  @IsUrl()
+  @IsUrl(APP_URL_VALIDATION_OPTIONS)
   youtubeUrl?: string | null;
 
   @IsOptional()
@@ -98,6 +113,10 @@ export class UpdateTournamentDto implements UpdateTournamentRequest {
   @IsOptional()
   @IsDateString()
   registrationCloseAt?: string | null;
+
+  @IsOptional()
+  @IsDateString()
+  auctionAt?: string | null;
 
   // §6.1: still rejected on edit.
   @IsEmpty({ message: 'Powerplay Overs was removed per spec §6.1 and is not accepted' })
