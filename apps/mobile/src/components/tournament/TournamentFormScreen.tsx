@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { colors } from '@/theme/colors';
 import {
   BallType,
   CitySelection,
@@ -719,7 +720,7 @@ export function TournamentFormScreen({
 
   if (status === 'loading' || profileLoading || editLoading) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-surface">
+      <SafeAreaView className="flex-1 items-center justify-center bg-background">
         <ActivityIndicator color={FIELD_ORANGE} />
       </SafeAreaView>
     );
@@ -727,7 +728,7 @@ export function TournamentFormScreen({
 
   if (accessDenied) {
     return (
-      <SafeAreaView className="flex-1 bg-surface px-6">
+      <SafeAreaView className="flex-1 bg-background px-6">
         <View className="flex-1 items-center justify-center gap-4">
           <Text className="text-center font-sans text-base text-on-surface-variant">
             {isEditMode
@@ -741,7 +742,7 @@ export function TournamentFormScreen({
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-surface" edges={['top']}>
+    <SafeAreaView className="flex-1 bg-background" edges={['top']}>
       <View className="flex-1">
         <View className="flex-row items-start justify-between px-4 py-3">
           <View className="min-w-0 flex-1 gap-1 pr-3">
@@ -1080,8 +1081,8 @@ export function TournamentFormScreen({
             ) : null}
 
             {formError ? (
-              <View className="rounded-lg bg-error-container px-4 py-3">
-                <Text className="font-sans text-sm text-on-error-container">{formError}</Text>
+              <View className="rounded-lg bg-primary-50 px-4 py-3">
+                <Text className="font-sans text-sm text-primary">{formError}</Text>
               </View>
             ) : null}
 
@@ -1091,7 +1092,7 @@ export function TournamentFormScreen({
               className="mt-2 h-14 w-full"
               label={submitting ? undefined : isEditMode ? 'Save Changes' : 'Add Tournament'}
             >
-              {submitting ? <ActivityIndicator color="#ffffff" /> : null}
+              {submitting ? <ActivityIndicator color={colors.textInverse} /> : null}
             </Button>
           </View>
         </ScrollView>

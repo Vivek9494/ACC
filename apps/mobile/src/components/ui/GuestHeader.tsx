@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Pressable, View } from 'react-native';
+import { colors } from '@/theme/colors';
 
 import { INPUT_SHADOW_STYLE } from './fieldStyles';
 import { Text } from './Text';
@@ -16,10 +17,10 @@ export function GuestHeader({ onProfilePress }: GuestHeaderProps): React.ReactEl
         onPress={onProfilePress}
         accessibilityRole="button"
         accessibilityLabel="Sign in or create account"
-        className="h-10 w-10 items-center justify-center rounded-full bg-white active:opacity-90"
+        className="h-10 w-10 items-center justify-center rounded-full bg-surface active:opacity-90"
         style={INPUT_SHADOW_STYLE}
       >
-        <Ionicons name="person-circle-outline" size={28} color="#5a4136" />
+        <Ionicons name="person-circle-outline" size={28} color={colors.textMuted} />
       </Pressable>
     </View>
   );

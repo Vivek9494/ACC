@@ -13,6 +13,6 @@ export class CaptainController {
 
   @Get('dashboard')
   dashboard(@Req() req: AuthenticatedRequest): Promise<CaptainDashboard> {
-    return this.captain.getDashboard(req.user.id);
+    return this.captain.getDashboard(req.user);
   }
 }

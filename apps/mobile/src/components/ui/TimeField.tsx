@@ -13,8 +13,10 @@ import {
   INPUT_TEXT_STYLE,
   labelClassName,
   mergeFieldClassName,
+  applyFieldErrorBorder,
   type LabelVariant,
 } from './fieldStyles';
+import { FormErrorText } from './FormErrorText';
 import { Text } from './Text';
 
 function pad2(n: number): string {
@@ -86,7 +88,7 @@ export function TimeField({
 
   let fieldClassName = mergeFieldClassName('flex-row items-center', { hasLeadingIcon: true });
   if (error) {
-    fieldClassName = fieldClassName.replace(/\bborder-\[#F1F1F1\]/, 'border-error');
+    fieldClassName = applyFieldErrorBorder(fieldClassName);
   }
 
   return (
@@ -101,13 +103,13 @@ export function TimeField({
           <Ionicons name="time-outline" size={20} color={FIELD_ORANGE} />
         </View>
         <Text
-          className={`${FIELD_VALUE_TEXT_CLASS} ${parsed ? 'text-[#1A1A1A]' : 'text-[#9AA0A6]'}`}
+          className={`${FIELD_VALUE_TEXT_CLASS} ${parsed ? 'text-text' : 'text-text-muted'}`}
           style={INPUT_TEXT_STYLE}
         >
           {parsed ? formatDisplayTime(value) : placeholder}
         </Text>
       </Pressable>
-      {error ? <Text className="mt-1 font-sans text-sm text-error">{error}</Text> : null}
+      <FormErrorText inline>{error}</FormErrorText>
 
       <DateTimePickerSheet
         visible={showPicker}

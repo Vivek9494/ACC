@@ -1,5 +1,6 @@
 import {
   type AuthUser,
+  BallType,
   type CenterSevakDashboard,
   type FeaturedMatchSummary,
   type ManagerPlayerStats,
@@ -271,7 +272,7 @@ export class CenterSevakService {
       const actionCenterId = await this.resolveActionCenterId(row.id, centerIds);
       const permissions = await this.tournaments.resolveDashboardPermissions(
         actor,
-        { id: row.id, createdByUserId: row.createdByUserId },
+        { id: row.id, createdByUserId: row.createdByUserId, ballType: row.ballType as BallType },
         actionCenterId,
       );
       entries.push({
@@ -307,6 +308,7 @@ export class CenterSevakService {
       locationAddress: row.locationAddress,
       latitude: row.latitude,
       longitude: row.longitude,
+      timezone: row.timezone,
       teamCount: row._count.teams,
     };
   }

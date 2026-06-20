@@ -12,13 +12,13 @@ const BADGE_LABEL: Record<MatchCardDisplayState, string> = {
 
 const BADGE_CLASS: Record<MatchCardDisplayState, string> = {
   [MatchCardDisplayState.Completed]: 'bg-surface-container-high',
-  [MatchCardDisplayState.Live]: 'bg-error',
+  [MatchCardDisplayState.Live]: 'bg-secondary-900',
   [MatchCardDisplayState.Scheduled]: 'bg-surface-container-high',
 };
 
 const BADGE_TEXT_CLASS: Record<MatchCardDisplayState, string> = {
   [MatchCardDisplayState.Completed]: 'text-on-surface-variant',
-  [MatchCardDisplayState.Live]: 'text-on-error',
+  [MatchCardDisplayState.Live]: 'text-text-inverse',
   [MatchCardDisplayState.Scheduled]: 'text-on-surface-variant',
 };
 

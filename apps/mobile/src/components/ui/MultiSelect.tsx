@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, Modal, Pressable, View } from 'react-native';
+import { colors } from '@/theme/colors';
 
 import {
   DEFAULT_PLACEHOLDER_COLOR,
@@ -10,8 +11,10 @@ import {
   INPUT_TEXT_STYLE,
   labelClassName,
   mergeFieldClassName,
+  applyFieldErrorBorder,
   type LabelVariant,
 } from './fieldStyles';
+import { FormErrorText } from './FormErrorText';
 import { Text } from './Text';
 import type { SelectOption } from './Select';
 
@@ -68,7 +71,7 @@ export function MultiSelect({
 
   let fieldClassName = mergeFieldClassName(undefined, { hasTrailingAccessory: true });
   if (error) {
-    fieldClassName = fieldClassName.replace(/\bborder-\[#F1F1F1\]/, 'border-error');
+    fieldClassName = applyFieldErrorBorder(fieldClassName);
   }
 
   const displayText =
@@ -111,7 +114,7 @@ export function MultiSelect({
       >
         <Text
           className={`${FIELD_VALUE_TEXT_CLASS} ${
-            selectedLabels.length > 0 ? 'text-[#1A1A1A]' : 'text-[#9AA0A6]'
+            selectedLabels.length > 0 ? 'text-text' : 'text-text-muted'
           }`}
           style={INPUT_TEXT_STYLE}
           numberOfLines={1}
@@ -134,7 +137,7 @@ export function MultiSelect({
             return (
               <View
                 key={value}
-                className="flex-row items-center gap-1 rounded-full border border-primary/30 bg-[#FDF1EA] px-3 py-1"
+                className="flex-row items-center gap-1 rounded-full border border-primary/30 bg-primary-50 px-3 py-1"
               >
                 <Text className="font-sans text-sm text-on-surface">{chipLabel}</Text>
                 <Pressable
@@ -153,7 +156,7 @@ export function MultiSelect({
 
       {error ? (
         <View className="mt-1 flex-row flex-wrap items-center gap-x-2">
-          <Text className="flex-1 font-sans text-sm text-error">{error}</Text>
+          <FormErrorText className="flex-1">{error}</FormErrorText>
           {onRetry ? (
             <Pressable onPress={onRetry} hitSlop={8} accessibilityRole="button">
               <Text className="font-sans-semibold text-sm text-primary">Retry</Text>
@@ -164,11 +167,11 @@ export function MultiSelect({
 
       <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
         <Pressable className="flex-1 justify-end bg-black/40" onPress={() => setOpen(false)}>
-          <Pressable className="max-h-[70%] rounded-t-xl bg-white px-4 pb-8 pt-4" onPress={() => {}}>
-            <View className="mb-3 h-1 w-10 self-center rounded-full bg-[#E5E5E5]" />
+          <Pressable className="max-h-[70%] rounded-t-xl bg-surface px-4 pb-8 pt-4" onPress={() => {}}>
+            <View className="mb-3 h-1 w-10 self-center rounded-full bg-stone-200" />
             <View className="mb-3 flex-row items-center justify-between">
               {label ? (
-                <Text className="font-sans-bold text-base text-[#1A1A1A]">{label}</Text>
+                <Text className="font-sans-bold text-base text-text">{label}</Text>
               ) : (
                 <View />
               )}
@@ -190,20 +193,20 @@ export function MultiSelect({
                   return (
                     <Pressable
                       className={`flex-row items-center gap-3 rounded-control px-4 py-3 ${
-                        checked ? 'bg-[#FDF1EA]' : ''
+                        checked ? 'bg-primary-50' : ''
                       }`}
                       onPress={() => toggleDraft(item.value)}
                     >
                       <View
                         className={`h-5 w-5 items-center justify-center rounded-md border ${
-                          checked ? 'border-primary bg-primary' : 'border-[#D1D1D1] bg-white'
+                          checked ? 'border-primary bg-primary' : 'border-stone-300 bg-surface'
                         }`}
                       >
-                        {checked ? <Ionicons name="checkmark" size={14} color="#ffffff" /> : null}
+                        {checked ? <Ionicons name="checkmark" size={14} color={colors.textInverse} /> : null}
                       </View>
                       <Text
                         className={`flex-1 font-sans text-base ${
-                          checked ? 'font-sans-semibold text-primary' : 'text-[#1A1A1A]'
+                          checked ? 'font-sans-semibold text-primary' : 'text-text'
                         }`}
                       >
                         {item.label}
@@ -213,7 +216,7 @@ export function MultiSelect({
                 }}
                 ListEmptyComponent={
                   <View className="items-center gap-3 py-6">
-                    <Text className="text-center font-sans text-sm text-[#9AA0A6]">
+                    <Text className="text-center font-sans text-sm text-text-muted">
                       {emptyMessage}
                     </Text>
                     {onRetry ? (

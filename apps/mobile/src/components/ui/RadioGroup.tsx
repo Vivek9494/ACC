@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { INPUT_SHADOW_STYLE, labelClassName, type LabelVariant } from './fieldStyles';
+import { FormErrorText } from './FormErrorText';
 import { Text } from './Text';
 
 export interface RadioOption<T extends string> {
@@ -46,16 +47,16 @@ export function RadioGroup<T extends string>({
               onPress={() => onChange(option.value)}
               accessibilityRole="radio"
               accessibilityState={{ selected }}
-              className={`min-w-0 flex-row items-center rounded-control border bg-white py-3 ${
+              className={`min-w-0 flex-row items-center rounded-control border bg-surface py-3 ${
                 horizontal ? 'flex-1 gap-2 px-3' : 'gap-3 px-4'
               } ${
-                !indicatorOnly && selected ? 'border-primary bg-[#FDF1EA]' : 'border-[#F1F1F1]'
+                !indicatorOnly && selected ? 'border-primary bg-primary-50' : 'border-border'
               }`}
               style={INPUT_SHADOW_STYLE}
             >
               <View
                 className={`h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
-                  selected ? 'border-primary' : 'border-[#D1D1D1]'
+                  selected ? 'border-primary' : 'border-stone-300'
                 }`}
               >
                 {selected ? <View className="h-2.5 w-2.5 rounded-full bg-primary" /> : null}
@@ -75,7 +76,7 @@ export function RadioGroup<T extends string>({
           );
         })}
       </View>
-      {error ? <Text className="font-sans text-sm text-error">{error}</Text> : null}
+      <FormErrorText>{error}</FormErrorText>
     </View>
   );
 }

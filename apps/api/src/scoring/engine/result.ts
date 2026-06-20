@@ -1,9 +1,17 @@
-import { InningsType, type InningsScorecard, type MatchResultView } from '@acc/types';
+import {
+  InningsType,
+  WICKETS_FOR_ALL_OUT,
+  WICKETS_FOR_SUPER_OVER_ALL_OUT,
+  type InningsScorecard,
+  type MatchResultView,
+} from '@acc/types';
 
 interface PairOutcome {
   decided: boolean;
   tie: boolean;
   winnerTeamId: string | null;
+  marginRuns: number | null;
+  marginWickets: number | null;
 }
 
 /**
@@ -11,20 +19,63 @@ interface PairOutcome {
  * Over's two innings). The chasing side wins the moment it passes the target;
  * the defending side wins if the chase closes short; an equal closed chase ties.
  */
-function evaluatePair(first?: InningsScorecard, second?: InningsScorecard): PairOutcome {
+function evaluatePair(
+  first?: InningsScorecard,
+  second?: InningsScorecard,
+  maxWickets = WICKETS_FOR_ALL_OUT,
+): PairOutcome {
+  const none: PairOutcome = {
+    decided: false,
+    tie: false,
+    winnerTeamId: null,
+    marginRuns: null,
+    marginWickets: null,
+  };
   if (!first || !second) {
-    return { decided: false, tie: false, winnerTeamId: null };
+    return none;
   }
   if (second.runs > first.runs) {
-    return { decided: true, tie: false, winnerTeamId: second.battingTeamId };
+    const marginWickets = Math.max(0, maxWickets - second.wickets);
+    return {
+      decided: true,
+      tie: false,
+      winnerTeamId: second.battingTeamId,
+      marginRuns: null,
+      marginWickets,
+    };
   }
   if (!second.closed) {
-    return { decided: false, tie: false, winnerTeamId: null };
+    return none;
   }
   if (second.runs < first.runs) {
-    return { decided: true, tie: false, winnerTeamId: first.battingTeamId };
+    return {
+      decided: true,
+      tie: false,
+      winnerTeamId: first.battingTeamId,
+      marginRuns: first.runs - second.runs,
+      marginWickets: null,
+    };
   }
-  return { decided: true, tie: true, winnerTeamId: null };
+  return {
+    decided: true,
+    tie: true,
+    winnerTeamId: null,
+    marginRuns: null,
+    marginWickets: null,
+  };
+}
+
+function toResultView(res: PairOutcome, note: string | null): MatchResultView {
+  return {
+    decided: res.decided,
+    isTie: res.tie,
+    isNoResult: false,
+    winningTeamId: res.winnerTeamId,
+    marginRuns: res.marginRuns,
+    marginWickets: res.marginWickets,
+    superOverRequired: false,
+    note,
+  };
 }
 
 /**
@@ -45,6 +96,8 @@ export function deriveMatchResult(innings: InningsScorecard[]): MatchResultView 
     isTie: false,
     isNoResult: false,
     winningTeamId: null,
+    marginRuns: null,
+    marginWickets: null,
     superOverRequired: false,
     note: null,
   };
@@ -64,11 +117,13 @@ export function deriveMatchResult(innings: InningsScorecard[]): MatchResultView 
         isTie: false,
         isNoResult: false,
         winningTeamId: null,
+        marginRuns: null,
+        marginWickets: null,
         superOverRequired: true,
         note: 'Scores level — Super Over required',
       };
     }
-    res = evaluatePair(first, second);
+    res = evaluatePair(first, second, WICKETS_FOR_SUPER_OVER_ALL_OUT);
     if (!res.decided && !res.tie) {
       return undecided;
     }
@@ -76,14 +131,7 @@ export function deriveMatchResult(innings: InningsScorecard[]): MatchResultView 
   }
 
   if (res.decided) {
-    return {
-      decided: true,
-      isTie: false,
-      isNoResult: false,
-      winningTeamId: res.winnerTeamId,
-      superOverRequired: false,
-      note: idx > 0 ? 'Decided by Super Over' : null,
-    };
+    return toResultView(res, idx > 0 ? 'Decided by Super Over' : null);
   }
   return undecided;
 }

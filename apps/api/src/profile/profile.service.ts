@@ -27,7 +27,7 @@ import { randomInt } from 'node:crypto';
 import { AuditService } from '../audit/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
-import { SMS_SENDER, type SmsSender } from '../sms/sms-sender';
+import { SMS_PROVIDER, type SmsProvider } from '../sms/sms-provider';
 import { MediaService } from '../media/media.service';
 import type { UpdateProfileDto } from './dto/update-profile.dto';
 import {
@@ -50,7 +50,7 @@ export class ProfileService {
     private readonly redis: RedisService,
     private readonly media: MediaService,
     private readonly audit: AuditService,
-    @Inject(SMS_SENDER) private readonly sms: SmsSender,
+    @Inject(SMS_PROVIDER) private readonly sms: SmsProvider,
   ) {}
 
   async getProfile(userId: string): Promise<ProfileDetail> {
@@ -96,10 +96,7 @@ export class ProfileService {
     const otp = this.generateOtp();
     await this.redis.setWithTtl(profileMobileOtpPendingKey(userId), normalized, OTP_TTL_SECONDS);
     await this.redis.setWithTtl(profileMobileOtpCodeKey(userId), otp, OTP_TTL_SECONDS);
-    await this.sms.sendSms(
-      normalized,
-      `Your ACC profile verification code is ${otp}. It expires in 5 minutes.`,
-    );
+    await this.sms.sendOtp(normalized, otp);
   }
 
   async updateProfile(userId: string, dto: UpdateProfileDto): Promise<ProfileDetail> {

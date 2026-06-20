@@ -28,7 +28,7 @@ export function ScheduleFormatFlowPlaceholder({
   const label = MATCH_SCHEDULING_FORMAT_LABELS[schedulingFormat];
 
   return (
-    <SafeAreaView className="flex-1 bg-surface">
+    <SafeAreaView className="flex-1 bg-background">
       <View className="flex-row items-center gap-3 px-4 py-3">
         <Pressable
           onPress={() => router.back()}

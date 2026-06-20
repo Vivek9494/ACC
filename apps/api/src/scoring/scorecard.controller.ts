@@ -1,6 +1,7 @@
 import {
   type AuthUser,
   Permission,
+  type ManOfMatchEligibilityView,
   type ScorecardConfirmationView,
 } from '@acc/types';
 import {
@@ -65,6 +66,17 @@ export class ScorecardController {
     @Body() dto: SelectManOfMatchDto,
   ): Promise<ScorecardConfirmationView> {
     return this.confirmation.selectManOfMatch(user, matchId, dto.userId);
+  }
+
+  /** Whether the authenticated user may award Man of the Match on this match (§13.3). */
+  @Get('man-of-the-match/eligibility')
+  @RequirePermission(Permission.SELECT_MAN_OF_MATCH)
+  @UseGuards(JwtAuthGuard, PermissionGuard)
+  manOfMatchEligibility(
+    @CurrentUser() user: AuthUser,
+    @Param('matchId') matchId: string,
+  ): Promise<ManOfMatchEligibilityView> {
+    return this.confirmation.manOfMatchEligibility(user, matchId);
   }
 
   /** §16: public, guest-accessible scorecard export for a completed match. */

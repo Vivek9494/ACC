@@ -4,15 +4,15 @@ import type { RegistrationStatusIndicatorVariant } from '../../lib/tournament-re
 import { Text } from '../ui/Text';
 
 const VARIANT_CONTAINER: Record<RegistrationStatusIndicatorVariant, string> = {
-  waitlist: 'bg-[#FFAB4D]',
-  confirmed: 'bg-[#16a34a]',
-  declined: 'border border-[#c1121f]/25 bg-surface-container-high',
+  waitlist: 'bg-stone-200',
+  confirmed: 'bg-primary',
+  declined: 'border border-secondary-700 bg-surface-muted',
 };
 
 const VARIANT_TEXT: Record<RegistrationStatusIndicatorVariant, string> = {
-  waitlist: 'text-on-primary',
-  confirmed: 'text-white',
-  declined: 'text-[#c1121f]',
+  waitlist: 'text-stone-700',
+  confirmed: 'text-text-inverse',
+  declined: 'text-secondary-900',
 };
 
 export interface RegistrationStatusIndicatorProps {

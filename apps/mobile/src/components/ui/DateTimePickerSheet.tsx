@@ -40,7 +40,7 @@ export function DateTimePickerSheet({
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onCancel}>
       <Pressable className="flex-1 justify-end bg-black/40" onPress={onCancel}>
-        <Pressable className="rounded-t-xl bg-white" onPress={() => {}}>
+        <Pressable className="rounded-t-xl bg-surface" onPress={() => {}}>
           <View className="flex-row items-center justify-between border-b border-outline-variant/20 px-4 py-3">
             <Pressable onPress={onCancel} hitSlop={8} accessibilityRole="button">
               <Text className="font-sans text-base text-on-surface-variant">Cancel</Text>

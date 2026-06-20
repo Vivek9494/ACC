@@ -15,6 +15,9 @@ import {
   type ChangePasswordRequest,
   type ChangePasswordResponse,
   type AdminOverview,
+  type AdminUserDetail,
+  type AdminUsersPage,
+  type ListAdminUsersParams,
   type CaptainDashboard,
   type CenterSevakDashboard,
   type ClubManagerDashboard,
@@ -25,8 +28,14 @@ import {
   type UpdateProfileRequest,
   type UploadProfilePhotoResponse,
   type UploadTournamentPosterResponse,
+  type AddExternalBatsmanRequest,
+  type AddExternalBowlerRequest,
   type AssignScorerRequest,
   type AvailabilitySummary,
+  type BatsmanPickerResponse,
+  type BowlerPickerResponse,
+  type FielderPickerResponse,
+  BatsmanPickerRole,
   type CenterDetail,
   type CenterSummary,
   type CloneSuggestion,
@@ -35,8 +44,11 @@ import {
   type CreateMatchRequest,
   type CreateProvinceRequest,
   type CreateGroupRequest,
+  type AssignTeamRolesRequest,
+  type AssignTeamRolesResponse,
   type CreateTeamRequest,
   type CreateTournamentRequest,
+  type ExternalPlayerView,
   type ForgotPasswordRequest,
   type GroupSummary,
   type HandoverScorerRequest,
@@ -47,6 +59,21 @@ import {
   type MatchSchedulingFormat,
   type MatchState,
   type MatchListItem,
+  type MyMatchesResponse,
+  type ConfirmPollPlayingXiRequest,
+  type DesignatePenaltyServeRequest,
+  type LateArrivalPenaltyActionResponse,
+  type PlayingXiNoShowRecoveryRequest,
+  type PlayingXiSwitchRequest,
+  type ParticipationPollCardView,
+  type ParticipationPollTallyView,
+  type PollPlayingXiSelectionView,
+  type SubmitParticipationPollVoteRequest,
+  type AttendanceMonitoringView,
+  type AutoAttendancePunchRequest,
+  type AutoAttendancePunchResponse,
+  type PunchTimeAttendanceView,
+  type SetAttendancePunchRequest,
   type PlaceDetails,
   type PlaceSuggestion,
   type ProvinceDetail,
@@ -56,12 +83,15 @@ import {
   type StartMatchSetupRequest,
   type RefreshRequest,
   type ReverseGeocodeResult,
+  type ManOfMatchEligibilityView,
   type ScorecardConfirmationView,
   type ScorecardResponse,
   type SelectManOfMatchRequest,
   type SelectMatchSchedulingFormatRequest,
   type SetDlsTargetRequest,
+  type SetInningsParticipantsRequest,
   type StartInningsRequest,
+  type UndoDeliveryRequest,
   type UpdateOversAllottedRequest,
   type RegistrationDetail,
   type RegistrationFieldDefinition,
@@ -71,12 +101,24 @@ import {
   type RegistrationSummary,
   type RegistrationVerificationQueue,
   type ResetPasswordRequest,
+  type VerifyResetOtpRequest,
+  type VerifyResetOtpResponse,
   type SignupRequest,
   type SquadCandidate,
   type SubmitRegistrationRequest,
+  type TeamDetailView,
+  type TournamentPlayerProfileView,
   type TeamSummary,
   type TournamentFeeEntry,
   type TournamentFeesTracker,
+  type SetRegistrationFavouriteResponse,
+  type TournamentFavouritePlayersView,
+  type VerifiedRegisteredPlayersView,
+  type PlayerSkillVideoCompleteUploadRequest,
+  type PlayerSkillVideoPlaybackView,
+  type PlayerSkillVideoSummary,
+  type PlayerSkillVideoUploadSessionRequest,
+  type PlayerSkillVideoUploadSessionResponse,
   type TournamentDetail,
   type TournamentLeaderboard,
   type TournamentStandings,
@@ -135,6 +177,14 @@ let authToken: string | null = null;
 /** Set (or clear) the JWT used for subsequent requests. */
 export function setAuthToken(token: string | null): void {
   authToken = token;
+}
+
+export function getApiAuthToken(): string | null {
+  return authToken;
+}
+
+export function getApiBaseUrl(): string {
+  return API_BASE_URL;
 }
 
 type UnauthorizedHandler = () => void;
@@ -212,6 +262,7 @@ const AUTH_NO_RETRY_PREFIXES = [
   '/auth/signup',
   '/auth/refresh',
   '/auth/forgot-password',
+  '/auth/verify-reset-otp',
   '/auth/reset-password',
   '/auth/change-password',
 ];
@@ -400,6 +451,25 @@ export function getAdminOverview(): Promise<AdminOverview> {
   return apiFetch<AdminOverview>('/admin/overview');
 }
 
+export function listAdminUsers(params: ListAdminUsersParams = {}): Promise<AdminUsersPage> {
+  const qs = new URLSearchParams();
+  if (params.q?.trim()) {
+    qs.set('q', params.q.trim());
+  }
+  if (params.cursor) {
+    qs.set('cursor', params.cursor);
+  }
+  if (params.limit != null) {
+    qs.set('limit', String(params.limit));
+  }
+  const query = qs.toString();
+  return apiFetch<AdminUsersPage>(`/admin/users${query ? `?${query}` : ''}`);
+}
+
+export function getAdminUser(userId: string): Promise<AdminUserDetail> {
+  return apiFetch<AdminUserDetail>(`/admin/users/${encodeURIComponent(userId)}`);
+}
+
 export function getClubManagerDashboard(): Promise<ClubManagerDashboard> {
   return apiFetch<ClubManagerDashboard>('/club-manager/dashboard');
 }
@@ -414,6 +484,137 @@ export function getCenterSevakDashboard(): Promise<CenterSevakDashboard> {
 
 export function getPlayerDashboard(): Promise<PlayerDashboard> {
   return apiFetch<PlayerDashboard>('/player/dashboard');
+}
+
+/** Matches where the logged-in user is in the Playing XI (or rostered pre-lock). */
+export function getMyMatches(): Promise<MyMatchesResponse> {
+  return apiFetch<MyMatchesResponse>('/my-matches');
+}
+
+export function submitParticipationPollVote(
+  pollId: string,
+  body: SubmitParticipationPollVoteRequest,
+): Promise<ParticipationPollCardView> {
+  return apiFetch<ParticipationPollCardView>(`/participation-polls/${pollId}/vote`, {
+    method: 'POST',
+    body,
+  });
+}
+
+export function getParticipationPollTally(pollId: string): Promise<ParticipationPollTallyView> {
+  return apiFetch<ParticipationPollTallyView>(`/participation-polls/${pollId}/tally`);
+}
+
+export function getPollPlayingXiSelection(pollId: string): Promise<PollPlayingXiSelectionView> {
+  return apiFetch<PollPlayingXiSelectionView>(`/participation-polls/${pollId}/playing-xi`);
+}
+
+export function confirmPollPlayingXi(
+  pollId: string,
+  body: ConfirmPollPlayingXiRequest,
+): Promise<PollPlayingXiSelectionView> {
+  return apiFetch<PollPlayingXiSelectionView>(`/participation-polls/${pollId}/playing-xi`, {
+    method: 'POST',
+    body,
+  });
+}
+
+export function designatePenaltyServe(
+  teamId: string,
+  penaltyId: string,
+  body: DesignatePenaltyServeRequest,
+): Promise<LateArrivalPenaltyActionResponse> {
+  return apiFetch<LateArrivalPenaltyActionResponse>(
+    `/teams/${teamId}/late-arrival-penalties/${penaltyId}/designate`,
+    { method: 'POST', body },
+  );
+}
+
+export function undesignatePenaltyServe(
+  teamId: string,
+  penaltyId: string,
+): Promise<LateArrivalPenaltyActionResponse> {
+  return apiFetch<LateArrivalPenaltyActionResponse>(
+    `/teams/${teamId}/late-arrival-penalties/${penaltyId}/undesignate`,
+    { method: 'POST' },
+  );
+}
+
+export function applyPlayingXiNoShowRecovery(
+  pollId: string,
+  body: PlayingXiNoShowRecoveryRequest,
+): Promise<PollPlayingXiSelectionView> {
+  return apiFetch<PollPlayingXiSelectionView>(
+    `/participation-polls/${pollId}/playing-xi/no-show-recovery`,
+    { method: 'POST', body },
+  );
+}
+
+export function applyPlayingXiSwitch(
+  pollId: string,
+  body: PlayingXiSwitchRequest,
+): Promise<PollPlayingXiSelectionView> {
+  return apiFetch<PollPlayingXiSelectionView>(
+    `/participation-polls/${pollId}/playing-xi/switch`,
+    { method: 'POST', body },
+  );
+}
+
+export function getAttendanceMonitoring(): Promise<AttendanceMonitoringView> {
+  return apiFetch<AttendanceMonitoringView>('/attendance/monitoring');
+}
+
+export function autoAttendancePunch(
+  matchId: string,
+  body: AutoAttendancePunchRequest,
+): Promise<AutoAttendancePunchResponse> {
+  return apiFetch<AutoAttendancePunchResponse>(`/matches/${matchId}/attendance/auto-punch`, {
+    method: 'POST',
+    body,
+  });
+}
+
+export function getPunchTimeAttendance(
+  matchId: string,
+  teamId: string,
+): Promise<PunchTimeAttendanceView> {
+  return apiFetch<PunchTimeAttendanceView>(
+    `/matches/${matchId}/punch-time?teamId=${encodeURIComponent(teamId)}`,
+  );
+}
+
+export function setAttendancePunch(
+  matchId: string,
+  userId: string,
+  teamId: string,
+  body: SetAttendancePunchRequest,
+): Promise<PunchTimeAttendanceView> {
+  return apiFetch<PunchTimeAttendanceView>(
+    `/matches/${matchId}/attendance/${userId}/punch?teamId=${encodeURIComponent(teamId)}`,
+    { method: 'PUT', body },
+  );
+}
+
+export function revokeAttendancePunch(
+  matchId: string,
+  userId: string,
+  teamId: string,
+): Promise<PunchTimeAttendanceView> {
+  return apiFetch<PunchTimeAttendanceView>(
+    `/matches/${matchId}/attendance/${userId}/punch?teamId=${encodeURIComponent(teamId)}`,
+    { method: 'DELETE' },
+  );
+}
+
+export function verifyLateAttendancePunch(
+  matchId: string,
+  userId: string,
+  teamId: string,
+): Promise<PunchTimeAttendanceView> {
+  return apiFetch<PunchTimeAttendanceView>(
+    `/matches/${matchId}/attendance/${userId}/verify?teamId=${encodeURIComponent(teamId)}`,
+    { method: 'POST' },
+  );
 }
 
 export function getGuestDashboard(): Promise<GuestDashboard> {
@@ -447,6 +648,10 @@ export function getMe(): Promise<AuthUser> {
 
 export function forgotPassword(body: ForgotPasswordRequest): Promise<{ success: boolean }> {
   return apiFetch<{ success: boolean }>('/auth/forgot-password', { method: 'POST', body });
+}
+
+export function verifyResetOtp(body: VerifyResetOtpRequest): Promise<VerifyResetOtpResponse> {
+  return apiFetch<VerifyResetOtpResponse>('/auth/verify-reset-otp', { method: 'POST', body });
 }
 
 export function resetPassword(body: ResetPasswordRequest): Promise<{ success: boolean }> {
@@ -592,6 +797,30 @@ export function getTournamentEditForm(id: string): Promise<TournamentEditFormDat
 
 export function listTeams(tournamentId: string): Promise<TeamSummary[]> {
   return apiFetchPublic<TeamSummary[]>(`/tournaments/${tournamentId}/teams`);
+}
+
+export function getTeamDetail(tournamentId: string, teamId: string): Promise<TeamDetailView> {
+  return apiFetch<TeamDetailView>(`/tournaments/${tournamentId}/teams/${teamId}`);
+}
+
+/** Club Manager assigns Captain / Vice-Captain for a team. */
+export function assignTeamRoles(
+  tournamentId: string,
+  teamId: string,
+  body: AssignTeamRolesRequest,
+): Promise<AssignTeamRolesResponse> {
+  return apiFetch<AssignTeamRolesResponse>(`/tournaments/${tournamentId}/teams/${teamId}/roles`, {
+    method: 'PATCH',
+    body,
+  });
+}
+
+/** Captain / Club Manager tournament player profile (Team Detail → View Profile). */
+export function getTournamentPlayerProfile(
+  tournamentId: string,
+  userId: string,
+): Promise<TournamentPlayerProfileView> {
+  return apiFetch<TournamentPlayerProfileView>(`/tournaments/${tournamentId}/players/${userId}`);
 }
 
 export function createTeam(tournamentId: string, body: CreateTeamRequest): Promise<TeamSummary> {
@@ -763,6 +992,86 @@ export function listRegistrations(
   );
 }
 
+/** Verified registrants (all centers) — Captain / VC / Club Manager after verification (tennis). */
+export function listVerifiedRegisteredPlayers(
+  tournamentId: string,
+  query: ListRegistrationsQuery = {},
+): Promise<VerifiedRegisteredPlayersView> {
+  const params = new URLSearchParams();
+  if (query.sort) params.set('sort', query.sort);
+  const qs = params.toString();
+  return apiFetch<VerifiedRegisteredPlayersView>(
+    `/tournaments/${tournamentId}/registrations/verified${qs ? `?${qs}` : ''}`,
+  );
+}
+
+/** Toggle a verified registrant on the team's shared favourites shortlist. */
+export function setRegistrationFavourite(
+  tournamentId: string,
+  userId: string,
+  favourited: boolean,
+): Promise<SetRegistrationFavouriteResponse> {
+  return apiFetch<SetRegistrationFavouriteResponse>(
+    `/tournaments/${tournamentId}/favourite-players/${userId}`,
+    { method: 'PUT', body: { favourited } },
+  );
+}
+
+/** Per-team favourites shortlist (Captain + Vice-Captain). */
+export function getTournamentFavouritePlayers(
+  tournamentId: string,
+): Promise<TournamentFavouritePlayersView> {
+  return apiFetch<TournamentFavouritePlayersView>(
+    `/tournaments/${tournamentId}/favourite-players`,
+  );
+}
+
+/** §19: the logged-in player's skill video for a tournament. */
+export function getMyPlayerSkillVideo(
+  tournamentId: string,
+): Promise<PlayerSkillVideoSummary | null> {
+  return apiFetch<PlayerSkillVideoSummary | null>(`/tournaments/${tournamentId}/skill-videos/me`);
+}
+
+/** @deprecated Use {@link getMyPlayerSkillVideo}. */
+export const getMyPlayerVideo = getMyPlayerSkillVideo;
+
+/** Scouting playback URL for a player's tournament skill video (Captain / VC / Club Manager). */
+export function getPlayerSkillVideoPlayback(
+  tournamentId: string,
+  userId: string,
+): Promise<PlayerSkillVideoPlaybackView> {
+  return apiFetch<PlayerSkillVideoPlaybackView>(
+    `/tournaments/${tournamentId}/skill-videos/${userId}/playback`,
+  );
+}
+
+export function createPlayerSkillVideoUploadSession(
+  tournamentId: string,
+  body: PlayerSkillVideoUploadSessionRequest,
+): Promise<PlayerSkillVideoUploadSessionResponse> {
+  return apiFetch<PlayerSkillVideoUploadSessionResponse>(
+    `/tournaments/${tournamentId}/skill-videos/upload-session`,
+    { method: 'POST', body },
+  );
+}
+
+/** @deprecated Use {@link createPlayerSkillVideoUploadSession}. */
+export const createPlayerVideoUploadSession = createPlayerSkillVideoUploadSession;
+
+export function completePlayerSkillVideoUpload(
+  tournamentId: string,
+  body: PlayerSkillVideoCompleteUploadRequest,
+): Promise<PlayerSkillVideoSummary> {
+  return apiFetch<PlayerSkillVideoSummary>(`/tournaments/${tournamentId}/skill-videos/complete`, {
+    method: 'POST',
+    body,
+  });
+}
+
+/** @deprecated Use {@link completePlayerSkillVideoUpload}. */
+export const completePlayerVideoUpload = completePlayerSkillVideoUpload;
+
 export function approveRegistration(
   tournamentId: string,
   registrationId: string,
@@ -880,6 +1189,11 @@ export function recordToss(matchId: string, body: RecordTossRequest): Promise<Ma
   return apiFetch<MatchDetail>(`/matches/${matchId}/toss`, { method: 'POST', body });
 }
 
+/** §11.2: scorer Match Setup — toss capture, derive sides, go Live, open innings 1. */
+export function startScoring(matchId: string, body: RecordTossRequest): Promise<MatchDetail> {
+  return apiFetch<MatchDetail>(`/matches/${matchId}/start-scoring`, { method: 'POST', body });
+}
+
 /** §11: toss + opening players, transition to Live, and open the first innings. */
 export function startMatchSetup(
   matchId: string,
@@ -918,6 +1232,76 @@ export function getScorecard(matchId: string): Promise<ScorecardResponse> {
   return apiFetchPublic<ScorecardResponse>(`/matches/${matchId}/scorecard`);
 }
 
+export interface GetBatsmanPickerOptions {
+  role: BatsmanPickerRole;
+  otherSlotUserId?: string | null;
+}
+
+/** State-aware Select Batsman picker (derived innings + squad profiles). */
+export function getBatsmanPicker(
+  matchId: string,
+  inningsId: string,
+  options: GetBatsmanPickerOptions,
+): Promise<BatsmanPickerResponse> {
+  const params = new URLSearchParams({ role: options.role });
+  if (options.otherSlotUserId) {
+    params.set('otherSlotUserId', options.otherSlotUserId);
+  }
+  return apiFetch<BatsmanPickerResponse>(
+    `/matches/${matchId}/innings/${inningsId}/batsman-picker?${params.toString()}`,
+  );
+}
+
+/** §9.5: add a name-only batter for the external opponent during live scoring. */
+export function addExternalBatsman(
+  matchId: string,
+  inningsId: string,
+  body: AddExternalBatsmanRequest,
+): Promise<ExternalPlayerView> {
+  return apiFetch<ExternalPlayerView>(
+    `/matches/${matchId}/innings/${inningsId}/external-batsmen`,
+    { method: 'POST', body },
+  );
+}
+
+/** State-aware Select Bowler picker (derived innings + squad profiles). */
+export function getBowlerPicker(
+  matchId: string,
+  inningsId: string,
+): Promise<BowlerPickerResponse> {
+  return apiFetch<BowlerPickerResponse>(
+    `/matches/${matchId}/innings/${inningsId}/bowler-picker`,
+  );
+}
+
+/** Bowling squad list for caught / run-out / stumped fielder selection. */
+export function getFielderPicker(
+  matchId: string,
+  inningsId: string,
+  options: { excludeBowler?: boolean } = {},
+): Promise<FielderPickerResponse> {
+  const params = new URLSearchParams();
+  if (options.excludeBowler) {
+    params.set('excludeBowler', 'true');
+  }
+  const qs = params.toString();
+  return apiFetch<FielderPickerResponse>(
+    `/matches/${matchId}/innings/${inningsId}/fielder-picker${qs ? `?${qs}` : ''}`,
+  );
+}
+
+/** §9.5: add a name-only bowler for the external opponent during live scoring. */
+export function addExternalBowler(
+  matchId: string,
+  inningsId: string,
+  body: AddExternalBowlerRequest,
+): Promise<ExternalPlayerView> {
+  return apiFetch<ExternalPlayerView>(
+    `/matches/${matchId}/innings/${inningsId}/external-bowlers`,
+    { method: 'POST', body },
+  );
+}
+
 /** §14: open a new innings (normal or Super Over). */
 export function startInnings(
   matchId: string,
@@ -936,6 +1320,18 @@ export function recordDelivery(
     method: 'POST',
     body,
   });
+}
+
+/** Undo the most recently appended delivery (re-derive all state). */
+export function undoLastDelivery(
+  matchId: string,
+  inningsId: string,
+  body: UndoDeliveryRequest,
+): Promise<ScorecardResponse> {
+  return apiFetch<ScorecardResponse>(
+    `/matches/${matchId}/innings/${inningsId}/deliveries/undo`,
+    { method: 'POST', body },
+  );
 }
 
 /** §12.2: edit a ball within the scorer edit window. */
@@ -965,6 +1361,30 @@ export function setOversAllotted(
   });
 }
 
+/** Manually end the current innings and run the innings-transition flow (§12.2). */
+export function endInnings(
+  matchId: string,
+  inningsId: string,
+  body: import('@acc/types').EndInningsRequest,
+): Promise<ScorecardResponse> {
+  return apiFetch<ScorecardResponse>(`/matches/${matchId}/innings/${inningsId}/end`, {
+    method: 'POST',
+    body,
+  });
+}
+
+/** Persist at-crease batters and/or the current-over bowler before the next delivery. */
+export function setInningsParticipants(
+  matchId: string,
+  inningsId: string,
+  body: SetInningsParticipantsRequest,
+): Promise<ScorecardResponse> {
+  return apiFetch<ScorecardResponse>(`/matches/${matchId}/innings/${inningsId}/participants`, {
+    method: 'PATCH',
+    body,
+  });
+}
+
 // --- Scorecard confirmation & post-match (§13, §16) ------------------------
 
 /** §13.1: confirmation status (also triggers the lazy auto-confirm safety-net). */
@@ -981,6 +1401,11 @@ export function confirmScorecard(
     method: 'POST',
     body,
   });
+}
+
+/** Whether the current user may award Man of the Match on a completed match (§13.3). */
+export function getManOfMatchEligibility(matchId: string): Promise<ManOfMatchEligibilityView> {
+  return apiFetch<ManOfMatchEligibilityView>(`/matches/${matchId}/man-of-the-match/eligibility`);
 }
 
 /** §13.3: Captain selects the Man of the Match. */

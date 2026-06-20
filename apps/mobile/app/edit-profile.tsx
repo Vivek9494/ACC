@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { colors } from '@/theme/colors';
 import {
   CANADIAN_POSTAL_CODE_DISPLAY_MAX_LENGTH,
   JERSEY_SIZE_OPTIONS,
@@ -293,7 +294,7 @@ export default function EditProfileScreen(): React.ReactElement {
 
   if (formLoading) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-surface">
+      <SafeAreaView className="flex-1 items-center justify-center bg-background">
         <ActivityIndicator color={FIELD_ORANGE} />
         <Text className="mt-3 font-sans text-sm text-on-surface-variant">Loading profile…</Text>
       </SafeAreaView>
@@ -302,7 +303,7 @@ export default function EditProfileScreen(): React.ReactElement {
 
   if (loadError) {
     return (
-      <SafeAreaView className="flex-1 bg-surface px-6">
+      <SafeAreaView className="flex-1 bg-background px-6">
         <View className="flex-1 items-center justify-center gap-4">
           <Text className="text-center font-sans text-base text-on-surface-variant">{loadError}</Text>
           <Button onPress={() => void loadProfile()} label="Retry" className="h-12 px-8" />
@@ -312,7 +313,7 @@ export default function EditProfileScreen(): React.ReactElement {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-surface" edges={['top']}>
+    <SafeAreaView className="flex-1 bg-background" edges={['top']}>
       <View className="flex-row items-center justify-between px-4 py-3">
         <View className="min-w-0 flex-1 flex-row items-center gap-3">
           <Pressable
@@ -563,8 +564,8 @@ export default function EditProfileScreen(): React.ReactElement {
         </View>
 
         {formError ? (
-          <View className="mt-6 rounded-lg bg-error-container px-4 py-3">
-            <Text className="font-sans text-sm text-on-error-container">{formError}</Text>
+          <View className="mt-6 rounded-lg bg-primary-50 px-4 py-3">
+            <Text className="font-sans text-sm text-primary">{formError}</Text>
           </View>
         ) : null}
 
@@ -574,7 +575,7 @@ export default function EditProfileScreen(): React.ReactElement {
           className="mt-8 h-14"
         >
           {submitting ? (
-            <ActivityIndicator color="#ffffff" />
+            <ActivityIndicator color={colors.textInverse} />
           ) : (
             <Text className="font-sans-medium text-sm uppercase tracking-wider text-on-primary">
               Update Profile

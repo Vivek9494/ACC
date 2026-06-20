@@ -18,8 +18,11 @@ function sampleState(matchId = 'match-1'): ScorecardResponse {
       isNoResult: false,
       winningTeamId: null,
       superOverRequired: false,
+      marginRuns: null,
+      marginWickets: null,
       note: null,
     },
+    display: { players: {}, innings: [] },
   };
 }
 

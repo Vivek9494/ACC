@@ -202,7 +202,7 @@ export function LiveScorecard({ state, nameOf, teamNameOf }: Props): React.React
                       key={`${over.overNumber}-${i}`}
                       className={`h-7 min-w-7 items-center justify-center rounded-full px-2 ${
                         code === 'W'
-                          ? 'bg-[#c1121f]'
+                          ? 'bg-secondary-900'
                           : code === '4' || code === '6'
                             ? 'bg-primary'
                             : 'bg-surface-container-lowest border border-outline-variant'
@@ -254,8 +254,8 @@ export function LiveScorecard({ state, nameOf, teamNameOf }: Props): React.React
       </Button>
       {showTimeline ? (
         <View className="gap-1 rounded-xl border border-outline-variant bg-surface-container-lowest p-4">
-          {[...inn.timeline].reverse().map((t) => (
-            <View key={t.sequence} className="flex-row items-center gap-3 py-1">
+          {[...inn.timeline].reverse().map((t, index) => (
+            <View key={`${t.sequence}-${index}`} className="flex-row items-center gap-3 py-1">
               <Text className="w-12 font-sans-medium text-[11px] text-on-surface-variant">
                 {t.label || '—'}
               </Text>

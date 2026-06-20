@@ -57,12 +57,12 @@ export default function NewCenterScreen(): React.ReactElement {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-surface" edges={['top']}>
-      <View className="flex-row items-center gap-3 border-b border-[#F1F1F1] px-4 py-3">
+    <SafeAreaView className="flex-1 bg-background" edges={['top']}>
+      <View className="flex-row items-center gap-3 border-b border-border px-4 py-3">
         <Pressable onPress={() => router.back()} className="h-10 w-10 items-center justify-center">
           <Ionicons name="arrow-back" size={24} color={FIELD_ORANGE} />
         </Pressable>
-        <Text className="font-sans-bold text-xl text-[#1A1A1A]">Add Center</Text>
+        <Text className="font-sans-bold text-xl text-text">Add Center</Text>
       </View>
 
       {loading ? (
@@ -83,7 +83,7 @@ export default function NewCenterScreen(): React.ReactElement {
             options={provinceOptions}
             onChange={setProvinceId}
           />
-          {error ? <Text className="font-sans text-sm text-[#c1121f]">{error}</Text> : null}
+          {error ? <Text className="font-sans text-sm text-primary">{error}</Text> : null}
           <Button
             label={submitting ? 'Saving…' : 'Save Center'}
             className="h-14"

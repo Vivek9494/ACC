@@ -17,21 +17,22 @@ interface OtpInputProps {
 export function OtpInput({
   value,
   onChange,
-  length = 6,
+  length = 4,
   autoFocus = false,
 }: OtpInputProps): React.ReactElement {
   const inputRef = useRef<RNTextInput>(null);
 
   return (
     <Pressable onPress={() => inputRef.current?.focus()}>
-      <View className="flex-row justify-between">
+      <View className="flex-row justify-center gap-3">
         {Array.from({ length }).map((_, i) => {
           const active = value.length === i;
+          const filled = value.length > i;
           return (
             <View
               key={i}
-              className={`h-14 w-12 items-center justify-center rounded-control border bg-surface-container-lowest ${
-                active ? 'border-primary' : 'border-outline-variant'
+              className={`h-16 w-14 items-center justify-center rounded-xl border bg-surface-container-low ${
+                active ? 'border-primary' : filled ? 'border-outline-variant' : 'border-outline-variant/60'
               }`}
             >
               <Text className="font-sans-bold text-2xl text-on-surface">{value[i] ?? ''}</Text>
@@ -46,6 +47,8 @@ export function OtpInput({
         keyboardType="number-pad"
         maxLength={length}
         autoFocus={autoFocus}
+        textContentType="oneTimeCode"
+        autoComplete="sms-otp"
         className="absolute h-full w-full opacity-0"
       />
     </Pressable>

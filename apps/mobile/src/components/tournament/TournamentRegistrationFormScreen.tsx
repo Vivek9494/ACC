@@ -1,5 +1,6 @@
 import {
   BattingStyle,
+  BallType,
   BATTING_POSITION_OPTIONS,
   BATTING_STYLE_LABELS,
   BOWLING_TYPE_OPTIONS,
@@ -8,9 +9,10 @@ import {
   PlayerRegistrationRole,
   PLAYER_REGISTRATION_ROLE_LABELS,
   REGISTRATION_DECLINED_MESSAGE,
-  REGISTRATION_FIELDING_RATING_OPTIONS,
-  REGISTRATION_SKILL_RATING_OPTIONS,
+  REGISTRATION_PLAYER_TYPE_OPTIONS,
+  REGISTRATION_RATING_OPTIONS,
   REGISTRATION_STATUS_LABELS,
+  RegistrationPlayerType,
   RegistrationStatus,
   type RegistrationDetail,
   type RegistrationFieldDefinition,
@@ -55,7 +57,7 @@ function FormSection({
 }): React.ReactElement {
   return (
     <View
-      className="gap-4 rounded-control border border-outline-variant bg-white p-4"
+      className="gap-4 rounded-control border border-outline-variant bg-surface p-4"
       style={INPUT_SHADOW_STYLE}
     >
       <Text className="font-sans-semibold text-xs uppercase tracking-wider text-primary">
@@ -107,6 +109,7 @@ export function TournamentRegistrationFormScreen({
   const [bowlingType, setBowlingType] = useState<string | null>(null);
   const [fieldingRating, setFieldingRating] = useState<string | null>(null);
   const [fieldingPosition, setFieldingPosition] = useState<string | null>(null);
+  const [playerType, setPlayerType] = useState<RegistrationPlayerType | null>(null);
   const [custom, setCustom] = useState<Record<string, string | boolean>>({});
 
   useEffect(() => {
@@ -155,6 +158,7 @@ export function TournamentRegistrationFormScreen({
             registration.fieldingRating === null ? null : String(registration.fieldingRating),
           );
           setFieldingPosition(registration.fieldingPosition);
+          setPlayerType(registration.playerType);
         }
         setError(null);
       })
@@ -173,6 +177,7 @@ export function TournamentRegistrationFormScreen({
     };
   }, [tournamentId, isLateOnBehalf, prefilledFirstName, prefilledLastName, prefilledCenterId]);
 
+  const isLeatherBall = tournament?.ballType === BallType.Leather;
   const windowOpen = tournament ? isTournamentRegistrationOpen(tournament) : false;
   const canSubmit = isLateOnBehalf
     ? true
@@ -193,11 +198,19 @@ export function TournamentRegistrationFormScreen({
     if (!playerRole) {
       return 'Please select whether you are a batsman, bowler, or all-rounder.';
     }
-    if (!battingRating || !battingPosition || !bowlingRating || !bowlingType) {
+    if (
+      battingRating === null ||
+      !battingPosition ||
+      bowlingRating === null ||
+      !bowlingType
+    ) {
       return 'Please complete all skill assessment fields.';
     }
-    if (!fieldingRating || !fieldingPosition) {
+    if (fieldingRating === null || !fieldingPosition) {
       return 'Please complete all fielding fields.';
+    }
+    if (isLeatherBall && !playerType) {
+      return 'Please select your player type.';
     }
     const missing = fields.find((field) => field.required && !custom[field.key]);
     if (missing) {
@@ -230,6 +243,7 @@ export function TournamentRegistrationFormScreen({
         bowlingRating: Number(bowlingRating),
         fieldingRating: Number(fieldingRating),
         fieldingPosition,
+        playerType: isLeatherBall ? playerType : null,
         customFields: fields.length > 0 ? custom : null,
       };
       if (isLateOnBehalf && onBehalfOfUserId) {
@@ -248,14 +262,14 @@ export function TournamentRegistrationFormScreen({
 
   if (loading) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-surface">
+      <SafeAreaView className="flex-1 items-center justify-center bg-background">
         <ActivityIndicator color={FIELD_ORANGE} />
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-surface">
+    <SafeAreaView className="flex-1 bg-background">
       <ScrollView contentContainerClassName="gap-6 px-4 py-4" keyboardShouldPersistTaps="handled">
         <Pressable onPress={() => router.back()} accessibilityRole="button">
           <Text className="font-sans text-primary">← Back</Text>
@@ -281,7 +295,7 @@ export function TournamentRegistrationFormScreen({
               {REGISTRATION_STATUS_LABELS[existing.status]}
             </Text>
             {existing.status === RegistrationStatus.Declined ? (
-              <Text className="font-sans text-sm text-error">{REGISTRATION_DECLINED_MESSAGE}</Text>
+              <Text className="font-sans text-sm text-primary">{REGISTRATION_DECLINED_MESSAGE}</Text>
             ) : null}
           </View>
         ) : null}
@@ -343,6 +357,17 @@ export function TournamentRegistrationFormScreen({
                     label: PLAYER_REGISTRATION_ROLE_LABELS[value],
                   }))}
                 />
+                {isLeatherBall ? (
+                  <RadioGroup
+                    label="Player Type"
+                    value={playerType}
+                    onChange={setPlayerType}
+                    options={REGISTRATION_PLAYER_TYPE_OPTIONS.map((option) => ({
+                      value: option.value,
+                      label: option.label,
+                    }))}
+                  />
+                ) : null}
               </View>
             </FormSection>
 
@@ -351,7 +376,7 @@ export function TournamentRegistrationFormScreen({
                 <Select
                   label="Batting Rating"
                   value={battingRating}
-                  options={ratingOptions(REGISTRATION_SKILL_RATING_OPTIONS)}
+                  options={ratingOptions(REGISTRATION_RATING_OPTIONS)}
                   onChange={setBattingRating}
                 />
                 <Select
@@ -363,7 +388,7 @@ export function TournamentRegistrationFormScreen({
                 <Select
                   label="Bowling Rating"
                   value={bowlingRating}
-                  options={ratingOptions(REGISTRATION_SKILL_RATING_OPTIONS)}
+                  options={ratingOptions(REGISTRATION_RATING_OPTIONS)}
                   onChange={setBowlingRating}
                 />
                 <Select
@@ -375,7 +400,7 @@ export function TournamentRegistrationFormScreen({
                 <Select
                   label="Fielding Rating"
                   value={fieldingRating}
-                  options={ratingOptions(REGISTRATION_FIELDING_RATING_OPTIONS)}
+                  options={ratingOptions(REGISTRATION_RATING_OPTIONS)}
                   onChange={setFieldingRating}
                 />
                 <Select
@@ -397,8 +422,8 @@ export function TournamentRegistrationFormScreen({
             ))}
 
             {error ? (
-              <View className="rounded-control bg-error-container px-4 py-3">
-                <Text className="font-sans text-sm text-on-error-container">{error}</Text>
+              <View className="rounded-control bg-primary-50 px-4 py-3">
+                <Text className="font-sans text-sm text-primary">{error}</Text>
               </View>
             ) : null}
 
@@ -412,8 +437,8 @@ export function TournamentRegistrationFormScreen({
         ) : null}
 
         {!canSubmit && error ? (
-          <View className="rounded-control bg-error-container px-4 py-3">
-            <Text className="font-sans text-sm text-on-error-container">{error}</Text>
+          <View className="rounded-control bg-primary-50 px-4 py-3">
+            <Text className="font-sans text-sm text-primary">{error}</Text>
           </View>
         ) : null}
       </ScrollView>

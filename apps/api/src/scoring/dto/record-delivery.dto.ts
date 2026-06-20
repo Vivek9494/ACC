@@ -30,6 +30,10 @@ class DismissalInputDto implements DismissalInput {
   @IsOptional()
   @IsString()
   fielderId?: string | null;
+
+  @IsOptional()
+  @IsString()
+  fielder2Id?: string | null;
 }
 
 export class RecordDeliveryDto implements RecordDeliveryRequest {
@@ -55,8 +59,21 @@ export class RecordDeliveryDto implements RecordDeliveryRequest {
 
   @IsOptional()
   @IsInt()
-  @Min(0)
   extraRuns?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  noBallByeRuns?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  noBallLegByeRuns?: number;
+
+  @IsOptional()
+  @IsString()
+  penaltyBeneficiaryTeamId?: string | null;
 
   @IsOptional()
   @IsBoolean()
@@ -66,6 +83,10 @@ export class RecordDeliveryDto implements RecordDeliveryRequest {
   @ValidateNested()
   @Type(() => DismissalInputDto)
   dismissal?: DismissalInputDto | null;
+
+  @IsOptional()
+  @IsString()
+  fielderId?: string | null;
 
   @IsInt()
   @Min(0)

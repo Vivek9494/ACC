@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { formatLeaderboardEconomy, type BowlingLeaderboardEntry } from '@acc/types';
 import { View } from 'react-native';
+import { colors } from '@/theme/colors';
 
 import { INPUT_SHADOW_STYLE } from '../ui/fieldStyles';
 import { Text } from '../ui/Text';
@@ -17,7 +18,7 @@ export function BowlingLeaderboardCard({ entry }: BowlingLeaderboardCardProps): 
 
   return (
     <View
-      className="relative overflow-hidden rounded-control border border-outline-variant bg-white p-4"
+      className="relative overflow-hidden rounded-control border border-outline-variant bg-surface p-4"
       style={isTopRank ? INPUT_SHADOW_STYLE : undefined}
     >
       <View className="absolute right-2 top-2">
@@ -30,7 +31,7 @@ export function BowlingLeaderboardCard({ entry }: BowlingLeaderboardCardProps): 
             <Ionicons
               name="medal-outline"
               size={14}
-              color="#5A4136"
+              color={colors.textMuted}
               accessibilityElementsHidden
             />
           ) : null}

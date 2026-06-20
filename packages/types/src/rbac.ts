@@ -68,11 +68,15 @@ export const Permission = {
   VIEW_TOURNAMENT_FEES: 'VIEW_TOURNAMENT_FEES',
   RECORD_TOURNAMENT_FEE_PAYMENT: 'RECORD_TOURNAMENT_FEE_PAYMENT',
   // D. Teams & Roster
+  /** Captain views another player's tournament profile (Team Detail → View Profile). */
+  VIEW_TOURNAMENT_PLAYER_PROFILE: 'VIEW_TOURNAMENT_PLAYER_PROFILE',
   ASSIGN_TEAM_ROLES: 'ASSIGN_TEAM_ROLES',
   ADD_PLAYER_TO_TEAM: 'ADD_PLAYER_TO_TEAM',
   REMOVE_PLAYER_FROM_TEAM: 'REMOVE_PLAYER_FROM_TEAM',
   RESHUFFLE_ACC_TEAMS: 'RESHUFFLE_ACC_TEAMS',
   MARK_IMPACT_PLAYER: 'MARK_IMPACT_PLAYER',
+  /** Captain / VC / Club Manager views verified registrants after Center Sevak verification (tennis). */
+  VIEW_VERIFIED_REGISTERED_PLAYERS: 'VIEW_VERIFIED_REGISTERED_PLAYERS',
   FAVOURITE_PLAYERS: 'FAVOURITE_PLAYERS',
   ASSIGN_TOURNAMENT_SCORER: 'ASSIGN_TOURNAMENT_SCORER',
   // E. ACC Schedule & External Teams (ACC only)
@@ -123,6 +127,7 @@ export const Permission = {
   VIEW_CAPTAIN_DASHBOARD: 'VIEW_CAPTAIN_DASHBOARD',
   VIEW_PLAYER_DASHBOARD: 'VIEW_PLAYER_DASHBOARD',
   VIEW_ADMIN_OVERVIEW: 'VIEW_ADMIN_OVERVIEW',
+  VIEW_ADMIN_USERS: 'VIEW_ADMIN_USERS',
   VIEW_AUDIT_LOG: 'VIEW_AUDIT_LOG',
   SEND_ANNOUNCEMENT: 'SEND_ANNOUNCEMENT',
   ADD_YOUTUBE_URL: 'ADD_YOUTUBE_URL',
@@ -162,7 +167,10 @@ export interface RoleGrant {
   scope?: PermissionScope;
   /** Grant-level type restriction, e.g. Manager (D1) only in APL/Center. */
   tournamentTypes?: TournamentType[];
-  /** E1: Vice Captain inherits this only while the Captain is suspended. */
+  /**
+   * Legacy matrix flag — no longer used for Vice Captain (VC mirrors Captain at all times).
+   * Retained for typed matrix cells that still reference it in docs/tests.
+   */
   requiresCaptainSuspended?: boolean;
   /**
    * §31 #1 fallback: Club Manager assumes captaincy for a match only when BOTH
@@ -180,11 +188,11 @@ export interface PermissionRule {
 
 const R = UserRole;
 
-/** Convenience: a Captain + (Vice Captain when captain suspended) own-team pair. */
+/** Convenience: Captain + Vice Captain with identical own-team scope. */
 function captainAndDeputy(scope: PermissionScope = PermissionScope.OwnTeam): RoleGrant[] {
   return [
     { subject: R.Captain, scope },
-    { subject: R.ViceCaptain, scope, requiresCaptainSuspended: true },
+    { subject: R.ViceCaptain, scope },
   ];
 }
 
@@ -225,15 +233,15 @@ export const PERMISSION_MATRIX: Record<Permission, PermissionRule> = {
     grants: [
       { subject: R.Admin },
       { subject: R.ClubManager, scope: PermissionScope.Organizer },
-      { subject: R.CenterSevak, scope: PermissionScope.Organizer },
-      { subject: R.CenterSevak, scope: PermissionScope.OwnCenter },
+      { subject: R.CenterSevak, scope: PermissionScope.Organizer, tournamentTypes: TENNIS_TYPES },
+      { subject: R.CenterSevak, scope: PermissionScope.OwnCenter, tournamentTypes: TENNIS_TYPES },
     ],
   },
   [Permission.CHANGE_TOURNAMENT_STATUS]: {
     grants: [
       { subject: R.Admin },
       { subject: R.ClubManager, scope: PermissionScope.Organizer },
-      { subject: R.CenterSevak, scope: PermissionScope.Organizer },
+      { subject: R.CenterSevak, scope: PermissionScope.Organizer, tournamentTypes: TENNIS_TYPES },
     ],
   },
   [Permission.CREATE_MATCH]: {
@@ -241,7 +249,7 @@ export const PERMISSION_MATRIX: Record<Permission, PermissionRule> = {
     grants: [
       { subject: R.Admin },
       { subject: R.ClubManager, scope: PermissionScope.Organizer },
-      { subject: R.CenterSevak, scope: PermissionScope.Organizer },
+      { subject: R.CenterSevak, scope: PermissionScope.Organizer, tournamentTypes: TENNIS_TYPES },
     ],
   },
   [Permission.BUILD_CUSTOM_FORM]: {
@@ -262,18 +270,26 @@ export const PERMISSION_MATRIX: Record<Permission, PermissionRule> = {
     ],
   },
   [Permission.APPROVE_REGISTRATION]: {
-    grants: [{ subject: R.Admin }, { subject: R.CenterSevak, scope: PermissionScope.OwnCenter }],
+    grants: [
+      { subject: R.Admin },
+      { subject: R.CenterSevak, scope: PermissionScope.OwnCenter, tournamentTypes: TENNIS_TYPES },
+    ],
   },
   [Permission.VIEW_REGISTRATIONS_OWN_CENTER]: {
-    grants: [{ subject: R.Admin }, { subject: R.CenterSevak, scope: PermissionScope.OwnCenter }],
+    grants: [
+      { subject: R.Admin },
+      { subject: R.CenterSevak, scope: PermissionScope.OwnCenter, tournamentTypes: TENNIS_TYPES },
+    ],
   },
   [Permission.VIEW_REGISTRATIONS_ALL_CENTERS]: {
     tournamentTypes: [TournamentType.APL],
     grants: [{ subject: R.Admin }, { subject: R.ClubManager }],
   },
   [Permission.UPDATE_PLAYER_RATINGS]: {
-    tournamentTypes: [TournamentType.APL],
-    grants: [{ subject: R.Admin }, { subject: R.CenterSevak, scope: PermissionScope.OwnCenter }],
+    grants: [
+      { subject: R.Admin },
+      { subject: R.CenterSevak, scope: PermissionScope.OwnCenter, tournamentTypes: TENNIS_TYPES },
+    ],
   },
   [Permission.UPDATE_PLAYER_AVAILABILITY]: {
     // §7.5: Center Sevak records availability for own-Center players (APL only).
@@ -293,20 +309,26 @@ export const PERMISSION_MATRIX: Record<Permission, PermissionRule> = {
     grants: [
       { subject: R.Admin },
       { subject: R.ClubManager, scope: PermissionScope.Organizer },
-      { subject: R.CenterSevak, scope: PermissionScope.OwnCenter },
+      { subject: R.CenterSevak, scope: PermissionScope.OwnCenter, tournamentTypes: TENNIS_TYPES },
     ],
   },
   [Permission.VIEW_FEES_OWN_CENTER]: {
-    grants: [{ subject: R.Admin }, { subject: R.CenterSevak, scope: PermissionScope.OwnCenter }],
+    grants: [
+      { subject: R.Admin },
+      { subject: R.CenterSevak, scope: PermissionScope.OwnCenter, tournamentTypes: TENNIS_TYPES },
+    ],
   },
   [Permission.RECORD_FEE_PAYMENT_OWN_CENTER]: {
-    grants: [{ subject: R.Admin }, { subject: R.CenterSevak, scope: PermissionScope.OwnCenter }],
+    grants: [
+      { subject: R.Admin },
+      { subject: R.CenterSevak, scope: PermissionScope.OwnCenter, tournamentTypes: TENNIS_TYPES },
+    ],
   },
   [Permission.VIEW_TOURNAMENT_FEES]: {
     grants: [
       { subject: R.Admin },
       { subject: R.ClubManager },
-      { subject: R.CenterSevak, scope: PermissionScope.OwnCenter },
+      { subject: R.CenterSevak, scope: PermissionScope.OwnCenter, tournamentTypes: TENNIS_TYPES },
       { subject: R.Captain, scope: PermissionScope.OwnTeam },
       { subject: R.ViceCaptain, scope: PermissionScope.OwnTeam },
     ],
@@ -315,7 +337,7 @@ export const PERMISSION_MATRIX: Record<Permission, PermissionRule> = {
     grants: [
       { subject: R.Admin },
       { subject: R.ClubManager },
-      { subject: R.CenterSevak, scope: PermissionScope.OwnCenter },
+      { subject: R.CenterSevak, scope: PermissionScope.OwnCenter, tournamentTypes: TENNIS_TYPES },
       { subject: R.Captain, scope: PermissionScope.OwnTeam },
       { subject: R.ViceCaptain, scope: PermissionScope.OwnTeam },
     ],
@@ -325,23 +347,29 @@ export const PERMISSION_MATRIX: Record<Permission, PermissionRule> = {
     grants: [
       { subject: R.Admin },
       { subject: R.ClubManager, scope: PermissionScope.Organizer },
-      { subject: R.CenterSevak, scope: PermissionScope.Organizer },
+      { subject: R.CenterSevak, scope: PermissionScope.Organizer, tournamentTypes: TENNIS_TYPES },
     ],
   },
 
   // D. Teams & Roster
-  [Permission.ASSIGN_TEAM_ROLES]: {
+  [Permission.VIEW_TOURNAMENT_PLAYER_PROFILE]: {
+    // Cross-team read: any captain, vice captain, or Club Manager in the tournament context.
     grants: [
       { subject: R.Admin },
-      { subject: R.ClubManager, scope: PermissionScope.Organizer },
-      { subject: R.CenterSevak, scope: PermissionScope.Organizer },
+      { subject: R.Captain },
+      { subject: R.ViceCaptain },
+      { subject: R.ClubManager },
     ],
+  },
+  [Permission.ASSIGN_TEAM_ROLES]: {
+    // Club Manager designates Captain and Vice-Captain per team (§6.3).
+    grants: [{ subject: R.ClubManager, scope: PermissionScope.Organizer }],
   },
   [Permission.ADD_PLAYER_TO_TEAM]: {
     grants: [
       { subject: R.Admin },
       { subject: R.ClubManager, scope: PermissionScope.Organizer },
-      { subject: R.CenterSevak, scope: PermissionScope.Organizer },
+      { subject: R.CenterSevak, scope: PermissionScope.Organizer, tournamentTypes: TENNIS_TYPES },
       { subject: R.Captain, scope: PermissionScope.OwnTeam },
       { subject: R.ViceCaptain, scope: PermissionScope.OwnTeam },
       // D1: Manager only in APL / Center.
@@ -352,7 +380,7 @@ export const PERMISSION_MATRIX: Record<Permission, PermissionRule> = {
     grants: [
       { subject: R.Admin },
       { subject: R.ClubManager, scope: PermissionScope.Organizer },
-      { subject: R.CenterSevak, scope: PermissionScope.Organizer },
+      { subject: R.CenterSevak, scope: PermissionScope.Organizer, tournamentTypes: TENNIS_TYPES },
       { subject: R.Captain, scope: PermissionScope.OwnTeam },
       { subject: R.ViceCaptain, scope: PermissionScope.OwnTeam },
       { subject: R.Manager, scope: PermissionScope.OwnTeam, tournamentTypes: TENNIS_TYPES },
@@ -364,14 +392,24 @@ export const PERMISSION_MATRIX: Record<Permission, PermissionRule> = {
   },
   [Permission.MARK_IMPACT_PLAYER]: {
     // Admin is `—` here per the matrix.
-    grants: [{ subject: R.Captain, scope: PermissionScope.OwnTeam }],
+    grants: [...captainAndDeputy()],
+  },
+  [Permission.VIEW_VERIFIED_REGISTERED_PLAYERS]: {
+    tournamentTypes: TENNIS_TYPES,
+    grants: [
+      { subject: R.Admin },
+      { subject: R.ClubManager },
+      { subject: R.Captain },
+      { subject: R.ViceCaptain },
+    ],
   },
   [Permission.FAVOURITE_PLAYERS]: {
-    // Admin/CM/CS are `—`; team-social feature.
+    // Admin/CS are `—`; tennis team leads + Club Manager (stub destination).
+    tournamentTypes: TENNIS_TYPES,
     grants: [
-      { subject: R.Captain, scope: PermissionScope.OwnTeam },
-      { subject: R.ViceCaptain, scope: PermissionScope.OwnTeam },
-      { subject: R.Manager, scope: PermissionScope.OwnTeam, tournamentTypes: TENNIS_TYPES },
+      { subject: R.ClubManager },
+      { subject: R.Captain },
+      { subject: R.ViceCaptain },
     ],
   },
   [Permission.ASSIGN_TOURNAMENT_SCORER]: {
@@ -531,7 +569,11 @@ export const PERMISSION_MATRIX: Record<Permission, PermissionRule> = {
     ],
   },
   [Permission.SELECT_MAN_OF_MATCH]: {
-    grants: [{ subject: R.Admin }, { subject: R.ClubManager }, ...captainAndDeputy()],
+    grants: [
+      { subject: R.Captain, scope: PermissionScope.OwnTeam },
+      { subject: R.ViceCaptain, scope: PermissionScope.OwnTeam },
+      { subject: R.ClubManager, requiresLeadersSuspended: true },
+    ],
   },
   [Permission.AWARD_MAN_OF_TOURNAMENT]: {
     grants: [
@@ -619,6 +661,9 @@ export const PERMISSION_MATRIX: Record<Permission, PermissionRule> = {
   [Permission.VIEW_ADMIN_OVERVIEW]: {
     grants: [{ subject: R.Admin }],
   },
+  [Permission.VIEW_ADMIN_USERS]: {
+    grants: [{ subject: R.Admin }],
+  },
   [Permission.VIEW_AUDIT_LOG]: {
     grants: [{ subject: R.Admin }],
   },
@@ -626,14 +671,14 @@ export const PERMISSION_MATRIX: Record<Permission, PermissionRule> = {
     grants: [
       { subject: R.Admin },
       { subject: R.ClubManager, scope: PermissionScope.Organizer },
-      { subject: R.CenterSevak, scope: PermissionScope.Organizer },
+      { subject: R.CenterSevak, scope: PermissionScope.Organizer, tournamentTypes: TENNIS_TYPES },
     ],
   },
   [Permission.ADD_YOUTUBE_URL]: {
     grants: [
       { subject: R.Admin },
       { subject: R.ClubManager, scope: PermissionScope.Organizer },
-      { subject: R.CenterSevak, scope: PermissionScope.Organizer },
+      { subject: R.CenterSevak, scope: PermissionScope.Organizer, tournamentTypes: TENNIS_TYPES },
     ],
   },
 };

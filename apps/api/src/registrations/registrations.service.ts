@@ -1,21 +1,31 @@
 import {
   type AuthUser,
+  BallType,
   type AvailabilitySummary,
   type CustomFormRequestSummary,
   isTournamentRegistrationOpen,
   isTournamentRegistrationWindowClosed,
+  isRegistrationVerificationComplete,
   Permission,
+  PlayerSkillVideoStatus,
   type RegistrationDetail,
   type RegistrationFieldDefinition,
   type RegistrationFieldDefinitionInput,
+  RegistrationPlayerType,
   RegistrationSortKey,
   RegistrationStatus,
   type RegistrationSummary,
   type RegistrationVerificationQueue,
   type CenterPlayerRosterEntry,
   RegistrationVerificationPhase,
+  type TournamentFavouritePlayersView,
+  type VerifiedRegisteredPlayersView,
+  type VerifiedRegisteredPlayerRow,
+  type SetRegistrationFavouriteResponse,
+  tournamentHasRegistrationWindow,
   bowlingStyleFromType,
   UserRole,
+  isTeamLeaderRole,
 } from '@acc/types';
 import {
   BadRequestException,
@@ -62,9 +72,9 @@ const REGISTRATION_INCLUDE = {
 } as const;
 
 /**
- * Player registration flow (spec §7): submission and the In Waitlist → Confirmed
- * / Declined lifecycle (§7.3), Center-scoped approval and visibility (§7.4),
- * APL ratings & availability (§7.5), late registration (§7.6) and the §7.2/§21
+ * Player registration flow (spec ?7): submission and the In Waitlist ��� Confirmed
+ * / Declined lifecycle (?7.3), Center-scoped approval and visibility (?7.4),
+ * APL ratings & availability (?7.5), late registration (?7.6) and the ?7.2/?21
  * custom-form definitions.
  */
 @Injectable()
@@ -76,9 +86,9 @@ export class RegistrationsService {
     private readonly audit: AuditService,
   ) {}
 
-  // --- Submission (§7.1, §7.3) ---------------------------------------------
+  // --- Submission (?7.1, ?7.3) ---------------------------------------------
 
-  /** A player submits their own registration; status starts In Waitlist (§7.3). */
+  /** A player submits their own registration. Tennis ? In Waitlist (?7.3); leather ? Confirmed. */
   async submit(
     actor: AuthUser,
     tournamentId: string,
@@ -107,22 +117,36 @@ export class RegistrationsService {
     await this.validateCustomFields(tournamentId, dto.customFields ?? null);
     const centerId = await this.resolveRegistrationCenterForUser(actor.id, dto.centerId);
     await this.syncPlayerProfile(actor.id, dto.firstName, dto.lastName, centerId);
-    return this.upsertRegistration(
+    const ballType = tournament.ballType as BallType;
+    const playerType = this.resolvePlayerTypeForWrite(ballType, dto.playerType);
+    const detail = await this.upsertRegistration(
       tournamentId,
       actor.id,
       centerId,
       dto,
       tournament.defaultPlayerFeeCents,
+      playerType,
+      ballType,
     );
+
+    if (ballType === BallType.Leather) {
+      await this.notifications.notify(NotificationTrigger.RegistrationConfirmed, {
+        recipientUserIds: [actor.id],
+        data: { tournamentId },
+      });
+    }
+
+    return detail;
   }
 
-  /** Late registration of a missed player by Organizer / Center Sevak (§7.6). */
+  /** Late registration of a missed player by Organizer / Center Sevak (?7.6). */
   async lateRegister(
     actor: AuthUser,
     tournamentId: string,
     dto: LateRegistrationDto,
   ): Promise<RegistrationDetail> {
     const tournament = await this.requireTournament(tournamentId);
+    this.assertCenterSevakTennisOnly(actor, tournament.ballType as BallType);
     this.assertRegistrationWindowClosed(tournament);
 
     const player = await this.prisma.user.findUnique({
@@ -168,6 +192,7 @@ export class RegistrationsService {
     await this.validateCustomFields(tournamentId, dto.customFields ?? null);
     const centerId = await this.resolveRegistrationCenterForUser(player.id, dto.centerId);
     await this.syncPlayerProfile(player.id, dto.firstName, dto.lastName, centerId);
+    const playerType = this.resolvePlayerTypeForWrite(tournament.ballType as BallType, dto.playerType);
 
     const detail = await this.createConfirmedLateRegistration(
       tournamentId,
@@ -176,6 +201,7 @@ export class RegistrationsService {
       dto,
       actor.id,
       tournament.defaultPlayerFeeCents,
+      playerType,
     );
 
     await this.audit.record({
@@ -211,6 +237,7 @@ export class RegistrationsService {
     dto: SubmitRegistrationDto,
     reviewedByUserId: string,
     feeAmountCents: bigint | null,
+    playerType: RegistrationPlayerType | null,
   ): Promise<RegistrationDetail> {
     const customFields =
       dto.customFields === undefined
@@ -237,6 +264,7 @@ export class RegistrationsService {
         bowlingRating: dto.bowlingRating ?? null,
         fieldingRating: dto.fieldingRating ?? null,
         fieldingPosition: dto.fieldingPosition ?? null,
+        playerType,
         customFields: customFields ?? Prisma.JsonNull,
         feeAmountCents,
       },
@@ -251,6 +279,8 @@ export class RegistrationsService {
     centerId: string,
     dto: SubmitRegistrationDto,
     feeAmountCents: bigint | null,
+    playerType: RegistrationPlayerType | null,
+    ballType: BallType,
   ): Promise<RegistrationDetail> {
     const customFields =
       dto.customFields === undefined
@@ -258,6 +288,7 @@ export class RegistrationsService {
         : (dto.customFields as Prisma.InputJsonValue | null);
     const bowlingStyle =
       dto.bowlingStyle ?? bowlingStyleFromType(dto.bowlingType ?? null);
+    const status = this.initialRegistrationStatus(ballType);
 
     const row = await this.prisma.registration.upsert({
       where: { tournamentId_userId: { tournamentId, userId } },
@@ -265,7 +296,7 @@ export class RegistrationsService {
         tournamentId,
         userId,
         centerId,
-        status: RegistrationStatus.InWaitlist,
+        status,
         battingStyle: dto.battingStyle ?? null,
         battingRating: dto.battingRating ?? null,
         battingPosition: dto.battingPosition ?? null,
@@ -275,12 +306,13 @@ export class RegistrationsService {
         bowlingRating: dto.bowlingRating ?? null,
         fieldingRating: dto.fieldingRating ?? null,
         fieldingPosition: dto.fieldingPosition ?? null,
+        playerType,
         customFields: customFields ?? Prisma.JsonNull,
         feeAmountCents,
       },
       update: {
         centerId,
-        status: RegistrationStatus.InWaitlist,
+        status,
         battingStyle: dto.battingStyle ?? null,
         battingRating: dto.battingRating ?? null,
         battingPosition: dto.battingPosition ?? null,
@@ -290,9 +322,11 @@ export class RegistrationsService {
         bowlingRating: dto.bowlingRating ?? null,
         fieldingRating: dto.fieldingRating ?? null,
         fieldingPosition: dto.fieldingPosition ?? null,
+        playerType,
         ...(customFields !== undefined ? { customFields: customFields ?? Prisma.JsonNull } : {}),
-        reviewedByUserId: null,
-        reviewedAt: null,
+        ...(ballType === BallType.Tennis
+          ? { reviewedByUserId: null, reviewedAt: null }
+          : {}),
         feeAmountCents,
       },
       include: REGISTRATION_INCLUDE,
@@ -300,7 +334,7 @@ export class RegistrationsService {
     return this.toDetail(row);
   }
 
-  // --- Review lifecycle (§7.3) ---------------------------------------------
+  // --- Review lifecycle (?7.3) ---------------------------------------------
 
   async approve(actor: AuthUser, registrationId: string): Promise<RegistrationDetail> {
     return this.review(actor, registrationId, RegistrationStatus.Confirmed);
@@ -323,6 +357,7 @@ export class RegistrationsService {
       throw new NotFoundException({ message: 'Registration not found', error: 'NOT_FOUND' });
     }
     const tournament = await this.requireTournament(existing.tournamentId);
+    this.assertRegistrationVerificationTournament(tournament.ballType as BallType);
     this.assertRegistrationWindowClosed(tournament);
 
     const row = await this.prisma.registration.update({
@@ -339,7 +374,7 @@ export class RegistrationsService {
       before: { status: existing.status },
       after: { status },
     });
-    // §7.3: notify the player on confirm/decline.
+    // ?7.3: notify the player on confirm/decline.
     await this.notifications.notify(
       status === RegistrationStatus.Confirmed
         ? NotificationTrigger.RegistrationConfirmed
@@ -349,7 +384,7 @@ export class RegistrationsService {
     return this.toDetail(row);
   }
 
-  // --- Ratings & availability (§7.5, APL) ----------------------------------
+  // --- Ratings & availability (?7.5, APL) ----------------------------------
 
   async updateRatings(
     actor: AuthUser,
@@ -358,6 +393,8 @@ export class RegistrationsService {
     dto: UpdateRatingsDto,
   ): Promise<RegistrationDetail> {
     const tournament = await this.requireTournament(tournamentId);
+    this.assertRegistrationVerificationTournament(tournament.ballType as BallType);
+    this.assertCenterSevakTennisOnly(actor, tournament.ballType as BallType);
     this.assertRegistrationWindowClosed(tournament);
 
     const existing = await this.prisma.registration.findUnique({
@@ -386,6 +423,12 @@ export class RegistrationsService {
     }
     if (dto.fieldingRating !== undefined) {
       data.fieldingRating = dto.fieldingRating;
+    }
+    if (dto.playerType !== undefined) {
+      data.playerType = this.resolvePlayerTypeForWrite(
+        tournament.ballType as BallType,
+        dto.playerType,
+      );
     }
 
     const row = await this.prisma.registration.update({
@@ -428,7 +471,7 @@ export class RegistrationsService {
     return this.toDetail(row);
   }
 
-  /** Aggregate availability of confirmed players for the §7.5 bar-chart. */
+  /** Aggregate availability of confirmed players for the ?7.5 bar-chart. */
   async availabilitySummary(tournamentId: string): Promise<AvailabilitySummary> {
     await this.requireTournament(tournamentId);
     const confirmed = await this.prisma.registration.findMany({
@@ -441,9 +484,9 @@ export class RegistrationsService {
     return { available, unavailable, pending, total: confirmed.length };
   }
 
-  // --- Listing & visibility (§7.4) -----------------------------------------
+  // --- Listing & visibility (?7.4) -----------------------------------------
 
-  /** Lists registrations honouring the §7.4 Center-visibility rules. */
+  /** Lists registrations honouring the ?7.4 Center-visibility rules. */
   async list(
     actor: AuthUser,
     tournamentId: string,
@@ -473,13 +516,201 @@ export class RegistrationsService {
     return this.sort(rows.map((row) => this.toSummary(row)), query.sort);
   }
 
-  /** §7.3/§7.4: Center Sevak roster — own-center registered + not registered. */
+  /**
+   * Verified (CONFIRMED) registrants across all centers ? Captain / VC / Club Manager
+   * after Center Sevak verification completes (tennis only).
+   */
+  async listVerifiedRegisteredPlayers(
+    actor: AuthUser,
+    tournamentId: string,
+    query: ListRegistrationsDto,
+  ): Promise<VerifiedRegisteredPlayersView> {
+    const tournament = await this.requireTournament(tournamentId);
+    this.assertRegistrationVerificationTournament(tournament.ballType as BallType);
+
+    const allowed = await this.permissions.check(
+      Permission.VIEW_VERIFIED_REGISTERED_PLAYERS,
+      actor,
+      { tournamentId },
+    );
+    if (!allowed) {
+      throw new ForbiddenException({
+        message: 'You do not have permission to view verified registered players',
+        error: 'FORBIDDEN',
+      });
+    }
+
+    await this.assertRegistrationVerificationComplete(tournament);
+
+    const favouriteTeamId = this.resolveFavouriteTeamId(actor, tournamentId);
+    const favouritedUserIds = favouriteTeamId
+      ? await this.loadFavouritedUserIds(tournamentId, favouriteTeamId)
+      : new Set<string>();
+
+    const rows = await this.prisma.registration.findMany({
+      where: { tournamentId, status: RegistrationStatus.Confirmed },
+      include: REGISTRATION_INCLUDE,
+    });
+    const sorted = this.sort(rows.map((row) => this.toSummary(row)), query.sort);
+    const skillVideos = await this.loadSkillVideoIdsByUser(
+      tournamentId,
+      sorted.map((summary) => summary.userId),
+    );
+    const players: VerifiedRegisteredPlayerRow[] = sorted.map((summary) => {
+      const skillVideoId = skillVideos.get(summary.userId) ?? null;
+      return {
+        ...summary,
+        isFavourited: favouritedUserIds.has(summary.userId),
+        hasSkillVideo: skillVideoId != null,
+        skillVideoId,
+      };
+    });
+
+    return {
+      players,
+      canFavourite: favouriteTeamId != null,
+      favouriteTeamId,
+    };
+  }
+
+  async setRegistrationFavourite(
+    actor: AuthUser,
+    tournamentId: string,
+    userId: string,
+    favourited: boolean,
+  ): Promise<SetRegistrationFavouriteResponse> {
+    const tournament = await this.requireTournament(tournamentId);
+    this.assertRegistrationVerificationTournament(tournament.ballType as BallType);
+
+    const allowed = await this.permissions.check(Permission.FAVOURITE_PLAYERS, actor, {
+      tournamentId,
+    });
+    if (!allowed) {
+      throw new ForbiddenException({
+        message: 'You do not have permission to favourite players',
+        error: 'FORBIDDEN',
+      });
+    }
+
+    await this.assertRegistrationVerificationComplete(tournament);
+
+    const teamId = this.resolveFavouriteTeamId(actor, tournamentId);
+    if (!teamId) {
+      throw new ForbiddenException({
+        message: 'Only team Captains and Vice-Captains may favourite players',
+        error: 'FORBIDDEN',
+      });
+    }
+
+    const registration = await this.prisma.registration.findUnique({
+      where: { tournamentId_userId: { tournamentId, userId } },
+      select: { status: true },
+    });
+    if (!registration || registration.status !== RegistrationStatus.Confirmed) {
+      throw new NotFoundException({
+        message: 'Verified registrant not found',
+        error: 'NOT_FOUND',
+      });
+    }
+
+    if (favourited) {
+      await this.prisma.teamRegistrationFavourite.upsert({
+        where: {
+          tournamentId_teamId_userId: { tournamentId, teamId, userId },
+        },
+        create: {
+          tournamentId,
+          teamId,
+          userId,
+          favouritedByUserId: actor.id,
+        },
+        update: {
+          favouritedByUserId: actor.id,
+        },
+      });
+    } else {
+      await this.prisma.teamRegistrationFavourite.deleteMany({
+        where: { tournamentId, teamId, userId },
+      });
+    }
+
+    return { userId, isFavourited: favourited };
+  }
+
+  /** Per-team favourites shortlist ? shared by Captain and Vice-Captain. */
+  async listFavouritePlayers(
+    actor: AuthUser,
+    tournamentId: string,
+  ): Promise<TournamentFavouritePlayersView> {
+    const tournament = await this.requireTournament(tournamentId);
+    this.assertRegistrationVerificationTournament(tournament.ballType as BallType);
+
+    const allowed = await this.permissions.check(Permission.FAVOURITE_PLAYERS, actor, {
+      tournamentId,
+    });
+    if (!allowed) {
+      throw new ForbiddenException({
+        message: 'You do not have permission to view favourite players',
+        error: 'FORBIDDEN',
+      });
+    }
+
+    await this.assertRegistrationVerificationComplete(tournament);
+
+    const favouriteTeamId = this.resolveFavouriteTeamId(actor, tournamentId);
+    if (!favouriteTeamId) {
+      return { favourites: [], canFavourite: false, favouriteTeamId: null };
+    }
+
+    const favouriteRows = await this.prisma.teamRegistrationFavourite.findMany({
+      where: { tournamentId, teamId: favouriteTeamId },
+      orderBy: [{ createdAt: 'asc' }],
+      select: { userId: true },
+    });
+    if (favouriteRows.length === 0) {
+      return { favourites: [], canFavourite: true, favouriteTeamId };
+    }
+
+    const userIds = favouriteRows.map((row) => row.userId);
+    const registrations = await this.prisma.registration.findMany({
+      where: {
+        tournamentId,
+        userId: { in: userIds },
+        status: RegistrationStatus.Confirmed,
+      },
+      include: REGISTRATION_INCLUDE,
+    });
+    const byUserId = new Map(registrations.map((row) => [row.userId, row]));
+    const skillVideos = await this.loadSkillVideoIdsByUser(tournamentId, userIds);
+    const favourites: VerifiedRegisteredPlayerRow[] = favouriteRows.flatMap((row) => {
+      const registration = byUserId.get(row.userId);
+      if (!registration) {
+        return [];
+      }
+      const summary = this.toSummary(registration);
+      const skillVideoId = skillVideos.get(row.userId) ?? null;
+      return [
+        {
+          ...summary,
+          isFavourited: true,
+          hasSkillVideo: skillVideoId != null,
+          skillVideoId,
+        },
+      ];
+    });
+
+    return { favourites, canFavourite: true, favouriteTeamId };
+  }
+
+  /** ?7.3/?7.4: Center Sevak verification queue (tennis only ? leather has no verification). */
   async getVerificationQueue(
     actor: AuthUser,
     tournamentId: string,
   ): Promise<RegistrationVerificationQueue> {
     const tournament = await this.requireTournament(tournamentId);
-    const centerIds = await this.requireCenterSevakCenterIds(actor);
+    this.assertRegistrationVerificationTournament(tournament.ballType as BallType);
+    this.assertCenterSevakTennisOnly(actor, tournament.ballType as BallType);
+    const centerIds = await this.resolveVerificationQueueCenterIds(actor, tournamentId);
 
     const registrationRows = await this.prisma.registration.findMany({
       where: { tournamentId, centerId: { in: centerIds } },
@@ -566,14 +797,15 @@ export class RegistrationsService {
   }
 
   /**
-   * §7.4: Admin and Club Manager (APL) see all Centers; a Center Sevak sees only
-   * their own Center(s). Returns `null` for an unrestricted view, the allowed
-   * Center ids for a scoped view, or throws for anyone else.
+   * ?7.4: Admin and Club Manager (APL/ACC) see all Centers; a Center Sevak sees only
+   * their own Center(s) on tennis tournaments. Returns `null` for an unrestricted view,
+   * the allowed Center ids for a scoped view, or throws for anyone else.
    */
   private async resolveVisibleCenters(
     actor: AuthUser,
     tournamentId: string,
   ): Promise<string[] | null> {
+    const tournament = await this.requireTournament(tournamentId);
     if (actor.role === UserRole.Admin) {
       return null;
     }
@@ -584,6 +816,12 @@ export class RegistrationsService {
     );
     if (seesAll) {
       return null;
+    }
+    if ((tournament.ballType as BallType) === BallType.Leather) {
+      throw new ForbiddenException({
+        message: 'You do not have permission to view registrations for this tournament',
+        error: 'FORBIDDEN',
+      });
     }
     const sevakAssignments = await this.prisma.roleAssignment.findMany({
       where: { userId: actor.id, role: UserRole.CenterSevak, centerId: { not: null } },
@@ -601,7 +839,7 @@ export class RegistrationsService {
     });
   }
 
-  /** Center Sevak only — returns assigned center ids or throws. */
+  /** Center Sevak only ? returns assigned center ids or throws. */
   private async requireCenterSevakCenterIds(actor: AuthUser): Promise<string[]> {
     const sevakAssignments = await this.prisma.roleAssignment.findMany({
       where: { userId: actor.id, role: UserRole.CenterSevak, centerId: { not: null } },
@@ -617,6 +855,92 @@ export class RegistrationsService {
       });
     }
     return centerIds;
+  }
+
+  /** Leather ACC has no Center Sevak registration-management role. */
+  private assertCenterSevakTennisOnly(actor: AuthUser, ballType: BallType): void {
+    if (ballType !== BallType.Leather) {
+      return;
+    }
+    if (actor.role === UserRole.CenterSevak || (actor.centerSevakCenterIds?.length ?? 0) > 0) {
+      throw new ForbiddenException({
+        message: 'Center Sevak cannot manage leather tournament registrations',
+        error: 'FORBIDDEN',
+      });
+    }
+  }
+
+  /** Approve/decline, ratings review, and verification queue exist for tennis only. */
+  private assertRegistrationVerificationTournament(ballType: BallType): void {
+    if (ballType === BallType.Leather) {
+      throw new ForbiddenException({
+        message: 'Leather tournaments do not use player verification',
+        error: 'FORBIDDEN',
+      });
+    }
+  }
+
+  private async assertRegistrationVerificationComplete(
+    tournament: Awaited<ReturnType<typeof this.requireTournament>>,
+  ): Promise<void> {
+    const hasRegistrationWindow = tournamentHasRegistrationWindow({
+      registrationOpenAt: tournament.registrationOpenAt?.toISOString() ?? null,
+      registrationCloseAt: tournament.registrationCloseAt?.toISOString() ?? null,
+    });
+    const pendingWaitlistCount = await this.prisma.registration.count({
+      where: {
+        tournamentId: tournament.id,
+        status: RegistrationStatus.InWaitlist,
+      },
+    });
+    const complete = isRegistrationVerificationComplete(
+      {
+        ballType: tournament.ballType as BallType,
+        hasRegistrationWindow,
+        registrationOpenAt: tournament.registrationOpenAt?.toISOString() ?? null,
+        registrationCloseAt: tournament.registrationCloseAt?.toISOString() ?? null,
+      },
+      pendingWaitlistCount,
+    );
+    if (!complete) {
+      throw new ForbiddenException({
+        message: 'Player verification is not complete for this tournament',
+        error: 'VERIFICATION_INCOMPLETE',
+      });
+    }
+  }
+
+  private initialRegistrationStatus(ballType: BallType): RegistrationStatus {
+    return ballType === BallType.Leather
+      ? RegistrationStatus.Confirmed
+      : RegistrationStatus.InWaitlist;
+  }
+
+  /** Resolves which center ids feed the verification queue (tennis Center Sevak / Admin). */
+  private async resolveVerificationQueueCenterIds(
+    actor: AuthUser,
+    tournamentId: string,
+  ): Promise<string[]> {
+    if (actor.role === UserRole.Admin) {
+      const links = await this.prisma.tournamentCenter.findMany({
+        where: { tournamentId },
+        select: { centerId: true },
+      });
+      return links.map((link) => link.centerId);
+    }
+
+    const allowed = await this.permissions.check(
+      Permission.VIEW_REGISTRATIONS_OWN_CENTER,
+      actor,
+      { tournamentId },
+    );
+    if (!allowed) {
+      throw new ForbiddenException({
+        message: 'You do not have permission to view the verification queue',
+        error: 'FORBIDDEN',
+      });
+    }
+    return this.requireCenterSevakCenterIds(actor);
   }
 
   /** When the actor is a Center Sevak, the target must belong to one of their centers. */
@@ -639,7 +963,7 @@ export class RegistrationsService {
     }
   }
 
-  // --- Custom forms (§7.2, §21) --------------------------------------------
+  // --- Custom forms (?7.2, ?21) --------------------------------------------
 
   async listFormFields(tournamentId: string): Promise<RegistrationFieldDefinition[]> {
     const rows = await this.prisma.registrationFieldDefinition.findMany({
@@ -657,7 +981,7 @@ export class RegistrationsService {
     }));
   }
 
-  /** Admin builds (replaces) a tournament's custom form (§7.2). */
+  /** Admin builds (replaces) a tournament's custom form (?7.2). */
   async buildCustomForm(
     tournamentId: string,
     dto: BuildCustomFormDto,
@@ -686,7 +1010,7 @@ export class RegistrationsService {
     return this.listFormFields(tournamentId);
   }
 
-  /** Organizer requests extra fields from Admin (§7.2). */
+  /** Organizer requests extra fields from Admin (?7.2). */
   async requestCustomForm(
     actor: AuthUser,
     tournamentId: string,
@@ -723,6 +1047,7 @@ export class RegistrationsService {
     id: string;
     state: string;
     type: string;
+    ballType: string;
     registrationOpenAt: Date | null;
     registrationCloseAt: Date | null;
     defaultPlayerFeeCents: bigint | null;
@@ -733,6 +1058,7 @@ export class RegistrationsService {
         id: true,
         state: true,
         type: true,
+        ballType: true,
         isDeleted: true,
         registrationOpenAt: true,
         registrationCloseAt: true,
@@ -838,7 +1164,7 @@ export class RegistrationsService {
     }
   }
 
-  /** Ensures every required custom field has an answer (§7.2). */
+  /** Ensures every required custom field has an answer (?7.2). */
   private async validateCustomFields(
     tournamentId: string,
     answers: Record<string, unknown> | null,
@@ -879,7 +1205,7 @@ export class RegistrationsService {
     return null;
   }
 
-  /** Post-window Verify Players list: pending → verified → declined, then name within each group. */
+  /** Post-window Verify Players list: pending ��� verified ��� declined, then name within each group. */
   private sortVerificationQueue(rows: RegistrationSummary[]): RegistrationSummary[] {
     const statusRank = (status: RegistrationStatus): number => {
       switch (status) {
@@ -899,6 +1225,24 @@ export class RegistrationsService {
     return [...rows].sort(
       (a, b) => statusRank(a.status) - statusRank(b.status) || byName(a, b),
     );
+  }
+
+  private async loadSkillVideoIdsByUser(
+    tournamentId: string,
+    userIds: string[],
+  ): Promise<Map<string, string>> {
+    if (userIds.length === 0) {
+      return new Map();
+    }
+    const rows = await this.prisma.playerSkillVideo.findMany({
+      where: {
+        tournamentId,
+        userId: { in: userIds },
+        status: PlayerSkillVideoStatus.Ready,
+      },
+      select: { id: true, userId: true },
+    });
+    return new Map(rows.map((row) => [row.userId, row.id]));
   }
 
   private sort(
@@ -935,6 +1279,25 @@ export class RegistrationsService {
     }
   }
 
+  /** Captain / Vice-Captain team scope for shared favourites (null without team leadership). */
+  private resolveFavouriteTeamId(actor: AuthUser, tournamentId: string): string | null {
+    const assignment = (actor.teamLeadAssignments ?? []).find(
+      (row) => row.tournamentId === tournamentId && isTeamLeaderRole(row.role),
+    );
+    return assignment?.teamId ?? null;
+  }
+
+  private async loadFavouritedUserIds(
+    tournamentId: string,
+    teamId: string,
+  ): Promise<Set<string>> {
+    const rows = await this.prisma.teamRegistrationFavourite.findMany({
+      where: { tournamentId, teamId },
+      select: { userId: true },
+    });
+    return new Set(rows.map((row) => row.userId));
+  }
+
   private toSummary(row: RegistrationRow): RegistrationSummary {
     return {
       id: row.id,
@@ -956,6 +1319,7 @@ export class RegistrationsService {
       bowlingRating: row.bowlingRating,
       fieldingRating: row.fieldingRating,
       fieldingPosition: row.fieldingPosition,
+      playerType: this.toRegistrationPlayerType(row.playerType),
       isAvailable: row.isAvailable,
       availabilityNote: row.availabilityNote,
       createdAt: row.createdAt.toISOString(),
@@ -986,5 +1350,37 @@ export class RegistrationsService {
       resolvedAt: row.resolvedAt?.toISOString() ?? null,
       createdAt: row.createdAt.toISOString(),
     };
+  }
+
+  private resolvePlayerTypeForWrite(
+    ballType: BallType,
+    playerType: RegistrationPlayerType | null | undefined,
+  ): RegistrationPlayerType | null {
+    if (ballType === BallType.Tennis) {
+      if (playerType) {
+        throw new BadRequestException({
+          message: 'Player type is not used for tennis-ball tournaments',
+          error: 'PLAYER_TYPE_NOT_ALLOWED',
+        });
+      }
+      return null;
+    }
+    if (!playerType) {
+      throw new BadRequestException({
+        message: 'Player type is required for leather-ball tournaments',
+        error: 'PLAYER_TYPE_REQUIRED',
+        fields: { playerType: 'Please select Full-time or Part-time' },
+      });
+    }
+    return playerType;
+  }
+
+  private toRegistrationPlayerType(
+    value: string | null,
+  ): RegistrationPlayerType | null {
+    if (value === RegistrationPlayerType.FullTime || value === RegistrationPlayerType.PartTime) {
+      return value;
+    }
+    return null;
   }
 }

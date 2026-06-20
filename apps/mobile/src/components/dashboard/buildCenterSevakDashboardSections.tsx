@@ -1,8 +1,9 @@
-import type { CenterSevakDashboard } from '@acc/types';
+import { BallType, type CenterSevakDashboard } from '@acc/types';
 import type { Router } from 'expo-router';
 import type { ReactNode } from 'react';
 import { Pressable, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { colors } from '@/theme/colors';
 
 import { MatchSummaryCard } from '../ui/MatchSummaryCard';
 import { StatTile } from '../ui/StatTile';
@@ -49,7 +50,7 @@ export function buildCenterSevakDashboardSections(
           accessibilityLabel="Add tournament"
           className="h-10 w-10 items-center justify-center rounded-full bg-primary"
         >
-          <Ionicons name="add" size={24} color="#ffffff" />
+          <Ionicons name="add" size={24} color={colors.textInverse} />
         </Pressable>
       </View>
       {dashboard.tournaments.length === 0 ? (
@@ -65,7 +66,10 @@ export function buildCenterSevakDashboardSections(
               tournament.id,
               tournament.name,
               router,
-              { onDeleted: onTournamentDeleted, includeManageCenterPlayers: true },
+              {
+                onDeleted: onTournamentDeleted,
+                includeManageCenterPlayers: tournament.ballType === BallType.Tennis,
+              },
             )}
           />
         ))

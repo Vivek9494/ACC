@@ -1,9 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
-import { type TournamentDetail, UserRole, type RegistrationDetail, canShowTournamentFeesTracker } from '@acc/types';
+import { type TournamentDetail, UserRole, type RegistrationDetail, canShowTournamentFeesTracker, canShowRegistrationVerificationQueue } from '@acc/types';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { colors } from '@/theme/colors';
 
 import { BallTypeIcon } from '../../src/components/ui/BallTypeIcon';
 import { BottomTabBar } from '../../src/components/ui/BottomTabBar';
@@ -19,7 +20,6 @@ import { TournamentVenueCardContent } from '../../src/components/ui/TournamentVe
 import { FIELD_ORANGE } from '../../src/components/ui/fieldStyles';
 import { ApiRequestError, getMyRegistration, getRegistrationVerificationQueue, getTournament } from '../../src/lib/api';
 import { useAuth } from '../../src/lib/auth-context';
-import { hasCenterSevakAccess } from '../../src/lib/center-sevak-access';
 import { useRoleTabConfig } from '../../src/lib/role-tab-config';
 import {
   formatRegistrationOpensLabel,
@@ -56,7 +56,14 @@ export default function TournamentDetailScreen(): React.ReactElement {
   const [verifyActionCount, setVerifyActionCount] = useState(0);
   const [verifyQueueChecked, setVerifyQueueChecked] = useState(false);
 
-  const showVerifyPlayers = hasCenterSevakAccess(user) && tournament?.hasRegistrationWindow === true;
+  const showVerifyPlayers =
+    status === 'authenticated' &&
+    tournament
+      ? canShowRegistrationVerificationQueue(user, {
+          ballType: tournament.ballType,
+          hasRegistrationWindow: tournament.hasRegistrationWindow,
+        })
+      : false;
   const showFeesTracker =
     status === 'authenticated' && tournament ? canShowTournamentFeesTracker(user, tournament) : false;
 
@@ -81,7 +88,11 @@ export default function TournamentDetailScreen(): React.ReactElement {
           : Promise.resolve(null);
 
       const verificationQueuePromise =
-        status === 'authenticated' && hasCenterSevakAccess(user) && detail.hasRegistrationWindow
+        status === 'authenticated' &&
+        canShowRegistrationVerificationQueue(user, {
+          ballType: detail.ballType,
+          hasRegistrationWindow: detail.hasRegistrationWindow,
+        })
           ? getRegistrationVerificationQueue(id).catch(() => null)
           : Promise.resolve(null);
 
@@ -165,7 +176,7 @@ export default function TournamentDetailScreen(): React.ReactElement {
 
   if (loading) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-surface">
+      <SafeAreaView className="flex-1 items-center justify-center bg-background">
         <ActivityIndicator color={FIELD_ORANGE} />
       </SafeAreaView>
     );
@@ -173,7 +184,7 @@ export default function TournamentDetailScreen(): React.ReactElement {
 
   if (error || !tournament) {
     return (
-      <SafeAreaView className="flex-1 bg-surface">
+      <SafeAreaView className="flex-1 bg-background">
         <View className="flex-row items-center justify-between px-4 py-3">
           <Pressable
             onPress={() => router.back()}
@@ -196,7 +207,7 @@ export default function TournamentDetailScreen(): React.ReactElement {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-surface" edges={['top']}>
+    <SafeAreaView className="flex-1 bg-background" edges={['top']}>
       <View className="flex-1">
         <View className="flex-row items-center justify-between px-4 py-3">
           <Pressable
@@ -347,6 +358,19 @@ export default function TournamentDetailScreen(): React.ReactElement {
                   </View>
                 ) : null}
 
+                {(tournament.canUploadSkillVideo ?? tournament.canUploadPlayerVideo) ? (
+                  <Button
+                    variant="amber"
+                    className="mt-4 h-14 w-full"
+                    label={
+                      (tournament.hasSkillVideo ?? tournament.hasPlayerVideo)
+                        ? 'Replace Video'
+                        : 'Upload Video'
+                    }
+                    onPress={() => router.push(`/tournaments/${tournament.id}/upload-video`)}
+                  />
+                ) : null}
+
                 {showVerifyPlayers && verifyQueueChecked && verifyActionCount > 0 ? (
                   <Button
                     variant="amber"
@@ -362,11 +386,31 @@ export default function TournamentDetailScreen(): React.ReactElement {
                     textClassName="font-sans-semibold text-on-secondary-container"
                     onPress={() => router.push(`/tournaments/${tournament.id}/fees`)}
                   >
-                    <Ionicons name="cash-outline" size={22} color="#6f5c00" />
+                    <Ionicons name="cash-outline" size={22} color={colors.secondary} />
                     <Text className="font-sans-semibold text-base text-on-secondary-container">
                       ACC Fees Tracker
                     </Text>
                   </Button>
+                ) : null}
+
+                {tournament.canViewRegisteredPlayersList ? (
+                  <Button
+                    variant="amber"
+                    className="mt-4 h-14 w-full bg-secondary-container"
+                    textClassName="font-sans-semibold text-on-secondary-container"
+                    label="Registered Players List"
+                    onPress={() => router.push(`/tournaments/${tournament.id}/registered-players`)}
+                  />
+                ) : null}
+
+                {tournament.canViewFavouritePlayers ? (
+                  <Button
+                    variant="outline"
+                    className="mt-4 h-14 w-full border-primary"
+                    textClassName="font-sans-semibold text-primary"
+                    label="Favourite Players"
+                    onPress={() => router.push(`/tournaments/${tournament.id}/favourite-players`)}
+                  />
                 ) : null}
               </>
             ) : null}
@@ -382,6 +426,7 @@ export default function TournamentDetailScreen(): React.ReactElement {
               <TournamentTeamsTab
                 tournamentId={id}
                 numberOfTeams={tournament.numberOfTeams}
+                myTeamId={tournament.myTeamId}
                 teams={tournament.teams.map((team) => ({
                   id: team.id,
                   tournamentId: tournament.id,

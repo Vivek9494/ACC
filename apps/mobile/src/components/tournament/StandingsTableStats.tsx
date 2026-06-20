@@ -31,7 +31,7 @@ function headerClass(column: (typeof STANDINGS_STAT_COLUMNS)[number] | 'PTS' | '
     return 'text-primary';
   }
   if (column === 'L') {
-    return 'text-error';
+    return 'text-secondary-900';
   }
   if (column === 'PTS') {
     return 'font-sans-bold text-primary';
@@ -44,7 +44,7 @@ function dataClass(column: (typeof STANDINGS_STAT_COLUMNS)[number] | 'PTS' | 'NR
     return 'text-primary';
   }
   if (column === 'L') {
-    return 'text-error';
+    return 'text-secondary-900';
   }
   if (column === 'PTS') {
     return 'font-sans-bold text-primary';

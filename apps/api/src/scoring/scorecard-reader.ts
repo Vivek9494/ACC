@@ -1,5 +1,6 @@
 import {
   type InningsScorecard,
+  DeliveryType,
   InningsType,
   type ScorecardResponse,
 } from '@acc/types';
@@ -8,7 +9,13 @@ import type { Delivery, Match } from '@prisma/client';
 
 import { PrismaService } from '../prisma/prisma.service';
 import { deriveInnings, deriveMatchResult } from './engine';
+import { selectedParticipantContext } from './innings-participant-mapper';
 import { toScoringEvent } from './delivery-mapper';
+import {
+  collectParticipantIds,
+  ScorecardDisplayBuilder,
+  type MatchContext,
+} from './scorecard-display.builder';
 
 /**
  * Builds the derived {@link ScorecardResponse} for a match by folding over the
@@ -18,7 +25,10 @@ import { toScoringEvent } from './delivery-mapper';
  */
 @Injectable()
 export class ScorecardReader {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly displayBuilder: ScorecardDisplayBuilder,
+  ) {}
 
   /** Loads the match and builds its scorecard, or throws if it is missing. */
   async byMatchId(matchId: string): Promise<ScorecardResponse> {
@@ -30,29 +40,56 @@ export class ScorecardReader {
   }
 
   async build(match: Match): Promise<ScorecardResponse> {
-    const innings = await this.prisma.innings.findMany({
-      where: { matchId: match.id },
-      orderBy: { sequence: 'asc' },
-      include: {
-        deliveries: {
-          where: { isVoided: false },
-          orderBy: { sequence: 'asc' },
+    const [matchContext, innings] = await Promise.all([
+      this.loadMatchContext(match.id),
+      this.prisma.innings.findMany({
+        where: { matchId: match.id },
+        orderBy: { sequence: 'asc' },
+        include: {
+          deliveries: {
+            where: { isVoided: false },
+            orderBy: { sequence: 'asc' },
+          },
         },
-      },
-    });
+      }),
+    ]);
+
+    if (!matchContext) {
+      throw new NotFoundException({ message: 'Match not found', error: 'MATCH_NOT_FOUND' });
+    }
 
     const originalTarget = match.originalTarget ?? null;
     const dlsTarget = match.dlsTarget ?? null;
     const effectiveTarget = dlsTarget ?? originalTarget;
 
-    const cards: InningsScorecard[] = innings.map((inn, index) => {
-      // The chasing innings is everything after the first; its target is the
-      // first innings' runs + 1 unless overridden by a DLS/explicit target.
-      const isChase = index > 0 && inn.inningsType === InningsType.Normal;
-      const firstRuns = this.foldRuns(innings[0]?.deliveries ?? []);
-      const target = isChase ? (effectiveTarget ?? firstRuns + 1) : (inn.revisedTarget ?? null);
+    const cards: InningsScorecard[] = innings.map((inn) => {
+      const superOvers = innings.filter((row) => row.inningsType === InningsType.SuperOver);
+      const superIndex =
+        inn.inningsType === InningsType.SuperOver
+          ? superOvers.findIndex((row) => row.id === inn.id)
+          : -1;
+
+      let target: number | null = inn.revisedTarget ?? null;
+      if (inn.inningsType === InningsType.Normal && inn.sequence > 1) {
+        const firstNormal = innings.find((row) => row.inningsType === InningsType.Normal);
+        const firstRuns = firstNormal
+          ? deriveInnings(this.eventsForInningsFold(firstNormal, innings), {
+              battingTeamId: firstNormal.battingTeamId,
+            }).runs
+          : 0;
+        target = effectiveTarget ?? firstRuns + 1;
+      } else if (inn.inningsType === InningsType.SuperOver && superIndex > 0 && superIndex % 2 === 1) {
+        const firstSo = superOvers[superIndex - 1];
+        const firstRuns = firstSo
+          ? deriveInnings(this.eventsForInningsFold(firstSo, innings), {
+              battingTeamId: firstSo.battingTeamId,
+            }).runs
+          : 0;
+        target = firstRuns + 1;
+      }
+
       return deriveInnings(
-        inn.deliveries.map((d) => toScoringEvent(d)),
+        this.eventsForInningsFold(inn, innings),
         {
           inningsId: inn.id,
           sequence: inn.sequence,
@@ -61,12 +98,13 @@ export class ScorecardReader {
           bowlingTeamId: inn.bowlingTeamId,
           oversAllotted: inn.oversAllotted,
           target,
+          ...selectedParticipantContext(inn),
         },
       );
     });
 
     const result = deriveMatchResult(cards);
-    return {
+    const core = {
       matchId: match.id,
       version: match.scorecardVersion,
       originalTarget,
@@ -75,9 +113,65 @@ export class ScorecardReader {
       innings: cards,
       result: { ...result, isNoResult: match.isNoResult || result.isNoResult },
     };
+
+    const display = this.displayBuilder.build(matchContext, core, innings);
+    const participantIds = collectParticipantIds({ ...core, display });
+    display.players = await this.displayBuilder.enrichPlayers(
+      match.id,
+      display.players,
+      participantIds,
+    );
+
+    return { ...core, display };
   }
 
-  private foldRuns(deliveries: Delivery[]): number {
-    return deriveInnings(deliveries.map((d) => toScoringEvent(d))).runs;
+  private async loadMatchContext(matchId: string): Promise<MatchContext | null> {
+    return this.prisma.match.findUnique({
+      where: { id: matchId },
+      select: {
+        id: true,
+        homeTeamId: true,
+        awayTeamId: true,
+        externalOpponentName: true,
+        homeTeam: { select: { id: true, name: true, logoUrl: true } },
+        awayTeam: { select: { id: true, name: true, logoUrl: true } },
+        squads: {
+          include: {
+            team: { select: { id: true, name: true, logoUrl: true } },
+            players: {
+              include: {
+                user: { select: { firstName: true, lastName: true } },
+              },
+            },
+          },
+        },
+        externalPlayers: { select: { id: true, name: true } },
+      },
+    });
+  }
+
+  private eventsForInningsFold(
+    inn: { id: string; battingTeamId: string | null; deliveries: Delivery[] },
+    allInnings: { id: string; battingTeamId: string | null; deliveries: Delivery[] }[],
+  ) {
+    const direct = inn.deliveries.map((d) => toScoringEvent(d));
+    const cross: ReturnType<typeof toScoringEvent>[] = [];
+    for (const other of allInnings) {
+      if (other.id === inn.id) {
+        continue;
+      }
+      for (const d of other.deliveries) {
+        if (d.type !== DeliveryType.PenaltyRuns) {
+          continue;
+        }
+        const beneficiary = d.penaltyBeneficiaryTeamId ?? other.battingTeamId;
+        if (beneficiary && beneficiary === inn.battingTeamId) {
+          cross.push(toScoringEvent(d));
+        }
+      }
+    }
+    return [...direct, ...cross].sort(
+      (a, b) => a.eventSortMs - b.eventSortMs || a.sequence - b.sequence,
+    );
   }
 }

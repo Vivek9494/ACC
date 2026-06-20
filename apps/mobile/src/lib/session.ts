@@ -9,6 +9,10 @@ import * as SecureStore from 'expo-secure-store';
 const ACCESS_TOKEN_KEY = 'acc.accessToken';
 const REFRESH_TOKEN_KEY = 'acc.refreshToken';
 
+export async function loadAccessToken(): Promise<string | null> {
+  return SecureStore.getItemAsync(ACCESS_TOKEN_KEY);
+}
+
 export async function saveTokens(tokens: AuthTokens): Promise<void> {
   await Promise.all([
     SecureStore.setItemAsync(ACCESS_TOKEN_KEY, tokens.accessToken),

@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { RegistrationStatus, type RegistrationSummary } from '@acc/types';
 import { ActivityIndicator, Pressable, View } from 'react-native';
+import { colors } from '@/theme/colors';
 
 import { FIELD_ORANGE, INPUT_SHADOW_STYLE } from '../../ui/fieldStyles';
 import { Text } from '../../ui/Text';
@@ -35,8 +36,8 @@ export function VerifyPlayerCard({
     <View
       className={`flex-row items-center justify-between rounded-lg border px-4 py-3 ${
         isDeclined
-          ? 'border-[#c1121f]/30 bg-surface-container-high opacity-90'
-          : 'border-outline-variant bg-white'
+          ? 'border-secondary-700/30 bg-surface-container-high opacity-90'
+          : 'border-outline-variant bg-surface'
       }`}
       style={INPUT_SHADOW_STYLE}
     >
@@ -58,7 +59,7 @@ export function VerifyPlayerCard({
           </Text>
           {showVerificationBadge ? <VerifyPlayerVerificationBadge status={row.status} /> : null}
           {isDeclined ? (
-            <Text className="mt-1 font-sans-medium text-xs text-error">Declined</Text>
+            <Text className="mt-1 font-sans-medium text-xs text-secondary-900">Declined</Text>
           ) : null}
           <VerifyPlayerRatingsRow
             batting={row.battingRating}
@@ -80,9 +81,9 @@ export function VerifyPlayerCard({
                 className="h-10 w-10 items-center justify-center rounded-full bg-primary-container shadow-md active:scale-90"
               >
                 {busy ? (
-                  <ActivityIndicator color="#ffffff" size="small" />
+                  <ActivityIndicator color={colors.textInverse} size="small" />
                 ) : (
-                  <Ionicons name="checkmark" size={22} color="#ffffff" />
+                  <Ionicons name="checkmark" size={22} color={colors.textInverse} />
                 )}
               </Pressable>
               <Pressable
@@ -90,9 +91,9 @@ export function VerifyPlayerCard({
                 disabled={busy}
                 accessibilityRole="button"
                 accessibilityLabel="Decline player"
-                className="h-10 w-10 items-center justify-center rounded-full border border-[#c1121f]/40 bg-surface-container-high active:scale-90"
+                className="h-10 w-10 items-center justify-center rounded-full border border-secondary-700/40 bg-surface-container-high active:scale-90"
               >
-                <Ionicons name="close" size={22} color="#c1121f" />
+                <Ionicons name="close" size={22} color={colors.secondaryDark} />
               </Pressable>
             </>
           ) : null}

@@ -28,6 +28,7 @@ import {
   validateMaxOversPerBowler,
   validatePowerplayOvers,
   normalizeTeamPairKey,
+  PLAYING_XI_SIZE,
   type RoundRobinMatchSetupContext,
 } from '@acc/types';
 import {
@@ -51,7 +52,6 @@ import { ScoringService } from '../scoring/scoring.service';
 import { assertTournamentActive } from '../tournaments/tournament-query';
 import {
   deriveInningsTeamsFromToss,
-  SCORER_STARTABLE_MATCH_STATES,
 } from './match-start.utils';
 import type { CreateMatchDto } from './dto/create-match.dto';
 import type { LockPlayingXiDto } from './dto/lock-playing-xi.dto';
@@ -60,7 +60,12 @@ import type { LockPlayingXiDto } from './dto/lock-playing-xi.dto';
 const ACTIVE_SUSPENSION_STATUSES = ['PENDING', 'CARRIED_FORWARD'] as const;
 
 /** States in which a team's Playing 11 may be locked / re-locked (§5.2). */
-const XI_LOCKABLE_STATES: MatchState[] = [MatchState.Scheduled, MatchState.Delayed];
+const XI_LOCKABLE_STATES: MatchState[] = [
+  MatchState.Scheduled,
+  MatchState.Delayed,
+  MatchState.PlayingXiLocked,
+  MatchState.TossCompleted,
+];
 
 /** Maps a state-transition target to the permission that authorises it. */
 const STATE_PERMISSION: Partial<Record<MatchState, Permission>> = {
@@ -82,7 +87,7 @@ type MatchRow = Prisma.MatchGetPayload<{
   include: {
     homeTeam: { select: { name: true } };
     awayTeam: { select: { name: true } };
-    tournament: { select: { impactPlayerEnabled: true; type: true } };
+    tournament: { select: { impactPlayerEnabled: true; type: true; timezone: true } };
     squads: {
       include: {
         team: { select: { name: true } };
@@ -90,6 +95,9 @@ type MatchRow = Prisma.MatchGetPayload<{
           include: { user: { select: { firstName: true; lastName: true } } };
         };
       };
+    };
+    externalPlayers: {
+      select: { id: true; matchId: true; slot: true; name: true; battingStyle: true; bowlingType: true };
     };
     scorerGrants: true;
   };
@@ -100,12 +108,16 @@ type MatchRow = Prisma.MatchGetPayload<{
 const MATCH_INCLUDE = {
   homeTeam: { select: { name: true } },
   awayTeam: { select: { name: true } },
-  tournament: { select: { impactPlayerEnabled: true, type: true } },
+  tournament: { select: { impactPlayerEnabled: true, type: true, timezone: true } },
   squads: {
     include: {
       team: { select: { name: true } },
       players: { include: { user: { select: { firstName: true, lastName: true } } } },
     },
+  },
+  externalPlayers: {
+    select: { id: true, matchId: true, slot: true, name: true, battingStyle: true, bowlingType: true },
+    orderBy: { slot: 'asc' as const },
   },
   scorerGrants: true,
 } as const;
@@ -614,6 +626,226 @@ export class MatchesService {
     return this.getDetail(matchId);
   }
 
+  /** Replace one Playing XI player before the match goes live (no-show recovery). */
+  async replacePlayingXiPlayer(
+    actor: AuthUser,
+    matchId: string,
+    teamId: string,
+    absentUserId: string,
+    replacementUserId: string,
+  ): Promise<void> {
+    if (absentUserId === replacementUserId) {
+      throw new BadRequestException({
+        message: 'Replacement must be a different player',
+        error: 'INVALID_REPLACEMENT',
+      });
+    }
+
+    const match = await this.requireMatch(matchId);
+    if (!XI_LOCKABLE_STATES.includes(match.state as MatchState)) {
+      throw new BadRequestException({
+        message: 'Playing 11 cannot be updated after the match goes live',
+        error: 'INVALID_MATCH_STATE',
+      });
+    }
+    this.assertTeamInMatch(match, teamId);
+
+    const membership = await this.prisma.teamMembership.findFirst({
+      where: { teamId, tournamentId: match.tournamentId, userId: replacementUserId },
+      select: { id: true },
+    });
+    if (!membership) {
+      throw new BadRequestException({
+        message: 'Replacement must be on the team roster',
+        error: 'PLAYER_NOT_ON_ROSTER',
+      });
+    }
+
+    const squad = await this.prisma.matchSquad.findUnique({
+      where: { matchId_teamId: { matchId, teamId } },
+      include: { players: true },
+    });
+    if (!squad) {
+      throw new BadRequestException({
+        message: 'Playing 11 has not been confirmed for this team',
+        error: 'SQUAD_NOT_LOCKED',
+      });
+    }
+
+    const absentRow = squad.players.find(
+      (row) => row.userId === absentUserId && row.role === MatchSquadRole.PlayingXi,
+    );
+    if (!absentRow) {
+      throw new BadRequestException({
+        message: 'Absent player is not in the Playing 11',
+        error: 'PLAYER_NOT_IN_PLAYING_XI',
+      });
+    }
+
+    const inRow = squad.players.find((row) => row.userId === replacementUserId);
+
+    await this.prisma.$transaction(async (tx) => {
+      if (inRow?.role === MatchSquadRole.Substitute) {
+        await tx.matchSquadPlayer.update({
+          where: { squadId_userId: { squadId: squad.id, userId: absentUserId } },
+          data: { role: MatchSquadRole.Substitute },
+        });
+        await tx.matchSquadPlayer.update({
+          where: { squadId_userId: { squadId: squad.id, userId: replacementUserId } },
+          data: { role: MatchSquadRole.PlayingXi },
+        });
+      } else if (!inRow) {
+        await tx.matchSquadPlayer.update({
+          where: { squadId_userId: { squadId: squad.id, userId: absentUserId } },
+          data: { role: MatchSquadRole.Substitute },
+        });
+        await tx.matchSquadPlayer.create({
+          data: {
+            squadId: squad.id,
+            userId: replacementUserId,
+            role: MatchSquadRole.PlayingXi,
+            isActiveImpact: false,
+          },
+        });
+      } else {
+        throw new BadRequestException({
+          message: 'Replacement is already in the match squad',
+          error: 'REPLACEMENT_ALREADY_IN_SQUAD',
+        });
+      }
+
+      await tx.matchSquad.update({
+        where: { id: squad.id },
+        data: { lockedByUserId: actor.id, lockedAt: new Date() },
+      });
+    });
+  }
+
+  /** Swap one Playing XI player for a sub, unselected squad member, or promoted penalty server. */
+  async switchPlayingXiPlayer(
+    actor: AuthUser,
+    matchId: string,
+    teamId: string,
+    outUserId: string,
+    inUserId: string,
+  ): Promise<void> {
+    await this.replacePlayingXiPlayer(actor, matchId, teamId, outUserId, inUserId);
+  }
+
+  /** Poll-based Playing XI confirm — IN voters only, unlimited substitutes (§9.7). */
+  async lockPlayingXiFromPoll(
+    actor: AuthUser,
+    matchId: string,
+    teamId: string,
+    playingXi: string[],
+    substitutes: string[],
+    inVoterIds: ReadonlySet<string>,
+  ): Promise<void> {
+    if (playingXi.length !== PLAYING_XI_SIZE) {
+      throw new BadRequestException({
+        message: `Select exactly ${PLAYING_XI_SIZE} players for the Playing 11`,
+        error: 'INVALID_PLAYING_XI_SIZE',
+      });
+    }
+
+    const all = [...playingXi, ...substitutes];
+    if (new Set(all).size !== all.length) {
+      throw new BadRequestException({
+        message: 'A player may appear only once across the Playing 11 and substitutes',
+        error: 'DUPLICATE_SQUAD_PLAYER',
+      });
+    }
+
+    const notInPoll = all.filter((userId) => !inVoterIds.has(userId));
+    if (notInPoll.length > 0) {
+      throw new BadRequestException({
+        message: 'Playing 11 and substitutes must be selected from players who voted IN',
+        error: 'PLAYER_NOT_IN_POLL',
+      });
+    }
+
+    const dto: LockPlayingXiDto = {
+      teamId,
+      playingXi,
+      substitutes,
+    };
+
+    const match = await this.requireMatch(matchId);
+    if (!XI_LOCKABLE_STATES.includes(match.state as MatchState)) {
+      throw new BadRequestException({
+        message: `Playing 11 cannot be updated while the match is ${match.state}`,
+        error: 'INVALID_MATCH_STATE',
+      });
+    }
+    this.assertTeamInMatch(match, teamId);
+    await this.validateSquad(match, dto);
+
+    const players: { userId: string; role: MatchSquadRole; isActiveImpact: boolean }[] = [
+      ...playingXi.map((userId) => ({
+        userId,
+        role: MatchSquadRole.PlayingXi,
+        isActiveImpact: false,
+      })),
+      ...substitutes.map((userId) => ({
+        userId,
+        role: MatchSquadRole.Substitute,
+        isActiveImpact: false,
+      })),
+    ];
+
+    await this.prisma.$transaction(async (tx) => {
+      const existing = await tx.matchSquad.findUnique({
+        where: { matchId_teamId: { matchId, teamId } },
+        select: { id: true },
+      });
+      if (existing) {
+        await tx.matchSquadPlayer.deleteMany({ where: { squadId: existing.id } });
+        await tx.matchSquad.update({
+          where: { id: existing.id },
+          data: { lockedByUserId: actor.id, lockedAt: new Date() },
+        });
+        await tx.matchSquadPlayer.createMany({
+          data: players.map((p) => ({ squadId: existing.id, ...p })),
+        });
+      } else {
+        await tx.matchSquad.create({
+          data: {
+            matchId,
+            teamId,
+            lockedByUserId: actor.id,
+            players: { create: players },
+          },
+        });
+      }
+
+      const participating = [match.homeTeamId, match.awayTeamId].filter(
+        (id): id is string => id !== null,
+      );
+      const squadCount = await tx.matchSquad.count({ where: { matchId } });
+      if (
+        squadCount >= participating.length &&
+        XI_LOCKABLE_STATES.includes(match.state as MatchState)
+      ) {
+        await tx.match.update({
+          where: { id: matchId },
+          data: { state: MatchState.PlayingXiLocked },
+        });
+      }
+    });
+
+    await this.audit.record({
+      action: 'MATCH_XI_LOCKED',
+      actorUserId: actor.id,
+      targetEntityType: 'match',
+      targetEntityId: matchId,
+      after: { teamId, playingXi, substitutes, source: 'participation_poll' },
+    });
+    await this.notifications.notify(NotificationTrigger.PlayingXiPosted, {
+      recipientUserIds: all,
+      data: { matchId, teamId },
+    });
+  }
+
   // --- Toss (§11.2) --------------------------------------------------------
 
   async recordToss(matchId: string, dto: RecordTossRequest): Promise<MatchDetail> {
@@ -953,7 +1185,7 @@ export class MatchesService {
         error: 'FORBIDDEN',
       });
     }
-    await this.scorerGrants.grant(matchId, dto.userId, actor.id);
+    await this.scorerGrants.assignOrSwitch(matchId, dto.userId, actor.id);
     await this.audit.record({
       action: 'MATCH_SCORER_ASSIGNED',
       actorUserId: actor.id,
@@ -1379,29 +1611,53 @@ export class MatchesService {
           grantedAt: g.grantedAt.toISOString(),
         };
       });
+    const inningsSides =
+      row.tossWinner && row.tossDecision
+        ? deriveInningsTeamsFromToss(
+            row,
+            row.tossWinner as MatchSide,
+            row.tossDecision as TossDecision,
+          )
+        : null;
     return {
       ...this.toSummary(row),
       reportingTime: row.reportingTime?.toISOString() ?? null,
       groundLocation: row.groundLocation,
+      geofenceLat: row.geofenceLat,
+      geofenceLng: row.geofenceLng,
+      tournamentTimezone: row.tournament.timezone,
       oversPerInnings: row.oversPerInnings,
       maxOversPerBowler: row.maxOversPerBowler,
       powerplayOvers: row.powerplayOvers,
       battingPowerplayOvers: row.battingPowerplayOvers,
       youtubeUrl: row.youtubeUrl,
-      tossWinner: row.tossWinner,
-      tossDecision: row.tossDecision,
+      tossWinner: row.tossWinner as MatchSide | null,
+      tossDecision: row.tossDecision as TossDecision | null,
+      battingFirstTeamId: inningsSides?.battingTeamId ?? null,
+      bowlingFirstTeamId: inningsSides?.bowlingTeamId ?? null,
       openingStrikerUserId: row.openingStrikerUserId,
       openingNonStrikerUserId: row.openingNonStrikerUserId,
       openingBowlerUserId: row.openingBowlerUserId,
       impactPlayerEnabled: row.tournament.impactPlayerEnabled,
       squads,
       activeScorers,
+      externalPlayers: row.externalPlayers.map((player) => ({
+        id: player.id,
+        matchId: player.matchId,
+        slot: player.slot,
+        name: player.name,
+        battingStyle: player.battingStyle,
+        bowlingType: player.bowlingType,
+      })),
       completedAt: row.completedAt?.toISOString() ?? null,
       confirmedAt: row.confirmedAt?.toISOString() ?? null,
       confirmedByUserId: row.confirmedByUserId,
       autoConfirmed: row.autoConfirmed,
       manOfTheMatchUserId: row.manOfTheMatchUserId,
+      manOfTheMatchSelectedAt: row.manOfTheMatchSelectedAt?.toISOString() ?? null,
+      manOfTheMatchSelectedByUserId: row.manOfTheMatchSelectedByUserId,
       winningTeamId: row.winningTeamId,
+      resultNote: row.resultNote,
       isNoResult: row.isNoResult,
     };
   }

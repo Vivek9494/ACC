@@ -5,7 +5,6 @@ import { Text } from './ui/Text';
 interface Segment {
   label: string;
   count: number;
-  /** Tailwind bg + text classes for the bar + legend dot. */
   bar: string;
 }
 
@@ -15,15 +14,15 @@ interface Segment {
  */
 export function AvailabilityBar({ summary }: { summary: AvailabilitySummary }): React.ReactElement {
   const segments: Segment[] = [
-    { label: 'Available', count: summary.available, bar: 'bg-secondary-container' },
-    { label: 'Unavailable', count: summary.unavailable, bar: 'bg-[#c1121f]' },
-    { label: 'Pending', count: summary.pending, bar: 'bg-surface-container-high' },
+    { label: 'Available', count: summary.available, bar: 'bg-primary' },
+    { label: 'Unavailable', count: summary.unavailable, bar: 'bg-secondary' },
+    { label: 'Pending', count: summary.pending, bar: 'bg-stone-300' },
   ];
   const total = summary.total || 1;
 
   return (
     <View className="gap-3">
-      <View className="h-4 flex-row overflow-hidden rounded-full bg-surface-container-high">
+      <View className="h-4 flex-row overflow-hidden rounded-full bg-stone-200">
         {segments.map((segment) =>
           segment.count > 0 ? (
             <View
@@ -38,7 +37,7 @@ export function AvailabilityBar({ summary }: { summary: AvailabilitySummary }): 
         {segments.map((segment) => (
           <View key={segment.label} className="flex-row items-center gap-2">
             <View className={`h-3 w-3 rounded-full ${segment.bar}`} />
-            <Text className="font-sans text-sm text-on-surface">
+            <Text className="font-sans text-sm text-text">
               {segment.label} · {segment.count}
             </Text>
           </View>

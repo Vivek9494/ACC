@@ -1,6 +1,8 @@
 import { Modal, Pressable, View } from 'react-native';
 
 import { Button } from './Button';
+import { ERROR_ALERT_SURFACE_CLASS } from './fieldStyles';
+import { FormErrorText } from './FormErrorText';
 import { Text } from './Text';
 
 export interface ConfirmDeleteModalProps {
@@ -27,14 +29,14 @@ export function ConfirmDeleteModal({
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
       <Pressable className="flex-1 justify-center bg-black/40 px-6" onPress={onCancel}>
         <Pressable
-          className="rounded-xl bg-white p-5"
+          className="rounded-xl bg-surface p-5"
           onPress={(event) => event.stopPropagation()}
         >
           <Text className="font-sans-bold text-lg text-on-surface">{title}</Text>
           <Text className="mt-2 font-sans text-sm leading-5 text-on-surface-variant">{message}</Text>
           {errorMessage ? (
-            <View className="mt-3 rounded-xl border border-[#c1121f]/30 bg-[#fff5f5] p-3">
-              <Text className="font-sans text-sm text-[#c1121f]">{errorMessage}</Text>
+            <View className={`mt-3 ${ERROR_ALERT_SURFACE_CLASS}`}>
+              <FormErrorText>{errorMessage}</FormErrorText>
             </View>
           ) : null}
           <View className="mt-5 flex-row gap-3">

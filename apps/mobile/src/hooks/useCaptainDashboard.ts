@@ -1,5 +1,6 @@
 import type { CaptainDashboard } from '@acc/types';
-import { useCallback, useEffect, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
 
 import { getCaptainDashboard } from '../lib/api';
 import { dashboardFetchError, logFetchError } from '../lib/fetch-error';
@@ -39,9 +40,7 @@ export function useCaptainDashboard(): UseCaptainDashboardResult {
     };
   }, []);
 
-  useEffect(() => {
-    return load();
-  }, [load]);
+  useFocusEffect(load);
 
   return { dashboard, isLoading, error, retry: load };
 }

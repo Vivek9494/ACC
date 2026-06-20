@@ -29,6 +29,7 @@ function inn(
     recentOvers: [],
     timeline: [],
     partnership: null,
+    partnerships: [],
     currentStrikerId: null,
     currentNonStrikerId: null,
     currentBowlerId: null,
@@ -36,6 +37,7 @@ function inn(
     closed,
     closeReason: null,
     target: null,
+    droppedCatches: [],
   };
 }
 
@@ -45,13 +47,26 @@ const SO = InningsType.SuperOver;
 describe('Scoring engine — match result & Super Over (§14)', () => {
   it('declares the defending side the winner when the chase closes short', () => {
     const result = deriveMatchResult([inn(1, N, 'home', 150, true), inn(2, N, 'away', 140, true)]);
-    expect(result).toMatchObject({ decided: true, isTie: false, winningTeamId: 'home', superOverRequired: false });
+    expect(result).toMatchObject({
+      decided: true,
+      isTie: false,
+      winningTeamId: 'home',
+      marginRuns: 10,
+      marginWickets: null,
+      superOverRequired: false,
+    });
   });
 
   it('declares the chasing side the winner the moment it passes the target', () => {
-    // Chase not even "closed" yet, but already ahead → decided.
-    const result = deriveMatchResult([inn(1, N, 'home', 150, true), inn(2, N, 'away', 151, false)]);
-    expect(result).toMatchObject({ decided: true, winningTeamId: 'away' });
+    const chase = inn(2, N, 'away', 151, false);
+    chase.wickets = 3;
+    const result = deriveMatchResult([inn(1, N, 'home', 150, true), chase]);
+    expect(result).toMatchObject({
+      decided: true,
+      winningTeamId: 'away',
+      marginWickets: 7,
+      marginRuns: null,
+    });
   });
 
   it('does not decide while the chase is still in progress and behind', () => {

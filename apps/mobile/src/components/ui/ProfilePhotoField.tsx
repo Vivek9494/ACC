@@ -1,8 +1,16 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image, Pressable, View } from 'react-native';
+import { colors } from '@/theme/colors';
 
 import { pickImage, profilePhotoPickOptions, type PickedImageFile } from '../../lib/imagePicker';
-import { FIELD_ORANGE, INPUT_SHADOW_STYLE, labelClassName, type LabelVariant } from './fieldStyles';
+import {
+  ERROR_BORDER_CLASS,
+  FIELD_ORANGE,
+  INPUT_SHADOW_STYLE,
+  labelClassName,
+  type LabelVariant,
+} from './fieldStyles';
+import { FormErrorText } from './FormErrorText';
 import { Text } from './Text';
 
 export interface ProfilePhotoFieldProps {
@@ -38,31 +46,28 @@ export function ProfilePhotoField({
     onChange(result.file);
   }
 
-  let borderClass = 'border border-[#F1F1F1]';
-  if (error) {
-    borderClass = 'border border-error';
-  }
+  const borderClass = error ? `border ${ERROR_BORDER_CLASS}` : 'border border-border';
 
   return (
     <View className={containerClassName}>
       {label ? <Text className={labelClassName(labelVariant)}>{label}</Text> : null}
       <Pressable
         onPress={() => void pick()}
-        className={`flex-row items-center gap-4 rounded-control bg-white px-5 py-4 ${borderClass}`}
+        className={`flex-row items-center gap-4 rounded-control bg-surface px-5 py-4 ${borderClass}`}
         style={INPUT_SHADOW_STYLE}
       >
         {uri ? (
           <Image source={{ uri }} className="h-14 w-14 rounded-xl" />
         ) : (
-          <View className="h-14 w-14 items-center justify-center rounded-xl bg-[#FDF1EA]">
+          <View className="h-14 w-14 items-center justify-center rounded-xl bg-primary-50">
             <Ionicons name="camera-outline" size={24} color={FIELD_ORANGE} />
           </View>
         )}
         <View className="flex-1">
-          <Text className="font-sans-semibold text-sm text-[#1A1A1A]">
+          <Text className="font-sans-semibold text-sm text-text">
             {uri ? 'Change photo' : 'Add profile photo'}
           </Text>
-          <Text className="font-sans text-xs text-[#9AA0A6]">Optional · JPG only · max 5MB</Text>
+          <Text className="font-sans text-xs text-text-muted">Optional · JPG only · max 5MB</Text>
         </View>
         {uri ? (
           <Pressable
@@ -74,11 +79,11 @@ export function ProfilePhotoField({
             accessibilityRole="button"
             accessibilityLabel="Remove profile photo"
           >
-            <Ionicons name="close-circle" size={22} color="#9AA0A6" />
+            <Ionicons name="close-circle" size={22} color={colors.textMuted} />
           </Pressable>
         ) : null}
       </Pressable>
-      {error ? <Text className="mt-1 font-sans text-sm text-error">{error}</Text> : null}
+      <FormErrorText inline>{error}</FormErrorText>
     </View>
   );
 }

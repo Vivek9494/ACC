@@ -1,8 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { ActivityIndicator, Image, Pressable, View } from 'react-native';
+import { colors } from '@/theme/colors';
 
 import { pickImage, profilePhotoPickOptions, tournamentPosterPickOptions, type PickedImageFile } from '../../lib/imagePicker';
-import { FIELD_ORANGE, labelClassName } from './fieldStyles';
+import { ERROR_BORDER_CLASS, FIELD_ORANGE, labelClassName } from './fieldStyles';
+import { FormErrorText } from './FormErrorText';
 import { Text } from './Text';
 
 export interface TournamentPosterFieldProps {
@@ -33,7 +35,7 @@ export function TournamentPosterField({
     await onFilePicked(result.file);
   }
 
-  const borderClass = error ? 'border-error' : 'border-primary/40';
+  const borderClass = error ? ERROR_BORDER_CLASS : 'border-primary/40';
 
   return (
     <View className="gap-2">
@@ -43,14 +45,14 @@ export function TournamentPosterField({
         disabled={uploading}
         accessibilityRole="button"
         accessibilityLabel="Upload tournament poster"
-        className={`items-center justify-center gap-2 rounded-control border-2 border-dashed bg-[#FDF1EA]/40 px-4 py-8 ${borderClass} ${uploading ? 'opacity-70' : ''}`}
+        className={`items-center justify-center gap-2 rounded-control border-2 border-dashed bg-primary-50/40 px-4 py-8 ${borderClass} ${uploading ? 'opacity-70' : ''}`}
       >
         {uri ? (
           <>
             <Image source={{ uri }} className="h-32 w-full rounded-lg" resizeMode="cover" />
             {uploading ? (
               <View className="absolute inset-0 items-center justify-center rounded-lg bg-black/30">
-                <ActivityIndicator color="#ffffff" />
+                <ActivityIndicator color={colors.textInverse} />
               </View>
             ) : null}
           </>
@@ -65,7 +67,7 @@ export function TournamentPosterField({
       {uploading ? (
         <Text className="font-sans text-sm text-on-surface-variant">Uploading poster…</Text>
       ) : null}
-      {error ? <Text className="font-sans text-sm text-error">{error}</Text> : null}
+      <FormErrorText>{error}</FormErrorText>
     </View>
   );
 }

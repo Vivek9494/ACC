@@ -83,7 +83,7 @@ export default function RegisteredPlayersScreen(): React.ReactElement {
   const isApl = tournament?.type === 'APL';
 
   return (
-    <SafeAreaView className="flex-1 bg-surface">
+    <SafeAreaView className="flex-1 bg-background">
       <View className="px-6 pt-6">
         <Pressable onPress={() => router.back()} className="mb-3">
           <Text className="font-sans text-primary">← Back</Text>
@@ -103,8 +103,8 @@ export default function RegisteredPlayersScreen(): React.ReactElement {
         ) : (
           <>
             {error ? (
-              <View className="rounded-lg bg-error-container px-4 py-3">
-                <Text className="font-sans text-sm text-on-error-container">{error}</Text>
+              <View className="rounded-lg bg-primary-50 px-4 py-3">
+                <Text className="font-sans text-sm text-primary">{error}</Text>
               </View>
             ) : null}
 
@@ -194,7 +194,7 @@ function AvailabilityPill({ value }: { value: boolean | null }): React.ReactElem
     value === true
       ? 'bg-secondary-container'
       : value === false
-        ? 'bg-error-container'
+        ? 'bg-secondary-100'
         : 'bg-surface-container-high';
   return (
     <View className={`rounded-full px-3 py-1 ${style}`}>

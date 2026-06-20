@@ -11,7 +11,6 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 const JPEG_MAGIC = Buffer.from([0xff, 0xd8, 0xff]);
-const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47]);
 
 @Injectable()
 export class MediaService {

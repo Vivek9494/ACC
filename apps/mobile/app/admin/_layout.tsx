@@ -16,6 +16,7 @@ export default function AdminLayout(): React.ReactElement {
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="provinces" />
       <Stack.Screen name="centers" />
+      <Stack.Screen name="users/[userId]" />
     </Stack>
   );
 }

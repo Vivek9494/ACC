@@ -9,7 +9,7 @@ export default function AdminGeographyTabScreen(): React.ReactElement {
   const router = useRouter();
 
   return (
-    <SafeAreaView className="flex-1 bg-surface" edges={['top']}>
+    <SafeAreaView className="flex-1 bg-background" edges={['top']}>
       <View className="flex-1 gap-4 px-4 pt-4">
         <Text className="font-sans-bold text-2xl text-on-surface">Geography</Text>
         <Card accent onPress={() => router.push('/admin/provinces')} className="gap-2">

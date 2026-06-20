@@ -1,17 +1,24 @@
-import type { PlayerDashboard } from '@acc/types';
+import type { PlayerDashboard, ScorerStartableMatch } from '@acc/types';
 import type { Router } from 'expo-router';
 import type { ReactNode } from 'react';
 import { View } from 'react-native';
 
+import { ParticipationPollCard } from './ParticipationPollCard';
 import { ScorerStartMatchCard } from './ScorerStartMatchCard';
 import { MatchSummaryCard } from '../ui/MatchSummaryCard';
 import { StatTile } from '../ui/StatTile';
 import { Text } from '../ui/Text';
 import { TournamentDashboardCard } from '../ui/TournamentDashboardCard';
+import {
+  handleScorerDashboardPress,
+  scorerDashboardButtonLabel,
+} from '../../lib/scorer-dashboard';
 
 export function buildPlayerDashboardSections(
   dashboard: PlayerDashboard,
   router: Router,
+  onOpenMatchSetup?: (match: ScorerStartableMatch) => void,
+  onParticipationPollUpdated?: () => void,
 ): ReactNode[] {
   const performanceItems = [
     { label: 'Matches', value: dashboard.playerStats.matches },
@@ -27,7 +34,21 @@ export function buildPlayerDashboardSections(
       <ScorerStartMatchCard
         key="scorer-match"
         match={dashboard.scorerMatch}
-        onStartPress={() => router.push(`/matches/${dashboard.scorerMatch!.matchId}/start-setup`)}
+        buttonLabel={scorerDashboardButtonLabel(dashboard.scorerMatch)}
+        onStartPress={() =>
+          handleScorerDashboardPress(
+            dashboard.scorerMatch!,
+            router,
+            onOpenMatchSetup,
+          )
+        }
+      />
+    ) : null,
+    dashboard.participationPoll ? (
+      <ParticipationPollCard
+        key="participation-poll"
+        poll={dashboard.participationPoll}
+        onPollUpdated={() => onParticipationPollUpdated?.()}
       />
     ) : null,
     dashboard.featuredMatch ? (
@@ -39,7 +60,13 @@ export function buildPlayerDashboardSections(
         status={dashboard.featuredMatch.status}
         infoLine={dashboard.featuredMatch.infoLine}
         resultLine={dashboard.featuredMatch.resultLine}
-        onPress={() => router.push(`/matches/${dashboard.featuredMatch!.matchId}`)}
+        onPress={() =>
+          router.push(
+            dashboard.featuredMatch!.status === 'LIVE'
+              ? `/matches/${dashboard.featuredMatch!.matchId}/live`
+              : `/matches/${dashboard.featuredMatch!.matchId}`,
+          )
+        }
       />
     ) : null,
     <View key="performance" className="gap-3">

@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { RegistrationStatus, type RegistrationStatus as RegistrationStatusType } from '@acc/types';
 import { View } from 'react-native';
+import { colors } from '@/theme/colors';
 
 import { Text } from '../../ui/Text';
 
@@ -13,12 +14,12 @@ export function VerifyPlayerVerificationBadge({
   if (status === RegistrationStatus.Confirmed) {
     return (
       <View
-        className="mt-1.5 flex-row items-center gap-1 self-start rounded-full bg-[#16a34a]/10 px-2.5 py-1"
+        className="mt-1.5 flex-row items-center gap-1 self-start rounded-full bg-primary-100 px-2.5 py-1"
         accessibilityRole="text"
         accessibilityLabel="Verified"
       >
-        <Ionicons name="checkmark-circle" size={14} color="#16a34a" />
-        <Text className="font-sans-semibold text-xs text-[#16a34a]">Verified</Text>
+        <Ionicons name="checkmark-circle" size={14} color={colors.primary} />
+        <Text className="font-sans-semibold text-xs text-primary-700">Verified</Text>
       </View>
     );
   }
@@ -26,12 +27,12 @@ export function VerifyPlayerVerificationBadge({
   if (status === RegistrationStatus.InWaitlist) {
     return (
       <View
-        className="mt-1.5 flex-row items-center gap-1 self-start rounded-full bg-[#FFAB4D]/25 px-2.5 py-1"
+        className="mt-1.5 flex-row items-center gap-1 self-start rounded-full bg-primary-300/25 px-2.5 py-1"
         accessibilityRole="text"
         accessibilityLabel="Pending verification"
       >
-        <Ionicons name="time-outline" size={14} color="#b45309" />
-        <Text className="font-sans-semibold text-xs text-[#b45309]">Pending</Text>
+        <Ionicons name="time-outline" size={14} color={colors.primaryDark} />
+        <Text className="font-sans-semibold text-xs text-primary-800">Pending</Text>
       </View>
     );
   }

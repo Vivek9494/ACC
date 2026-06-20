@@ -59,8 +59,8 @@ function DashboardBodyContent({
 
   if (error) {
     return (
-      <View className="rounded-xl bg-error-container px-4 py-3">
-        <Text className="font-sans text-sm text-on-error-container">{error}</Text>
+      <View className="rounded-xl bg-primary-50 px-4 py-3">
+        <Text className="font-sans text-sm text-primary">{error}</Text>
         {onRetry ? (
           <Pressable
             onPress={() => {
@@ -117,7 +117,7 @@ export function DashboardScaffold({
     ) : undefined;
 
   return (
-    <SafeAreaView className="flex-1 bg-surface" edges={['top']}>
+    <SafeAreaView className="flex-1 bg-background" edges={['top']}>
       <View className="flex-1">
         {layout === 'split' ? (
           <View className="flex-1 justify-between px-4 py-4">

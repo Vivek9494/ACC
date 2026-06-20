@@ -154,7 +154,7 @@ export default function GeofencePocScreen(): React.ReactElement {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-surface">
+    <SafeAreaView className="flex-1 bg-background">
       <ScrollView
         contentContainerClassName="px-6 py-6 gap-4"
         refreshControl={<RefreshControl refreshing={false} onRefresh={() => void refresh()} />}
@@ -191,8 +191,8 @@ export default function GeofencePocScreen(): React.ReactElement {
         </View>
 
         {error ? (
-          <View className="rounded-lg bg-error-container px-4 py-3">
-            <Text className="font-sans text-sm text-on-error-container">{error}</Text>
+          <View className="rounded-lg bg-primary-50 px-4 py-3">
+            <Text className="font-sans text-sm text-primary">{error}</Text>
           </View>
         ) : null}
 
@@ -250,10 +250,10 @@ export default function GeofencePocScreen(): React.ReactElement {
               <Text
                 className={`font-sans-semibold text-sm ${
                   e.type === 'enter'
-                    ? 'text-[#16a34a]'
+                    ? 'text-primary-700'
                     : e.type === 'exit'
                       ? 'text-primary'
-                      : 'text-[#c1121f]'
+                      : 'text-secondary-900'
                 }`}
               >
                 {e.type.toUpperCase()}

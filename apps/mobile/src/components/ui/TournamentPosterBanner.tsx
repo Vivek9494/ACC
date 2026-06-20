@@ -20,7 +20,7 @@ export function TournamentPosterBanner({
 }: TournamentPosterBannerProps): React.ReactElement {
   return (
     <View className={className}>
-      <View className="rounded-control bg-white" style={INPUT_SHADOW_STYLE}>
+      <View className="rounded-control bg-surface" style={INPUT_SHADOW_STYLE}>
         <View className="overflow-hidden rounded-control">
           <View className="relative h-44 w-full bg-surface-container-high">
             {posterUrl ? (

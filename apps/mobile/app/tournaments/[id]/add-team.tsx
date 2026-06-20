@@ -146,7 +146,7 @@ export default function AddTeamScreen(): React.ReactElement {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-surface" edges={['top']}>
+    <SafeAreaView className="flex-1 bg-background" edges={['top']}>
       <View className="flex-row items-center justify-between px-4 py-3">
         <Pressable
           onPress={() => router.back()}
@@ -197,7 +197,7 @@ export default function AddTeamScreen(): React.ReactElement {
           />
 
           {submitError ? (
-            <Text className="font-sans text-sm text-error">{submitError}</Text>
+            <Text className="font-sans text-sm text-primary">{submitError}</Text>
           ) : null}
 
           <Button

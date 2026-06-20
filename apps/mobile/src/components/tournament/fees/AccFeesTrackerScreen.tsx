@@ -127,7 +127,7 @@ export function AccFeesTrackerScreen({ tournamentId }: AccFeesTrackerScreenProps
     tab === 'paid' ? 'No players have paid fees yet.' : 'All players have paid their fees.';
 
   return (
-    <SafeAreaView className="flex-1 bg-surface" edges={['top']}>
+    <SafeAreaView className="flex-1 bg-background" edges={['top']}>
       <View className="flex-row items-center justify-between px-4 py-3">
         <Pressable
           onPress={() => router.back()}
@@ -179,8 +179,8 @@ export function AccFeesTrackerScreen({ tournamentId }: AccFeesTrackerScreenProps
             <ActivityIndicator color={FIELD_ORANGE} />
           </View>
         ) : error ? (
-          <View className="rounded-lg bg-error-container px-4 py-3">
-            <Text className="font-sans text-sm text-on-error-container">{error}</Text>
+          <View className="rounded-lg bg-primary-50 px-4 py-3">
+            <Text className="font-sans text-sm text-primary">{error}</Text>
           </View>
         ) : groups.length === 0 || groups.every((group) => group.entries.length === 0) ? (
           <Text className="py-12 text-center font-sans text-sm text-on-surface-variant">{emptyLabel}</Text>

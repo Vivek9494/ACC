@@ -3,6 +3,7 @@ import { Link, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { colors } from '@/theme/colors';
 
 import { Button } from '../src/components/ui/Button';
 import { PasswordToggle } from '../src/components/ui/PasswordToggle';
@@ -81,7 +82,7 @@ export default function LoginScreen(): React.ReactElement {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-surface">
+    <SafeAreaView className="flex-1 bg-background">
       <ScrollView contentContainerClassName="flex-grow px-6 py-12" keyboardShouldPersistTaps="handled">
         <View className="mt-8 gap-2">
           <Text className="font-sans-medium text-sm uppercase tracking-widest text-primary">
@@ -124,14 +125,14 @@ export default function LoginScreen(): React.ReactElement {
           </Link>
 
           {formError ? (
-            <View className="rounded-lg bg-error-container px-4 py-3">
-              <Text className="font-sans text-sm text-on-error-container">{formError}</Text>
+            <View className="rounded-lg bg-primary-50 px-4 py-3">
+              <Text className="font-sans text-sm text-primary">{formError}</Text>
             </View>
           ) : null}
 
           <Button onPress={() => void onSubmit()} disabled={submitting} className="mt-2 h-14">
             {submitting ? (
-              <ActivityIndicator color="#ffffff" />
+              <ActivityIndicator color={colors.textInverse} />
             ) : (
               <Text className="font-sans-medium text-sm uppercase tracking-wider text-on-primary">
                 Log in

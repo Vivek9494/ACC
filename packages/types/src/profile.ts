@@ -67,8 +67,30 @@ export function profileMobileDisplay(stored: string): string {
   return digits.slice(-10);
 }
 
+/** Normalize a 10-digit local or +1 E.164 Canadian mobile for storage/API. */
+export function normalizeCanadianMobile(input: string): string {
+  const digits = input.replace(/\D/g, '');
+  if (digits.length === 10) {
+    return `+1${digits}`;
+  }
+  if (digits.length === 11 && digits.startsWith('1')) {
+    return `+1${digits.slice(1)}`;
+  }
+  throw new Error('Invalid Canadian mobile number');
+}
+
+/** Mask a stored or local Canadian mobile for OTP screens: +1 (***) ***-1234. */
+export function formatCanadianMobileMasked(storedOrLocal: string): string {
+  const digits = storedOrLocal.replace(/\D/g, '');
+  const local =
+    digits.length === 11 && digits.startsWith('1') ? digits.slice(1) : digits.slice(-10);
+  if (local.length !== 10) {
+    return '+1 (***) ***-****';
+  }
+  return `+1 (***) ***-${local.slice(6)}`;
+}
+
 /** Normalize a validated 10-digit local number for storage/API (+1 prefix). */
 export function profileMobileForStorage(tenDigits: string): string {
-  const digits = tenDigits.replace(/\D/g, '');
-  return `+1${digits}`;
+  return normalizeCanadianMobile(tenDigits);
 }

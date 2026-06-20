@@ -1,9 +1,11 @@
 import { useMemo } from 'react';
 import { Pressable, View } from 'react-native';
 import { Calendar, type DateData } from 'react-native-calendars';
+import { colors } from '@/theme/colors';
 
 import { formatDisplayDate, formatIsoDate, parseIsoDateLocal } from '../../lib/tournament-datetime';
-import { FIELD_ORANGE, INPUT_SHADOW_STYLE, labelClassName } from './fieldStyles';
+import { ERROR_BORDER_CLASS, FIELD_ORANGE, INPUT_SHADOW_STYLE, labelClassName } from './fieldStyles';
+import { FormErrorText } from './FormErrorText';
 import { Text } from './Text';
 
 export interface TournamentDatesFieldProps {
@@ -29,7 +31,7 @@ export function TournamentDatesField({
       marked[date] = {
         selected: true,
         selectedColor: FIELD_ORANGE,
-        selectedTextColor: '#ffffff',
+        selectedTextColor: colors.textInverse,
       };
     }
     return marked;
@@ -61,8 +63,8 @@ export function TournamentDatesField({
     <View className="gap-2">
       <Text className={labelClassName()}>Tournament Dates</Text>
       <View
-        className={`overflow-hidden rounded-control border bg-white ${
-          error ? 'border-error' : 'border-[#F1F1F1]'
+        className={`overflow-hidden rounded-control border bg-surface ${
+          error ? ERROR_BORDER_CLASS : 'border-border'
         }`}
         style={INPUT_SHADOW_STYLE}
       >
@@ -74,9 +76,9 @@ export function TournamentDatesField({
           theme={{
             todayTextColor: FIELD_ORANGE,
             selectedDayBackgroundColor: FIELD_ORANGE,
-            selectedDayTextColor: '#ffffff',
+            selectedDayTextColor: colors.textInverse,
             arrowColor: FIELD_ORANGE,
-            monthTextColor: '#1A1A1A',
+            monthTextColor: colors.text,
             textDayFontFamily: 'Montserrat_400Regular',
             textMonthFontFamily: 'Montserrat_600SemiBold',
             textDayHeaderFontFamily: 'Montserrat_500Medium',
@@ -95,7 +97,7 @@ export function TournamentDatesField({
             return (
               <View
                 key={date}
-                className="flex-row items-center gap-1 rounded-full border border-[#F1F1F1] bg-white px-3 py-1.5"
+                className="flex-row items-center gap-1 rounded-full border border-border bg-surface px-3 py-1.5"
                 style={INPUT_SHADOW_STYLE}
               >
                 <Text className="font-sans text-sm text-on-surface">{label}</Text>
@@ -112,7 +114,7 @@ export function TournamentDatesField({
           })}
         </View>
       ) : null}
-      {error ? <Text className="ml-1 font-sans text-sm text-error">{error}</Text> : null}
+      <FormErrorText inline>{error}</FormErrorText>
     </View>
   );
 }

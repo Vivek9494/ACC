@@ -1,11 +1,14 @@
 import {
   type AuthUser,
+  type ManOfMatchEligibilityView,
   MatchState,
   type ScorecardConfirmationView,
   ScorecardAuditAction,
   SCORECARD_CONFIRM_WINDOW_MS,
   SYSTEM_ACTOR_LABEL,
-  TournamentType,
+  UserRole,
+  computeManOfMatchDueAt,
+  isManOfMatchOverdue,
 } from '@acc/types';
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import type { Match } from '@prisma/client';
@@ -13,6 +16,7 @@ import type { Match } from '@prisma/client';
 import { AuditService } from '../audit/audit.service';
 import { LiveService } from '../live/live.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { isCaptainOrViceCaptain } from '../authz/team-leader.util';
 import { ScorecardReader } from './scorecard-reader';
 
 /** Match states awaiting a §13.1 confirmation. No Result still locks (§5.2). */
@@ -22,6 +26,8 @@ const AWAITING_CONFIRMATION: MatchState[] = [MatchState.Completed, MatchState.No
 const POST_MATCH_STATES: MatchState[] = [MatchState.Completed, MatchState.ScorecardLocked];
 
 type MatchWithTournament = Match & { tournament: { type: string } };
+
+const SUSPENDED_STATUSES = ['PENDING', 'CARRIED_FORWARD'] as const;
 
 /**
  * Scorecard confirmation & post-match flow (spec §13). Handles the Captain/VC
@@ -133,6 +139,36 @@ export class ScorecardConfirmationService {
 
   // --- Man of the Match (§13.3) --------------------------------------------
 
+  async manOfMatchEligibility(
+    actor: AuthUser,
+    matchId: string,
+  ): Promise<ManOfMatchEligibilityView> {
+    const match = await this.requireMatch(matchId);
+    const card = await this.reader.build(match);
+    const winningTeamId = card.result.winningTeamId;
+    const offered =
+      POST_MATCH_STATES.includes(match.state as MatchState) &&
+      match.manOfTheMatchUserId == null &&
+      !match.isNoResult &&
+      !card.result.isNoResult &&
+      card.result.decided &&
+      !card.result.isTie &&
+      winningTeamId != null;
+
+    let canSelect = false;
+    if (offered && winningTeamId) {
+      try {
+        await this.assertWinningTeamLeader(actor, match, winningTeamId);
+        canSelect = true;
+      } catch {
+        canSelect = false;
+      }
+    }
+    const dueAt = this.manOfMatchDueAt(match);
+    const overdue = isManOfMatchOverdue(dueAt, match.manOfTheMatchUserId);
+    return { offered, canSelect, required: offered, dueAt, overdue };
+  }
+
   async selectManOfMatch(
     actor: AuthUser,
     matchId: string,
@@ -146,32 +182,46 @@ export class ScorecardConfirmationService {
       });
     }
 
-    const inSquad = await this.prisma.matchSquadPlayer.findFirst({
-      where: { userId, squad: { matchId } },
-      select: { id: true },
-    });
-    if (!inSquad) {
+    const card = await this.reader.build(match);
+    if (match.isNoResult || card.result.isNoResult || !card.result.decided || card.result.isTie) {
       throw new BadRequestException({
-        message: 'Man of the Match must be a player from the match squads',
-        error: 'PLAYER_NOT_IN_MATCH',
+        message: 'Man of the Match can only be selected when there is a decided winner',
+        error: 'NO_DECIDED_WINNER',
       });
     }
 
-    // §13.3: for ACC matches the award is made only when the ACC team wins, so
-    // require a decided result (not a tie/No Result).
-    if ((match.tournament.type as TournamentType) === TournamentType.ACC) {
-      const card = await this.reader.build(match);
-      if (match.isNoResult || card.result.isNoResult || !card.result.decided) {
-        throw new BadRequestException({
-          message: 'Man of the Match can be selected only when the ACC team wins',
-          error: 'ACC_NO_WINNER',
-        });
-      }
+    const winningTeamId = card.result.winningTeamId;
+    if (!winningTeamId) {
+      throw new BadRequestException({
+        message:
+          'Man of the Match cannot be selected when the winning team has no registered players',
+        error: 'EXTERNAL_WINNER',
+      });
     }
+
+    const inWinningSquad = await this.prisma.matchSquadPlayer.findFirst({
+      where: {
+        userId,
+        squad: { matchId, teamId: winningTeamId },
+      },
+      select: { id: true },
+    });
+    if (!inWinningSquad) {
+      throw new BadRequestException({
+        message: 'Man of the Match must be a player from the winning team',
+        error: 'PLAYER_NOT_ON_WINNING_TEAM',
+      });
+    }
+
+    await this.assertWinningTeamLeader(actor, match, winningTeamId);
 
     const updated = await this.prisma.match.update({
       where: { id: matchId },
-      data: { manOfTheMatchUserId: userId },
+      data: {
+        manOfTheMatchUserId: userId,
+        manOfTheMatchSelectedAt: new Date(),
+        manOfTheMatchSelectedByUserId: actor.id,
+      },
       include: { tournament: { select: { type: true } } },
     });
     await this.audit.record({
@@ -180,7 +230,10 @@ export class ScorecardConfirmationService {
       targetUserId: userId,
       targetEntityType: 'match',
       targetEntityId: matchId,
-      after: { manOfTheMatchUserId: userId },
+      after: {
+        manOfTheMatchUserId: userId,
+        manOfTheMatchSelectedByUserId: actor.id,
+      },
     });
     return this.toView(updated);
   }
@@ -239,6 +292,81 @@ export class ScorecardConfirmationService {
     return match;
   }
 
+  /** Only the winning team's Captain or Vice-Captain may award MoM (§13.3). */
+  private async assertWinningTeamLeader(
+    actor: AuthUser,
+    match: MatchWithTournament,
+    winningTeamId: string,
+  ): Promise<void> {
+    const tournamentId = match.tournamentId;
+    if (await isCaptainOrViceCaptain(this.prisma, actor.id, tournamentId, winningTeamId)) {
+      return;
+    }
+
+    const { leadersSuspended } = await this.leaderSuspensionFacts(winningTeamId, match.id);
+    if (leadersSuspended) {
+      const isClubManager = await this.prisma.roleAssignment.findFirst({
+        where: {
+          userId: actor.id,
+          role: UserRole.ClubManager,
+          tournamentId,
+        },
+        select: { id: true },
+      });
+      if (isClubManager) {
+        return;
+      }
+    }
+
+    throw new BadRequestException({
+      message: 'Only the winning team Captain or Vice-Captain may select the Man of the Match',
+      error: 'NOT_WINNING_CAPTAIN',
+    });
+  }
+
+  private async leaderSuspensionFacts(
+    teamId: string,
+    matchId: string,
+  ): Promise<{ captainSuspended: boolean; leadersSuspended: boolean }> {
+    const leaders = await this.prisma.roleAssignment.findMany({
+      where: { teamId, role: { in: [UserRole.Captain, UserRole.ViceCaptain] } },
+      select: { userId: true, role: true },
+    });
+    const captainId = leaders.find((row) => row.role === UserRole.Captain)?.userId;
+    const viceCaptainId = leaders.find((row) => row.role === UserRole.ViceCaptain)?.userId;
+
+    const isSuspended = async (userId: string | undefined): Promise<boolean> => {
+      if (!userId) {
+        return false;
+      }
+      const suspension = await this.prisma.suspension.findFirst({
+        where: {
+          userId,
+          status: { in: [...SUSPENDED_STATUSES] },
+          servingMatchId: matchId,
+        },
+        select: { id: true },
+      });
+      return suspension !== null;
+    };
+
+    const captainSuspended = await isSuspended(captainId);
+    const viceCaptainSuspended = await isSuspended(viceCaptainId);
+    const leadersSuspended =
+      captainId !== undefined &&
+      viceCaptainId !== undefined &&
+      captainSuspended &&
+      viceCaptainSuspended;
+    return { captainSuspended, leadersSuspended };
+  }
+
+  private manOfMatchDueAt(match: Match): string | null {
+    return computeManOfMatchDueAt(
+      match.matchDate?.toISOString() ?? null,
+      match.completedAt?.toISOString() ?? null,
+    );
+  }
+
   private toView(match: Match): ScorecardConfirmationView {
     const due = match.completedAt
       ? new Date(match.completedAt.getTime() + SCORECARD_CONFIRM_WINDOW_MS)
@@ -247,6 +375,7 @@ export class ScorecardConfirmationService {
       AWAITING_CONFIRMATION.includes(match.state as MatchState) &&
       due !== null &&
       Date.now() < due.getTime();
+    const manOfMatchDueAt = this.manOfMatchDueAt(match);
     return {
       matchId: match.id,
       state: match.state,
@@ -257,6 +386,10 @@ export class ScorecardConfirmationService {
       autoConfirmDueAt: due?.toISOString() ?? null,
       withinConfirmWindow: withinWindow,
       manOfTheMatchUserId: match.manOfTheMatchUserId,
+      manOfTheMatchSelectedAt: match.manOfTheMatchSelectedAt?.toISOString() ?? null,
+      manOfTheMatchSelectedByUserId: match.manOfTheMatchSelectedByUserId,
+      manOfMatchDueAt,
+      manOfMatchOverdue: isManOfMatchOverdue(manOfMatchDueAt, match.manOfTheMatchUserId),
       winningTeamId: match.winningTeamId,
       isNoResult: match.isNoResult,
     };

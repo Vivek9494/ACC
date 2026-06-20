@@ -54,7 +54,7 @@ export default function LateRegisterPickerScreen(): React.ReactElement {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-surface" edges={['top']}>
+    <SafeAreaView className="flex-1 bg-background" edges={['top']}>
       <View className="flex-row items-center justify-between px-4 py-3">
         <Pressable
           onPress={() => router.back()}
@@ -80,8 +80,8 @@ export default function LateRegisterPickerScreen(): React.ReactElement {
             <ActivityIndicator color={FIELD_ORANGE} />
           </View>
         ) : error ? (
-          <View className="rounded-lg bg-error-container px-4 py-3">
-            <Text className="font-sans text-sm text-on-error-container">{error}</Text>
+          <View className="rounded-lg bg-primary-50 px-4 py-3">
+            <Text className="font-sans text-sm text-primary">{error}</Text>
           </View>
         ) : players.length === 0 ? (
           <Text className="py-16 text-center font-sans text-sm text-on-surface-variant">
@@ -92,7 +92,7 @@ export default function LateRegisterPickerScreen(): React.ReactElement {
             <Pressable
               key={player.userId}
               onPress={() => selectPlayer(player)}
-              className="flex-row items-center gap-3 rounded-lg border border-outline-variant bg-white px-4 py-3 active:opacity-90"
+              className="flex-row items-center gap-3 rounded-lg border border-outline-variant bg-surface px-4 py-3 active:opacity-90"
               style={INPUT_SHADOW_STYLE}
             >
               <PlayerAvatarWithStatus

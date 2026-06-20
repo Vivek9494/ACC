@@ -1,10 +1,17 @@
 import {
   AuthErrorCode,
-  type AuthUser,
+  isPasswordPolicyCompliant,
+  OTP_IP_RATE_LIMIT,
   OTP_LENGTH,
   OTP_MAX_FAILED_ATTEMPTS,
   OTP_MAX_REQUESTS_PER_DAY,
+  OTP_RESEND_COOLDOWN_SECONDS,
   OTP_TTL_SECONDS,
+  PASSWORD_POLICY_INVALID_MESSAGE,
+  RESET_TOKEN_TTL_SECONDS,
+  normalizeCanadianMobile,
+  type AuthUser,
+  type VerifyResetOtpResponse,
 } from '@acc/types';
 import {
   BadRequestException,
@@ -16,21 +23,29 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
-import { randomInt } from 'node:crypto';
+import { randomBytes, randomInt } from 'node:crypto';
 
 import { AuditService } from '../audit/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
+import { SMS_PROVIDER, type SmsProvider } from '../sms/sms-provider';
 import {
   BCRYPT_SALT_ROUNDS,
   otpCodeKey,
   otpFailedCountKey,
+  otpIpRateKey,
   otpRequestCountKey,
+  otpResendCooldownKey,
+  resetTokenKey,
 } from './auth.constants';
 import type { ResetPasswordDto } from './dto/reset-password.dto';
-import { SMS_SENDER, type SmsSender } from '../sms/sms-sender';
 
 const ONE_DAY_SECONDS = 24 * 60 * 60;
+
+interface ResetTokenPayload {
+  userId: string;
+  mobileNumber: string;
+}
 
 @Injectable()
 export class PasswordResetService {
@@ -38,25 +53,42 @@ export class PasswordResetService {
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
     private readonly audit: AuditService,
-    @Inject(SMS_SENDER) private readonly sms: SmsSender,
+    @Inject(SMS_PROVIDER) private readonly sms: SmsProvider,
   ) {}
 
   /**
    * Generates and sends an OTP (§3.3). Silent when the mobile number is
    * unknown so we don't leak which numbers are registered.
    */
-  async requestOtp(mobileNumber: string): Promise<void> {
+  async requestOtp(mobileNumber: string, clientIp: string): Promise<void> {
+    const normalized = this.normalizeMobile(mobileNumber);
+    await this.assertIpRateLimit(clientIp);
+
     const user = await this.prisma.user.findUnique({
-      where: { mobileNumber },
-      select: { id: true },
+      where: { mobileNumber: normalized },
+      select: { id: true, passwordResetLockedAt: true },
     });
     if (!user) {
       return;
     }
 
-    // Daily send cap (§3.4): the counter resets 24h after the first request.
+    if (user.passwordResetLockedAt) {
+      throw this.lockedError();
+    }
+
+    const resendBlocked = await this.redis.get(otpResendCooldownKey(normalized));
+    if (resendBlocked !== null) {
+      throw new HttpException(
+        {
+          message: 'Please wait before requesting another code.',
+          error: AuthErrorCode.OtpResendCooldown,
+        },
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+
     const requestCount = await this.redis.incrementWithTtl(
-      otpRequestCountKey(mobileNumber),
+      otpRequestCountKey(normalized),
       ONE_DAY_SECONDS,
     );
     if (requestCount > OTP_MAX_REQUESTS_PER_DAY) {
@@ -70,16 +102,28 @@ export class PasswordResetService {
     }
 
     const otp = this.generateOtp();
-    await this.redis.setWithTtl(otpCodeKey(mobileNumber), otp, OTP_TTL_SECONDS);
-    await this.sms.sendSms(
-      mobileNumber,
-      `Your ACC password reset code is ${otp}. It expires in 5 minutes.`,
-    );
+    const otpHash = await bcrypt.hash(otp, BCRYPT_SALT_ROUNDS);
+    await Promise.all([
+      this.redis.setWithTtl(otpCodeKey(normalized), otpHash, OTP_TTL_SECONDS),
+      this.redis.del(otpFailedCountKey(normalized)),
+      this.redis.setWithTtl(otpResendCooldownKey(normalized), '1', OTP_RESEND_COOLDOWN_SECONDS),
+    ]);
+    await this.sms.sendOtp(normalized, otp);
   }
 
-  /** Verifies the OTP and sets a new password (§3.3, §3.4). */
-  async resetPassword(dto: ResetPasswordDto): Promise<void> {
-    const user = await this.prisma.user.findUnique({ where: { mobileNumber: dto.mobileNumber } });
+  /** Verifies the OTP and issues a short-lived reset token. */
+  async verifyOtp(
+    mobileNumber: string,
+    otp: string,
+    clientIp: string,
+  ): Promise<VerifyResetOtpResponse> {
+    const normalized = this.normalizeMobile(mobileNumber);
+    await this.assertIpRateLimit(clientIp);
+
+    const user = await this.prisma.user.findUnique({
+      where: { mobileNumber: normalized },
+      select: { id: true, passwordResetLockedAt: true },
+    });
     if (!user) {
       throw new BadRequestException({
         message: 'Invalid or expired code',
@@ -91,26 +135,29 @@ export class PasswordResetService {
       throw this.lockedError();
     }
 
-    const storedOtp = await this.redis.get(otpCodeKey(dto.mobileNumber));
-    if (storedOtp === null) {
+    const storedHash = await this.redis.get(otpCodeKey(normalized));
+    if (storedHash === null) {
       throw new BadRequestException({
         message: 'Invalid or expired code',
         error: AuthErrorCode.OtpInvalid,
       });
     }
 
-    if (storedOtp !== dto.otp) {
+    const matches = await bcrypt.compare(otp, storedHash);
+    if (!matches) {
       const failed = await this.redis.incrementWithTtl(
-        otpFailedCountKey(dto.mobileNumber),
-        ONE_DAY_SECONDS,
+        otpFailedCountKey(normalized),
+        OTP_TTL_SECONDS,
       );
       if (failed >= OTP_MAX_FAILED_ATTEMPTS) {
-        await this.prisma.user.update({
-          where: { id: user.id },
-          data: { passwordResetLockedAt: new Date() },
+        await Promise.all([
+          this.redis.del(otpCodeKey(normalized)),
+          this.redis.del(otpFailedCountKey(normalized)),
+        ]);
+        throw new BadRequestException({
+          message: 'Too many incorrect attempts. Please request a new code.',
+          error: AuthErrorCode.OtpAttemptsExceeded,
         });
-        await this.redis.del(otpCodeKey(dto.mobileNumber));
-        throw this.lockedError();
       }
       throw new BadRequestException({
         message: 'Invalid or expired code',
@@ -118,17 +165,63 @@ export class PasswordResetService {
       });
     }
 
+    const resetToken = randomBytes(32).toString('hex');
+    const payload: ResetTokenPayload = { userId: user.id, mobileNumber: normalized };
+    await Promise.all([
+      this.redis.setWithTtl(resetTokenKey(resetToken), JSON.stringify(payload), RESET_TOKEN_TTL_SECONDS),
+      this.redis.del(otpCodeKey(normalized)),
+      this.redis.del(otpFailedCountKey(normalized)),
+    ]);
+
+    return { resetToken };
+  }
+
+  /** Sets a new password using a reset token issued after OTP verification. */
+  async resetPassword(dto: ResetPasswordDto): Promise<void> {
+    const raw = await this.redis.get(resetTokenKey(dto.resetToken));
+    if (raw === null) {
+      throw new BadRequestException({
+        message: 'Your reset session expired. Please start again.',
+        error: AuthErrorCode.ResetTokenInvalid,
+      });
+    }
+
+    const payload = JSON.parse(raw) as ResetTokenPayload;
+    const user = await this.prisma.user.findUnique({
+      where: { id: payload.userId },
+      select: {
+        id: true,
+        mobileNumber: true,
+        passwordResetLockedAt: true,
+      },
+    });
+    if (!user || user.mobileNumber !== payload.mobileNumber) {
+      throw new BadRequestException({
+        message: 'Your reset session expired. Please start again.',
+        error: AuthErrorCode.ResetTokenInvalid,
+      });
+    }
+
+    if (user.passwordResetLockedAt) {
+      throw this.lockedError();
+    }
+
+    if (!isPasswordPolicyCompliant(dto.newPassword)) {
+      throw new BadRequestException({
+        message: PASSWORD_POLICY_INVALID_MESSAGE,
+        error: AuthErrorCode.InvalidCredentials,
+      });
+    }
+
     const passwordHash = await bcrypt.hash(dto.newPassword, BCRYPT_SALT_ROUNDS);
     await this.prisma.user.update({
       where: { id: user.id },
-      // Bumping tokenVersion logs out any existing sessions after a reset.
       data: { passwordHash, tokenVersion: { increment: 1 } },
     });
 
     await Promise.all([
-      this.redis.del(otpCodeKey(dto.mobileNumber)),
-      this.redis.del(otpFailedCountKey(dto.mobileNumber)),
-      this.redis.del(otpRequestCountKey(dto.mobileNumber)),
+      this.redis.del(resetTokenKey(dto.resetToken)),
+      this.redis.del(otpRequestCountKey(user.mobileNumber)),
     ]);
   }
 
@@ -149,6 +242,8 @@ export class PasswordResetService {
     await Promise.all([
       this.redis.del(otpFailedCountKey(user.mobileNumber)),
       this.redis.del(otpRequestCountKey(user.mobileNumber)),
+      this.redis.del(otpCodeKey(user.mobileNumber)),
+      this.redis.del(otpResendCooldownKey(user.mobileNumber)),
     ]);
 
     await this.audit.record({
@@ -159,11 +254,38 @@ export class PasswordResetService {
     });
   }
 
+  private async assertIpRateLimit(clientIp: string): Promise<void> {
+    const count = await this.redis.incrementWithTtl(
+      otpIpRateKey(clientIp),
+      OTP_IP_RATE_LIMIT.windowSeconds,
+    );
+    if (count > OTP_IP_RATE_LIMIT.maxAttempts) {
+      throw new HttpException(
+        {
+          message: 'Too many requests. Please try again later.',
+          error: AuthErrorCode.TooManyAttempts,
+        },
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+  }
+
   private lockedError(): ForbiddenException {
     return new ForbiddenException({
       message: 'Account is locked from password reset. Contact an administrator.',
       error: AuthErrorCode.PasswordResetLocked,
     });
+  }
+
+  private normalizeMobile(input: string): string {
+    try {
+      return normalizeCanadianMobile(input);
+    } catch {
+      throw new BadRequestException({
+        message: 'Enter a valid 10-digit mobile number',
+        error: AuthErrorCode.InvalidCredentials,
+      });
+    }
   }
 
   private generateOtp(): string {

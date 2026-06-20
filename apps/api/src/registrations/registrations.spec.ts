@@ -6,6 +6,7 @@ import {
   REGISTRATION_DECLINED_MESSAGE,
   RegistrationStatus,
   RegistrationVerificationPhase,
+  RegistrationPlayerType,
   UserRole,
 } from '@acc/types';
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
@@ -68,6 +69,22 @@ const admin: AuthUser = {
 
 const sevak: AuthUser = { ...admin, id: 'sevak-1', role: UserRole.Player };
 
+const centerSevak: AuthUser = {
+  ...admin,
+  id: 'sevak-1',
+  role: UserRole.CenterSevak,
+  centerSevakCenterIds: ['center-A'],
+};
+
+const captain: AuthUser = {
+  ...admin,
+  id: 'captain-1',
+  role: UserRole.Player,
+  teamLeadAssignments: [
+    { role: UserRole.Captain, tournamentId: 'tour-1', teamId: 'team-1' },
+  ],
+};
+
 const openRegistrationWindow = {
   registrationOpenAt: new Date('2026-01-01T00:00:00.000Z'),
   registrationCloseAt: new Date('2026-12-31T23:59:59.000Z'),
@@ -96,6 +113,7 @@ describe('RegistrationsService', () => {
     registration: {
       findUnique: jest.Mock;
       findMany: jest.Mock;
+      count: jest.Mock;
       upsert: jest.Mock;
       create: jest.Mock;
       update: jest.Mock;
@@ -107,6 +125,12 @@ describe('RegistrationsService', () => {
     };
     customFormRequest: { create: jest.Mock; findMany: jest.Mock };
     roleAssignment: { findMany: jest.Mock };
+    teamRegistrationFavourite: {
+      findMany: jest.Mock;
+      upsert: jest.Mock;
+      deleteMany: jest.Mock;
+    };
+    playerSkillVideo: { findMany: jest.Mock };
     $transaction: jest.Mock;
   };
   let permissions: { check: jest.Mock };
@@ -120,6 +144,7 @@ describe('RegistrationsService', () => {
           id: 'tour-1',
           state: 'REGISTRATION_OPEN',
           type: 'APL',
+          ballType: 'TENNIS',
           isDeleted: false,
           ...openRegistrationWindow,
         }),
@@ -139,6 +164,7 @@ describe('RegistrationsService', () => {
       registration: {
         findUnique: jest.fn().mockResolvedValue(row()),
         findMany: jest.fn().mockResolvedValue([]),
+        count: jest.fn().mockResolvedValue(0),
         upsert: jest.fn().mockResolvedValue(row()),
         create: jest.fn().mockResolvedValue(row()),
         update: jest.fn().mockResolvedValue(row()),
@@ -153,6 +179,14 @@ describe('RegistrationsService', () => {
         findMany: jest.fn().mockResolvedValue([]),
       },
       roleAssignment: { findMany: jest.fn().mockResolvedValue([]) },
+      teamRegistrationFavourite: {
+        findMany: jest.fn().mockResolvedValue([]),
+        upsert: jest.fn().mockResolvedValue({}),
+        deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
+      },
+      playerSkillVideo: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
       $transaction: jest.fn((cb: (tx: unknown) => unknown) => cb(prisma)),
     };
     permissions = { check: jest.fn().mockResolvedValue(false) };
@@ -182,7 +216,7 @@ describe('RegistrationsService', () => {
       );
     });
 
-    it('creates a registration In Waitlist on submit', async () => {
+    it('creates a registration In Waitlist on submit for tennis', async () => {
       await service.submit(sevak, 'tour-1', submitPayload);
       expect(prisma.registration.upsert).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -195,11 +229,41 @@ describe('RegistrationsService', () => {
       expect(args.create.status).toBe(RegistrationStatus.InWaitlist);
     });
 
+    it('creates a confirmed registration on submit for leather ACC', async () => {
+      prisma.tournament.findUnique.mockResolvedValue({
+        id: 'tour-acc',
+        state: 'REGISTRATION_OPEN',
+        type: 'ACC',
+        ballType: 'LEATHER',
+        isDeleted: false,
+        ...openRegistrationWindow,
+      });
+      prisma.registration.upsert.mockResolvedValue(
+        row({ tournamentId: 'tour-acc', status: RegistrationStatus.Confirmed }),
+      );
+
+      const result = await service.submit(sevak, 'tour-acc', {
+        ...submitPayload,
+        playerType: RegistrationPlayerType.FullTime,
+      });
+
+      const args = prisma.registration.upsert.mock.calls[0][0] as {
+        create: { status: string };
+      };
+      expect(args.create.status).toBe(RegistrationStatus.Confirmed);
+      expect(result.status).toBe(RegistrationStatus.Confirmed);
+      expect(notifications.notify).toHaveBeenCalledWith(
+        NotificationTrigger.RegistrationConfirmed,
+        expect.objectContaining({ recipientUserIds: ['sevak-1'] }),
+      );
+    });
+
     it('confirms and notifies the player on approve', async () => {
       prisma.tournament.findUnique.mockResolvedValue({
         id: 'tour-1',
         state: 'REGISTRATION_OPEN',
         type: 'APL',
+        ballType: 'TENNIS',
         isDeleted: false,
         ...closedRegistrationWindow,
       });
@@ -221,6 +285,14 @@ describe('RegistrationsService', () => {
     });
 
     it('blocks approve while the registration window is still open', async () => {
+      prisma.tournament.findUnique.mockResolvedValue({
+        id: 'tour-1',
+        state: 'REGISTRATION_OPEN',
+        type: 'APL',
+        ballType: 'TENNIS',
+        isDeleted: false,
+        ...openRegistrationWindow,
+      });
       prisma.registration.findUnique.mockResolvedValue({
         id: 'reg-1',
         status: 'IN_WAITLIST',
@@ -230,11 +302,30 @@ describe('RegistrationsService', () => {
       await expect(service.approve(admin, 'reg-1')).rejects.toBeInstanceOf(BadRequestException);
     });
 
+    it('rejects approve/decline on leather ACC', async () => {
+      prisma.tournament.findUnique.mockResolvedValue({
+        id: 'tour-acc',
+        state: 'REGISTRATION_OPEN',
+        type: 'ACC',
+        ballType: 'LEATHER',
+        isDeleted: false,
+        ...closedRegistrationWindow,
+      });
+      prisma.registration.findUnique.mockResolvedValue({
+        id: 'reg-1',
+        status: 'CONFIRMED',
+        userId: 'player-1',
+        tournamentId: 'tour-acc',
+      });
+      await expect(service.approve(admin, 'reg-1')).rejects.toBeInstanceOf(ForbiddenException);
+    });
+
     it('declines and notifies the player; the spec decline text is exported', async () => {
       prisma.tournament.findUnique.mockResolvedValue({
         id: 'tour-1',
         state: 'REGISTRATION_OPEN',
         type: 'APL',
+        ballType: 'TENNIS',
         isDeleted: false,
         ...closedRegistrationWindow,
       });
@@ -301,6 +392,7 @@ describe('RegistrationsService', () => {
 
   describe('verification queue (§7.3, §7.4)', () => {
     it('returns view-only roster count during the registration window', async () => {
+      permissions.check.mockResolvedValue(true);
       prisma.roleAssignment.findMany.mockResolvedValue([{ centerId: 'center-A' }]);
       prisma.registration.findMany.mockResolvedValue([
         row({ status: RegistrationStatus.InWaitlist }),
@@ -333,10 +425,13 @@ describe('RegistrationsService', () => {
         id: 'tour-1',
         state: 'REGISTRATION_OPEN',
         type: 'APL',
+        ballType: 'TENNIS',
         isDeleted: false,
         ...closedRegistrationWindow,
       });
-      permissions.check.mockResolvedValue(false);
+      permissions.check.mockImplementation(async (permission: Permission) =>
+        permission === Permission.VIEW_REGISTRATIONS_OWN_CENTER,
+      );
       prisma.roleAssignment.findMany.mockResolvedValue([{ centerId: 'center-A' }]);
       prisma.registration.findMany.mockResolvedValue([
         row({ status: RegistrationStatus.InWaitlist }),
@@ -358,10 +453,13 @@ describe('RegistrationsService', () => {
         id: 'tour-1',
         state: 'REGISTRATION_OPEN',
         type: 'APL',
+        ballType: 'TENNIS',
         isDeleted: false,
         ...closedRegistrationWindow,
       });
-      permissions.check.mockResolvedValue(false);
+      permissions.check.mockImplementation(async (permission: Permission) =>
+        permission === Permission.VIEW_REGISTRATIONS_OWN_CENTER,
+      );
       prisma.roleAssignment.findMany.mockResolvedValue([{ centerId: 'center-A' }]);
       prisma.registration.findMany.mockResolvedValue([
         row({
@@ -411,6 +509,7 @@ describe('RegistrationsService', () => {
         id: 'tour-1',
         state: 'REGISTRATION_OPEN',
         type: 'APL',
+        ballType: 'TENNIS',
         isDeleted: false,
         ...closedRegistrationWindow,
       });
@@ -438,6 +537,7 @@ describe('RegistrationsService', () => {
         id: 'tour-1',
         state: 'REGISTRATION_OPEN',
         type: 'APL',
+        ballType: 'TENNIS',
         isDeleted: false,
         ...closedRegistrationWindow,
       });
@@ -447,7 +547,9 @@ describe('RegistrationsService', () => {
         row({ id: 'reg-late', status: RegistrationStatus.Confirmed, userId: 'player-2' }),
       ]);
       prisma.user.findMany.mockResolvedValue([]);
-      permissions.check.mockResolvedValue(false);
+      permissions.check.mockImplementation(async (permission: Permission) =>
+        permission === Permission.VIEW_REGISTRATIONS_OWN_CENTER,
+      );
 
       const result = await service.getVerificationQueue(sevak, 'tour-1');
 
@@ -460,6 +562,203 @@ describe('RegistrationsService', () => {
       await expect(service.getVerificationQueue(sevak, 'tour-1')).rejects.toBeInstanceOf(
         ForbiddenException,
       );
+    });
+
+    it('forbids Center Sevak on a leather ACC tournament', async () => {
+      prisma.tournament.findUnique.mockResolvedValue({
+        id: 'tour-acc',
+        state: 'REGISTRATION_OPEN',
+        type: 'ACC',
+        ballType: 'LEATHER',
+        isDeleted: false,
+        ...closedRegistrationWindow,
+      });
+      prisma.roleAssignment.findMany.mockResolvedValue([{ centerId: 'center-A' }]);
+      await expect(service.getVerificationQueue(sevak, 'tour-acc')).rejects.toBeInstanceOf(
+        ForbiddenException,
+      );
+    });
+
+    it('forbids verification queue on leather for any role', async () => {
+      prisma.tournament.findUnique.mockResolvedValue({
+        id: 'tour-acc',
+        state: 'REGISTRATION_OPEN',
+        type: 'ACC',
+        ballType: 'LEATHER',
+        isDeleted: false,
+        ...closedRegistrationWindow,
+      });
+      await expect(service.getVerificationQueue(admin, 'tour-acc')).rejects.toBeInstanceOf(
+        ForbiddenException,
+      );
+    });
+  });
+
+  describe('verified registered players (team leads)', () => {
+    beforeEach(() => {
+      prisma.tournament.findUnique.mockResolvedValue({
+        id: 'tour-1',
+        state: 'REGISTRATION_CLOSED',
+        type: 'APL',
+        ballType: 'TENNIS',
+        isDeleted: false,
+        ...closedRegistrationWindow,
+      });
+      prisma.registration.count.mockResolvedValue(0);
+      prisma.registration.findMany.mockResolvedValue([
+        row({ status: RegistrationStatus.Confirmed }),
+      ]);
+      permissions.check.mockResolvedValue(true);
+    });
+
+    it('returns confirmed registrants for a captain after verification', async () => {
+      const result = await service.listVerifiedRegisteredPlayers(captain, 'tour-1', {});
+
+      expect(result.players).toHaveLength(1);
+      expect(result.canFavourite).toBe(true);
+      expect(result.favouriteTeamId).toBe('team-1');
+      expect(result.players[0]?.isFavourited).toBe(false);
+      expect(result.players[0]?.hasSkillVideo).toBe(false);
+      expect(result.players[0]?.skillVideoId).toBeNull();
+      expect(permissions.check).toHaveBeenCalledWith(
+        Permission.VIEW_VERIFIED_REGISTERED_PLAYERS,
+        captain,
+        { tournamentId: 'tour-1' },
+      );
+    });
+
+    it('includes hasSkillVideo when a player uploaded a ready skill video', async () => {
+      prisma.playerSkillVideo.findMany.mockResolvedValue([
+        { id: 'vid-1', userId: 'player-1' },
+      ]);
+
+      const result = await service.listVerifiedRegisteredPlayers(captain, 'tour-1', {});
+
+      expect(result.players[0]?.hasSkillVideo).toBe(true);
+      expect(result.players[0]?.skillVideoId).toBe('vid-1');
+    });
+
+    it('favourites a verified registrant for the captain team', async () => {
+      prisma.registration.findUnique.mockResolvedValue(
+        row({ status: RegistrationStatus.Confirmed }),
+      );
+
+      const result = await service.setRegistrationFavourite(
+        captain,
+        'tour-1',
+        'player-1',
+        true,
+      );
+
+      expect(result).toEqual({ userId: 'player-1', isFavourited: true });
+      expect(prisma.teamRegistrationFavourite.upsert).toHaveBeenCalled();
+    });
+
+    it('rejects favouriting from a Club Manager without team leadership', async () => {
+      const clubManager: AuthUser = {
+        ...captain,
+        id: 'cm-1',
+        role: UserRole.ClubManager,
+        teamLeadAssignments: [],
+      };
+      permissions.check.mockResolvedValue(true);
+
+      await expect(
+        service.setRegistrationFavourite(clubManager, 'tour-1', 'player-1', true),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it('allows a Club Manager who is also Captain to favourite for their team', async () => {
+      const clubManagerCaptain: AuthUser = {
+        ...captain,
+        id: 'cm-cap-1',
+        role: UserRole.ClubManager,
+        teamLeadAssignments: [
+          { role: UserRole.Captain, tournamentId: 'tour-1', teamId: 'team-1' },
+        ],
+      };
+      permissions.check.mockResolvedValue(true);
+      prisma.registration.findUnique.mockResolvedValue(
+        row({ status: RegistrationStatus.Confirmed }),
+      );
+
+      const result = await service.setRegistrationFavourite(
+        clubManagerCaptain,
+        'tour-1',
+        'player-1',
+        true,
+      );
+
+      expect(result.isFavourited).toBe(true);
+      expect(prisma.teamRegistrationFavourite.upsert).toHaveBeenCalled();
+    });
+
+    it('rejects when verification is still pending', async () => {
+      prisma.registration.count.mockResolvedValue(2);
+
+      await expect(
+        service.listVerifiedRegisteredPlayers(captain, 'tour-1', {}),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+  });
+
+  describe('favourite players list (team shared)', () => {
+    beforeEach(() => {
+      prisma.tournament.findUnique.mockResolvedValue({
+        id: 'tour-1',
+        state: 'REGISTRATION_CLOSED',
+        type: 'APL',
+        ballType: 'TENNIS',
+        isDeleted: false,
+        ...closedRegistrationWindow,
+      });
+      prisma.registration.count.mockResolvedValue(0);
+      permissions.check.mockResolvedValue(true);
+    });
+
+    it('returns the team shared favourites for a captain', async () => {
+      prisma.teamRegistrationFavourite.findMany.mockResolvedValue([{ userId: 'player-1' }]);
+      prisma.registration.findMany.mockResolvedValue([
+        row({ status: RegistrationStatus.Confirmed, userId: 'player-1' }),
+      ]);
+
+      const result = await service.listFavouritePlayers(captain, 'tour-1');
+
+      expect(result.favourites).toHaveLength(1);
+      expect(result.canFavourite).toBe(true);
+      expect(result.favouriteTeamId).toBe('team-1');
+      expect(result.favourites[0]?.hasSkillVideo).toBe(false);
+      expect(result.favourites[0]?.skillVideoId).toBeNull();
+    });
+
+    it('includes hasSkillVideo on favourite players with a ready skill video', async () => {
+      prisma.teamRegistrationFavourite.findMany.mockResolvedValue([{ userId: 'player-1' }]);
+      prisma.registration.findMany.mockResolvedValue([
+        row({ status: RegistrationStatus.Confirmed, userId: 'player-1' }),
+      ]);
+      prisma.playerSkillVideo.findMany.mockResolvedValue([
+        { id: 'vid-1', userId: 'player-1' },
+      ]);
+
+      const result = await service.listFavouritePlayers(captain, 'tour-1');
+
+      expect(result.favourites[0]?.hasSkillVideo).toBe(true);
+      expect(result.favourites[0]?.skillVideoId).toBe('vid-1');
+    });
+
+    it('returns empty favourites for a Club Manager without team leadership', async () => {
+      const clubManager: AuthUser = {
+        ...captain,
+        id: 'cm-1',
+        role: UserRole.ClubManager,
+        teamLeadAssignments: [],
+      };
+
+      const result = await service.listFavouritePlayers(clubManager, 'tour-1');
+
+      expect(result.favourites).toHaveLength(0);
+      expect(result.canFavourite).toBe(false);
+      expect(result.favouriteTeamId).toBeNull();
     });
   });
 
@@ -475,6 +774,7 @@ describe('RegistrationsService', () => {
         id: 'tour-1',
         state: 'REGISTRATION_OPEN',
         type: 'APL',
+        ballType: 'TENNIS',
         isDeleted: false,
         ...closedRegistrationWindow,
       });
@@ -532,6 +832,20 @@ describe('RegistrationsService', () => {
       );
     });
 
+    it('blocks Center Sevak late registration on leather ACC', async () => {
+      prisma.tournament.findUnique.mockResolvedValue({
+        id: 'tour-acc',
+        state: 'REGISTRATION_OPEN',
+        type: 'ACC',
+        ballType: 'LEATHER',
+        isDeleted: false,
+        ...closedRegistrationWindow,
+      });
+      await expect(
+        service.lateRegister(centerSevak, 'tour-acc', { ...submitPayload, userId: 'player-1' }),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+
     it('rejects late registration when the player is already registered', async () => {
       prisma.tournament.findUnique.mockResolvedValue({
         id: 'tour-1',
@@ -551,6 +865,7 @@ describe('RegistrationsService', () => {
         id: 'tour-1',
         state: 'REGISTRATION_OPEN',
         type: 'APL',
+        ballType: 'TENNIS',
         isDeleted: false,
         ...closedRegistrationWindow,
       });
@@ -715,10 +1030,16 @@ describe('RegistrationsService', () => {
 });
 
 describe('SubmitRegistrationDto', () => {
-  it('rejects a rating outside 0–5', () => {
-    const dto = plainToInstance(SubmitRegistrationDto, { battingRating: 9 });
+  it('rejects a rating outside 0–10', () => {
+    const dto = plainToInstance(SubmitRegistrationDto, { battingRating: 11 });
     const errors = validateSync(dto);
     expect(errors.some((e) => e.property === 'battingRating')).toBe(true);
+  });
+
+  it('accepts a rating within 0–10', () => {
+    const dto = plainToInstance(SubmitRegistrationDto, { ...submitPayload, battingRating: 9 });
+    const errors = validateSync(dto);
+    expect(errors.some((e) => e.property === 'battingRating')).toBe(false);
   });
 
   it('requires name and center on submission', () => {
@@ -736,17 +1057,23 @@ describe('SubmitRegistrationDto', () => {
 });
 
 describe('UpdateRatingsDto', () => {
-  it('rejects a batting rating not on the registration scale', () => {
-    const dto = plainToInstance(UpdateRatingsDto, { battingRating: 1 });
+  it('rejects a batting rating outside 0–10', () => {
+    const dto = plainToInstance(UpdateRatingsDto, { battingRating: 11 });
+    const errors = validateSync(dto);
+    expect(errors.some((e) => e.property === 'battingRating')).toBe(true);
+  });
+
+  it('rejects a non-integer batting rating', () => {
+    const dto = plainToInstance(UpdateRatingsDto, { battingRating: 4.5 });
     const errors = validateSync(dto);
     expect(errors.some((e) => e.property === 'battingRating')).toBe(true);
   });
 
   it('accepts registration-scale ratings', () => {
     const dto = plainToInstance(UpdateRatingsDto, {
-      battingRating: 4,
-      bowlingRating: 3,
-      fieldingRating: 5,
+      battingRating: 8,
+      bowlingRating: 6,
+      fieldingRating: 10,
     });
     expect(validateSync(dto)).toHaveLength(0);
   });

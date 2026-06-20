@@ -20,6 +20,12 @@ export const DeliveryType = {
   RetiredOut: 'RETIRED_OUT',
   /** Impact Player brought in (§8) — recorded as a discrete event. */
   ImpactPlayerIn: 'IMPACT_PLAYER_IN',
+  /** Pre-delivery non-striker run out by the bowler (UI: Mankad; scored as RUN_OUT — §30.3). */
+  Mankad: 'MANKAD',
+  /** Scorer manually ends the innings (declaration / rain / agreement — §12.2). */
+  EndInnings: 'END_INNINGS',
+  /** Fielder dropped a catch — metadata only; no runs, wicket, or ball progression (§12.1). */
+  CatchDrop: 'CATCH_DROP',
 } as const;
 export type DeliveryType = (typeof DeliveryType)[keyof typeof DeliveryType];
 
@@ -33,6 +39,9 @@ export const DELIVERY_TYPE_LABELS: Record<DeliveryType, string> = {
   RETIRED_HURT: 'Retired Hurt',
   RETIRED_OUT: 'Retired Out',
   IMPACT_PLAYER_IN: 'Impact Player In',
+  MANKAD: 'Mankad',
+  END_INNINGS: 'End Innings',
+  CATCH_DROP: 'Catch Drop',
 };
 
 /**
@@ -75,6 +84,7 @@ export const InningsCloseReason = {
   AllOut: 'ALL_OUT',
   OversComplete: 'OVERS_COMPLETE',
   TargetReached: 'TARGET_REACHED',
+  ManuallyEnded: 'MANUALLY_ENDED',
 } as const;
 export type InningsCloseReason =
   (typeof InningsCloseReason)[keyof typeof InningsCloseReason];
@@ -89,11 +99,16 @@ export type InningsType = (typeof InningsType)[keyof typeof InningsType];
 
 export const BALLS_PER_OVER = 6;
 export const WICKETS_FOR_ALL_OUT = 10;
+/** Two dismissals end a super-over innings (§14). */
+export const WICKETS_FOR_SUPER_OVER_ALL_OUT = 2;
 export const PLAYERS_PER_TEAM = 11;
 export const SUPER_OVER_OVERS = 1;
 export const POINTS_WIN = 2;
 export const POINTS_TIE_OR_NO_RESULT = 1;
 export const POINTS_LOSS = 0;
+
+/** Standard on-field penalty awarded via More → Penalty (§12.1). */
+export const STANDARD_MATCH_PENALTY_RUNS = 5;
 
 /** §12.3: the exact error returned when a stale scorecard save is rejected. */
 export const STALE_SCORECARD_ERROR = 'Scorecard got updated.';
@@ -116,6 +131,8 @@ export interface DismissalInput {
   /** Defaults to the striker when omitted (e.g. run-out can name either batter). */
   dismissedId?: string | null;
   fielderId?: string | null;
+  /** Run-out relay — second fielder (notation "run out (f1/f2)"). */
+  fielder2Id?: string | null;
 }
 
 /**
@@ -132,9 +149,30 @@ export interface RecordDeliveryRequest {
   runsBat?: number;
   /** Extra runs credited to the batting team (wide/no-ball penalty, byes…). */
   extraRuns?: number;
+  /**
+   * On a no-ball: completed runs taken as byes (not off the bat). The 1-run
+   * no-ball penalty remains in {@link extraRuns}. Mutually exclusive with
+   * {@link runsBat} and {@link noBallLegByeRuns}.
+   */
+  noBallByeRuns?: number;
+  /**
+   * On a no-ball: completed runs taken as leg-byes (not off the bat). The 1-run
+   * no-ball penalty remains in {@link extraRuns}. Mutually exclusive with
+   * {@link runsBat} and {@link noBallByeRuns}.
+   */
+  noBallLegByeRuns?: number;
   /** True for a 4/6 off the bat — boundaries never rotate strike (§32). */
   isBoundary?: boolean;
   dismissal?: DismissalInput | null;
+  /**
+   * Metadata events (e.g. CATCH_DROP): the fielding-side player who dropped the catch.
+   */
+  fielderId?: string | null;
+  /**
+   * Penalty-runs only: which team receives the runs (defaults to the batting side
+   * of the innings in which the event is recorded).
+   */
+  penaltyBeneficiaryTeamId?: string | null;
   expectedVersion: number;
 }
 
@@ -157,6 +195,24 @@ export interface UpdateOversAllottedRequest {
   expectedVersion: number;
 }
 
+/** Persist at-crease batters and/or the current-over bowler before the next delivery. */
+export interface SetInningsParticipantsRequest {
+  strikerId?: string | null;
+  nonStrikerId?: string | null;
+  bowlerId?: string | null;
+  expectedVersion: number;
+}
+
+/** Reverse the most recently appended delivery (re-derive all state). */
+export interface UndoDeliveryRequest {
+  expectedVersion: number;
+}
+
+/** Manually end the current innings and run the innings-transition flow (§12.2). */
+export interface EndInningsRequest {
+  expectedVersion: number;
+}
+
 // --- Derived read models ----------------------------------------------------
 
 export interface BatterCard {
@@ -170,6 +226,22 @@ export interface BatterCard {
   dismissalType: DismissalType | null;
   bowlerId: string | null;
   fielderId: string | null;
+  /** Run-out relay — second fielder. */
+  fielder2Id: string | null;
+  /** Off crease but not out — may resume batting later (§12.1). */
+  retiredHurt: boolean;
+  /** Run out via a pre-delivery Mankad (notation suffix). */
+  isMankad: boolean;
+}
+
+/** Live scoring batter row — SR from engine figures; "-" when no balls faced. */
+export function formatBatterStrikeRateDisplay(
+  card: Pick<BatterCard, 'strikeRate' | 'balls'> | undefined,
+): string {
+  if (!card || card.balls <= 0) {
+    return '-';
+  }
+  return card.strikeRate.toFixed(1);
 }
 
 export interface BowlerCard {
@@ -179,7 +251,22 @@ export interface BowlerCard {
   runsConceded: number;
   wickets: number;
   maidens: number;
+  dotBalls: number;
+  wides: number;
+  noBalls: number;
+  fours: number;
+  sixes: number;
   economy: number;
+}
+
+/** Live bowling row — economy from engine figures; "-" when no legal balls bowled. */
+export function formatBowlerEconomyDisplay(
+  card: Pick<BowlerCard, 'economy' | 'legalBalls'> | undefined,
+): string {
+  if (!card || card.legalBalls <= 0) {
+    return '-';
+  }
+  return Number.isInteger(card.economy) ? card.economy.toFixed(1) : card.economy.toFixed(2);
 }
 
 export interface FallOfWicket {
@@ -228,6 +315,17 @@ export interface Partnership {
   runs: number;
   balls: number;
   batterIds: string[];
+  /** Runs each batter has scored since this stand began (off-bat only). */
+  batterRuns: { playerId: string; runs: number }[];
+}
+
+/** A completed batting stand (closed at a wicket). Extras count toward stand runs (§28). */
+export interface CompletedPartnership {
+  batterIds: string[];
+  /** Each batter's individual score when the stand ended. */
+  batterRuns: { playerId: string; runs: number }[];
+  runs: number;
+  balls: number;
 }
 
 export interface InningsScorecard {
@@ -251,6 +349,8 @@ export interface InningsScorecard {
   timeline: TimelineEntry[];
   /** Current unbroken partnership, or null before the first ball (spec §28). */
   partnership: Partnership | null;
+  /** Wicket-to-wicket stands closed before the current partnership (§28). */
+  partnerships: CompletedPartnership[];
   currentStrikerId: string | null;
   currentNonStrikerId: string | null;
   currentBowlerId: string | null;
@@ -259,6 +359,8 @@ export interface InningsScorecard {
   closed: boolean;
   closeReason: InningsCloseReason | null;
   target: number | null;
+  /** Per-fielder dropped-catch counts from CATCH_DROP metadata events. */
+  droppedCatches: { playerId: string; count: number }[];
 }
 
 export interface MatchResultView {
@@ -266,9 +368,30 @@ export interface MatchResultView {
   isTie: boolean;
   isNoResult: boolean;
   winningTeamId: string | null;
+  /** Runs margin when the team that batted first wins (§32). */
+  marginRuns: number | null;
+  /** Wickets remaining when the chasing side wins (§32). */
+  marginWickets: number | null;
   /** True when a (further) Super Over is required to break a tie (§14). */
   superOverRequired: boolean;
   note: string | null;
+}
+
+/** Per-innings batting/bowling team labels for scorecard display (§28). */
+export interface ScorecardInningsLabels {
+  inningsId: string | null;
+  battingTeamId: string | null;
+  battingTeamName: string;
+  battingTeamLogoUrl: string | null;
+  bowlingTeamId: string | null;
+  bowlingTeamName: string;
+}
+
+/** Resolved participant and team names bundled with the scorecard (guest-readable). */
+export interface ScorecardDisplayContext {
+  /** Opaque participant id (registered userId or external player id) → display name. */
+  players: Record<string, string>;
+  innings: ScorecardInningsLabels[];
 }
 
 export interface ScorecardResponse {
@@ -280,4 +403,299 @@ export interface ScorecardResponse {
   effectiveTarget: number | null;
   innings: InningsScorecard[];
   result: MatchResultView;
+  /** Resolved team and player display names — always present on API responses. */
+  display: ScorecardDisplayContext;
+}
+
+/** Which crease slot the scorer is filling on the Select Batsman screen. */
+export const BatsmanPickerRole = {
+  Striker: 'STRIKER',
+  NonStriker: 'NON_STRIKER',
+  /** Incoming batter after a wicket (or when one crease slot is empty mid-innings). */
+  Incoming: 'INCOMING',
+} as const;
+export type BatsmanPickerRole = (typeof BatsmanPickerRole)[keyof typeof BatsmanPickerRole];
+
+/** Live batting status for a Playing 11 row in the picker. */
+export const BatsmanPickerStatus = {
+  AtCrease: 'AT_CREASE',
+  Out: 'OUT',
+  YetToBat: 'YET_TO_BAT',
+  /** Retired hurt — off crease, score preserved, may return. */
+  RetiredHurt: 'RETIRED_HURT',
+} as const;
+export type BatsmanPickerStatus = (typeof BatsmanPickerStatus)[keyof typeof BatsmanPickerStatus];
+
+export const BATSMAN_PICKER_STATUS_LABELS: Record<BatsmanPickerStatus, string> = {
+  AT_CREASE: 'At crease',
+  OUT: 'Out',
+  YET_TO_BAT: 'Yet to bat',
+  RETIRED_HURT: 'Retired hurt — can return',
+};
+
+export interface BatsmanPickerPlayerRow {
+  /** Registered user id or external player id (opaque participant id). */
+  userId: string;
+  firstName: string;
+  lastName: string;
+  profilePhotoUrl: string | null;
+  battingStyle: string | null;
+  /** True for live-added external opponent batters (§9.5). */
+  isExternal: boolean;
+  status: BatsmanPickerStatus;
+  runs: number | null;
+  balls: number | null;
+  /** Scorecard-style dismissal (e.g. "c Butler b Wood"); null when not out. */
+  dismissalText: string | null;
+  selectable: boolean;
+  /** Filled orange check — at crease or chosen for the active slot. */
+  selected: boolean;
+}
+
+/** Named substitute from the locked matchday squad (§9.7). */
+export interface BatsmanPickerSubstituteRow {
+  userId: string;
+  firstName: string;
+  lastName: string;
+  profilePhotoUrl: string | null;
+  battingStyle: string | null;
+}
+
+/** State-aware Select Batsman picker payload (derived innings + squad profiles). */
+export interface BatsmanPickerResponse {
+  matchId: string;
+  inningsId: string;
+  /** Null when the batting side is the ACC external opponent (§9.5). */
+  battingTeamId: string | null;
+  battingTeamName: string;
+  /** True when the batting side is the unregistered external opponent. */
+  battingSideIsExternal: boolean;
+  role: BatsmanPickerRole;
+  /** Opaque participant ids — registered `userId` or external player id. */
+  players: BatsmanPickerPlayerRow[];
+  /** Registered teams only — substitutes already included in `players`; always empty for external sides. */
+  availableSubstitutes: BatsmanPickerSubstituteRow[];
+}
+
+type DismissalNameResolver = (playerId: string | null) => string;
+
+/** Builds short scorecard dismissal text (e.g. "c Butler b Wood"). */
+export function formatDismissalShort(
+  card: Pick<BatterCard, 'dismissalType' | 'bowlerId' | 'fielderId'> & {
+    fielder2Id?: string | null;
+    isMankad?: boolean;
+  },
+  nameOf: DismissalNameResolver,
+): string {
+  if (!card.dismissalType) return '';
+  const bowler = card.bowlerId ? nameOf(card.bowlerId) : null;
+  const fielder = card.fielderId ? nameOf(card.fielderId) : null;
+  const fielder2 = card.fielder2Id ? nameOf(card.fielder2Id) : null;
+  switch (card.dismissalType) {
+    case DismissalType.Bowled:
+      return bowler ? `b ${bowler}` : DISMISSAL_TYPE_LABELS.BOWLED;
+    case DismissalType.Caught:
+      if (card.fielderId && card.bowlerId && card.fielderId === card.bowlerId && bowler) {
+        return `c & b ${bowler}`;
+      }
+      return fielder && bowler ? `c ${fielder} b ${bowler}` : fielder ? `c ${fielder}` : DISMISSAL_TYPE_LABELS.CAUGHT;
+    case DismissalType.Lbw:
+      return bowler ? `lbw b ${bowler}` : DISMISSAL_TYPE_LABELS.LBW;
+    case DismissalType.RunOut:
+      if (fielder && fielder2) {
+        return `run out (${fielder}/${fielder2})`;
+      }
+      if (fielder && card.isMankad) {
+        return `run out (${fielder}) (mankad)`;
+      }
+      return fielder ? `run out (${fielder})` : DISMISSAL_TYPE_LABELS.RUN_OUT;
+    case DismissalType.Stumped:
+      return fielder && bowler ? `st ${fielder} b ${bowler}` : DISMISSAL_TYPE_LABELS.STUMPED;
+    case DismissalType.HitWicket:
+      return bowler ? `hit wicket b ${bowler}` : DISMISSAL_TYPE_LABELS.HIT_WICKET;
+    case DismissalType.RetiredOut:
+      return DISMISSAL_TYPE_LABELS.RETIRED_OUT;
+    default:
+      return DISMISSAL_TYPE_LABELS[card.dismissalType];
+  }
+}
+
+/** Batting status for the scorecard table — dismissal text or "not out". */
+export function formatBatterStatus(
+  card: BatterCard,
+  nameOf: DismissalNameResolver,
+): string {
+  if (card.retiredHurt && !card.isOut) {
+    return 'retired hurt';
+  }
+  if (!card.isOut) {
+    return 'not out';
+  }
+  return formatDismissalShort(card, nameOf);
+}
+
+/** Compact batter line for the score header, e.g. "88*(92)" or "42(35)". */
+export function formatBatterHeaderFigures(
+  card: BatterCard,
+  onStrike: boolean,
+): string {
+  const runs = onStrike && !card.isOut ? `${card.runs}*` : String(card.runs);
+  return `${runs} (${card.balls})`;
+}
+
+/** Non-zero extra types for scorecard rows, e.g. ["w 8", "b 4"]. */
+export function extrasBreakdownParts(extras: ExtrasBreakdown): string[] {
+  const parts: string[] = [];
+  if (extras.wides > 0) parts.push(`w ${extras.wides}`);
+  if (extras.byes > 0) parts.push(`b ${extras.byes}`);
+  if (extras.legByes > 0) parts.push(`lb ${extras.legByes}`);
+  if (extras.noBalls > 0) parts.push(`nb ${extras.noBalls}`);
+  if (extras.penalties > 0) parts.push(`p ${extras.penalties}`);
+  return parts;
+}
+
+/** Extras row label, e.g. "Extras (w 8, b 4, lb 2) = 14". */
+export function formatExtrasBreakdown(extras: ExtrasBreakdown): string {
+  const parts = extrasBreakdownParts(extras);
+  const breakdown = parts.length > 0 ? ` (${parts.join(', ')})` : '';
+  return `Extras${breakdown} = ${extras.total}`;
+}
+
+/** Partnership run rate (runs per over) from balls faced. */
+export function partnershipRunRate(runs: number, balls: number): number {
+  if (balls <= 0) {
+    return 0;
+  }
+  return Math.round((runs / (balls / BALLS_PER_OVER)) * 10) / 10;
+}
+
+export function wicketOrdinal(n: number): string {
+  const suffixes = ['TH', 'ST', 'ND', 'RD'] as const;
+  const mod100 = n % 100;
+  if (mod100 >= 11 && mod100 <= 13) {
+    return `${n}TH`;
+  }
+  const mod10 = n % 10;
+  const suffix = mod10 === 1 ? suffixes[1] : mod10 === 2 ? suffixes[2] : mod10 === 3 ? suffixes[3] : suffixes[0];
+  return `${n}${suffix}`;
+}
+
+/** Line 1 — e.g. "1ST WICKET: 118-1" (runs, hyphen, wickets-down). */
+export function formatFallOfWicketHeadline(fow: FallOfWicket): string {
+  return `${wicketOrdinal(fow.wicketNumber)} WICKET: ${fow.teamRuns}-${fow.wicketNumber}`;
+}
+
+/** Line 2 — e.g. "R. Sharma, 16.4 ov". */
+export function formatFallOfWicketDetail(
+  fow: FallOfWicket,
+  nameOf: DismissalNameResolver,
+): string {
+  return `${nameOf(fow.playerId)}, ${fow.oversText} ov`;
+}
+
+/** Single-line fall-of-wickets entry (compact views). */
+export function formatFallOfWicketEntry(
+  fow: FallOfWicket,
+  nameOf: DismissalNameResolver,
+): string {
+  return `${formatFallOfWicketHeadline(fow)} ${formatFallOfWicketDetail(fow, nameOf)}`;
+}
+
+/** Why a bowler cannot be selected for the current over. */
+export const BowlerPickerIneligibility = {
+  ConsecutiveOver: 'CONSECUTIVE_OVER',
+  QuotaReached: 'QUOTA_REACHED',
+} as const;
+export type BowlerPickerIneligibility =
+  (typeof BowlerPickerIneligibility)[keyof typeof BowlerPickerIneligibility];
+
+export interface BowlerPickerPlayerRow {
+  /** Registered user id or external player id (opaque participant id). */
+  userId: string;
+  firstName: string;
+  lastName: string;
+  profilePhotoUrl: string | null;
+  bowlingType: string | null;
+  bowlingTypeLabel: string;
+  /** Standard O-M-R-W notation when the bowler has delivered this innings; null otherwise. */
+  figuresOmRw: string | null;
+  isExternal: boolean;
+  selectable: boolean;
+  selected: boolean;
+  ineligibility: BowlerPickerIneligibility | null;
+  ineligibilityHint: string | null;
+}
+
+/** State-aware Select Bowler picker payload (derived innings + squad profiles). */
+export interface BowlerPickerResponse {
+  matchId: string;
+  inningsId: string;
+  /** Null when the bowling side is the ACC external opponent (§9.5). */
+  bowlingTeamId: string | null;
+  bowlingTeamName: string;
+  bowlingSideIsExternal: boolean;
+  maxOversPerBowler: number | null;
+  players: BowlerPickerPlayerRow[];
+}
+
+/** One bowling-side player selectable as a fielder (caught, run out, stumping). */
+export interface FielderPickerPlayerRow {
+  userId: string;
+  firstName: string;
+  lastName: string;
+  profilePhotoUrl: string | null;
+  isExternal: boolean;
+  /** True when this player is the current bowler (caught & bowled). */
+  isCurrentBowler: boolean;
+}
+
+/** Bowling squad list for the caught / run-out / stumped fielder picker. */
+export interface FielderPickerResponse {
+  matchId: string;
+  inningsId: string;
+  bowlingTeamId: string | null;
+  bowlingTeamName: string;
+  bowlingSideIsExternal: boolean;
+  currentBowlerId: string | null;
+  players: FielderPickerPlayerRow[];
+}
+
+/** Formats bowler figures as overs-maidens-runs-wickets (e.g. "4-0-24-2"). */
+export function formatBowlerOmRw(
+  card: Pick<BowlerCard, 'oversText' | 'maidens' | 'runsConceded' | 'wickets'>,
+): string {
+  return `${card.oversText}-${card.maidens}-${card.runsConceded}-${card.wickets}`;
+}
+
+/** Human-readable result line for match lists and completion banners. */
+export function formatMatchResultNote(
+  winnerName: string,
+  result: Pick<
+    MatchResultView,
+    'decided' | 'marginRuns' | 'marginWickets' | 'isTie' | 'superOverRequired' | 'note'
+  >,
+): string | null {
+  if (result.superOverRequired) {
+    return result.note ?? 'Scores level — Super Over required';
+  }
+  if (result.isTie) {
+    return 'Match tied';
+  }
+  if (!result.decided || !winnerName.trim()) {
+    return null;
+  }
+  if (result.marginWickets != null && result.marginWickets >= 0) {
+    const w = result.marginWickets;
+    const line = `${winnerName} won by ${w} wicket${w === 1 ? '' : 's'}`;
+    return result.note === 'Decided by Super Over' ? `${line} (Super Over)` : line;
+  }
+  if (result.marginRuns != null && result.marginRuns >= 0) {
+    const r = result.marginRuns;
+    const line = `${winnerName} won by ${r} run${r === 1 ? '' : 's'}`;
+    return result.note === 'Decided by Super Over' ? `${line} (Super Over)` : line;
+  }
+  if (result.note === 'Decided by Super Over') {
+    return `${winnerName} won (Super Over)`;
+  }
+  return `${winnerName} won`;
 }

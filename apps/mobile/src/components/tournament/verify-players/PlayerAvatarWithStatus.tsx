@@ -4,8 +4,8 @@ import { Image, View } from 'react-native';
 import { Text } from '../../ui/Text';
 
 const STATUS_DOT: Partial<Record<RegistrationStatusType, string>> = {
-  [RegistrationStatus.InWaitlist]: 'bg-error',
-  [RegistrationStatus.Confirmed]: 'bg-[#16a34a]',
+  [RegistrationStatus.InWaitlist]: 'bg-secondary-900',
+  [RegistrationStatus.Confirmed]: 'bg-primary',
   [RegistrationStatus.Declined]: 'bg-on-surface-variant',
 };
 
@@ -37,7 +37,7 @@ export function PlayerAvatarWithStatus({
       )}
       {status ? (
         <View
-          className={`absolute bottom-0 right-0 ${dotSize} rounded-full border-2 border-white ${STATUS_DOT[status] ?? 'bg-on-surface-variant'}`}
+          className={`absolute bottom-0 right-0 ${dotSize} rounded-full border-2 border-surface ${STATUS_DOT[status] ?? 'bg-stone-400'}`}
         />
       ) : null}
     </View>

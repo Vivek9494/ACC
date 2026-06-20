@@ -37,7 +37,7 @@ export function BottomTabBar({
 
   return (
     <View
-      className="border-t border-outline-variant bg-white px-2 pt-2"
+      className="border-t border-outline-variant bg-surface px-2 pt-2"
       style={{ paddingBottom: Math.max(insets.bottom, 8) }}
     >
       <View className="flex-row items-center justify-between">

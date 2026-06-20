@@ -94,7 +94,7 @@ export function TournamentGroupCard({
 
   return (
     <View
-      className="overflow-hidden rounded-control border border-outline-variant bg-white"
+      className="overflow-hidden rounded-control border border-outline-variant bg-surface"
       style={INPUT_SHADOW_STYLE}
     >
       {showGroupHeader ? (

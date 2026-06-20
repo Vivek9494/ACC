@@ -4,29 +4,29 @@ import { Text } from './ui/Text';
 
 /** Tailwind classes per match state (spec §5.2 badge on the match card). */
 const STATE_STYLES: Record<MatchState, string> = {
-  SCHEDULED: 'bg-surface-container-high',
-  PLAYING_XI_LOCKED: 'bg-tertiary-container',
-  TOSS_COMPLETED: 'bg-tertiary-container',
-  LIVE: 'bg-primary-container',
-  DELAYED: 'bg-surface-container-high',
-  RAIN_INTERRUPTED: 'bg-surface-container-high',
-  CANCELLED: 'bg-error-container',
-  NO_RESULT: 'bg-surface-container-high',
-  COMPLETED: 'bg-secondary-container',
-  SCORECARD_LOCKED: 'bg-secondary-container',
+  SCHEDULED: 'bg-stone-200',
+  PLAYING_XI_LOCKED: 'bg-secondary-100',
+  TOSS_COMPLETED: 'bg-secondary-100',
+  LIVE: 'bg-primary',
+  DELAYED: 'bg-stone-200',
+  RAIN_INTERRUPTED: 'bg-stone-200',
+  CANCELLED: 'bg-stone-300',
+  NO_RESULT: 'bg-stone-200',
+  COMPLETED: 'bg-secondary-100',
+  SCORECARD_LOCKED: 'bg-secondary-100',
 };
 
 const STATE_TEXT: Record<MatchState, string> = {
-  SCHEDULED: 'text-on-surface-variant',
-  PLAYING_XI_LOCKED: 'text-on-tertiary-container',
-  TOSS_COMPLETED: 'text-on-tertiary-container',
-  LIVE: 'text-on-primary',
-  DELAYED: 'text-on-surface-variant',
-  RAIN_INTERRUPTED: 'text-on-surface-variant',
-  CANCELLED: 'text-on-error-container',
-  NO_RESULT: 'text-on-surface-variant',
-  COMPLETED: 'text-on-secondary-container',
-  SCORECARD_LOCKED: 'text-on-secondary-container',
+  SCHEDULED: 'text-stone-700',
+  PLAYING_XI_LOCKED: 'text-secondary-700',
+  TOSS_COMPLETED: 'text-secondary-700',
+  LIVE: 'text-text-inverse',
+  DELAYED: 'text-stone-700',
+  RAIN_INTERRUPTED: 'text-stone-700',
+  CANCELLED: 'text-secondary-800',
+  NO_RESULT: 'text-stone-700',
+  COMPLETED: 'text-secondary-700',
+  SCORECARD_LOCKED: 'text-secondary-700',
 };
 
 export function MatchStateBadge({ state }: { state: MatchState }): React.ReactElement {

@@ -1,3 +1,4 @@
+import { colors } from '@/theme/colors';
 import {
   MatchCardDisplayState,
   type MatchListItem,
@@ -35,7 +36,7 @@ function TeamColumn({
 function VenueRow({ venue }: { venue: string }): React.ReactElement {
   return (
     <View className="flex-row items-center gap-2">
-      <MaterialIcons name="location-on" size={18} color="#666666" />
+      <MaterialIcons name="location-on" size={18} color={colors.textMuted} />
       <Text className="flex-1 font-sans text-sm text-on-surface-variant" numberOfLines={2}>
         {venue}
       </Text>
@@ -59,12 +60,16 @@ function MatchListCard({
 
   return (
     <View
-      className={`gap-4 rounded-control border border-outline-variant bg-white p-4 ${
+      className={`gap-4 rounded-control border border-outline-variant bg-surface p-4 ${
         isLive ? 'border-primary/30' : ''
       }`}
       style={INPUT_SHADOW_STYLE}
     >
-      <Pressable accessibilityRole="button" onPress={onPress} className="gap-6 active:opacity-90">
+      <Pressable
+        accessibilityRole="button"
+        onPress={isLive ? onWatchLivePress : onPress}
+        className="gap-6 active:opacity-90"
+      >
         <View className="flex-row items-center justify-between gap-3">
           <Text
             className="flex-1 font-sans-semibold text-sm text-on-surface-variant"

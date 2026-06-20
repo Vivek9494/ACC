@@ -16,12 +16,22 @@ export const MIN_SIGNUP_AGE = 18;
 export const REFRESH_IDLE_DAYS = 10;
 
 /** Forgot-password OTP policy (§3.3, §3.4). */
-export const OTP_LENGTH = 6;
+export const OTP_LENGTH = 4;
 export const OTP_TTL_SECONDS = 5 * 60;
+/** Minimum wait between OTP resend requests for the same number. */
+export const OTP_RESEND_COOLDOWN_SECONDS = 60;
+/** Short-lived token issued after OTP verification; authorizes set-new-password. */
+export const RESET_TOKEN_TTL_SECONDS = 10 * 60;
 /** Max OTP send requests per phone per day. */
 export const OTP_MAX_REQUESTS_PER_DAY = 5;
-/** Failed OTP entries before the account is locked from password reset. */
+/** Failed OTP entries before the active code is invalidated (user must resend). */
 export const OTP_MAX_FAILED_ATTEMPTS = 5;
+
+/** Rate limits for forgot-password send + verify (per client IP). */
+export const OTP_IP_RATE_LIMIT = {
+  maxAttempts: 30,
+  windowSeconds: 15 * 60,
+} as const;
 
 /** Per-mobile-number login rate limit (§31 #6). */
 export const LOGIN_RATE_LIMIT = {
@@ -48,6 +58,12 @@ export const AuthErrorCode = {
   OtpRequestLimit: 'OTP_REQUEST_LIMIT',
   /** Submitted OTP is wrong or no OTP exists/has expired. */
   OtpInvalid: 'OTP_INVALID',
+  /** Too many wrong OTP attempts — the code was invalidated; request a new one. */
+  OtpAttemptsExceeded: 'OTP_ATTEMPTS_EXCEEDED',
+  /** Resend cooldown has not elapsed yet. */
+  OtpResendCooldown: 'OTP_RESEND_COOLDOWN',
+  /** Reset token is invalid or expired. */
+  ResetTokenInvalid: 'RESET_TOKEN_INVALID',
   /** Account is locked from password reset after too many failed OTP entries. */
   PasswordResetLocked: 'PASSWORD_RESET_LOCKED',
   /** Caller lacks the role required for this action. */
@@ -116,9 +132,17 @@ export interface ForgotPasswordRequest {
   mobileNumber: string;
 }
 
-export interface ResetPasswordRequest {
+export interface VerifyResetOtpRequest {
   mobileNumber: string;
   otp: string;
+}
+
+export interface VerifyResetOtpResponse {
+  resetToken: string;
+}
+
+export interface ResetPasswordRequest {
+  resetToken: string;
   newPassword: string;
 }
 

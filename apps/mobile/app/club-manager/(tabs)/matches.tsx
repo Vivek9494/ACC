@@ -1,12 +1,11 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Text } from '../../../src/components/ui/Text';
+import { MyMatchesScreen } from '../../../src/components/my-matches/MyMatchesScreen';
 
 export default function ClubManagerMatchesScreen(): React.ReactElement {
   return (
-    <SafeAreaView className="flex-1 bg-surface px-4 pt-4" edges={['top']}>
-      <Text className="font-sans-bold text-xl text-on-surface">Matches</Text>
-      <Text className="mt-2 font-sans text-sm text-on-surface-variant">Coming soon.</Text>
+    <SafeAreaView className="flex-1 bg-background" edges={['top']}>
+      <MyMatchesScreen />
     </SafeAreaView>
   );
 }

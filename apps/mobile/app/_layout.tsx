@@ -10,16 +10,18 @@ import {
 import { useFonts } from 'expo-font';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import { ThemeProvider } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { buildNavTheme, colors } from '@/theme/colors';
+
 import { AuthProvider, useAuth } from '../src/lib/auth-context';
 import { hasCenterSevakAccess } from '../src/lib/center-sevak-access';
 import { hasTeamLeadAccess } from '../src/lib/team-lead-access';
-// THROWAWAY geofence spike: side-effect import registers the background task at
-// startup so the OS can relaunch into it after a kill (see geofence-task.ts).
-import '../src/geofence/geofence-task';
+// Geofence attendance: registers the background task at startup (see match-geofence-task.ts).
+import '../src/geofence/match-geofence-task';
 
 void SplashScreen.preventAutoHideAsync();
 
@@ -106,6 +108,7 @@ function RootNavigator(): React.ReactElement {
       <Stack.Screen name="tournaments/new" />
       <Stack.Screen name="tournaments/[id]/edit" />
       <Stack.Screen name="tournaments/[id]" />
+      <Stack.Screen name="tournaments/[id]/upload-video" />
       <Stack.Screen name="tournaments/[id]/schedule-matches" />
       <Stack.Screen name="tournaments/[id]/schedule/round-robin" />
       <Stack.Screen name="tournaments/[id]/schedule/groups-knockout" />
@@ -114,6 +117,7 @@ function RootNavigator(): React.ReactElement {
       <Stack.Screen name="tournaments/[id]/create-group" />
       <Stack.Screen name="tournaments/[id]/match-setup" />
       <Stack.Screen name="tournaments/[id]/teams/[teamId]" />
+      <Stack.Screen name="tournaments/[id]/players/[userId]" />
       <Stack.Screen name="registrations/[tournamentId]/index" />
       <Stack.Screen name="registrations/[tournamentId]/register" />
       <Stack.Screen name="registrations/[tournamentId]/late-register" />
@@ -127,6 +131,10 @@ function RootNavigator(): React.ReactElement {
       <Stack.Screen name="matches/[matchId]/score" />
       <Stack.Screen name="matches/[matchId]/live" />
       <Stack.Screen name="matches/[matchId]/scorecard" />
+      <Stack.Screen name="matches/[matchId]/punch-time" />
+      <Stack.Screen name="participation-polls/[pollId]/results" />
+      <Stack.Screen name="participation-polls/[pollId]/playing-xi" />
+      <Stack.Screen name="participation-polls/[pollId]/confirmed-players" />
       <Stack.Screen name="geofence-poc" />
       <Stack.Screen name="admin" options={{ headerShown: false }} />
       <Stack.Screen name="club-manager" options={{ headerShown: false }} />
@@ -156,10 +164,12 @@ export default function RootLayout(): React.ReactElement | null {
 
   return (
     <SafeAreaProvider>
-      <StatusBar style="dark" />
-      <AuthProvider>
-        <RootNavigator />
-      </AuthProvider>
+      <ThemeProvider value={buildNavTheme()}>
+        <StatusBar style="dark" backgroundColor={colors.background} />
+        <AuthProvider>
+          <RootNavigator />
+        </AuthProvider>
+      </ThemeProvider>
     </SafeAreaProvider>
   );
 }

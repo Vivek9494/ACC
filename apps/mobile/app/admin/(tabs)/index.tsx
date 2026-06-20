@@ -3,6 +3,7 @@ import type { AdminOverview, TournamentDashboardEntry } from '@acc/types';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, View } from 'react-native';
+import { colors } from '@/theme/colors';
 
 import { buildTournamentMenuActions } from '../../../src/components/dashboard/buildTournamentMenuActions';
 import { DashboardScaffold } from '../../../src/components/dashboard/DashboardScaffold';
@@ -125,7 +126,7 @@ export default function AdminDashboardScreen(): React.ReactElement {
             accessibilityLabel="Add tournament"
             className="h-10 w-10 items-center justify-center rounded-full bg-primary"
           >
-            <Ionicons name="add" size={24} color="#ffffff" />
+            <Ionicons name="add" size={24} color={colors.textInverse} />
           </Pressable>
         </View>
         {tournaments.length === 0 ? (

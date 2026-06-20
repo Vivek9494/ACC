@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image, Pressable, View } from 'react-native';
 import type { TournamentSummary } from '@acc/types';
+import { colors } from '@/theme/colors';
 
 import {
   formatTournamentDateRange,
@@ -34,7 +35,7 @@ export function TournamentDashboardCard({
   const pill = tournamentStatusPill(tournament.state);
 
   const shell = (
-    <View className="rounded-control bg-white" style={INPUT_SHADOW_STYLE}>
+    <View className="rounded-control bg-surface" style={INPUT_SHADOW_STYLE}>
       <View className="overflow-hidden rounded-control">
         <View className="relative h-36 w-full bg-surface-container-high">
           {tournament.posterUrl ? (
@@ -69,13 +70,13 @@ export function TournamentDashboardCard({
                 accessibilityRole="button"
                 accessibilityLabel="More options"
               >
-                <Ionicons name="ellipsis-vertical" size={20} color="#5a4136" />
+                <Ionicons name="ellipsis-vertical" size={20} color={colors.textMuted} />
               </Pressable>
             )}
           </View>
 
           <View className="flex-row items-center gap-2">
-            <Ionicons name="location-outline" size={16} color="#5a4136" />
+            <Ionicons name="location-outline" size={16} color={colors.textMuted} />
             <Text className="flex-1 font-sans text-sm text-on-surface-variant" numberOfLines={1}>
               {tournamentLocation(tournament)}
             </Text>
@@ -83,7 +84,7 @@ export function TournamentDashboardCard({
 
           <View className="flex-row items-center justify-between">
             <View className="flex-row items-center gap-2">
-              <Ionicons name="calendar-outline" size={16} color="#5a4136" />
+              <Ionicons name="calendar-outline" size={16} color={colors.textMuted} />
               <Text className="font-sans text-sm text-on-surface-variant">
                 {formatTournamentDateRange(tournament.startAt, tournament.endAt)}
               </Text>

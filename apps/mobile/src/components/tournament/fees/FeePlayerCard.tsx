@@ -30,7 +30,7 @@ export interface FeePaidPlayerCardProps {
 export function FeePaidPlayerCard({ entry, showTeamName }: FeePaidPlayerCardProps): React.ReactElement {
   return (
     <View
-      className="flex-row items-center gap-4 rounded-xl border border-outline-variant bg-white p-4"
+      className="flex-row items-center gap-4 rounded-xl border border-outline-variant bg-surface p-4"
       style={INPUT_SHADOW_STYLE}
     >
       <PlayerAvatar firstName={entry.firstName} profilePhotoUrl={entry.profilePhotoUrl} />
@@ -44,8 +44,8 @@ export function FeePaidPlayerCard({ entry, showTeamName }: FeePaidPlayerCardProp
           </Text>
         ) : null}
       </View>
-      <View className="rounded-full bg-[#059eff] px-3 py-1">
-        <Text className="font-sans-semibold text-xs text-white">Paid</Text>
+      <View className="rounded-full bg-secondary px-3 py-1">
+        <Text className="font-sans-semibold text-xs text-text-inverse">Paid</Text>
       </View>
     </View>
   );
@@ -66,7 +66,7 @@ export function FeeUnpaidPlayerCard({
 }: FeeUnpaidPlayerCardProps): React.ReactElement {
   return (
     <View
-      className="flex-row items-center gap-4 rounded-xl border border-outline-variant bg-white p-4"
+      className="flex-row items-center gap-4 rounded-xl border border-outline-variant bg-surface p-4"
       style={INPUT_SHADOW_STYLE}
     >
       <PlayerAvatar firstName={entry.firstName} profilePhotoUrl={entry.profilePhotoUrl} />

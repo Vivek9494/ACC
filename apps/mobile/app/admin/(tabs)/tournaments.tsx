@@ -44,7 +44,7 @@ export default function AdminTournamentsTabScreen(): React.ReactElement {
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-surface" edges={['top']}>
+    <SafeAreaView className="flex-1 bg-background" edges={['top']}>
       <View className="px-4 pt-4">
         <Text className="font-sans-bold text-2xl text-on-surface">Tournaments</Text>
       </View>
@@ -52,8 +52,8 @@ export default function AdminTournamentsTabScreen(): React.ReactElement {
         {loading ? (
           <ActivityIndicator color={FIELD_ORANGE} className="py-12" />
         ) : error ? (
-          <View className="rounded-xl bg-error-container px-4 py-3">
-            <Text className="font-sans text-sm text-on-error-container">{error}</Text>
+          <View className="rounded-xl bg-primary-50 px-4 py-3">
+            <Text className="font-sans text-sm text-primary">{error}</Text>
           </View>
         ) : tournaments.length === 0 ? (
           <Text className="font-sans text-sm text-on-surface-variant">No tournaments yet.</Text>

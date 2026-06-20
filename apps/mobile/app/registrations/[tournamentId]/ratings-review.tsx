@@ -1,7 +1,9 @@
 import {
+  BallType,
   isTournamentRegistrationWindowClosed,
-  REGISTRATION_SKILL_RATING_OPTIONS,
-  REGISTRATION_FIELDING_RATING_OPTIONS,
+  REGISTRATION_PLAYER_TYPE_OPTIONS,
+  REGISTRATION_RATING_OPTIONS,
+  RegistrationPlayerType,
   type RegistrationSummary,
   type TournamentDetail,
 } from '@acc/types';
@@ -12,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '../../../src/components/ui/Button';
 import { FIELD_ORANGE, INPUT_SHADOW_STYLE } from '../../../src/components/ui/fieldStyles';
+import { RadioGroup } from '../../../src/components/ui/RadioGroup';
 import { Select, type SelectOption } from '../../../src/components/ui/Select';
 import { Text } from '../../../src/components/ui/Text';
 import {
@@ -27,17 +30,19 @@ function ratingOptions(
   return options.map((option) => ({ value: String(option.value), label: option.label }));
 }
 
-const BATTING_OPTIONS = ratingOptions(REGISTRATION_SKILL_RATING_OPTIONS);
-const BOWLING_OPTIONS = ratingOptions(REGISTRATION_SKILL_RATING_OPTIONS);
-const FIELDING_OPTIONS = ratingOptions(REGISTRATION_FIELDING_RATING_OPTIONS);
+const BATTING_OPTIONS = ratingOptions(REGISTRATION_RATING_OPTIONS);
+const BOWLING_OPTIONS = ratingOptions(REGISTRATION_RATING_OPTIONS);
+const FIELDING_OPTIONS = ratingOptions(REGISTRATION_RATING_OPTIONS);
 
 function RatingsReviewRow({
   row,
   tournamentId,
+  isLeatherBall,
   onSaved,
 }: {
   row: RegistrationSummary;
   tournamentId: string;
+  isLeatherBall: boolean;
   onSaved: () => void;
 }): React.ReactElement {
   const [battingRating, setBattingRating] = useState<string | null>(
@@ -49,6 +54,7 @@ function RatingsReviewRow({
   const [fieldingRating, setFieldingRating] = useState<string | null>(
     row.fieldingRating === null ? null : String(row.fieldingRating),
   );
+  const [playerType, setPlayerType] = useState<RegistrationPlayerType | null>(row.playerType);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -60,6 +66,7 @@ function RatingsReviewRow({
         battingRating: battingRating === null ? null : Number(battingRating),
         bowlingRating: bowlingRating === null ? null : Number(bowlingRating),
         fieldingRating: fieldingRating === null ? null : Number(fieldingRating),
+        playerType: isLeatherBall ? playerType : null,
       });
       onSaved();
     } catch (err) {
@@ -71,7 +78,7 @@ function RatingsReviewRow({
 
   return (
     <View
-      className="gap-4 rounded-control border border-outline-variant bg-white p-4"
+      className="gap-4 rounded-control border border-outline-variant bg-surface p-4"
       style={INPUT_SHADOW_STYLE}
     >
       <View>
@@ -100,9 +107,20 @@ function RatingsReviewRow({
           options={FIELDING_OPTIONS}
           onChange={setFieldingRating}
         />
+        {isLeatherBall ? (
+          <RadioGroup
+            label="Player Type"
+            value={playerType}
+            onChange={setPlayerType}
+            options={REGISTRATION_PLAYER_TYPE_OPTIONS.map((option) => ({
+              value: option.value,
+              label: option.label,
+            }))}
+          />
+        ) : null}
       </View>
 
-      {error ? <Text className="font-sans text-sm text-error">{error}</Text> : null}
+      {error ? <Text className="font-sans text-sm text-primary">{error}</Text> : null}
 
       <Button
         label={saving ? 'Saving…' : 'Save ratings'}
@@ -151,14 +169,14 @@ export default function RegistrationRatingsReviewScreen(): React.ReactElement {
 
   if (loading) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-surface">
+      <SafeAreaView className="flex-1 items-center justify-center bg-background">
         <ActivityIndicator color={FIELD_ORANGE} />
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-surface">
+    <SafeAreaView className="flex-1 bg-background">
       <ScrollView contentContainerClassName="gap-4 px-4 py-4">
         <Pressable onPress={() => router.back()} accessibilityRole="button">
           <Text className="font-sans text-primary">← Back</Text>
@@ -180,8 +198,8 @@ export default function RegistrationRatingsReviewScreen(): React.ReactElement {
         ) : null}
 
         {error ? (
-          <View className="rounded-control bg-error-container px-4 py-3">
-            <Text className="font-sans text-sm text-on-error-container">{error}</Text>
+          <View className="rounded-control bg-primary-50 px-4 py-3">
+            <Text className="font-sans text-sm text-primary">{error}</Text>
           </View>
         ) : null}
 
@@ -191,6 +209,7 @@ export default function RegistrationRatingsReviewScreen(): React.ReactElement {
                 key={row.id}
                 row={row}
                 tournamentId={tournamentId ?? ''}
+                isLeatherBall={tournament?.ballType === BallType.Leather}
                 onSaved={() => void load()}
               />
             ))

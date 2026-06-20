@@ -10,7 +10,7 @@ export default function AdminProfileTabScreen(): React.ReactElement {
   const { user, signOut } = useAuth();
 
   return (
-    <SafeAreaView className="flex-1 bg-surface" edges={['top']}>
+    <SafeAreaView className="flex-1 bg-background" edges={['top']}>
       <View className="flex-1 justify-between px-4 py-4">
         <View className="gap-4">
           <Text className="font-sans-bold text-2xl text-on-surface">Profile</Text>

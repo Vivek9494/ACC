@@ -95,6 +95,17 @@ export class MatchesController {
     return this.matches.recordToss(matchId, dto);
   }
 
+  @Post('matches/:matchId/start-scoring')
+  @RequirePermission(Permission.START_MATCH)
+  @UseGuards(PermissionGuard)
+  startScoring(
+    @CurrentUser() user: AuthUser,
+    @Param('matchId') matchId: string,
+    @Body() dto: RecordTossDto,
+  ): Promise<MatchDetail> {
+    return this.matches.startScoring(user, matchId, dto);
+  }
+
   @Post('matches/:matchId/start-setup')
   @RequirePermission(Permission.START_MATCH)
   @UseGuards(PermissionGuard)

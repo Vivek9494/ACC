@@ -17,7 +17,7 @@ export class IsPasswordPolicyConstraint implements ValidatorConstraintInterface 
   }
 }
 
-/** Validates the shared password policy (min length, upper, special, digit). */
+/** Validates the shared password policy (min length, uppercase, special). */
 export function IsPasswordPolicy(validationOptions?: ValidationOptions) {
   return function decorate(object: object, propertyName: string): void {
     registerDecorator({

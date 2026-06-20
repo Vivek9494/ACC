@@ -1,12 +1,15 @@
 import {
-  BALLS_PER_OVER,
   type CaptainFeaturedMatchStatus,
+  deriveChaseEquation,
+  formatChaseNeedsLine,
   InningsType,
+  isScorerMatchResumable,
   type ManagerPlayerStats,
   MatchState,
   type MatchSummaryTeamView,
   type PlayerDashboard,
   type PlayerFeaturedMatchSummary,
+  resolveOversAllotment,
   type ScorerStartableMatch,
   type ScorecardResponse,
   type TournamentSummary,
@@ -17,10 +20,13 @@ import { Injectable } from '@nestjs/common';
 import type { Match, Tournament } from '@prisma/client';
 
 import { PrismaService } from '../prisma/prisma.service';
+import { ParticipationPollService } from '../participation-poll/participation-poll.service';
 import { activeTournamentRelationWhere, activeTournamentWhere } from '../tournaments/tournament-query';
 import {
   formatScorerMatchDateTimeLine,
   isScorerMatchDayToday,
+  SCORER_DASHBOARD_CARD_STATES,
+  SCORER_IN_PROGRESS_MATCH_STATES,
   SCORER_STARTABLE_MATCH_STATES,
 } from '../matches/match-start.utils';
 import { ScorecardReader } from '../scoring/scorecard-reader';
@@ -54,6 +60,7 @@ export class PlayerService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly scorecardReader: ScorecardReader,
+    private readonly participationPolls: ParticipationPollService,
   ) {}
 
   async getDashboard(userId: string): Promise<PlayerDashboard> {
@@ -78,14 +85,15 @@ export class PlayerService {
       ]),
     ];
 
-    const [featuredMatch, scorerMatch, playerStats, tournaments] = await Promise.all([
+    const [featuredMatch, participationPoll, scorerMatch, playerStats, tournaments] = await Promise.all([
       this.loadFeaturedMatch(teamIds),
+      this.participationPolls.loadDashboardPoll(userId),
       this.loadScorerStartableMatch(userId),
       this.loadPlayerStats(userId, tournamentIds),
       this.listTournaments(tournamentIds),
     ]);
 
-    return { featuredMatch, scorerMatch, playerStats, tournaments };
+    return { featuredMatch, participationPoll, scorerMatch, playerStats, tournaments };
   }
 
   /** Active per-match Scorer grant for a fixture on today's calendar day (§11.1). */
@@ -95,14 +103,14 @@ export class PlayerService {
 
   private async loadScorerStartableMatch(userId: string): Promise<ScorerStartableMatch | null> {
     // Requires BOTH an active grant AND today's UTC calendar day on the fixture.
-    // Pre-live states only — completed/live matches never surface the card.
+    // Pre-live → Start Match; LIVE / rain-interrupted → Continue Scoring; completed → no card.
     const grants = await this.prisma.matchScorerGrant.findMany({
       where: {
         userId,
         revokedAt: null,
         match: {
           isDeleted: false,
-          state: { in: [...SCORER_STARTABLE_MATCH_STATES] },
+          state: { in: [...SCORER_DASHBOARD_CARD_STATES] },
           ...activeTournamentRelationWhere,
         },
       },
@@ -111,48 +119,71 @@ export class PlayerService {
           include: {
             homeTeam: { select: { id: true, name: true, logoUrl: true } },
             awayTeam: { select: { id: true, name: true, logoUrl: true } },
-            tournament: { select: { name: true } },
+            tournament: { select: { name: true, timezone: true } },
           },
         },
       },
       orderBy: [{ match: { matchDate: 'asc' } }, { match: { startTime: 'asc' } }],
     });
 
-    for (const grant of grants) {
-      if (!isScorerMatchDayToday(grant.match)) {
-        continue;
-      }
-      const match = grant.match;
-      const homeName = match.homeTeam?.name ?? 'TBD';
-      const awayName = match.awayTeam?.name ?? match.externalOpponentName ?? 'TBD';
-      const state = match.state as MatchState;
-      return {
-        matchId: match.id,
-        tournamentName: match.tournament.name.toUpperCase(),
-        dateTimeLine: formatScorerMatchDateTimeLine(match),
-        teamA: {
-          name: homeName,
-          logoUrl: match.homeTeam?.logoUrl ?? null,
-          score: null,
-          overs: null,
-          isWinner: false,
-        },
-        teamB: {
-          name: awayName,
-          logoUrl: match.awayTeam?.logoUrl ?? null,
-          score: null,
-          overs: null,
-          isWinner: false,
-        },
-        state,
-        playingXiLocked:
-          state === MatchState.PlayingXiLocked ||
-          state === MatchState.TossCompleted ||
-          state === MatchState.Delayed,
-      };
+    const todayGrants = grants.filter((grant) =>
+      isScorerMatchDayToday(grant.match, grant.match.tournament.timezone),
+    );
+
+    const inProgress = todayGrants.find((grant) =>
+      (SCORER_IN_PROGRESS_MATCH_STATES as readonly string[]).includes(grant.match.state),
+    );
+    if (inProgress) {
+      return this.toScorerStartableMatch(inProgress.match);
+    }
+
+    const startable = todayGrants.find((grant) =>
+      (SCORER_STARTABLE_MATCH_STATES as readonly string[]).includes(grant.match.state),
+    );
+    if (startable) {
+      return this.toScorerStartableMatch(startable.match);
     }
 
     return null;
+  }
+
+  private toScorerStartableMatch(
+    match: Match & {
+      homeTeam: { id: string; name: string; logoUrl: string | null } | null;
+      awayTeam: { id: string; name: string; logoUrl: string | null } | null;
+      tournament: { name: string; timezone: string | null };
+    },
+  ): ScorerStartableMatch {
+    const homeName = match.homeTeam?.name ?? 'TBD';
+    const awayName = match.awayTeam?.name ?? match.externalOpponentName ?? 'TBD';
+    const state = match.state as MatchState;
+    return {
+      matchId: match.id,
+      tournamentName: match.tournament.name.toUpperCase(),
+      dateTimeLine: formatScorerMatchDateTimeLine(match, match.tournament.timezone, {
+        includeZoneAbbrev: true,
+      }),
+      teamA: {
+        name: homeName,
+        logoUrl: match.homeTeam?.logoUrl ?? null,
+        score: null,
+        overs: null,
+        isWinner: false,
+      },
+      teamB: {
+        name: awayName,
+        logoUrl: match.awayTeam?.logoUrl ?? null,
+        score: null,
+        overs: null,
+        isWinner: false,
+      },
+      state,
+      playingXiLocked:
+        isScorerMatchResumable(state) ||
+        state === MatchState.PlayingXiLocked ||
+        state === MatchState.TossCompleted ||
+        state === MatchState.Delayed,
+    };
   }
 
   private async loadFeaturedMatch(teamIds: string[]): Promise<PlayerFeaturedMatchSummary | null> {
@@ -312,17 +343,19 @@ export class PlayerService {
 
     const firstInningsTotal = firstInnings.runs;
     const target = card.effectiveTarget ?? firstInningsTotal + 1;
-    const runsNeeded = Math.max(0, target - chaseInnings.runs);
-    const oversPerInnings =
-      chaseInnings.oversAllotted ??
-      firstInnings.oversAllotted ??
-      match.tournament.oversPerInnings;
+    const oversPerInnings = resolveOversAllotment(
+      chaseInnings.oversAllotted,
+      firstInnings.oversAllotted,
+      match.tournament.oversPerInnings,
+    );
     if (oversPerInnings == null) {
       return null;
     }
-    const ballsRemaining = Math.max(
-      0,
-      oversPerInnings * BALLS_PER_OVER - chaseInnings.legalBalls,
+    const chase = deriveChaseEquation(
+      chaseInnings.runs,
+      chaseInnings.legalBalls,
+      target,
+      oversPerInnings,
     );
 
     const homeName = match.homeTeam?.name ?? 'TBD';
@@ -335,9 +368,7 @@ export class PlayerService {
       chasingName = awayName;
     }
 
-    const runWord = runsNeeded === 1 ? 'run' : 'runs';
-    const ballWord = ballsRemaining === 1 ? 'ball' : 'balls';
-    return `${chasingName} needs ${runsNeeded} ${runWord} from ${ballsRemaining} ${ballWord}`;
+    return `${chasingName} ${formatChaseNeedsLine(chase.runsNeeded, chase.ballsRemaining)}`;
   }
 
   private resolveStatus(state: MatchState): CaptainFeaturedMatchStatus {
@@ -452,6 +483,7 @@ export class PlayerService {
       locationAddress: row.locationAddress,
       latitude: row.latitude,
       longitude: row.longitude,
+      timezone: row.timezone,
       teamCount: row._count.teams,
     };
   }

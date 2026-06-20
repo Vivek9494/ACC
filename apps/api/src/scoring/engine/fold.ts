@@ -2,6 +2,7 @@ import {
   type BatterCard,
   BOWLER_CREDITED_DISMISSALS,
   type BowlerCard,
+  type CompletedPartnership,
   DELIVERY_TYPE_LABELS,
   DeliveryType,
   DISMISSAL_TYPE_LABELS,
@@ -16,6 +17,7 @@ import {
   type TimelineEntry,
   BALLS_PER_OVER,
   WICKETS_FOR_ALL_OUT,
+  WICKETS_FOR_SUPER_OVER_ALL_OUT,
 } from '@acc/types';
 
 import type { InningsContext, ScoringEvent } from './types';
@@ -59,12 +61,16 @@ function runsToBowler(e: ScoringEvent): number {
   }
 }
 
+function noBallCompletedRuns(e: ScoringEvent): number {
+  return e.noBallByeRuns + e.noBallLegByeRuns;
+}
+
 /** Runs that cause the batters to physically cross (drives odd-run rotation). */
 function runsRunForRotation(e: ScoringEvent): number {
   switch (e.type) {
     case DeliveryType.Legal:
     case DeliveryType.NoBall:
-      return e.runsBat;
+      return e.runsBat + noBallCompletedRuns(e);
     case DeliveryType.Wide:
       // The 1-run wide penalty is not run; any extra are byes run on the wide.
       return Math.max(0, e.extraRuns - 1);
@@ -74,6 +80,16 @@ function runsRunForRotation(e: ScoringEvent): number {
     default:
       return 0;
   }
+}
+
+function penaltyCountsForInnings(e: ScoringEvent, battingTeamId: string | null | undefined): boolean {
+  if (e.type !== DeliveryType.PenaltyRuns) {
+    return false;
+  }
+  if (!e.penaltyBeneficiaryTeamId) {
+    return true;
+  }
+  return e.penaltyBeneficiaryTeamId === battingTeamId;
 }
 
 function isWicketEvent(e: ScoringEvent): boolean {
@@ -95,19 +111,31 @@ function deliveryCode(e: ScoringEvent): string {
     case DeliveryType.Wide:
       return e.extraRuns > 1 ? `Wd+${e.extraRuns - 1}` : 'Wd';
     case DeliveryType.NoBall:
+      if (e.noBallLegByeRuns > 0) {
+        return `${e.noBallLegByeRuns}Lb+Nb`;
+      }
+      if (e.noBallByeRuns > 0) {
+        return `${e.noBallByeRuns}B+Nb`;
+      }
       return e.runsBat > 0 ? `Nb+${e.runsBat}` : 'Nb';
     case DeliveryType.Bye:
       return `B${e.extraRuns}`;
     case DeliveryType.LegBye:
       return `Lb${e.extraRuns}`;
     case DeliveryType.PenaltyRuns:
-      return `Pen+${e.extraRuns}`;
+      return e.extraRuns >= 0 ? `pen+${e.extraRuns}` : `pen${e.extraRuns}`;
     case DeliveryType.RetiredHurt:
       return 'RH';
     case DeliveryType.RetiredOut:
       return 'W';
     case DeliveryType.ImpactPlayerIn:
       return 'IMP';
+    case DeliveryType.Mankad:
+      return 'Mk';
+    case DeliveryType.EndInnings:
+      return 'End';
+    case DeliveryType.CatchDrop:
+      return 'Drop';
     default:
       return e.runsBat === 0 ? '·' : String(e.runsBat);
   }
@@ -120,6 +148,8 @@ function deliveryDescription(e: ScoringEvent): string {
   }
   if (e.type === DeliveryType.RetiredOut) return 'WICKET — Retired Out';
   if (e.type === DeliveryType.RetiredHurt) return 'Retired Hurt';
+  if (e.type === DeliveryType.EndInnings) return 'Innings ended';
+  if (e.type === DeliveryType.CatchDrop) return 'Catch dropped';
   if (e.type === DeliveryType.ImpactPlayerIn) return 'Impact Player In';
   if (e.isBoundary && e.runsBat === 6) return 'SIX';
   if (e.isBoundary && e.runsBat === 4) return 'FOUR';
@@ -159,6 +189,9 @@ interface MutableBatter {
   dismissalType: DismissalType | null;
   bowlerId: string | null;
   fielderId: string | null;
+  fielder2Id: string | null;
+  retiredHurt: boolean;
+  isMankad: boolean;
 }
 
 interface MutableBowler {
@@ -167,6 +200,11 @@ interface MutableBowler {
   runsConceded: number;
   wickets: number;
   maidens: number;
+  dotBalls: number;
+  wides: number;
+  noBalls: number;
+  fours: number;
+  sixes: number;
 }
 
 /**
@@ -195,8 +233,14 @@ export function deriveInnings(events: ScoringEvent[], ctx: InningsContext = {}):
   const bowlerOrder: string[] = [];
   const bowlers = new Map<string, MutableBowler>();
   const fallOfWickets: FallOfWicket[] = [];
+  const completedPartnerships: CompletedPartnership[] = [];
   const timeline: TimelineEntry[] = [];
+  const droppedCatchCounts = new Map<string, number>();
   let legalBallsAtLastWicket = 0;
+  const batterRunsAtLastWicket = new Map<string, number>();
+  /** Continuing batter (left/orange) and incoming batter (right/brown) for the active stand. */
+  let standLeftBatterId: string | null = null;
+  let standRightBatterId: string | null = null;
 
   const ensureBatter = (id: string | null): MutableBatter | null => {
     if (!id) return null;
@@ -212,6 +256,9 @@ export function deriveInnings(events: ScoringEvent[], ctx: InningsContext = {}):
         dismissalType: null,
         bowlerId: null,
         fielderId: null,
+        fielder2Id: null,
+        retiredHurt: false,
+        isMankad: false,
       };
       batters.set(id, b);
       batterOrder.push(id);
@@ -222,7 +269,18 @@ export function deriveInnings(events: ScoringEvent[], ctx: InningsContext = {}):
     if (!id) return null;
     let b = bowlers.get(id);
     if (!b) {
-      b = { playerId: id, legalBalls: 0, runsConceded: 0, wickets: 0, maidens: 0 };
+      b = {
+        playerId: id,
+        legalBalls: 0,
+        runsConceded: 0,
+        wickets: 0,
+        maidens: 0,
+        dotBalls: 0,
+        wides: 0,
+        noBalls: 0,
+        fours: 0,
+        sixes: 0,
+      };
       bowlers.set(id, b);
       bowlerOrder.push(id);
     }
@@ -253,15 +311,56 @@ export function deriveInnings(events: ScoringEvent[], ctx: InningsContext = {}):
     ensureBatter(striker);
     ensureBatter(nonStriker);
 
-    runs += e.runsBat + e.extraRuns;
+    if (e.type === DeliveryType.CatchDrop && e.fielderId) {
+      droppedCatchCounts.set(e.fielderId, (droppedCatchCounts.get(e.fielderId) ?? 0) + 1);
+    }
+
+    if (striker && nonStriker && standLeftBatterId === null) {
+      standLeftBatterId = striker;
+      standRightBatterId = nonStriker;
+    } else if (standLeftBatterId && standRightBatterId === null) {
+      const fromEvent = [e.strikerId, e.nonStrikerId].find(
+        (id): id is string => id != null && id !== standLeftBatterId,
+      );
+      if (fromEvent) {
+        standRightBatterId = fromEvent;
+      } else {
+        const fromCrease = [striker, nonStriker].find(
+          (id): id is string => id !== null && id !== standLeftBatterId,
+        );
+        if (fromCrease) {
+          standRightBatterId = fromCrease;
+        }
+      }
+    }
+
+    if (e.type !== DeliveryType.RetiredHurt) {
+      if (striker) {
+        const strikerCard = ensureBatter(striker);
+        if (strikerCard?.retiredHurt) strikerCard.retiredHurt = false;
+      }
+      if (nonStriker) {
+        const nonStrikerCard = ensureBatter(nonStriker);
+        if (nonStrikerCard?.retiredHurt) nonStrikerCard.retiredHurt = false;
+      }
+    }
+
+    if (e.type === DeliveryType.PenaltyRuns) {
+      if (penaltyCountsForInnings(e, ctx.battingTeamId)) {
+        runs += e.extraRuns;
+      }
+    } else {
+      runs += e.runsBat + e.extraRuns + noBallCompletedRuns(e);
+    }
 
     switch (e.type) {
       case DeliveryType.Wide:
         extras.wides += e.extraRuns;
         break;
       case DeliveryType.NoBall:
-        // The no-ball penalty is the extra; off-bat runs are tracked separately.
         extras.noBalls += e.extraRuns;
+        extras.byes += e.noBallByeRuns;
+        extras.legByes += e.noBallLegByeRuns;
         break;
       case DeliveryType.Bye:
         extras.byes += e.extraRuns;
@@ -270,7 +369,9 @@ export function deriveInnings(events: ScoringEvent[], ctx: InningsContext = {}):
         extras.legByes += e.extraRuns;
         break;
       case DeliveryType.PenaltyRuns:
-        extras.penalties += e.extraRuns;
+        if (penaltyCountsForInnings(e, ctx.battingTeamId)) {
+          extras.penalties += e.extraRuns;
+        }
         break;
       default:
         break;
@@ -281,10 +382,17 @@ export function deriveInnings(events: ScoringEvent[], ctx: InningsContext = {}):
     if (strikerCard && countsAsFaced(e.type)) {
       strikerCard.balls += 1;
     }
-    if (strikerCard && (e.type === DeliveryType.Legal || e.type === DeliveryType.NoBall)) {
-      strikerCard.runs += e.runsBat;
-      if (e.isBoundary && e.runsBat === 4) strikerCard.fours += 1;
-      if (e.isBoundary && e.runsBat === 6) strikerCard.sixes += 1;
+    if (e.type === DeliveryType.Legal || e.type === DeliveryType.NoBall) {
+      const runsRecipientId =
+        e.dismissalType === DismissalType.RunOut && e.dismissedId && e.dismissedId !== striker
+          ? e.dismissedId
+          : striker;
+      const runsCard = runsRecipientId ? ensureBatter(runsRecipientId) : null;
+      if (runsCard) {
+        runsCard.runs += e.runsBat;
+        if (e.isBoundary && e.runsBat === 4) runsCard.fours += 1;
+        if (e.isBoundary && e.runsBat === 6) runsCard.sixes += 1;
+      }
     }
 
     // Bowler figures.
@@ -293,6 +401,25 @@ export function deriveInnings(events: ScoringEvent[], ctx: InningsContext = {}):
       bowlerCard.runsConceded += runsToBowler(e);
       if (isLegalBall(e.type)) bowlerCard.legalBalls += 1;
       if (bowlerCredited(e)) bowlerCard.wickets += 1;
+      if (e.type === DeliveryType.Wide) bowlerCard.wides += 1;
+      if (e.type === DeliveryType.NoBall) bowlerCard.noBalls += 1;
+      if (occupiesBallSlot(e.type) && e.runsBat + e.extraRuns === 0) {
+        bowlerCard.dotBalls += 1;
+      }
+      if (
+        (e.type === DeliveryType.Legal || e.type === DeliveryType.NoBall) &&
+        e.isBoundary &&
+        e.runsBat === 4
+      ) {
+        bowlerCard.fours += 1;
+      }
+      if (
+        (e.type === DeliveryType.Legal || e.type === DeliveryType.NoBall) &&
+        e.isBoundary &&
+        e.runsBat === 6
+      ) {
+        bowlerCard.sixes += 1;
+      }
     }
 
     // Innings legal-ball count + per-over maiden accumulation.
@@ -308,6 +435,38 @@ export function deriveInnings(events: ScoringEvent[], ctx: InningsContext = {}):
 
     // Wickets + fall-of-wicket.
     if (isWicketEvent(e)) {
+      const pairIds: string[] = [striker, nonStriker].filter((id): id is string => id !== null);
+      const prevRuns = fallOfWickets.at(-1)?.teamRuns ?? 0;
+      const standRuns = runs - prevRuns;
+      const standBalls = legalBalls - legalBallsAtLastWicket;
+      if (pairIds.length > 0 && (standRuns > 0 || standBalls > 0)) {
+        const standBatterIds: string[] = (() => {
+          if (
+            standLeftBatterId &&
+            standRightBatterId &&
+            standLeftBatterId !== standRightBatterId
+          ) {
+            return [standLeftBatterId, standRightBatterId];
+          }
+          if (standLeftBatterId) {
+            const other = pairIds.find((id) => id !== standLeftBatterId);
+            if (other) {
+              return [standLeftBatterId, other];
+            }
+          }
+          return pairIds;
+        })();
+        completedPartnerships.push({
+          batterIds: standBatterIds,
+          batterRuns: standBatterIds.map((id) => ({
+            playerId: id,
+            runs: (batters.get(id)?.runs ?? 0) - (batterRunsAtLastWicket.get(id) ?? 0),
+          })),
+          runs: standRuns,
+          balls: standBalls,
+        });
+      }
+
       wickets += 1;
       const dismissedId: string | null = e.dismissedId ?? striker;
       const card = ensureBatter(dismissedId);
@@ -316,6 +475,8 @@ export function deriveInnings(events: ScoringEvent[], ctx: InningsContext = {}):
         card.dismissalType = e.dismissalType ?? DismissalType.RetiredOut;
         card.bowlerId = bowlerCredited(e) ? e.bowlerId : null;
         card.fielderId = e.fielderId ?? null;
+        card.fielder2Id = e.fielder2Id ?? null;
+        card.isMankad = e.type === DeliveryType.Mankad;
       }
       fallOfWickets.push({
         wicketNumber: wickets,
@@ -324,15 +485,29 @@ export function deriveInnings(events: ScoringEvent[], ctx: InningsContext = {}):
         oversText: oversText(legalBalls),
       });
       legalBallsAtLastWicket = legalBalls;
+      for (const [id, b] of batters) {
+        batterRunsAtLastWicket.set(id, b.runs);
+      }
       // Whoever is dismissed leaves; their crease position becomes unknown
       // until the next recorded delivery names the incoming batter.
       if (dismissedId && dismissedId === striker) striker = null;
       else if (dismissedId && dismissedId === nonStriker) nonStriker = null;
+
+      const standSurvivorId: string | null =
+        dismissedId && pairIds.length === 2
+          ? (pairIds.find((id) => id !== dismissedId) ?? null)
+          : (pairIds[0] ?? null);
+      standLeftBatterId = standSurvivorId;
+      standRightBatterId = null;
     }
 
-    // Retired hurt (not a wicket): the striker leaves and may return (§12.1).
+    // Retired hurt (not a wicket): leaves the crease but may return (§12.1).
     if (e.type === DeliveryType.RetiredHurt) {
       const retiredId: string | null = e.dismissedId ?? striker;
+      const card = ensureBatter(retiredId);
+      if (card) {
+        card.retiredHurt = true;
+      }
       if (retiredId && retiredId === striker) striker = null;
       else if (retiredId && retiredId === nonStriker) nonStriker = null;
     }
@@ -364,7 +539,12 @@ export function deriveInnings(events: ScoringEvent[], ctx: InningsContext = {}):
       ballNumber: e.ballNumber,
       label: e.overNumber !== null && e.ballNumber !== null ? `${e.overNumber}.${e.ballNumber}` : '',
       code: deliveryCode(e),
-      runs: e.runsBat + e.extraRuns,
+      runs:
+        e.type === DeliveryType.PenaltyRuns && !penaltyCountsForInnings(e, ctx.battingTeamId)
+          ? 0
+          : e.type === DeliveryType.PenaltyRuns
+            ? e.extraRuns
+            : e.runsBat + e.extraRuns + noBallCompletedRuns(e),
       isWicket: isWicketEvent(e),
       isBoundary: e.isBoundary,
       description: deliveryDescription(e),
@@ -394,6 +574,9 @@ export function deriveInnings(events: ScoringEvent[], ctx: InningsContext = {}):
       dismissalType: b.dismissalType,
       bowlerId: b.bowlerId,
       fielderId: b.fielderId,
+      fielder2Id: b.fielder2Id,
+      retiredHurt: b.retiredHurt,
+      isMankad: b.isMankad,
     };
   });
 
@@ -407,6 +590,11 @@ export function deriveInnings(events: ScoringEvent[], ctx: InningsContext = {}):
       runsConceded: b.runsConceded,
       wickets: b.wickets,
       maidens: b.maidens,
+      dotBalls: b.dotBalls,
+      wides: b.wides,
+      noBalls: b.noBalls,
+      fours: b.fours,
+      sixes: b.sixes,
       economy: oversBowled > 0 ? round(b.runsConceded / oversBowled, 2) : 0,
     };
   });
@@ -414,14 +602,21 @@ export function deriveInnings(events: ScoringEvent[], ctx: InningsContext = {}):
   // Innings-end conditions (§32).
   const target = ctx.target ?? null;
   const oversAllotted = ctx.oversAllotted ?? null;
-  const allOut = wickets >= WICKETS_FOR_ALL_OUT;
+  runs = Math.max(0, runs);
+  const wicketCap =
+    ctx.inningsType === InningsType.SuperOver
+      ? WICKETS_FOR_SUPER_OVER_ALL_OUT
+      : WICKETS_FOR_ALL_OUT;
+  const allOut = wickets >= wicketCap;
   const oversDone = oversAllotted !== null && legalBalls >= oversAllotted * BALLS_PER_OVER;
   const targetReached = target !== null && runs >= target;
+  const manuallyEnded = seq.some((e) => e.type === DeliveryType.EndInnings);
 
   let closeReason: InningsCloseReason | null = null;
   if (targetReached) closeReason = InningsCloseReason.TargetReached;
   else if (allOut) closeReason = InningsCloseReason.AllOut;
   else if (oversDone) closeReason = InningsCloseReason.OversComplete;
+  else if (manuallyEnded) closeReason = InningsCloseReason.ManuallyEnded;
 
   // Recent-overs strip: group ball-occupying timeline entries by over (§28).
   const overMap = new Map<number, OverSummary>();
@@ -441,16 +636,30 @@ export function deriveInnings(events: ScoringEvent[], ctx: InningsContext = {}):
     .sort((a, b) => a.overNumber - b.overNumber)
     .slice(-RECENT_OVERS);
 
+  const participants = resolveLiveParticipants(
+    { striker, nonStriker, currentBowlerId, legalBalls },
+    ctx,
+  );
+
   // Current partnership: runs/balls since the last wicket between the pair (§28).
   const lastWicketRuns = fallOfWickets.at(-1)?.teamRuns ?? 0;
-  const partnershipBatters = [striker, nonStriker].filter((id): id is string => id !== null);
+  const partnershipIds =
+    standLeftBatterId && standRightBatterId
+      ? [standLeftBatterId, standRightBatterId]
+      : [participants.currentStrikerId, participants.currentNonStrikerId].filter(
+          (id): id is string => id !== null,
+        );
   const partnership: Partnership | null =
     legalBalls === 0 && timeline.length === 0
       ? null
       : {
           runs: runs - lastWicketRuns,
           balls: legalBalls - legalBallsAtLastWicket,
-          batterIds: partnershipBatters,
+          batterIds: partnershipIds,
+          batterRuns: partnershipIds.map((id) => ({
+            playerId: id,
+            runs: (batters.get(id)?.runs ?? 0) - (batterRunsAtLastWicket.get(id) ?? 0),
+          })),
         };
 
   return {
@@ -471,12 +680,56 @@ export function deriveInnings(events: ScoringEvent[], ctx: InningsContext = {}):
     recentOvers,
     timeline,
     partnership,
-    currentStrikerId: striker,
-    currentNonStrikerId: nonStriker,
-    currentBowlerId,
+    partnerships: completedPartnerships,
+    ...participants,
     freeHitNext: pendingFreeHit,
     closed: closeReason !== null,
     closeReason,
     target,
+    droppedCatches: [...droppedCatchCounts.entries()].map(([playerId, count]) => ({
+      playerId,
+      count,
+    })),
+  };
+}
+
+/** Merge folded crease state with scorer selections persisted on the innings row. */
+export function resolveLiveParticipants(
+  folded: {
+    striker: string | null;
+    nonStriker: string | null;
+    currentBowlerId: string | null;
+    legalBalls: number;
+  },
+  ctx: InningsContext,
+): {
+  currentStrikerId: string | null;
+  currentNonStrikerId: string | null;
+  currentBowlerId: string | null;
+} {
+  let striker = folded.striker;
+  let nonStriker = folded.nonStriker;
+  let bowler = folded.currentBowlerId;
+
+  if (striker === null && ctx.selectedStrikerId != null) {
+    striker = ctx.selectedStrikerId;
+  }
+  if (nonStriker === null && ctx.selectedNonStrikerId != null) {
+    nonStriker = ctx.selectedNonStrikerId;
+  }
+
+  const atOverBoundary =
+    folded.legalBalls > 0 && folded.legalBalls % BALLS_PER_OVER === 0;
+
+  if (folded.legalBalls === 0 || atOverBoundary) {
+    bowler = ctx.selectedBowlerId ?? null;
+  } else if (bowler === null && ctx.selectedBowlerId != null) {
+    bowler = ctx.selectedBowlerId;
+  }
+
+  return {
+    currentStrikerId: striker,
+    currentNonStrikerId: nonStriker,
+    currentBowlerId: bowler,
   };
 }

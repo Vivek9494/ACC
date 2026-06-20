@@ -6,8 +6,12 @@ import { ScorecardAutoConfirmTask } from './scorecard-autoconfirm.task';
 import { ScorecardConfirmationService } from './scorecard-confirmation.service';
 import { ScorecardController } from './scorecard.controller';
 import { ScorecardPdfService } from './scorecard-pdf.service';
+import { ScorecardDisplayBuilder } from './scorecard-display.builder';
 import { ScorecardReader } from './scorecard-reader';
 import { ScoringController } from './scoring.controller';
+import { BatsmanPickerService } from './batsman-picker.service';
+import { BowlerPickerService } from './bowler-picker.service';
+import { FielderPickerService } from './fielder-picker.service';
 import { ScoringService } from './scoring.service';
 
 /**
@@ -22,7 +26,11 @@ import { ScoringService } from './scoring.service';
   controllers: [ScoringController, ScorecardController],
   providers: [
     ScoringService,
+    BatsmanPickerService,
+    BowlerPickerService,
+    FielderPickerService,
     ScorecardReader,
+    ScorecardDisplayBuilder,
     ScorecardConfirmationService,
     ScorecardPdfService,
     ScorecardAutoConfirmTask,

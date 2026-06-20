@@ -86,14 +86,14 @@ export default function NewMatchScreen(): React.ReactElement {
 
   if (loading) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-surface">
+      <SafeAreaView className="flex-1 items-center justify-center bg-background">
         <ActivityIndicator color={FIELD_ORANGE} />
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-surface">
+    <SafeAreaView className="flex-1 bg-background">
       <ScrollView contentContainerClassName="px-6 py-6 gap-5">
         <Pressable onPress={() => router.back()}>
           <Text className="font-sans text-primary">← Back</Text>
@@ -106,8 +106,8 @@ export default function NewMatchScreen(): React.ReactElement {
         ) : null}
 
         {error ? (
-          <View className="rounded-lg bg-error-container px-4 py-3">
-            <Text className="font-sans text-sm text-on-error-container">{error}</Text>
+          <View className="rounded-lg bg-primary-50 px-4 py-3">
+            <Text className="font-sans text-sm text-primary">{error}</Text>
           </View>
         ) : null}
 

@@ -67,8 +67,8 @@ export default function ProvincesAdminScreen(): React.ReactElement {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-surface" edges={['top']}>
-      <View className="flex-row items-center gap-3 border-b border-[#F1F1F1] px-4 py-3">
+    <SafeAreaView className="flex-1 bg-background" edges={['top']}>
+      <View className="flex-row items-center gap-3 border-b border-border px-4 py-3">
         <Pressable
           onPress={() => router.back()}
           className="h-10 w-10 items-center justify-center rounded-full active:bg-black/5"
@@ -77,12 +77,12 @@ export default function ProvincesAdminScreen(): React.ReactElement {
         >
           <Ionicons name="arrow-back" size={24} color={FIELD_ORANGE} />
         </Pressable>
-        <Text className="font-sans-bold text-xl text-[#1A1A1A]">Provinces</Text>
+        <Text className="font-sans-bold text-xl text-text">Provinces</Text>
       </View>
 
       <ScrollView contentContainerClassName="gap-4 px-4 py-6">
         {error ? (
-          <Text className="font-sans text-sm text-[#c1121f]">{error}</Text>
+          <Text className="font-sans text-sm text-primary">{error}</Text>
         ) : null}
 
         {loading ? (

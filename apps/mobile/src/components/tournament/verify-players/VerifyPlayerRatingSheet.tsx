@@ -1,8 +1,10 @@
 import {
-  REGISTRATION_FIELDING_RATING_OPTIONS,
-  REGISTRATION_SKILL_RATING_OPTIONS,
+  BallType,
+  REGISTRATION_PLAYER_TYPE_OPTIONS,
+  REGISTRATION_RATING_OPTIONS,
   type RegistrationDetail,
   type RegistrationSummary,
+  RegistrationPlayerType,
 } from '@acc/types';
 import { useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView, View } from 'react-native';
@@ -10,6 +12,7 @@ import { Modal, Pressable, ScrollView, View } from 'react-native';
 import { ApiRequestError, updateRegistrationRatings } from '../../../lib/api';
 import { Button } from '../../ui/Button';
 import { INPUT_SHADOW_STYLE } from '../../ui/fieldStyles';
+import { RadioGroup } from '../../ui/RadioGroup';
 import { Select, type SelectOption } from '../../ui/Select';
 import { Text } from '../../ui/Text';
 
@@ -19,14 +22,15 @@ function ratingOptions(
   return options.map((option) => ({ value: String(option.value), label: option.label }));
 }
 
-const BATTING_OPTIONS = ratingOptions(REGISTRATION_SKILL_RATING_OPTIONS);
-const BOWLING_OPTIONS = ratingOptions(REGISTRATION_SKILL_RATING_OPTIONS);
-const FIELDING_OPTIONS = ratingOptions(REGISTRATION_FIELDING_RATING_OPTIONS);
+const BATTING_OPTIONS = ratingOptions(REGISTRATION_RATING_OPTIONS);
+const BOWLING_OPTIONS = ratingOptions(REGISTRATION_RATING_OPTIONS);
+const FIELDING_OPTIONS = ratingOptions(REGISTRATION_RATING_OPTIONS);
 
 export interface VerifyPlayerRatingSheetProps {
   visible: boolean;
   row: RegistrationSummary | null;
   tournamentId: string;
+  isLeatherBall: boolean;
   onClose: () => void;
   onSaved: (updated: RegistrationDetail) => void;
 }
@@ -36,12 +40,14 @@ export function VerifyPlayerRatingSheet({
   visible,
   row,
   tournamentId,
+  isLeatherBall,
   onClose,
   onSaved,
 }: VerifyPlayerRatingSheetProps): React.ReactElement {
   const [battingRating, setBattingRating] = useState<string | null>(null);
   const [bowlingRating, setBowlingRating] = useState<string | null>(null);
   const [fieldingRating, setFieldingRating] = useState<string | null>(null);
+  const [playerType, setPlayerType] = useState<RegistrationPlayerType | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -52,6 +58,7 @@ export function VerifyPlayerRatingSheet({
     setBattingRating(row.battingRating === null ? null : String(row.battingRating));
     setBowlingRating(row.bowlingRating === null ? null : String(row.bowlingRating));
     setFieldingRating(row.fieldingRating === null ? null : String(row.fieldingRating));
+    setPlayerType(row.playerType);
     setError(null);
   }, [row]);
 
@@ -66,6 +73,7 @@ export function VerifyPlayerRatingSheet({
         battingRating: battingRating === null ? null : Number(battingRating),
         bowlingRating: bowlingRating === null ? null : Number(bowlingRating),
         fieldingRating: fieldingRating === null ? null : Number(fieldingRating),
+        playerType: isLeatherBall ? playerType : null,
       });
       onSaved(updated);
     } catch (err) {
@@ -79,7 +87,7 @@ export function VerifyPlayerRatingSheet({
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable className="flex-1 items-center justify-center bg-black/40 px-6" onPress={onClose}>
         <Pressable
-          className="w-full max-w-sm gap-4 rounded-control bg-white p-5"
+          className="w-full max-w-sm gap-4 rounded-control bg-surface p-5"
           style={INPUT_SHADOW_STYLE}
           onPress={(event) => event.stopPropagation()}
         >
@@ -112,10 +120,21 @@ export function VerifyPlayerRatingSheet({
                 options={FIELDING_OPTIONS}
                 onChange={setFieldingRating}
               />
+              {isLeatherBall ? (
+                <RadioGroup
+                  label="Player Type"
+                  value={playerType}
+                  onChange={setPlayerType}
+                  options={REGISTRATION_PLAYER_TYPE_OPTIONS.map((option) => ({
+                    value: option.value,
+                    label: option.label,
+                  }))}
+                />
+              ) : null}
             </View>
           </ScrollView>
 
-          {error ? <Text className="font-sans text-sm text-error">{error}</Text> : null}
+          {error ? <Text className="font-sans text-sm text-primary">{error}</Text> : null}
 
           <View className="gap-3">
             <Button

@@ -33,7 +33,7 @@ export default function AdminTabsLayout(): React.ReactElement {
   const activeKey = activeTabKey(pathname);
 
   return (
-    <View className="flex-1 bg-surface">
+    <View className="flex-1 bg-background">
       <View className="flex-1">
         <Slot />
       </View>

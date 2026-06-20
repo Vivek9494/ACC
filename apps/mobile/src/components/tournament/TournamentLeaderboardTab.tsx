@@ -55,8 +55,8 @@ export function TournamentLeaderboardTab({
 
   if (error) {
     return (
-      <View className="rounded-control bg-error-container px-4 py-3">
-        <Text className="font-sans text-sm text-on-error-container">{error}</Text>
+      <View className="rounded-control bg-primary-50 px-4 py-3">
+        <Text className="font-sans text-sm text-primary">{error}</Text>
       </View>
     );
   }

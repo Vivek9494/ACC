@@ -1,8 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
-import { View } from 'react-native';
 import { PASSWORD_POLICY_RULES, passwordPolicyChecks } from '@acc/types';
+import { View } from 'react-native';
 
-import { FIELD_ORANGE } from './fieldStyles';
+import { colors } from '@/theme/colors';
 import { Text } from './Text';
 
 export interface PasswordRequirementsProps {
@@ -15,7 +15,7 @@ export function PasswordRequirements({ password }: PasswordRequirementsProps): R
 
   return (
     <View className="gap-2">
-      <Text className="font-sans-semibold text-xs uppercase tracking-wider text-on-surface-variant">
+      <Text className="font-sans-semibold text-xs uppercase tracking-wider text-text-muted">
         Security requirements
       </Text>
       {PASSWORD_POLICY_RULES.map((rule) => {
@@ -25,10 +25,10 @@ export function PasswordRequirements({ password }: PasswordRequirementsProps): R
             <Ionicons
               name={met ? 'checkmark-circle' : 'ellipse-outline'}
               size={18}
-              color={met ? FIELD_ORANGE : '#9AA0A6'}
+              color={met ? colors.primary : colors.textMuted}
             />
             <Text
-              className={`font-sans text-sm ${met ? 'text-on-surface' : 'text-on-surface-variant'}`}
+              className={`font-sans text-sm ${met ? 'text-text' : 'text-text-muted'}`}
             >
               {rule.label}
             </Text>

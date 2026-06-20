@@ -26,6 +26,8 @@ interface PrismaMock {
   user: { findMany: AnyMock };
   matchSquad: { findUnique: AnyMock; create: AnyMock; update: AnyMock; count: AnyMock };
   matchSquadPlayer: { deleteMany: AnyMock; createMany: AnyMock };
+  delivery: { count: AnyMock };
+  innings: { findFirst: AnyMock; update: AnyMock };
   $transaction: AnyMock;
 }
 
@@ -70,6 +72,8 @@ function buildService(): {
     user: { findMany: jest.fn().mockResolvedValue([]) },
     matchSquad: { findUnique: jest.fn(), create: jest.fn(), update: jest.fn(), count: jest.fn() },
     matchSquadPlayer: { deleteMany: jest.fn(), createMany: jest.fn() },
+    delivery: { count: jest.fn().mockResolvedValue(0) },
+    innings: { findFirst: jest.fn(), update: jest.fn() },
     $transaction: jest.fn(),
   };
 
@@ -80,6 +84,7 @@ function buildService(): {
     grant: jest.fn().mockResolvedValue(undefined),
     revoke: jest.fn().mockResolvedValue(undefined),
     revokeAllForMatch: jest.fn().mockResolvedValue(undefined),
+    assignOrSwitch: jest.fn().mockResolvedValue(undefined),
     hasActiveGrant: jest.fn().mockResolvedValue(false),
   };
   const notifications = { notify: jest.fn().mockResolvedValue(undefined) };
@@ -120,6 +125,7 @@ function matchRow(overrides: Record<string, unknown> = {}): Record<string, unkno
     tournament: { impactPlayerEnabled: false, type: TournamentType.ACC },
     squads: [],
     scorerGrants: [],
+    externalPlayers: [],
     ...overrides,
   };
 }
@@ -268,6 +274,55 @@ describe('MatchesService — toss (§11.2)', () => {
   });
 });
 
+describe('MatchesService — start scoring (§11.2)', () => {
+  it('records toss, goes Live, and opens innings 1', async () => {
+    const { service, prisma, permissions, scoring } = buildService();
+    permissions.check.mockResolvedValue(true);
+    const row = matchRow({
+      state: MatchState.PlayingXiLocked,
+      homeTeamId: 'team-H',
+      awayTeamId: 'team-A',
+      oversPerInnings: 20,
+      scorecardVersion: 0,
+    });
+    prisma.match.findUnique.mockResolvedValue(row);
+    prisma.innings.findFirst.mockResolvedValue(null);
+    prisma.match.update.mockResolvedValue({});
+
+    await service.startScoring(actor, 'match-1', { tossWinner: 'TEAM_A', decision: 'BAT' });
+
+    expect(permissions.check).toHaveBeenCalledWith(Permission.START_MATCH, actor, {
+      matchId: 'match-1',
+    });
+    expect(prisma.match.update).toHaveBeenCalledWith({
+      where: { id: 'match-1' },
+      data: expect.objectContaining({
+        tossWinner: 'TEAM_A',
+        tossDecision: 'BAT',
+        state: MatchState.Live,
+      }),
+    });
+    expect(scoring.startInnings).toHaveBeenCalledWith(
+      actor,
+      'match-1',
+      expect.objectContaining({
+        battingTeamId: 'team-H',
+        bowlingTeamId: 'team-A',
+      }),
+    );
+  });
+
+  it('requires Playing 11 locked before start scoring from Scheduled', async () => {
+    const { service, prisma, permissions } = buildService();
+    permissions.check.mockResolvedValue(true);
+    prisma.match.findUnique.mockResolvedValue(matchRow({ state: MatchState.Scheduled }));
+
+    await expect(
+      service.startScoring(actor, 'match-1', { tossWinner: 'TEAM_A', decision: 'BAT' }),
+    ).rejects.toMatchObject({ response: { error: 'PLAYING_XI_REQUIRED' } });
+  });
+});
+
 describe('MatchesService — scorer assignment (§11.1)', () => {
   it('uses the Captain grant (ASSIGN_MATCH_SCORER) for ACC matches', async () => {
     const { service, prisma, permissions, scorerGrants } = buildService();
@@ -280,7 +335,19 @@ describe('MatchesService — scorer assignment (§11.1)', () => {
     expect(permissions.check).toHaveBeenCalledWith(Permission.ASSIGN_MATCH_SCORER, actor, {
       matchId: 'match-1',
     });
-    expect(scorerGrants.grant).toHaveBeenCalledWith('match-1', 'scorer-1', actor.id);
+    expect(scorerGrants.assignOrSwitch).toHaveBeenCalledWith('match-1', 'scorer-1', actor.id);
+  });
+
+  it('uses assignOrSwitch for switch (same owning captain)', async () => {
+    const { service, prisma, permissions, scorerGrants } = buildService();
+    prisma.match.findUnique.mockResolvedValue(
+      matchRow({ tournament: { impactPlayerEnabled: false, type: 'ACC' } }),
+    );
+    permissions.check.mockResolvedValue(true);
+
+    await service.assignScorer(actor, 'match-1', { userId: 'scorer-2' });
+
+    expect(scorerGrants.assignOrSwitch).toHaveBeenCalledWith('match-1', 'scorer-2', actor.id);
   });
 
   it('uses the organizer grant (ASSIGN_TOURNAMENT_SCORER) for APL matches', async () => {

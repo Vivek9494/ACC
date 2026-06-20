@@ -233,6 +233,7 @@ export class GuestService {
       locationAddress: row.locationAddress,
       latitude: row.latitude,
       longitude: row.longitude,
+      timezone: row.timezone,
       teamCount: row._count.teams,
     };
   }

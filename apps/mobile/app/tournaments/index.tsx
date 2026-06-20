@@ -56,7 +56,7 @@ export default function TournamentsScreen(): React.ReactElement {
   useFocusEffect(load);
 
   return (
-    <SafeAreaView className="flex-1 bg-surface">
+    <SafeAreaView className="flex-1 bg-background">
       <View className="flex-row items-center justify-between px-6 pt-6">
         <View>
           <Text className="font-sans-medium text-sm uppercase tracking-widest text-primary">
@@ -79,8 +79,8 @@ export default function TournamentsScreen(): React.ReactElement {
             <ActivityIndicator color={FIELD_ORANGE} />
           </View>
         ) : error ? (
-          <View className="rounded-lg bg-error-container px-4 py-3">
-            <Text className="font-sans text-sm text-on-error-container">{error}</Text>
+          <View className="rounded-lg bg-primary-50 px-4 py-3">
+            <Text className="font-sans text-sm text-primary">{error}</Text>
           </View>
         ) : tournaments.length === 0 ? (
           <View className="items-center py-16">

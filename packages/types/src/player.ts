@@ -1,14 +1,21 @@
 import type { CaptainFeaturedMatchSummary } from './captain';
 import type { ManagerPlayerStats, MatchSummaryTeamView } from './club-manager';
 import type { MatchState } from './match';
+import type { ParticipationPollCardView } from './poll';
 import type { TournamentSummary } from './tournament';
 
 /** Featured match for a player's team (current or next fixture). */
 export type PlayerFeaturedMatchSummary = CaptainFeaturedMatchSummary;
 
+/** True when the assigned scorer should resume into live scoring (§11.1). */
+export function isScorerMatchResumable(state: MatchState): boolean {
+  return state === 'LIVE' || state === 'RAIN_INTERRUPTED';
+}
+
 /**
- * A match the signed-in player may start as the assigned per-match Scorer (§11.1).
+ * A match the signed-in player may start or continue as the assigned per-match Scorer (§11.1).
  * Only returned when the grant is active and the fixture is on today's calendar day.
+ * Pre-live states → "Start Match"; LIVE / rain-interrupted → "Continue Scoring".
  */
 export interface ScorerStartableMatch {
   matchId: string;
@@ -25,6 +32,8 @@ export interface ScorerStartableMatch {
 /** Player dashboard payload (GET /player/dashboard). */
 export interface PlayerDashboard {
   featuredMatch: PlayerFeaturedMatchSummary | null;
+  /** Leather-ball participation poll for the player's next open fixture, if any. */
+  participationPoll: ParticipationPollCardView | null;
   /** Active scorer grant for a startable match today; null otherwise. */
   scorerMatch: ScorerStartableMatch | null;
   /** Players always have this card — zeros allowed. */

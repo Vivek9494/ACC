@@ -30,7 +30,7 @@ export function Card({
   const radiusClass = className?.includes('rounded-control') ? 'rounded-control' : 'rounded-2xl';
   const shell = (
     <View
-      className={`${radiusClass} bg-white p-4 ${accent ? 'border-l-4 border-l-primary' : ''} ${restClass}`.trim()}
+      className={`${radiusClass} bg-surface p-4 ${accent ? 'border-l-4 border-l-primary' : ''} ${restClass}`.trim()}
       style={INPUT_SHADOW_STYLE}
     >
       {children}

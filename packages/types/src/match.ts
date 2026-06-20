@@ -246,6 +246,12 @@ export interface ScorerGrantView {
 export interface MatchDetail extends MatchSummary {
   reportingTime: string | null;
   groundLocation: string | null;
+  /** Geofence centre latitude (leather matches). */
+  geofenceLat: number | null;
+  /** Geofence centre longitude (leather matches). */
+  geofenceLng: number | null;
+  /** Tournament venue IANA timezone for local display. */
+  tournamentTimezone: string | null;
   oversPerInnings: number | null;
   maxOversPerBowler: number | null;
   powerplayOvers: number | null;
@@ -263,6 +269,8 @@ export interface MatchDetail extends MatchSummary {
   impactPlayerEnabled: boolean;
   squads: SquadView[];
   activeScorers: ScorerGrantView[];
+  /** Live-added external opponent batters (§9.5). */
+  externalPlayers: ExternalPlayerView[];
   /** §13.1: when the match was completed (UTC ISO) — start of the confirm window. */
   completedAt: string | null;
   /** §13.1: when the scorecard was confirmed/locked (UTC ISO). */
@@ -273,6 +281,9 @@ export interface MatchDetail extends MatchSummary {
   autoConfirmed: boolean;
   /** §13.3: the selected Man of the Match, if any. */
   manOfTheMatchUserId: string | null;
+  manOfTheMatchSelectedAt: string | null;
+  manOfTheMatchSelectedByUserId: string | null;
+  resultNote: string | null;
   /** Derived/persisted match winner; null for a tie/No Result. */
   winningTeamId: string | null;
   isNoResult: boolean;
@@ -288,3 +299,32 @@ export interface SquadCandidate {
   /** §9.7: shown with a "Suspended" badge; allowed in XI, never as substitute. */
   isSuspended: boolean;
 }
+
+/** Live-added external opponent batter for an ACC match (§9.5). */
+export interface ExternalPlayerView {
+  id: string;
+  matchId: string;
+  slot: number;
+  name: string;
+  battingStyle: string | null;
+  bowlingType: string | null;
+}
+
+/** Add a name-only batter to the external opponent's match roster (§9.5). */
+export interface AddExternalBatsmanRequest {
+  name: string;
+  battingStyle?: string | null;
+}
+
+/** Add a name-only bowler to the external opponent's match roster (§9.5). */
+export interface AddExternalBowlerRequest {
+  name: string;
+  bowlingType?: string | null;
+}
+
+/** Audit actions for match participant changes. */
+export const MatchAuditAction = {
+  ExternalBatsmanAdded: 'EXTERNAL_BATSMAN_ADDED',
+  ExternalBowlerAdded: 'EXTERNAL_BOWLER_ADDED',
+} as const;
+export type MatchAuditAction = (typeof MatchAuditAction)[keyof typeof MatchAuditAction];

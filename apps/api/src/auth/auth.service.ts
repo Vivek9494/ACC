@@ -12,6 +12,8 @@ import {
   MIN_SIGNUP_AGE,
   MOBILE_NUMBER_EXISTS_MESSAGE,
   normalizeCanadianPostalCode,
+  normalizeCanadianMobile,
+  profileMobileForStorage,
   PASSWORD_POLICY_INVALID_MESSAGE,
   REFRESH_IDLE_DAYS,
   SIGNUP_VALIDATION_MESSAGES,
@@ -30,6 +32,8 @@ import { JwtService, type JwtSignOptions } from '@nestjs/jwt';
 import type { User } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { randomUUID } from 'node:crypto';
+
+import type { Request } from 'express';
 
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
@@ -55,8 +59,10 @@ export class AuthService {
   ) {}
 
   async signup(dto: SignupDto): Promise<AuthResponse> {
+    const mobileNumber = profileMobileForStorage(dto.mobileNumber);
+    const emergencyContactNumber = profileMobileForStorage(dto.emergencyContactNumber);
     const existing = await this.prisma.user.findUnique({
-      where: { mobileNumber: dto.mobileNumber },
+      where: { mobileNumber },
       select: { id: true },
     });
     if (existing) {
@@ -104,7 +110,7 @@ export class AuthService {
       data: {
         firstName: dto.firstName,
         lastName: dto.lastName,
-        mobileNumber: dto.mobileNumber,
+        mobileNumber,
         email: dto.email?.trim() || '',
         dateOfBirth: dob,
         address,
@@ -113,7 +119,7 @@ export class AuthService {
         jerseyNumber: dto.jerseyNumber ?? 0,
         profilePhotoUrl: dto.profilePhotoUrl ?? null,
         emergencyContactName: dto.emergencyContactName,
-        emergencyContactNumber: dto.emergencyContactNumber,
+        emergencyContactNumber,
         passwordHash,
       },
     });
@@ -123,7 +129,8 @@ export class AuthService {
   }
 
   async login(dto: LoginDto): Promise<AuthResponse> {
-    const attemptsKey = loginAttemptsKey(dto.mobileNumber);
+    const mobileNumber = normalizeCanadianMobile(dto.mobileNumber);
+    const attemptsKey = loginAttemptsKey(mobileNumber);
     const attempts = Number((await this.redis.get(attemptsKey)) ?? 0);
     if (attempts >= LOGIN_RATE_LIMIT.maxAttempts) {
       throw new HttpException(
@@ -136,7 +143,7 @@ export class AuthService {
     }
 
     const user = await this.prisma.user.findUnique({
-      where: { mobileNumber: dto.mobileNumber },
+      where: { mobileNumber },
     });
 
     const passwordOk = user ? await bcrypt.compare(dto.password, user.passwordHash) : false;
@@ -313,6 +320,43 @@ export class AuthService {
       age -= 1;
     }
     return age;
+  }
+
+  /** Resolves the viewer on public routes when a valid Bearer token is sent. */
+  async resolveOptionalUser(request: Request): Promise<AuthUser | null> {
+    const token = this.extractBearer(request);
+    if (!token) {
+      return null;
+    }
+
+    let payload: AccessTokenPayload;
+    try {
+      payload = await this.jwt.verifyAsync<AccessTokenPayload>(token, {
+        secret: this.config.getOrThrow<string>('JWT_ACCESS_SECRET'),
+      });
+    } catch {
+      return null;
+    }
+
+    if (payload.type !== 'access') {
+      return null;
+    }
+
+    const user = await this.prisma.user.findUnique({ where: { id: payload.sub } });
+    if (!user || !user.isActive || user.tokenVersion !== payload.tokenVersion) {
+      return null;
+    }
+
+    return toAuthUser(user);
+  }
+
+  private extractBearer(request: Request): string | null {
+    const header = request.headers.authorization;
+    if (!header) {
+      return null;
+    }
+    const [scheme, value] = header.split(' ');
+    return scheme === 'Bearer' && value ? value : null;
   }
 }
 

@@ -22,11 +22,14 @@ import {
   UploadedFile,
   UseGuards,
   UseInterceptors,
+  Req,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import type { Request } from 'express';
 import { TOURNAMENT_FORM_MESSAGES, TOURNAMENT_POSTER_MAX_BYTES, type UploadTournamentPosterResponse } from '@acc/types';
 
 import { CurrentUser } from '../auth/current-user.decorator';
+import { AuthService } from '../auth/auth.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Public } from '../auth/public.decorator';
 import { PermissionGuard } from '../authz/permission.guard';
@@ -40,7 +43,10 @@ import { TournamentsService } from './tournaments.service';
 @Controller('tournaments')
 @UseGuards(JwtAuthGuard)
 export class TournamentsController {
-  constructor(private readonly tournaments: TournamentsService) {}
+  constructor(
+    private readonly tournaments: TournamentsService,
+    private readonly auth: AuthService,
+  ) {}
 
   /** Create a tournament (§6.1). Type + RBAC are resolved in the service. */
   @Post()
@@ -100,8 +106,12 @@ export class TournamentsController {
 
   @Get(':tournamentId')
   @Public()
-  detail(@Param('tournamentId') tournamentId: string): Promise<TournamentDetail> {
-    return this.tournaments.getDetail(tournamentId);
+  async detail(
+    @Param('tournamentId') tournamentId: string,
+    @Req() req: Request,
+  ): Promise<TournamentDetail> {
+    const viewer = await this.auth.resolveOptionalUser(req);
+    return this.tournaments.getDetail(tournamentId, viewer);
   }
 
   /** Mid-tournament edits (§6.4). Organizer/Admin only (B1). */

@@ -61,12 +61,20 @@ describe('PermissionService', () => {
       expect(result).toBe(false);
     });
 
-    it('allows approving a registration from their own Center', () => {
+    it('allows approving a registration from their own Center on tennis', () => {
       const result = service.evaluate(
         Permission.APPROVE_REGISTRATION,
         ctx({ subjects: [UserRole.CenterSevak], tournamentType: TournamentType.APL, sameCenter: true }),
       );
       expect(result).toBe(true);
+    });
+
+    it('denies Center Sevak approval on leather ACC', () => {
+      const result = service.evaluate(
+        Permission.APPROVE_REGISTRATION,
+        ctx({ subjects: [UserRole.CenterSevak], tournamentType: TournamentType.ACC, sameCenter: true }),
+      );
+      expect(result).toBe(false);
     });
   });
 
@@ -88,6 +96,62 @@ describe('PermissionService', () => {
     });
   });
 
+  describe('tournament player profile (captain + Club Manager)', () => {
+    it('allows any captain in the tournament to view profiles', () => {
+      const result = service.evaluate(
+        Permission.VIEW_TOURNAMENT_PLAYER_PROFILE,
+        ctx({ subjects: [UserRole.Captain], tournamentType: TournamentType.ACC }),
+      );
+      expect(result).toBe(true);
+    });
+
+    it('allows Club Manager cross-team profile access', () => {
+      const result = service.evaluate(
+        Permission.VIEW_TOURNAMENT_PLAYER_PROFILE,
+        ctx({ subjects: [UserRole.ClubManager], tournamentType: TournamentType.ACC }),
+      );
+      expect(result).toBe(true);
+    });
+
+    it('denies a regular player from viewing tournament player profiles', () => {
+      const result = service.evaluate(
+        Permission.VIEW_TOURNAMENT_PLAYER_PROFILE,
+        ctx({ subjects: [UserRole.Player], tournamentType: TournamentType.ACC }),
+      );
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('verified registered players (Captain / VC / Club Manager)', () => {
+    it('allows Captain in a tennis tournament on own team', () => {
+      const result = service.evaluate(
+        Permission.VIEW_VERIFIED_REGISTERED_PLAYERS,
+        ctx({ subjects: [UserRole.Captain], tournamentType: TournamentType.APL, sameTeam: true }),
+      );
+      expect(result).toBe(true);
+    });
+
+    it('allows Vice Captain in a tennis tournament on own team', () => {
+      const result = service.evaluate(
+        Permission.VIEW_VERIFIED_REGISTERED_PLAYERS,
+        ctx({
+          subjects: [UserRole.ViceCaptain],
+          tournamentType: TournamentType.APL,
+          sameTeam: true,
+        }),
+      );
+      expect(result).toBe(true);
+    });
+
+    it('denies a regular player', () => {
+      const result = service.evaluate(
+        Permission.VIEW_VERIFIED_REGISTERED_PLAYERS,
+        ctx({ subjects: [UserRole.Player], tournamentType: TournamentType.APL }),
+      );
+      expect(result).toBe(false);
+    });
+  });
+
   describe('Manager does not exist in ACC (§2, D1)', () => {
     it('returns false for a Manager permission in an ACC tournament', () => {
       const result = service.evaluate(
@@ -106,21 +170,59 @@ describe('PermissionService', () => {
     });
   });
 
-  describe('Vice Captain inheritance while Captain is suspended (E1)', () => {
-    it('denies Playing 11 selection when the Captain is not suspended', () => {
+  describe('Vice Captain mirrors Captain (always active)', () => {
+    it('allows Playing 11 selection for Vice Captain without Captain suspension', () => {
       const result = service.evaluate(
         Permission.SELECT_PLAYING_11,
-        ctx({ subjects: [UserRole.ViceCaptain], tournamentType: TournamentType.ACC, sameTeam: true, captainSuspended: false }),
+        ctx({ subjects: [UserRole.ViceCaptain], tournamentType: TournamentType.ACC, sameTeam: true }),
+      );
+      expect(result).toBe(true);
+    });
+
+    it('allows Vice Captain to view tournament player profiles', () => {
+      const result = service.evaluate(
+        Permission.VIEW_TOURNAMENT_PLAYER_PROFILE,
+        ctx({ subjects: [UserRole.ViceCaptain], tournamentType: TournamentType.ACC }),
+      );
+      expect(result).toBe(true);
+    });
+
+    it('allows Club Manager to view verified registered players in tennis', () => {
+      const result = service.evaluate(
+        Permission.VIEW_VERIFIED_REGISTERED_PLAYERS,
+        ctx({ subjects: [UserRole.ClubManager], tournamentType: TournamentType.APL }),
+      );
+      expect(result).toBe(true);
+    });
+  });
+
+  describe('Club Manager assigns team roles', () => {
+    it('allows a Club Manager who organizes the tournament', () => {
+      const result = service.evaluate(
+        Permission.ASSIGN_TEAM_ROLES,
+        ctx({ subjects: [UserRole.ClubManager], tournamentType: TournamentType.ACC, isOrganizer: true }),
+      );
+      expect(result).toBe(true);
+    });
+
+    it('denies a Center Sevak from assigning team roles', () => {
+      const result = service.evaluate(
+        Permission.ASSIGN_TEAM_ROLES,
+        ctx({
+          subjects: [UserRole.CenterSevak],
+          tournamentType: TournamentType.APL,
+          isOrganizer: true,
+        }),
       );
       expect(result).toBe(false);
     });
 
-    it('allows Playing 11 selection when the Captain is suspended', () => {
+    it('denies a Club Manager who is not the organizer', () => {
       const result = service.evaluate(
-        Permission.SELECT_PLAYING_11,
-        ctx({ subjects: [UserRole.ViceCaptain], tournamentType: TournamentType.ACC, sameTeam: true, captainSuspended: true }),
+        Permission.ASSIGN_TEAM_ROLES,
+        ctx({ subjects: [UserRole.ClubManager], tournamentType: TournamentType.ACC, isOrganizer: false }),
       );
-      expect(result).toBe(true);
+      expect(result).toBe(false);
     });
   });
 

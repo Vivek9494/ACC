@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { colors } from '@/theme/colors';
 
 import { SuccessDialog } from '../src/components/ui/SuccessDialog';
 import { PasswordRequirements } from '../src/components/ui/PasswordRequirements';
@@ -113,7 +114,7 @@ export default function ChangePasswordScreen(): React.ReactElement {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-surface">
+    <SafeAreaView className="flex-1 bg-background">
       <ScrollView
         contentContainerClassName="flex-grow px-6 pb-12 pt-4"
         keyboardShouldPersistTaps="handled"
@@ -196,13 +197,13 @@ export default function ChangePasswordScreen(): React.ReactElement {
             className="mt-2 h-14 flex-row gap-2"
           >
             {submitting ? (
-              <ActivityIndicator color="#ffffff" />
+              <ActivityIndicator color={colors.textInverse} />
             ) : (
               <>
                 <Text className="font-sans-medium text-sm uppercase tracking-wider text-on-primary">
                   Set New Password
                 </Text>
-                <Ionicons name="arrow-forward" size={20} color="#ffffff" />
+                <Ionicons name="arrow-forward" size={20} color={colors.textInverse} />
               </>
             )}
           </Button>

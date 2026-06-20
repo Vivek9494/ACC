@@ -30,7 +30,7 @@ function CombinedTableHeaderRow(): React.ReactElement {
                 column === 'W'
                   ? 'text-primary'
                   : column === 'L'
-                    ? 'text-error'
+                    ? 'text-secondary-900'
                     : 'text-on-surface-variant'
               }`}
               style={{ width: STANDINGS_STAT_COL_WIDTH }}
@@ -70,7 +70,7 @@ export function StandingsCombinedTable({
 
   return (
     <View
-      className="overflow-hidden rounded-control border border-outline-variant bg-white"
+      className="overflow-hidden rounded-control border border-outline-variant bg-surface"
       style={INPUT_SHADOW_STYLE}
     >
       <ScrollView horizontal bounces={false} showsHorizontalScrollIndicator={false}>

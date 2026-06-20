@@ -22,7 +22,7 @@ export function SectionCard({
 }: SectionCardProps): React.ReactElement {
   return (
     <View
-      className={`gap-4 rounded-xl border border-[#F8C9AE] bg-[#FDF1EA] p-4 ${className ?? ''}`.trim()}
+      className={`gap-4 rounded-xl border border-primary-200 bg-primary-50 p-4 ${className ?? ''}`.trim()}
     >
       {heading ? (
         <View className="flex-row items-center gap-2">

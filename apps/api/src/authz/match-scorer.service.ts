@@ -1,4 +1,5 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -19,6 +20,65 @@ export class MatchScorerGrantService {
       select: { id: true },
     });
     return grant !== null;
+  }
+
+  /** The single active grant for a match, if any (§11.1). */
+  async getActiveGrant(matchId: string) {
+    return this.prisma.matchScorerGrant.findFirst({
+      where: { matchId, revokedAt: null },
+      orderBy: { grantedAt: 'desc' },
+    });
+  }
+
+  /**
+   * First assign or switch by the owning captain (§11.1). At most one active
+   * grant per match; concurrent assigns from another captain fail cleanly.
+   */
+  async assignOrSwitch(matchId: string, userId: string, grantedByUserId: string): Promise<void> {
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        const active = await tx.matchScorerGrant.findFirst({
+          where: { matchId, revokedAt: null },
+        });
+
+        if (!active) {
+          await tx.matchScorerGrant.create({
+            data: { matchId, userId, grantedByUserId },
+          });
+          return;
+        }
+
+        if (active.grantedByUserId !== grantedByUserId) {
+          throw new ConflictException({
+            message: 'Another captain has already assigned the scorer for this match',
+            error: 'SCORER_ALREADY_ASSIGNED',
+          });
+        }
+
+        if (active.userId === userId) {
+          return;
+        }
+
+        await tx.matchScorerGrant.updateMany({
+          where: { matchId, revokedAt: null },
+          data: { revokedAt: new Date() },
+        });
+        await tx.matchScorerGrant.create({
+          data: { matchId, userId, grantedByUserId },
+        });
+      });
+    } catch (err) {
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === 'P2002'
+      ) {
+        throw new ConflictException({
+          message: 'Another captain has already assigned the scorer for this match',
+          error: 'SCORER_ALREADY_ASSIGNED',
+        });
+      }
+      throw err;
+    }
   }
 
   /** Grants scoring on a match to a player (§11.1). Idempotent per active grant. */

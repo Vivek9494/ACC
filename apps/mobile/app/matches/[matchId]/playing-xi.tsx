@@ -153,14 +153,14 @@ export default function PlayingXiScreen(): React.ReactElement {
 
   if (loading) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-surface">
+      <SafeAreaView className="flex-1 items-center justify-center bg-background">
         <ActivityIndicator color={FIELD_ORANGE} />
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-surface">
+    <SafeAreaView className="flex-1 bg-background">
       <View className="px-6 pt-6">
         <Pressable onPress={() => router.back()} className="mb-3">
           <Text className="font-sans text-primary">← Back</Text>
@@ -197,8 +197,8 @@ export default function PlayingXiScreen(): React.ReactElement {
 
       <ScrollView contentContainerClassName="px-6 py-4 gap-3">
         {error ? (
-          <View className="rounded-lg bg-error-container px-4 py-3">
-            <Text className="font-sans text-sm text-on-error-container">{error}</Text>
+          <View className="rounded-lg bg-primary-50 px-4 py-3">
+            <Text className="font-sans text-sm text-primary">{error}</Text>
           </View>
         ) : null}
 
@@ -233,8 +233,8 @@ export default function PlayingXiScreen(): React.ReactElement {
                       {c.firstName} {c.lastName}
                     </Text>
                     {c.isSuspended ? (
-                      <View className="rounded-full bg-error-container px-2 py-0.5">
-                        <Text className="font-sans-medium text-[9px] uppercase tracking-wider text-on-error-container">
+                      <View className="rounded-full bg-secondary-100 px-2 py-0.5">
+                        <Text className="font-sans-medium text-[9px] uppercase tracking-wider text-secondary-900">
                           Suspended
                         </Text>
                       </View>

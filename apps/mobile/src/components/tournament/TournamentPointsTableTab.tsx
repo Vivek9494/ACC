@@ -64,8 +64,8 @@ export function TournamentPointsTableTab({
 
   if (error) {
     return (
-      <View className="rounded-control bg-error-container px-4 py-3">
-        <Text className="font-sans text-sm text-on-error-container">{error}</Text>
+      <View className="rounded-control bg-primary-50 px-4 py-3">
+        <Text className="font-sans text-sm text-primary">{error}</Text>
       </View>
     );
   }
@@ -86,8 +86,8 @@ export function TournamentPointsTableTab({
   return (
     <View className="gap-4">
       {dataErrors.length > 0 ? (
-        <View className="rounded-control bg-error-container px-4 py-3">
-          <Text className="font-sans text-sm text-on-error-container">
+        <View className="rounded-control bg-primary-50 px-4 py-3">
+          <Text className="font-sans text-sm text-primary">
             {dataErrors.length} match{dataErrors.length === 1 ? '' : 'es'} could not be scored
             (missing Super Over winner). Points for those matches are excluded until corrected.
           </Text>

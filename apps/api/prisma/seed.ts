@@ -3,6 +3,7 @@ import { expandUtcDateRange, normalizeTeamName } from '@acc/types';
 import * as bcrypt from 'bcrypt';
 
 import { logScorerCardSeedInstructions, seedScorerStartMatchCard } from './lib/seed-scorer-card';
+import { seedAccTeams } from './lib/seed-acc-teams';
 
 const prisma = new PrismaClient();
 
@@ -127,6 +128,9 @@ async function seedAccTournament(createdByUserId: string): Promise<void> {
         oversPerInnings: 25,
         maxOversPerBowler: 5,
         locationAddress: 'Toronto',
+        latitude: 43.6532,
+        longitude: -79.3832,
+        timezone: 'America/Toronto',
         startAt: new Date(`${year}-05-01T00:00:00.000Z`),
         endAt: new Date(`${year}-09-30T00:00:00.000Z`),
         ballType: 'LEATHER',
@@ -883,6 +887,11 @@ async function main(): Promise<void> {
   });
 
   await seedAccTournament(clubManager.id);
+  await seedAccTeams(prisma, {
+    createdByUserId: clubManager.id,
+    centerId: primaryCenterId,
+    passwordHash,
+  });
   const aplTournamentId = await seedAplTournament(clubManager.id, primaryCenterId);
   await seedPlayerRegistration(clubManager.id, aplTournamentId, primaryCenterId);
   await seedPlayerRegistration(clubManagerPlayer.id, aplTournamentId, primaryCenterId);

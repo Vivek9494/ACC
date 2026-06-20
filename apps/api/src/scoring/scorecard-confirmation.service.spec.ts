@@ -34,6 +34,8 @@ function decided(winner: string | null, isNoResult = false): MatchResultView {
     isTie: false,
     isNoResult,
     winningTeamId: winner,
+    marginRuns: winner ? 10 : null,
+    marginWickets: null,
     superOverRequired: false,
     note: 'note',
   };
@@ -41,7 +43,13 @@ function decided(winner: string | null, isNoResult = false): MatchResultView {
 
 function makeHarness(result: MatchResultView = decided('home')) {
   const matches = new Map<string, Row>();
-  const squadPlayers: { userId: string; matchId: string }[] = [];
+  const squadPlayers: { userId: string; matchId: string; teamId: string }[] = [];
+  const roleAssignments: {
+    userId: string;
+    role: string;
+    teamId: string;
+    tournamentId: string;
+  }[] = [];
   const audits: Row[] = [];
   const grantUpdates: Row[] = [];
   const published: string[] = [];
@@ -80,11 +88,46 @@ function makeHarness(result: MatchResultView = decided('home')) {
       findFirst: async ({
         where,
       }: {
-        where: { userId: string; squad: { matchId: string } };
+        where: { userId: string; squad: { matchId: string; teamId?: string } };
       }) =>
         squadPlayers.find(
-          (p) => p.userId === where.userId && p.matchId === where.squad.matchId,
+          (p) =>
+            p.userId === where.userId &&
+            p.matchId === where.squad.matchId &&
+            (where.squad.teamId == null || p.teamId === where.squad.teamId),
         ) ?? null,
+    },
+    roleAssignment: {
+      findFirst: async ({
+        where,
+      }: {
+        where: {
+          userId?: string;
+          role?: string;
+          teamId?: string;
+          tournamentId?: string;
+        };
+      }) =>
+        roleAssignments.find(
+          (row) =>
+            (where.userId == null || row.userId === where.userId) &&
+            (where.role == null || row.role === where.role) &&
+            (where.teamId == null || row.teamId === where.teamId) &&
+            (where.tournamentId == null || row.tournamentId === where.tournamentId),
+        ) ?? null,
+      findMany: async ({
+        where,
+      }: {
+        where: { teamId?: string; role?: { in: string[] } };
+      }) =>
+        roleAssignments.filter(
+          (row) =>
+            (where.teamId == null || row.teamId === where.teamId) &&
+            (where.role?.in == null || where.role.in.includes(row.role)),
+        ),
+    },
+    suspension: {
+      findFirst: async () => null,
     },
     $transaction: async (cb: (tx: unknown) => unknown) => cb(prisma),
   };
@@ -117,17 +160,21 @@ function makeHarness(result: MatchResultView = decided('home')) {
     reader as never,
     live as never,
   );
-  return { service, matches, squadPlayers, audits, grantUpdates, published, resultRef };
+  return { service, matches, squadPlayers, roleAssignments, audits, grantUpdates, published, resultRef };
 }
 
 function seedMatch(matches: Map<string, Row>, overrides: Row = {}): void {
   matches.set('m1', {
     id: 'm1',
+    tournamentId: 't1',
     state: 'COMPLETED',
     scorecardVersion: 3,
     isNoResult: false,
     winningTeamId: null,
     manOfTheMatchUserId: null,
+    manOfTheMatchSelectedAt: null,
+    manOfTheMatchSelectedByUserId: null,
+    matchDate: new Date('2099-06-08T00:00:00.000Z'),
     completedAt: new Date(),
     confirmedAt: null,
     confirmedByUserId: null,
@@ -220,30 +267,81 @@ describe('ScorecardConfirmationService — auto-confirm (§13.1, §23)', () => {
 });
 
 describe('ScorecardConfirmationService — Man of the Match (§13.3)', () => {
-  it('rejects a player not in either match squad', async () => {
-    const h = makeHarness();
+  it('rejects a player not on the winning team', async () => {
+    const h = makeHarness(decided('home'));
     seedMatch(h.matches);
-    await expect(h.service.selectManOfMatch(captain, 'm1', 'ghost')).rejects.toMatchObject({
-      response: { error: 'PLAYER_NOT_IN_MATCH' },
+    h.roleAssignments.push({
+      userId: captain.id,
+      role: 'CAPTAIN',
+      teamId: 'home',
+      tournamentId: 't1',
+    });
+    h.squadPlayers.push({ userId: 'p1', matchId: 'm1', teamId: 'away' });
+    await expect(h.service.selectManOfMatch(captain, 'm1', 'p1')).rejects.toMatchObject({
+      response: { error: 'PLAYER_NOT_ON_WINNING_TEAM' },
     });
   });
 
-  it('rejects MoTM for an ACC match with no winner (No Result)', async () => {
+  it('rejects MoTM when there is no decided winner', async () => {
     const h = makeHarness(decided(null, true));
     seedMatch(h.matches, { isNoResult: true });
-    h.squadPlayers.push({ userId: 'p1', matchId: 'm1' });
+    h.roleAssignments.push({
+      userId: captain.id,
+      role: 'CAPTAIN',
+      teamId: 'home',
+      tournamentId: 't1',
+    });
+    h.squadPlayers.push({ userId: 'p1', matchId: 'm1', teamId: 'home' });
     await expect(h.service.selectManOfMatch(captain, 'm1', 'p1')).rejects.toMatchObject({
-      response: { error: 'ACC_NO_WINNER' },
+      response: { error: 'NO_DECIDED_WINNER' },
     });
   });
 
-  it('allows MoTM for an APL match regardless of result and audits it', async () => {
-    const h = makeHarness(decided(null, true));
-    seedMatch(h.matches, { tournament: { type: 'APL' }, isNoResult: true });
-    h.squadPlayers.push({ userId: 'p1', matchId: 'm1' });
+  it('rejects MoTM from a user who is not the winning captain', async () => {
+    const h = makeHarness(decided('home'));
+    seedMatch(h.matches);
+    h.squadPlayers.push({ userId: 'p1', matchId: 'm1', teamId: 'home' });
+    const outsider: AuthUser = { ...captain, id: 'other-1' };
+    await expect(h.service.selectManOfMatch(outsider, 'm1', 'p1')).rejects.toMatchObject({
+      response: { error: 'NOT_WINNING_CAPTAIN' },
+    });
+  });
+
+  it('allows MoTM for a winning-team player and audits it', async () => {
+    const h = makeHarness(decided('home'));
+    seedMatch(h.matches);
+    h.roleAssignments.push({
+      userId: captain.id,
+      role: 'CAPTAIN',
+      teamId: 'home',
+      tournamentId: 't1',
+    });
+    h.squadPlayers.push({ userId: 'p1', matchId: 'm1', teamId: 'home' });
 
     const view = await h.service.selectManOfMatch(captain, 'm1', 'p1');
     expect(view.manOfTheMatchUserId).toBe('p1');
+    expect(view.manOfTheMatchSelectedByUserId).toBe('cap-1');
+    expect(view.manOfTheMatchSelectedAt).toBeTruthy();
     expect(h.audits.some((a) => a.action === ScorecardAuditAction.ManOfMatchSelected)).toBe(true);
+  });
+
+  it('marks MoM as required with an end-of-day deadline', async () => {
+    const h = makeHarness(decided('home'));
+    seedMatch(h.matches);
+    h.roleAssignments.push({
+      userId: captain.id,
+      role: 'CAPTAIN',
+      teamId: 'home',
+      tournamentId: 't1',
+    });
+
+    const eligibility = await h.service.manOfMatchEligibility(captain, 'm1');
+    expect(eligibility).toMatchObject({
+      offered: true,
+      canSelect: true,
+      required: true,
+      dueAt: '2099-06-08T23:59:59.999Z',
+      overdue: false,
+    });
   });
 });

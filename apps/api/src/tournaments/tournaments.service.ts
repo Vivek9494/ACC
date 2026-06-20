@@ -8,10 +8,12 @@ import {
   formatUtcIsoDate,
   isIsoDateOnly,
   isTournamentRegistrationOpen,
+  isRegistrationVerificationComplete,
   type MatchSchedulingFormat,
   normalizeTournamentDates,
   normalizeTeamName,
   Permission,
+  RegistrationStatus,
   TOURNAMENT_FORM_MESSAGES,
   TournamentState,
   TOURNAMENT_STATE_TRANSITIONS,
@@ -42,6 +44,7 @@ import {
 } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { MediaService } from '../media/media.service';
+import { PlayerSkillVideosService } from '../player-videos/player-skill-videos.service';
 import type { CreateTournamentDto } from './dto/create-tournament.dto';
 import type { UpdateTournamentDto } from './dto/update-tournament.dto';
 import {
@@ -55,6 +58,7 @@ import {
   videoDateAfterRegistrationFields,
   videoDateRequiredFields,
 } from './tournament-create-validation';
+import { resolveTournamentTimezone } from './tournament-timezone.utils';
 
 const CREATE_PERMISSION: Record<TournamentType, Permission> = {
   ACC: Permission.CREATE_ACC_TOURNAMENT,
@@ -72,6 +76,7 @@ export class TournamentsService {
     private readonly permissions: PermissionService,
     private readonly notifications: NotificationsService,
     private readonly media: MediaService,
+    private readonly playerSkillVideos: PlayerSkillVideosService,
   ) {}
 
   /** Creates a tournament (§6.1), deriving the type server-side and RBAC-gating it. */
@@ -99,6 +104,11 @@ export class TournamentsService {
     this.validateCenterParticipation(dto, type);
 
     const playersPerTeam = dto.playersPerTeam ?? DEFAULT_PLAYERS_PER_TEAM;
+    const timezone = resolveTournamentTimezone({
+      latitude: dto.latitude,
+      longitude: dto.longitude,
+      timezone: dto.timezone,
+    });
 
     const created = await this.prisma.$transaction(async (tx) => {
       const tournament = await tx.tournament.create({
@@ -113,6 +123,7 @@ export class TournamentsService {
           locationAddress: dto.locationAddress ?? null,
           latitude: dto.latitude ?? null,
           longitude: dto.longitude ?? null,
+          timezone,
           startAt: new Date(startAt),
           endAt: new Date(endAt),
           ballType: dto.ballType,
@@ -168,7 +179,7 @@ export class TournamentsService {
     return rows.map((row) => this.toSummary(row));
   }
 
-  async getDetail(id: string): Promise<TournamentDetail> {
+  async getDetail(id: string, viewer: AuthUser | null = null): Promise<TournamentDetail> {
     const row = await this.prisma.tournament.findUnique({
       where: { id },
       include: {
@@ -197,6 +208,18 @@ export class TournamentsService {
       },
     });
     assertTournamentActive(row);
+
+    let myTeamId: string | null = null;
+    if (viewer) {
+      const membership = await this.prisma.teamMembership.findUnique({
+        where: {
+          tournamentId_userId: { tournamentId: id, userId: viewer.id },
+        },
+        select: { teamId: true },
+      });
+      myTeamId = membership?.teamId ?? null;
+    }
+
     const detailBase = {
       ...this.toSummary(row),
       dates: row.scheduledDates.map((entry) => formatUtcIsoDate(entry.date)),
@@ -235,10 +258,60 @@ export class TournamentsService {
         groupName: team.group?.name ?? null,
       })),
     };
+    const hasRegistrationWindow = tournamentHasRegistrationWindow(detailBase);
+
+    let registrationVerificationComplete = false;
+    if (hasRegistrationWindow) {
+      const pendingWaitlistCount = await this.prisma.registration.count({
+        where: {
+          tournamentId: id,
+          status: RegistrationStatus.InWaitlist,
+        },
+      });
+      registrationVerificationComplete = isRegistrationVerificationComplete(
+        {
+          ballType: row.ballType as BallType,
+          hasRegistrationWindow,
+          registrationOpenAt: detailBase.registrationOpenAt,
+          registrationCloseAt: detailBase.registrationCloseAt,
+        },
+        pendingWaitlistCount,
+      );
+    }
+
+    let canViewRegisteredPlayersList = false;
+    let canViewFavouritePlayers = false;
+    if (viewer && registrationVerificationComplete) {
+      [canViewRegisteredPlayersList, canViewFavouritePlayers] = await Promise.all([
+        this.permissions.check(Permission.VIEW_VERIFIED_REGISTERED_PLAYERS, viewer, {
+          tournamentId: id,
+        }),
+        this.permissions.check(Permission.FAVOURITE_PLAYERS, viewer, { tournamentId: id }),
+      ]);
+    }
+
+    const videoFlags = await this.playerSkillVideos.viewerUploadFlags(viewer, {
+      id,
+      ballType: row.ballType,
+      hasRegistrationWindow,
+      registrationOpenAt: detailBase.registrationOpenAt,
+      registrationCloseAt: detailBase.registrationCloseAt,
+      registrationVerificationComplete,
+      videoUploadEndDate: detailBase.videoUploadEndDate,
+    });
+
     return {
       ...detailBase,
-      hasRegistrationWindow: tournamentHasRegistrationWindow(detailBase),
+      myTeamId,
+      hasRegistrationWindow,
       registrationIsOpen: isTournamentRegistrationOpen(detailBase),
+      registrationVerificationComplete,
+      canViewRegisteredPlayersList,
+      canViewFavouritePlayers,
+      canUploadSkillVideo: videoFlags.canUploadSkillVideo,
+      hasSkillVideo: videoFlags.hasSkillVideo,
+      canUploadPlayerVideo: videoFlags.canUploadSkillVideo,
+      hasPlayerVideo: videoFlags.hasSkillVideo,
     };
   }
 
@@ -360,6 +433,20 @@ export class TournamentsService {
     if (dto.locationAddress !== undefined) data.locationAddress = dto.locationAddress;
     if (dto.latitude !== undefined) data.latitude = dto.latitude;
     if (dto.longitude !== undefined) data.longitude = dto.longitude;
+    if (
+      dto.timezone !== undefined ||
+      dto.latitude !== undefined ||
+      dto.longitude !== undefined
+    ) {
+      const nextLatitude = dto.latitude !== undefined ? dto.latitude : existing.latitude;
+      const nextLongitude = dto.longitude !== undefined ? dto.longitude : existing.longitude;
+      data.timezone = resolveTournamentTimezone({
+        latitude: nextLatitude,
+        longitude: nextLongitude,
+        timezone: dto.timezone,
+        existingTimezone: existing.timezone,
+      });
+    }
     if (normalizedDates !== undefined) {
       data.startAt = new Date(merged.startAt);
       data.endAt = new Date(merged.endAt);
@@ -558,7 +645,7 @@ export class TournamentsService {
   /** Resolves tournament card permissions for role dashboards. */
   async resolveTournamentMenuPermissions(
     actor: AuthUser,
-    tournament: { id: string; createdByUserId: string },
+    tournament: { id: string; createdByUserId: string; ballType: BallType },
     targetCenterId?: string,
   ): Promise<TournamentDashboardPermissions> {
     const refs = targetCenterId
@@ -566,7 +653,9 @@ export class TournamentsService {
       : { tournamentId: tournament.id };
 
     const canManageCenterPlayers =
-      actor.role === UserRole.CenterSevak && targetCenterId
+      tournament.ballType === BallType.Tennis &&
+      actor.role === UserRole.CenterSevak &&
+      targetCenterId
         ? await this.permissions.check(
             Permission.VIEW_REGISTRATIONS_OWN_CENTER,
             actor,
@@ -594,7 +683,7 @@ export class TournamentsService {
   /** Resolves tournament card permissions for the Center Sevak dashboard. */
   async resolveDashboardPermissions(
     actor: AuthUser,
-    tournament: { id: string; createdByUserId: string },
+    tournament: { id: string; createdByUserId: string; ballType: BallType },
     actionCenterId: string,
   ): Promise<TournamentDashboardPermissions> {
     return this.resolveTournamentMenuPermissions(actor, tournament, actionCenterId);
@@ -946,6 +1035,7 @@ export class TournamentsService {
       locationAddress: row.locationAddress,
       latitude: row.latitude,
       longitude: row.longitude,
+      timezone: row.timezone,
       teamCount: row._count.teams,
     };
   }

@@ -3,24 +3,25 @@ import { Pressable, type PressableProps, type View } from 'react-native';
 
 import { Text } from './Text';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'amber' | 'outline' | 'destructive';
+export type ButtonVariant = 'primary' | 'secondary' | 'amber' | 'outline' | 'destructive' | 'tertiary';
 
 const VARIANT_PRESSABLE: Record<ButtonVariant, string> = {
-  /** Solid orange — main CTAs (Create Account, Log in, Save). */
-  primary: 'bg-primary',
-  secondary: 'bg-primary',
-  /** Softer amber — secondary actions (e.g. Schedule Matches on tournament details). */
-  amber: 'bg-[#FFAB4D]',
-  outline: 'border border-outline-variant bg-transparent',
-  destructive: 'border border-[#c1121f] bg-transparent',
+  primary: 'bg-primary active:bg-primary-600',
+  secondary: 'bg-secondary active:bg-secondary-700',
+  /** @deprecated Use `primary` — kept for call-site compat. */
+  amber: 'bg-primary active:bg-primary-600',
+  tertiary: 'bg-secondary active:bg-secondary-700',
+  outline: 'border border-secondary bg-transparent active:bg-secondary-50',
+  destructive: 'border border-secondary-700 bg-transparent active:bg-secondary-50',
 };
 
 const VARIANT_TEXT: Record<ButtonVariant, string> = {
-  primary: 'text-on-primary',
-  secondary: 'text-on-primary',
-  amber: 'text-on-primary',
-  outline: 'text-on-surface',
-  destructive: 'text-[#c1121f]',
+  primary: 'text-text-inverse',
+  secondary: 'text-text-inverse',
+  amber: 'text-text-inverse',
+  tertiary: 'text-text-inverse',
+  outline: 'text-secondary',
+  destructive: 'text-secondary-800',
 };
 
 function stripRadius(className?: string): string {
@@ -54,7 +55,7 @@ export const Button = forwardRef<View, ButtonProps>(function Button(
   ref,
 ) {
   const pressableClass = [
-    'items-center justify-center active:opacity-80 disabled:opacity-60',
+    'items-center justify-center disabled:opacity-60',
     VARIANT_PRESSABLE[variant],
     stripRadius(className),
     'rounded-control',

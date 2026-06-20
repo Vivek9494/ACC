@@ -8,7 +8,7 @@ export default function WelcomeScreen() {
   const router = useRouter();
 
   return (
-    <SafeAreaView className="flex-1 bg-surface">
+    <SafeAreaView className="flex-1 bg-background">
       <View className="flex-1 justify-between px-6 py-12">
         <View className="mt-16 gap-3">
           <Text className="font-sans-medium text-sm uppercase tracking-widest text-primary">

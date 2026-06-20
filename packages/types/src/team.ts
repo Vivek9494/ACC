@@ -1,5 +1,6 @@
 import { TOURNAMENT_POSTER_MAX_BYTES } from './tournament-media';
 import { TOURNAMENT_FORM_MESSAGES } from './tournament-validation';
+import type { BallType } from './rbac';
 
 /** Display name length cap for Add Team (§6.3). */
 export const TEAM_NAME_MAX_LENGTH = 40;
@@ -17,6 +18,48 @@ export interface TeamSummary {
   groupName: string | null;
 }
 
+/** ACC leather-ball roster category (TeamMembership.playerCategory). */
+export const PlayerCategory = {
+  Fulltime: 'FULLTIME',
+  Parttime: 'PARTTIME',
+} as const;
+export type PlayerCategory = (typeof PlayerCategory)[keyof typeof PlayerCategory];
+
+export interface TeamDetailPlayerRow {
+  userId: string;
+  firstName: string;
+  lastName: string;
+  profilePhotoUrl: string | null;
+  isCaptain: boolean;
+  isViceCaptain: boolean;
+  /** Leather ACC only; null for tennis or unset membership category. */
+  playerCategory: PlayerCategory | null;
+  battingRating: number | null;
+  bowlingRating: number | null;
+  fieldingRating: number | null;
+}
+
+/** Team roster detail for the mobile Team Detail screen. */
+export interface TeamDetailView {
+  id: string;
+  tournamentId: string;
+  name: string;
+  logoUrl: string | null;
+  ballType: BallType;
+  /** False for tennis-ball tournaments (no FT/PT split in UI). */
+  showPlayerCategorySplit: boolean;
+  activePlayerCount: number;
+  fulltimePlayerCount: number;
+  parttimePlayerCount: number;
+  /** True when the viewer may open another player's profile from this roster. */
+  canViewPlayerProfiles: boolean;
+  /** True when the viewer (Club Manager) may assign Captain / Vice-Captain. */
+  canAssignTeamRoles: boolean;
+  players: TeamDetailPlayerRow[];
+}
+
+export type { TournamentPlayerProfileView } from './player-profile';
+
 export interface CreateTeamRequest {
   name: string;
   logoUrl?: string | null;
@@ -24,6 +67,17 @@ export interface CreateTeamRequest {
 
 export interface UploadTeamLogoResponse {
   logoUrl: string;
+}
+
+/** Assign one Captain and/or one Vice-Captain per team (organizer flow). */
+export interface AssignTeamRolesRequest {
+  captainUserId?: string | null;
+  viceCaptainUserId?: string | null;
+}
+
+export interface AssignTeamRolesResponse {
+  captainUserId: string | null;
+  viceCaptainUserId: string | null;
 }
 
 export const TEAM_FORM_MESSAGES = {

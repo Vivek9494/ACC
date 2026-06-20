@@ -67,14 +67,14 @@ export default function TossScreen(): React.ReactElement {
 
   if (loading) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-surface">
+      <SafeAreaView className="flex-1 items-center justify-center bg-background">
         <ActivityIndicator color={FIELD_ORANGE} />
       </SafeAreaView>
     );
   }
   if (!match) {
     return (
-      <SafeAreaView className="flex-1 bg-surface">
+      <SafeAreaView className="flex-1 bg-background">
         <View className="px-6 py-12">
           <Pressable onPress={() => router.back()}>
             <Text className="font-sans text-primary">← Back</Text>
@@ -95,7 +95,7 @@ export default function TossScreen(): React.ReactElement {
   ];
 
   return (
-    <SafeAreaView className="flex-1 bg-surface">
+    <SafeAreaView className="flex-1 bg-background">
       <ScrollView contentContainerClassName="px-6 py-6 gap-6">
         <Pressable onPress={() => router.back()}>
           <Text className="font-sans text-primary">← Back</Text>
@@ -103,8 +103,8 @@ export default function TossScreen(): React.ReactElement {
         <Text className="font-sans-bold text-2xl text-on-surface">Match Setup</Text>
 
         {error ? (
-          <View className="rounded-lg bg-error-container px-4 py-3">
-            <Text className="font-sans text-sm text-on-error-container">{error}</Text>
+          <View className="rounded-lg bg-primary-50 px-4 py-3">
+            <Text className="font-sans text-sm text-primary">{error}</Text>
           </View>
         ) : null}
 

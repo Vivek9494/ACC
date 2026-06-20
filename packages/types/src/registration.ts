@@ -16,6 +16,12 @@ export const BATTING_STYLE_LABELS: Record<BattingStyle, string> = {
   LHB: 'Left Hand (LHB/LAB)',
 };
 
+/** Short hand label for live scoring picker rows (matches design copy). */
+export const BATTING_HAND_LABELS: Record<BattingStyle, string> = {
+  RHB: 'Right Hand Batsman',
+  LHB: 'Left Hand Batsman',
+};
+
 /** Bowling style (spec §7.1). */
 export const BowlingStyle = {
   PACE: 'PACE',
@@ -54,6 +60,52 @@ export type BattingPositionOption = (typeof BATTING_POSITION_OPTIONS)[number];
 export const BOWLING_TYPE_OPTIONS = ['Fast', 'Medium', 'Leg Spin', 'Off Spin'] as const;
 export type BowlingTypeOption = (typeof BOWLING_TYPE_OPTIONS)[number];
 
+/** Display labels for bowling types on live scoring picker rows. */
+export const BOWLING_TYPE_DISPLAY_LABELS: Record<BowlingTypeOption, string> = {
+  Fast: 'Fast Bowler',
+  Medium: 'Medium Fast',
+  'Leg Spin': 'Leg Spinner',
+  'Off Spin': 'Off Spinner',
+};
+
+/** Maps a stored bowling type to a picker label; falls back to "Bowler". */
+export function bowlingTypeDisplayLabel(type: string | null | undefined): string {
+  if (!type) return 'Bowler';
+  const labels = BOWLING_TYPE_DISPLAY_LABELS as Record<string, string>;
+  return labels[type] ?? type;
+}
+
+/** Poll Results row subtitle from per-tournament registration (§7.1). */
+export function formatPollPlayerSkillLabel(input: {
+  battingPosition: string | null;
+  fieldingPosition: string | null;
+  bowlingType: string | null;
+  playerRole: PlayerRegistrationRole | null;
+}): string | null {
+  if (input.fieldingPosition === 'Wicketkeeper') {
+    return 'Wicket Keeper';
+  }
+  if (input.battingPosition === 'Opener') {
+    return 'Opening Batsman';
+  }
+  if (input.battingPosition) {
+    return input.battingPosition;
+  }
+  if (input.bowlingType) {
+    return bowlingTypeDisplayLabel(input.bowlingType);
+  }
+  if (input.playerRole === PlayerRegistrationRole.AllRounder) {
+    return 'All-rounder';
+  }
+  if (input.playerRole === PlayerRegistrationRole.Batsman) {
+    return 'Batsman';
+  }
+  if (input.playerRole === PlayerRegistrationRole.Bowler) {
+    return 'Bowler';
+  }
+  return null;
+}
+
 export const FIELDING_POSITION_OPTIONS = [
   'Slips',
   'Inner Circle',
@@ -62,27 +114,77 @@ export const FIELDING_POSITION_OPTIONS = [
 ] as const;
 export type FieldingPositionOption = (typeof FIELDING_POSITION_OPTIONS)[number];
 
-/** Skill rating labels shown on the registration form; stored as 0–5 integers. */
-export const REGISTRATION_SKILL_RATING_OPTIONS: readonly { value: number; label: string }[] = [
-  { value: 5, label: 'Star' },
-  { value: 4, label: 'A' },
-  { value: 3, label: 'B' },
-  { value: 2, label: 'C' },
-];
+/** Skill ratings (§7.1 / §7.5): whole numbers 0–10 for BAT / BOWL / FIELD. */
+export const RATING_MIN = 0;
+export const RATING_MAX = 10;
 
-export const REGISTRATION_FIELDING_RATING_OPTIONS: readonly { value: number; label: string }[] = [
-  { value: 5, label: 'Excellent' },
-  { value: 3, label: 'Good' },
-  { value: 1, label: 'Average' },
-];
+/** Select options for registration and verification rating inputs (0–10 integers). */
+export const REGISTRATION_RATING_OPTIONS: readonly { value: number; label: string }[] =
+  Array.from({ length: RATING_MAX - RATING_MIN + 1 }, (_, index) => {
+    const value = RATING_MIN + index;
+    return { value, label: String(value) };
+  });
 
-/** Allowed stored values for batting/bowling ratings (matches registration Select options). */
+/** @deprecated Use {@link REGISTRATION_RATING_OPTIONS}. */
+export const REGISTRATION_SKILL_RATING_OPTIONS = REGISTRATION_RATING_OPTIONS;
+
+/** @deprecated Use {@link REGISTRATION_RATING_OPTIONS}. */
+export const REGISTRATION_FIELDING_RATING_OPTIONS = REGISTRATION_RATING_OPTIONS;
+
+/** Allowed stored values for batting/bowling ratings. */
 export const REGISTRATION_SKILL_RATING_VALUES: readonly number[] =
-  REGISTRATION_SKILL_RATING_OPTIONS.map((option) => option.value);
+  REGISTRATION_RATING_OPTIONS.map((option) => option.value);
 
-/** Allowed stored values for fielding ratings (matches registration Select options). */
+/** Allowed stored values for fielding ratings. */
 export const REGISTRATION_FIELDING_RATING_VALUES: readonly number[] =
-  REGISTRATION_FIELDING_RATING_OPTIONS.map((option) => option.value);
+  REGISTRATION_RATING_OPTIONS.map((option) => option.value);
+
+/** Display a registration skill rating (integer 0–10, no decimals). */
+export function formatRegistrationSkillRating(value: number | null | undefined): string {
+  if (value == null) {
+    return '—';
+  }
+  return String(Math.trunc(value));
+}
+
+/** True when a value is a valid stored registration skill rating. */
+export function isValidRegistrationSkillRating(value: number): boolean {
+  return Number.isInteger(value) && value >= RATING_MIN && value <= RATING_MAX;
+}
+export const RegistrationPlayerType = {
+  FullTime: 'FULL_TIME',
+  PartTime: 'PART_TIME',
+} as const;
+export type RegistrationPlayerType =
+  (typeof RegistrationPlayerType)[keyof typeof RegistrationPlayerType];
+
+export const REGISTRATION_PLAYER_TYPE_OPTIONS: readonly {
+  value: RegistrationPlayerType;
+  label: string;
+}[] = [
+  { value: RegistrationPlayerType.FullTime, label: 'Full-time Player' },
+  { value: RegistrationPlayerType.PartTime, label: 'Part-time Player' },
+] as const;
+
+export const REGISTRATION_PLAYER_TYPE_LABELS: Record<RegistrationPlayerType, string> = {
+  FULL_TIME: 'Full-time',
+  PART_TIME: 'Part-time',
+};
+
+/** Confirm Playing 11 subtitle — part-timers include locked-XI match count. */
+export function formatRegistrationPlayerTypeLine(
+  playerType: RegistrationPlayerType | null | undefined,
+  matchesPlayedCount?: number | null,
+): string | null {
+  if (!playerType) {
+    return null;
+  }
+  const label = REGISTRATION_PLAYER_TYPE_LABELS[playerType];
+  if (playerType === RegistrationPlayerType.PartTime && matchesPlayedCount != null) {
+    return `${label} · Matches - ${matchesPlayedCount}`;
+  }
+  return label;
+}
 
 /** Maps detailed bowling type to coarse {@link BowlingStyle} for legacy queries. */
 export function bowlingStyleFromType(type: string | null | undefined): BowlingStyle | null {
@@ -124,10 +226,6 @@ export const TOURNAMENT_REGISTRATION_STATUS_INDICATOR_LABELS: Record<Registratio
  * Exact text shown to a player when their registration is declined (spec §7.3).
  */
 export const REGISTRATION_DECLINED_MESSAGE = 'Declined. Contact Center Sevak';
-
-/** Rating bounds for the §7.5 batting/bowling/fielding ratings (0–5). */
-export const RATING_MIN = 0;
-export const RATING_MAX = 5;
 
 /** Custom registration field type (spec §7.2, §21). */
 export const RegistrationFieldType = {
@@ -215,6 +313,8 @@ export interface SubmitRegistrationRequest {
   bowlingRating?: number | null;
   fieldingRating?: number | null;
   fieldingPosition?: string | null;
+  /** Required for leather-ball tournaments; omitted/null for tennis. */
+  playerType?: RegistrationPlayerType | null;
   /** Answers to the tournament's custom fields, keyed by field `key` (§7.2). */
   customFields?: Record<string, unknown> | null;
 }
@@ -232,6 +332,8 @@ export interface UpdateRatingsRequest {
   battingRating?: number | null;
   bowlingRating?: number | null;
   fieldingRating?: number | null;
+  /** Leather-ball only — Center Sevak may correct player type post-window. */
+  playerType?: RegistrationPlayerType | null;
 }
 
 /** Center Sevak availability record for a player (§7.5, APL only). */
@@ -263,6 +365,7 @@ export interface RegistrationSummary {
   bowlingRating: number | null;
   fieldingRating: number | null;
   fieldingPosition: string | null;
+  playerType: RegistrationPlayerType | null;
   isAvailable: boolean | null;
   availabilityNote: string | null;
   createdAt: string;
@@ -323,6 +426,81 @@ export interface RegistrationVerificationQueue {
   canManage: boolean;
   /** §7.6: Center Sevak may late-register after tournament Registration Closed. */
   canLateRegister: boolean;
+}
+
+/** Per-team shared shortlist (auction prep) — Captain + Vice-Captain of the same team. */
+export interface TournamentFavouritePlayersView {
+  favourites: VerifiedRegisteredPlayerRow[];
+  /** True when the actor may toggle hearts (Captain / VC, incl. Club Manager on a team). */
+  canFavourite: boolean;
+  favouriteTeamId: string | null;
+}
+
+/** Verified registrant row on the Registered Players List (tennis scouting). */
+export interface VerifiedRegisteredPlayerRow extends RegistrationSummary {
+  isFavourited: boolean;
+  /** True when the player uploaded a READY skill video for this tournament. */
+  hasSkillVideo: boolean;
+  skillVideoId: string | null;
+}
+
+export interface VerifiedRegisteredPlayersView {
+  players: VerifiedRegisteredPlayerRow[];
+  canFavourite: boolean;
+  favouriteTeamId: string | null;
+}
+
+export interface SetRegistrationFavouriteRequest {
+  favourited: boolean;
+}
+
+export interface SetRegistrationFavouriteResponse {
+  userId: string;
+  isFavourited: boolean;
+}
+
+/** Skill/role chips on the Registered Players List (tennis scouting). */
+export const VerifiedPlayerSkillFilter = {
+  All: 'ALL',
+  Batsman: 'BATSMAN',
+  Bowler: 'BOWLER',
+  AllRounder: 'ALL_ROUNDER',
+  Wicketkeeper: 'WICKETKEEPER',
+} as const;
+export type VerifiedPlayerSkillFilter =
+  (typeof VerifiedPlayerSkillFilter)[keyof typeof VerifiedPlayerSkillFilter];
+
+export const VERIFIED_PLAYER_SKILL_FILTER_ORDER: VerifiedPlayerSkillFilter[] = [
+  VerifiedPlayerSkillFilter.All,
+  VerifiedPlayerSkillFilter.Batsman,
+  VerifiedPlayerSkillFilter.Bowler,
+  VerifiedPlayerSkillFilter.AllRounder,
+  VerifiedPlayerSkillFilter.Wicketkeeper,
+];
+
+export const VERIFIED_PLAYER_SKILL_FILTER_LABELS: Record<VerifiedPlayerSkillFilter, string> = {
+  ALL: 'All Players',
+  BATSMAN: 'Batsman',
+  BOWLER: 'Bowler',
+  ALL_ROUNDER: 'All-Rounder',
+  WICKETKEEPER: 'Wicketkeeper',
+};
+
+/**
+ * Role filter for verified registrants. Wicketkeeper uses `fieldingPosition`;
+ * Batsman / Bowler / All-Rounder use registration `playerRole` (§7.1).
+ */
+export function matchesVerifiedPlayerSkillFilter(
+  player: Pick<RegistrationSummary, 'playerRole' | 'fieldingPosition'>,
+  filter: VerifiedPlayerSkillFilter,
+): boolean {
+  if (filter === VerifiedPlayerSkillFilter.All) {
+    return true;
+  }
+  if (filter === VerifiedPlayerSkillFilter.Wicketkeeper) {
+    return player.fieldingPosition === 'Wicketkeeper';
+  }
+  return player.playerRole === filter;
 }
 
 /** Sort keys for the registered-players list (§7.5). */

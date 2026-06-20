@@ -17,7 +17,7 @@ export function RoundRobinSetupInfoCard({
 
   return (
     <View
-      className="gap-4 rounded-control border border-outline-variant bg-white p-4"
+      className="gap-4 rounded-control border border-outline-variant bg-surface p-4"
       style={INPUT_SHADOW_STYLE}
     >
       <View className="gap-2">

@@ -7,6 +7,7 @@ import {
   type RegistrationFieldDefinition,
   type RegistrationSummary,
   type RegistrationVerificationQueue,
+  type VerifiedRegisteredPlayersView,
 } from '@acc/types';
 import {
   Body,
@@ -64,6 +65,18 @@ export class RegistrationsController {
     return this.registrations.list(user, tournamentId, query);
   }
 
+  /** Verified registrants (all centers) — Captain / VC / Manager after verification (tennis). */
+  @Get('verified')
+  @RequirePermission(Permission.VIEW_VERIFIED_REGISTERED_PLAYERS)
+  @UseGuards(PermissionGuard)
+  listVerified(
+    @CurrentUser() user: AuthUser,
+    @Param('tournamentId') tournamentId: string,
+    @Query() query: ListRegistrationsDto,
+  ): Promise<VerifiedRegisteredPlayersView> {
+    return this.registrations.listVerifiedRegisteredPlayers(user, tournamentId, query);
+  }
+
   @Get('me')
   mine(
     @CurrentUser() user: AuthUser,
@@ -72,10 +85,8 @@ export class RegistrationsController {
     return this.registrations.getMine(user, tournamentId);
   }
 
-  /** §7.3/§7.4: Center Sevak verification queue for own-center registrations. */
+  /** §7.3/§7.4: Center Sevak verification queue (tennis only). */
   @Get('verification-queue')
-  @RequirePermission(Permission.VIEW_REGISTRATIONS_OWN_CENTER)
-  @UseGuards(PermissionGuard)
   verificationQueue(
     @CurrentUser() user: AuthUser,
     @Param('tournamentId') tournamentId: string,

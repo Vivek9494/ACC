@@ -12,7 +12,7 @@ export function VerifyNotRegisteredCard({
 }): React.ReactElement {
   return (
     <View
-      className="flex-row items-center gap-3 rounded-lg border border-outline-variant bg-white px-4 py-3"
+      className="flex-row items-center gap-3 rounded-lg border border-outline-variant bg-surface px-4 py-3"
       style={INPUT_SHADOW_STYLE}
     >
       <PlayerAvatarWithStatus

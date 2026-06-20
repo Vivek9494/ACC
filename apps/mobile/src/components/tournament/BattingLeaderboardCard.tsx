@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { colors } from '@/theme/colors';
 import {
   formatLeaderboardAverage,
   formatLeaderboardStrikeRate,
@@ -21,7 +22,7 @@ export function BattingLeaderboardCard({ entry }: BattingLeaderboardCardProps): 
 
   return (
     <View
-      className="relative overflow-hidden rounded-control border border-outline-variant bg-white p-4"
+      className="relative overflow-hidden rounded-control border border-outline-variant bg-surface p-4"
       style={isTopRank ? INPUT_SHADOW_STYLE : undefined}
     >
       <View className="absolute right-2 top-2">
@@ -34,7 +35,7 @@ export function BattingLeaderboardCard({ entry }: BattingLeaderboardCardProps): 
             <Ionicons
               name="medal-outline"
               size={14}
-              color="#5A4136"
+              color={colors.textMuted}
               accessibilityElementsHidden
             />
           ) : null}

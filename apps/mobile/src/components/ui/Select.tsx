@@ -10,8 +10,10 @@ import {
   INPUT_TEXT_STYLE,
   labelClassName,
   mergeFieldClassName,
+  applyFieldErrorBorder,
   type LabelVariant,
 } from './fieldStyles';
+import { FormErrorText } from './FormErrorText';
 import { Text } from './Text';
 
 export interface SelectOption {
@@ -29,7 +31,7 @@ export interface SelectProps {
   disabled?: boolean;
   /** Shows spinner in the field and blocks open while true (unless options already loaded). */
   loading?: boolean;
-  /** Inline error below the field; also tints border red. */
+  /** Inline error below the field; also tints border primary-orange. */
   error?: string | null;
   /** Shown in the sheet when options is empty. */
   emptyMessage?: string;
@@ -63,7 +65,7 @@ export function Select({
 
   let fieldClassName = mergeFieldClassName(undefined, { hasTrailingAccessory: true });
   if (error) {
-    fieldClassName = fieldClassName.replace(/\bborder-\[#F1F1F1\]/, 'border-error');
+    fieldClassName = applyFieldErrorBorder(fieldClassName);
   }
 
   const displayText = selected?.label ?? (showLoading ? 'Loading…' : placeholder);
@@ -79,7 +81,7 @@ export function Select({
       >
         <Text
           className={`${FIELD_VALUE_TEXT_CLASS} ${
-            selected ? 'text-[#1A1A1A]' : 'text-[#9AA0A6]'
+            selected ? 'text-text' : 'text-text-muted'
           }`}
           style={INPUT_TEXT_STYLE}
           numberOfLines={1}
@@ -97,7 +99,7 @@ export function Select({
 
       {error ? (
         <View className="mt-1 flex-row flex-wrap items-center gap-x-2">
-          <Text className="flex-1 font-sans text-sm text-error">{error}</Text>
+          <FormErrorText className="flex-1">{error}</FormErrorText>
           {onRetry ? (
             <Pressable onPress={onRetry} hitSlop={8} accessibilityRole="button">
               <Text className="font-sans-semibold text-sm text-primary">Retry</Text>
@@ -108,10 +110,10 @@ export function Select({
 
       <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
         <Pressable className="flex-1 justify-end bg-black/40" onPress={() => setOpen(false)}>
-          <Pressable className="max-h-[60%] rounded-t-xl bg-white px-4 pb-8 pt-4" onPress={() => {}}>
-            <View className="mb-3 h-1 w-10 self-center rounded-full bg-[#E5E5E5]" />
+          <Pressable className="max-h-[60%] rounded-t-xl bg-surface px-4 pb-8 pt-4" onPress={() => {}}>
+            <View className="mb-3 h-1 w-10 self-center rounded-full bg-stone-200" />
             {label ? (
-              <Text className="mb-3 font-sans-bold text-base text-[#1A1A1A]">{label}</Text>
+              <Text className="mb-3 font-sans-bold text-base text-text">{label}</Text>
             ) : null}
             {loading ? (
               <View className="items-center py-8">
@@ -120,20 +122,20 @@ export function Select({
             ) : (
               <FlatList
                 data={safeOptions}
-                keyExtractor={(item) => item.value}
+                keyExtractor={(item, index) => `${item.value}::${index}`}
                 keyboardShouldPersistTaps="handled"
                 renderItem={({ item }) => {
                   const active = item.value === value;
                   return (
                     <Pressable
-                      className={`rounded-control px-4 py-3 ${active ? 'bg-[#FDF1EA]' : ''}`}
+                      className={`rounded-control px-4 py-3 ${active ? 'bg-primary-50' : ''}`}
                       onPress={() => {
                         onChange(item.value);
                         setOpen(false);
                       }}
                     >
                       <Text
-                        className={`font-sans text-base ${active ? 'font-sans-semibold text-primary' : 'text-[#1A1A1A]'}`}
+                        className={`font-sans text-base ${active ? 'font-sans-semibold text-primary' : 'text-text'}`}
                       >
                         {item.label}
                       </Text>
@@ -142,7 +144,7 @@ export function Select({
                 }}
                 ListEmptyComponent={
                   <View className="items-center gap-3 py-6">
-                    <Text className="text-center font-sans text-sm text-[#9AA0A6]">
+                    <Text className="text-center font-sans text-sm text-text-muted">
                       {emptyMessage}
                     </Text>
                     {onRetry ? (

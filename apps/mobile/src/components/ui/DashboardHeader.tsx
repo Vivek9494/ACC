@@ -27,7 +27,7 @@ export function DashboardHeader({ fallbackName = 'User' }: DashboardHeaderProps)
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Notifications"
-          className="h-10 w-10 items-center justify-center rounded-full bg-white active:opacity-90"
+          className="h-10 w-10 items-center justify-center rounded-full bg-surface active:opacity-90"
           style={INPUT_SHADOW_STYLE}
         >
           <Ionicons name="notifications-outline" size={22} color={FIELD_ORANGE} />

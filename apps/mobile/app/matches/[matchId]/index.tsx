@@ -92,7 +92,7 @@ export default function MatchDetailScreen(): React.ReactElement {
 
   if (loading) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-surface">
+      <SafeAreaView className="flex-1 items-center justify-center bg-background">
         <ActivityIndicator color={FIELD_ORANGE} />
       </SafeAreaView>
     );
@@ -100,7 +100,7 @@ export default function MatchDetailScreen(): React.ReactElement {
 
   if (error && !match) {
     return (
-      <SafeAreaView className="flex-1 bg-surface">
+      <SafeAreaView className="flex-1 bg-background">
         <View className="px-6 py-12">
           <Pressable onPress={() => router.back()}>
             <Text className="font-sans text-primary">← Back</Text>
@@ -123,17 +123,25 @@ export default function MatchDetailScreen(): React.ReactElement {
   const candidates: SquadPlayerView[] = match.squads.flatMap((s) =>
     s.players.filter((p) => p.role === 'PLAYING_XI' || p.role === 'SUBSTITUTE'),
   );
-  const assignScorerOptions = candidates
-    .filter((player) => !activeScorerIds.has(player.userId))
-    .map((player) => ({
-      value: player.userId,
-      label: `${player.firstName} ${player.lastName}`,
-    }));
+  const assignScorerOptions = (() => {
+    const seen = new Set<string>();
+    return candidates
+      .filter((player) => !activeScorerIds.has(player.userId))
+      .filter((player) => {
+        if (seen.has(player.userId)) return false;
+        seen.add(player.userId);
+        return true;
+      })
+      .map((player) => ({
+        value: player.userId,
+        label: `${player.firstName} ${player.lastName}`,
+      }));
+  })();
 
   const toss = tossSummary(match);
 
   return (
-    <SafeAreaView className="flex-1 bg-surface">
+    <SafeAreaView className="flex-1 bg-background">
       <ScrollView contentContainerClassName="px-6 py-6 gap-4">
         <Pressable onPress={() => router.back()}>
           <Text className="font-sans text-primary">← Back</Text>
@@ -156,8 +164,8 @@ export default function MatchDetailScreen(): React.ReactElement {
         </View>
 
         {error ? (
-          <View className="rounded-lg bg-error-container px-4 py-3">
-            <Text className="font-sans text-sm text-on-error-container">{error}</Text>
+          <View className="rounded-lg bg-primary-50 px-4 py-3">
+            <Text className="font-sans text-sm text-primary">{error}</Text>
           </View>
         ) : null}
 

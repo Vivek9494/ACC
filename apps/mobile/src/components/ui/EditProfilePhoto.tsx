@@ -1,8 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image, Pressable, View } from 'react-native';
+import { colors } from '@/theme/colors';
 
 import { pickImage, profilePhotoPickOptions, type PickedImageFile } from '../../lib/imagePicker';
 import { FIELD_ORANGE } from './fieldStyles';
+import { FormErrorText } from './FormErrorText';
 import { Text } from './Text';
 
 export interface EditProfilePhotoProps {
@@ -43,16 +45,16 @@ export function EditProfilePhoto({
         {uri ? (
           <Image source={{ uri }} className="h-28 w-28 rounded-full" />
         ) : (
-          <View className="h-28 w-28 items-center justify-center rounded-full bg-[#FDF1EA]">
+          <View className="h-28 w-28 items-center justify-center rounded-full bg-primary-50">
             <Ionicons name="person-outline" size={48} color={FIELD_ORANGE} />
           </View>
         )}
-        <View className="absolute bottom-0 right-0 h-9 w-9 items-center justify-center rounded-full border-2 border-white bg-primary">
-          <Ionicons name="camera" size={18} color="#ffffff" />
+        <View className="absolute bottom-0 right-0 h-9 w-9 items-center justify-center rounded-full border-2 border-surface bg-primary">
+          <Ionicons name="camera" size={18} color={colors.textInverse} />
         </View>
       </Pressable>
       <Text className="font-sans text-sm text-on-surface-variant">Tap to update photo</Text>
-      {error ? <Text className="font-sans text-sm text-error">{error}</Text> : null}
+      <FormErrorText>{error}</FormErrorText>
     </View>
   );
 }

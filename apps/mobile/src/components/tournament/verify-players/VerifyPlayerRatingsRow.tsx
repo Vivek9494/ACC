@@ -1,10 +1,7 @@
+import { formatRegistrationSkillRating } from '@acc/types';
 import { View } from 'react-native';
 
 import { Text } from '../../ui/Text';
-
-function fmt(value: number | null): string {
-  return value === null ? '—' : value.toFixed(1);
-}
 
 function Stat({ label, value }: { label: string; value: number | null }): React.ReactElement {
   return (
@@ -12,7 +9,9 @@ function Stat({ label, value }: { label: string; value: number | null }): React.
       <Text className="font-sans-semibold text-[10px] uppercase tracking-wider text-on-surface-variant/70">
         {label}
       </Text>
-      <Text className="font-sans-bold text-base text-primary">{fmt(value)}</Text>
+      <Text className="font-sans-bold text-base text-primary">
+        {formatRegistrationSkillRating(value)}
+      </Text>
     </View>
   );
 }

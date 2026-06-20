@@ -18,7 +18,7 @@ export function CenterSevakTabShell({
   const tabConfig = useCenterSevakTabConfig(activeKey);
 
   return (
-    <SafeAreaView className="flex-1 bg-surface" edges={['top']}>
+    <SafeAreaView className="flex-1 bg-background" edges={['top']}>
       <View className="flex-1">{children}</View>
       <BottomTabBar
         tabs={tabConfig.tabs}

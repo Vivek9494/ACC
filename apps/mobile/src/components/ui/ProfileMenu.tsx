@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 
 import { useAuth } from '../../lib/auth-context';
+import { colors } from '@/theme/colors';
 import { INPUT_SHADOW_STYLE } from './fieldStyles';
 import { Text } from './Text';
 
@@ -27,8 +28,8 @@ interface MenuItemProps {
 }
 
 function MenuItem({ label, icon, onPress, destructive = false }: MenuItemProps): React.ReactElement {
-  const textClass = destructive ? 'text-error' : 'text-on-surface';
-  const iconColor = destructive ? '#ba1a1a' : '#5a4136';
+  const textClass = destructive ? 'text-secondary-900' : 'text-on-surface';
+  const iconColor = destructive ? colors.secondaryDark : colors.textMuted;
 
   return (
     <Pressable
@@ -116,7 +117,7 @@ export function ProfileMenu(): React.ReactElement {
           />
           {menuLayout ? (
             <View
-              className="absolute rounded-control border border-separator bg-white py-2"
+              className="absolute rounded-control border border-separator bg-surface py-2"
               style={[
                 INPUT_SHADOW_STYLE,
                 {

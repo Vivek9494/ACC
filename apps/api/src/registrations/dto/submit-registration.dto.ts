@@ -6,6 +6,7 @@ import {
   FIELDING_POSITION_OPTIONS,
   type LateRegistrationRequest,
   PlayerRegistrationRole,
+  RegistrationPlayerType,
   RATING_MAX,
   RATING_MIN,
   type SubmitRegistrationRequest,
@@ -26,6 +27,7 @@ import {
 const BATTING_STYLES = Object.values(BattingStyle);
 const BOWLING_STYLES = Object.values(BowlingStyle);
 const PLAYER_ROLES = Object.values(PlayerRegistrationRole);
+const PLAYER_TYPES = Object.values(RegistrationPlayerType);
 
 /** Default §7.1 registration form. Profile name/center may be updated on submit. */
 export class SubmitRegistrationDto implements SubmitRegistrationRequest {
@@ -83,6 +85,10 @@ export class SubmitRegistrationDto implements SubmitRegistrationRequest {
   @IsOptional()
   @IsIn([...FIELDING_POSITION_OPTIONS])
   fieldingPosition?: string | null;
+
+  @IsOptional()
+  @IsIn(PLAYER_TYPES)
+  playerType?: RegistrationPlayerType | null;
 
   @IsOptional()
   @IsObject()

@@ -125,6 +125,18 @@ enum MatchSquadRole {
   IMPACT_CANDIDATE
 }
 
+/// How a match attendance punch was recorded (§geofence attendance Phase 1).
+enum AttendancePunchSource {
+  AUTO
+  MANUAL
+}
+
+/// On-time vs late classification relative to reporting time.
+enum AttendancePunchStatus {
+  ON_TIME
+  LATE
+}
+
 /// Home/away indicator on ACC schedule entries (spec §27).
 enum HomeAway {
   HOME
@@ -183,11 +195,25 @@ enum PlayerCategory {
   PARTTIME
 }
 
+/// Leather-ball registration: full-time vs part-time (informational only).
+enum RegistrationPlayerType {
+  FULL_TIME
+  PART_TIME
+}
+
 /// Suspension lifecycle (spec §10.2–§10.5).
 enum SuspensionStatus {
   PENDING
   SERVED
   CARRIED_FORWARD
+  CANCELLED
+}
+
+/// Late-arrival penalty lifecycle (§10 Phase 2). At most one OWED/ASSIGNED per player.
+enum LateArrivalPenaltyState {
+  OWED
+  ASSIGNED
+  DISCHARGED
   CANCELLED
 }
 
@@ -216,6 +242,9 @@ enum DeliveryType {
   RETIRED_HURT
   RETIRED_OUT
   IMPACT_PLAYER_IN
+  MANKAD
+  END_INNINGS
+  CATCH_DROP
 }
 
 /// Dismissal modes in scope (spec §12.1; §30.3 exclusions omitted).
@@ -309,10 +338,16 @@ model User {
   memberships     TeamMembership[]
   registrations   Registration[]
   suspensions     Suspension[]
+  lateArrivalPenalties LateArrivalPenalty[]
+  lateArrivalPenaltiesCancelled LateArrivalPenalty[] @relation("PenaltyCancelledBy")
+  lateArrivalPenaltyTransitions LateArrivalPenaltyTransition[]
   pollVotes       PollVote[]
-  videos          PlayerVideo[]
+  skillVideos      PlayerSkillVideo[]
   fees            Fee[]
   squadEntries    MatchSquadPlayer[]
+  attendancePunches MatchAttendancePunch[]
+  attendancePunchesSet MatchAttendancePunch[] @relation("AttendancePunchSetBy")
+  teamRegistrationFavourites TeamRegistrationFavourite[] @relation("TeamRegistrationFavourites")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -361,6 +396,8 @@ model Tournament {
   locationAddress     String?
   latitude            Float?
   longitude           Float?
+  /// IANA timezone for venue-local display and schedule rules (§23).
+  timezone            String?
   /// All datetimes UTC (§23).
   startAt             DateTime
   endAt               DateTime
@@ -405,8 +442,10 @@ model Tournament {
   matches            Match[]
   memberships        TeamMembership[]
   suspensions        Suspension[]
-  videos             PlayerVideo[]
+  lateArrivalPenalties LateArrivalPenalty[]
+  skillVideos        PlayerSkillVideo[]
   fees               Fee[]
+  teamRegistrationFavourites TeamRegistrationFavourite[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -461,6 +500,10 @@ model Team {
   awayMatches Match[]          @relation("AwayTeam")
   matchSquads MatchSquad[]
   fees        Fee[]
+  polls       AvailabilityPoll[]
+  attendancePunches MatchAttendancePunch[]
+  lateArrivalPenalties LateArrivalPenalty[]
+  teamRegistrationFavourites TeamRegistrationFavourite[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -532,6 +575,8 @@ model Registration {
   bowlingRating    Int?
   fieldingRating   Int?
   fieldingPosition String?
+  /// Leather-ball only — full-time vs part-time (§7.1); null for tennis.
+  playerType       RegistrationPlayerType?
   /// APL availability for tournament dates, recorded by Center Sevak (§7.5).
   /// Null = not yet contacted; true/false = available / unavailable.
   isAvailable      Boolean?
@@ -553,6 +598,24 @@ model Registration {
   @@unique([tournamentId, userId])
   @@index([centerId])
   @@index([status])
+}
+
+/// Per-team shared shortlist of verified registrants (Captain + Vice-Captain).
+model TeamRegistrationFavourite {
+  id           String     @id @default(uuid())
+  tournamentId String
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  teamId       String
+  team         Team       @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User       @relation("TeamRegistrationFavourites", fields: [userId], references: [id])
+  /// Captain / VC who last toggled the heart (audit only).
+  favouritedByUserId String
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@unique([tournamentId, teamId, userId])
+  @@index([tournamentId, teamId])
 }
 
 /// An Admin-built custom registration field, scoped to one tournament (§7.2,
@@ -670,6 +733,10 @@ model Match {
   isNoResult          Boolean @default(false)
   winningTeamId       String?
   manOfTheMatchUserId String?
+  /// Winning captain's MoM selection timestamp (UTC — §13.3).
+  manOfTheMatchSelectedAt       DateTime?
+  /// User who confirmed MoM (winning Captain or acting VC — §13.3).
+  manOfTheMatchSelectedByUserId String?
   resultNote          String?
 
   /// Scorecard confirmation (§13.1). `completedAt` starts the 5-hour window
@@ -691,7 +758,10 @@ model Match {
   scorerGrants    MatchScorerGrant[]
   externalPlayers ExternalPlayer[]
   squads          MatchSquad[]
-  poll            AvailabilityPoll?
+  poll            AvailabilityPoll[]
+  attendancePunches MatchAttendancePunch[]
+  penaltiesOriginated LateArrivalPenalty[] @relation("PenaltyOriginMatch")
+  penaltiesServing    LateArrivalPenalty[] @relation("PenaltyServeMatch")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -762,15 +832,46 @@ model MatchSquadPlayer {
   @@index([userId])
 }
 
+/// One attendance punch per player per match (§geofence attendance Phase 1).
+/// Absence is represented by no row (NOT_ARRIVED is computed at read time).
+model MatchAttendancePunch {
+  id           String                @id @default(uuid())
+  matchId      String
+  match        Match                 @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User                  @relation(fields: [userId], references: [id])
+  teamId       String
+  team         Team                  @relation(fields: [teamId], references: [id])
+  punchTimeUtc DateTime
+  source       AttendancePunchSource
+  status       AttendancePunchStatus
+  /// Captain verified a late punch (Phase 2 penalty input).
+  verifiedLate Boolean               @default(false)
+  /// Captain verified on-time penalty serve completion at the serving match.
+  verifiedServeCompletion Boolean      @default(false)
+  /// Captain who manual-entered or edited; null for auto punch.
+  setByUserId  String?
+  setBy        User?                 @relation("AttendancePunchSetBy", fields: [setByUserId], references: [id])
+  editedFlag   Boolean               @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([matchId, userId])
+  @@index([matchId, teamId])
+}
+
 /// External (non-system) opponent players for an ACC match. Names may start as
 /// placeholders "Player 1".."Player 11" and be updated live (§9.5). Deliveries
 /// reference these by `externalPlayerId` instead of a `userId`.
 model ExternalPlayer {
-  id      String @id @default(uuid())
-  matchId String
-  match   Match  @relation(fields: [matchId], references: [id])
-  slot    Int
-  name    String
+  id           String         @id @default(uuid())
+  matchId      String
+  match        Match          @relation(fields: [matchId], references: [id])
+  slot         Int
+  name         String
+  battingStyle BattingStyle?
+  bowlingType  String?
 
   @@unique([matchId, slot])
 }
@@ -793,6 +894,13 @@ model Innings {
   /// Overs allotted may be revised after a rain interruption (§12.2).
   oversAllotted     Int?
   revisedTarget     Int?
+  /// Scorer-selected at-crease batters and current-over bowler before they appear on a delivery.
+  selectedStrikerUserId      String?
+  selectedStrikerExternalId  String?
+  selectedNonStrikerUserId   String?
+  selectedNonStrikerExternalId String?
+  selectedBowlerUserId       String?
+  selectedBowlerExternalId   String?
 
   deliveries Delivery[]
 
@@ -835,6 +943,12 @@ model Delivery {
   runsBat   Int     @default(0)
   /// Wide / no-ball / bye / leg-bye / penalty runs credited to the batting team.
   extraRuns Int     @default(0)
+  /// On a no-ball: completed runs as byes (penalty stays in extraRuns).
+  noBallByeRuns    Int @default(0)
+  /// On a no-ball: completed runs as leg-byes (penalty stays in extraRuns).
+  noBallLegByeRuns Int @default(0)
+  /// Penalty-runs only: opaque team id receiving the runs (defaults to batting side).
+  penaltyBeneficiaryTeamId String?
   /// True for a 4/6 off the bat. Boundaries never rotate strike (§32), so this
   /// is required to derive rotation correctly when overthrows inflate runsBat.
   isBoundary Boolean @default(false)
@@ -847,6 +961,9 @@ model Delivery {
   dismissedExternalId String?
   fielderUserId       String?
   fielderExternalId   String?
+  /// Relay run-out — second fielder (notation "run out (f1/f2)").
+  fielder2UserId      String?
+  fielder2ExternalId  String?
 
   /// Append-only correction tracking.
   revision               Int       @default(1)
@@ -897,18 +1014,73 @@ model Suspension {
   @@index([status])
 }
 
-/// 5-days-before availability poll for an ACC match (§9.7). Closes at 5 PM
-/// (ground-local) the day before — stored in UTC.
+/// Late-arrival penalty (§10 Phase 2). One active (OWED/ASSIGNED) per player at most.
+model LateArrivalPenalty {
+  id                   String                  @id @default(uuid())
+  playerId             String
+  player               User                    @relation(fields: [playerId], references: [id])
+  teamId               String
+  team                 Team                    @relation(fields: [teamId], references: [id])
+  tournamentId         String
+  tournament           Tournament              @relation(fields: [tournamentId], references: [id])
+  /// Match where the captain verified the late arrival that created this penalty.
+  originMatchId        String
+  originMatch          Match                   @relation("PenaltyOriginMatch", fields: [originMatchId], references: [id])
+  state                LateArrivalPenaltyState
+  assignedServeMatchId String?
+  assignedServeMatch   Match?                  @relation("PenaltyServeMatch", fields: [assignedServeMatchId], references: [id])
+  dischargedAt         DateTime?
+  cancelledByUserId    String?
+  cancelledBy          User?                   @relation("PenaltyCancelledBy", fields: [cancelledByUserId], references: [id])
+  cancelledAt          DateTime?
+
+  transitions LateArrivalPenaltyTransition[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([playerId])
+  @@index([teamId])
+  @@index([tournamentId])
+  @@index([state])
+  @@index([assignedServeMatchId])
+}
+
+/// Append-only state transition log for a late-arrival penalty.
+model LateArrivalPenaltyTransition {
+  id             String                   @id @default(uuid())
+  penaltyId      String
+  penalty        LateArrivalPenalty       @relation(fields: [penaltyId], references: [id], onDelete: Cascade)
+  fromState      LateArrivalPenaltyState?
+  toState        LateArrivalPenaltyState
+  actorUserId    String?
+  actor          User?                    @relation(fields: [actorUserId], references: [id])
+  reason         String?
+  contextMatchId String?
+
+  createdAt DateTime @default(now())
+
+  @@index([penaltyId])
+}
+
+/// Per-team availability poll for a leather-ball match (§9.7). One poll per
+/// participating system team — ACC vs ACC has two independent polls.
 model AvailabilityPoll {
   id       String   @id @default(uuid())
-  matchId  String   @unique
+  matchId  String
   match    Match    @relation(fields: [matchId], references: [id])
+  teamId   String
+  team     Team     @relation(fields: [teamId], references: [id])
   opensAt  DateTime
+  /// Auto-close at 5 PM ground-local, two calendar days before match date.
   closesAt DateTime
 
   votes PollVote[]
 
   createdAt DateTime @default(now())
+
+  @@unique([matchId, teamId])
+  @@index([teamId])
 }
 
 /// A player's Yes/No availability vote (§9.7).
@@ -924,19 +1096,28 @@ model PollVote {
   @@unique([pollId, userId])
 }
 
-/// A single ~1-minute showcase video per player per tournament, uploadable
-/// between Registration Closed and the Video Upload End Date (§19).
-model PlayerVideo {
-  id              String     @id @default(uuid())
+/// Player skill video for scouting / auction (§19). One per player per tournament.
+model PlayerSkillVideo {
+  id              String                 @id @default(uuid())
   tournamentId    String
-  tournament      Tournament @relation(fields: [tournamentId], references: [id])
+  tournament      Tournament             @relation(fields: [tournamentId], references: [id])
   userId          String
-  user            User       @relation(fields: [userId], references: [id])
+  user            User                   @relation(fields: [userId], references: [id])
+  /// Playback URL returned by the active storage provider.
   url             String
+  mimeType        String
+  sizeBytes       Int
+  storageKey      String
+  status          PlayerSkillVideoStatus @default(READY)
   durationSeconds Int?
-  uploadedAt      DateTime   @default(now())
+  uploadedAt      DateTime               @default(now())
 
   @@unique([tournamentId, userId])
+  @@map("PlayerSkillVideo")
+}
+
+enum PlayerSkillVideoStatus {
+  READY
 }
 
 /// Manual fee record per player per tournament (§20). No payment gateway;

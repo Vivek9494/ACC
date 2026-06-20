@@ -1,8 +1,9 @@
-import type {
-  MatchDetail,
-  ScorecardConfirmationView,
-  ScorecardResponse,
-  SquadPlayerView,
+import {
+  formatMatchResultNote,
+  type ManOfMatchEligibilityView,
+  type MatchDetail,
+  type ScorecardConfirmationView,
+  type ScorecardResponse,
 } from '@acc/types';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -12,38 +13,28 @@ import { Text } from '../../../src/components/ui/Text';
 import { FIELD_ORANGE } from '../../../src/components/ui/fieldStyles';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { LiveScorecard, type NameResolver } from '../../../src/components/LiveScorecard';
+import { TabbedInningsScorecard } from '../../../src/components/TabbedInningsScorecard';
+import { ManOfMatchCard } from '../../../src/components/ManOfMatchCard';
+import { ManOfMatchDialog } from '../../../src/components/scoring/ManOfMatchDialog';
 import {
   ApiRequestError,
   confirmScorecard,
+  getManOfMatchEligibility,
   getMatch,
   getScorecard,
   getScorecardConfirmation,
   scorecardPdfUrl,
   selectManOfMatch,
 } from '../../../src/lib/api';
+import {
+  buildManOfMatchCandidates,
+  shouldOfferManOfMatch,
+} from '../../../src/lib/match-completion';
 
-function useResolvers(match: MatchDetail | null): {
-  nameOf: NameResolver;
-  teamNameOf: NameResolver;
-} {
-  return useMemo(() => {
-    const players = new Map<string, string>();
-    const teams = new Map<string, string>();
-    if (match) {
-      for (const squad of match.squads) {
-        teams.set(squad.teamId, squad.teamName);
-        for (const p of squad.players) players.set(p.userId, `${p.firstName} ${p.lastName}`);
-      }
-      if (match.homeTeamId) teams.set(match.homeTeamId, match.homeTeamName ?? 'Home');
-      if (match.awayTeamId) teams.set(match.awayTeamId, match.awayTeamName ?? 'Away');
-    }
-    const nameOf: NameResolver = (id) => (id ? (players.get(id) ?? 'Player') : '—');
-    const teamNameOf: NameResolver = (id) =>
-      id ? (teams.get(id) ?? match?.externalOpponentName ?? 'Team') : 'Team';
-    return { nameOf, teamNameOf };
-  }, [match]);
-}
+import { useScorecardResolvers } from '../../../src/hooks/useMatchResolvers';
+import {
+  defaultInningsTabIndex,
+} from '../../../src/lib/scorecardInningsTabs';
 
 /** Humanises the remaining time to the auto-confirm deadline (§13.1). */
 function untilLabel(iso: string | null): string {
@@ -71,18 +62,30 @@ export default function ScorecardResultScreen(): React.ReactElement {
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [momEligibility, setMomEligibility] = useState<ManOfMatchEligibilityView | null>(null);
+  const [showManOfMatch, setShowManOfMatch] = useState(false);
+  const [inningsIndex, setInningsIndex] = useState(0);
 
   const load = useCallback(async () => {
     if (!matchId) return;
     try {
-      const [m, c, conf] = await Promise.all([
+      const [m, c, conf, eligibility] = await Promise.all([
         getMatch(matchId),
         getScorecard(matchId),
         getScorecardConfirmation(matchId),
+        getManOfMatchEligibility(matchId).catch(() => ({
+          offered: false,
+          canSelect: false,
+          required: false,
+          dueAt: null,
+          overdue: false,
+        })),
       ]);
       setMatch(m);
       setCard(c);
       setConfirmation(conf);
+      setMomEligibility(eligibility);
+      setInningsIndex(defaultInningsTabIndex(c));
       setError(null);
     } catch (err) {
       setError(err instanceof ApiRequestError ? err.message : 'Could not load the scorecard.');
@@ -95,19 +98,40 @@ export default function ScorecardResultScreen(): React.ReactElement {
     void load();
   }, [load]);
 
-  const { nameOf, teamNameOf } = useResolvers(match);
+  const { nameOf, teamNameOf, battingTeamLabel } = useScorecardResolvers(card, match);
 
-  const players: SquadPlayerView[] = useMemo(
-    () =>
-      (match?.squads ?? []).flatMap((s) =>
-        s.players.filter((p) => p.role === 'PLAYING_XI' || p.role === 'IMPACT_CANDIDATE'),
-      ),
-    [match],
+  const isMatchLive = match?.state === 'LIVE' || match?.state === 'RAIN_INTERRUPTED';
+
+  const momUserId = match?.manOfTheMatchUserId ?? confirmation?.manOfTheMatchUserId ?? null;
+
+  const winningTeamName = useMemo(() => {
+    const winnerId = card?.result.winningTeamId;
+    if (!winnerId || !match) return 'Winning team';
+    return (
+      match.squads.find((s) => s.teamId === winnerId)?.teamName ??
+      (winnerId === match.homeTeamId ? match.homeTeamName : match.awayTeamName) ??
+      'Winning team'
+    );
+  }, [card?.result.winningTeamId, match]);
+
+  const resultLine = useMemo(() => {
+    if (match?.resultNote) return match.resultNote;
+    if (!card?.result.decided || !match) return null;
+    return formatMatchResultNote(winningTeamName, card.result);
+  }, [card?.result, match, winningTeamName]);
+
+  const momCandidates = useMemo(
+    () => (match && card ? buildManOfMatchCandidates(match, card) : []),
+    [match, card],
   );
+
+  const showMomPrompt =
+    Boolean(momEligibility?.offered && momEligibility.canSelect) &&
+    shouldOfferManOfMatch(match, card);
 
   if (loading) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-surface">
+      <SafeAreaView className="flex-1 items-center justify-center bg-background">
         <ActivityIndicator color={FIELD_ORANGE} />
       </SafeAreaView>
     );
@@ -149,6 +173,8 @@ export default function ScorecardResultScreen(): React.ReactElement {
       try {
         const conf = await selectManOfMatch(matchId, { userId });
         setConfirmation(conf);
+        setShowManOfMatch(false);
+        await load();
       } catch (err) {
         setError(err instanceof ApiRequestError ? err.message : 'Could not set Man of the Match.');
       } finally {
@@ -161,7 +187,7 @@ export default function ScorecardResultScreen(): React.ReactElement {
   const awaiting = confirmation?.state === 'COMPLETED' || confirmation?.state === 'NO_RESULT';
 
   return (
-    <SafeAreaView className="flex-1 bg-surface">
+    <SafeAreaView className="flex-1 bg-background">
       <ScrollView contentContainerClassName="px-6 py-6 gap-4">
         <Pressable onPress={() => router.back()}>
           <Text className="font-sans text-primary">← Back</Text>
@@ -174,8 +200,8 @@ export default function ScorecardResultScreen(): React.ReactElement {
         </Text>
 
         {error ? (
-          <View className="rounded-lg bg-error-container px-4 py-3">
-            <Text className="font-sans text-sm text-on-error-container">{error}</Text>
+          <View className="rounded-lg bg-primary-50 px-4 py-3">
+            <Text className="font-sans text-sm text-primary">{error}</Text>
           </View>
         ) : null}
 
@@ -210,41 +236,74 @@ export default function ScorecardResultScreen(): React.ReactElement {
           </View>
         ) : null}
 
-        {/* Full scorecard (§28) */}
-        {card ? <LiveScorecard state={card} nameOf={nameOf} teamNameOf={teamNameOf} /> : null}
+        {card && match && momUserId ? (
+          <ManOfMatchCard
+            match={match}
+            card={card}
+            momUserId={momUserId}
+            nameOf={nameOf}
+          />
+        ) : null}
 
-        {/* §13.3: Man of the Match */}
-        {(awaiting || locked) && players.length > 0 ? (
-          <View className="gap-2 rounded-xl border border-outline-variant bg-surface-container-lowest p-4">
-            <Text className="font-sans-bold text-lg text-primary">Man of the Match</Text>
+        {/* Full scorecard (§28) */}
+        {card ? (
+          <TabbedInningsScorecard
+            card={card}
+            match={match}
+            nameOf={nameOf}
+            teamNameOf={teamNameOf}
+            battingTeamLabel={battingTeamLabel}
+            inningsIndex={inningsIndex}
+            onInningsIndexChange={setInningsIndex}
+            isMatchLive={isMatchLive}
+            matchOversPerInnings={match?.oversPerInnings ?? null}
+          />
+        ) : null}
+
+        {/* §13.3: Man of the Match — winning captain only */}
+        {showMomPrompt ? (
+          <View
+            className={`gap-2 rounded-xl border p-4 ${
+              momEligibility?.overdue
+                ? 'border-secondary-700 bg-secondary-100/30'
+                : 'border-primary bg-primary-container/40'
+            }`}
+          >
+            <Text
+              className={`font-sans-bold text-lg ${
+                momEligibility?.overdue ? 'text-secondary-900' : 'text-primary'
+              }`}
+            >
+              Man of the Match — Required
+            </Text>
+            {momEligibility?.dueAt ? (
+              <Text
+                className={`font-sans text-sm ${
+                  momEligibility.overdue ? 'text-secondary-900' : 'text-on-surface-variant'
+                }`}
+              >
+                {momEligibility.overdue
+                  ? `Overdue — required by end of match day (${momEligibility.dueAt.slice(0, 10)})`
+                  : `Required by end of match day (${momEligibility.dueAt.slice(0, 10)})`}
+              </Text>
+            ) : null}
             {confirmation?.manOfTheMatchUserId ? (
               <Text className="font-sans text-sm text-on-surface">
                 ★ {nameOf(confirmation.manOfTheMatchUserId)}
               </Text>
             ) : (
-              <Text className="font-sans text-sm text-on-surface-variant">
-                Select the player of the match.
-              </Text>
+              <>
+                <Text className="font-sans text-sm text-on-surface-variant">
+                  Select the player of the match from {winningTeamName}.
+                </Text>
+                <Button
+                  label="Select Man of the Match"
+                  disabled={working}
+                  onPress={() => setShowManOfMatch(true)}
+                  className="h-11"
+                />
+              </>
             )}
-            <View className="gap-1.5">
-              {players.map((p) => {
-                const selected = confirmation?.manOfTheMatchUserId === p.userId;
-                return (
-                  <Button
-                    key={p.userId}
-                    disabled={working}
-                    onPress={() => pickManOfMatch(p.userId)}
-                    variant={selected ? 'primary' : 'outline'}
-                    className={`h-11 flex-row justify-between px-4 ${selected ? 'border-primary bg-primary-container/40' : ''}`}
-                  >
-                    <Text className="font-sans text-sm text-on-surface">
-                      {p.firstName} {p.lastName}
-                    </Text>
-                    {selected ? <Text className="font-sans text-xs text-primary">Selected ★</Text> : null}
-                  </Button>
-                );
-              })}
-            </View>
           </View>
         ) : null}
 
@@ -257,6 +316,17 @@ export default function ScorecardResultScreen(): React.ReactElement {
           label="Export scorecard PDF"
         />
       </ScrollView>
+
+      <ManOfMatchDialog
+        visible={showManOfMatch}
+        teamName={winningTeamName}
+        resultLine={resultLine}
+        candidates={momCandidates}
+        required={momEligibility?.required ?? true}
+        dueAt={momEligibility?.dueAt ?? confirmation?.manOfMatchDueAt}
+        overdue={momEligibility?.overdue ?? confirmation?.manOfMatchOverdue}
+        onConfirm={pickManOfMatch}
+      />
     </SafeAreaView>
   );
 }

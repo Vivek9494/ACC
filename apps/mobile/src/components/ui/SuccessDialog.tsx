@@ -75,7 +75,7 @@ export function SuccessDialog({
       >
         <Pressable
           onPress={dismiss}
-          className="w-full max-w-sm items-center gap-4 rounded-control bg-white px-6 py-8"
+          className="w-full max-w-sm items-center gap-4 rounded-control bg-surface px-6 py-8"
           style={INPUT_SHADOW_STYLE}
         >
           <View className="h-14 w-14 items-center justify-center rounded-full bg-primary-container">

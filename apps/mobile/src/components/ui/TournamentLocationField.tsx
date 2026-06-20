@@ -19,6 +19,7 @@ import MapView, {
 import { ApiRequestError, placesAutocomplete, placesDetails, placesReverse } from '../../lib/api';
 import { createPlacesSessionToken } from '../../lib/places-session';
 import { FIELD_ORANGE, INPUT_SHADOW_STYLE } from './fieldStyles';
+import { FormErrorText } from './FormErrorText';
 import { Text } from './Text';
 import { TextInput } from './TextInput';
 
@@ -289,14 +290,14 @@ export function TournamentLocationField({
 
       {showSuggestions && suggestions.length > 0 ? (
         <View
-          className="overflow-hidden rounded-control border border-[#F1F1F1] bg-white"
+          className="overflow-hidden rounded-control border border-border bg-surface"
           style={INPUT_SHADOW_STYLE}
         >
           {suggestions.map((item) => (
             <Pressable
               key={item.placeId}
               onPress={() => void onSelectSuggestion(item)}
-              className="border-b border-[#F1F1F1] px-4 py-3 active:bg-surface-container"
+              className="border-b border-border px-4 py-3 active:bg-surface-container"
               accessibilityRole="button"
               accessibilityLabel={item.description}
             >
@@ -310,7 +311,7 @@ export function TournamentLocationField({
         <Text className="font-sans text-sm text-on-surface-variant">Searching locations…</Text>
       ) : null}
 
-      {searchError ? <Text className="font-sans text-sm text-error">{searchError}</Text> : null}
+      <FormErrorText>{searchError}</FormErrorText>
 
       {showEmptyState ? (
         <Text className="font-sans text-sm text-on-surface-variant">
@@ -345,7 +346,7 @@ export function TournamentLocationField({
                 onPress={() => void adjustZoom(1)}
                 accessibilityRole="button"
                 accessibilityLabel="Zoom in"
-                className="h-9 w-9 items-center justify-center rounded-full bg-white active:bg-surface-container"
+                className="h-9 w-9 items-center justify-center rounded-full bg-surface active:bg-surface-container"
                 style={INPUT_SHADOW_STYLE}
               >
                 <Ionicons name="add" size={20} color={FIELD_ORANGE} />
@@ -354,7 +355,7 @@ export function TournamentLocationField({
                 onPress={() => void adjustZoom(-1)}
                 accessibilityRole="button"
                 accessibilityLabel="Zoom out"
-                className="h-9 w-9 items-center justify-center rounded-full bg-white active:bg-surface-container"
+                className="h-9 w-9 items-center justify-center rounded-full bg-surface active:bg-surface-container"
                 style={INPUT_SHADOW_STYLE}
               >
                 <Ionicons name="remove" size={20} color={FIELD_ORANGE} />
@@ -366,7 +367,7 @@ export function TournamentLocationField({
           </Text>
         </View>
       ) : (
-        <View className="h-32 items-center justify-center rounded-control border border-dashed border-primary/30 bg-[#FDF1EA]/30 px-4">
+        <View className="h-32 items-center justify-center rounded-control border border-dashed border-primary/30 bg-primary-50/30 px-4">
           <Ionicons name="map-outline" size={28} color={FIELD_ORANGE} />
           <Text className="mt-2 text-center font-sans text-sm text-on-surface-variant">
             Select a location from the suggestions to preview it on the map.

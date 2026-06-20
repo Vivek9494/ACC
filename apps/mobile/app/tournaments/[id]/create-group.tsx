@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { colors } from '@/theme/colors';
 import {
   GROUP_FORM_MESSAGES,
   GROUP_NAME_MAX_LENGTH,
@@ -39,7 +40,7 @@ function TeamSelectRow({
   return (
     <Pressable
       onPress={onToggle}
-      className={`flex-row items-center gap-3 rounded-control border bg-white p-4 active:opacity-90 ${
+      className={`flex-row items-center gap-3 rounded-control border bg-surface p-4 active:opacity-90 ${
         checked ? 'border-primary bg-primary/5' : 'border-outline-variant'
       }`}
       accessibilityRole="checkbox"
@@ -50,10 +51,10 @@ function TeamSelectRow({
       <Text className="min-w-0 flex-1 font-sans-medium text-base text-on-surface">{team.name}</Text>
       <View
         className={`h-6 w-6 items-center justify-center rounded-md border ${
-          checked ? 'border-primary bg-primary' : 'border-[#D1D1D1] bg-white'
+          checked ? 'border-primary bg-primary' : 'border-stone-300 bg-surface'
         }`}
       >
-        {checked ? <Ionicons name="checkmark" size={16} color="#ffffff" /> : null}
+        {checked ? <Ionicons name="checkmark" size={16} color={colors.textInverse} /> : null}
       </View>
     </Pressable>
   );
@@ -192,7 +193,7 @@ export default function CreateGroupScreen(): React.ReactElement {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-surface" edges={['top']}>
+    <SafeAreaView className="flex-1 bg-background" edges={['top']}>
       <View className="flex-row items-center justify-between px-4 py-3">
         <Pressable
           onPress={() => router.back()}
@@ -251,7 +252,7 @@ export default function CreateGroupScreen(): React.ReactElement {
                 value={teamSearch}
                 onChangeText={setTeamSearch}
                 leadingIcon={
-                  <Ionicons name="search" size={20} color="#5A4136" accessibilityElementsHidden />
+                  <Ionicons name="search" size={20} color={colors.textMuted} accessibilityElementsHidden />
                 }
                 className="py-3"
               />
@@ -266,7 +267,7 @@ export default function CreateGroupScreen(): React.ReactElement {
               {loadingTeams ? (
                 <ActivityIndicator color={FIELD_ORANGE} />
               ) : loadError ? (
-                <Text className="font-sans text-sm text-error">{loadError}</Text>
+                <Text className="font-sans text-sm text-primary">{loadError}</Text>
               ) : selectableTeams.length === 0 ? (
                 <Text className="font-sans text-sm text-on-surface-variant">
                   {teams.length === 0
@@ -294,10 +295,10 @@ export default function CreateGroupScreen(): React.ReactElement {
 
           <SafeAreaView
             edges={['bottom']}
-            className="border-t border-outline-variant/20 bg-surface px-4 pt-3"
+            className="border-t border-outline-variant/20 bg-background px-4 pt-3"
           >
             {submitError ? (
-              <Text className="mb-2 font-sans text-sm text-error">{submitError}</Text>
+              <Text className="mb-2 font-sans text-sm text-primary">{submitError}</Text>
             ) : null}
             <Button
               label={submitting ? 'Creating…' : 'Create Group'}

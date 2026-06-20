@@ -1,4 +1,10 @@
-import { MatchSide, TossDecision, formatUtcIsoDate } from '@acc/types';
+import {
+  formatMatchDateTimeLine,
+  isMatchDayTodayInZone,
+  MatchSide,
+  serverVenueTimezone,
+  TossDecision,
+} from '@acc/types';
 
 /** States where a scorer may still open the pre-scoring setup flow. */
 export const SCORER_STARTABLE_MATCH_STATES = [
@@ -8,48 +14,70 @@ export const SCORER_STARTABLE_MATCH_STATES = [
   'DELAYED',
 ] as const;
 
-/** True when the fixture calendar day is today (UTC), using matchDate or startTime. */
-export function isScorerMatchDayToday(match: {
+/** In-progress states where the scorer dashboard shows "Continue Scoring". */
+export const SCORER_IN_PROGRESS_MATCH_STATES = ['LIVE', 'RAIN_INTERRUPTED'] as const;
+
+/** All match states that surface the scorer dashboard card on match day. */
+export const SCORER_DASHBOARD_CARD_STATES = [
+  ...SCORER_STARTABLE_MATCH_STATES,
+  ...SCORER_IN_PROGRESS_MATCH_STATES,
+] as const;
+
+/** Scheduled kickoff instant — prefers startTime, falls back to matchDate (§11.1). */
+export function matchScheduledInstant(match: {
   matchDate: Date | null;
   startTime: Date | null;
-}): boolean {
-  const today = formatUtcIsoDate(new Date());
-  if (match.matchDate) {
-    return formatUtcIsoDate(match.matchDate) === today;
-  }
-  if (match.startTime) {
-    return formatUtcIsoDate(match.startTime) === today;
-  }
-  return false;
+}): Date | null {
+  return match.startTime ?? match.matchDate;
 }
 
-export function formatScorerMatchDateTimeLine(match: {
-  matchDate: Date | null;
-  startTime: Date | null;
-}): string {
-  const instant = match.startTime ?? match.matchDate;
+/** True when the fixture calendar day is today in the venue timezone. */
+export function isScorerMatchDayToday(
+  match: {
+    matchDate: Date | null;
+    startTime: Date | null;
+  },
+  tournamentTimezone: string | null | undefined = null,
+): boolean {
+  const timeZone = serverVenueTimezone(tournamentTimezone);
+  if (!matchScheduledInstant(match)) {
+    return false;
+  }
+  return isMatchDayTodayInZone(match, timeZone);
+}
+
+const SCORER_ASSIGNMENT_LEAD_MS = 2 * 60 * 60 * 1000;
+
+/**
+ * Captain scorer-assignment card window (§11.1): match day, from 2 hours before
+ * scheduled start until the fixture leaves pre-live states (handled by caller).
+ */
+export function isWithinScorerAssignmentWindow(
+  match: { matchDate: Date | null; startTime: Date | null },
+  now: Date = new Date(),
+  tournamentTimezone: string | null | undefined = null,
+): boolean {
+  if (!isScorerMatchDayToday(match, tournamentTimezone)) {
+    return false;
+  }
+  const instant = matchScheduledInstant(match);
   if (!instant) {
-    return '—';
+    return false;
   }
-  const datePart = instant
-    .toLocaleDateString('en-US', {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-      timeZone: 'UTC',
-    })
-    .toUpperCase();
-  if (!match.startTime) {
-    return datePart;
-  }
-  const timePart = match.startTime
-    .toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      timeZone: 'UTC',
-    })
-    .toUpperCase();
-  return `${datePart} • ${timePart}`;
+  const windowOpens = new Date(instant.getTime() - SCORER_ASSIGNMENT_LEAD_MS);
+  return now >= windowOpens;
+}
+
+export function formatScorerMatchDateTimeLine(
+  match: {
+    matchDate: Date | null;
+    startTime: Date | null;
+  },
+  tournamentTimezone: string | null | undefined = null,
+  options: { includeZoneAbbrev?: boolean } = {},
+): string {
+  const timeZone = serverVenueTimezone(tournamentTimezone);
+  return formatMatchDateTimeLine(match, timeZone, options);
 }
 
 export function deriveInningsTeamsFromToss(

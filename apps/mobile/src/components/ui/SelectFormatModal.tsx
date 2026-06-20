@@ -36,7 +36,7 @@ export function SelectFormatModal({
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
       <Pressable className="flex-1 items-center justify-center bg-black/40 px-6" onPress={onCancel}>
         <Pressable
-          className="w-full max-w-sm gap-4 rounded-control bg-white p-5"
+          className="w-full max-w-sm gap-4 rounded-control bg-surface p-5"
           style={INPUT_SHADOW_STYLE}
           onPress={(event) => event.stopPropagation()}
         >
@@ -61,7 +61,7 @@ export function SelectFormatModal({
           </View>
 
           {errorMessage ? (
-            <Text className="text-center font-sans text-sm text-error">{errorMessage}</Text>
+            <Text className="text-center font-sans text-sm text-primary">{errorMessage}</Text>
           ) : null}
 
           <Button

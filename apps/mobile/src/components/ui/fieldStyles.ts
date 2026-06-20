@@ -1,10 +1,12 @@
 import type { ReactNode } from 'react';
 
+import { colors } from '@/theme/colors';
+
 /** Mirrors tailwind `primary` — use for non-className APIs (ActivityIndicator, Ionicons). */
-export const FIELD_ORANGE = '#FF6B00';
+export const FIELD_ORANGE = colors.primary;
 
 export const INPUT_SHADOW_STYLE = {
-  shadowColor: '#000',
+  shadowColor: colors.shadow,
   shadowOpacity: 0.06,
   shadowRadius: 10,
   shadowOffset: { width: 0, height: 3 },
@@ -15,7 +17,7 @@ export const INPUT_SHADOW_STYLE = {
 export const INPUT_TEXT_STYLE = { fontSize: 16 } as const;
 
 export const DEFAULT_INPUT_CLASS =
-  'bg-white rounded-control border border-[#F1F1F1] px-5 py-4 text-[#1A1A1A] font-sans';
+  'bg-surface rounded-control border border-border px-5 py-4 text-text font-sans';
 
 /** Display text for Select/DateField values (same typography rules as TextInput). */
 export const FIELD_VALUE_TEXT_CLASS = 'font-sans';
@@ -31,14 +33,14 @@ function stripInputTypography(className: string): string {
     .trim();
 }
 
-export const DEFAULT_PLACEHOLDER_COLOR = '#9AA0A6';
+export const DEFAULT_PLACEHOLDER_COLOR = colors.placeholder;
 
 export type LabelVariant = 'brand' | 'muted' | 'strong';
 
 const LABEL_CLASSES: Record<LabelVariant, string> = {
-  brand: 'font-sans text-base leading-6 text-[#5A4136] mb-2 ml-1',
-  muted: 'text-[#A0A0A0] text-sm font-sans-medium tracking-wide mb-2 ml-1',
-  strong: 'text-[#1A1A1A] font-sans-bold text-sm mb-2 ml-1',
+  brand: 'font-sans text-base leading-6 text-text-muted mb-2 ml-1',
+  muted: 'text-text-muted text-sm font-sans-medium tracking-wide mb-2 ml-1',
+  strong: 'text-text font-sans-bold text-sm mb-2 ml-1',
 };
 
 export function labelClassName(variant: LabelVariant = 'brand'): string {
@@ -64,6 +66,23 @@ export function mergeFieldClassName(
     merged = `${merged} pr-12`;
   }
   return stripInputTypography(merged);
+}
+
+/** Validation / form error text — primary orange app-wide. */
+export const ERROR_TEXT_CLASS = 'font-sans text-sm text-primary';
+
+/** Inline helper below a field (includes spacing). */
+export const FIELD_ERROR_TEXT_CLASS = 'ml-1 mt-1 font-sans text-sm text-primary';
+
+/** Error-state field border. */
+export const ERROR_BORDER_CLASS = 'border-primary';
+
+/** Optional alert surface for grouped form/API errors. */
+export const ERROR_ALERT_SURFACE_CLASS = 'rounded-xl border border-primary/30 bg-primary-50 p-3';
+
+/** Validation error border on shared inputs. */
+export function applyFieldErrorBorder(className: string): string {
+  return className.replace(/\bborder-border\b/, ERROR_BORDER_CLASS);
 }
 
 export interface FieldChromeOptions {

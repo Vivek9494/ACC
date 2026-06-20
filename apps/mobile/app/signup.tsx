@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { colors } from '@/theme/colors';
 import {
   CANADIAN_POSTAL_CODE_DISPLAY_MAX_LENGTH,
   SIGNUP_MOBILE_LENGTH,
@@ -207,7 +208,7 @@ export default function SignupScreen(): React.ReactElement {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-surface" edges={['top']}>
+    <SafeAreaView className="flex-1 bg-background" edges={['top']}>
       <View className="flex-row items-center gap-3 px-4 py-3">
         <Pressable
           onPress={() => router.back()}
@@ -217,7 +218,7 @@ export default function SignupScreen(): React.ReactElement {
         >
           <Ionicons name="arrow-back" size={24} color={FIELD_ORANGE} />
         </Pressable>
-        <Text className="font-sans-bold text-xl text-[#1A1A1A]">Welcome</Text>
+        <Text className="font-sans-bold text-xl text-text">Welcome</Text>
       </View>
 
       <ScrollView
@@ -228,7 +229,7 @@ export default function SignupScreen(): React.ReactElement {
       >
         <View className="mb-8 gap-2">
           <Text className="font-sans-bold text-3xl text-primary">Join the Club</Text>
-          <Text className="font-sans text-base leading-6 text-[#5A4136]">
+          <Text className="font-sans text-base leading-6 text-text-muted">
             Complete your profile to start your journey with Hariprabodham Sports Club.
           </Text>
         </View>
@@ -488,8 +489,8 @@ export default function SignupScreen(): React.ReactElement {
           </View>
 
           {formError ? (
-            <View className="rounded-xl bg-error-container px-4 py-3">
-              <Text className="font-sans text-sm text-on-error-container">{formError}</Text>
+            <View className="rounded-xl bg-primary-50 px-4 py-3">
+              <Text className="font-sans text-sm text-primary">{formError}</Text>
             </View>
           ) : null}
 
@@ -499,7 +500,7 @@ export default function SignupScreen(): React.ReactElement {
             className="mt-2 h-14"
           >
             {submitting ? (
-              <ActivityIndicator color="#ffffff" />
+              <ActivityIndicator color={colors.textInverse} />
             ) : (
               <Text className="font-sans-semibold text-base text-on-primary">Create Account</Text>
             )}

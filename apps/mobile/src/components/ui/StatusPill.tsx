@@ -11,17 +11,17 @@ export interface StatusPillProps {
 }
 
 const VARIANT_BG: Record<StatusPillVariant, string> = {
-  ongoing: 'bg-[#E3F2FD]',
-  upcoming: 'bg-[#FFF8E1]',
-  completed: 'bg-surface-container-high',
-  live: 'bg-error',
+  ongoing: 'bg-secondary-100',
+  upcoming: 'bg-secondary-100',
+  completed: 'bg-stone-200',
+  live: 'bg-primary',
 };
 
 const VARIANT_TEXT: Record<StatusPillVariant, string> = {
-  ongoing: 'text-[#1565C0]',
-  upcoming: 'text-[#F57F17]',
-  completed: 'text-on-surface-variant',
-  live: 'text-on-error',
+  ongoing: 'text-secondary-700',
+  upcoming: 'text-secondary-700',
+  completed: 'text-stone-700',
+  live: 'text-text-inverse',
 };
 
 export function StatusPill({ variant, label, className }: StatusPillProps): React.ReactElement {
@@ -30,7 +30,7 @@ export function StatusPill({ variant, label, className }: StatusPillProps): Reac
       <View
         className={`flex-row items-center gap-1 rounded-full px-3 py-1 ${VARIANT_BG.live} ${className ?? ''}`.trim()}
       >
-        <View className="h-2 w-2 rounded-full bg-on-error" />
+        <View className="h-2 w-2 rounded-full bg-text-inverse" />
         <Text className={`font-sans-semibold text-[11px] uppercase tracking-wide ${VARIANT_TEXT.live}`}>
           {label}
         </Text>

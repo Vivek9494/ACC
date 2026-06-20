@@ -92,6 +92,11 @@ export class CreateTournamentDto implements CreateTournamentRequest {
   @Max(180)
   longitude?: number | null;
 
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  timezone?: string | null;
+
   /** YYYY-MM-DD calendar days; server derives startAt/endAt from min/max. */
   @IsArray()
   @ArrayNotEmpty({ message: M.tournamentDates.required })

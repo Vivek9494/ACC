@@ -2,9 +2,12 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 
+import { LateArrivalPenaltyModule } from './late-arrival-penalty/late-arrival-penalty.module';
+import { AttendanceModule } from './attendance/attendance.module';
 import { CaptainModule } from './captain/captain.module';
 import { CenterSevakModule } from './center-sevak/center-sevak.module';
 import { GuestModule } from './guest/guest.module';
+import { ParticipationPollModule } from './participation-poll/participation-poll.module';
 import { PlayerModule } from './player/player.module';
 import { ClubManagerModule } from './club-manager/club-manager.module';
 import { AdminModule } from './admin/admin.module';
@@ -15,6 +18,7 @@ import { CentersModule } from './centers/centers.module';
 import { validateEnv } from './config/env.validation';
 import { HealthModule } from './health/health.module';
 import { LiveModule } from './live/live.module';
+import { MyMatchesModule } from './my-matches/my-matches.module';
 import { MatchesModule } from './matches/matches.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { PlacesModule } from './places/places.module';
@@ -29,6 +33,7 @@ import { TeamsModule } from './teams/teams.module';
 import { FeesModule } from './fees/fees.module';
 import { GroupsModule } from './groups/groups.module';
 import { LeaderboardModule } from './leaderboard/leaderboard.module';
+import { PlayerSkillVideosModule } from './player-videos/player-skill-videos.module';
 import { StandingsModule } from './standings/standings.module';
 
 @Module({
@@ -49,6 +54,7 @@ import { StandingsModule } from './standings/standings.module';
     CaptainModule,
     CenterSevakModule,
     PlayerModule,
+    ParticipationPollModule,
     GuestModule,
     ClubManagerModule,
     CentersModule,
@@ -57,7 +63,11 @@ import { StandingsModule } from './standings/standings.module';
     GroupsModule,
     RegistrationsModule,
     FeesModule,
+    PlayerSkillVideosModule,
     MatchesModule,
+    AttendanceModule,
+    LateArrivalPenaltyModule,
+    MyMatchesModule,
     ScoringModule,
     StandingsModule,
     LeaderboardModule,

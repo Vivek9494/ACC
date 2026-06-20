@@ -1,12 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
 import { ActivityIndicator, Image, Pressable, View } from 'react-native';
+import { colors } from '@/theme/colors';
 
 import {
   pickImage,
   teamLogoPickOptions,
   type PickedImageFile,
 } from '../../lib/imagePicker';
-import { FIELD_ORANGE, labelClassName } from './fieldStyles';
+import { ERROR_BORDER_CLASS, FIELD_ORANGE, labelClassName } from './fieldStyles';
+import { FormErrorText } from './FormErrorText';
 import { Text } from './Text';
 
 export interface TeamLogoFieldProps {
@@ -37,7 +39,7 @@ export function TeamLogoField({
     await onFilePicked(result.file);
   }
 
-  const borderClass = error ? 'border-error' : 'border-outline-variant';
+  const borderClass = error ? ERROR_BORDER_CLASS : 'border-outline-variant';
 
   return (
     <View className="gap-2">
@@ -54,7 +56,7 @@ export function TeamLogoField({
             <Image source={{ uri }} className="h-full w-full rounded-control" resizeMode="contain" />
             {uploading ? (
               <View className="absolute inset-0 items-center justify-center rounded-control bg-black/30">
-                <ActivityIndicator color="#ffffff" />
+                <ActivityIndicator color={colors.textInverse} />
               </View>
             ) : null}
           </>
@@ -68,7 +70,7 @@ export function TeamLogoField({
       {uploading ? (
         <Text className="font-sans text-sm text-on-surface-variant">Uploading logo…</Text>
       ) : null}
-      {error ? <Text className="font-sans text-sm text-error">{error}</Text> : null}
+      <FormErrorText>{error}</FormErrorText>
     </View>
   );
 }

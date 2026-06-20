@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { colors } from '@/theme/colors';
 import {
   BallType,
   MATCH_OVERS_PER_INNINGS_OPTIONS,
@@ -382,7 +383,7 @@ export default function MatchSetupScreen(): React.ReactElement {
 
   if (loading) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-surface">
+      <SafeAreaView className="flex-1 items-center justify-center bg-background">
         <ActivityIndicator color={FIELD_ORANGE} />
       </SafeAreaView>
     );
@@ -390,7 +391,7 @@ export default function MatchSetupScreen(): React.ReactElement {
 
   if (loadError || !tournament) {
     return (
-      <SafeAreaView className="flex-1 bg-surface">
+      <SafeAreaView className="flex-1 bg-background">
         <View className="flex-1 items-center justify-center px-6">
           <Text className="text-center font-sans text-base text-on-surface-variant">
             {loadError ?? 'Tournament not found.'}
@@ -401,7 +402,7 @@ export default function MatchSetupScreen(): React.ReactElement {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-surface" edges={['top']}>
+    <SafeAreaView className="flex-1 bg-background" edges={['top']}>
       <View className="flex-row items-center justify-between px-4 py-3">
         <Pressable
           onPress={() => router.back()}
@@ -450,7 +451,7 @@ export default function MatchSetupScreen(): React.ReactElement {
           <View
             className={
               isManual
-                ? 'gap-4 rounded-control border border-outline-variant bg-white p-4'
+                ? 'gap-4 rounded-control border border-outline-variant bg-surface p-4'
                 : 'gap-4'
             }
             style={isManual ? INPUT_SHADOW_STYLE : undefined}
@@ -552,7 +553,7 @@ export default function MatchSetupScreen(): React.ReactElement {
             }}
           />
           {fieldErrors.groundLocation ? (
-            <Text className="-mt-3 font-sans text-sm text-error">{fieldErrors.groundLocation}</Text>
+            <Text className="-mt-3 font-sans text-sm text-primary">{fieldErrors.groundLocation}</Text>
           ) : null}
 
           <Select
@@ -662,20 +663,20 @@ export default function MatchSetupScreen(): React.ReactElement {
           </View>
 
           {submitError ? (
-            <Text className="font-sans text-sm text-error">{submitError}</Text>
+            <Text className="font-sans text-sm text-primary">{submitError}</Text>
           ) : null}
         </ScrollView>
 
         <SafeAreaView
           edges={['bottom']}
-          className="border-t border-outline-variant/20 bg-surface px-4 pt-3"
+          className="border-t border-outline-variant/20 bg-background px-4 pt-3"
         >
           <Button
             disabled={submitting}
             onPress={() => void handleSubmit()}
             className="h-14 w-full flex-row gap-2"
           >
-            <Ionicons name="calendar-outline" size={20} color="#ffffff" />
+            <Ionicons name="calendar-outline" size={20} color={colors.textInverse} />
             <Text className="font-sans-semibold text-base text-on-primary">
               {submitting ? 'Scheduling…' : 'Schedule Match'}
             </Text>

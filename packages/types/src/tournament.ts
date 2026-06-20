@@ -98,6 +98,8 @@ export interface CreateTournamentRequest {
   /** Set when the user picks a place or adjusts the map marker. */
   latitude?: number | null;
   longitude?: number | null;
+  /** IANA timezone override; normally derived from coordinates on the server. */
+  timezone?: string | null;
   /** YYYY-MM-DD calendar days matches may be scheduled on. Server derives startAt/endAt. */
   dates: string[];
   ballType: BallType;
@@ -142,6 +144,8 @@ export interface UpdateTournamentRequest {
   /** Set when the user picks a place or adjusts the map marker. */
   latitude?: number | null;
   longitude?: number | null;
+  /** IANA timezone override; normally derived from coordinates on the server. */
+  timezone?: string | null;
   /** Calendar days matches may be scheduled on; server derives startAt/endAt. */
   dates?: string[];
   format?: TournamentFormat;
@@ -187,6 +191,8 @@ export interface TournamentSummary {
   locationAddress: string | null;
   latitude: number | null;
   longitude: number | null;
+  /** IANA timezone for venue-local display and schedule rules; resolved once from location. */
+  timezone: string | null;
   teamCount: number;
 }
 
@@ -224,6 +230,28 @@ export interface TournamentDetail extends TournamentSummary {
     groupId: string | null;
     groupName: string | null;
   }[];
+  /** Logged-in viewer's team in this tournament; null when unauthenticated or not rostered. */
+  myTeamId: string | null;
+  /**
+   * Tennis only: registration window closed and every registrant approved or declined.
+   * Drives Captain/Manager registration player buttons after Center Sevak verification.
+   */
+  registrationVerificationComplete: boolean;
+  /** Tennis + team lead + verification complete — Registered Players List button. */
+  canViewRegisteredPlayersList: boolean;
+  /** Tennis + team lead + verification complete — Favourite Players button. */
+  canViewFavouritePlayers: boolean;
+  /**
+   * Tennis only: verified (confirmed) registrant may upload their own skill video
+   * after Center Sevak verification completes and before videoUploadEndDate (if set).
+   */
+  canUploadSkillVideo: boolean;
+  /** True when the viewer has already uploaded a skill video for this tournament. */
+  hasSkillVideo: boolean;
+  /** @deprecated Use {@link canUploadSkillVideo}. */
+  canUploadPlayerVideo: boolean;
+  /** @deprecated Use {@link hasSkillVideo}. */
+  hasPlayerVideo: boolean;
 }
 
 /** Clone suggestion returned when a name matches a past tournament (§6.2). */

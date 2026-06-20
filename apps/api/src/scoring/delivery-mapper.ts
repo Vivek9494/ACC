@@ -19,10 +19,15 @@ export function toScoringEvent(d: Delivery): ScoringEvent {
     bowlerId: d.bowlerUserId ?? d.bowlerExternalId ?? null,
     runsBat: d.runsBat,
     extraRuns: d.extraRuns,
+    noBallByeRuns: d.noBallByeRuns,
+    noBallLegByeRuns: d.noBallLegByeRuns,
+    penaltyBeneficiaryTeamId: d.penaltyBeneficiaryTeamId,
+    eventSortMs: d.createdAt?.getTime() ?? d.sequence,
     isBoundary: d.isBoundary,
     isFreeHit: d.isFreeHit,
     dismissalType: d.dismissalType,
     dismissedId: d.dismissedUserId ?? d.dismissedExternalId ?? null,
     fielderId: d.fielderUserId ?? d.fielderExternalId ?? null,
+    fielder2Id: d.fielder2UserId ?? d.fielder2ExternalId ?? null,
   };
 }

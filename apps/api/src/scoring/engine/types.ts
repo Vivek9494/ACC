@@ -17,12 +17,21 @@ export interface ScoringEvent {
   runsBat: number;
   /** Extras credited to the batting team (wide/no-ball penalty, byes, penalty). */
   extraRuns: number;
+  /** Completed byes on a no-ball delivery (§12.1). */
+  noBallByeRuns: number;
+  /** Completed leg-byes on a no-ball delivery (§12.1). */
+  noBallLegByeRuns: number;
+  /** Penalty-runs beneficiary team id (opaque); null = batting side of recording innings. */
+  penaltyBeneficiaryTeamId: string | null;
+  /** Monotonic sort key for cross-innings penalty merge (delivery createdAt ms). */
+  eventSortMs: number;
   /** 4/6 off the bat — boundaries never rotate strike (§32). */
   isBoundary: boolean;
   isFreeHit: boolean;
   dismissalType: DismissalType | null;
   dismissedId: string | null;
   fielderId: string | null;
+  fielder2Id: string | null;
 }
 
 /** Static facts about an innings the fold needs (allotment, chase target). */
@@ -35,4 +44,8 @@ export interface InningsContext {
   oversAllotted?: number | null;
   /** The chase target in effect (DLS overrides original — §12.1). */
   target?: number | null;
+  /** Scorer selections persisted on the innings row until baked into a delivery. */
+  selectedStrikerId?: string | null;
+  selectedNonStrikerId?: string | null;
+  selectedBowlerId?: string | null;
 }

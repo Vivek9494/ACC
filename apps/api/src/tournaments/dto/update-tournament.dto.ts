@@ -81,6 +81,11 @@ export class UpdateTournamentDto implements UpdateTournamentRequest {
   longitude?: number | null;
 
   @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  timezone?: string | null;
+
+  @IsOptional()
   @IsArray()
   @ArrayMinSize(1)
   @IsString({ each: true })

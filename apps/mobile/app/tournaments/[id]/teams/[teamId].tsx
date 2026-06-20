@@ -1,48 +1,16 @@
-import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Pressable, ScrollView, View } from 'react-native';
+import { useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Text } from '../../../../src/components/ui/Text';
-import { FIELD_ORANGE } from '../../../../src/components/ui/fieldStyles';
+import { TeamDetailScreen } from '../../../../src/components/tournament/TeamDetailScreen';
 
-/**
- * Placeholder for team detail + roster (later phase).
- *
- * TODO(team-detail): roster, captain assignment, and team management screens.
- */
-export default function TeamDetailPlaceholderScreen(): React.ReactElement {
+export default function TeamDetailRoute(): React.ReactElement | null {
   const { id, teamId } = useLocalSearchParams<{ id: string; teamId: string }>();
-  const router = useRouter();
-
+  if (!id || !teamId) {
+    return null;
+  }
   return (
-    <SafeAreaView className="flex-1 bg-surface">
-      <View className="flex-row items-center gap-3 px-4 py-3">
-        <Pressable
-          onPress={() => router.back()}
-          className="h-10 w-10 items-center justify-center rounded-full active:bg-black/5"
-          accessibilityRole="button"
-          accessibilityLabel="Go back"
-        >
-          <Ionicons name="arrow-back" size={24} color={FIELD_ORANGE} />
-        </Pressable>
-        <Text className="font-sans-bold text-lg text-on-surface">Team</Text>
-      </View>
-      <ScrollView contentContainerClassName="flex-1 items-center justify-center px-6 pb-12">
-        <Text className="text-center font-sans text-base text-on-surface-variant">
-          Team detail and roster are coming in a later phase.
-        </Text>
-        {teamId ? (
-          <Text className="mt-2 text-center font-sans text-sm text-on-surface-variant">
-            Team {teamId}
-          </Text>
-        ) : null}
-        {id ? (
-          <Text className="mt-1 text-center font-sans text-sm text-on-surface-variant">
-            Tournament {id}
-          </Text>
-        ) : null}
-      </ScrollView>
+    <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right']}>
+      <TeamDetailScreen tournamentId={id} teamId={teamId} />
     </SafeAreaView>
   );
 }

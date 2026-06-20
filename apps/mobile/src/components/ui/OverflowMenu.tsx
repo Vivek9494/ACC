@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useCallback, useRef, useState, type ComponentProps } from 'react';
+import { colors } from '@/theme/colors';
 import {
   Dimensions,
   Modal,
@@ -44,7 +45,7 @@ function MenuItem({
       accessibilityLabel={label}
       className="flex-row items-center gap-3 px-4 py-2.5 active:bg-surface-container-high"
     >
-      <Ionicons name={icon} size={20} color="#5a4136" />
+      <Ionicons name={icon} size={20} color={colors.textMuted} />
       <Text className="font-sans text-sm text-on-surface">{label}</Text>
     </Pressable>
   );
@@ -89,7 +90,7 @@ export function OverflowMenu({
           accessibilityRole="button"
           accessibilityLabel={accessibilityLabel}
         >
-          <Ionicons name="ellipsis-vertical" size={20} color="#5a4136" />
+          <Ionicons name="ellipsis-vertical" size={20} color={colors.textMuted} />
         </Pressable>
       </View>
 
@@ -103,7 +104,7 @@ export function OverflowMenu({
           />
           {menuLayout ? (
             <View
-              className="absolute rounded-control border border-separator bg-white py-2"
+              className="absolute rounded-control border border-separator bg-surface py-2"
               style={[
                 INPUT_SHADOW_STYLE,
                 {

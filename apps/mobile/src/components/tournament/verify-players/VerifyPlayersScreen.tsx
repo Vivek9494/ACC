@@ -1,5 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
+import { colors } from '@/theme/colors';
 import {
+  BallType,
   RegistrationVerificationPhase,
   type RegistrationDetail,
   type RegistrationSummary,
@@ -136,7 +138,7 @@ export function VerifyPlayersScreen({ tournamentId }: VerifyPlayersScreenProps):
   const registeredCount = queue?.registeredCount ?? 0;
 
   return (
-    <SafeAreaView className="flex-1 bg-surface" edges={['top']}>
+    <SafeAreaView className="flex-1 bg-background" edges={['top']}>
       <View className="flex-row items-center justify-between px-4 py-3">
         <Pressable
           onPress={() => router.back()}
@@ -170,8 +172,8 @@ export function VerifyPlayersScreen({ tournamentId }: VerifyPlayersScreenProps):
             <ActivityIndicator color={FIELD_ORANGE} />
           </View>
         ) : error ? (
-          <View className="rounded-lg bg-error-container px-4 py-3">
-            <Text className="font-sans text-sm text-on-error-container">{error}</Text>
+          <View className="rounded-lg bg-primary-50 px-4 py-3">
+            <Text className="font-sans text-sm text-primary">{error}</Text>
           </View>
         ) : queue ? (
           <>
@@ -214,14 +216,14 @@ export function VerifyPlayersScreen({ tournamentId }: VerifyPlayersScreenProps):
           accessibilityLabel="Late register a player"
           className="absolute bottom-6 right-6 h-14 w-14 items-center justify-center rounded-full bg-primary shadow-lg active:scale-95"
           style={{
-            shadowColor: '#ff6b00',
+            shadowColor: colors.primary,
             shadowOpacity: 0.25,
             shadowRadius: 12,
             shadowOffset: { width: 0, height: 4 },
             elevation: 8,
           }}
         >
-          <Ionicons name="person-add" size={28} color="#ffffff" />
+          <Ionicons name="person-add" size={28} color={colors.textInverse} />
         </Pressable>
       ) : null}
 
@@ -229,6 +231,7 @@ export function VerifyPlayersScreen({ tournamentId }: VerifyPlayersScreenProps):
         visible={editingRow !== null}
         row={editingRow}
         tournamentId={tournamentId}
+        isLeatherBall={tournament?.ballType === BallType.Leather}
         onClose={() => setEditingRow(null)}
         onSaved={onRatingsSaved}
       />
