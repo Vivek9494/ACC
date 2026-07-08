@@ -9,6 +9,7 @@ import { useState } from 'react';
 import { Modal, Pressable, View } from 'react-native';
 
 import { Button } from '../ui/Button';
+import { KeyboardAwareFormScrollView } from '../ui/KeyboardAwareFormScrollView';
 import { Select } from '../ui/Select';
 import { Text } from '../ui/Text';
 import { TextInput } from '../ui/TextInput';
@@ -90,7 +91,7 @@ export function AddExternalBowlerDialog({
             </Pressable>
           </View>
 
-          <View className="gap-4 p-4">
+          <KeyboardAwareFormScrollView compact contentContainerClassName="gap-4 p-4" keyboardVerticalOffset={64}>
             <TextInput
               label="Bowler Name"
               placeholder="Enter full name"
@@ -109,7 +110,7 @@ export function AddExternalBowlerDialog({
             <Text className="font-sans text-xs text-on-surface-variant">
               External opponent bowlers are match-only participants — not linked to app accounts.
             </Text>
-          </View>
+          </KeyboardAwareFormScrollView>
 
           <View className="flex-row gap-3 border-t border-outline-variant bg-surface-container-low p-4">
             <Button variant="outline" label="Cancel" onPress={handleCancel} className="h-11 flex-1" />

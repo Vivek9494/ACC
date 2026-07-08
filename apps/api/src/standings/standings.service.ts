@@ -1,6 +1,7 @@
 import {
   InningsType,
   MatchState,
+  resolveStandingsSplitPointOutcome,
   type StandingsInningsInput,
   type StandingsMatchInput,
   type TournamentStandings,
@@ -9,6 +10,7 @@ import { Injectable } from '@nestjs/common';
 
 import { PrismaService } from '../prisma/prisma.service';
 import { ScorecardReader } from '../scoring/scorecard-reader';
+import { MediaUrlResolver } from '../storage/media-url.resolver';
 import { assertTournamentActive } from '../tournaments/tournament-query';
 import { computeStandings } from './standings.compute';
 import { wasInningsAllOut } from './standings.nrr';
@@ -17,6 +19,7 @@ const STANDINGS_MATCH_STATES: MatchState[] = [
   MatchState.Completed,
   MatchState.ScorecardLocked,
   MatchState.NoResult,
+  MatchState.Cancelled,
 ];
 
 @Injectable()
@@ -24,6 +27,7 @@ export class StandingsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly scorecards: ScorecardReader,
+    private readonly mediaUrls: MediaUrlResolver,
   ) {}
 
   async getStandings(tournamentId: string): Promise<TournamentStandings> {
@@ -79,10 +83,11 @@ export class StandingsService {
         groupId: match.groupId,
         homeTeamId: match.homeTeamId,
         awayTeamId: match.awayTeamId,
-        isNoResult:
-          match.state === MatchState.NoResult ||
-          match.isNoResult ||
-          scorecard.result.isNoResult,
+        isNoResult: resolveStandingsSplitPointOutcome({
+          state: match.state as MatchState,
+          isNoResult: match.isNoResult,
+          scorecardIsNoResult: scorecard.result.isNoResult,
+        }),
         winningTeamId:
           match.winningTeamId ??
           (scorecard.result.decided ? scorecard.result.winningTeamId : null),
@@ -109,6 +114,18 @@ export class StandingsService {
       matches: matchInputs,
     });
 
-    return { tournamentId, tables, dataErrors };
+    const resolvedTables = await Promise.all(
+      tables.map(async (table) => ({
+        ...table,
+        teams: await Promise.all(
+          table.teams.map(async (team) => ({
+            ...team,
+            logoUrl: await this.mediaUrls.resolveReadUrl(team.logoUrl),
+          })),
+        ),
+      })),
+    );
+
+    return { tournamentId, tables: resolvedTables, dataErrors };
   }
 }

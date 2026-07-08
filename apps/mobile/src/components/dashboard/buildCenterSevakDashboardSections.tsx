@@ -1,20 +1,23 @@
-import { BallType, type CenterSevakDashboard } from '@acc/types';
+import { BallType, type CenterSevakDashboard, type AuthUser } from '@acc/types';
 import type { Router } from 'expo-router';
 import type { ReactNode } from 'react';
-import { Pressable, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { colors } from '@/theme/colors';
+import { View } from 'react-native';
 
-import { MatchSummaryCard } from '../ui/MatchSummaryCard';
+import { buildCaptainFeaturedMatchSections } from './buildDashboardFeaturedMatchSections';
+import { ParticipationPollCard } from './ParticipationPollCard';
+import { CircularAddButton } from '../ui/CircularAddButton';
 import { StatTile } from '../ui/StatTile';
 import { Text } from '../ui/Text';
 import { TournamentDashboardCard } from '../ui/TournamentDashboardCard';
 import { buildTournamentMenuActions } from './buildTournamentMenuActions';
+import { tournamentDetailHref } from '../../lib/tournament-detail-route';
 
 export function buildCenterSevakDashboardSections(
   dashboard: CenterSevakDashboard,
   router: Router,
+  user: AuthUser,
   onTournamentDeleted?: () => void,
+  onParticipationPollUpdated?: () => void,
 ): ReactNode[] {
   const performanceItems = [
     { label: 'Matches', value: dashboard.playerStats.matches },
@@ -26,41 +29,32 @@ export function buildCenterSevakDashboardSections(
   ];
 
   return [
-    dashboard.featuredMatch ? (
-      <MatchSummaryCard
-        key="featured-match"
-        tournamentName={dashboard.featuredMatch.tournamentName}
-        teamA={dashboard.featuredMatch.teamA}
-        teamB={dashboard.featuredMatch.teamB}
-        status="COMPLETED"
-        resultLine={dashboard.featuredMatch.resultNote}
-        onPress={() => router.push(`/matches/${dashboard.featuredMatch!.matchId}`)}
+    ...buildCaptainFeaturedMatchSections(dashboard.featuredMatches, router),
+    dashboard.participationPoll?.isOpen ? (
+      <ParticipationPollCard
+        key="participation-poll"
+        poll={dashboard.participationPoll}
+        onPollUpdated={() => onParticipationPollUpdated?.()}
       />
     ) : null,
     <View key="performance" className="gap-3">
       <Text className="font-sans-bold text-xl text-on-surface">Your Performance</Text>
       <StatTile items={performanceItems} />
     </View>,
-    <View key="tournaments" className="gap-3">
-      <View className="flex-row items-center justify-between">
-        <Text className="font-sans-bold text-xl text-on-surface">Tournaments</Text>
-        <Pressable
-          onPress={() => router.push('/tournaments/new')}
-          accessibilityRole="button"
-          accessibilityLabel="Add tournament"
-          className="h-10 w-10 items-center justify-center rounded-full bg-primary"
-        >
-          <Ionicons name="add" size={24} color={colors.textInverse} />
-        </Pressable>
-      </View>
-      {dashboard.tournaments.length === 0 ? (
-        <Text className="font-sans text-sm text-on-surface-variant">No tournaments yet.</Text>
-      ) : (
-        dashboard.tournaments.map(({ tournament, permissions }) => (
+    dashboard.tournaments.length > 0 ? (
+      <View key="tournaments" className="gap-3">
+        <View className="flex-row items-center justify-between">
+          <Text className="font-sans-bold text-xl text-on-surface">Tournaments</Text>
+          <CircularAddButton
+            accessibilityLabel="Add tournament"
+            onPress={() => router.push('/tournaments/new')}
+          />
+        </View>
+        {dashboard.tournaments.map(({ tournament, permissions }) => (
           <TournamentDashboardCard
             key={tournament.id}
             tournament={tournament}
-            onPress={() => router.push(`/tournaments/${tournament.id}`)}
+            onPress={() => router.push(tournamentDetailHref(user, tournament.id))}
             menuActions={buildTournamentMenuActions(
               permissions,
               tournament.id,
@@ -72,8 +66,8 @@ export function buildCenterSevakDashboardSections(
               },
             )}
           />
-        ))
-      )}
-    </View>,
+        ))}
+      </View>
+    ) : null,
   ].filter((section) => section !== null);
 }

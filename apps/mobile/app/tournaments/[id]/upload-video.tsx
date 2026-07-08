@@ -14,6 +14,7 @@ import { Text } from '../../../src/components/ui/Text';
 import { FIELD_ORANGE, INPUT_SHADOW_STYLE } from '../../../src/components/ui/fieldStyles';
 import { ApiRequestError, getMyPlayerSkillVideo } from '../../../src/lib/api';
 import { uploadPlayerSkillVideoFile } from '../../../src/lib/skillVideoUpload';
+import { getUploadLimits } from '../../../src/lib/upload-limits';
 import { pickVideoFromLibrary, type PickedVideoFile } from '../../../src/lib/videoPicker';
 import type { PlayerSkillVideoSummary } from '@acc/types';
 
@@ -29,6 +30,11 @@ export default function UploadSkillVideoScreen(): React.ReactElement {
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [success, setSuccess] = useState(false);
+  const [videoMaxMb, setVideoMaxMb] = useState(100);
+
+  useEffect(() => {
+    void getUploadLimits().then((limits) => setVideoMaxMb(limits.videoUploadMaxMb));
+  }, []);
 
   useEffect(() => {
     if (!tournamentId) {
@@ -45,7 +51,8 @@ export default function UploadSkillVideoScreen(): React.ReactElement {
     setPickError(null);
     setUploadError(null);
     setSuccess(false);
-    const result = await pickVideoFromLibrary();
+    const limits = await getUploadLimits();
+    const result = await pickVideoFromLibrary(limits);
     if (!result.ok) {
       if (result.error !== 'Selection cancelled.') {
         setPickError(result.error);
@@ -86,7 +93,7 @@ export default function UploadSkillVideoScreen(): React.ReactElement {
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
-      <ScreenHeader title="Upload Skill Video" onBack={() => router.back()} showProfileMenu={false} />
+      <ScreenHeader title="Upload Skill Video" onBack={() => router.back()} />
 
       <ScrollView className="flex-1" contentContainerClassName="gap-5 px-4 pb-10 pt-2">
         {loadingExisting ? (
@@ -119,7 +126,9 @@ export default function UploadSkillVideoScreen(): React.ReactElement {
           <Text className="font-sans-semibold text-base text-on-surface">
             {existing ? 'Tap to choose a replacement video' : 'Tap to upload video'}
           </Text>
-          <Text className="mt-1 font-sans text-sm text-on-surface-variant">MP4, MOV up to 100MB</Text>
+          <Text className="mt-1 font-sans text-sm text-on-surface-variant">
+            MP4, MOV up to {videoMaxMb}MB
+          </Text>
         </Pressable>
 
         {pickError ? (
@@ -206,7 +215,7 @@ export default function UploadSkillVideoScreen(): React.ReactElement {
         >
           <Text className="font-sans-semibold text-sm text-on-surface">Upload Instructions</Text>
           <Text className="font-sans text-sm leading-5 text-on-surface-variant">
-            • Accepted formats: MP4 or MOV{'\n'}• Maximum file size: 100MB{'\n'}• Record in landscape
+            • Accepted formats: MP4 or MOV{'\n'}• Maximum file size: {videoMaxMb}MB{'\n'}• Record in landscape
             orientation{'\n'}• Ensure clear audio and good lighting
           </Text>
         </View>

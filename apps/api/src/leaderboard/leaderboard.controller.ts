@@ -1,4 +1,4 @@
-import { type TournamentLeaderboard } from '@acc/types';
+import { type TournamentLeaderboard, type TournamentStatsView } from '@acc/types';
 import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
 
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -17,5 +17,11 @@ export class LeaderboardController {
     @Query('teamId') teamId?: string,
   ): Promise<TournamentLeaderboard> {
     return this.leaderboard.getLeaderboard(tournamentId, teamId?.trim() || null);
+  }
+
+  @Get('tournaments/:tournamentId/stats')
+  @Public()
+  getTournamentStats(@Param('tournamentId') tournamentId: string): Promise<TournamentStatsView> {
+    return this.leaderboard.getTournamentStats(tournamentId);
   }
 }

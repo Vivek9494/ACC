@@ -10,6 +10,7 @@ import {
   setUnauthorizedHandler,
   signup as apiSignup,
 } from './api';
+import { registerDeviceForPush, unregisterDeviceForPush } from './push-registration';
 import { clearTokens, loadTokens, saveTokens } from './session';
 
 export type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated';
@@ -28,6 +29,8 @@ interface AuthContextValue {
   markUnauthenticated: () => void;
   /** Merge profile fields into the in-memory user after a successful profile save. */
   applyProfileUpdate: (profile: ProfileDetail) => void;
+  /** Clears the forced password-change gate after a successful password update. */
+  clearMustChangePassword: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -40,6 +43,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
     setAuthToken(response.tokens.accessToken);
     setUser(response.user);
     setStatus('authenticated');
+    // Best-effort push registration; never blocks the auth flow.
+    void registerDeviceForPush();
   }, []);
 
   const clearSession = useCallback(async () => {
@@ -77,7 +82,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
     });
   }, []);
 
+  const clearMustChangePassword = useCallback(() => {
+    setUser((prev) => {
+      if (!prev) {
+        return prev;
+      }
+      const { mustChangePassword: _removed, ...rest } = prev;
+      return rest;
+    });
+  }, []);
+
   const signOut = useCallback(async () => {
+    await unregisterDeviceForPush();
     try {
       await apiLogout();
     } catch {
@@ -122,6 +138,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
         if (!cancelled) {
           setUser(me);
           setStatus('authenticated');
+          void registerDeviceForPush();
         }
       } catch (err) {
         if (cancelled) {
@@ -158,8 +175,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
       clearCredentials,
       markUnauthenticated,
       applyProfileUpdate,
+      clearMustChangePassword,
     }),
-    [status, user, signIn, register, signOut, clearSession, clearCredentials, markUnauthenticated, applyProfileUpdate],
+    [status, user, signIn, register, signOut, clearSession, clearCredentials, markUnauthenticated, applyProfileUpdate, clearMustChangePassword],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

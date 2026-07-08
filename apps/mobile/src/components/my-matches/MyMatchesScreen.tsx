@@ -1,12 +1,14 @@
 import {
   BallType,
+  MatchCardDisplayState,
   type BallType as BallTypeValue,
   filterMyMatchesByBallType,
   filterMyMatchesByTournament,
   myMatchTournamentOptionsForBallType,
+  type MyMatchListItem,
 } from '@acc/types';
-import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   RefreshControl,
@@ -15,17 +17,21 @@ import {
 } from 'react-native';
 
 import { ApiRequestError, getMyMatches } from '../../lib/api';
+import { subscribeMatchDataInvalidation } from '../../lib/match-data-invalidation';
 import { FIELD_ORANGE } from '../ui/fieldStyles';
 import { Select } from '../ui/Select';
 import { Text } from '../ui/Text';
 import { MyMatchCard } from './MyMatchCard';
 import { MyMatchesBallTypeTabs } from './MyMatchesBallTypeTabs';
 
-/** Shared My Matches list — played-in matches for the logged-in user. */
+/** Shared My Matches list — fixtures where the user is in the posted Playing 11. */
 export function MyMatchesScreen(): React.ReactElement {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const loadedRef = useRef(false);
+  const requestIdRef = useRef(0);
   const [error, setError] = useState<string | null>(null);
   const [ballTypes, setBallTypes] = useState<BallTypeValue[]>([]);
   const [matches, setMatches] = useState<Awaited<ReturnType<typeof getMyMatches>>['matches']>([]);
@@ -35,15 +41,20 @@ export function MyMatchesScreen(): React.ReactElement {
   const [activeBallType, setActiveBallType] = useState<BallTypeValue>(BallType.Leather);
   const [tournamentFilter, setTournamentFilter] = useState<string | null>(null);
 
-  const load = useCallback(async (isRefresh = false) => {
-    if (isRefresh) {
+  const load = useCallback(async (options?: { refresh?: boolean; silent?: boolean }) => {
+    const requestId = ++requestIdRef.current;
+
+    if (options?.refresh) {
       setRefreshing(true);
-    } else {
+    } else if (!options?.silent) {
       setLoading(true);
     }
     setError(null);
     try {
       const data = await getMyMatches();
+      if (requestIdRef.current !== requestId) {
+        return;
+      }
       setBallTypes(data.ballTypes);
       setMatches(data.matches);
       setTournaments(data.tournaments);
@@ -54,16 +65,31 @@ export function MyMatchesScreen(): React.ReactElement {
         return data.ballTypes[0] ?? BallType.Leather;
       });
     } catch (err) {
+      if (requestIdRef.current !== requestId) {
+        return;
+      }
       setError(err instanceof ApiRequestError ? err.message : 'Could not load your matches.');
     } finally {
+      if (requestIdRef.current !== requestId) {
+        return;
+      }
       setLoading(false);
       setRefreshing(false);
+      loadedRef.current = true;
+      setLoaded(true);
     }
   }, []);
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+  useFocusEffect(
+    useCallback(() => {
+      void load({ silent: loadedRef.current });
+      return () => {
+        setRefreshing(false);
+      };
+    }, [load]),
+  );
+
+  useEffect(() => subscribeMatchDataInvalidation(() => void load({ silent: true })), [load]);
 
   const showBallTypeTabs = ballTypes.length > 1;
 
@@ -84,11 +110,34 @@ export function MyMatchesScreen(): React.ReactElement {
     setTournamentFilter(null);
   }, [activeBallType]);
 
-  function openMatch(matchId: string): void {
+  function openMatchDetail(matchId: string): void {
+    router.push(`/matches/${matchId}`);
+  }
+
+  function openMatchLive(matchId: string): void {
     router.push(`/matches/${matchId}/live`);
   }
 
-  if (loading) {
+  function openMatchScorecard(matchId: string): void {
+    router.push(`/matches/${matchId}/scorecard`);
+  }
+
+  function openMatch(match: MyMatchListItem): void {
+    if (match.displayState === MatchCardDisplayState.Live) {
+      openMatchLive(match.id);
+      return;
+    }
+    if (
+      match.displayState === MatchCardDisplayState.Completed ||
+      match.displayState === MatchCardDisplayState.Cancelled
+    ) {
+      openMatchScorecard(match.id);
+      return;
+    }
+    openMatchDetail(match.id);
+  }
+
+  if (loading && !loaded) {
     return (
       <View className="flex-1 items-center justify-center bg-background">
         <ActivityIndicator color={FIELD_ORANGE} />
@@ -101,7 +150,11 @@ export function MyMatchesScreen(): React.ReactElement {
       className="flex-1 bg-background"
       contentContainerClassName="gap-4 px-4 pb-8 pt-4"
       refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={() => void load(true)} tintColor={FIELD_ORANGE} />
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={() => void load({ refresh: true })}
+          tintColor={FIELD_ORANGE}
+        />
       }
     >
       <Text className="font-sans-bold text-2xl text-on-surface">My Matches</Text>
@@ -135,8 +188,8 @@ export function MyMatchesScreen(): React.ReactElement {
         <View className="items-center rounded-control border border-outline-variant bg-surface-container-lowest px-6 py-12">
           <Text className="font-sans-semibold text-base text-on-surface">No matches yet</Text>
           <Text className="mt-2 text-center font-sans text-sm text-on-surface-variant">
-            Matches where you are named in the Playing XI will appear here. Upcoming team fixtures
-            show before the XI is locked.
+            Matches where you are named in the posted Playing 11 will appear here once the lineup
+            is locked.
           </Text>
         </View>
       ) : visibleMatches.length === 0 ? (
@@ -152,7 +205,9 @@ export function MyMatchesScreen(): React.ReactElement {
             <MyMatchCard
               key={match.id}
               match={match}
-              onPress={() => openMatch(match.id)}
+              onPress={() => openMatch(match)}
+              onWatchLivePress={() => openMatchLive(match.id)}
+              onScorecardPress={() => openMatchScorecard(match.id)}
             />
           ))}
         </View>

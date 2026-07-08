@@ -208,9 +208,31 @@ export class PermissionService {
     const contextTeamIds = teamId
       ? [teamId]
       : [match?.homeTeamId, match?.awayTeamId].filter((id): id is string => Boolean(id));
-    const sameTeam = contextTeamIds.some((id) => captainTeamIds.has(id));
-    if (sameTeam && !teamId) {
+    let sameTeam = contextTeamIds.some((id) => captainTeamIds.has(id));
+    // Tournament-level routes (no team/match param): any leadership in this tournament satisfies OwnTeam.
+    if (!sameTeam && contextTeamIds.length === 0 && tournamentId && captainTeamIds.size > 0) {
+      sameTeam = true;
+      if (!teamId) {
+        teamId = [...captainTeamIds][0];
+      }
+    } else if (sameTeam && !teamId) {
       teamId = contextTeamIds.find((id) => captainTeamIds.has(id));
+    }
+
+    // Rostered team members (Player role) satisfy OwnTeam for their squad — e.g. availability polls.
+    if (!sameTeam && tournamentId && contextTeamIds.length > 0) {
+      const membership = await this.prisma.teamMembership.findFirst({
+        where: {
+          userId: actor.id,
+          tournamentId,
+          teamId: { in: contextTeamIds },
+        },
+        select: { id: true },
+      });
+      sameTeam = membership !== null;
+      if (sameTeam && !teamId) {
+        teamId = contextTeamIds[0];
+      }
     }
 
     const sameCenterFromTarget =

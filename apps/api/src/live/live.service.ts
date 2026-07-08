@@ -1,8 +1,9 @@
-import { type ScorecardResponse, liveStateCacheKey } from '@acc/types';
+import { type ScorecardResponse, type ScorerRevokedReason, ScorerRevokedReason as ScorerRevokedReasonConst, liveStateCacheKey } from '@acc/types';
 import { Injectable } from '@nestjs/common';
 
 import { RedisService } from '../redis/redis.service';
 import { LiveGateway } from './live.gateway';
+import { UserGateway } from './user.gateway';
 
 /** Live state is cached for six hours — comfortably longer than any match. */
 const LIVE_CACHE_TTL_SECONDS = 6 * 60 * 60;
@@ -18,6 +19,7 @@ export class LiveService {
   constructor(
     private readonly redis: RedisService,
     private readonly gateway: LiveGateway,
+    private readonly userGateway: UserGateway,
   ) {}
 
   /** Cache + broadcast the latest live state for a match. */
@@ -28,6 +30,20 @@ export class LiveService {
       LIVE_CACHE_TTL_SECONDS,
     );
     this.gateway.broadcastState(state.matchId, state);
+  }
+
+  /** Real-time revoke for the outgoing scorer (match room). */
+  notifyScorerRevoked(
+    matchId: string,
+    userId: string,
+    reason: ScorerRevokedReason = ScorerRevokedReasonConst.Swap,
+  ): void {
+    this.gateway.broadcastScorerRevoked(matchId, userId, reason);
+  }
+
+  /** Real-time grant for the incoming scorer (user room — dashboard card). */
+  notifyScorerAssigned(userId: string, matchId: string): void {
+    this.userGateway.notifyScorerAssigned(userId, matchId);
   }
 
   /** The cached live snapshot for a match, or null if nothing is cached yet. */

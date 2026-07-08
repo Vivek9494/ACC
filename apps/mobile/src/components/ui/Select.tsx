@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, Modal, Pressable, View } from 'react-native';
 
 import {
@@ -15,6 +15,7 @@ import {
 } from './fieldStyles';
 import { FormErrorText } from './FormErrorText';
 import { Text } from './Text';
+import { TextInput } from './TextInput';
 
 export interface SelectOption {
   value: string;
@@ -37,6 +38,10 @@ export interface SelectProps {
   emptyMessage?: string;
   /** Called from the empty sheet state and from the inline error row. */
   onRetry?: () => void;
+  /** When true, shows a search field in the picker sheet to filter options by label. */
+  searchable?: boolean;
+  /** Placeholder for the in-sheet search field. */
+  searchPlaceholder?: string;
   containerClassName?: string;
 }
 
@@ -55,13 +60,27 @@ export function Select({
   error,
   emptyMessage = 'No options available.',
   onRetry,
+  searchable = false,
+  searchPlaceholder = 'Search…',
   containerClassName,
 }: SelectProps): React.ReactElement {
   const [open, setOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const safeOptions = options ?? [];
   const selected = safeOptions.find((o) => o.value === value);
   const showLoading = loading && safeOptions.length === 0;
   const fieldDisabled = disabled || showLoading;
+
+  const filteredOptions = useMemo(() => {
+    if (!searchable) {
+      return safeOptions;
+    }
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) {
+      return safeOptions;
+    }
+    return safeOptions.filter((option) => option.label.toLowerCase().includes(query));
+  }, [safeOptions, searchQuery, searchable]);
 
   let fieldClassName = mergeFieldClassName(undefined, { hasTrailingAccessory: true });
   if (error) {
@@ -70,12 +89,22 @@ export function Select({
 
   const displayText = selected?.label ?? (showLoading ? 'Loading…' : placeholder);
 
+  function openSheet(): void {
+    setSearchQuery('');
+    setOpen(true);
+  }
+
+  function closeSheet(): void {
+    setOpen(false);
+    setSearchQuery('');
+  }
+
   return (
     <View className={containerClassName}>
       {label ? <Text className={labelClassName(labelVariant)}>{label}</Text> : null}
       <Pressable
         disabled={fieldDisabled}
-        onPress={() => setOpen(true)}
+        onPress={openSheet}
         className={`relative ${fieldClassName}`}
         style={INPUT_SHADOW_STYLE}
       >
@@ -108,12 +137,26 @@ export function Select({
         </View>
       ) : null}
 
-      <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
-        <Pressable className="flex-1 justify-end bg-black/40" onPress={() => setOpen(false)}>
-          <Pressable className="max-h-[60%] rounded-t-xl bg-surface px-4 pb-8 pt-4" onPress={() => {}}>
+      <Modal visible={open} transparent animationType="slide" onRequestClose={closeSheet}>
+        <Pressable className="flex-1 justify-end bg-black/40" onPress={closeSheet}>
+          <View
+            className="max-h-[70%] rounded-t-xl bg-surface px-4 pb-8 pt-4"
+            onStartShouldSetResponder={() => true}
+          >
             <View className="mb-3 h-1 w-10 self-center rounded-full bg-stone-200" />
             {label ? (
               <Text className="mb-3 font-sans-bold text-base text-text">{label}</Text>
+            ) : null}
+            {searchable ? (
+              <TextInput
+                label=""
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                placeholder={searchPlaceholder}
+                autoCapitalize="none"
+                autoCorrect={false}
+                containerClassName="mb-3"
+              />
             ) : null}
             {loading ? (
               <View className="items-center py-8">
@@ -121,9 +164,12 @@ export function Select({
               </View>
             ) : (
               <FlatList
-                data={safeOptions}
+                data={filteredOptions}
                 keyExtractor={(item, index) => `${item.value}::${index}`}
                 keyboardShouldPersistTaps="handled"
+                nestedScrollEnabled
+                style={{ flexGrow: 0 }}
+                contentContainerStyle={{ paddingBottom: 8 }}
                 renderItem={({ item }) => {
                   const active = item.value === value;
                   return (
@@ -131,7 +177,7 @@ export function Select({
                       className={`rounded-control px-4 py-3 ${active ? 'bg-primary-50' : ''}`}
                       onPress={() => {
                         onChange(item.value);
-                        setOpen(false);
+                        closeSheet();
                       }}
                     >
                       <Text
@@ -145,7 +191,7 @@ export function Select({
                 ListEmptyComponent={
                   <View className="items-center gap-3 py-6">
                     <Text className="text-center font-sans text-sm text-text-muted">
-                      {emptyMessage}
+                      {searchQuery.trim() ? 'No matching options.' : emptyMessage}
                     </Text>
                     {onRetry ? (
                       <Pressable onPress={onRetry} accessibilityRole="button">
@@ -156,7 +202,7 @@ export function Select({
                 }
               />
             )}
-          </Pressable>
+          </View>
         </Pressable>
       </Modal>
     </View>

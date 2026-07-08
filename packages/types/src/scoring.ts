@@ -5,6 +5,8 @@
  * over the event stream — never stored as mutable counters.
  */
 
+import type { BallType } from './rbac';
+
 /** Type of a scoring event (spec §12.1). */
 export const DeliveryType = {
   Legal: 'LEGAL',
@@ -219,6 +221,12 @@ export interface BatterCard {
   playerId: string;
   runs: number;
   balls: number;
+  /** Off-bat singles (non-boundary). */
+  ones: number;
+  /** Off-bat twos (non-boundary). */
+  twos: number;
+  /** Off-bat threes (non-boundary). */
+  threes: number;
   fours: number;
   sixes: number;
   strikeRate: number;
@@ -361,6 +369,29 @@ export interface InningsScorecard {
   target: number | null;
   /** Per-fielder dropped-catch counts from CATCH_DROP metadata events. */
   droppedCatches: { playerId: string; count: number }[];
+  /** Chronological CATCH_DROP metadata events with batter figures at the moment of the drop. */
+  droppedCatchEvents: DroppedCatchEventView[];
+  /** True when the batting side is an external (name-only) opponent — §9.5. */
+  battingIsExternal?: boolean;
+  /** True when the bowling side is an external (name-only) opponent — §9.5. */
+  bowlingIsExternal?: boolean;
+}
+
+/** One dropped-catch metadata event for leader-only live scoring display. */
+export interface DroppedCatchEventView {
+  sequence: number;
+  overNumber: number | null;
+  ballNumber: number | null;
+  /** Position label, e.g. "12.3". */
+  overBallLabel: string;
+  /** On-strike batter when the drop was recorded. */
+  batsmanId: string;
+  /** Batter cumulative runs immediately before/at the drop event. */
+  batsmanRuns: number;
+  /** Batter balls faced immediately before/at the drop event. */
+  batsmanBalls: number;
+  bowlerId: string | null;
+  fielderId: string;
 }
 
 export interface MatchResultView {
@@ -561,6 +592,35 @@ export function formatExtrasBreakdown(extras: ExtrasBreakdown): string {
   return `Extras${breakdown} = ${extras.total}`;
 }
 
+/** Group timeline entries by over for ball-by-ball display (all overs, oldest first). */
+export function groupTimelineByOver(timeline: TimelineEntry[]): OverSummary[] {
+  const overMap = new Map<number, OverSummary>();
+  for (const entry of timeline) {
+    if (entry.overNumber === null) {
+      continue;
+    }
+    let over = overMap.get(entry.overNumber);
+    if (!over) {
+      over = { overNumber: entry.overNumber, balls: [], runs: 0, wickets: 0 };
+      overMap.set(entry.overNumber, over);
+    }
+    over.balls.push(entry.code);
+    over.runs += entry.runs;
+    if (entry.isWicket) {
+      over.wickets += 1;
+    }
+  }
+  return [...overMap.values()].sort((a, b) => a.overNumber - b.overNumber);
+}
+
+/** Compact fall-of-wickets line — e.g. "3-45 (Saurabh Patel, 6.2)". */
+export function formatFallOfWicketCompact(
+  fow: FallOfWicket,
+  nameOf: DismissalNameResolver,
+): string {
+  return `${fow.wicketNumber}-${fow.teamRuns} (${nameOf(fow.playerId)}, ${fow.oversText})`;
+}
+
 /** Partnership run rate (runs per over) from balls faced. */
 export function partnershipRunRate(runs: number, balls: number): number {
   if (balls <= 0) {
@@ -580,9 +640,9 @@ export function wicketOrdinal(n: number): string {
   return `${n}${suffix}`;
 }
 
-/** Line 1 — e.g. "1ST WICKET: 118-1" (runs, hyphen, wickets-down). */
+/** Line 1 — e.g. "1ST WICKET: 1-118" (wicket number, hyphen, team score at fall). */
 export function formatFallOfWicketHeadline(fow: FallOfWicket): string {
-  return `${wicketOrdinal(fow.wicketNumber)} WICKET: ${fow.teamRuns}-${fow.wicketNumber}`;
+  return `${wicketOrdinal(fow.wicketNumber)} WICKET: ${fow.wicketNumber}-${fow.teamRuns}`;
 }
 
 /** Line 2 — e.g. "R. Sharma, 16.4 ov". */
@@ -698,4 +758,79 @@ export function formatMatchResultNote(
     return `${winnerName} won (Super Over)`;
   }
   return `${winnerName} won`;
+}
+
+/** Leather: only drops by ACC (registered) fielders — exclude external bowling side. */
+export function filterDroppedCatchEventsForDisplay(
+  ballType: BallType,
+  innings: Pick<InningsScorecard, 'droppedCatchEvents' | 'bowlingIsExternal'>,
+): DroppedCatchEventView[] {
+  const events = innings.droppedCatchEvents ?? [];
+  if (ballType === 'LEATHER' && innings.bowlingIsExternal) {
+    return [];
+  }
+  return events;
+}
+
+export function buildDroppedCatchInningsLabel(
+  innings: Pick<InningsScorecard, 'sequence' | 'inningsType'>,
+  displayLabel: ScorecardInningsLabels | undefined,
+): string {
+  const batting = displayLabel?.battingTeamName ?? 'Batting side';
+  if (innings.inningsType === InningsType.SuperOver) {
+    return `Super Over — ${batting}`;
+  }
+  const ord =
+    innings.sequence === 1 ? '1st' : innings.sequence === 2 ? '2nd' : `${innings.sequence}th`;
+  return `${ord} Innings — ${batting}`;
+}
+
+export interface DroppedCatchInningsGroup {
+  inningsId: string | null;
+  label: string;
+  events: DroppedCatchEventView[];
+}
+
+/** Chronological groups per innings for the live scoring dropped-catch card. */
+export function collectLiveScoringDroppedCatchGroups(
+  card: ScorecardResponse,
+  ballType: BallType,
+): DroppedCatchInningsGroup[] {
+  const groups: DroppedCatchInningsGroup[] = [];
+  for (let index = 0; index < card.innings.length; index += 1) {
+    const innings = card.innings[index]!;
+    const events = filterDroppedCatchEventsForDisplay(ballType, innings);
+    if (events.length === 0) {
+      continue;
+    }
+    groups.push({
+      inningsId: innings.inningsId,
+      label: buildDroppedCatchInningsLabel(innings, card.display.innings[index]),
+      events,
+    });
+  }
+  return groups;
+}
+
+export function formatDroppedCatchEventHeadline(
+  event: DroppedCatchEventView,
+  nameOf: (id: string | null | undefined) => string,
+): string {
+  const over = event.overBallLabel || '—';
+  return `${nameOf(event.batsmanId)} - ${event.batsmanRuns} (${event.batsmanBalls})  |  Over ${over}`;
+}
+
+export function formatDroppedCatchEventDetail(
+  event: DroppedCatchEventView,
+  nameOf: (id: string | null | undefined) => string,
+): string {
+  return `${nameOf(event.bowlerId)} - dropped by ${nameOf(event.fielderId)}`;
+}
+
+/** Single-line fallback for compact contexts. */
+export function formatDroppedCatchEventLine(
+  event: DroppedCatchEventView,
+  nameOf: (id: string | null | undefined) => string,
+): string {
+  return `${formatDroppedCatchEventHeadline(event, nameOf)}\n${formatDroppedCatchEventDetail(event, nameOf)}`;
 }

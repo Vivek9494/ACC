@@ -18,13 +18,19 @@ function dtoToFormInput(dto: CreateTournamentDto): CreateTournamentFormInput {
     hasPoster: Boolean(dto.posterUrl),
     name: dto.name ?? '',
     year: dto.year != null ? String(dto.year) : null,
-    tournamentDates: dto.dates ?? [],
+    tournamentDates:
+      dto.ballType === BallType.Tennis ? (dto.dates ?? []) : [],
+    leatherFromDate:
+      dto.ballType === BallType.Leather && dto.dates && dto.dates.length >= 1
+        ? (dto.dates[0] ?? '')
+        : '',
+    leatherEndDate:
+      dto.ballType === BallType.Leather && dto.dates && dto.dates.length >= 2
+        ? (dto.dates[dto.dates.length - 1] ?? '')
+        : '',
     ballType: dto.ballType,
     citySelection: dto.citySelection ?? null,
-    tournamentProvinceId:
-      dto.ballType === BallType.Tennis && dto.citySelection === CitySelection.Multi
-        ? (dto.provinceId ?? null)
-        : null,
+    tournamentProvinceId: dto.provinceId ?? null,
     selectedCenterIds: dto.centerIds ?? [],
     numberOfTeams: dto.numberOfTeams != null ? String(dto.numberOfTeams) : null,
     playersPerTeam: dto.playersPerTeam != null ? String(dto.playersPerTeam) : '',

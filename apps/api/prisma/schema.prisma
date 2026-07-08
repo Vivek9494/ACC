@@ -270,6 +270,8 @@ model Province {
 
   centers Center[]
 
+  tournaments Tournament[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -327,12 +329,18 @@ model User {
   emergencyContactName   String
   emergencyContactNumber String
   passwordHash           String
+  /// When true, the user must set a new password before any other app access.
+  mustChangePassword     Boolean   @default(false)
+  /// UTC expiry for an admin-issued temporary password; null when not applicable.
+  tempPasswordExpiresAt  DateTime?
   role                   UserRole  @default(PLAYER)
   tokenVersion           Int       @default(0)
   isActive               Boolean   @default(true)
   /// Set when the account is locked from password reset after too many failed
   /// OTP entries (§3.4). Cleared by an admin/captain/club-manager unlock.
   passwordResetLockedAt  DateTime?
+  /// Soft-delete — excluded from directory and selectable lists; history retained.
+  deletedAt              DateTime?
 
   roleAssignments RoleAssignment[]
   memberships     TeamMembership[]
@@ -345,14 +353,36 @@ model User {
   skillVideos      PlayerSkillVideo[]
   fees            Fee[]
   squadEntries    MatchSquadPlayer[]
+  finalizedSquads MatchSquad[] @relation("MatchSquadFinalizedBy")
   attendancePunches MatchAttendancePunch[]
   attendancePunchesSet MatchAttendancePunch[] @relation("AttendancePunchSetBy")
   teamRegistrationFavourites TeamRegistrationFavourite[] @relation("TeamRegistrationFavourites")
+  leatherInvitesSent         TournamentLeatherInvite[] @relation("LeatherInvitesSent")
+  leatherInvitesReceived     TournamentLeatherInvite[] @relation("LeatherInvitesReceived")
+  tournamentScorerAssignments TournamentScorer[]
+  broadcastsPosted           Broadcast[]
+  pushDeviceTokens           PushDeviceToken[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([centerId])
+  @@index([deletedAt])
+}
+
+/// Shared tennis tournament scorer pool (Phase 1) — exactly five registered players per tournament.
+model TournamentScorer {
+  id           String     @id @default(uuid())
+  tournamentId String
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User       @relation(fields: [userId], references: [id])
+  assignedById String
+  assignedAt   DateTime   @default(now())
+
+  @@unique([tournamentId, userId])
+  @@index([tournamentId])
+  @@index([userId])
 }
 
 /// A scoped role grant (spec §2). Examples:
@@ -404,10 +434,18 @@ model Tournament {
   registrationOpenAt  DateTime?
   registrationCloseAt DateTime?
   auctionAt           DateTime?
+  /// Province the tournament belongs to (categorization; independent of venue location).
+  provinceId          String?
+  province            Province?        @relation(fields: [provinceId], references: [id])
   /// Expected team count for fixture/setup (§6.1).
   numberOfTeams       Int              @default(4)
-  /// Squad size per team; Playing XI remains 11 (§9.7).
-  playersPerTeam      Int              @default(15)
+  /// APL only — even number of teams in the knockout phase; null until configured.
+  knockoutTeamCount   Int?
+  /// Set when the knockout final is confirmed.
+  championTeamId      String?
+  championTeam        Team?            @relation("TournamentChampion", fields: [championTeamId], references: [id])
+  /// Squad size per team; Playing XI remains 11 (§9.7). Null = no roster cap.
+  playersPerTeam      Int?
   /// Substitutes allowed per match squad (§9.7; default 2).
   substitutesAllowed  Int              @default(2)
   ballType            BallType
@@ -424,6 +462,10 @@ model Tournament {
   youtubeUrl          String?
   /// Default per-player tournament fee in cents (§20). Overridable per registration.
   defaultPlayerFeeCents BigInt?
+  /// Tennis: single tournament fee; Leather: full-time player fee (CAD dollars).
+  feeFullTime           Decimal? @db.Decimal(10, 2)
+  /// Leather part-time player fee (CAD dollars); null for tennis tournaments.
+  feePartTime           Decimal? @db.Decimal(10, 2)
   /// Platform-global organizer (Club Manager / Center Sevak); not a hard FK.
   createdByUserId     String
 
@@ -446,6 +488,9 @@ model Tournament {
   skillVideos        PlayerSkillVideo[]
   fees               Fee[]
   teamRegistrationFavourites TeamRegistrationFavourite[]
+  leatherInvites           TournamentLeatherInvite[]
+  tournamentScorers        TournamentScorer[]
+  knockoutBracket          KnockoutBracket?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -453,6 +498,21 @@ model Tournament {
   @@index([type])
   @@index([state])
   @@index([isDeleted])
+  @@index([provinceId])
+}
+
+/// Metadata row for a generated APL knockout bracket (one per tournament).
+model KnockoutBracket {
+  id                String     @id @default(uuid())
+  tournamentId      String     @unique
+  tournament        Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  bracketSize       Int
+  byeCount          Int
+  knockoutTeamCount Int
+  createdAt         DateTime   @default(now())
+  matches           Match[]
+
+  @@index([tournamentId])
 }
 
 /// Calendar days on which matches may be scheduled for a tournament (source of truth).
@@ -467,6 +527,22 @@ model TournamentDate {
 
   @@unique([tournamentId, date])
   @@index([tournamentId])
+}
+
+/// Path B: Club Manager / Admin invite for leather tournaments before start date.
+model TournamentLeatherInvite {
+  id              String     @id @default(uuid())
+  tournamentId    String
+  tournament      Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User       @relation("LeatherInvitesReceived", fields: [userId], references: [id], onDelete: Cascade)
+  invitedByUserId String
+  invitedBy       User       @relation("LeatherInvitesSent", fields: [invitedByUserId], references: [id], onDelete: Cascade)
+  invitedAt       DateTime   @default(now())
+
+  @@unique([tournamentId, userId])
+  @@index([tournamentId])
+  @@index([userId])
 }
 
 /// Which Centers (cities) participate — drives the §1.1 type-resolution logic
@@ -505,11 +581,17 @@ model Team {
   lateArrivalPenalties LateArrivalPenalty[]
   teamRegistrationFavourites TeamRegistrationFavourite[]
 
+  /// Soft-delete — row retained; excluded from schedules and team lists.
+  deletedAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  championOfTournaments Tournament[] @relation("TournamentChampion")
+
   @@unique([tournamentId, nameNormalized])
   @@index([tournamentId])
+  @@index([tournamentId, deletedAt])
   @@index([groupId])
 }
 
@@ -600,7 +682,7 @@ model Registration {
   @@index([status])
 }
 
-/// Per-team shared shortlist of verified registrants (Captain + Vice-Captain).
+/// Per-team shared shortlist of verified registrants (Captain + Vice-Captain + Manager).
 model TeamRegistrationFavourite {
   id           String     @id @default(uuid())
   tournamentId String
@@ -609,7 +691,7 @@ model TeamRegistrationFavourite {
   team         Team       @relation(fields: [teamId], references: [id], onDelete: Cascade)
   userId       String
   user         User       @relation("TeamRegistrationFavourites", fields: [userId], references: [id])
-  /// Captain / VC who last toggled the heart (audit only).
+  /// Captain / VC / Manager who last toggled the heart (audit only).
   favouritedByUserId String
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
@@ -706,6 +788,8 @@ model Match {
   geofenceLng    Float?
   matchDate      DateTime?
   startTime      DateTime?
+  /// Cumulative pre-live delay (minutes). Original `startTime` is never overwritten.
+  delayMinutes   Int       @default(0)
   reportingTime  DateTime?
 
   /// Toss data (§11.2) — the animated flip is out of scope but the data isn't.
@@ -746,6 +830,17 @@ model Match {
   confirmedAt       DateTime?
   confirmedByUserId String?
   autoConfirmed     Boolean   @default(false)
+  /// Two-sided confirmation — home side (team A) and away side (team B).
+  homeTeamConfirmed         Boolean   @default(false)
+  homeTeamConfirmedByUserId String?
+  homeTeamConfirmedAt       DateTime?
+  awayTeamConfirmed         Boolean   @default(false)
+  awayTeamConfirmedByUserId String?
+  awayTeamConfirmedAt       DateTime?
+  /// Admin / Club Manager override — finalizes both sides outright.
+  adminConfirmed         Boolean   @default(false)
+  adminConfirmedByUserId String?
+  adminConfirmedAt       DateTime?
 
   /// Soft-delete — row kept; excluded from schedules and round-robin pair guard when true.
   isDeleted           Boolean   @default(false)
@@ -753,6 +848,18 @@ model Match {
   deletedById         String?
   /// Sorted `teamId:teamId` for round-robin duplicate guard; null for non-RR / external fixtures.
   roundRobinPairKey   String?
+
+  /// Knockout bracket placement and advancement (GROUP_STAGE_KNOCKOUT).
+  bracketId          String?
+  bracket            KnockoutBracket? @relation(fields: [bracketId], references: [id], onDelete: SetNull)
+  awaitingTeams      Boolean        @default(false)
+  bracketRoundIndex  Int?
+  bracketPosition    Int?
+  bracketRoundLabel  String?
+  nextMatchId        String?
+  nextMatch          Match?     @relation("KnockoutAdvancement", fields: [nextMatchId], references: [id])
+  nextMatchSlot      MatchSide?
+  feedsIntoMatches   Match[]    @relation("KnockoutAdvancement")
 
   innings         Innings[]
   scorerGrants    MatchScorerGrant[]
@@ -770,6 +877,9 @@ model Match {
   @@index([state])
   @@index([isDeleted])
   @@index([tournamentId, roundRobinPairKey])
+  @@index([tournamentId, bracketRoundIndex])
+  @@index([bracketId])
+  @@index([nextMatchId])
 }
 
 /// Per-match Scorer grant (§2, §11.1). A Player is granted scoring for one
@@ -805,6 +915,11 @@ model MatchSquad {
   /// Captain / VC who posted the 11 (or Club Manager fallback — §31 #1).
   lockedByUserId String
   lockedAt       DateTime @default(now())
+  /// Pre-match confirmation gate — editable after finalize until the match goes Live.
+  isFinalized        Boolean   @default(false)
+  finalizedByUserId  String?
+  finalizedBy        User?     @relation("MatchSquadFinalizedBy", fields: [finalizedByUserId], references: [id])
+  finalizedAt        DateTime?
 
   players MatchSquadPlayer[]
 
@@ -1003,6 +1118,10 @@ model Suspension {
   triggeredByMatchId String?
   servingMatchId     String?
   reason             String?
+  /// Match where the captain carry-forward / cancel action was taken (IN-tab badge).
+  actionedAtMatchId  String?
+  /// Times this offense was carried forward (captain or auto while serving).
+  carryForwardCount  Int              @default(0)
   cancelledByUserId  String?
   cancelledAt        DateTime?
 
@@ -1012,6 +1131,8 @@ model Suspension {
   @@index([userId])
   @@index([tournamentId])
   @@index([status])
+  @@index([servingMatchId, teamId, status])
+  @@index([actionedAtMatchId])
 }
 
 /// Late-arrival penalty (§10 Phase 2). One active (OWED/ASSIGNED) per player at most.
@@ -1145,6 +1266,90 @@ model Fee {
   @@unique([tournamentId, userId])
   @@index([teamId])
   @@index([registrationId])
+}
+
+// ---------------------------------------------------------------------------
+// Broadcast messages (admin → all dashboards, 24h TTL)
+// ---------------------------------------------------------------------------
+
+model Broadcast {
+  id        String    @id @default(uuid())
+  imageUrl  String?
+  text      String?
+  postedBy  String
+  poster    User      @relation(fields: [postedBy], references: [id])
+  postedAt  DateTime  @default(now())
+  expiresAt DateTime
+  removedAt DateTime?
+
+  @@index([postedAt])
+  @@index([expiresAt])
+}
+
+// ---------------------------------------------------------------------------
+// App settings (admin-configurable runtime values)
+// ---------------------------------------------------------------------------
+
+/// Key-value app settings (upload limits, etc.). Values are JSON for forward compatibility.
+model AppSetting {
+  key       String   @id
+  valueJson Json
+  updatedAt DateTime @updatedAt
+}
+
+// ---------------------------------------------------------------------------
+// Push notifications (§17) — device tokens + de-dupable send log
+// ---------------------------------------------------------------------------
+
+enum PushPlatform {
+  IOS
+  ANDROID
+  WEB
+}
+
+/// FCM device registration token per user device. A user may have many (one per
+/// device/install). Pruned when FCM reports the token is no longer valid.
+model PushDeviceToken {
+  id         String       @id @default(uuid())
+  userId     String
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// FCM registration token; unique across the platform (a token maps to one device).
+  token      String       @unique
+  platform   PushPlatform
+  /// Bumped whenever the client re-registers the same token (liveness signal).
+  lastSeenAt DateTime     @default(now())
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  @@index([userId])
+}
+
+/// One record per logical notification send (§17). `dedupeKey` makes timed jobs
+/// and retries idempotent: a unique key that already exists short-circuits the
+/// send. Kept indefinitely (no auto-purge).
+model NotificationLog {
+  id             String   @id @default(uuid())
+  /// Semantic trigger key (e.g. "MATCH_REMINDER"); free-form for forward compat.
+  triggerKey     String
+  /// Idempotency key for the logical notification (e.g. "MATCH_REMINDER:matchX:2026-07-07").
+  /// Null for ad-hoc sends that intentionally allow duplicates.
+  dedupeKey      String?  @unique
+  title          String
+  body           String
+  /// Structured FCM `data` payload as sent.
+  data           Json?
+  /// Number of recipient users resolved for this send.
+  recipientCount Int
+  /// Number of device tokens FCM accepted.
+  successCount   Int      @default(0)
+  /// Number of device tokens FCM rejected (and pruned).
+  failureCount   Int      @default(0)
+  /// Human-readable audience description for traceability (e.g. "APL tournament X centers").
+  audienceSummary String?
+  sentAt         DateTime @default(now())
+
+  @@index([triggerKey])
+  @@index([sentAt])
 }
 
 // ---------------------------------------------------------------------------

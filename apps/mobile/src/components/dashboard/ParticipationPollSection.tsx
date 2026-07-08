@@ -77,11 +77,7 @@ export function ParticipationPollSection({
   const hasVote = poll.userVote != null;
   const optionsEnabled = poll.isOpen && editing;
   const showChoices = poll.isOpen && (!hasVote || editing);
-  const confirmEnabled =
-    poll.isOpen &&
-    editing &&
-    selected != null &&
-    (poll.userVote == null || selected !== poll.userVote);
+  const confirmEnabled = poll.isOpen && editing && selected != null;
   const showConfirm = poll.isOpen && editing;
   const showEdit = poll.isOpen && hasVote && !editing;
 
@@ -105,7 +101,7 @@ export function ParticipationPollSection({
   }
 
   return (
-    <View className="gap-3 border-b border-outline-variant/60 pb-4">
+    <View className="gap-3">
       <Text className="font-sans-bold text-sm uppercase tracking-wider text-on-surface">
         Are you playing?
       </Text>
@@ -127,7 +123,7 @@ export function ParticipationPollSection({
         </View>
       ) : (
         <View className="rounded-control border border-outline-variant bg-surface-container-lowest px-4 py-3">
-          <Text className="font-sans-semibold text-sm text-on-surface">
+          <Text className="font-sans-semibold text-sm text-primary">
             {poll.userVote ? CHOICE_LABEL[poll.userVote] : '—'}
           </Text>
         </View>
@@ -160,13 +156,12 @@ export function ParticipationPollSection({
       {showEdit ? (
         <Button
           label="Edit"
-          variant="outline"
+          variant="secondary"
           onPress={() => {
             setEditing(true);
             setSelected(poll.userVote);
           }}
-          className="h-12 w-full border-primary"
-          textClassName="text-primary"
+          className="h-12 w-full"
         />
       ) : null}
 

@@ -1,4 +1,4 @@
-import { TournamentFormat, type UpdateTournamentRequest } from '@acc/types';
+import { TournamentFormat, TOURNAMENT_FORM_MESSAGES, type UpdateTournamentRequest } from '@acc/types';
 import {
   IsArray,
   IsBoolean,
@@ -122,6 +122,27 @@ export class UpdateTournamentDto implements UpdateTournamentRequest {
   @IsOptional()
   @IsDateString()
   auctionAt?: string | null;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  feeFullTime?: number | null;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  feePartTime?: number | null;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(1, { message: TOURNAMENT_FORM_MESSAGES.province.required })
+  provinceId?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(2)
+  @Max(64)
+  knockoutTeamCount?: number | null;
 
   // §6.1: still rejected on edit.
   @IsEmpty({ message: 'Powerplay Overs was removed per spec §6.1 and is not accepted' })

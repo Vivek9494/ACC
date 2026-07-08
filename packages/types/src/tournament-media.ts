@@ -53,5 +53,7 @@ export function tournamentPosterSizeError(): string {
 }
 
 export interface UploadTournamentPosterResponse {
+  storageKey: string;
+  /** Presigned read URL for immediate display. Persist storageKey as posterUrl. */
   posterUrl: string;
 }

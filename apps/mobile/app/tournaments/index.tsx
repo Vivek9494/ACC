@@ -1,20 +1,22 @@
-import { type TournamentSummary } from '@acc/types';
+import { APP_ORG_NAME, APP_SHORT_NAME, type TournamentSummary } from '@acc/types';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, ScrollView, View } from 'react-native';
-import { Button } from '../../src/components/ui/Button';
+import { CircularAddButton } from '../../src/components/ui/CircularAddButton';
 import { Text } from '../../src/components/ui/Text';
 import { BallTypeIcon } from '../../src/components/ui/BallTypeIcon';
 import { FIELD_ORANGE } from '../../src/components/ui/fieldStyles';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { StateBadge } from '../../src/components/StateBadge';
+import { StatusPill } from '../../src/components/ui/StatusPill';
 import { ApiRequestError, listTournaments } from '../../src/lib/api';
 import { useAuth } from '../../src/lib/auth-context';
 import { canCreateTournament } from '../../src/lib/can-create-tournament';
+import { resolveMediaDisplayUrl } from '../../src/lib/media-url';
+import { tournamentStatusPill } from '../../src/lib/tournament-display';
 
 const TYPE_LABELS: Record<TournamentSummary['type'], string> = {
-  ACC: 'ACC',
+  ACC: APP_SHORT_NAME,
   APL: 'APL',
   CENTER: 'Center-level',
 };
@@ -60,15 +62,14 @@ export default function TournamentsScreen(): React.ReactElement {
       <View className="flex-row items-center justify-between px-6 pt-6">
         <View>
           <Text className="font-sans-medium text-sm uppercase tracking-widest text-primary">
-            Atmiya Cricket Club
+            {APP_ORG_NAME}
           </Text>
           <Text className="font-sans-bold text-3xl text-on-surface">Tournaments</Text>
         </View>
         {canCreate ? (
-          <Button
+          <CircularAddButton
+            accessibilityLabel="Add tournament"
             onPress={() => router.push('/tournaments/new')}
-            className="h-11 px-5"
-            label="+ Add"
           />
         ) : null}
       </View>
@@ -89,15 +90,17 @@ export default function TournamentsScreen(): React.ReactElement {
             </Text>
           </View>
         ) : (
-          tournaments.map((t) => (
+          tournaments.map((t) => {
+            const posterUri = resolveMediaDisplayUrl(t.posterUrl);
+            return (
             <Pressable
               key={t.id}
               onPress={() => router.push(`/tournaments/${t.id}`)}
               className="flex-row items-center gap-3 rounded-xl border border-outline-variant bg-surface-container-lowest p-3 active:opacity-80"
             >
-              {t.posterUrl ? (
+              {posterUri ? (
                 <Image
-                  source={{ uri: t.posterUrl }}
+                  source={{ uri: posterUri }}
                   className="h-14 w-14 rounded-lg"
                   resizeMode="cover"
                 />
@@ -120,9 +123,10 @@ export default function TournamentsScreen(): React.ReactElement {
                   {t.teamCount === 1 ? 'team' : 'teams'}
                 </Text>
               </View>
-              <StateBadge state={t.state} />
+              <StatusPill {...tournamentStatusPill(t)} />
             </Pressable>
-          ))
+            );
+          })
         )}
       </ScrollView>
     </SafeAreaView>

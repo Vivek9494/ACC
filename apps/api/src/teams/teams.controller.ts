@@ -2,26 +2,27 @@ import {
   type AssignTeamRolesResponse,
   type AuthUser,
   Permission,
-  TEAM_LOGO_MAX_BYTES,
+  type AddTeamPlayersResponse,
+  type TeamAddPlayersPickerView,
   type TeamDetailView,
+  type TeamRoleCandidatesView,
   type TeamSummary,
   type TournamentPlayerProfileView,
   type UploadTeamLogoResponse,
 } from '@acc/types';
 import {
-  BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   Patch,
   Post,
   Req,
-  UploadedFile,
   UseGuards,
-  UseInterceptors,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
 import type { Request } from 'express';
 
 import { AuthService } from '../auth/auth.service';
@@ -30,8 +31,12 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Public } from '../auth/public.decorator';
 import { PermissionGuard } from '../authz/permission.guard';
 import { RequirePermission } from '../authz/require-permission.decorator';
+import { MediaUploadCompleteDto, MediaUploadSessionDto } from '../media/dto/media-upload.dto';
+import { MediaUploadService } from '../media/media-upload.service';
 import { CreateTeamDto } from './dto/create-team.dto';
+import { AddTeamPlayersDto } from './dto/add-team-players.dto';
 import { AssignTeamRolesDto } from './dto/assign-team-roles.dto';
+import { UpdateTeamDto } from './dto/update-team.dto';
 import { TeamsService } from './teams.service';
 
 /** Tournament team management (§6.3). */
@@ -41,12 +46,23 @@ export class TeamsController {
   constructor(
     private readonly teams: TeamsService,
     private readonly auth: AuthService,
+    private readonly mediaUpload: MediaUploadService,
   ) {}
 
   @Get('tournaments/:tournamentId/teams')
   @Public()
   list(@Param('tournamentId') tournamentId: string): Promise<TeamSummary[]> {
     return this.teams.list(tournamentId);
+  }
+
+  @Get('tournaments/:tournamentId/teams/role-candidates')
+  @RequirePermission(Permission.ASSIGN_TEAM_ROLES)
+  @UseGuards(PermissionGuard)
+  listRoleCandidates(
+    @CurrentUser() user: AuthUser,
+    @Param('tournamentId') tournamentId: string,
+  ): Promise<TeamRoleCandidatesView> {
+    return this.teams.listRoleCandidates(user, tournamentId);
   }
 
   @Get('tournaments/:tournamentId/teams/:teamId')
@@ -82,6 +98,45 @@ export class TeamsController {
     return this.teams.create(user, tournamentId, dto);
   }
 
+  @Patch('tournaments/:tournamentId/teams/:teamId')
+  update(
+    @CurrentUser() user: AuthUser,
+    @Param('tournamentId') tournamentId: string,
+    @Param('teamId') teamId: string,
+    @Body() dto: UpdateTeamDto,
+  ): Promise<TeamSummary> {
+    return this.teams.update(user, tournamentId, teamId, dto);
+  }
+
+  @Delete('tournaments/:tournamentId/teams/:teamId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  remove(
+    @CurrentUser() user: AuthUser,
+    @Param('tournamentId') tournamentId: string,
+    @Param('teamId') teamId: string,
+  ): Promise<void> {
+    return this.teams.remove(user, tournamentId, teamId);
+  }
+
+  @Get('tournaments/:tournamentId/teams/:teamId/add-player-candidates')
+  listAddPlayerCandidates(
+    @CurrentUser() user: AuthUser,
+    @Param('tournamentId') tournamentId: string,
+    @Param('teamId') teamId: string,
+  ): Promise<TeamAddPlayersPickerView> {
+    return this.teams.listAddPlayerCandidates(user, tournamentId, teamId);
+  }
+
+  @Post('tournaments/:tournamentId/teams/:teamId/players')
+  addPlayers(
+    @CurrentUser() user: AuthUser,
+    @Param('tournamentId') tournamentId: string,
+    @Param('teamId') teamId: string,
+    @Body() dto: AddTeamPlayersDto,
+  ): Promise<AddTeamPlayersResponse> {
+    return this.teams.addPlayersToTeam(user, tournamentId, teamId, dto);
+  }
+
   @Patch('tournaments/:tournamentId/teams/:teamId/roles')
   @RequirePermission(Permission.ASSIGN_TEAM_ROLES)
   @UseGuards(PermissionGuard)
@@ -94,19 +149,23 @@ export class TeamsController {
     return this.teams.assignTeamRoles(user, tournamentId, teamId, dto);
   }
 
-  @Post('tournaments/team-logo')
-  @UseInterceptors(FileInterceptor('logo', { limits: { fileSize: TEAM_LOGO_MAX_BYTES } }))
-  async uploadLogo(
+  @Post('tournaments/team-logo/upload-session')
+  createLogoUploadSession(
     @CurrentUser() user: AuthUser,
-    @UploadedFile() file: { buffer: Buffer } | undefined,
+    @Body() dto: MediaUploadSessionDto,
+  ) {
+    return this.mediaUpload.createTeamLogoUploadSession(user.id, dto);
+  }
+
+  @Post('tournaments/team-logo/complete')
+  async completeLogoUpload(
+    @CurrentUser() user: AuthUser,
+    @Body() dto: MediaUploadCompleteDto,
   ): Promise<UploadTeamLogoResponse> {
-    if (!file?.buffer?.length) {
-      throw new BadRequestException({
-        message: 'Team logo file is required',
-        error: 'LOGO_REQUIRED',
-      });
-    }
-    const logoUrl = await this.teams.uploadLogo(user, file.buffer);
-    return { logoUrl };
+    const result = await this.mediaUpload.completeTeamLogoUpload(user.id, dto);
+    return {
+      storageKey: result.storageKey,
+      logoUrl: result.displayUrl,
+    };
   }
 }

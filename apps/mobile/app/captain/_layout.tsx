@@ -1,3 +1,4 @@
+import { UserRole } from '@acc/types';
 import { Redirect, Stack } from 'expo-router';
 
 import { useAuth } from '../../src/lib/auth-context';
@@ -7,13 +8,20 @@ import { hasTeamLeadAccess } from '../../src/lib/team-lead-access';
 export default function CaptainLayout(): React.ReactElement {
   const { user } = useAuth();
 
-  if (!user || !hasTeamLeadAccess(user)) {
+  const canAccess =
+    user != null &&
+    (user.role === UserRole.Captain ||
+      user.role === UserRole.ViceCaptain ||
+      hasTeamLeadAccess(user));
+
+  if (!canAccess) {
     return <Redirect href="/home" />;
   }
 
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="birthdays" />
     </Stack>
   );
 }

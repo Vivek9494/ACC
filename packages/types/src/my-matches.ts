@@ -4,6 +4,7 @@ import {
   DEFAULT_VENUE_TIMEZONE,
   formatVenueDateTime,
 } from './timezone';
+import { resolveEffectiveStartTime } from './match-delay';
 import {
   MatchCardDisplayState,
   parseMatchSortInstant,
@@ -38,6 +39,8 @@ export interface MyMatchListItem {
   displayState: MatchCardDisplayStateType;
   matchDate: string | null;
   startTime: string | null;
+  /** Cumulative pre-live delay in minutes. */
+  delayMinutes: number;
   teamA: MyMatchTeamView;
   teamB: MyMatchTeamView;
   /** Completed: result text. Live: chase / live status. Scheduled: start time line. */
@@ -51,7 +54,7 @@ export interface MyMatchesTournamentOption {
   ballType: BallTypeValue;
 }
 
-/** Logged-in user's played-match history for the My Matches screen. */
+/** Logged-in user's matches where they are in the posted Playing 11 (cancelled only when scored). */
 export interface MyMatchesResponse {
   /** Distinct ball types present — client shows tabs only when length > 1. */
   ballTypes: BallTypeValue[];
@@ -78,6 +81,7 @@ const MY_MATCHES_DISPLAY_BUCKET: Record<MatchCardDisplayStateType, number> = {
   [MatchCardDisplayState.Live]: 0,
   [MatchCardDisplayState.Scheduled]: 1,
   [MatchCardDisplayState.Completed]: 2,
+  [MatchCardDisplayState.Cancelled]: 3,
 };
 
 /**
@@ -109,9 +113,23 @@ export function sortMyMatchesForDisplay(matches: readonly MyMatchListItem[]): My
 
 /** Bottom-line text for a scheduled My Matches card. */
 export function formatMyMatchScheduledFooterLine(
-  match: Pick<MyMatchListItem, 'matchDate' | 'startTime' | 'tournamentTimezone'>,
+  match: Pick<MyMatchListItem, 'matchDate' | 'startTime' | 'tournamentTimezone' | 'delayMinutes'>,
 ): string {
   const displayZone = match.tournamentTimezone ?? DEFAULT_VENUE_TIMEZONE;
+  const effectiveStart = resolveEffectiveStartTime({
+    matchDate: match.matchDate,
+    startTime: match.startTime,
+    delayMinutes: match.delayMinutes,
+  });
+  if (effectiveStart) {
+    const timeLabel = formatVenueDateTime(effectiveStart.toISOString(), displayZone, {
+      includeWeekday: false,
+      includeYear: false,
+      includeTime: true,
+      includeZoneAbbrev: true,
+    });
+    return `Starts ${timeLabel}`;
+  }
   if (match.startTime) {
     const timeLabel = formatVenueDateTime(match.startTime, displayZone, {
       includeWeekday: false,

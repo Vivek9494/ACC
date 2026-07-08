@@ -1,6 +1,7 @@
 import type { TournamentPlayerProfileView } from '@acc/types';
 import { formatPlayerProfileDisplayName } from '@acc/types';
 import { MaterialIcons } from '@expo/vector-icons';
+import type { ReactNode } from 'react';
 import { View } from 'react-native';
 
 import { PlayerAvatar } from '../PlayerAvatar';
@@ -19,6 +20,8 @@ export interface PlayerProfileHeaderProps {
     | 'centerName'
     | 'ballTypeLabel'
   >;
+  /** Rendered at the right end of the center-badge row (e.g. admin edit action). */
+  centerRowTrailing?: ReactNode;
 }
 
 function ProfileBadge({
@@ -48,8 +51,27 @@ function ProfileBadge({
 }
 
 /** Cover banner, avatar, name, and role/captain/center badges. */
-export function PlayerProfileHeader({ profile }: PlayerProfileHeaderProps): React.ReactElement {
+export function PlayerProfileHeader({
+  profile,
+  centerRowTrailing,
+}: PlayerProfileHeaderProps): React.ReactElement {
   const displayName = formatPlayerProfileDisplayName(profile.firstName, profile.lastName);
+  const roleBadges = (
+    <>
+      {profile.isCaptain ? (
+        <ProfileBadge icon="workspace-premium" label="Captain" />
+      ) : null}
+      {profile.isViceCaptain ? (
+        <ProfileBadge icon="workspace-premium" label="Vice-Captain" />
+      ) : null}
+      {profile.playerRoleLabel ? (
+        <ProfileBadge icon="bolt" label={profile.playerRoleLabel} variant="muted" />
+      ) : null}
+    </>
+  );
+  const hasRoleBadges =
+    profile.isCaptain || profile.isViceCaptain || Boolean(profile.playerRoleLabel);
+  const showCenterRow = Boolean(profile.centerName) || centerRowTrailing != null;
 
   return (
     <View className="mb-4 overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-container-lowest">
@@ -57,29 +79,26 @@ export function PlayerProfileHeader({ profile }: PlayerProfileHeaderProps): Reac
         <View className="absolute inset-0 bg-secondary/30" />
       </View>
       <View className="-mt-16 px-4 pb-4">
-        <View className="border-4 border-surface shadow-sm">
-          <PlayerAvatar
-            firstName={profile.firstName}
-            profilePhotoUrl={profile.profilePhotoUrl}
-            size="lg"
-            shape="square"
-          />
-        </View>
+        <PlayerAvatar
+          firstName={profile.firstName}
+          profilePhotoUrl={profile.profilePhotoUrl}
+          size="lg"
+          shape="square"
+        />
         <Text className="mt-4 font-sans-bold text-2xl text-on-surface">{displayName}</Text>
-        <View className="mt-2 flex-row flex-wrap gap-2">
-          {profile.isCaptain ? (
-            <ProfileBadge icon="workspace-premium" label="Captain" />
-          ) : null}
-          {profile.isViceCaptain ? (
-            <ProfileBadge icon="workspace-premium" label="Vice-Captain" />
-          ) : null}
-          {profile.centerName ? (
-            <ProfileBadge icon="location-on" label={profile.centerName} variant="center" />
-          ) : null}
-          {profile.playerRoleLabel ? (
-            <ProfileBadge icon="bolt" label={profile.playerRoleLabel} variant="muted" />
-          ) : null}
-        </View>
+        {hasRoleBadges ? (
+          <View className="mt-2 flex-row flex-wrap gap-2">{roleBadges}</View>
+        ) : null}
+        {showCenterRow ? (
+          <View className="mt-2 flex-row items-center justify-between gap-3">
+            {profile.centerName ? (
+              <ProfileBadge icon="location-on" label={profile.centerName} variant="center" />
+            ) : (
+              <View />
+            )}
+            {centerRowTrailing ?? null}
+          </View>
+        ) : null}
       </View>
     </View>
   );

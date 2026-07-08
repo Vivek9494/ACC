@@ -14,14 +14,34 @@ import {
   type AuthUser,
   type ChangePasswordRequest,
   type ChangePasswordResponse,
+  type CompleteForcedPasswordChangeRequest,
+  type CompleteForcedPasswordChangeResponse,
   type AdminOverview,
+  type AdminAppSettings,
+  type AdminBroadcastView,
+  type ActiveBroadcast,
+  type BroadcastHistoryEntry,
+  type UpdateAdminAppSettingsRequest,
+  type UploadLimits,
   type AdminUserDetail,
+  type AdminUserPlayerStatsView,
   type AdminUsersPage,
+  type BirthdayUserSummary,
+  type TodayBirthdayUserSummary,
+  type BallType,
   type ListAdminUsersParams,
+  type CreateAdminUserRequest,
+  type CreateAdminUserResponse,
+  type UpdateAdminUserRequest,
+  type UpdateAdminUserStatusRequest,
+  type UpdateAdminUserStatusResponse,
   type CaptainDashboard,
   type CenterSevakDashboard,
   type ClubManagerDashboard,
+  type GenerateTemporaryPasswordResponse,
   type GuestDashboard,
+  type OwnPlayerMomMatchesView,
+  type OwnPlayerStatsView,
   type PlayerDashboard,
   type ProfileDetail,
   type RequestProfileMobileOtpRequest,
@@ -47,15 +67,29 @@ import {
   type AssignTeamRolesRequest,
   type AssignTeamRolesResponse,
   type CreateTeamRequest,
+  type TeamRoleCandidatesView,
+  type UpdateTeamRequest,
   type CreateTournamentRequest,
+  type CreateLeatherInvitesRequest,
+  type CreateLeatherInvitesResponse,
+  type LeatherInviteCandidatesResponse,
+  type SetTournamentScorersRequest,
+  type SetTournamentScorersResponse,
+  type EnterScoringSessionResponse,
+  type TournamentScorersSelectionView,
+  type LeatherTournamentInvitesResponse,
   type ExternalPlayerView,
   type ForgotPasswordRequest,
   type GroupSummary,
+  type UpdateGroupMembersRequest,
   type HandoverScorerRequest,
+  type SwapMatchScorerRequest,
   type LateRegistrationRequest,
+  type FinalizeBothPlayingXiRequest,
   type LockPlayingXiRequest,
   type LoginRequest,
   type MatchDetail,
+  type DelayMatchRequest,
   type MatchSchedulingFormat,
   type MatchState,
   type MatchListItem,
@@ -67,6 +101,7 @@ import {
   type PlayingXiSwitchRequest,
   type ParticipationPollCardView,
   type ParticipationPollTallyView,
+  type PlayingXiConfirmFromPollView,
   type PollPlayingXiSelectionView,
   type SubmitParticipationPollVoteRequest,
   type AttendanceMonitoringView,
@@ -80,10 +115,14 @@ import {
   type ProvinceSummary,
   type RecordDeliveryRequest,
   type RecordTossRequest,
+  type RegisterPushTokenRequest,
   type StartMatchSetupRequest,
   type RefreshRequest,
   type ReverseGeocodeResult,
+  type UnregisterPushTokenRequest,
+  type ResolvedLocationResult,
   type ManOfMatchEligibilityView,
+  type ScorecardConfirmEligibilityView,
   type ScorecardConfirmationView,
   type ScorecardResponse,
   type SelectManOfMatchRequest,
@@ -92,6 +131,7 @@ import {
   type SetInningsParticipantsRequest,
   type StartInningsRequest,
   type UndoDeliveryRequest,
+  type UpdateMatchRequest,
   type UpdateOversAllottedRequest,
   type RegistrationDetail,
   type RegistrationFieldDefinition,
@@ -107,6 +147,9 @@ import {
   type SquadCandidate,
   type SubmitRegistrationRequest,
   type TeamDetailView,
+  type TeamAddPlayersPickerView,
+  type AddTeamPlayersRequest,
+  type AddTeamPlayersResponse,
   type TournamentPlayerProfileView,
   type TeamSummary,
   type TournamentFeeEntry,
@@ -114,14 +157,22 @@ import {
   type SetRegistrationFavouriteResponse,
   type TournamentFavouritePlayersView,
   type VerifiedRegisteredPlayersView,
+  type LeatherRegisteredPlayersView,
+  type ListLeatherRegisteredPlayersQuery,
   type PlayerSkillVideoCompleteUploadRequest,
   type PlayerSkillVideoPlaybackView,
   type PlayerSkillVideoSummary,
   type PlayerSkillVideoUploadSessionRequest,
   type PlayerSkillVideoUploadSessionResponse,
+  type KnockoutBracketDeletePreview,
+  type KnockoutBracketView,
+  type GenerateKnockoutBracketRequest,
+  type KnockoutQualificationResponse,
   type TournamentDetail,
   type TournamentLeaderboard,
+  type TournamentStatsView,
   type TournamentStandings,
+  type TournamentBrowseEntry,
   type TournamentDashboardEntry,
   type TournamentEditFormData,
   type TournamentState,
@@ -391,6 +442,14 @@ export async function apiFetchPublic<T>(path: string, options: RequestOptions = 
   return apiFetchInternal<T>(path, { ...options, skipAuthHeader: true, skipAuthRetry: true });
 }
 
+/**
+ * Public route that forwards Bearer when logged in so the server can resolve the
+ * optional viewer (e.g. canEdit, myTeamId). Does not refresh or force logout on 401.
+ */
+export async function apiFetchOptionalAuth<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  return apiFetchInternal<T>(path, { ...options, skipAuthRetry: true });
+}
+
 export interface HealthStatus {
   status: string;
   timestamp: string;
@@ -451,10 +510,58 @@ export function getAdminOverview(): Promise<AdminOverview> {
   return apiFetch<AdminOverview>('/admin/overview');
 }
 
+export function getUploadLimits(): Promise<UploadLimits> {
+  return apiFetch<UploadLimits>('/settings/upload-limits');
+}
+
+export function getAdminSettings(): Promise<AdminAppSettings> {
+  return apiFetch<AdminAppSettings>('/admin/settings');
+}
+
+export function updateAdminSettings(body: UpdateAdminAppSettingsRequest): Promise<AdminAppSettings> {
+  return apiFetch<AdminAppSettings>('/admin/settings', { method: 'PATCH', body });
+}
+
+export function getActiveBroadcast(): Promise<ActiveBroadcast | null> {
+  return apiFetch<ActiveBroadcast | null>('/broadcast/active');
+}
+
+export function getAdminBroadcast(): Promise<AdminBroadcastView | null> {
+  return apiFetch<AdminBroadcastView | null>('/admin/broadcast');
+}
+
+export function listBroadcastHistory(): Promise<BroadcastHistoryEntry[]> {
+  return apiFetch<BroadcastHistoryEntry[]>('/admin/broadcast/history');
+}
+
+export function postBroadcast(
+  text: string | null,
+  imageStorageKey: string | null,
+): Promise<ActiveBroadcast> {
+  const trimmed = text?.trim() ?? '';
+  return apiFetch<ActiveBroadcast>('/admin/broadcast', {
+    method: 'POST',
+    body: {
+      ...(trimmed.length > 0 ? { text: trimmed } : {}),
+      ...(imageStorageKey ? { imageStorageKey } : {}),
+    },
+  });
+}
+
+export function removeActiveBroadcast(): Promise<void> {
+  return apiFetch<void>('/admin/broadcast/active', { method: 'DELETE' });
+}
+
 export function listAdminUsers(params: ListAdminUsersParams = {}): Promise<AdminUsersPage> {
   const qs = new URLSearchParams();
   if (params.q?.trim()) {
     qs.set('q', params.q.trim());
+  }
+  if (params.provinceId) {
+    qs.set('provinceId', params.provinceId);
+  }
+  if (params.centerId) {
+    qs.set('centerId', params.centerId);
   }
   if (params.cursor) {
     qs.set('cursor', params.cursor);
@@ -466,8 +573,72 @@ export function listAdminUsers(params: ListAdminUsersParams = {}): Promise<Admin
   return apiFetch<AdminUsersPage>(`/admin/users${query ? `?${query}` : ''}`);
 }
 
+export function getBirthdayDirectory(): Promise<BirthdayUserSummary[]> {
+  return apiFetch<BirthdayUserSummary[]>('/birthdays');
+}
+
+/** @deprecated Use {@link getBirthdayDirectory}. */
+export function getTodayBirthdays(): Promise<BirthdayUserSummary[]> {
+  return getBirthdayDirectory();
+}
+
 export function getAdminUser(userId: string): Promise<AdminUserDetail> {
   return apiFetch<AdminUserDetail>(`/admin/users/${encodeURIComponent(userId)}`);
+}
+
+export function getAdminUserStats(
+  userId: string,
+  ballType: BallType,
+): Promise<AdminUserPlayerStatsView> {
+  const qs = new URLSearchParams({ ballType });
+  return apiFetch<AdminUserPlayerStatsView>(
+    `/admin/users/${encodeURIComponent(userId)}/stats?${qs.toString()}`,
+  );
+}
+
+export function createAdminUser(body: CreateAdminUserRequest): Promise<CreateAdminUserResponse> {
+  return apiFetch<CreateAdminUserResponse>('/admin/users', {
+    method: 'POST',
+    body,
+  });
+}
+
+export function updateAdminUser(
+  userId: string,
+  body: UpdateAdminUserRequest,
+): Promise<AdminUserDetail> {
+  return apiFetch<AdminUserDetail>(`/admin/users/${encodeURIComponent(userId)}`, {
+    method: 'PATCH',
+    body,
+  });
+}
+
+export function updateAdminUserStatus(
+  userId: string,
+  body: UpdateAdminUserStatusRequest,
+): Promise<UpdateAdminUserStatusResponse> {
+  return apiFetch<UpdateAdminUserStatusResponse>(
+    `/admin/users/${encodeURIComponent(userId)}/status`,
+    {
+      method: 'PATCH',
+      body,
+    },
+  );
+}
+
+export function deleteAdminUser(userId: string): Promise<void> {
+  return apiFetch<void>(`/admin/users/${encodeURIComponent(userId)}`, {
+    method: 'DELETE',
+  });
+}
+
+export function generateAdminTemporaryPassword(
+  userId: string,
+): Promise<GenerateTemporaryPasswordResponse> {
+  return apiFetch<GenerateTemporaryPasswordResponse>(
+    `/admin/users/${encodeURIComponent(userId)}/temporary-password`,
+    { method: 'POST' },
+  );
 }
 
 export function getClubManagerDashboard(): Promise<ClubManagerDashboard> {
@@ -503,6 +674,16 @@ export function submitParticipationPollVote(
 
 export function getParticipationPollTally(pollId: string): Promise<ParticipationPollTallyView> {
   return apiFetch<ParticipationPollTallyView>(`/participation-polls/${pollId}/tally`);
+}
+
+export function getPlayingXiConfirmFromPoll(
+  matchId: string,
+  teamId: string,
+): Promise<PlayingXiConfirmFromPollView> {
+  const params = new URLSearchParams({ matchId, teamId });
+  return apiFetch<PlayingXiConfirmFromPollView>(
+    `/participation-polls/playing-xi-confirm?${params.toString()}`,
+  );
 }
 
 export function getPollPlayingXiSelection(pollId: string): Promise<PollPlayingXiSelectionView> {
@@ -558,6 +739,14 @@ export function applyPlayingXiSwitch(
     `/participation-polls/${pollId}/playing-xi/switch`,
     { method: 'POST', body },
   );
+}
+
+export function carryForwardSuspension(suspensionId: string): Promise<{ ok: true }> {
+  return apiFetch<{ ok: true }>(`/suspensions/${suspensionId}/carry-forward`, { method: 'POST' });
+}
+
+export function cancelSuspension(suspensionId: string): Promise<{ ok: true }> {
+  return apiFetch<{ ok: true }>(`/suspensions/${suspensionId}/cancel`, { method: 'POST' });
 }
 
 export function getAttendanceMonitoring(): Promise<AttendanceMonitoringView> {
@@ -633,6 +822,20 @@ export function logout(): Promise<void> {
   return apiFetchInternal<void>('/auth/logout', { method: 'POST', skipAuthRetry: true });
 }
 
+/** Register/refresh this device's FCM push token for the logged-in user (§17). */
+export function registerPushToken(body: RegisterPushTokenRequest): Promise<void> {
+  return apiFetch<void>('/notifications/device-tokens', { method: 'POST', body });
+}
+
+/** Unregister this device's push token on logout (best-effort). */
+export function unregisterPushToken(body: UnregisterPushTokenRequest): Promise<void> {
+  return apiFetchInternal<void>('/notifications/device-tokens', {
+    method: 'DELETE',
+    body,
+    skipAuthRetry: true,
+  });
+}
+
 export function refreshTokens(refreshToken: string): Promise<AuthTokens> {
   const body: RefreshRequest = { refreshToken };
   return apiFetchInternal<AuthTokens>('/auth/refresh', {
@@ -666,8 +869,32 @@ export function changePassword(body: ChangePasswordRequest): Promise<ChangePassw
   });
 }
 
+export function completeForcedPasswordChange(
+  body: CompleteForcedPasswordChangeRequest,
+): Promise<CompleteForcedPasswordChangeResponse> {
+  return apiFetchInternal<CompleteForcedPasswordChangeResponse>(
+    '/auth/complete-forced-password-change',
+    {
+      method: 'POST',
+      body,
+      skipAuthRetry: true,
+    },
+  );
+}
+
 export function getProfile(): Promise<ProfileDetail> {
   return apiFetch<ProfileDetail>('/profile');
+}
+
+export function getOwnPlayerStats(ballType: BallType): Promise<OwnPlayerStatsView> {
+  const qs = new URLSearchParams({ ballType });
+  return apiFetch<OwnPlayerStatsView>(`/profile/stats?${qs.toString()}`);
+}
+
+/** Logged-in player's Man of the Match awards for one ball type (newest first). */
+export function getOwnPlayerMomMatches(ballType: BallType): Promise<OwnPlayerMomMatchesView> {
+  const qs = new URLSearchParams({ ballType });
+  return apiFetch<OwnPlayerMomMatchesView>(`/profile/stats/man-of-the-match?${qs.toString()}`);
 }
 
 export function updateProfile(body: UpdateProfileRequest): Promise<ProfileDetail> {
@@ -676,82 +903,6 @@ export function updateProfile(body: UpdateProfileRequest): Promise<ProfileDetail
 
 export function requestProfileMobileOtp(body: RequestProfileMobileOtpRequest): Promise<void> {
   return apiFetch<void>('/profile/mobile/request-otp', { method: 'POST', body });
-}
-
-/** Upload a local JPG profile photo; returns the persisted URL. */
-export async function uploadProfilePhoto(localUri: string): Promise<string> {
-  const formData = new FormData();
-  formData.append('photo', {
-    uri: localUri,
-    name: 'profile.jpg',
-    type: 'image/jpeg',
-  } as unknown as Blob);
-
-  const headers: Record<string, string> = { Accept: 'application/json' };
-  if (authToken) {
-    headers.Authorization = `Bearer ${authToken}`;
-  }
-
-  const response = await fetch(`${API_BASE_URL}/profile/photo`, {
-    method: 'POST',
-    headers,
-    body: formData,
-  });
-
-  const text = await response.text();
-  const parsed: unknown = text.length > 0 ? JSON.parse(text) : null;
-
-  if (!response.ok) {
-    const error: ApiError = isEnvelope(parsed)
-      ? (parsed.error ?? { code: 'UNKNOWN', message: response.statusText })
-      : { code: 'UNKNOWN', message: response.statusText };
-    throw new ApiRequestError(response.status, error);
-  }
-
-  if (isEnvelope(parsed)) {
-    return (parsed.data as UploadProfilePhotoResponse).profilePhotoUrl;
-  }
-  return (parsed as UploadProfilePhotoResponse).profilePhotoUrl;
-}
-
-function posterUploadFile(localUri: string): { uri: string; name: string; type: string } {
-  return {
-    uri: localUri,
-    name: 'poster.jpg',
-    type: 'image/jpeg',
-  };
-}
-
-/** Upload a local tournament poster; returns the persisted URL. */
-export async function uploadTournamentPoster(localUri: string): Promise<string> {
-  const formData = new FormData();
-  formData.append('poster', posterUploadFile(localUri) as unknown as Blob);
-
-  const headers: Record<string, string> = { Accept: 'application/json' };
-  if (authToken) {
-    headers.Authorization = `Bearer ${authToken}`;
-  }
-
-  const response = await fetch(`${API_BASE_URL}/tournaments/poster`, {
-    method: 'POST',
-    headers,
-    body: formData,
-  });
-
-  const text = await response.text();
-  const parsed: unknown = text.length > 0 ? JSON.parse(text) : null;
-
-  if (!response.ok) {
-    const error: ApiError = isEnvelope(parsed)
-      ? (parsed.error ?? { code: 'UNKNOWN', message: response.statusText })
-      : { code: 'UNKNOWN', message: response.statusText };
-    throw new ApiRequestError(response.status, error);
-  }
-
-  if (isEnvelope(parsed)) {
-    return (parsed.data as UploadTournamentPosterResponse).posterUrl;
-  }
-  return (parsed as UploadTournamentPosterResponse).posterUrl;
 }
 
 // --- Google Places proxy (server-side key) ---------------------------------
@@ -777,18 +928,119 @@ export function placesReverse(latitude: number, longitude: number): Promise<Reve
   return apiFetch<ReverseGeocodeResult>(`/places/reverse?${params.toString()}`);
 }
 
+export function placesResolveMapsLink(url: string): Promise<ResolvedLocationResult> {
+  const params = new URLSearchParams({ url });
+  return apiFetch<ResolvedLocationResult>(`/places/resolve-maps-link?${params.toString()}`);
+}
+
 // --- Tournaments (§6, §24) -------------------------------------------------
 
 export function listTournaments(): Promise<TournamentSummary[]> {
   return apiFetch<TournamentSummary[]>('/tournaments');
 }
 
+export function listPublicTournaments(): Promise<TournamentSummary[]> {
+  return apiFetchPublic<TournamentSummary[]>('/tournaments');
+}
+
 export function listTournamentDashboardEntries(): Promise<TournamentDashboardEntry[]> {
   return apiFetch<TournamentDashboardEntry[]>('/tournaments/dashboard-entries');
 }
 
+export function listTournamentBrowseEntries(): Promise<TournamentBrowseEntry[]> {
+  return apiFetch<TournamentBrowseEntry[]>('/tournaments/browse');
+}
+
 export function getTournament(id: string): Promise<TournamentDetail> {
-  return apiFetchPublic<TournamentDetail>(`/tournaments/${id}`);
+  return apiFetchOptionalAuth<TournamentDetail>(`/tournaments/${id}`);
+}
+
+export function getKnockoutBracket(tournamentId: string): Promise<KnockoutBracketView> {
+  return apiFetchOptionalAuth<KnockoutBracketView>(
+    `/tournaments/${tournamentId}/knockout-bracket`,
+  );
+}
+
+export function getKnockoutQualification(
+  tournamentId: string,
+): Promise<KnockoutQualificationResponse> {
+  return apiFetch<KnockoutQualificationResponse>(
+    `/tournaments/${tournamentId}/knockout-qualification`,
+  );
+}
+
+export function generateKnockoutBracket(
+  tournamentId: string,
+  body?: GenerateKnockoutBracketRequest,
+): Promise<KnockoutBracketView> {
+  return apiFetch<KnockoutBracketView>(
+    `/tournaments/${tournamentId}/knockout-bracket/generate`,
+    { method: 'POST', body: body ?? {} },
+  );
+}
+
+export function getKnockoutBracketDeletePreview(
+  tournamentId: string,
+): Promise<KnockoutBracketDeletePreview> {
+  return apiFetchOptionalAuth<KnockoutBracketDeletePreview>(
+    `/tournaments/${tournamentId}/knockout-bracket/delete-preview`,
+  );
+}
+
+export function deleteKnockoutBracket(tournamentId: string): Promise<void> {
+  return apiFetch<void>(`/tournaments/${tournamentId}/knockout-bracket`, {
+    method: 'DELETE',
+  });
+}
+
+export function listLeatherInviteCandidates(
+  tournamentId: string,
+  search?: string,
+): Promise<LeatherInviteCandidatesResponse> {
+  const params = search ? `?q=${encodeURIComponent(search)}` : '';
+  return apiFetch<LeatherInviteCandidatesResponse>(
+    `/tournaments/${tournamentId}/leather-invites/candidates${params}`,
+  );
+}
+
+export function listLeatherInvites(
+  tournamentId: string,
+): Promise<LeatherTournamentInvitesResponse> {
+  return apiFetch<LeatherTournamentInvitesResponse>(
+    `/tournaments/${tournamentId}/leather-invites`,
+  );
+}
+
+export function createLeatherInvites(
+  tournamentId: string,
+  body: CreateLeatherInvitesRequest,
+): Promise<CreateLeatherInvitesResponse> {
+  return apiFetch<CreateLeatherInvitesResponse>(
+    `/tournaments/${tournamentId}/leather-invites`,
+    { method: 'POST', body },
+  );
+}
+
+export function revokeLeatherInvite(tournamentId: string, userId: string): Promise<void> {
+  return apiFetch<void>(`/tournaments/${tournamentId}/leather-invites/${userId}`, {
+    method: 'DELETE',
+  });
+}
+
+export function getTournamentScorersSelection(
+  tournamentId: string,
+): Promise<TournamentScorersSelectionView> {
+  return apiFetch<TournamentScorersSelectionView>(`/tournaments/${tournamentId}/scorers`);
+}
+
+export function setTournamentScorers(
+  tournamentId: string,
+  body: SetTournamentScorersRequest,
+): Promise<SetTournamentScorersResponse> {
+  return apiFetch<SetTournamentScorersResponse>(`/tournaments/${tournamentId}/scorers`, {
+    method: 'PUT',
+    body,
+  });
 }
 
 export function getTournamentEditForm(id: string): Promise<TournamentEditFormData> {
@@ -803,7 +1055,27 @@ export function getTeamDetail(tournamentId: string, teamId: string): Promise<Tea
   return apiFetch<TeamDetailView>(`/tournaments/${tournamentId}/teams/${teamId}`);
 }
 
-/** Club Manager assigns Captain / Vice-Captain for a team. */
+export function listTeamAddPlayerCandidates(
+  tournamentId: string,
+  teamId: string,
+): Promise<TeamAddPlayersPickerView> {
+  return apiFetch<TeamAddPlayersPickerView>(
+    `/tournaments/${tournamentId}/teams/${teamId}/add-player-candidates`,
+  );
+}
+
+export function addPlayersToTeam(
+  tournamentId: string,
+  teamId: string,
+  body: AddTeamPlayersRequest,
+): Promise<AddTeamPlayersResponse> {
+  return apiFetch<AddTeamPlayersResponse>(`/tournaments/${tournamentId}/teams/${teamId}/players`, {
+    method: 'POST',
+    body,
+  });
+}
+
+/** Admin or Club Manager assigns Captain, Vice-Captain, and Manager for a team. */
 export function assignTeamRoles(
   tournamentId: string,
   teamId: string,
@@ -827,6 +1099,28 @@ export function createTeam(tournamentId: string, body: CreateTeamRequest): Promi
   return apiFetch<TeamSummary>(`/tournaments/${tournamentId}/teams`, { method: 'POST', body });
 }
 
+/** Confirmed registrants not yet on a team — for Captain / VC / Manager at team create. */
+export function listTeamRoleCandidates(tournamentId: string): Promise<TeamRoleCandidatesView> {
+  return apiFetch<TeamRoleCandidatesView>(
+    `/tournaments/${tournamentId}/teams/role-candidates`,
+  );
+}
+
+export function updateTeam(
+  tournamentId: string,
+  teamId: string,
+  body: UpdateTeamRequest,
+): Promise<TeamSummary> {
+  return apiFetch<TeamSummary>(`/tournaments/${tournamentId}/teams/${teamId}`, {
+    method: 'PATCH',
+    body,
+  });
+}
+
+export function deleteTeam(tournamentId: string, teamId: string): Promise<void> {
+  return apiFetch<void>(`/tournaments/${tournamentId}/teams/${teamId}`, { method: 'DELETE' });
+}
+
 export function listGroups(tournamentId: string): Promise<GroupSummary[]> {
   return apiFetchPublic<GroupSummary[]>(`/tournaments/${tournamentId}/groups`);
 }
@@ -846,44 +1140,27 @@ export function getTournamentLeaderboard(
   return apiFetchPublic<TournamentLeaderboard>(`/tournaments/${tournamentId}/leaderboard${query}`);
 }
 
+export function getTournamentStats(tournamentId: string): Promise<TournamentStatsView> {
+  return apiFetchPublic<TournamentStatsView>(`/tournaments/${tournamentId}/stats`);
+}
+
 export function createGroup(tournamentId: string, body: CreateGroupRequest): Promise<GroupSummary> {
   return apiFetch<GroupSummary>(`/tournaments/${tournamentId}/groups`, { method: 'POST', body });
 }
 
-/** Upload a local team logo JPG; returns the persisted URL. */
-export async function uploadTeamLogo(localUri: string): Promise<string> {
-  const formData = new FormData();
-  formData.append('logo', {
-    uri: localUri,
-    name: 'logo.jpg',
-    type: 'image/jpeg',
-  } as unknown as Blob);
-
-  const headers: Record<string, string> = { Accept: 'application/json' };
-  if (authToken) {
-    headers.Authorization = `Bearer ${authToken}`;
-  }
-
-  const response = await fetch(`${API_BASE_URL}/tournaments/team-logo`, {
-    method: 'POST',
-    headers,
-    body: formData,
+export function updateGroupMembers(
+  tournamentId: string,
+  groupId: string,
+  body: UpdateGroupMembersRequest,
+): Promise<GroupSummary> {
+  return apiFetch<GroupSummary>(`/tournaments/${tournamentId}/groups/${groupId}`, {
+    method: 'PATCH',
+    body,
   });
+}
 
-  const text = await response.text();
-  const parsed: unknown = text.length > 0 ? JSON.parse(text) : null;
-
-  if (!response.ok) {
-    const error: ApiError = isEnvelope(parsed)
-      ? (parsed.error ?? { code: 'UNKNOWN', message: response.statusText })
-      : { code: 'UNKNOWN', message: response.statusText };
-    throw new ApiRequestError(response.status, error);
-  }
-
-  if (isEnvelope(parsed)) {
-    return (parsed.data as UploadTeamLogoResponse).logoUrl;
-  }
-  return (parsed as UploadTeamLogoResponse).logoUrl;
+export function deleteGroup(tournamentId: string, groupId: string): Promise<void> {
+  return apiFetch<void>(`/tournaments/${tournamentId}/groups/${groupId}`, { method: 'DELETE' });
 }
 
 export function createTournament(body: CreateTournamentRequest): Promise<TournamentDetail> {
@@ -1002,6 +1279,21 @@ export function listVerifiedRegisteredPlayers(
   const qs = params.toString();
   return apiFetch<VerifiedRegisteredPlayersView>(
     `/tournaments/${tournamentId}/registrations/verified${qs ? `?${qs}` : ''}`,
+  );
+}
+
+/** Leather ACC registrants — Admin / Club Manager squad-building list. */
+export function listLeatherRegisteredPlayers(
+  tournamentId: string,
+  query: ListLeatherRegisteredPlayersQuery = {},
+): Promise<LeatherRegisteredPlayersView> {
+  const params = new URLSearchParams();
+  if (query.search) params.set('search', query.search);
+  if (query.page != null) params.set('page', String(query.page));
+  if (query.limit != null) params.set('limit', String(query.limit));
+  const qs = params.toString();
+  return apiFetch<LeatherRegisteredPlayersView>(
+    `/tournaments/${tournamentId}/registrations/leather${qs ? `?${qs}` : ''}`,
   );
 }
 
@@ -1143,8 +1435,15 @@ export function listRegistrationFields(
 
 // --- Match setup (§5.2, §11) -----------------------------------------------
 
-export function listMatches(tournamentId: string): Promise<MatchListItem[]> {
-  return apiFetch<MatchListItem[]>(`/tournaments/${tournamentId}/matches`);
+export function listMatches(
+  tournamentId: string,
+  teamId?: string | null,
+): Promise<MatchListItem[]> {
+  const query =
+    teamId != null && teamId !== ''
+      ? `?teamId=${encodeURIComponent(teamId)}`
+      : '';
+  return apiFetch<MatchListItem[]>(`/tournaments/${tournamentId}/matches${query}`);
 }
 
 export function getRoundRobinMatchSetupContext(
@@ -1166,6 +1465,14 @@ export function createMatch(
   return apiFetch<MatchDetail>(`/tournaments/${tournamentId}/matches`, { method: 'POST', body });
 }
 
+export function updateMatch(matchId: string, body: UpdateMatchRequest): Promise<MatchDetail> {
+  return apiFetch<MatchDetail>(`/matches/${matchId}`, { method: 'PATCH', body });
+}
+
+export function deleteMatch(matchId: string): Promise<void> {
+  return apiFetch<void>(`/matches/${matchId}`, { method: 'DELETE' });
+}
+
 /** §9.7: selectable players for a team's Playing-11 screen (with suspended badge). */
 export function getSquadCandidates(
   matchId: string,
@@ -1182,6 +1489,35 @@ export function lockPlayingXi(
   body: LockPlayingXiRequest,
 ): Promise<MatchDetail> {
   return apiFetch<MatchDetail>(`/matches/${matchId}/playing-xi`, { method: 'POST', body });
+}
+
+/** Scorer / organizer: confirm Playing 11 for both teams in one step (§11). */
+export function finalizeBothPlayingXi(
+  matchId: string,
+  body: FinalizeBothPlayingXiRequest,
+): Promise<MatchDetail> {
+  return apiFetch<MatchDetail>(`/matches/${matchId}/playing-xi/finalize-both`, {
+    method: 'POST',
+    body,
+  });
+}
+
+/** Pre-match external opponent roster — add a name-only player (§9.5). */
+export function addOpponentPlayer(
+  matchId: string,
+  name: string,
+): Promise<ExternalPlayerView> {
+  return apiFetch<ExternalPlayerView>(`/matches/${matchId}/opponent-players`, {
+    method: 'POST',
+    body: { name },
+  });
+}
+
+/** Pre-match external opponent roster — remove a name-only player (§9.5). */
+export function removeOpponentPlayer(matchId: string, playerId: string): Promise<MatchDetail> {
+  return apiFetch<MatchDetail>(`/matches/${matchId}/opponent-players/${playerId}`, {
+    method: 'DELETE',
+  });
 }
 
 /** §11.2: record toss data (winner + bat/bowl decision). */
@@ -1207,9 +1543,22 @@ export function setMatchState(matchId: string, state: MatchState): Promise<Match
   return apiFetch<MatchDetail>(`/matches/${matchId}/status`, { method: 'POST', body: { state } });
 }
 
+/** §5.2: apply a cumulative pre-live delay (Admin / Club Manager). */
+export function delayMatch(
+  matchId: string,
+  body: DelayMatchRequest,
+): Promise<MatchDetail> {
+  return apiFetch<MatchDetail>(`/matches/${matchId}/delay`, { method: 'POST', body });
+}
+
 /** §11.1: assign a per-match Scorer. */
 export function assignScorer(matchId: string, body: AssignScorerRequest): Promise<MatchDetail> {
   return apiFetch<MatchDetail>(`/matches/${matchId}/scorer`, { method: 'POST', body });
+}
+
+/** Admin/Club Manager: swap the per-match scorer mid-match (tennis). */
+export function swapMatchScorer(matchId: string, body: SwapMatchScorerRequest): Promise<MatchDetail> {
+  return apiFetch<MatchDetail>(`/matches/${matchId}/scorer/swap`, { method: 'POST', body });
 }
 
 /** §11.1: mid-match Scorer handover. */
@@ -1230,6 +1579,14 @@ export function revokeScorer(matchId: string, userId: string): Promise<MatchDeta
 /** §2/§28: public, guest-readable live scorecard snapshot. */
 export function getScorecard(matchId: string): Promise<ScorecardResponse> {
   return apiFetchPublic<ScorecardResponse>(`/matches/${matchId}/scorecard`);
+}
+
+/** Tennis Phase 2: one-time auth when opening the live scoring screen. Leather: no-op. */
+export function enterScoringSession(matchId: string): Promise<EnterScoringSessionResponse> {
+  return apiFetch<EnterScoringSessionResponse>(`/matches/${matchId}/scoring-session`, {
+    method: 'POST',
+    body: {},
+  });
 }
 
 export interface GetBatsmanPickerOptions {
@@ -1300,6 +1657,18 @@ export function addExternalBowler(
     `/matches/${matchId}/innings/${inningsId}/external-bowlers`,
     { method: 'POST', body },
   );
+}
+
+/** §9.5: rename a name-only external opponent player during live scoring. */
+export function renameExternalPlayer(
+  matchId: string,
+  playerId: string,
+  name: string,
+): Promise<ExternalPlayerView> {
+  return apiFetch<ExternalPlayerView>(`/matches/${matchId}/external-players/${playerId}`, {
+    method: 'PATCH',
+    body: { name },
+  });
 }
 
 /** §14: open a new innings (normal or Super Over). */
@@ -1390,6 +1759,15 @@ export function setInningsParticipants(
 /** §13.1: confirmation status (also triggers the lazy auto-confirm safety-net). */
 export function getScorecardConfirmation(matchId: string): Promise<ScorecardConfirmationView> {
   return apiFetch<ScorecardConfirmationView>(`/matches/${matchId}/confirmation`);
+}
+
+/** Whether the current user may confirm this scorecard (§13.1). */
+export function getScorecardConfirmEligibility(
+  matchId: string,
+): Promise<ScorecardConfirmEligibilityView> {
+  return apiFetch<ScorecardConfirmEligibilityView>(
+    `/matches/${matchId}/confirm-scorecard/eligibility`,
+  );
 }
 
 /** §13.1: Captain / VC confirms the scorecard, locking the match. */

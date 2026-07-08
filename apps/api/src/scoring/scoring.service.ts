@@ -9,6 +9,7 @@ import {
   minimumOversAllotmentFromLegalBalls,
   SUPER_OVER_OVERS,
   formatMatchResultNote,
+  isScorecardLocked,
   type RecordDeliveryRequest,
   ScorecardAuditAction,
   type ScorecardResponse,
@@ -18,6 +19,7 @@ import {
   type SetInningsParticipantsRequest,
   type UndoDeliveryRequest,
   type UpdateOversAllottedRequest,
+  LIVE_MATCH_STATES,
 } from '@acc/types';
 import {
   BadRequestException,
@@ -30,6 +32,9 @@ import type { Delivery, Innings, Match, Prisma } from '@prisma/client';
 import { AuditService } from '../audit/audit.service';
 import { LiveService } from '../live/live.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { SuspensionService } from '../suspension/suspension.service';
+import { TennisMatchScoringAuthService } from '../tournaments/tennis-match-scoring-auth.service';
+import { assertKnockoutPostConfirmEditAllowed } from '../knockout-bracket/knockout-bracket-correction.guard';
 import { toScoringEvent } from './delivery-mapper';
 import {
   currentEventPosition,
@@ -48,7 +53,7 @@ import { ScorecardConfirmationService } from './scorecard-confirmation.service';
 import { ScorecardReader } from './scorecard-reader';
 
 /** Match states in which normal (live) scoring mutations are accepted. */
-const SCORABLE_STATES: MatchState[] = [MatchState.Live, MatchState.RainInterrupted];
+const SCORABLE_STATES: MatchState[] = LIVE_MATCH_STATES;
 
 /** Options controlling a delivery write. */
 interface WriteOptions {
@@ -93,7 +98,18 @@ export class ScoringService {
     private readonly reader: ScorecardReader,
     private readonly audit: AuditService,
     private readonly confirmation: ScorecardConfirmationService,
+    private readonly suspensions: SuspensionService,
+    private readonly tennisScoringAuth: TennisMatchScoringAuthService,
   ) {}
+
+  /**
+   * Tennis Phase 2: authorize once when opening the live scoring screen.
+   * Leather: no-op (existing SCORE_BALL guard on writes).
+   */
+  async enterScoringSession(user: AuthUser, matchId: string): Promise<{ ok: true }> {
+    await this.tennisScoringAuth.assertCanEnterScoringSession(user, matchId);
+    return { ok: true };
+  }
 
   // --- Reads ---------------------------------------------------------------
 
@@ -116,7 +132,7 @@ export class ScoringService {
   // --- Innings lifecycle ---------------------------------------------------
 
   async startInnings(
-    _user: AuthUser,
+    user: AuthUser,
     matchId: string,
     req: StartInningsRequest,
   ): Promise<ScorecardResponse> {
@@ -162,6 +178,9 @@ export class ScoringService {
     const match = await this.requireMatch(matchId);
     this.assertVersion(match, req.expectedVersion);
     this.assertEditable(match, opts);
+    if (opts.postConfirm) {
+      await assertKnockoutPostConfirmEditAllowed(this.prisma, this.reader, matchId);
+    }
 
     await this.requireInnings(matchId, inningsId);
     const live = await this.liveDeliveries(inningsId);
@@ -244,7 +263,7 @@ export class ScoringService {
 
   /** Undo the last appended delivery by voiding it; all figures re-derive (§12.1). */
   async undoLastDelivery(
-    _user: AuthUser,
+    user: AuthUser,
     matchId: string,
     inningsId: string,
     req: UndoDeliveryRequest,
@@ -283,6 +302,9 @@ export class ScoringService {
     const match = await this.requireMatch(matchId);
     this.assertVersion(match, req.expectedVersion);
     this.assertEditable(match, opts);
+    if (opts.postConfirm) {
+      await assertKnockoutPostConfirmEditAllowed(this.prisma, this.reader, matchId);
+    }
 
     const target = await this.prisma.delivery.findUnique({ where: { id: req.deliveryId } });
     if (!target || target.isVoided) {
@@ -707,6 +729,7 @@ export class ScoringService {
         marginWickets: result.marginWickets,
       },
     });
+    await this.suspensions.generateForCompletedMatch(matchId);
     return this.publishAndReturn(updated);
   }
 
@@ -874,7 +897,7 @@ export class ScoringService {
 
   /** Persist at-crease batters and/or the current-over bowler before the next delivery. */
   async setInningsParticipants(
-    _user: AuthUser,
+    user: AuthUser,
     matchId: string,
     inningsId: string,
     req: SetInningsParticipantsRequest,
@@ -1165,7 +1188,7 @@ export class ScoringService {
   /** Gates a delivery write: live scoring vs. a §13.2 post-confirmation edit. */
   private assertEditable(match: Match, opts: WriteOptions): void {
     if (opts.postConfirm) {
-      if ((match.state as MatchState) !== MatchState.ScorecardLocked) {
+      if (!isScorecardLocked(match)) {
         throw new BadRequestException({
           message: 'Post-confirmation edits are only allowed on a locked scorecard',
           error: 'SCORECARD_NOT_LOCKED',

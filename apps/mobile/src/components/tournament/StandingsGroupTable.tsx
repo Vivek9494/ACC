@@ -1,16 +1,9 @@
 import type { StandingsTableSection } from '@acc/types';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 
-import { GroupCardTeam, TournamentGroupCard } from './TournamentGroupCard';
-import { StandingsStatsDataRow, StandingsStatsHeaderRow } from './StandingsTableStats';
-
-function toGroupCardTeams(section: StandingsTableSection): GroupCardTeam[] {
-  return section.teams.map((team) => ({
-    id: team.teamId,
-    name: team.teamName,
-    logoUrl: team.logoUrl,
-  }));
-}
+import { INPUT_SHADOW_STYLE } from '../ui/fieldStyles';
+import { TournamentGroupCardHeaderWithCount } from './TournamentGroupCard';
+import { StandingsPinnedSplitTableBody } from './StandingsTableStats';
 
 export interface StandingsGroupTableProps {
   section: StandingsTableSection;
@@ -22,27 +15,19 @@ export function StandingsGroupTable({
   section,
   showGroupHeader,
 }: StandingsGroupTableProps): React.ReactElement {
-  const lastIndex = section.teams.length - 1;
-
   return (
-    <TournamentGroupCard
-      groupName={section.groupName}
-      teams={toGroupCardTeams(section)}
-      showGroupHeader={showGroupHeader}
-      statsContent={
-        <ScrollView horizontal bounces={false} showsHorizontalScrollIndicator={false}>
-          <View>
-            <StandingsStatsHeaderRow />
-            {section.teams.map((row, index) => (
-              <StandingsStatsDataRow
-                key={row.teamId}
-                row={row}
-                showBottomDivider={index < lastIndex}
-              />
-            ))}
-          </View>
-        </ScrollView>
-      }
-    />
+    <View
+      className="overflow-hidden rounded-control border border-outline-variant bg-surface"
+      style={INPUT_SHADOW_STYLE}
+    >
+      {showGroupHeader ? (
+        <TournamentGroupCardHeaderWithCount
+          groupName={section.groupName}
+          teamCount={section.teams.length}
+        />
+      ) : null}
+
+      <StandingsPinnedSplitTableBody teams={section.teams} />
+    </View>
   );
 }

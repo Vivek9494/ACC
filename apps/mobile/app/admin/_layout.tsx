@@ -14,8 +14,11 @@ export default function AdminLayout(): React.ReactElement {
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="birthdays" />
+      <Stack.Screen name="broadcast" />
       <Stack.Screen name="provinces" />
       <Stack.Screen name="centers" />
+      <Stack.Screen name="users/new" />
       <Stack.Screen name="users/[userId]" />
     </Stack>
   );

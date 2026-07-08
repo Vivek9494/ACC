@@ -1,6 +1,10 @@
 import {
+  computeEconomyRate,
+  computeStrikeRate,
   DismissalType,
   formatBowlerOmRw,
+  formatLeaderboardEconomy,
+  formatLeaderboardStrikeRate,
   InningsType,
   type BatterCard,
   type BowlerCard,
@@ -32,16 +36,23 @@ export interface ManOfMatchPlayerView {
 function aggregateBatterCards(cards: BatterCard[]): BatterCard | null {
   if (cards.length === 0) return null;
   const first = cards[0]!;
-  return cards.slice(1).reduce(
+  const aggregated = cards.slice(1).reduce(
     (acc, card) => ({
       ...acc,
       runs: acc.runs + card.runs,
       balls: acc.balls + card.balls,
+      ones: acc.ones + card.ones,
+      twos: acc.twos + card.twos,
+      threes: acc.threes + card.threes,
       fours: acc.fours + card.fours,
       sixes: acc.sixes + card.sixes,
     }),
     { ...first },
   );
+  return {
+    ...aggregated,
+    strikeRate: computeStrikeRate(aggregated.runs, aggregated.balls) ?? 0,
+  };
 }
 
 function aggregateBowlerCards(cards: BowlerCard[]): BowlerCard | null {
@@ -49,11 +60,12 @@ function aggregateBowlerCards(cards: BowlerCard[]): BowlerCard | null {
   const legalBalls = cards.reduce((sum, card) => sum + card.legalBalls, 0);
   const oversWhole = Math.floor(legalBalls / 6);
   const oversPart = legalBalls % 6;
+  const runsConceded = cards.reduce((sum, card) => sum + card.runsConceded, 0);
   return {
     playerId: cards[0]!.playerId,
     legalBalls,
     oversText: `${oversWhole}.${oversPart}`,
-    runsConceded: cards.reduce((sum, card) => sum + card.runsConceded, 0),
+    runsConceded,
     wickets: cards.reduce((sum, card) => sum + card.wickets, 0),
     maidens: cards.reduce((sum, card) => sum + card.maidens, 0),
     dotBalls: cards.reduce((sum, card) => sum + card.dotBalls, 0),
@@ -61,22 +73,29 @@ function aggregateBowlerCards(cards: BowlerCard[]): BowlerCard | null {
     noBalls: cards.reduce((sum, card) => sum + card.noBalls, 0),
     fours: cards.reduce((sum, card) => sum + card.fours, 0),
     sixes: cards.reduce((sum, card) => sum + card.sixes, 0),
-    economy: 0,
+    economy: computeEconomyRate(runsConceded, legalBalls) ?? 0,
   };
 }
 
-/** True when the winning team has registered squad players eligible for MoM (§13.3). */
-export function shouldOfferManOfMatch(
+/** Completed match with a registered winning team — MoM may apply (§13.3). */
+export function isManOfMatchApplicable(
   match: MatchDetail | null,
   card: ScorecardResponse | null,
 ): boolean {
   if (!match || !card) return false;
   if (match.state !== 'COMPLETED' && match.state !== 'SCORECARD_LOCKED') return false;
-  if (match.manOfTheMatchUserId) return false;
   if (!card.result.decided || card.result.isTie || card.result.superOverRequired) return false;
   const winnerId = card.result.winningTeamId;
   if (!winnerId) return false;
   return match.squads.some((squad) => squad.teamId === winnerId);
+}
+
+/** True when MoM has not yet been selected (pending pick). */
+export function shouldOfferManOfMatch(
+  match: MatchDetail | null,
+  card: ScorecardResponse | null,
+): boolean {
+  return isManOfMatchApplicable(match, card) && !match?.manOfTheMatchUserId;
 }
 
 export function buildManOfMatchCandidates(
@@ -92,7 +111,9 @@ export function buildManOfMatchCandidates(
     (p) => p.role === 'PLAYING_XI' || p.role === 'IMPACT_CANDIDATE',
   );
 
-  return playing.map((player) => toCandidate(player, card));
+  return playing
+    .map((player) => toCandidate(player, card))
+    .filter((candidate) => candidate.battingLine != null || candidate.bowlingLine != null);
 }
 
 /** Completed-match display card — only when MoM has been finalized (§13.3). */
@@ -182,6 +203,18 @@ export function buildManOfMatchStatBlocks(
   return blocks;
 }
 
+function formatCandidateBattingLine(batting: BatterCard): string {
+  const sr = formatLeaderboardStrikeRate(computeStrikeRate(batting.runs, batting.balls));
+  return `${batting.runs}(${batting.balls}), ${batting.fours}×4, ${batting.sixes}×6, SR ${sr}`;
+}
+
+function formatCandidateBowlingLine(bowling: BowlerCard): string {
+  const eco = formatLeaderboardEconomy(
+    computeEconomyRate(bowling.runsConceded, bowling.legalBalls),
+  );
+  return `${formatBowlerOmRw(bowling)}, Eco ${eco}`;
+}
+
 function toCandidate(player: SquadPlayerView, card: ScorecardResponse): ManOfMatchCandidate {
   const batterCards = card.innings.flatMap((inn) =>
     inn.batters.filter((b) => b.playerId === player.userId),
@@ -196,11 +229,9 @@ function toCandidate(player: SquadPlayerView, card: ScorecardResponse): ManOfMat
     userId: player.userId,
     firstName: player.firstName,
     lastName: player.lastName,
-    battingLine:
-      batting && (batting.balls > 0 || batting.runs > 0)
-        ? `${batting.runs}(${batting.balls})`
-        : null,
-    bowlingLine: bowling && bowling.legalBalls > 0 ? formatBowlerOmRw(bowling) : null,
+    battingLine: batting && batting.balls >= 1 ? formatCandidateBattingLine(batting) : null,
+    bowlingLine:
+      bowling && bowling.legalBalls > 0 ? formatCandidateBowlingLine(bowling) : null,
   };
 }
 

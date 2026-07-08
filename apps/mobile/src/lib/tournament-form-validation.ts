@@ -10,6 +10,7 @@ import {
   type CreateTournamentFormInput,
   type TournamentFormFieldErrors,
   type TournamentFormFieldKey,
+  type TournamentType,
 } from '@acc/types';
 
 import type { ApiRequestError } from './api';
@@ -27,6 +28,11 @@ export interface TournamentFormValues extends Omit<CreateTournamentFormInput, 'h
   hasPoster?: boolean;
   posterUri: string | null;
   defaultProvinceId: string | null;
+  leatherFromDate?: string;
+  leatherEndDate?: string;
+  venueTimezone?: string;
+  initialLeatherFromDate?: string;
+  initialLeatherEndDate?: string;
 }
 
 export function validateTournamentForm(values: TournamentFormValues): TournamentFormFieldErrors {
@@ -36,6 +42,8 @@ export function validateTournamentForm(values: TournamentFormValues): Tournament
     name: values.name,
     year: values.year,
     tournamentDates: values.tournamentDates,
+    leatherFromDate: values.leatherFromDate ?? '',
+    leatherEndDate: values.leatherEndDate ?? '',
     ballType: values.ballType,
     citySelection: values.citySelection,
     tournamentProvinceId: values.tournamentProvinceId,
@@ -51,11 +59,19 @@ export function validateTournamentForm(values: TournamentFormValues): Tournament
     auctionDate: values.auctionDate,
     videoRequired: values.videoRequired,
     videoUploadEndDate: values.videoUploadEndDate,
+    venueTimezone: values.venueTimezone,
   });
 }
 
 export function validateUpdateTournamentFormValues(
-  values: TournamentFormValues & { minTeamCount: number; datesWithMatches: string[] },
+  values: TournamentFormValues & {
+    minTeamCount: number;
+    datesWithMatches: string[];
+    tournamentType: TournamentType;
+    groupCount: number;
+    knockoutTeamCount: string | null;
+    hasKnockoutBracket: boolean;
+  },
 ): TournamentFormFieldErrors {
   return validateUpdateTournamentForm({
     hasPoster: values.hasPoster ?? Boolean(values.posterUri),
@@ -63,6 +79,8 @@ export function validateUpdateTournamentFormValues(
     name: values.name,
     year: values.year,
     tournamentDates: values.tournamentDates,
+    leatherFromDate: values.leatherFromDate ?? '',
+    leatherEndDate: values.leatherEndDate ?? '',
     ballType: values.ballType,
     citySelection: values.citySelection,
     tournamentProvinceId: values.tournamentProvinceId,
@@ -78,8 +96,15 @@ export function validateUpdateTournamentFormValues(
     auctionDate: values.auctionDate,
     videoRequired: values.videoRequired,
     videoUploadEndDate: values.videoUploadEndDate,
+    venueTimezone: values.venueTimezone,
+    initialLeatherFromDate: values.initialLeatherFromDate,
+    initialLeatherEndDate: values.initialLeatherEndDate,
     minTeamCount: values.minTeamCount,
     datesWithMatches: values.datesWithMatches,
+    tournamentType: values.tournamentType,
+    groupCount: values.groupCount,
+    knockoutTeamCount: values.knockoutTeamCount,
+    hasKnockoutBracket: values.hasKnockoutBracket,
   });
 }
 

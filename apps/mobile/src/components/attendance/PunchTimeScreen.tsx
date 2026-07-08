@@ -16,10 +16,16 @@ import {
 } from '../../lib/api';
 import { EditPunchTimeDialog } from '../attendance/EditPunchTimeDialog';
 import { PlayerAvatar } from '../tournament/PlayerAvatar';
+import { Card } from '../ui/Card';
 import { ScreenHeader } from '../ui/ScreenHeader';
 import { Text } from '../ui/Text';
+import { UnderlineTabBar } from '../ui/UnderlineTabBar';
 import { FIELD_ORANGE } from '../ui/fieldStyles';
 import { colors } from '@/theme/colors';
+
+/** Player row chrome — matches Confirmed List of Players (`PlayingXiSelectionScreen`). */
+const PUNCH_TIME_PLAYER_CARD_CLASS =
+  'flex-row items-center gap-3 rounded-control border border-outline-variant';
 
 interface EditTarget {
   player: PunchTimePlayerRow;
@@ -40,7 +46,7 @@ function playerRoleSuffix(player: PunchTimePlayerRow): string {
   return player.isDesignatedServer ? ' · Penalty server' : '';
 }
 
-function PlayerRow({
+function PlayerCard({
   player,
   trailing,
   subtitle,
@@ -52,7 +58,7 @@ function PlayerRow({
   subtitleClassName?: string;
 }): React.ReactElement {
   return (
-    <View className="flex-row items-center gap-3 border-b border-outline-variant/60 py-3">
+    <Card className={PUNCH_TIME_PLAYER_CARD_CLASS}>
       <PlayerAvatar
         firstName={player.firstName}
         profilePhotoUrl={player.profilePhotoUrl}
@@ -70,35 +76,74 @@ function PlayerRow({
         </Text>
       </View>
       {trailing}
+    </Card>
+  );
+}
+
+function PlayerCardSection({
+  label,
+  players,
+  renderPlayer,
+}: {
+  label: string;
+  players: PunchTimePlayerRow[];
+  renderPlayer: (player: PunchTimePlayerRow) => React.ReactElement;
+}): React.ReactElement | null {
+  if (players.length === 0) {
+    return null;
+  }
+
+  return (
+    <View className="mb-4 gap-2">
+      <SectionHeader label={label} />
+      <View className="gap-2">
+        {players.map((player) => renderPlayer(player))}
+      </View>
     </View>
   );
+}
+
+export interface PunchTimeTeamTab {
+  id: string;
+  name: string;
 }
 
 export interface PunchTimeScreenProps {
   matchId: string;
   teamId: string;
+  /** Admin/CM on ACC-vs-ACC — one tab per ACC team. */
+  teamTabs?: readonly PunchTimeTeamTab[];
 }
 
 /** Captain Punch Time attendance view (Phase 1 + designated penalty servers). */
-export function PunchTimeScreen({ matchId, teamId }: PunchTimeScreenProps): React.ReactElement {
+export function PunchTimeScreen({
+  matchId,
+  teamId,
+  teamTabs,
+}: PunchTimeScreenProps): React.ReactElement {
   const insets = useSafeAreaInsets();
+  const [selectedTeamId, setSelectedTeamId] = useState(teamId);
   const [view, setView] = useState<PunchTimeAttendanceView | null>(null);
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editTarget, setEditTarget] = useState<EditTarget | null>(null);
 
+  useEffect(() => {
+    setSelectedTeamId(teamId);
+  }, [teamId]);
+
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      setView(await getPunchTimeAttendance(matchId, teamId));
+      setView(await getPunchTimeAttendance(matchId, selectedTeamId));
     } catch (err) {
       setError(err instanceof ApiRequestError ? err.message : 'Could not load punch time.');
     } finally {
       setLoading(false);
     }
-  }, [matchId, teamId]);
+  }, [matchId, selectedTeamId]);
 
   useEffect(() => {
     void load();
@@ -121,7 +166,9 @@ export function PunchTimeScreen({ matchId, teamId }: PunchTimeScreenProps): Reac
     setWorking(true);
     try {
       setView(
-        await setAttendancePunch(matchId, editTarget.player.userId, teamId, { punchTimeUtc }),
+        await setAttendancePunch(matchId, editTarget.player.userId, selectedTeamId, {
+          punchTimeUtc,
+        }),
       );
       setEditTarget(null);
       setError(null);
@@ -138,7 +185,7 @@ export function PunchTimeScreen({ matchId, teamId }: PunchTimeScreenProps): Reac
     }
     setWorking(true);
     try {
-      setView(await revokeAttendancePunch(matchId, editTarget.player.userId, teamId));
+      setView(await revokeAttendancePunch(matchId, editTarget.player.userId, selectedTeamId));
       setEditTarget(null);
       setError(null);
     } catch (err) {
@@ -151,7 +198,7 @@ export function PunchTimeScreen({ matchId, teamId }: PunchTimeScreenProps): Reac
   async function handleVerify(player: PunchTimePlayerRow): Promise<void> {
     setWorking(true);
     try {
-      setView(await verifyLateAttendancePunch(matchId, player.userId, teamId));
+      setView(await verifyLateAttendancePunch(matchId, player.userId, selectedTeamId));
       setError(null);
     } catch (err) {
       setError(err instanceof ApiRequestError ? err.message : 'Could not verify late arrival.');
@@ -175,7 +222,19 @@ export function PunchTimeScreen({ matchId, teamId }: PunchTimeScreenProps): Reac
 
   return (
     <View className="flex-1 bg-background">
-      <ScreenHeader title="Punch Time" accentTitle showProfileMenu={false} />
+      <ScreenHeader title="Punch Time" accentTitle />
+
+      {teamTabs && teamTabs.length > 1 ? (
+        <View className="px-4 pb-2">
+          <UnderlineTabBar
+            layout="spread"
+            options={teamTabs.map((team) => ({ value: team.id, label: team.name }))}
+            value={selectedTeamId}
+            onChange={setSelectedTeamId}
+            accessibilityLabel="ASC team punch time"
+          />
+        </View>
+      ) : null}
 
       {loading ? (
         <View className="flex-1 items-center justify-center">
@@ -183,7 +242,7 @@ export function PunchTimeScreen({ matchId, teamId }: PunchTimeScreenProps): Reac
         </View>
       ) : null}
 
-      {view ? (
+      {!loading && view ? (
         <ScrollView
           className="flex-1 px-4"
           contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 24) }}
@@ -210,72 +269,63 @@ export function PunchTimeScreen({ matchId, teamId }: PunchTimeScreenProps): Reac
 
           {error ? <Text className="mb-3 font-sans text-sm text-primary">{error}</Text> : null}
 
-          <View className="mb-4 gap-2">
-            <SectionHeader label="On Time / Arrived" />
-            {view.onTime.length === 0 ? (
-              <Text className="font-sans text-sm text-on-surface-variant">No arrivals yet.</Text>
-            ) : (
-              view.onTime.map((player) => (
-                <PlayerRow
-                  key={player.userId}
-                  player={player}
-                  subtitle={`Arrived at ${player.arrivedAtLabel ?? '—'}${playerRoleSuffix(player)}`}
-                  trailing={pencilButton(player, 'Edit arrival time', true)}
-                />
-              ))
+          <PlayerCardSection
+            label="On Time / Arrived"
+            players={view.onTime}
+            renderPlayer={(player) => (
+              <PlayerCard
+                key={player.userId}
+                player={player}
+                subtitle={`Arrived at ${player.arrivedAtLabel ?? '—'}${playerRoleSuffix(player)}`}
+                trailing={pencilButton(player, 'Edit arrival time', true)}
+              />
             )}
-          </View>
+          />
 
-          <View className="mb-4 gap-2">
-            <SectionHeader label="Not Arrived" />
-            {view.notArrived.length === 0 ? (
-              <Text className="font-sans text-sm text-on-surface-variant">Everyone has punched.</Text>
-            ) : (
-              view.notArrived.map((player) => (
-                <PlayerRow
-                  key={player.userId}
-                  player={player}
-                  subtitle={`Not arrived${playerRoleSuffix(player)}`}
-                  subtitleClassName="text-secondary-900"
-                  trailing={pencilButton(player, 'Enter arrival time', false)}
-                />
-              ))
+          <PlayerCardSection
+            label="Late Arrival"
+            players={view.late}
+            renderPlayer={(player) => (
+              <PlayerCard
+                key={player.userId}
+                player={player}
+                subtitle={`Arrived at ${player.arrivedAtLabel ?? '—'} · Late${playerRoleSuffix(player)}`}
+                subtitleClassName="text-primary"
+                trailing={
+                  <View className="flex-row items-center">
+                    {pencilButton(player, 'Edit arrival time', true)}
+                    <Pressable
+                      onPress={() => void handleVerify(player)}
+                      disabled={working || player.verifiedLate}
+                      accessibilityRole="button"
+                      accessibilityLabel="Verify late arrival"
+                      className="h-10 w-10 items-center justify-center active:opacity-70"
+                    >
+                      <MaterialIcons
+                        name={player.verifiedLate ? 'check-circle' : 'radio-button-unchecked'}
+                        size={24}
+                        color={player.verifiedLate ? colors.primary : FIELD_ORANGE}
+                      />
+                    </Pressable>
+                  </View>
+                }
+              />
             )}
-          </View>
+          />
 
-          <View className="mb-4 gap-2">
-            <SectionHeader label="Late Arrival" />
-            {view.late.length === 0 ? (
-              <Text className="font-sans text-sm text-on-surface-variant">No late arrivals.</Text>
-            ) : (
-              view.late.map((player) => (
-                <PlayerRow
-                  key={player.userId}
-                  player={player}
-                  subtitle={`Arrived at ${player.arrivedAtLabel ?? '—'} (Late)${playerRoleSuffix(player)}`}
-                  subtitleClassName="text-secondary-900"
-                  trailing={
-                    <View className="flex-row items-center">
-                      {pencilButton(player, 'Edit arrival time', true)}
-                      <Pressable
-                        onPress={() => void handleVerify(player)}
-                        disabled={working || player.verifiedLate}
-                        accessibilityRole="button"
-                        accessibilityLabel="Verify late arrival"
-                        className="h-10 w-10 items-center justify-center active:opacity-70"
-                      >
-                        <MaterialIcons
-                          name={player.verifiedLate ? 'check-circle' : 'radio-button-unchecked'}
-                          size={24}
-                          color={player.verifiedLate ? colors.primary : FIELD_ORANGE}
-                        />
-                      </Pressable>
-                    </View>
-                  }
-                />
-              ))
+          <PlayerCardSection
+            label="Not Arrived"
+            players={view.notArrived}
+            renderPlayer={(player) => (
+              <PlayerCard
+                key={player.userId}
+                player={player}
+                subtitle={`Not arrived${playerRoleSuffix(player)}`}
+                subtitleClassName="text-on-surface-variant"
+                trailing={pencilButton(player, 'Enter arrival time', false)}
+              />
             )}
-          </View>
+          />
         </ScrollView>
       ) : null}
 

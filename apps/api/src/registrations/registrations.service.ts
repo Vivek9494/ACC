@@ -19,31 +19,41 @@ import {
   type CenterPlayerRosterEntry,
   RegistrationVerificationPhase,
   type TournamentFavouritePlayersView,
+  type LeatherRegisteredPlayersView,
   type VerifiedRegisteredPlayersView,
   type VerifiedRegisteredPlayerRow,
   type SetRegistrationFavouriteResponse,
   tournamentHasRegistrationWindow,
+  hasRegistrationOpened,
   bowlingStyleFromType,
+  canSelfRegisterForTournament,
+  formatVenueDateTime,
+  serverVenueTimezone,
   UserRole,
-  isTeamLeaderRole,
 } from '@acc/types';
 import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 
 import { AuditService } from '../audit/audit.service';
+import { favouritesLeadTeamIdInTournament } from '../authz/team-leader.util';
 import { PermissionService } from '../authz/permission.service';
 import {
   NotificationsService,
   NotificationTrigger,
 } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { MediaUrlResolver } from '../storage/media-url.resolver';
+import { selectableUserWhere } from '../users/user-query';
+import { LeatherTournamentVisibilityService } from '../tournaments/leather-tournament-visibility.service';
 import { assertTournamentActive } from '../tournaments/tournament-query';
 import type { BuildCustomFormDto, CreateCustomFormRequestDto } from './dto/custom-form.dto';
+import type { ListLeatherRegisteredPlayersDto } from './dto/list-leather-registrations.dto';
 import type { ListRegistrationsDto } from './dto/list-registrations.dto';
 import type { SubmitRegistrationDto, LateRegistrationDto } from './dto/submit-registration.dto';
 import type { UpdateAvailabilityDto } from './dto/update-availability.dto';
@@ -79,11 +89,15 @@ const REGISTRATION_INCLUDE = {
  */
 @Injectable()
 export class RegistrationsService {
+  private readonly logger = new Logger(RegistrationsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly permissions: PermissionService,
     private readonly notifications: NotificationsService,
     private readonly audit: AuditService,
+    private readonly leatherVisibility: LeatherTournamentVisibilityService,
+    private readonly mediaUrls: MediaUrlResolver,
   ) {}
 
   // --- Submission (?7.1, ?7.3) ---------------------------------------------
@@ -96,12 +110,15 @@ export class RegistrationsService {
   ): Promise<RegistrationDetail> {
     const tournament = await this.requireTournament(tournamentId);
     this.assertRegistrationWindowOpen(tournament);
-    if (actor.role !== UserRole.Player) {
+    if (!canSelfRegisterForTournament(actor.role)) {
       throw new ForbiddenException({
-        message: 'Only players may register for tournaments',
+        message: 'You may not register for this tournament',
         error: 'FORBIDDEN',
       });
     }
+
+    const ballType = tournament.ballType as BallType;
+    await this.leatherVisibility.assertCanRegisterForLeather(actor, tournamentId, ballType);
 
     const existing = await this.prisma.registration.findUnique({
       where: { tournamentId_userId: { tournamentId, userId: actor.id } },
@@ -117,7 +134,6 @@ export class RegistrationsService {
     await this.validateCustomFields(tournamentId, dto.customFields ?? null);
     const centerId = await this.resolveRegistrationCenterForUser(actor.id, dto.centerId);
     await this.syncPlayerProfile(actor.id, dto.firstName, dto.lastName, centerId);
-    const ballType = tournament.ballType as BallType;
     const playerType = this.resolvePlayerTypeForWrite(ballType, dto.playerType);
     const detail = await this.upsertRegistration(
       tournamentId,
@@ -136,7 +152,49 @@ export class RegistrationsService {
       });
     }
 
+    await this.notifyVideoUploadDeadline(actor.id, tournament);
+
     return detail;
+  }
+
+  /**
+   * §17 Phase C #12 (event side): when a player registers for a tournament that
+   * requires a skill video, inform them of the upload deadline immediately.
+   * Best-effort — never blocks registration.
+   */
+  private async notifyVideoUploadDeadline(
+    userId: string,
+    tournament: {
+      id: string;
+      name: string;
+      timezone: string | null;
+      videoRequired: boolean;
+      videoUploadEndDate: Date | null;
+    },
+  ): Promise<void> {
+    if (!tournament.videoRequired || tournament.videoUploadEndDate == null) {
+      return;
+    }
+    try {
+      const zone = serverVenueTimezone(tournament.timezone);
+      const deadline = formatVenueDateTime(tournament.videoUploadEndDate, zone, {
+        includeWeekday: true,
+        includeYear: true,
+      });
+      await this.notifications.sendToAudience([userId], {
+        triggerKey: NotificationTrigger.VideoUploadDeadline,
+        dedupeKey: `${NotificationTrigger.VideoUploadDeadline}:${tournament.id}:${userId}`,
+        title: 'Skill video required',
+        body: `Upload your skill video for ${tournament.name} by ${deadline}.`,
+        data: { tournamentId: tournament.id, screen: 'tournament' },
+        audienceSummary: `Registrant ${userId} of tournament ${tournament.id}`,
+      });
+    } catch (err) {
+      this.logger.error(
+        `Video-upload-deadline notification failed for tournament ${tournament.id}`,
+        err as Error,
+      );
+    }
   }
 
   /** Late registration of a missed player by Organizer / Center Sevak (?7.6). */
@@ -270,7 +328,7 @@ export class RegistrationsService {
       },
       include: REGISTRATION_INCLUDE,
     });
-    return this.toDetail(row);
+    return this.resolveSummaryPhoto(this.toDetail(row));
   }
 
   private async upsertRegistration(
@@ -331,7 +389,7 @@ export class RegistrationsService {
       },
       include: REGISTRATION_INCLUDE,
     });
-    return this.toDetail(row);
+    return this.resolveSummaryPhoto(this.toDetail(row));
   }
 
   // --- Review lifecycle (?7.3) ---------------------------------------------
@@ -381,7 +439,7 @@ export class RegistrationsService {
         : NotificationTrigger.RegistrationDeclined,
       { recipientUserIds: [existing.userId], data: { tournamentId: existing.tournamentId } },
     );
-    return this.toDetail(row);
+    return this.resolveSummaryPhoto(this.toDetail(row));
   }
 
   // --- Ratings & availability (?7.5, APL) ----------------------------------
@@ -455,7 +513,7 @@ export class RegistrationsService {
       },
     });
 
-    return this.toDetail(row);
+    return this.resolveSummaryPhoto(this.toDetail(row));
   }
 
   async updateAvailability(
@@ -468,7 +526,7 @@ export class RegistrationsService {
       data: { isAvailable: dto.isAvailable, availabilityNote: dto.availabilityNote ?? null },
       include: REGISTRATION_INCLUDE,
     });
-    return this.toDetail(row);
+    return this.resolveSummaryPhoto(this.toDetail(row));
   }
 
   /** Aggregate availability of confirmed players for the ?7.5 bar-chart. */
@@ -513,7 +571,8 @@ export class RegistrationsService {
       },
       include: REGISTRATION_INCLUDE,
     });
-    return this.sort(rows.map((row) => this.toSummary(row)), query.sort);
+    const summaries = this.sort(rows.map((row) => this.toSummary(row)), query.sort);
+    return this.resolveSummaryPhotos(summaries);
   }
 
   /**
@@ -542,7 +601,7 @@ export class RegistrationsService {
 
     await this.assertRegistrationVerificationComplete(tournament);
 
-    const favouriteTeamId = this.resolveFavouriteTeamId(actor, tournamentId);
+    const favouriteTeamId = await this.resolveFavouriteTeamId(actor, tournamentId);
     const favouritedUserIds = favouriteTeamId
       ? await this.loadFavouritedUserIds(tournamentId, favouriteTeamId)
       : new Set<string>();
@@ -567,9 +626,89 @@ export class RegistrationsService {
     });
 
     return {
-      players,
+      players: await this.resolveSummaryPhotos(players),
       canFavourite: favouriteTeamId != null,
       favouriteTeamId,
+    };
+  }
+
+  /**
+   * Confirmed leather registrants — Admin / Club Manager squad-building list (ACC).
+   * Available once the registration window has opened.
+   */
+  async listLeatherRegisteredPlayers(
+    actor: AuthUser,
+    tournamentId: string,
+    query: ListLeatherRegisteredPlayersDto,
+  ): Promise<LeatherRegisteredPlayersView> {
+    const tournament = await this.requireTournament(tournamentId);
+    if (tournament.ballType !== BallType.Leather) {
+      throw new BadRequestException({
+        message: 'Registered players list is only available for leather tournaments',
+        error: 'NOT_LEATHER_TOURNAMENT',
+      });
+    }
+
+    const allowed = await this.permissions.check(
+      Permission.VIEW_LEATHER_REGISTERED_PLAYERS,
+      actor,
+      { tournamentId },
+    );
+    if (!allowed) {
+      throw new ForbiddenException({
+        message: 'You do not have permission to view registered players',
+        error: 'FORBIDDEN',
+      });
+    }
+
+    if (
+      !tournamentHasRegistrationWindow({
+        registrationOpenAt: tournament.registrationOpenAt?.toISOString() ?? null,
+        registrationCloseAt: tournament.registrationCloseAt?.toISOString() ?? null,
+      }) ||
+      !hasRegistrationOpened({
+        registrationOpenAt: tournament.registrationOpenAt?.toISOString() ?? null,
+      })
+    ) {
+      throw new ForbiddenException({
+        message: 'Registered players are available once registration opens',
+        error: 'REGISTRATION_NOT_OPEN',
+      });
+    }
+
+    const search = query.search?.trim();
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 500;
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.RegistrationWhereInput = {
+      tournamentId,
+      status: RegistrationStatus.Confirmed,
+      ...(search
+        ? {
+            OR: [
+              { user: { firstName: { contains: search, mode: 'insensitive' } } },
+              { user: { lastName: { contains: search, mode: 'insensitive' } } },
+              { center: { name: { contains: search, mode: 'insensitive' } } },
+            ],
+          }
+        : {}),
+    };
+
+    const [rows, totalCount] = await Promise.all([
+      this.prisma.registration.findMany({
+        where,
+        include: REGISTRATION_INCLUDE,
+        orderBy: [{ user: { lastName: 'asc' } }, { user: { firstName: 'asc' } }],
+        skip,
+        take: limit,
+      }),
+      this.prisma.registration.count({ where }),
+    ]);
+
+    return {
+      players: await this.resolveSummaryPhotos(rows.map((row) => this.toSummary(row))),
+      totalCount,
     };
   }
 
@@ -594,10 +733,10 @@ export class RegistrationsService {
 
     await this.assertRegistrationVerificationComplete(tournament);
 
-    const teamId = this.resolveFavouriteTeamId(actor, tournamentId);
+    const teamId = await this.resolveFavouriteTeamId(actor, tournamentId);
     if (!teamId) {
       throw new ForbiddenException({
-        message: 'Only team Captains and Vice-Captains may favourite players',
+        message: 'Only team Captains, Vice-Captains, and Managers may favourite players',
         error: 'FORBIDDEN',
       });
     }
@@ -637,7 +776,7 @@ export class RegistrationsService {
     return { userId, isFavourited: favourited };
   }
 
-  /** Per-team favourites shortlist ? shared by Captain and Vice-Captain. */
+  /** Per-team favourites shortlist — shared by Captain, Vice-Captain, and Manager. */
   async listFavouritePlayers(
     actor: AuthUser,
     tournamentId: string,
@@ -657,7 +796,7 @@ export class RegistrationsService {
 
     await this.assertRegistrationVerificationComplete(tournament);
 
-    const favouriteTeamId = this.resolveFavouriteTeamId(actor, tournamentId);
+    const favouriteTeamId = await this.resolveFavouriteTeamId(actor, tournamentId);
     if (!favouriteTeamId) {
       return { favourites: [], canFavourite: false, favouriteTeamId: null };
     }
@@ -699,7 +838,11 @@ export class RegistrationsService {
       ];
     });
 
-    return { favourites, canFavourite: true, favouriteTeamId };
+    return {
+      favourites: await this.resolveSummaryPhotos(favourites),
+      canFavourite: true,
+      favouriteTeamId,
+    };
   }
 
   /** ?7.3/?7.4: Center Sevak verification queue (tennis only ? leather has no verification). */
@@ -735,7 +878,7 @@ export class RegistrationsService {
     const centerUsers = await this.prisma.user.findMany({
       where: {
         centerId: { in: centerIds },
-        isActive: true,
+        ...selectableUserWhere,
         role: UserRole.Player,
       },
       select: {
@@ -780,8 +923,8 @@ export class RegistrationsService {
     return {
       phase,
       actionCount,
-      registered,
-      notRegistered,
+      registered: await this.resolveSummaryPhotos(registered),
+      notRegistered: await this.resolveProfilePhotoUrls(notRegistered),
       registeredCount: registered.length,
       canManage,
       canLateRegister,
@@ -793,7 +936,7 @@ export class RegistrationsService {
       where: { tournamentId_userId: { tournamentId, userId: actor.id } },
       include: REGISTRATION_INCLUDE,
     });
-    return row ? this.toDetail(row) : null;
+    return row ? this.resolveSummaryPhoto(this.toDetail(row)) : null;
   }
 
   /**
@@ -1045,23 +1188,31 @@ export class RegistrationsService {
     tournamentId: string,
   ): Promise<{
     id: string;
+    name: string;
     state: string;
     type: string;
     ballType: string;
+    timezone: string | null;
     registrationOpenAt: Date | null;
     registrationCloseAt: Date | null;
+    videoRequired: boolean;
+    videoUploadEndDate: Date | null;
     defaultPlayerFeeCents: bigint | null;
   }> {
     const tournament = await this.prisma.tournament.findUnique({
       where: { id: tournamentId },
       select: {
         id: true,
+        name: true,
         state: true,
         type: true,
         ballType: true,
+        timezone: true,
         isDeleted: true,
         registrationOpenAt: true,
         registrationCloseAt: true,
+        videoRequired: true,
+        videoUploadEndDate: true,
         defaultPlayerFeeCents: true,
       },
     });
@@ -1279,12 +1430,9 @@ export class RegistrationsService {
     }
   }
 
-  /** Captain / Vice-Captain team scope for shared favourites (null without team leadership). */
-  private resolveFavouriteTeamId(actor: AuthUser, tournamentId: string): string | null {
-    const assignment = (actor.teamLeadAssignments ?? []).find(
-      (row) => row.tournamentId === tournamentId && isTeamLeaderRole(row.role),
-    );
-    return assignment?.teamId ?? null;
+  /** Captain / VC / Manager team scope for shared favourites (from RoleAssignment, not JWT). */
+  private resolveFavouriteTeamId(actor: AuthUser, tournamentId: string): Promise<string | null> {
+    return favouritesLeadTeamIdInTournament(this.prisma, actor.id, tournamentId);
   }
 
   private async loadFavouritedUserIds(
@@ -1333,6 +1481,30 @@ export class RegistrationsService {
       reviewedByUserId: row.reviewedByUserId,
       reviewedAt: row.reviewedAt?.toISOString() ?? null,
     };
+  }
+
+  private resolveProfilePhotoUrls<T extends { profilePhotoUrl: string | null }>(
+    rows: T[],
+  ): Promise<T[]> {
+    return this.mediaUrls.resolveProfilePhotoUrls(rows);
+  }
+
+  private resolveProfilePhoto<T extends { profilePhotoUrl: string | null }>(
+    row: T,
+  ): Promise<T> {
+    return this.mediaUrls.resolveProfilePhoto(row);
+  }
+
+  private resolveSummaryPhotos<T extends Pick<RegistrationSummary, 'profilePhotoUrl'>>(
+    summaries: T[],
+  ): Promise<T[]> {
+    return this.resolveProfilePhotoUrls(summaries);
+  }
+
+  private resolveSummaryPhoto<T extends Pick<RegistrationSummary, 'profilePhotoUrl'>>(
+    summary: T,
+  ): Promise<T> {
+    return this.resolveProfilePhoto(summary);
   }
 
   private toCustomFormRequestSummary(

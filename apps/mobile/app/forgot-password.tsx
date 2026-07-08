@@ -2,11 +2,12 @@ import { formatSignupMobileInput, OTP_LENGTH, SIGNUP_MOBILE_LENGTH } from '@acc/
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
+import { ActivityIndicator, Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/theme/colors';
 
 import { Button } from '../src/components/ui/Button';
+import { KeyboardAwareFormScrollView } from '../src/components/ui/KeyboardAwareFormScrollView';
 import { Text } from '../src/components/ui/Text';
 import { TextInput } from '../src/components/ui/TextInput';
 import { ApiRequestError, forgotPassword } from '../src/lib/api';
@@ -68,9 +69,9 @@ export default function ForgotPasswordScreen(): React.ReactElement {
         <Text className="font-sans-bold text-xl text-on-surface">Forgot password</Text>
       </View>
 
-      <ScrollView
-        contentContainerClassName="px-4 pb-12 pt-4"
-        keyboardShouldPersistTaps="handled"
+      <KeyboardAwareFormScrollView
+        contentContainerClassName="px-4 pt-4"
+        extraBottomPadding={48}
         showsVerticalScrollIndicator={false}
       >
         <View className="gap-2">
@@ -111,7 +112,7 @@ export default function ForgotPasswordScreen(): React.ReactElement {
             {submitting ? <ActivityIndicator color={colors.textInverse} /> : null}
           </Button>
         </View>
-      </ScrollView>
+      </KeyboardAwareFormScrollView>
     </SafeAreaView>
   );
 }

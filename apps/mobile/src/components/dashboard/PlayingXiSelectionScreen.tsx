@@ -1,9 +1,10 @@
 import { colors } from '@/theme/colors';
 import {
+  MAX_SUBSTITUTES,
   PLAYING_XI_SIZE,
   POLL_RESULTS_SECTION_LABELS,
   PlayingXiNoShowRecoveryAction,
-  formatRegistrationPlayerTypeLine,
+  REGISTRATION_PLAYER_TYPE_LABELS,
   type PollPenaltyOwingPlayerRow,
   type PollPlayingXiPlayerRow,
   type PollPlayingXiSelectionView,
@@ -24,12 +25,25 @@ import {
 } from '../../lib/api';
 import { PlayerAvatar } from '../tournament/PlayerAvatar';
 import { Button } from '../ui/Button';
+import { Card } from '../ui/Card';
 import { ScreenHeader } from '../ui/ScreenHeader';
 import { Text } from '../ui/Text';
+import { UnderlineTabBar } from '../ui/UnderlineTabBar';
 import { FIELD_ORANGE } from '../ui/fieldStyles';
+
+/** Player row chrome — must not change when selected; only the badge reflects selection. */
+const SQUAD_PLAYER_ROW_CLASS =
+  'flex-row items-center gap-3 rounded-control border border-outline-variant';
 
 type XiTab = 'in' | 'out' | 'summary';
 type SquadPick = 'PLAYING_XI' | 'SUBSTITUTE' | null;
+type SquadBucket = 'PLAYING_XI' | 'SUBSTITUTE';
+
+function leatherPlayerTypeLabel(
+  player: Pick<PollTallyPlayerRow, 'playerType'>,
+): string | null {
+  return player.playerType ? REGISTRATION_PLAYER_TYPE_LABELS[player.playerType] : null;
+}
 
 function PlayerSummaryRow({
   player,
@@ -40,8 +54,10 @@ function PlayerSummaryRow({
   badge?: string;
   badgeClassName?: string;
 }): React.ReactElement {
+  const playerTypeLabel = leatherPlayerTypeLabel(player);
+
   return (
-    <View className="flex-row items-center gap-3 border-b border-outline-variant/60 py-2.5">
+    <Card className={SQUAD_PLAYER_ROW_CLASS}>
       <PlayerAvatar
         firstName={player.firstName}
         profilePhotoUrl={player.profilePhotoUrl}
@@ -52,8 +68,8 @@ function PlayerSummaryRow({
         <Text className="font-sans-bold text-base text-on-surface">
           {player.firstName} {player.lastName}
         </Text>
-        {'skillLabel' in player && player.skillLabel ? (
-          <Text className="font-sans text-sm text-on-surface-variant">{player.skillLabel}</Text>
+        {playerTypeLabel ? (
+          <Text className="font-sans text-sm text-on-surface-variant">{playerTypeLabel}</Text>
         ) : null}
       </View>
       {badge ? (
@@ -63,11 +79,13 @@ function PlayerSummaryRow({
           {badge}
         </Text>
       ) : null}
-    </View>
+    </Card>
   );
 }
 
 function OutReferenceRow({ player }: { player: PollTallyPlayerRow }): React.ReactElement {
+  const playerTypeLabel = leatherPlayerTypeLabel(player);
+
   return (
     <View className="flex-row items-center gap-3 border-b border-outline-variant/60 py-2.5">
       <PlayerAvatar
@@ -80,8 +98,8 @@ function OutReferenceRow({ player }: { player: PollTallyPlayerRow }): React.Reac
         <Text className="font-sans-bold text-base text-on-surface">
           {player.firstName} {player.lastName}
         </Text>
-        {player.skillLabel ? (
-          <Text className="font-sans text-sm text-on-surface-variant">{player.skillLabel}</Text>
+        {playerTypeLabel ? (
+          <Text className="font-sans text-sm text-on-surface-variant">{playerTypeLabel}</Text>
         ) : null}
       </View>
       <MaterialIcons name="cancel" size={24} color={colors.textMuted} />
@@ -89,81 +107,66 @@ function OutReferenceRow({ player }: { player: PollTallyPlayerRow }): React.Reac
   );
 }
 
-function SquadRadio({
-  label,
+function SquadSelectionIndicator({
+  bucket,
   selected,
-  onPress,
 }: {
-  label: string;
+  bucket: SquadBucket;
   selected: boolean;
-  onPress: () => void;
 }): React.ReactElement {
   return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="radio"
-      accessibilityState={{ selected }}
-      className="flex-row items-center gap-1.5 active:opacity-80"
+    <View
+      className={`h-6 w-6 items-center justify-center rounded-full border ${
+        selected
+          ? 'border-primary bg-primary'
+          : 'border-outline-variant bg-surface-container-lowest'
+      }`}
     >
-      <View
-        className={`h-5 w-5 items-center justify-center rounded-full border-2 ${
-          selected ? 'border-primary' : 'border-outline-variant'
-        }`}
-      >
-        {selected ? <View className="h-2.5 w-2.5 rounded-full bg-primary" /> : null}
-      </View>
-      <Text className={`font-sans-semibold text-xs ${selected ? 'text-primary' : 'text-on-surface-variant'}`}>
-        {label}
-      </Text>
-    </Pressable>
+      {selected ? (
+        <Text className="font-sans-medium text-[9px] text-on-primary">
+          {bucket === 'PLAYING_XI' ? '11' : 'S'}
+        </Text>
+      ) : null}
+    </View>
   );
 }
 
 function InSelectionRow({
   player,
+  bucket,
   pick,
   onPick,
 }: {
   player: PollPlayingXiPlayerRow;
+  bucket: SquadBucket;
   pick: SquadPick;
   onPick: (next: SquadPick) => void;
 }): React.ReactElement {
-  const playerTypeLine = formatRegistrationPlayerTypeLine(
-    player.playerType,
-    player.matchesPlayedCount,
-  );
+  const playerTypeLabel = leatherPlayerTypeLabel(player);
+  const selected = pick === bucket;
 
   return (
-    <View className="gap-3 border-b border-outline-variant/60 py-3">
-      <View className="flex-row items-start gap-3">
-        <PlayerAvatar
-          firstName={player.firstName}
-          profilePhotoUrl={player.profilePhotoUrl}
-          size="sm"
-          shape="square"
-        />
-        <View className="min-w-0 flex-1 gap-0.5">
-          <Text className="font-sans-bold text-base text-on-surface">
-            {player.firstName} {player.lastName}
-          </Text>
-          {playerTypeLine ? (
-            <Text className="font-sans text-sm text-on-surface-variant">{playerTypeLine}</Text>
-          ) : null}
-        </View>
+    <Card
+      onPress={() => onPick(selected ? null : bucket)}
+      accessibilityRole="button"
+      className={SQUAD_PLAYER_ROW_CLASS}
+    >
+      <PlayerAvatar
+        firstName={player.firstName}
+        profilePhotoUrl={player.profilePhotoUrl}
+        size="sm"
+        shape="square"
+      />
+      <View className="min-w-0 flex-1 gap-0.5">
+        <Text className="font-sans-bold text-base text-on-surface">
+          {player.firstName} {player.lastName}
+        </Text>
+        {playerTypeLabel ? (
+          <Text className="font-sans text-sm text-on-surface-variant">{playerTypeLabel}</Text>
+        ) : null}
       </View>
-      <View className="flex-row gap-6 pl-[60px]">
-        <SquadRadio
-          label="PLAYING 11"
-          selected={pick === 'PLAYING_XI'}
-          onPress={() => onPick(pick === 'PLAYING_XI' ? null : 'PLAYING_XI')}
-        />
-        <SquadRadio
-          label="SUBSTITUTE"
-          selected={pick === 'SUBSTITUTE'}
-          onPress={() => onPick(pick === 'SUBSTITUTE' ? null : 'SUBSTITUTE')}
-        />
-      </View>
-    </View>
+      <SquadSelectionIndicator bucket={bucket} selected={selected} />
+    </Card>
   );
 }
 
@@ -186,26 +189,28 @@ function SummarySection({
       {players.length === 0 ? (
         <Text className="font-sans text-sm text-on-surface-variant">{emptyLabel}</Text>
       ) : (
-        players.map((player) => (
-          <PlayerSummaryRow
-            key={player.userId}
-            player={player}
-            badge={
-              showArrivalStatus && 'hasPunched' in player
-                ? player.hasPunched
-                  ? 'On ground'
-                  : 'Not arrived'
-                : 'hasPunched' in player && player.hasPunched
-                  ? 'On ground'
+        <View className="gap-3">
+          {players.map((player) => (
+            <PlayerSummaryRow
+              key={player.userId}
+              player={player}
+              badge={
+                showArrivalStatus && 'hasPunched' in player
+                  ? player.hasPunched
+                    ? 'On ground'
+                    : 'Not arrived'
+                  : 'hasPunched' in player && player.hasPunched
+                    ? 'On ground'
+                    : undefined
+              }
+              badgeClassName={
+                showArrivalStatus && 'hasPunched' in player && !player.hasPunched
+                  ? 'text-secondary-900'
                   : undefined
-            }
-            badgeClassName={
-              showArrivalStatus && 'hasPunched' in player && !player.hasPunched
-                ? 'text-secondary-900'
-                : undefined
-            }
-          />
-        ))
+              }
+            />
+          ))}
+        </View>
       )}
     </View>
   );
@@ -224,6 +229,8 @@ function PenaltyServerCheckboxRow({
   working: boolean;
   onToggle: (next: boolean) => void;
 }): React.ReactElement {
+  const playerTypeLabel = leatherPlayerTypeLabel(player);
+
   return (
     <Pressable
       onPress={() => !disabled && !working && onToggle(!checked)}
@@ -245,8 +252,8 @@ function PenaltyServerCheckboxRow({
         <Text className="font-sans-bold text-base text-on-surface">
           {player.firstName} {player.lastName}
         </Text>
-        {player.skillLabel ? (
-          <Text className="font-sans text-sm text-on-surface-variant">{player.skillLabel}</Text>
+        {playerTypeLabel ? (
+          <Text className="font-sans text-sm text-on-surface-variant">{playerTypeLabel}</Text>
         ) : null}
         {!player.canDesignateForThisMatch ? (
           <Text className="font-sans text-xs text-on-surface-variant">
@@ -354,6 +361,7 @@ export function PlayingXiSelectionScreen({
   const insets = useSafeAreaInsets();
   const [selection, setSelection] = useState<PollPlayingXiSelectionView | null>(null);
   const [activeTab, setActiveTab] = useState<XiTab>('summary');
+  const [squadBucket, setSquadBucket] = useState<SquadBucket>('PLAYING_XI');
   const [editing, setEditing] = useState(false);
   const [picks, setPicks] = useState<Record<string, SquadPick>>({});
   const [designatedServerUserIds, setDesignatedServerUserIds] = useState<Set<string>>(new Set());
@@ -407,8 +415,33 @@ export function PlayingXiSelectionScreen({
     [picks],
   );
 
+  const visibleInPlayers = useMemo(() => {
+    if (!selection) {
+      return [];
+    }
+    return selection.in.filter((player) => {
+      const pick = picks[player.userId] ?? null;
+      if (squadBucket === 'PLAYING_XI') {
+        return pick !== 'SUBSTITUTE';
+      }
+      return pick !== 'PLAYING_XI';
+    });
+  }, [picks, selection, squadBucket]);
+
   function setPick(userId: string, next: SquadPick): void {
     setError(null);
+    if (next === 'SUBSTITUTE') {
+      setPicks((current) => {
+        const currentSubs = Object.entries(current).filter(([, role]) => role === 'SUBSTITUTE').length;
+        const alreadySub = current[userId] === 'SUBSTITUTE';
+        if (!alreadySub && currentSubs >= MAX_SUBSTITUTES) {
+          setError(`Only ${MAX_SUBSTITUTES} substitutes allowed.`);
+          return current;
+        }
+        return { ...current, [userId]: next };
+      });
+      return;
+    }
     setPicks((current) => ({ ...current, [userId]: next }));
   }
 
@@ -535,7 +568,7 @@ export function PlayingXiSelectionScreen({
 
   return (
     <View className="flex-1 bg-background">
-      <ScreenHeader title="Confirmed List of Players" accentTitle showProfileMenu={false} />
+      <ScreenHeader title="Confirmed List of Players" accentTitle />
 
       {loading ? (
         <View className="flex-1 items-center justify-center">
@@ -546,29 +579,12 @@ export function PlayingXiSelectionScreen({
       {selection ? (
         <View className="flex-1">
           {tabs ? (
-            <View className="flex-row border-b border-outline-variant">
-              {tabs.map((tab) => {
-                const active = tab.key === activeTab;
-                return (
-                  <Pressable
-                    key={tab.key}
-                    onPress={() => setActiveTab(tab.key)}
-                    accessibilityRole="tab"
-                    accessibilityState={{ selected: active }}
-                    className="flex-1 items-center py-3 active:opacity-80"
-                  >
-                    <Text
-                      className={`font-sans-semibold text-sm ${
-                        active ? 'text-primary' : 'text-on-surface-variant'
-                      }`}
-                    >
-                      {tab.label}
-                    </Text>
-                    {active ? <View className="mt-2 h-0.5 w-full rounded-full bg-primary" /> : null}
-                  </Pressable>
-                );
-              })}
-            </View>
+            <UnderlineTabBar
+              layout="spread"
+              options={tabs.map((tab) => ({ value: tab.key, label: tab.label }))}
+              value={activeTab === 'out' ? 'out' : 'in'}
+              onChange={setActiveTab}
+            />
           ) : null}
 
           <View className="flex-row items-center justify-between px-4 pb-2 pt-4">
@@ -622,10 +638,49 @@ export function PlayingXiSelectionScreen({
 
             {activeTab === 'in' ? (
               <>
-                {selection.in.map((player) => (
+                <View className="flex-row gap-2">
+                  {(
+                    [
+                      {
+                        key: 'PLAYING_XI' as const,
+                        label: `Playing 11 ${playingXiIds.length}/${PLAYING_XI_SIZE}`,
+                      },
+                      {
+                        key: 'SUBSTITUTE' as const,
+                        label: `Substitutes ${substituteIds.length}/${MAX_SUBSTITUTES}`,
+                      },
+                    ] as const
+                  ).map((bucket) => {
+                    const active = squadBucket === bucket.key;
+                    return (
+                      <Pressable
+                        key={bucket.key}
+                        onPress={() => setSquadBucket(bucket.key)}
+                        accessibilityRole="tab"
+                        accessibilityState={{ selected: active }}
+                        className={`flex-1 rounded-control border px-3 py-2 active:opacity-80 ${
+                          active
+                            ? 'border-primary bg-primary-container'
+                            : 'border-outline-variant bg-surface'
+                        }`}
+                      >
+                        <Text
+                          className={`text-center font-sans-semibold text-sm ${
+                            active ? 'text-primary' : 'text-on-surface'
+                          }`}
+                        >
+                          {bucket.label}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+
+                {visibleInPlayers.map((player) => (
                   <InSelectionRow
                     key={player.userId}
                     player={player}
+                    bucket={squadBucket}
                     pick={picks[player.userId] ?? null}
                     onPick={(next) => setPick(player.userId, next)}
                   />
@@ -666,7 +721,8 @@ export function PlayingXiSelectionScreen({
             >
               {error ? <Text className="mb-2 font-sans text-sm text-primary">{error}</Text> : null}
               <Text className="mb-3 font-sans text-sm text-on-surface-variant">
-                Playing 11: {playingXiIds.length}/{PLAYING_XI_SIZE}
+                Playing 11: {playingXiIds.length}/{PLAYING_XI_SIZE} · Substitutes:{' '}
+                {substituteIds.length}/{MAX_SUBSTITUTES}
                 {designatedServerUserIds.size > 0
                   ? ` · Penalty servers: ${designatedServerUserIds.size}`
                   : ''}

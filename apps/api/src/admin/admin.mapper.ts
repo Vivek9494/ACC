@@ -6,7 +6,9 @@ import {
   type AdminUserSummary,
   type UserRole,
 } from '@acc/types';
-import type { Prisma, UserRole as PrismaUserRole } from '@prisma/client';
+import type { Prisma, UserRole as PrismaUserRole, JerseySize as PrismaJerseySize } from '@prisma/client';
+
+import { adminDirectoryUserWhere } from '../users/user-query';
 
 type UserListRow = {
   id: string;
@@ -25,9 +27,14 @@ type UserDetailRow = Omit<UserListRow, 'roleAssignments'> & {
   dateOfBirth: Date;
   jerseyNumber: number;
   jerseyName: string | null;
+  jerseySize: PrismaJerseySize | null;
+  mustChangePassword: boolean;
+  tempPasswordExpiresAt: Date | null;
   center: {
+    id: string;
     name: string;
-    province: { name: string };
+    provinceId: string;
+    province: { id: string; name: string };
   };
   roleAssignments: {
     role: PrismaUserRole;
@@ -48,8 +55,11 @@ function collectRoles(user: {
   return formatAdminUserRolesForDisplay([...roles]);
 }
 
-export function toAdminUserSummary(user: UserListRow): AdminUserSummary {
-  return {
+export function toAdminUserSummary(
+  user: UserListRow,
+  options?: { includeFullMobile?: boolean },
+): AdminUserSummary {
+  const summary: AdminUserSummary = {
     id: user.id,
     firstName: user.firstName,
     lastName: user.lastName,
@@ -59,6 +69,12 @@ export function toAdminUserSummary(user: UserListRow): AdminUserSummary {
     roles: collectRoles(user),
     createdAt: user.createdAt.toISOString(),
   };
+
+  if (options?.includeFullMobile) {
+    summary.mobileNumber = user.mobileNumber;
+  }
+
+  return summary;
 }
 
 function toRoleAssignment(
@@ -82,13 +98,24 @@ export function toAdminUserDetail(
   const summary = toAdminUserSummary(user);
   return {
     ...summary,
+    mobileNumber: user.mobileNumber,
     email: user.email,
+    centerId: user.center.id,
     centerName: user.center.name,
+    provinceId: user.center.provinceId,
     provinceName: user.center.province.name,
     dateOfBirth: user.dateOfBirth.toISOString().slice(0, 10),
     jerseyNumber: user.jerseyNumber,
     jerseyName: user.jerseyName,
+    jerseySize: user.jerseySize,
+    platformRole: user.role,
+    battingRating: null,
+    bowlingRating: null,
+    fieldingRating: null,
+    playerRoleLabel: null,
     roleAssignments: user.roleAssignments.map((row) => toRoleAssignment(row, centerNameById)),
+    mustChangePassword: user.mustChangePassword,
+    tempPasswordExpiresAt: user.tempPasswordExpiresAt?.toISOString() ?? null,
   };
 }
 
@@ -113,4 +140,35 @@ export function buildAdminUserSearchWhere(q: string | undefined): Prisma.UserWhe
   }
 
   return { OR: or };
+}
+
+export interface AdminUserListFilterParams {
+  q?: string;
+  provinceId?: string;
+  centerId?: string;
+}
+
+/** Combines name/mobile search with optional province/center geography filters. */
+export function buildAdminUserListWhere(
+  params: AdminUserListFilterParams,
+): Prisma.UserWhereInput {
+  const conditions: Prisma.UserWhereInput[] = [adminDirectoryUserWhere];
+
+  const searchWhere = buildAdminUserSearchWhere(params.q);
+  if (searchWhere) {
+    conditions.push(searchWhere);
+  }
+
+  if (params.centerId) {
+    conditions.push({ centerId: params.centerId });
+  } else if (params.provinceId) {
+    conditions.push({
+      center: { provinceId: params.provinceId },
+    });
+  }
+
+  if (conditions.length === 1) {
+    return conditions[0]!;
+  }
+  return { AND: conditions };
 }

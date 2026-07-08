@@ -1,4 +1,14 @@
-import { BallType, CitySelection } from './rbac';
+import { validateKnockoutTeamCount } from './knockout-team-count';
+import { BallType, CitySelection, TournamentType } from './rbac';
+import {
+  compareIsoDateOnly,
+  isDateWithinLeatherSpan,
+  resolveTournamentFormDates,
+} from './tournament-dates';
+import {
+  DEFAULT_VENUE_TIMEZONE,
+  isDateOnlyBeforeTodayInZone,
+} from './timezone';
 import {
   parsePositiveInt,
   TOURNAMENT_FIELD_LIMITS,
@@ -14,11 +24,11 @@ export type TournamentFormFieldErrors = Partial<Record<TournamentFormFieldKey, s
 export const TOURNAMENT_FIELD_ORDER: readonly TournamentFormFieldKey[] = [
   'poster',
   'name',
+  'ballType',
   'year',
   'tournamentDates',
-  'ballType',
-  'citySelection',
   'province',
+  'citySelection',
   'centers',
   'numberOfTeams',
   'playersPerTeam',
@@ -28,6 +38,7 @@ export const TOURNAMENT_FIELD_ORDER: readonly TournamentFormFieldKey[] = [
   'registrationCloseTime',
   'auctionDate',
   'videoUploadEndDate',
+  'knockoutTeamCount',
 ];
 
 export interface CreateTournamentFormInput {
@@ -38,6 +49,10 @@ export interface CreateTournamentFormInput {
   name: string;
   year: string | null;
   tournamentDates: string[];
+  /** Leather span — from date (YYYY-MM-DD). Ignored for tennis. */
+  leatherFromDate: string;
+  /** Leather span — end date (YYYY-MM-DD). Ignored for tennis. */
+  leatherEndDate: string;
   ballType: BallType | null;
   citySelection: CitySelection | null;
   tournamentProvinceId: string | null;
@@ -53,6 +68,8 @@ export interface CreateTournamentFormInput {
   auctionDate: string;
   videoRequired: boolean;
   videoUploadEndDate: string;
+  /** Venue IANA timezone for today comparisons; defaults to Ontario. */
+  venueTimezone?: string;
 }
 
 function combineLocalDateAndTimeToIso(date: string, time: string): string | null {
@@ -128,25 +145,47 @@ export function validateCreateTournamentForm(
     errors.year = TOURNAMENT_FORM_MESSAGES.year.required;
   }
 
-  if (values.tournamentDates.length === 0) {
-    errors.tournamentDates = TOURNAMENT_FORM_MESSAGES.tournamentDates.required;
-  }
-
   if (!values.ballType) {
     errors.ballType = TOURNAMENT_FORM_MESSAGES.ballType.required;
+  }
+
+  const resolvedDates = resolveTournamentFormDates(values);
+
+  if (values.ballType === BallType.Leather) {
+    if (!values.leatherFromDate.trim()) {
+      errors.tournamentDates = TOURNAMENT_FORM_MESSAGES.tournamentDates.leatherFromRequired;
+    } else if (!values.leatherEndDate.trim()) {
+      errors.tournamentDates = TOURNAMENT_FORM_MESSAGES.tournamentDates.leatherEndRequired;
+    } else if (compareIsoDateOnly(values.leatherEndDate, values.leatherFromDate) < 0) {
+      errors.tournamentDates = TOURNAMENT_FORM_MESSAGES.tournamentDates.endBeforeFrom;
+    } else if (
+      isDateOnlyBeforeTodayInZone(
+        values.leatherFromDate,
+        values.venueTimezone ?? DEFAULT_VENUE_TIMEZONE,
+      ) ||
+      isDateOnlyBeforeTodayInZone(
+        values.leatherEndDate,
+        values.venueTimezone ?? DEFAULT_VENUE_TIMEZONE,
+      )
+    ) {
+      errors.tournamentDates = TOURNAMENT_FORM_MESSAGES.tournamentDates.past;
+    }
+  } else if (resolvedDates.length === 0) {
+    errors.tournamentDates = TOURNAMENT_FORM_MESSAGES.tournamentDates.required;
   }
 
   if (values.ballType === BallType.Tennis && !values.citySelection) {
     errors.citySelection = TOURNAMENT_FORM_MESSAGES.citySelection.required;
   }
 
+  if (!values.tournamentProvinceId) {
+    errors.province = TOURNAMENT_FORM_MESSAGES.province.required;
+  }
+
   const isMultiCenters =
     values.ballType === BallType.Tennis && values.citySelection === CitySelection.Multi;
 
   if (isMultiCenters) {
-    if (!values.tournamentProvinceId) {
-      errors.province = TOURNAMENT_FORM_MESSAGES.province.required;
-    }
     if (values.selectedCenterIds.length === 0) {
       errors.centers = TOURNAMENT_FORM_MESSAGES.centers.required;
     }
@@ -191,12 +230,14 @@ export function validateCreateTournamentForm(
     }
   }
 
-  if (values.hasAuctionDate && !values.auctionDate) {
-    errors.auctionDate = TOURNAMENT_FORM_MESSAGES.auctionDate.required;
-  }
+  if (values.ballType === BallType.Tennis) {
+    if (values.hasAuctionDate && !values.auctionDate) {
+      errors.auctionDate = TOURNAMENT_FORM_MESSAGES.auctionDate.required;
+    }
 
-  if (values.videoRequired && !values.videoUploadEndDate) {
-    errors.videoUploadEndDate = TOURNAMENT_FORM_MESSAGES.videoUploadEndDate.required;
+    if (values.videoRequired && !values.videoUploadEndDate) {
+      errors.videoUploadEndDate = TOURNAMENT_FORM_MESSAGES.videoUploadEndDate.required;
+    }
   }
 
   return errors;
@@ -205,6 +246,30 @@ export function validateCreateTournamentForm(
 export interface UpdateTournamentFormInput extends CreateTournamentFormInput {
   minTeamCount: number;
   datesWithMatches: string[];
+  /** Stored tournament type — knockout field is APL-only. */
+  tournamentType: TournamentType;
+  groupCount: number;
+  knockoutTeamCount: string | null;
+  hasKnockoutBracket: boolean;
+  /** Venue IANA timezone for today comparisons (edit mode). */
+  venueTimezone?: string;
+  /** Saved span boundaries — unchanged past dates remain valid on edit. */
+  initialLeatherFromDate?: string;
+  initialLeatherEndDate?: string;
+}
+
+function isNewPastLeatherDate(
+  dateOnly: string,
+  timeZone: string,
+  initialDate?: string,
+): boolean {
+  if (!dateOnly.trim()) {
+    return false;
+  }
+  if (initialDate && dateOnly === initialDate) {
+    return false;
+  }
+  return isDateOnlyBeforeTodayInZone(dateOnly, timeZone);
 }
 
 /** Shared Edit Tournament validation (mobile submit + guards). */
@@ -216,7 +281,6 @@ export function validateUpdateTournamentForm(
   delete errors.year;
   delete errors.ballType;
   delete errors.citySelection;
-  delete errors.province;
   delete errors.centers;
 
   if (values.numberOfTeams) {
@@ -228,13 +292,60 @@ export function validateUpdateTournamentForm(
     }
   }
 
-  const nextDates = new Set(values.tournamentDates);
-  for (const lockedDate of values.datesWithMatches) {
-    if (!nextDates.has(lockedDate)) {
-      errors.tournamentDates = TOURNAMENT_FORM_MESSAGES.tournamentDates.hasScheduledMatch(
-        lockedDate,
-      );
-      break;
+  if (values.ballType === BallType.Leather) {
+    const timeZone = values.venueTimezone ?? DEFAULT_VENUE_TIMEZONE;
+    if (
+      isNewPastLeatherDate(values.leatherFromDate, timeZone, values.initialLeatherFromDate) ||
+      isNewPastLeatherDate(values.leatherEndDate, timeZone, values.initialLeatherEndDate)
+    ) {
+      errors.tournamentDates = TOURNAMENT_FORM_MESSAGES.tournamentDates.past;
+    } else if (
+      values.leatherFromDate.trim() &&
+      values.leatherEndDate.trim() &&
+      compareIsoDateOnly(values.leatherEndDate, values.leatherFromDate) >= 0
+    ) {
+      for (const lockedDate of values.datesWithMatches) {
+        if (
+          !isDateWithinLeatherSpan(
+            lockedDate,
+            values.leatherFromDate,
+            values.leatherEndDate,
+          )
+        ) {
+          errors.tournamentDates = TOURNAMENT_FORM_MESSAGES.tournamentDates.matchOutsideSpan(
+            lockedDate,
+          );
+          break;
+        }
+      }
+    }
+  } else {
+    const nextDates = new Set(resolveTournamentFormDates(values));
+    for (const lockedDate of values.datesWithMatches) {
+      if (!nextDates.has(lockedDate)) {
+        errors.tournamentDates = TOURNAMENT_FORM_MESSAGES.tournamentDates.hasScheduledMatch(
+          lockedDate,
+        );
+        break;
+      }
+    }
+  }
+
+  if (values.tournamentType === TournamentType.APL) {
+    if (values.knockoutTeamCount != null && values.knockoutTeamCount.trim() !== '') {
+      if (values.hasKnockoutBracket) {
+        errors.knockoutTeamCount = TOURNAMENT_FORM_MESSAGES.knockoutTeamCount.locked;
+      } else {
+        const parsed = Number(values.knockoutTeamCount);
+        const totalTeams = values.numberOfTeams ? Number(values.numberOfTeams) : 0;
+        const knockoutError = validateKnockoutTeamCount(
+          Number.isInteger(parsed) ? parsed : null,
+          { groupCount: values.groupCount, totalTeams },
+        );
+        if (knockoutError) {
+          errors.knockoutTeamCount = knockoutError;
+        }
+      }
     }
   }
 
@@ -261,6 +372,10 @@ export function allTournamentFormMessages(): string[] {
     m.name.required,
     m.year.required,
     m.tournamentDates.required,
+    m.tournamentDates.leatherFromRequired,
+    m.tournamentDates.leatherEndRequired,
+    m.tournamentDates.past,
+    m.tournamentDates.endBeforeFrom,
     m.ballType.required,
     m.citySelection.required,
     m.province.required,
@@ -280,6 +395,7 @@ const TOURNAMENT_FIELD_KEY_SET = new Set<string>(TOURNAMENT_FIELD_ORDER);
 
 const TOURNAMENT_API_FIELD_ALIASES: Record<string, TournamentFormFieldKey> = {
   posterUrl: 'poster',
+  provinceId: 'province',
 };
 
 export function mapApiFieldsToTournamentForm(

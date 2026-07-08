@@ -13,7 +13,15 @@ export const INPUT_SHADOW_STYLE = {
   elevation: 2,
 } as const;
 
-/** 16px field text without lineHeight — avoids iOS TextInput selection highlight gap. */
+/** Profile avatar circle in stack headers ({@link ProfileMenu}). */
+export const HEADER_PROFILE_AVATAR_SIZE_CLASS = 'h-11 w-11';
+
+/** Initial letter inside the profile avatar. */
+export const HEADER_PROFILE_AVATAR_INITIAL_CLASS = 'font-sans-bold text-lg text-primary';
+
+/** Icon glyph size balanced inside {@link HEADER_PROFILE_AVATAR_SIZE_CLASS} (~text-lg weight). */
+export const HEADER_PROFILE_AVATAR_ICON_SIZE = 18;
+
 export const INPUT_TEXT_STYLE = { fontSize: 16 } as const;
 
 export const DEFAULT_INPUT_CLASS =
@@ -43,6 +51,9 @@ const LABEL_CLASSES: Record<LabelVariant, string> = {
   strong: 'text-text font-sans-bold text-sm mb-2 ml-1',
 };
 
+/** Label typography without block spacing — inline checkbox labels, etc. */
+export const FIELD_LABEL_TEXT_CLASS = 'font-sans text-base leading-6 text-text-muted';
+
 export function labelClassName(variant: LabelVariant = 'brand'): string {
   return LABEL_CLASSES[variant];
 }
@@ -67,6 +78,10 @@ export function mergeFieldClassName(
   }
   return stripInputTypography(merged);
 }
+
+/** Dashboard stat column labels (MATCHES / RUNS / WICKETS) and matching metadata rows. */
+export const STAT_LABEL_TEXT_CLASS =
+  'font-sans-medium text-[11px] uppercase tracking-wider text-on-surface-variant';
 
 /** Validation / form error text — primary orange app-wide. */
 export const ERROR_TEXT_CLASS = 'font-sans text-sm text-primary';

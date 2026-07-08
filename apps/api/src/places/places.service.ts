@@ -1,7 +1,15 @@
 import {
+  LOCATION_INPUT_MESSAGES,
   PLACES_RATE_LIMIT,
+  extractGoogleMapsPlaceQuery,
+  formatPlaceDisplayAddress,
+  isAllowedGoogleMapsHost,
+  isGoogleMapsShortLink,
+  normalizeMapsUrlInput,
+  parseGoogleMapsUrlCoordinates,
   type PlaceDetails,
   type PlaceSuggestion,
+  type ResolvedLocationResult,
   type ReverseGeocodeResult,
 } from '@acc/types';
 import {
@@ -12,9 +20,10 @@ import {
   Logger,
   ServiceUnavailableException,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 
 import { RedisService } from '../redis/redis.service';
+import { AppSettingsService } from '../settings/app-settings.service';
+import { followGoogleMapsRedirects } from './maps-link.utils';
 import { placesRateLimitKey } from './places.constants';
 
 interface GoogleAutocompleteResponse {
@@ -28,13 +37,17 @@ interface GoogleAutocompleteResponse {
 }
 
 interface GooglePlaceDetailsResponse {
+  displayName?: { text?: string };
   formattedAddress?: string;
   location?: { latitude?: number; longitude?: number };
 }
 
 interface GoogleGeocodeResponse {
   status?: string;
-  results?: Array<{ formatted_address?: string }>;
+  results?: Array<{
+    formatted_address?: string;
+    geometry?: { location?: { lat?: number; lng?: number } };
+  }>;
   error_message?: string;
 }
 
@@ -43,13 +56,13 @@ export class PlacesService {
   private readonly logger = new Logger(PlacesService.name);
 
   constructor(
-    private readonly config: ConfigService,
     private readonly redis: RedisService,
+    private readonly settings: AppSettingsService,
   ) {}
 
   async autocomplete(userId: string, q: string, sessionToken: string): Promise<PlaceSuggestion[]> {
     await this.assertWithinRateLimit(userId);
-    const key = this.requireApiKey();
+    const key = await this.requireApiKey();
 
     const response = await fetch('https://places.googleapis.com/v1/places:autocomplete', {
       method: 'POST',
@@ -89,7 +102,7 @@ export class PlacesService {
     sessionToken: string,
   ): Promise<PlaceDetails> {
     await this.assertWithinRateLimit(userId);
-    const key = this.requireApiKey();
+    const key = await this.requireApiKey();
 
     const url = new URL(`https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}`);
     url.searchParams.set('sessionToken', sessionToken);
@@ -97,7 +110,7 @@ export class PlacesService {
     const response = await fetch(url.toString(), {
       headers: {
         'X-Goog-Api-Key': key,
-        'X-Goog-FieldMask': 'formattedAddress,location',
+        'X-Goog-FieldMask': 'displayName,formattedAddress,location',
       },
     });
 
@@ -106,7 +119,10 @@ export class PlacesService {
     }
 
     const body = (await response.json()) as GooglePlaceDetailsResponse;
-    const address = body.formattedAddress?.trim();
+    const address = formatPlaceDisplayAddress(
+      body.displayName?.text,
+      body.formattedAddress,
+    );
     const latitude = body.location?.latitude;
     const longitude = body.location?.longitude;
 
@@ -122,7 +138,65 @@ export class PlacesService {
 
   async reverse(userId: string, latitude: number, longitude: number): Promise<ReverseGeocodeResult> {
     await this.assertWithinRateLimit(userId);
-    const key = this.requireApiKey();
+    const address = await this.reverseGeocodeAddress(latitude, longitude);
+    return { address };
+  }
+
+  async resolveMapsLink(userId: string, urlInput: string): Promise<ResolvedLocationResult> {
+    await this.assertWithinRateLimit(userId);
+
+    let normalized: URL;
+    try {
+      normalized = normalizeMapsUrlInput(urlInput);
+    } catch {
+      throw new BadRequestException({
+        message: LOCATION_INPUT_MESSAGES.mapsLinkFailed,
+        error: 'MAPS_LINK_UNRESOLVED',
+      });
+    }
+
+    if (!isAllowedGoogleMapsHost(normalized.hostname)) {
+      throw new BadRequestException({
+        message: LOCATION_INPUT_MESSAGES.mapsLinkFailed,
+        error: 'MAPS_LINK_UNRESOLVED',
+      });
+    }
+
+    let targetUrl = normalized.toString();
+    if (isGoogleMapsShortLink(urlInput)) {
+      try {
+        targetUrl = await followGoogleMapsRedirects(urlInput);
+        this.logger.log(`Expanded Google Maps short link (${normalized.hostname})`);
+      } catch (err) {
+        this.logger.warn(
+          `Maps short-link redirect failed (${normalized.hostname}): ${(err as Error).message}`,
+        );
+        throw new BadRequestException({
+          message: LOCATION_INPUT_MESSAGES.mapsLinkFailed,
+          error: 'MAPS_LINK_UNRESOLVED',
+        });
+      }
+    }
+
+    const coords = parseGoogleMapsUrlCoordinates(targetUrl);
+    if (coords) {
+      const address = await this.reverseGeocodeAddress(coords.latitude, coords.longitude);
+      return { address, latitude: coords.latitude, longitude: coords.longitude };
+    }
+
+    const placeQuery = extractGoogleMapsPlaceQuery(targetUrl);
+    if (placeQuery) {
+      return this.forwardGeocode(placeQuery);
+    }
+
+    throw new BadRequestException({
+      message: LOCATION_INPUT_MESSAGES.mapsLinkFailed,
+      error: 'MAPS_LINK_UNRESOLVED',
+    });
+  }
+
+  private async reverseGeocodeAddress(latitude: number, longitude: number): Promise<string> {
+    const key = await this.requireApiKey();
 
     const url = new URL('https://maps.googleapis.com/maps/api/geocode/json');
     url.searchParams.set('latlng', `${latitude},${longitude}`);
@@ -144,15 +218,43 @@ export class PlacesService {
       });
     }
 
-    return { address: body.results[0].formatted_address };
+    return body.results[0].formatted_address;
   }
 
-  private requireApiKey(): string {
-    let key = this.config.get<string>('GOOGLE_PLACES_KEY')?.trim();
-    // Common copy/paste typo: extra leading character before AIzaSy.
-    if (key?.startsWith('yAIzaSy')) {
-      key = key.slice(1);
+  private async forwardGeocode(query: string): Promise<ResolvedLocationResult> {
+    const key = await this.requireApiKey();
+
+    const url = new URL('https://maps.googleapis.com/maps/api/geocode/json');
+    url.searchParams.set('address', query);
+    url.searchParams.set('components', 'country:CA');
+    url.searchParams.set('key', key);
+
+    const response = await fetch(url.toString());
+    if (!response.ok) {
+      await this.logAndThrowPlacesError('forward', response);
     }
+
+    const body = (await response.json()) as GoogleGeocodeResponse;
+    const result = body.results?.[0];
+    const address = result?.formatted_address?.trim();
+    const latitude = result?.geometry?.location?.lat;
+    const longitude = result?.geometry?.location?.lng;
+
+    if (body.status !== 'OK' || !address || latitude == null || longitude == null) {
+      this.logger.warn(
+        `Geocode forward failed: status=${body.status ?? 'unknown'} ${body.error_message ?? ''}`,
+      );
+      throw new BadRequestException({
+        message: LOCATION_INPUT_MESSAGES.mapsLinkFailed,
+        error: 'MAPS_LINK_UNRESOLVED',
+      });
+    }
+
+    return { address, latitude, longitude };
+  }
+
+  private async requireApiKey(): Promise<string> {
+    const key = await this.settings.getGoogleMapsApiKey();
     if (!key) {
       throw new ServiceUnavailableException({
         message: 'Location search is not configured',

@@ -18,10 +18,14 @@ import {
   type RegistrationFieldDefinition,
   type SubmitRegistrationRequest,
   type TournamentDetail,
+  formatSignupNameInput,
+  SIGNUP_NAME_MAX_LENGTH,
+  SIGNUP_VALIDATION_MESSAGES,
+  validateSignupName,
 } from '@acc/types';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
+import { ActivityIndicator, Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
@@ -35,7 +39,9 @@ import {
   submitRegistration,
 } from '../../lib/api';
 import { Button } from '../ui/Button';
-import { FIELD_ORANGE, INPUT_SHADOW_STYLE } from '../ui/fieldStyles';
+import { KeyboardAwareFormScrollView } from '../ui/KeyboardAwareFormScrollView';
+import { ScreenHeader } from '../ui/ScreenHeader';
+import { FIELD_ORANGE } from '../ui/fieldStyles';
 import { RadioGroup } from '../ui/RadioGroup';
 import { Select, type SelectOption } from '../ui/Select';
 import { Text } from '../ui/Text';
@@ -56,16 +62,17 @@ function FormSection({
   children: React.ReactNode;
 }): React.ReactElement {
   return (
-    <View
-      className="gap-4 rounded-control border border-outline-variant bg-surface p-4"
-      style={INPUT_SHADOW_STYLE}
-    >
+    <View className="gap-4">
       <Text className="font-sans-semibold text-xs uppercase tracking-wider text-primary">
         {title}
       </Text>
       {children}
     </View>
   );
+}
+
+function FormFieldRow({ children }: { children: React.ReactNode }): React.ReactElement {
+  return <View className="flex-row items-start gap-3">{children}</View>;
 }
 
 export interface TournamentRegistrationFormScreenProps {
@@ -100,6 +107,8 @@ export function TournamentRegistrationFormScreen({
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
+  const [firstNameError, setFirstNameError] = useState<string | undefined>();
+  const [lastNameError, setLastNameError] = useState<string | undefined>();
   const [centerId, setCenterId] = useState<string | null>(null);
   const [battingStyle, setBattingStyle] = useState<BattingStyle | null>(null);
   const [playerRole, setPlayerRole] = useState<PlayerRegistrationRole | null>(null);
@@ -186,8 +195,15 @@ export function TournamentRegistrationFormScreen({
       existing?.status !== RegistrationStatus.InWaitlist;
 
   function validateForm(): string | null {
-    if (!firstName.trim() || !lastName.trim()) {
-      return 'First and last name are required.';
+    const nextFirstNameError = validateSignupName(
+      firstName,
+      SIGNUP_VALIDATION_MESSAGES.firstName,
+    );
+    const nextLastNameError = validateSignupName(lastName, SIGNUP_VALIDATION_MESSAGES.lastName);
+    setFirstNameError(nextFirstNameError ?? undefined);
+    setLastNameError(nextLastNameError ?? undefined);
+    if (nextFirstNameError || nextLastNameError) {
+      return nextFirstNameError ?? nextLastNameError;
     }
     if (!centerId) {
       return 'Please select your training center.';
@@ -269,23 +285,17 @@ export function TournamentRegistrationFormScreen({
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-background">
-      <ScrollView contentContainerClassName="gap-6 px-4 py-4" keyboardShouldPersistTaps="handled">
-        <Pressable onPress={() => router.back()} accessibilityRole="button">
-          <Text className="font-sans text-primary">← Back</Text>
-        </Pressable>
-
-        <View className="gap-1">
-          <Text className="font-sans-bold text-3xl text-on-surface">
-            {isLateOnBehalf ? 'Register player' : 'Player Registration'}
-          </Text>
-          <Text className="font-sans text-base text-on-surface-variant">
-            {isLateOnBehalf
-              ? `Register on behalf of a player for${tournament ? ` ${tournament.name}` : ' this tournament'}. They will be confirmed immediately with the ratings you enter — no separate approval step.`
-              : `Complete your profile to join${tournament ? ` ${tournament.name}` : ' this tournament'}.`}
-          </Text>
-        </View>
-
+    <SafeAreaView className="flex-1 bg-background" edges={['top']}>
+      <ScreenHeader
+        title={isLateOnBehalf ? 'Register player' : 'Player Registration'}
+        subtitle={
+          isLateOnBehalf
+            ? `Register on behalf of a player for${tournament ? ` ${tournament.name}` : ' this tournament'}. They will be confirmed immediately with the ratings you enter — no separate approval step.`
+            : `Complete your profile to join${tournament ? ` ${tournament.name}` : ' this tournament'}.`
+        }
+        onBack={() => router.back()}
+      />
+      <KeyboardAwareFormScrollView contentContainerClassName="gap-6 px-4" extraBottomPadding={24}>
         {existing && !isLateOnBehalf ? (
           <View className="gap-1 rounded-control bg-surface-container-high px-4 py-3">
             <Text className="font-sans-medium text-[11px] uppercase tracking-wider text-on-surface-variant">
@@ -315,14 +325,24 @@ export function TournamentRegistrationFormScreen({
                 <TextInput
                   label="First Name"
                   value={firstName}
-                  onChangeText={setFirstName}
+                  onChangeText={(text) => {
+                    setFirstName(formatSignupNameInput(text));
+                    if (firstNameError) setFirstNameError(undefined);
+                  }}
                   autoCapitalize="words"
+                  maxLength={SIGNUP_NAME_MAX_LENGTH}
+                  error={firstNameError}
                 />
                 <TextInput
                   label="Last Name"
                   value={lastName}
-                  onChangeText={setLastName}
+                  onChangeText={(text) => {
+                    setLastName(formatSignupNameInput(text));
+                    if (lastNameError) setLastNameError(undefined);
+                  }}
                   autoCapitalize="words"
+                  maxLength={SIGNUP_NAME_MAX_LENGTH}
+                  error={lastNameError}
                 />
               </View>
             </FormSection>
@@ -360,6 +380,7 @@ export function TournamentRegistrationFormScreen({
                 {isLeatherBall ? (
                   <RadioGroup
                     label="Player Type"
+                    horizontal
                     value={playerType}
                     onChange={setPlayerType}
                     options={REGISTRATION_PLAYER_TYPE_OPTIONS.map((option) => ({
@@ -373,42 +394,54 @@ export function TournamentRegistrationFormScreen({
 
             <FormSection title="Skill Assessment">
               <View className="gap-4">
-                <Select
-                  label="Batting Rating"
-                  value={battingRating}
-                  options={ratingOptions(REGISTRATION_RATING_OPTIONS)}
-                  onChange={setBattingRating}
-                />
-                <Select
-                  label="Batting Position"
-                  value={battingPosition}
-                  options={BATTING_POSITION_OPTIONS.map((value) => ({ value, label: value }))}
-                  onChange={setBattingPosition}
-                />
-                <Select
-                  label="Bowling Rating"
-                  value={bowlingRating}
-                  options={ratingOptions(REGISTRATION_RATING_OPTIONS)}
-                  onChange={setBowlingRating}
-                />
-                <Select
-                  label="Bowling Type"
-                  value={bowlingType}
-                  options={BOWLING_TYPE_OPTIONS.map((value) => ({ value, label: value }))}
-                  onChange={setBowlingType}
-                />
-                <Select
-                  label="Fielding Rating"
-                  value={fieldingRating}
-                  options={ratingOptions(REGISTRATION_RATING_OPTIONS)}
-                  onChange={setFieldingRating}
-                />
-                <Select
-                  label="Fielding Position"
-                  value={fieldingPosition}
-                  options={FIELDING_POSITION_OPTIONS.map((value) => ({ value, label: value }))}
-                  onChange={setFieldingPosition}
-                />
+                <FormFieldRow>
+                  <Select
+                    label="Batting Rating"
+                    value={battingRating}
+                    options={ratingOptions(REGISTRATION_RATING_OPTIONS)}
+                    onChange={setBattingRating}
+                    containerClassName="min-w-0 flex-1"
+                  />
+                  <Select
+                    label="Batting Position"
+                    value={battingPosition}
+                    options={BATTING_POSITION_OPTIONS.map((value) => ({ value, label: value }))}
+                    onChange={setBattingPosition}
+                    containerClassName="min-w-0 flex-1"
+                  />
+                </FormFieldRow>
+                <FormFieldRow>
+                  <Select
+                    label="Bowling Rating"
+                    value={bowlingRating}
+                    options={ratingOptions(REGISTRATION_RATING_OPTIONS)}
+                    onChange={setBowlingRating}
+                    containerClassName="min-w-0 flex-1"
+                  />
+                  <Select
+                    label="Bowling Type"
+                    value={bowlingType}
+                    options={BOWLING_TYPE_OPTIONS.map((value) => ({ value, label: value }))}
+                    onChange={setBowlingType}
+                    containerClassName="min-w-0 flex-1"
+                  />
+                </FormFieldRow>
+                <FormFieldRow>
+                  <Select
+                    label="Fielding Rating"
+                    value={fieldingRating}
+                    options={ratingOptions(REGISTRATION_RATING_OPTIONS)}
+                    onChange={setFieldingRating}
+                    containerClassName="min-w-0 flex-1"
+                  />
+                  <Select
+                    label="Fielding Position"
+                    value={fieldingPosition}
+                    options={FIELDING_POSITION_OPTIONS.map((value) => ({ value, label: value }))}
+                    onChange={setFieldingPosition}
+                    containerClassName="min-w-0 flex-1"
+                  />
+                </FormFieldRow>
               </View>
             </FormSection>
 
@@ -441,7 +474,7 @@ export function TournamentRegistrationFormScreen({
             <Text className="font-sans text-sm text-primary">{error}</Text>
           </View>
         ) : null}
-      </ScrollView>
+      </KeyboardAwareFormScrollView>
     </SafeAreaView>
   );
 }

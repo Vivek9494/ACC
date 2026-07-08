@@ -19,6 +19,7 @@ import {
   type ParticipationPollCardView,
   type ParticipationPollTallyView,
   type PlayerRegistrationRole,
+  type PlayingXiConfirmFromPollView,
   RegistrationPlayerType,
   type PollPenaltyOwingPlayerRow,
   type PollPenaltyServingPlayerRow,
@@ -27,8 +28,10 @@ import {
   type PollTallyPlayerRow,
   PlayingXiNoShowRecoveryAction,
   type PlayingXiNoShowRecoveryRequest,
+  enrichPollSuspensionRows,
   type PlayingXiSwitchRequest,
   UserRole,
+  canAssignTeamRoles,
 } from '@acc/types';
 import {
   BadRequestException,
@@ -43,6 +46,7 @@ import { PermissionService } from '../authz/permission.service';
 import { isCaptainOrViceCaptain } from '../authz/team-leader.util';
 import { LateArrivalPenaltyService } from '../late-arrival-penalty/late-arrival-penalty.service';
 import { MatchesService } from '../matches/matches.service';
+import { SuspensionService } from '../suspension/suspension.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { activeTournamentWhere } from '../tournaments/tournament-query';
 
@@ -73,6 +77,20 @@ type MembershipRow = {
   tournament: { ballType: string; name: string; timezone: string | null };
 };
 
+/** Leadership roles counted as squad members for leather poll visibility (§9.7). */
+const POLL_SQUAD_LEADERSHIP_ROLES: UserRole[] = [
+  UserRole.Captain,
+  UserRole.ViceCaptain,
+  UserRole.Manager,
+];
+
+const MEMBERSHIP_ROW_SELECT = {
+  teamId: true,
+  tournamentId: true,
+  team: { select: { name: true } },
+  tournament: { select: { ballType: true, name: true, timezone: true } },
+} as const;
+
 const POLL_MATCH_INCLUDE = {
   homeTeam: { select: { id: true, name: true } },
   awayTeam: { select: { id: true, name: true } },
@@ -86,6 +104,7 @@ export class ParticipationPollService {
     private readonly permissions: PermissionService,
     private readonly matches: MatchesService,
     private readonly penalties: LateArrivalPenaltyService,
+    private readonly suspensions: SuspensionService,
     private readonly audit: AuditService,
   ) {}
 
@@ -165,12 +184,6 @@ export class ParticipationPollService {
         if (xiCard) {
           return { participationPoll: null, playingXiCard: xiCard };
         }
-        continue;
-      }
-
-      const closedPollCard = await this.buildCardForMembership(userId, match, membership);
-      if (closedPollCard) {
-        return { participationPoll: closedPollCard, playingXiCard: null };
       }
       continue;
     }
@@ -178,6 +191,11 @@ export class ParticipationPollService {
     return { participationPoll: null, playingXiCard: null };
   }
 
+  /**
+   * Leather "Are you playing?" card for role dashboards (§9.7).
+   * Eligible voters: every member of the ACC team's full roster (`TeamMembership`) for the
+   * match's system team while the poll is open. External-opponent fixtures poll the ACC side only.
+   */
   async loadDashboardPoll(userId: string): Promise<ParticipationPollCardView | null> {
     const memberships = await this.loadLeatherMemberships(userId);
     if (memberships.length === 0) {
@@ -217,7 +235,7 @@ export class ParticipationPollService {
       }
 
       const card = await this.buildCardForMembership(userId, match, membership);
-      if (card) {
+      if (card?.isOpen) {
         return card;
       }
     }
@@ -254,7 +272,7 @@ export class ParticipationPollService {
 
     await this.prisma.pollVote.upsert({
       where: { pollId_userId: { pollId, userId: actor.id } },
-      create: { pollId, userId: actor.id, isAvailable },
+      create: { pollId, userId: actor.id, isAvailable, votedAt: new Date() },
       update: { isAvailable, votedAt: new Date() },
     });
 
@@ -285,13 +303,30 @@ export class ParticipationPollService {
 
     await this.assertCanAccessPoll(actor, poll.match, poll.teamId);
 
-    const canViewPending = await isCaptainOrViceCaptain(
-      this.prisma,
-      actor.id,
-      poll.match.tournamentId,
-      poll.teamId,
-    );
+    return this.buildTallyView(poll, true);
+  }
 
+  private async buildTallyView(
+    poll: {
+      id: string;
+      matchId: string;
+      teamId: string;
+      match: PollMatchRow;
+      team: { name: string };
+      votes: {
+        userId: string;
+        isAvailable: boolean;
+        votedAt: Date;
+        user: {
+          id: string;
+          firstName: string;
+          lastName: string;
+          profilePhotoUrl: string | null;
+        };
+      }[];
+    },
+    canViewPending: boolean,
+  ): Promise<ParticipationPollTallyView> {
     const roster = await this.prisma.teamMembership.findMany({
       where: { teamId: poll.teamId, tournamentId: poll.match.tournamentId },
       include: {
@@ -317,18 +352,22 @@ export class ParticipationPollService {
 
     const voteByUser = new Map(poll.votes.map((vote) => [vote.userId, vote]));
 
-    const tallyRow = (user: {
-      id: string;
-      firstName: string;
-      lastName: string;
-      profilePhotoUrl: string | null;
-    }): PollTallyPlayerRow => {
+    const tallyRow = (
+      user: {
+        id: string;
+        firstName: string;
+        lastName: string;
+        profilePhotoUrl: string | null;
+      },
+      votedAt?: Date | null,
+    ): PollTallyPlayerRow => {
       const registration = registrationByUser.get(user.id);
       return {
         userId: user.id,
         firstName: user.firstName,
         lastName: user.lastName,
         profilePhotoUrl: user.profilePhotoUrl,
+        votedAt: votedAt?.toISOString() ?? null,
         skillLabel: registration
           ? formatPollPlayerSkillLabel({
               battingPosition: registration.battingPosition,
@@ -346,13 +385,12 @@ export class ParticipationPollService {
 
     for (const member of roster) {
       const vote = voteByUser.get(member.userId);
-      const row = tallyRow(member.user);
       if (!vote) {
-        pendingRows.push(row);
+        pendingRows.push(tallyRow(member.user));
       } else if (vote.isAvailable) {
-        inRows.push(row);
+        inRows.push(tallyRow(member.user, vote.votedAt));
       } else {
-        outRows.push(row);
+        outRows.push(tallyRow(member.user, vote.votedAt));
       }
     }
 
@@ -360,6 +398,7 @@ export class ParticipationPollService {
       pollId: poll.id,
       matchId: poll.matchId,
       teamName: poll.team.name,
+      timezone: poll.match.tournament.timezone,
       inCount: inRows.length,
       outCount: outRows.length,
       pendingCount: canViewPending ? pendingRows.length : 0,
@@ -367,6 +406,103 @@ export class ParticipationPollService {
       out: outRows,
       pending: canViewPending ? pendingRows : [],
       canViewPending,
+    };
+  }
+
+  /** Leather match detail — In/Out poll as Playing XI selection (captain/VC/scorer). */
+  async getPlayingXiConfirmFromPoll(
+    actor: AuthUser,
+    matchId: string,
+    teamId: string,
+  ): Promise<PlayingXiConfirmFromPollView> {
+    const match = await this.prisma.match.findUnique({
+      where: { id: matchId },
+      include: POLL_MATCH_INCLUDE,
+    });
+    if (!match) {
+      throw new NotFoundException({ message: 'Match not found', error: 'MATCH_NOT_FOUND' });
+    }
+    if (match.tournament.ballType !== BallType.Leather) {
+      throw new BadRequestException({
+        message: 'Playing 11 from poll is only available for leather-ball matches',
+        error: 'INVALID_BALL_TYPE',
+      });
+    }
+    if (match.homeTeamId !== teamId && match.awayTeamId !== teamId) {
+      throw new BadRequestException({
+        message: 'Team is not part of this match',
+        error: 'TEAM_NOT_IN_MATCH',
+      });
+    }
+    if (!PLAYING_XI_CARD_MATCH_STATES.includes(match.state as MatchState)) {
+      throw new BadRequestException({
+        message: 'Playing 11 can no longer be updated for this match',
+        error: 'INVALID_MATCH_STATE',
+      });
+    }
+
+    await this.assertCanConfirmPlayingXi(actor, match, teamId);
+
+    const scheduleZone = serverVenueTimezone(match.tournament.timezone);
+    const opensAt = computeParticipationPollOpensAt(match, scheduleZone);
+    const closesAt = computeParticipationPollClosesAt(match, scheduleZone);
+    const poll = await this.ensurePoll(match, teamId, opensAt, closesAt);
+
+    const fullPoll = await this.prisma.availabilityPoll.findUnique({
+      where: { id: poll.id },
+      include: {
+        match: { include: POLL_MATCH_INCLUDE },
+        team: { select: { name: true } },
+        votes: {
+          include: {
+            user: { select: { id: true, firstName: true, lastName: true, profilePhotoUrl: true } },
+          },
+        },
+      },
+    });
+    if (!fullPoll) {
+      throw new NotFoundException({ message: 'Poll not found', error: 'NOT_FOUND' });
+    }
+
+    const tally = await this.buildTallyView(fullPoll, true);
+
+    const squad = await this.prisma.matchSquad.findUnique({
+      where: { matchId_teamId: { matchId, teamId } },
+      select: {
+        isFinalized: true,
+        players: { select: { userId: true, role: true } },
+      },
+    });
+    const savedPlayingXiIds =
+      squad?.players.filter((p) => p.role === MatchSquadRole.PlayingXi).map((p) => p.userId) ?? [];
+
+    const canUsePollConfirm =
+      canAssignTeamRoles(actor) ||
+      (await isCaptainOrViceCaptain(
+        this.prisma,
+        actor.id,
+        match.tournamentId,
+        teamId,
+      ));
+
+    const [rawPendingSuspensions, actionedSuspensions] = await Promise.all([
+      this.suspensions.listPendingForMatchTeam(matchId, teamId),
+      this.suspensions.listActionedForMatchTeam(matchId, teamId),
+    ]);
+    const voteByUser = new Map(fullPoll.votes.map((vote) => [vote.userId, vote.isAvailable]));
+    const pendingSuspensions = enrichPollSuspensionRows(rawPendingSuspensions, voteByUser);
+
+    return {
+      pollId: fullPoll.id,
+      matchId,
+      teamId,
+      teamName: fullPoll.team.name,
+      isFinalized: squad?.isFinalized ?? false,
+      savedPlayingXiIds,
+      canUsePollConfirm,
+      tally,
+      pendingSuspensions,
+      actionedSuspensions,
     };
   }
 
@@ -426,6 +562,7 @@ export class ParticipationPollService {
           fieldingPosition: true,
           bowlingType: true,
           playerRole: true,
+          playerType: true,
         },
       });
       const registrationByUser = new Map(squadRegistrations.map((row) => [row.userId, row]));
@@ -448,6 +585,7 @@ export class ParticipationPollService {
                 playerRole: registration.playerRole as PlayerRegistrationRole | null,
               })
             : null,
+          playerType: this.toRegistrationPlayerType(registration?.playerType ?? null),
           squadRole:
             player.role === MatchSquadRole.PlayingXi ? 'PLAYING_XI' : 'SUBSTITUTE',
           hasPunched: punchedUserIds.has(player.userId),
@@ -1078,27 +1216,7 @@ export class ParticipationPollService {
       throw new NotFoundException({ message: 'Poll not found', error: 'NOT_FOUND' });
     }
 
-    const isLeader = await isCaptainOrViceCaptain(
-      this.prisma,
-      actor.id,
-      poll.match.tournamentId,
-      poll.teamId,
-    );
-    if (!isLeader) {
-      throw new ForbiddenException({
-        message: 'Only the team Captain or Vice-Captain may confirm the Playing 11',
-        error: 'FORBIDDEN',
-      });
-    }
-
-    const allowed = await this.permissions.check(Permission.SELECT_PLAYING_11, actor, {
-      matchId: poll.matchId,
-      teamId: poll.teamId,
-      tournamentId: poll.match.tournamentId,
-    });
-    if (!allowed) {
-      throw new ForbiddenException({ message: 'Cannot confirm Playing 11', error: 'FORBIDDEN' });
-    }
+    await this.assertCanConfirmPlayingXi(actor, poll.match, poll.teamId);
 
     if (!poll.match.matchDate) {
       throw new BadRequestException({ message: 'Match date is required', error: 'INVALID_MATCH' });
@@ -1175,18 +1293,22 @@ export class ParticipationPollService {
     const registrationByUser = new Map(registrations.map((row) => [row.userId, row]));
     const voteByUser = new Map(fullPoll.votes.map((vote) => [vote.userId, vote]));
 
-    const tallyRow = (user: {
-      id: string;
-      firstName: string;
-      lastName: string;
-      profilePhotoUrl: string | null;
-    }): PollTallyPlayerRow => {
+    const tallyRow = (
+      user: {
+        id: string;
+        firstName: string;
+        lastName: string;
+        profilePhotoUrl: string | null;
+      },
+      votedAt?: Date | null,
+    ): PollTallyPlayerRow => {
       const registration = registrationByUser.get(user.id);
       return {
         userId: user.id,
         firstName: user.firstName,
         lastName: user.lastName,
         profilePhotoUrl: user.profilePhotoUrl,
+        votedAt: votedAt?.toISOString() ?? null,
         skillLabel: registration
           ? formatPollPlayerSkillLabel({
               battingPosition: registration.battingPosition,
@@ -1204,11 +1326,10 @@ export class ParticipationPollService {
 
     for (const member of roster) {
       const vote = voteByUser.get(member.userId);
-      const row = tallyRow(member.user);
       if (vote?.isAvailable) {
-        inRows.push(row);
+        inRows.push(tallyRow(member.user, vote.votedAt));
       } else if (vote && !vote.isAvailable) {
-        outRows.push(row);
+        outRows.push(tallyRow(member.user, vote.votedAt));
       }
     }
 
@@ -1272,19 +1393,34 @@ export class ParticipationPollService {
     };
   }
 
+  /**
+   * Leather squad memberships for poll visibility: full roster (`TeamMembership`) plus
+   * Captain / VC / Manager assignments (leadership is on the team but may not be rostered).
+   */
   private async loadLeatherMemberships(userId: string): Promise<MembershipRow[]> {
-    return this.prisma.teamMembership.findMany({
-      where: {
-        userId,
-        tournament: { ...activeTournamentWhere, ballType: BallType.Leather },
-      },
-      select: {
-        teamId: true,
-        tournamentId: true,
-        team: { select: { name: true } },
-        tournament: { select: { ballType: true, name: true, timezone: true } },
-      },
-    });
+    const [rosterRows, leadershipAssignments] = await Promise.all([
+      this.prisma.teamMembership.findMany({
+        where: {
+          userId,
+          tournament: { ...activeTournamentWhere, ballType: BallType.Leather },
+        },
+        select: MEMBERSHIP_ROW_SELECT,
+      }),
+      this.prisma.roleAssignment.findMany({
+        where: {
+          userId,
+          teamId: { not: null },
+          tournamentId: { not: null },
+          role: { in: POLL_SQUAD_LEADERSHIP_ROLES },
+        },
+        select: { teamId: true, tournamentId: true },
+      }),
+    ]);
+
+    const leadershipRows = await this.membershipRowsFromLeadershipAssignments(
+      leadershipAssignments,
+    );
+    return this.mergeMembershipRows([...rosterRows, ...leadershipRows]);
   }
 
   private async requireMembership(
@@ -1292,19 +1428,143 @@ export class ParticipationPollService {
     teamId: string,
     tournamentId: string,
   ): Promise<MembershipRow> {
-    const membership = await this.prisma.teamMembership.findFirst({
-      where: { userId, teamId, tournamentId },
-      select: {
-        teamId: true,
-        tournamentId: true,
-        team: { select: { name: true } },
-        tournament: { select: { ballType: true, name: true, timezone: true } },
-      },
-    });
+    const membership = await this.findLeatherMembership(userId, teamId, tournamentId);
     if (!membership) {
       throw new ForbiddenException({ message: 'Not on this team roster', error: 'FORBIDDEN' });
     }
     return membership;
+  }
+
+  private async findLeatherMembership(
+    userId: string,
+    teamId: string,
+    tournamentId: string,
+  ): Promise<MembershipRow | null> {
+    const rosterRow = await this.prisma.teamMembership.findFirst({
+      where: { userId, teamId, tournamentId },
+      select: MEMBERSHIP_ROW_SELECT,
+    });
+    if (rosterRow) {
+      return rosterRow;
+    }
+
+    const leadership = await this.prisma.roleAssignment.findFirst({
+      where: {
+        userId,
+        teamId,
+        tournamentId,
+        role: { in: POLL_SQUAD_LEADERSHIP_ROLES },
+      },
+      select: { teamId: true, tournamentId: true },
+    });
+    if (!leadership?.teamId || !leadership.tournamentId) {
+      return null;
+    }
+
+    const rows = await this.membershipRowsFromLeadershipAssignments([leadership]);
+    return rows[0] ?? null;
+  }
+
+  private async membershipRowsFromLeadershipAssignments(
+    assignments: { teamId: string | null; tournamentId: string | null }[],
+  ): Promise<MembershipRow[]> {
+    const scoped = assignments.filter(
+      (row): row is { teamId: string; tournamentId: string } =>
+        row.teamId != null && row.tournamentId != null,
+    );
+    if (scoped.length === 0) {
+      return [];
+    }
+
+    const tournamentIds = [...new Set(scoped.map((row) => row.tournamentId))];
+    const teamIds = [...new Set(scoped.map((row) => row.teamId))];
+
+    const [tournaments, teams] = await Promise.all([
+      this.prisma.tournament.findMany({
+        where: {
+          id: { in: tournamentIds },
+          ...activeTournamentWhere,
+          ballType: BallType.Leather,
+        },
+        select: { id: true, name: true, timezone: true, ballType: true },
+      }),
+      this.prisma.team.findMany({
+        where: { id: { in: teamIds } },
+        select: { id: true, name: true },
+      }),
+    ]);
+
+    const tournamentById = new Map(tournaments.map((row) => [row.id, row]));
+    const teamById = new Map(teams.map((row) => [row.id, row]));
+    const rows: MembershipRow[] = [];
+
+    for (const assignment of scoped) {
+      const tournament = tournamentById.get(assignment.tournamentId);
+      const team = teamById.get(assignment.teamId);
+      if (!tournament || !team) {
+        continue;
+      }
+      rows.push({
+        teamId: assignment.teamId,
+        tournamentId: assignment.tournamentId,
+        team: { name: team.name },
+        tournament: {
+          ballType: tournament.ballType,
+          name: tournament.name,
+          timezone: tournament.timezone,
+        },
+      });
+    }
+
+    return rows;
+  }
+
+  private mergeMembershipRows(rows: MembershipRow[]): MembershipRow[] {
+    const byKey = new Map<string, MembershipRow>();
+    for (const row of rows) {
+      byKey.set(`${row.tournamentId}:${row.teamId}`, row);
+    }
+    return [...byKey.values()];
+  }
+
+  private async assertCanConfirmPlayingXi(
+    actor: AuthUser,
+    match: PollMatchRow,
+    teamId: string,
+  ): Promise<void> {
+    if (canAssignTeamRoles(actor)) {
+      return;
+    }
+
+    const activeScorer = await this.prisma.matchScorerGrant.findFirst({
+      where: { matchId: match.id, userId: actor.id, revokedAt: null },
+      select: { id: true },
+    });
+    if (activeScorer) {
+      return;
+    }
+
+    const isLeader = await isCaptainOrViceCaptain(
+      this.prisma,
+      actor.id,
+      match.tournamentId,
+      teamId,
+    );
+    if (isLeader) {
+      return;
+    }
+
+    const allowed = await this.permissions.check(Permission.SELECT_PLAYING_11, actor, {
+      matchId: match.id,
+      teamId,
+      tournamentId: match.tournamentId,
+    });
+    if (!allowed) {
+      throw new ForbiddenException({
+        message: 'You may only confirm the Playing 11 for a team you captain',
+        error: 'FORBIDDEN',
+      });
+    }
   }
 
   private async assertCanAccessPoll(
@@ -1372,6 +1632,7 @@ export class ParticipationPollService {
       timezoneFallback: persistedTimezone == null,
       isOpen: isParticipationPollOpen(opensAt, closesAt),
       userVote: vote ? (vote.isAvailable ? PollVoteChoice.In : PollVoteChoice.Out) : null,
+      canViewPollResults: true,
     };
   }
 

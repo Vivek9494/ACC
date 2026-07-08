@@ -11,8 +11,13 @@ import {
 } from 'react-native';
 
 import { useAuth } from '../../lib/auth-context';
+import { confirmActionAlert } from '../../lib/confirm-action-alert';
 import { colors } from '@/theme/colors';
-import { INPUT_SHADOW_STYLE } from './fieldStyles';
+import {
+  HEADER_PROFILE_AVATAR_INITIAL_CLASS,
+  HEADER_PROFILE_AVATAR_SIZE_CLASS,
+  INPUT_SHADOW_STYLE,
+} from './fieldStyles';
 import { Text } from './Text';
 
 const MENU_WIDTH = 192;
@@ -80,10 +85,15 @@ export function ProfileMenu(): React.ReactElement {
 
   const onLogout = useCallback(() => {
     close();
-    void (async () => {
-      await signOut();
-      router.replace('/login');
-    })();
+    confirmActionAlert({
+      title: 'Log out?',
+      message: 'You will need to sign in again to access your account.',
+      confirmLabel: 'Log Out',
+      onConfirm: async () => {
+        await signOut();
+        router.replace('/login');
+      },
+    });
   }, [close, router, signOut]);
 
   const initial = (user?.firstName ?? 'U').slice(0, 1).toUpperCase();
@@ -98,10 +108,15 @@ export function ProfileMenu(): React.ReactElement {
           className="active:opacity-90"
         >
           {user?.profilePhotoUrl ? (
-            <Image source={{ uri: user.profilePhotoUrl }} className="h-11 w-11 rounded-full" />
+            <Image
+              source={{ uri: user.profilePhotoUrl }}
+              className={`${HEADER_PROFILE_AVATAR_SIZE_CLASS} rounded-full`}
+            />
           ) : (
-            <View className="h-11 w-11 items-center justify-center rounded-full bg-surface-container-high">
-              <Text className="font-sans-bold text-lg text-primary">{initial}</Text>
+            <View
+              className={`${HEADER_PROFILE_AVATAR_SIZE_CLASS} items-center justify-center rounded-full bg-surface-container-high`}
+            >
+              <Text className={HEADER_PROFILE_AVATAR_INITIAL_CLASS}>{initial}</Text>
             </View>
           )}
         </Pressable>

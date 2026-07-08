@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Image, View } from 'react-native';
 
+import { resolveMediaDisplayUrl } from '../../lib/media-url';
 import { Text } from '../ui/Text';
 
 export type PlayerAvatarSize = 'sm' | 'md' | 'lg';
@@ -38,7 +39,7 @@ export function PlayerAvatar({
   const dimension = SIZE_CLASS[size];
   const radius = RADIUS_CLASS[shape];
   const initial = firstName.slice(0, 1).toUpperCase();
-  const resolvedUrl = profilePhotoUrl?.trim() || null;
+  const resolvedUrl = resolveMediaDisplayUrl(profilePhotoUrl);
   const [imageFailed, setImageFailed] = useState(false);
 
   useEffect(() => {
@@ -55,7 +56,12 @@ export function PlayerAvatar({
           className={dimension}
           resizeMode="cover"
           accessibilityIgnoresInvertColors
-          onError={() => setImageFailed(true)}
+          onError={() => {
+            if (__DEV__ && resolvedUrl) {
+              console.warn('[PlayerAvatar] Failed to load profile photo:', resolvedUrl);
+            }
+            setImageFailed(true);
+          }}
         />
       </View>
     );

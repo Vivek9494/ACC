@@ -1,7 +1,10 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 
+import { KnockoutProgressionService } from '../knockout-bracket/knockout-progression.service';
+import { SuspensionModule } from '../suspension/suspension.module';
 import { AuthModule } from '../auth/auth.module';
 import { LiveModule } from '../live/live.module';
+import { TournamentsModule } from '../tournaments/tournaments.module';
 import { ScorecardAutoConfirmTask } from './scorecard-autoconfirm.task';
 import { ScorecardConfirmationService } from './scorecard-confirmation.service';
 import { ScorecardController } from './scorecard.controller';
@@ -22,7 +25,7 @@ import { ScoringService } from './scoring.service';
  * real-time updates.
  */
 @Module({
-  imports: [AuthModule, LiveModule],
+  imports: [AuthModule, LiveModule, SuspensionModule, forwardRef(() => TournamentsModule)],
   controllers: [ScoringController, ScorecardController],
   providers: [
     ScoringService,
@@ -34,7 +37,8 @@ import { ScoringService } from './scoring.service';
     ScorecardConfirmationService,
     ScorecardPdfService,
     ScorecardAutoConfirmTask,
+    KnockoutProgressionService,
   ],
-  exports: [ScorecardReader, ScoringService],
+  exports: [ScorecardReader, ScoringService, ScorecardConfirmationService],
 })
 export class ScoringModule {}

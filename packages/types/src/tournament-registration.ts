@@ -7,6 +7,17 @@ export function tournamentHasRegistrationWindow(
   return tournament.registrationOpenAt != null && tournament.registrationCloseAt != null;
 }
 
+/** True once the registration window start time has passed. */
+export function hasRegistrationOpened(
+  tournament: Pick<TournamentDetail, 'registrationOpenAt'>,
+  now: Date = new Date(),
+): boolean {
+  if (!tournament.registrationOpenAt) {
+    return false;
+  }
+  return now.getTime() >= new Date(tournament.registrationOpenAt).getTime();
+}
+
 /** Whether `now` falls within the tournament registration window (inclusive). */
 export function isTournamentRegistrationOpen(
   tournament: Pick<TournamentDetail, 'registrationOpenAt' | 'registrationCloseAt'>,

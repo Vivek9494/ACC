@@ -2,6 +2,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors } from '@/theme/colors';
 import {
   BallType,
+  HomeAway,
+  HOME_AWAY_LABELS,
   MATCH_OVERS_PER_INNINGS_OPTIONS,
   MATCH_SCHEDULING_FORMAT_LABELS,
   MATCH_SETUP_FORM_MESSAGES,
@@ -9,6 +11,7 @@ import {
   MatchType,
   clampPowerplaySelection,
   defaultMatchTypeForSchedulingFormat,
+  isKnockoutMatchType,
   maxOversPerBowlerOptionsForInnings,
   normalizeTeamPairKey,
   powerplayOversOptionsForInnings,
@@ -17,28 +20,33 @@ import {
   validatePowerplayOvers,
   type CreateMatchRequest,
   type GroupSummary,
+  type MatchDetail,
   type TeamSummary,
   type TournamentDetail,
+  calendarDateFromUtcMidnightIso,
+  isDateOnlyBeforeTodayInZone,
+  startOfTodayForDatePicker,
+  tournamentSupportsGroups,
 } from '@acc/types';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
   Platform,
   Pressable,
-  ScrollView,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '../../../src/components/ui/Button';
-import { BottomTabBar } from '../../../src/components/ui/BottomTabBar';
+import { KeyboardAwareFormScrollView } from '../../../src/components/ui/KeyboardAwareFormScrollView';
 import { Checkbox } from '../../../src/components/ui/Checkbox';
-import { FIELD_ORANGE, INPUT_SHADOW_STYLE } from '../../../src/components/ui/fieldStyles';
+import { DateField } from '../../../src/components/ui/DateField';
+import { FIELD_ORANGE, FIELD_LABEL_TEXT_CLASS } from '../../../src/components/ui/fieldStyles';
 import { MatchTypeSelect } from '../../../src/components/ui/MatchTypeSelect';
-import { ProfileMenu } from '../../../src/components/ui/ProfileMenu';
+import { ScreenHeader } from '../../../src/components/ui/ScreenHeader';
 import { Select } from '../../../src/components/ui/Select';
+import { PillTabBar } from '../../../src/components/ui/PillTabBar';
 import { SuccessDialog } from '../../../src/components/ui/SuccessDialog';
 import { Text } from '../../../src/components/ui/Text';
 import { TextInput } from '../../../src/components/ui/TextInput';
@@ -48,12 +56,22 @@ import { RoundRobinSetupInfoCard } from '../../../src/components/tournament/Roun
 import {
   ApiRequestError,
   createMatch,
+  getMatch,
   getRoundRobinMatchSetupContext,
   getTournament,
   listGroups,
+  updateMatch,
 } from '../../../src/lib/api';
 import { formatTournamentMatchDay, sortTournamentDates } from '../../../src/lib/tournament-display';
-import { useRoleTabConfig } from '../../../src/lib/role-tab-config';
+import { parseIsoDateLocal } from '../../../src/lib/tournament-datetime';
+import { useAuth } from '../../../src/lib/auth-context';
+import {
+  canScheduleTournamentMatchesAsOrganizer,
+} from '../../../src/lib/can-schedule-matches';
+import { TOURNAMENT_DETAIL_TAB } from '../../../src/lib/tournament-detail-tabs';
+import { tournamentDetailHref } from '../../../src/lib/tournament-detail-route';
+import { resolveVenueDisplayTimezone } from '../../../src/lib/venue-time';
+import type { SelectOption } from '../../../src/components/ui/Select';
 
 function parseSchedulingFormat(value: string | string[] | undefined): MatchSchedulingFormat {
   const raw = Array.isArray(value) ? value[0] : value;
@@ -81,17 +99,73 @@ function combineMatchStartIso(matchDate: string, matchTime: string): string {
   return local.toISOString();
 }
 
+function extractLocalTimeHm(iso: string): string {
+  const d = new Date(iso);
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+function resolveMatchGroupId(
+  match: Pick<MatchDetail, 'groupId' | 'homeTeamId' | 'awayTeamId'>,
+  teams: TournamentDetail['teams'],
+): string | null {
+  if (match.groupId) {
+    return match.groupId;
+  }
+  for (const teamId of [match.homeTeamId, match.awayTeamId]) {
+    if (!teamId) {
+      continue;
+    }
+    const team = teams.find((row) => row.id === teamId);
+    if (team?.groupId) {
+      return team.groupId;
+    }
+  }
+  return null;
+}
+
+function buildGroupSelectOptions(input: {
+  groups: GroupSummary[];
+  tournamentGroups: GroupSummary[];
+  selectedGroupId: string | null;
+  selectedGroupName: string | null;
+}): SelectOption[] {
+  const byId = new Map<string, SelectOption>();
+  for (const group of [...input.groups, ...input.tournamentGroups]) {
+    byId.set(group.id, { value: group.id, label: group.name });
+  }
+  if (input.selectedGroupId && !byId.has(input.selectedGroupId)) {
+    byId.set(input.selectedGroupId, {
+      value: input.selectedGroupId,
+      label: input.selectedGroupName ?? 'Saved group',
+    });
+  }
+  return [...byId.values()].sort((left, right) => left.label.localeCompare(right.label));
+}
+
+function appendTeamOptionIfMissing(
+  options: SelectOption[],
+  teamId: string | null,
+  teamName: string | null,
+): SelectOption[] {
+  if (!teamId || options.some((option) => option.value === teamId)) {
+    return options;
+  }
+  return [...options, { value: teamId, label: teamName ?? 'Unknown team' }];
+}
+
 export default function MatchSetupScreen(): React.ReactElement {
-  const { id: tournamentId, format: formatParam } = useLocalSearchParams<{
+  const { id: tournamentId, format: formatParam, matchId: matchIdParam } = useLocalSearchParams<{
     id: string;
     format?: string;
+    matchId?: string;
   }>();
+  const isEditMode = Boolean(matchIdParam?.trim());
   const router = useRouter();
+  const { user } = useAuth();
   const schedulingFormat = parseSchedulingFormat(formatParam);
   const formatLabel = MATCH_SCHEDULING_FORMAT_LABELS[schedulingFormat];
   const isRoundRobin = schedulingFormat === MatchSchedulingFormat.RoundRobin;
   const isManual = schedulingFormat === MatchSchedulingFormat.Manual;
-  const tabConfig = useRoleTabConfig('matches');
 
   const [loading, setLoading] = useState(true);
   const [tournament, setTournament] = useState<TournamentDetail | null>(null);
@@ -109,6 +183,7 @@ export default function MatchSetupScreen(): React.ReactElement {
   const [teamBId, setTeamBId] = useState<string | null>(null);
   const [opponentIsAccTeam, setOpponentIsAccTeam] = useState(false);
   const [teamBExternalName, setTeamBExternalName] = useState('');
+  const [homeAway, setHomeAway] = useState<HomeAway | null>(null);
   const [groundAddress, setGroundAddress] = useState('');
   const [groundLat, setGroundLat] = useState<number | null>(null);
   const [groundLng, setGroundLng] = useState<number | null>(null);
@@ -124,13 +199,42 @@ export default function MatchSetupScreen(): React.ReactElement {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+  /** Prevents edit-mode load from overwriting in-progress form edits when load re-runs. */
+  const editFormHydratedForMatchIdRef = useRef<string | null>(null);
+  /** Saved match date on edit load — allows keeping an unchanged past date (DP2). */
+  const initialMatchDateRef = useRef<string | null>(null);
+  /** Tracks group selection for edit — only reset teams when the user picks a different group. */
+  const groupIdRef = useRef<string | null>(null);
+  /** Saved group/team labels from match load — keep edit dropdowns populated. */
+  const [savedGroupLabel, setSavedGroupLabel] = useState<string | null>(null);
+  const [savedTeamAName, setSavedTeamAName] = useState<string | null>(null);
+  const [savedTeamBName, setSavedTeamBName] = useState<string | null>(null);
+
+  const isKnockoutMatch = isKnockoutMatchType(matchType);
 
   const showGroupField =
     !isRoundRobin &&
-    tournament?.matchSchedulingFormat === MatchSchedulingFormat.GroupStageKnockout;
+    !isKnockoutMatch &&
+    tournament != null &&
+    tournamentSupportsGroups({
+      type: tournament.type,
+      matchSchedulingFormat: tournament.matchSchedulingFormat,
+      groupCount: tournament.groupCount,
+    });
 
   const isTennisBall = tournament?.ballType === BallType.Tennis;
   const isLeatherBall = tournament?.ballType === BallType.Leather;
+  const isCaptainOnlyScheduler =
+    Boolean(
+      tournament?.canScheduleMatches &&
+        isLeatherBall &&
+        !canScheduleTournamentMatchesAsOrganizer(user),
+    ) && (tournament?.viewerLeaderTeamIds?.length ?? 0) > 0;
+  const captainTeamIds = useMemo(
+    () => tournament?.viewerLeaderTeamIds ?? [],
+    [tournament?.viewerLeaderTeamIds],
+  );
+  const captainTeamId = captainTeamIds[0] ?? null;
   const showLeatherOpponentFields = isLeatherBall && !isRoundRobin;
   const showReportingTime = isLeatherBall && !isRoundRobin;
 
@@ -145,15 +249,78 @@ export default function MatchSetupScreen(): React.ReactElement {
     try {
       const detail = await getTournament(tournamentId);
       setTournament(detail);
-      if (detail.matchSchedulingFormat === MatchSchedulingFormat.GroupStageKnockout) {
-        setGroups(await listGroups(tournamentId));
+      const resolvedSchedulingFormat =
+        detail.matchSchedulingFormat ?? schedulingFormat;
+      const isGroupKnockout = tournamentSupportsGroups({
+        type: detail.type,
+        matchSchedulingFormat: detail.matchSchedulingFormat,
+        groupCount: detail.groupCount,
+      });
+      if (isGroupKnockout) {
+        const tournamentGroups = detail.groups ?? [];
+        setGroups(
+          tournamentGroups.length > 0 ? tournamentGroups : await listGroups(tournamentId),
+        );
       } else {
         setGroups([]);
       }
-      if (schedulingFormat === MatchSchedulingFormat.RoundRobin) {
+      if (resolvedSchedulingFormat === MatchSchedulingFormat.RoundRobin) {
         setRoundRobinContext(await getRoundRobinMatchSetupContext(tournamentId));
       } else {
         setRoundRobinContext(null);
+      }
+
+      if (isEditMode && matchIdParam) {
+        const existing = await getMatch(matchIdParam);
+        if (existing.tournamentId !== tournamentId) {
+          setLoadError('Match not found.');
+          setTournament(null);
+          return;
+        }
+        if (editFormHydratedForMatchIdRef.current !== matchIdParam) {
+          editFormHydratedForMatchIdRef.current = matchIdParam;
+          setMatchType(existing.matchType);
+          const resolvedGroupId = isKnockoutMatchType(existing.matchType)
+            ? null
+            : resolveMatchGroupId(existing, detail.teams);
+          setSavedGroupLabel(
+            isKnockoutMatchType(existing.matchType)
+              ? null
+              : existing.groupName ??
+                  detail.groups.find((group) => group.id === resolvedGroupId)?.name ??
+                  detail.teams.find((team) => team.groupId === resolvedGroupId)?.groupName ??
+                  null,
+          );
+          setSavedTeamAName(existing.homeTeamName);
+          setSavedTeamBName(existing.awayTeamName);
+          setTeamAId(existing.homeTeamId);
+          setTeamBId(existing.awayTeamId);
+          setOpponentIsAccTeam(Boolean(existing.awayTeamId));
+          setTeamBExternalName(existing.externalOpponentName ?? '');
+          setHomeAway(existing.homeAway ?? null);
+          setGroupId(resolvedGroupId);
+          groupIdRef.current = resolvedGroupId;
+          setGroundAddress(existing.groundLocation ?? '');
+          setGroundLat(existing.geofenceLat);
+          setGroundLng(existing.geofenceLng);
+          setOversPerInnings(existing.oversPerInnings);
+          setMaxOversPerBowler(existing.maxOversPerBowler);
+          setPowerplayOvers(existing.powerplayOvers);
+          setBattingPowerplayOvers(existing.battingPowerplayOvers);
+          if (existing.matchDate) {
+            const loadedDate = calendarDateFromUtcMidnightIso(existing.matchDate);
+            initialMatchDateRef.current = loadedDate;
+            setMatchDate(loadedDate);
+          } else {
+            initialMatchDateRef.current = null;
+          }
+          if (existing.startTime) {
+            setMatchTime(extractLocalTimeHm(existing.startTime));
+          }
+          if (existing.reportingTime) {
+            setReportingTime(extractLocalTimeHm(existing.reportingTime));
+          }
+        }
       }
     } catch (err) {
       setTournament(null);
@@ -161,11 +328,26 @@ export default function MatchSetupScreen(): React.ReactElement {
     } finally {
       setLoading(false);
     }
-  }, [tournamentId, schedulingFormat]);
+  }, [isEditMode, matchIdParam, schedulingFormat, tournamentId]);
+
+  useEffect(() => {
+    editFormHydratedForMatchIdRef.current = null;
+    initialMatchDateRef.current = null;
+    groupIdRef.current = null;
+    setSavedGroupLabel(null);
+    setSavedTeamAName(null);
+    setSavedTeamBName(null);
+  }, [matchIdParam]);
 
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (isCaptainOnlyScheduler && captainTeamId && !isEditMode) {
+      setTeamAId(captainTeamId);
+    }
+  }, [captainTeamId, isCaptainOnlyScheduler, isEditMode]);
 
   const availableTeams = useMemo((): TeamSummary[] => {
     const teams = (tournament?.teams ?? []).map((team) => ({
@@ -176,14 +358,36 @@ export default function MatchSetupScreen(): React.ReactElement {
       memberCount: team.memberCount,
       groupId: team.groupId,
       groupName: team.groupName,
+      hasMatches: team.hasMatches,
     }));
     if (!showGroupField || !groupId) {
       return teams;
     }
-    return teams.filter((team) => team.groupId === groupId);
-  }, [groupId, showGroupField, tournament]);
+    return teams.filter(
+      (team) => team.groupId === groupId || team.id === teamAId || team.id === teamBId,
+    );
+  }, [groupId, showGroupField, teamAId, teamBId, tournament]);
 
-  const teamOptions = availableTeams.map((team) => ({ value: team.id, label: team.name }));
+  const groupOptions = useMemo(
+    () =>
+      buildGroupSelectOptions({
+        groups,
+        tournamentGroups: tournament?.groups ?? [],
+        selectedGroupId: groupId,
+        selectedGroupName: savedGroupLabel,
+      }),
+    [groupId, groups, savedGroupLabel, tournament?.groups],
+  );
+
+  const teamOptions = useMemo(() => {
+    let options = availableTeams.map((team) => ({ value: team.id, label: team.name }));
+    options = appendTeamOptionIfMissing(options, teamAId, savedTeamAName);
+    options = appendTeamOptionIfMissing(options, teamBId, savedTeamBName);
+    return options;
+  }, [availableTeams, savedTeamAName, savedTeamBName, teamAId, teamBId]);
+  const teamAOptions = isCaptainOnlyScheduler
+    ? teamOptions.filter((option) => captainTeamIds.includes(option.value))
+    : teamOptions;
   const teamBOptions = useMemo(() => {
     const base = teamOptions.filter((option) => option.value !== teamAId);
     if (!isRoundRobin || !teamAId || !roundRobinContext) {
@@ -213,6 +417,21 @@ export default function MatchSetupScreen(): React.ReactElement {
     [tournament?.dates],
   );
 
+  const venueTimezone = resolveVenueDisplayTimezone(tournament?.timezone).timezone;
+
+  const matchDateMinimum = useMemo(
+    () => startOfTodayForDatePicker(venueTimezone),
+    [venueTimezone],
+  );
+
+  const leatherSpanMaxDate = useMemo(() => {
+    if (!tournament?.endAt) {
+      return undefined;
+    }
+    const dateOnly = calendarDateFromUtcMidnightIso(tournament.endAt);
+    return parseIsoDateLocal(dateOnly) ?? undefined;
+  }, [tournament?.endAt]);
+
   const oversOptions = MATCH_OVERS_PER_INNINGS_OPTIONS.map((option) => ({
     value: String(option.value),
     label: option.label,
@@ -238,8 +457,6 @@ export default function MatchSetupScreen(): React.ReactElement {
     }));
   }, [oversPerInnings]);
 
-  const groupOptions = groups.map((group) => ({ value: group.id, label: group.name }));
-
   function clearField(key: string): void {
     setFieldErrors((current) => {
       if (!(key in current)) {
@@ -258,14 +475,17 @@ export default function MatchSetupScreen(): React.ReactElement {
     }
 
     const errors: Record<string, string> = {};
+    const requiresGroup = showGroupField && !isKnockoutMatchType(matchType);
     if (!matchType) {
       errors.matchType = MATCH_SETUP_FORM_MESSAGES.matchType.required;
     }
-    if (showGroupField && !groupId) {
+    if (requiresGroup && !groupId) {
       errors.groupId = MATCH_SETUP_FORM_MESSAGES.group.required;
     }
     if (!teamAId) {
       errors.teamAId = MATCH_SETUP_FORM_MESSAGES.teamA.required;
+    } else if (isCaptainOnlyScheduler && !captainTeamIds.includes(teamAId)) {
+      errors.teamAId = 'You can only schedule matches for your own team';
     }
     if (isLeatherBall && !isRoundRobin) {
       if (opponentIsAccTeam) {
@@ -289,7 +509,8 @@ export default function MatchSetupScreen(): React.ReactElement {
         isRoundRobin &&
         teamAId &&
         teamBId &&
-        roundRobinContext?.existingPairKeys.includes(normalizeTeamPairKey(teamAId, teamBId))
+        roundRobinContext?.existingPairKeys.includes(normalizeTeamPairKey(teamAId, teamBId)) &&
+        !(isEditMode && matchIdParam)
       ) {
         errors.teamBId = MATCH_SETUP_FORM_MESSAGES.duplicatePairing.duplicate;
       }
@@ -320,6 +541,11 @@ export default function MatchSetupScreen(): React.ReactElement {
     }
     if (!matchDate) {
       errors.matchDate = MATCH_SETUP_FORM_MESSAGES.matchDate.required;
+    } else if (
+      isDateOnlyBeforeTodayInZone(matchDate, venueTimezone) &&
+      matchDate !== initialMatchDateRef.current
+    ) {
+      errors.matchDate = MATCH_SETUP_FORM_MESSAGES.matchDate.past;
     }
     if (!matchTime.trim()) {
       errors.matchTime = MATCH_SETUP_FORM_MESSAGES.matchTime.required;
@@ -327,6 +553,7 @@ export default function MatchSetupScreen(): React.ReactElement {
 
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
+      setSubmitError('Please complete all required fields below.');
       return;
     }
 
@@ -340,7 +567,7 @@ export default function MatchSetupScreen(): React.ReactElement {
         awayTeamId: showLeatherOpponentFields && !opponentIsAccTeam ? null : teamBId,
         externalOpponentName:
           showLeatherOpponentFields && !opponentIsAccTeam ? teamBExternalName.trim() : null,
-        groupId: showGroupField ? groupId : null,
+        groupId: requiresGroup ? groupId : null,
         matchType: matchType as MatchType,
         groundLocation: groundAddress.trim(),
         geofenceLat: groundLat,
@@ -354,15 +581,33 @@ export default function MatchSetupScreen(): React.ReactElement {
         ...(showReportingTime && reportingTime.trim()
           ? { reportingTime: combineMatchStartIso(matchDate!, reportingTime.trim()) }
           : {}),
+        ...(showReportingTime ? { homeAway } : {}),
       };
-      await createMatch(tournamentId, body);
+      await (isEditMode && matchIdParam
+        ? updateMatch(matchIdParam, body)
+        : createMatch(tournamentId, body));
       setShowSuccessDialog(true);
     } catch (err) {
       if (err instanceof ApiRequestError && err.error.fields) {
-        setFieldErrors(err.error.fields);
-        setSubmitError(null);
+        const apiFields = { ...err.error.fields };
+        if (isKnockoutMatchType(matchType)) {
+          delete apiFields.groupId;
+        }
+        setFieldErrors(apiFields);
+        const visibleMessages = Object.values(apiFields);
+        setSubmitError(
+          visibleMessages.length > 0
+            ? visibleMessages[0]!
+            : err.message || 'Could not save match.',
+        );
       } else {
-        setSubmitError(err instanceof ApiRequestError ? err.message : 'Could not schedule match.');
+        setSubmitError(
+          err instanceof ApiRequestError
+            ? err.message
+            : isEditMode
+              ? 'Could not update match.'
+              : 'Could not schedule match.',
+        );
       }
     } finally {
       setSubmitting(false);
@@ -372,10 +617,9 @@ export default function MatchSetupScreen(): React.ReactElement {
   function handleSuccessDismiss(): void {
     setShowSuccessDialog(false);
     if (tournamentId) {
-      router.replace({
-        pathname: '/tournaments/[id]',
-        params: { id: tournamentId, tab: 'Matches' },
-      });
+      router.replace(
+        tournamentDetailHref(user, tournamentId, TOURNAMENT_DETAIL_TAB.TournamentMatches),
+      );
     } else {
       router.back();
     }
@@ -403,28 +647,45 @@ export default function MatchSetupScreen(): React.ReactElement {
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
-      <View className="flex-row items-center justify-between px-4 py-3">
-        <Pressable
-          onPress={() => router.back()}
-          className="h-10 w-10 items-center justify-center rounded-full active:bg-black/5"
-          accessibilityRole="button"
-          accessibilityLabel="Go back"
-        >
-          <Ionicons name="arrow-back" size={24} color={FIELD_ORANGE} />
-        </Pressable>
-        <ProfileMenu />
-      </View>
+      <ScreenHeader onBack={() => router.back()} />
 
-      <KeyboardAvoidingView
-        className="flex-1"
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      <KeyboardAwareFormScrollView
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
+        contentContainerClassName="gap-5 px-4 pt-2"
+        extraBottomPadding={32}
+        footer={
+          <SafeAreaView
+            edges={['bottom']}
+            className="border-t border-outline-variant/20 bg-background px-4 pt-3"
+          >
+            <Button
+              disabled={submitting}
+              onPress={() => void handleSubmit()}
+              className="h-14 w-full flex-row gap-2"
+            >
+              <Ionicons name="calendar-outline" size={20} color={colors.textInverse} />
+              <Text className="font-sans-semibold text-base text-on-primary">
+                {submitting
+                  ? isEditMode
+                    ? 'Saving…'
+                    : 'Scheduling…'
+                  : isEditMode
+                    ? 'Save Changes'
+                    : 'Schedule Match'}
+              </Text>
+            </Button>
+          </SafeAreaView>
+        }
       >
-        <ScrollView
-          contentContainerClassName={`gap-5 px-4 pt-2 ${isManual ? 'pb-40' : 'pb-32'}`}
-          keyboardShouldPersistTaps="handled"
-        >
           <View>
-            {isRoundRobin ? (
+            {isEditMode ? (
+              <>
+                <Text className="font-sans-bold text-2xl text-on-surface">Edit Match Setup</Text>
+                <Text className="mt-2 font-sans text-sm text-on-surface-variant">
+                  Update the match details below and save your changes.
+                </Text>
+              </>
+            ) : isRoundRobin ? (
               <>
                 <Text className="font-sans-bold text-2xl text-on-surface">New Match Setup</Text>
                 <Text className="mt-2 font-sans text-base text-on-surface-variant">
@@ -448,19 +709,17 @@ export default function MatchSetupScreen(): React.ReactElement {
             )}
           </View>
 
-          <View
-            className={
-              isManual
-                ? 'gap-4 rounded-control border border-outline-variant bg-surface p-4'
-                : 'gap-4'
-            }
-            style={isManual ? INPUT_SHADOW_STYLE : undefined}
-          >
+          <View className="gap-4">
           <MatchTypeSelect
             value={matchType}
             onChange={(value) => {
               setMatchType(value);
               clearField('matchType');
+              if (isKnockoutMatchType(value)) {
+                setGroupId(null);
+                groupIdRef.current = null;
+                clearField('groupId');
+              }
             }}
             error={fieldErrors.matchType}
           />
@@ -472,9 +731,15 @@ export default function MatchSetupScreen(): React.ReactElement {
               value={groupId}
               options={groupOptions}
               onChange={(value) => {
+                const previousGroupId = groupIdRef.current;
                 setGroupId(value);
-                setTeamAId(null);
-                setTeamBId(null);
+                groupIdRef.current = value;
+                if (value !== previousGroupId) {
+                  if (!isCaptainOnlyScheduler) {
+                    setTeamAId(null);
+                  }
+                  setTeamBId(null);
+                }
                 clearField('groupId');
               }}
               error={fieldErrors.groupId}
@@ -485,8 +750,12 @@ export default function MatchSetupScreen(): React.ReactElement {
             label="Team A"
             placeholder="Select Team A"
             value={teamAId}
-            options={teamOptions}
+            options={teamAOptions}
+            disabled={isCaptainOnlyScheduler}
             onChange={(value) => {
+              if (isCaptainOnlyScheduler) {
+                return;
+              }
               setTeamAId(value);
               setTeamBId(null);
               clearField('teamAId');
@@ -506,8 +775,8 @@ export default function MatchSetupScreen(): React.ReactElement {
                 clearField('externalOpponentName');
               }}
             >
-              <Text className="font-sans text-sm text-on-surface">
-                Does Opposite team is ACC 0/3/6/9?
+              <Text className={FIELD_LABEL_TEXT_CLASS}>
+                Does Opposite team is ASC team?
               </Text>
             </Checkbox>
           ) : null}
@@ -554,6 +823,24 @@ export default function MatchSetupScreen(): React.ReactElement {
           />
           {fieldErrors.groundLocation ? (
             <Text className="-mt-3 font-sans text-sm text-primary">{fieldErrors.groundLocation}</Text>
+          ) : null}
+
+          {showReportingTime ? (
+            <View className="gap-2">
+              <Text className={FIELD_LABEL_TEXT_CLASS}>Home / Away</Text>
+              <PillTabBar
+                accessibilityLabel="Home or Away ground setup responsibility"
+                options={[
+                  { value: HomeAway.Home, label: HOME_AWAY_LABELS.HOME },
+                  { value: HomeAway.Away, label: HOME_AWAY_LABELS.AWAY },
+                ]}
+                value={homeAway}
+                onChange={setHomeAway}
+              />
+              <Text className="font-sans text-sm text-on-surface-variant">
+                Optional — indicates which side sets up stumps and boundary cones.
+              </Text>
+            </View>
           ) : null}
 
           <Select
@@ -623,17 +910,32 @@ export default function MatchSetupScreen(): React.ReactElement {
             />
           ) : null}
 
-          <Select
-            label="Match Date"
-            placeholder="Select match day"
-            value={matchDate}
-            options={matchDateOptions}
-            onChange={(value) => {
-              setMatchDate(value);
-              clearField('matchDate');
-            }}
-            error={fieldErrors.matchDate}
-          />
+          {isLeatherBall ? (
+            <DateField
+              label="Match Date"
+              value={matchDate ?? ''}
+              onChange={(value) => {
+                setMatchDate(value);
+                clearField('matchDate');
+              }}
+              enforceSignupAgeMax={false}
+              minimumDate={matchDateMinimum}
+              maximumDate={leatherSpanMaxDate}
+              error={fieldErrors.matchDate}
+            />
+          ) : (
+            <Select
+              label="Match Date"
+              placeholder="Select match day"
+              value={matchDate}
+              options={matchDateOptions}
+              onChange={(value) => {
+                setMatchDate(value);
+                clearField('matchDate');
+              }}
+              error={fieldErrors.matchDate}
+            />
+          )}
 
           <TimeField
             label="Match Time"
@@ -665,32 +967,7 @@ export default function MatchSetupScreen(): React.ReactElement {
           {submitError ? (
             <Text className="font-sans text-sm text-primary">{submitError}</Text>
           ) : null}
-        </ScrollView>
-
-        <SafeAreaView
-          edges={['bottom']}
-          className="border-t border-outline-variant/20 bg-background px-4 pt-3"
-        >
-          <Button
-            disabled={submitting}
-            onPress={() => void handleSubmit()}
-            className="h-14 w-full flex-row gap-2"
-          >
-            <Ionicons name="calendar-outline" size={20} color={colors.textInverse} />
-            <Text className="font-sans-semibold text-base text-on-primary">
-              {submitting ? 'Scheduling…' : 'Schedule Match'}
-            </Text>
-          </Button>
-        </SafeAreaView>
-      </KeyboardAvoidingView>
-
-      {isManual ? (
-        <BottomTabBar
-          tabs={tabConfig.tabs}
-          activeKey={tabConfig.activeKey}
-          onTabPress={tabConfig.onTabPress}
-        />
-      ) : null}
+      </KeyboardAwareFormScrollView>
 
       {submitting ? (
         <View className="absolute inset-0 items-center justify-center bg-black/10">
@@ -700,8 +977,12 @@ export default function MatchSetupScreen(): React.ReactElement {
 
       <SuccessDialog
         visible={showSuccessDialog}
-        title="Match Scheduled"
-        message="Your match has been added to the tournament schedule."
+        title={isEditMode ? 'Match Updated' : 'Match Scheduled'}
+        message={
+          isEditMode
+            ? 'Your changes have been saved.'
+            : 'Your match has been added to the tournament schedule.'
+        }
         onDismiss={handleSuccessDismiss}
         continueLabel="Continue"
         autoDismissMs={0}

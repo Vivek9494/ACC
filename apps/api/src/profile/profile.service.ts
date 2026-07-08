@@ -9,9 +9,16 @@ import {
   OTP_TTL_SECONDS,
   isValidCanadianPostalCode,
   normalizeCanadianPostalCode,
+  type BallType,
+  type OwnPlayerMomMatchesView,
+  type OwnPlayerStatsView,
+  PLAYER_PROFILE_BALL_TYPE_LABELS,
+  type PlayerRegistrationRole,
+  PLAYER_REGISTRATION_ROLE_LABELS,
   type ProfileDetail,
   profileMobileForStorage,
   SIGNUP_VALIDATION_MESSAGES,
+  UserRole,
 } from '@acc/types';
 import {
   BadRequestException,
@@ -25,10 +32,13 @@ import type { Center, JerseySize, Province, User } from '@prisma/client';
 import { randomInt } from 'node:crypto';
 
 import { AuditService } from '../audit/audit.service';
+import { PlayerMomStatsService } from '../player-stats/player-mom-stats.service';
+import { PlayerStatsService } from '../player-stats/player-stats.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import { SMS_PROVIDER, type SmsProvider } from '../sms/sms-provider';
-import { MediaService } from '../media/media.service';
+import { MediaUrlResolver } from '../storage/media-url.resolver';
+import { S3StorageService } from '../storage/s3-storage.service';
 import type { UpdateProfileDto } from './dto/update-profile.dto';
 import {
   profileMobileOtpCodeKey,
@@ -48,10 +58,74 @@ export class ProfileService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
-    private readonly media: MediaService,
+    private readonly storage: S3StorageService,
+    private readonly mediaUrls: MediaUrlResolver,
     private readonly audit: AuditService,
     @Inject(SMS_PROVIDER) private readonly sms: SmsProvider,
+    private readonly playerStats: PlayerStatsService,
+    private readonly playerMomStats: PlayerMomStatsService,
   ) {}
+
+  async getOwnStats(userId: string, ballType: BallType): Promise<OwnPlayerStatsView> {
+    const [user, leadership, latestRegistration, wicketkeeperRegistration, statsBundle, manOfTheMatch] =
+      await Promise.all([
+        this.prisma.user.findUniqueOrThrow({
+          where: { id: userId },
+          select: {
+            firstName: true,
+            lastName: true,
+            profilePhotoUrl: true,
+            center: { select: { name: true } },
+          },
+        }),
+        this.prisma.roleAssignment.findMany({
+          where: {
+            userId,
+            role: { in: [UserRole.Captain, UserRole.ViceCaptain] },
+          },
+          select: { role: true },
+        }),
+        this.prisma.registration.findFirst({
+          where: { userId, status: 'CONFIRMED' },
+          orderBy: { createdAt: 'desc' },
+          select: { playerRole: true },
+        }),
+        this.prisma.registration.findFirst({
+          where: { userId, fieldingPosition: 'Wicketkeeper' },
+          select: { id: true },
+        }),
+        this.playerStats.buildCareerStats(userId, ballType),
+        this.playerMomStats.buildSummary(userId, ballType),
+      ]);
+
+    const playerRole = latestRegistration?.playerRole ?? null;
+    const playerRoleLabel =
+      playerRole && playerRole in PLAYER_REGISTRATION_ROLE_LABELS
+        ? PLAYER_REGISTRATION_ROLE_LABELS[playerRole as PlayerRegistrationRole]
+        : null;
+
+    return {
+      firstName: user.firstName,
+      lastName: user.lastName,
+      profilePhotoUrl: await this.mediaUrls.resolveReadUrl(user.profilePhotoUrl),
+      centerName: user.center?.name ?? null,
+      playerRoleLabel,
+      isCaptain: leadership.some((row) => row.role === UserRole.Captain),
+      isViceCaptain: leadership.some((row) => row.role === UserRole.ViceCaptain),
+      ballType,
+      ballTypeLabel: PLAYER_PROFILE_BALL_TYPE_LABELS[ballType],
+      career: statsBundle.career,
+      byYear: statsBundle.byYear,
+      byTournament: statsBundle.byTournament,
+      showStumpingsCard:
+        wicketkeeperRegistration !== null && statsBundle.career.stumpings > 0,
+      manOfTheMatch,
+    };
+  }
+
+  async getOwnMomMatches(userId: string, ballType: BallType): Promise<OwnPlayerMomMatchesView> {
+    return this.playerMomStats.listMatches(userId, ballType);
+  }
 
   async getProfile(userId: string): Promise<ProfileDetail> {
     const user = await this.loadUser(userId);
@@ -145,6 +219,16 @@ export class ProfileService {
     const emergencyContactNumber = profileMobileForStorage(dto.emergencyContactNumber);
     const centerChanging = dto.centerId !== user.centerId;
 
+    const nextPhotoKey =
+      dto.profilePhotoUrl !== undefined ? dto.profilePhotoUrl : user.profilePhotoUrl;
+    if (
+      dto.profilePhotoUrl !== undefined &&
+      user.profilePhotoUrl &&
+      user.profilePhotoUrl !== dto.profilePhotoUrl
+    ) {
+      await this.storage.deleteObject(user.profilePhotoUrl);
+    }
+
     const updated = await this.prisma.user.update({
       where: { id: userId },
       data: {
@@ -155,8 +239,7 @@ export class ProfileService {
         dateOfBirth: dob,
         address,
         postalCode,
-        profilePhotoUrl:
-          dto.profilePhotoUrl !== undefined ? dto.profilePhotoUrl : user.profilePhotoUrl,
+        profilePhotoUrl: nextPhotoKey,
         emergencyContactName: dto.emergencyContactName.trim(),
         emergencyContactNumber,
         hasHealthCard: dto.hasHealthCard,
@@ -184,10 +267,6 @@ export class ProfileService {
     return this.toProfileDetail(updated);
   }
 
-  async uploadProfilePhoto(userId: string, buffer: Buffer): Promise<string> {
-    return this.media.uploadProfilePhoto(userId, buffer);
-  }
-
   private async loadUser(userId: string): Promise<UserWithCenter> {
     return this.prisma.user.findUniqueOrThrow({
       where: { id: userId },
@@ -195,7 +274,8 @@ export class ProfileService {
     });
   }
 
-  private toProfileDetail(user: UserWithCenter): ProfileDetail {
+  private async toProfileDetail(user: UserWithCenter): Promise<ProfileDetail> {
+    const profilePhotoUrl = await this.mediaUrls.resolveReadUrl(user.profilePhotoUrl);
     return {
       id: user.id,
       firstName: user.firstName,
@@ -209,7 +289,7 @@ export class ProfileService {
       centerName: user.center.name,
       provinceId: user.center.provinceId,
       provinceName: user.center.province.name,
-      profilePhotoUrl: user.profilePhotoUrl,
+      profilePhotoUrl,
       emergencyContactName: user.emergencyContactName,
       emergencyContactNumber: user.emergencyContactNumber,
       hasHealthCard: user.hasHealthCard,
@@ -219,17 +299,16 @@ export class ProfileService {
     };
   }
 
-  private generateOtp(): string {
-    const max = 10 ** OTP_LENGTH;
-    return randomInt(0, max).toString().padStart(OTP_LENGTH, '0');
-  }
-
   private ageInYears(dob: Date, now: Date): number {
     let age = now.getUTCFullYear() - dob.getUTCFullYear();
-    const monthDelta = now.getUTCMonth() - dob.getUTCMonth();
-    if (monthDelta < 0 || (monthDelta === 0 && now.getUTCDate() < dob.getUTCDate())) {
+    const monthDiff = now.getUTCMonth() - dob.getUTCMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && now.getUTCDate() < dob.getUTCDate())) {
       age -= 1;
     }
     return age;
+  }
+
+  private generateOtp(): string {
+    return String(randomInt(0, 10 ** OTP_LENGTH)).padStart(OTP_LENGTH, '0');
   }
 }

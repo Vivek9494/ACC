@@ -36,7 +36,9 @@ export function TournamentDetailInfoRow({
   return (
     <View className="gap-1">
       <Text className="font-sans text-sm text-on-surface-variant">{label}</Text>
-      <Text className="font-sans-semibold text-base text-on-surface">{value}</Text>
+      <Text className="font-sans-semibold text-base text-on-surface" numberOfLines={0}>
+        {value}
+      </Text>
     </View>
   );
 }

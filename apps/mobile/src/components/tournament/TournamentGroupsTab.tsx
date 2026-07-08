@@ -1,28 +1,48 @@
-import type { GroupSummary } from '@acc/types';
+import type { GroupSummary, TeamSummary } from '@acc/types';
 import { useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { View } from 'react-native';
 
 import { Button } from '../ui/Button';
 import { useAuth } from '../../lib/auth-context';
 import { canScheduleTournamentMatches } from '../../lib/can-schedule-matches';
 import { TabEmptyState } from '../ui/TabEmptyState';
-import { TournamentGroupSection } from './TournamentGroupSection';
+import { EditableTournamentGroupSection } from './EditableTournamentGroupSection';
 
 const BatsmanIllustration = require('../../../assets/illustrations/batsman.png') as number;
 
 export interface TournamentGroupsTabProps {
   tournamentId: string;
   groups: GroupSummary[];
+  allTeams: TeamSummary[];
+  onGroupsChanged: () => void | Promise<void>;
 }
 
-/** Tournament Groups tab — stacked group cards and add-more CTA. */
+/** Tournament Groups tab — editable group cards and add-more CTA. */
 export function TournamentGroupsTab({
   tournamentId,
   groups,
+  allTeams,
+  onGroupsChanged,
 }: TournamentGroupsTabProps): React.ReactElement {
   const router = useRouter();
   const { user } = useAuth();
   const canManageGroups = canScheduleTournamentMatches(user);
+  const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
+
+  const handleEditStart = useCallback(
+    (groupId: string) => {
+      void (async () => {
+        await onGroupsChanged();
+        setEditingGroupId(groupId);
+      })();
+    },
+    [onGroupsChanged],
+  );
+
+  const handleEditEnd = useCallback(() => {
+    setEditingGroupId(null);
+  }, []);
 
   function openCreateGroup(): void {
     router.push(`/tournaments/${tournamentId}/create-group`);
@@ -52,7 +72,17 @@ export function TournamentGroupsTab({
   return (
     <View className="gap-4">
       {groups.map((group) => (
-        <TournamentGroupSection key={group.id} group={group} />
+        <EditableTournamentGroupSection
+          key={group.id}
+          group={group}
+          tournamentId={tournamentId}
+          allTeams={allTeams}
+          canEdit={canManageGroups}
+          isEditing={editingGroupId === group.id}
+          onEditStart={() => handleEditStart(group.id)}
+          onEditEnd={handleEditEnd}
+          onGroupsChanged={onGroupsChanged}
+        />
       ))}
       {canManageGroups ? (
         <Button

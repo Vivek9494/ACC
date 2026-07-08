@@ -1,3 +1,4 @@
+import { APP_ORG_NAME, APP_SHORT_NAME } from '@acc/types';
 import { Link, useRouter } from 'expo-router';
 import { Pressable, View } from 'react-native';
 import { Button } from '../src/components/ui/Button';
@@ -12,13 +13,13 @@ export default function WelcomeScreen() {
       <View className="flex-1 justify-between px-6 py-12">
         <View className="mt-16 gap-3">
           <Text className="font-sans-medium text-sm uppercase tracking-widest text-primary">
-            Atmiya Cricket Club
+            {APP_ORG_NAME}
           </Text>
           <Text className="font-sans-bold text-4xl leading-tight text-on-surface">
-            Welcome to ACC
+            Welcome to {APP_SHORT_NAME}
           </Text>
           <Text className="font-sans text-base leading-6 text-on-surface-variant">
-            Tournament management, ball-by-ball scoring, and stats for the Atmiya Cricket Club
+            Tournament management, ball-by-ball scoring, and stats for the {APP_ORG_NAME}{' '}
             community.
           </Text>
         </View>

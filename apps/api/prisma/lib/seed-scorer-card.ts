@@ -56,15 +56,44 @@ async function seedLockedSquads(
   awayPlayerIds: string[],
   lockedByUserId: string,
 ): Promise<void> {
+  const finalizedAt = new Date();
   const homeSquad = await prisma.matchSquad.upsert({
     where: { matchId_teamId: { matchId, teamId: homeTeamId } },
-    update: { lockedByUserId },
-    create: { matchId, teamId: homeTeamId, lockedByUserId },
+    update: {
+      lockedByUserId,
+      lockedAt: finalizedAt,
+      isFinalized: true,
+      finalizedByUserId: lockedByUserId,
+      finalizedAt,
+    },
+    create: {
+      matchId,
+      teamId: homeTeamId,
+      lockedByUserId,
+      lockedAt: finalizedAt,
+      isFinalized: true,
+      finalizedByUserId: lockedByUserId,
+      finalizedAt,
+    },
   });
   const awaySquad = await prisma.matchSquad.upsert({
     where: { matchId_teamId: { matchId, teamId: awayTeamId } },
-    update: { lockedByUserId },
-    create: { matchId, teamId: awayTeamId, lockedByUserId },
+    update: {
+      lockedByUserId,
+      lockedAt: finalizedAt,
+      isFinalized: true,
+      finalizedByUserId: lockedByUserId,
+      finalizedAt,
+    },
+    create: {
+      matchId,
+      teamId: awayTeamId,
+      lockedByUserId,
+      lockedAt: finalizedAt,
+      isFinalized: true,
+      finalizedByUserId: lockedByUserId,
+      finalizedAt,
+    },
   });
 
   for (const userId of homePlayerIds) {

@@ -48,4 +48,6 @@ export interface InningsContext {
   selectedStrikerId?: string | null;
   selectedNonStrikerId?: string | null;
   selectedBowlerId?: string | null;
+  battingIsExternal?: boolean;
+  bowlingIsExternal?: boolean;
 }

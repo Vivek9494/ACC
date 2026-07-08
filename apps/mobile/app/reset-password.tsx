@@ -8,12 +8,13 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Link, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
+import { ActivityIndicator, Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PasswordRequirements } from '../src/components/ui/PasswordRequirements';
 import { PasswordToggle } from '../src/components/ui/PasswordToggle';
 import { Button } from '../src/components/ui/Button';
+import { KeyboardAwareFormScrollView } from '../src/components/ui/KeyboardAwareFormScrollView';
 import { Text } from '../src/components/ui/Text';
 import { TextInput } from '../src/components/ui/TextInput';
 import { ApiRequestError, resetPassword } from '../src/lib/api';
@@ -114,10 +115,7 @@ export default function ResetPasswordScreen(): React.ReactElement {
         <Text className="font-sans-bold text-xl text-primary">Reset Password</Text>
       </View>
 
-      <ScrollView
-        contentContainerClassName="flex-grow px-6 py-8"
-        keyboardShouldPersistTaps="handled"
-      >
+      <KeyboardAwareFormScrollView contentContainerClassName="flex-grow px-6 py-8">
         <View className="items-center">
           <View className="mb-6 rounded-full bg-primary-fixed p-5">
             <Ionicons name="lock-open-outline" size={40} color={FIELD_ORANGE} />
@@ -189,7 +187,7 @@ export default function ResetPasswordScreen(): React.ReactElement {
             </Text>
           </View>
         </View>
-      </ScrollView>
+      </KeyboardAwareFormScrollView>
     </SafeAreaView>
   );
 }

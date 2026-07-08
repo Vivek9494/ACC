@@ -20,7 +20,7 @@ import {
   getRegistrationVerificationQueue,
   getTournament,
 } from '../../../lib/api';
-import { ProfileMenu } from '../../ui/ProfileMenu';
+import { ScreenHeader } from '../../ui/ScreenHeader';
 import { SuccessDialog } from '../../ui/SuccessDialog';
 import { FIELD_ORANGE } from '../../ui/fieldStyles';
 import { Text } from '../../ui/Text';
@@ -139,25 +139,13 @@ export function VerifyPlayersScreen({ tournamentId }: VerifyPlayersScreenProps):
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
-      <View className="flex-row items-center justify-between px-4 py-3">
-        <Pressable
-          onPress={() => router.back()}
-          className="h-10 w-10 items-center justify-center rounded-full active:bg-black/5"
-          accessibilityRole="button"
-          accessibilityLabel="Go back"
-        >
-          <Ionicons name="arrow-back" size={24} color={FIELD_ORANGE} />
-        </Pressable>
-        <ProfileMenu />
-      </View>
+      <ScreenHeader
+        title={tournament?.name ?? 'Verify Players'}
+        subtitle={`Total Registered Players - ${registeredCount}`}
+        onBack={() => router.back()}
+      />
 
       <View className="px-4 pb-2">
-        <Text className="font-sans-bold text-2xl text-on-surface">
-          {tournament?.name ?? 'Verify Players'}
-        </Text>
-        <Text className="mt-1 font-sans text-sm text-on-surface-variant">
-          Total Registered Players - {registeredCount}
-        </Text>
         {isViewOnly ? (
           <Text className="mt-3 font-sans text-sm text-on-surface-variant">
             Registration is open — review who has signed up and follow up with players who have

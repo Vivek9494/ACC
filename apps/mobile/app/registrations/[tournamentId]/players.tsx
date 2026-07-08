@@ -7,6 +7,7 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
+import { ScreenHeader } from '../../../src/components/ui/ScreenHeader';
 import { Button } from '../../../src/components/ui/Button';
 import { Text } from '../../../src/components/ui/Text';
 import { FIELD_ORANGE } from '../../../src/components/ui/fieldStyles';
@@ -83,17 +84,12 @@ export default function RegisteredPlayersScreen(): React.ReactElement {
   const isApl = tournament?.type === 'APL';
 
   return (
-    <SafeAreaView className="flex-1 bg-background">
-      <View className="px-6 pt-6">
-        <Pressable onPress={() => router.back()} className="mb-3">
-          <Text className="font-sans text-primary">← Back</Text>
-        </Pressable>
-        <Text className="font-sans-bold text-2xl text-on-surface">Registered Players</Text>
-        <Text className="mt-1 font-sans text-sm text-on-surface-variant">
-          {tournament ? `${tournament.name} · ` : ''}
-          {rows.length} confirmed
-        </Text>
-      </View>
+    <SafeAreaView className="flex-1 bg-background" edges={['top']}>
+      <ScreenHeader
+        title="Registered Players"
+        subtitle={`${tournament ? `${tournament.name} · ` : ''}${rows.length} confirmed`}
+        onBack={() => router.back()}
+      />
 
       <ScrollView contentContainerClassName="px-6 py-5 gap-4">
         {loading ? (

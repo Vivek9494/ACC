@@ -2,7 +2,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { ActivityIndicator, Image, Pressable, View } from 'react-native';
 import { colors } from '@/theme/colors';
 
-import { pickImage, profilePhotoPickOptions, tournamentPosterPickOptions, type PickedImageFile } from '../../lib/imagePicker';
+import { pickImage, tournamentPosterPickOptions, type PickedImageFile } from '../../lib/imagePicker';
+import { resolveMediaDisplayUrl } from '../../lib/media-url';
 import { ERROR_BORDER_CLASS, FIELD_ORANGE, labelClassName } from './fieldStyles';
 import { FormErrorText } from './FormErrorText';
 import { Text } from './Text';
@@ -36,6 +37,7 @@ export function TournamentPosterField({
   }
 
   const borderClass = error ? ERROR_BORDER_CLASS : 'border-primary/40';
+  const displayUri = uri ? (resolveMediaDisplayUrl(uri) ?? uri) : null;
 
   return (
     <View className="gap-2">
@@ -45,11 +47,25 @@ export function TournamentPosterField({
         disabled={uploading}
         accessibilityRole="button"
         accessibilityLabel="Upload tournament poster"
-        className={`items-center justify-center gap-2 rounded-control border-2 border-dashed bg-primary-50/40 px-4 py-8 ${borderClass} ${uploading ? 'opacity-70' : ''}`}
+        className={`relative w-full overflow-hidden rounded-control border-2 border-dashed bg-primary-50/40 ${borderClass} ${uploading ? 'opacity-70' : ''} ${displayUri ? '' : 'items-center justify-center gap-2 px-4 py-8'}`}
       >
-        {uri ? (
+        {displayUri ? (
           <>
-            <Image source={{ uri }} className="h-32 w-full rounded-lg" resizeMode="cover" />
+            <Image
+              source={{ uri: displayUri }}
+              className="aspect-video w-full rounded-lg"
+              style={{ width: '100%', aspectRatio: 16 / 9 }}
+              resizeMode="cover"
+              accessibilityIgnoresInvertColors
+              onError={(event) => {
+                if (__DEV__) {
+                  console.warn('[TournamentPosterField] poster failed to load', {
+                    uri: displayUri.slice(0, 160),
+                    error: event.nativeEvent.error,
+                  });
+                }
+              }}
+            />
             {uploading ? (
               <View className="absolute inset-0 items-center justify-center rounded-lg bg-black/30">
                 <ActivityIndicator color={colors.textInverse} />

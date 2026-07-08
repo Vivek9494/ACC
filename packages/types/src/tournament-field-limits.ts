@@ -3,7 +3,7 @@ import { PLAYING_XI_SIZE } from './match';
 /** Sensible bounds for Add Tournament §6.1 numeric fields. */
 export const TOURNAMENT_FIELD_LIMITS = {
   numberOfTeams: { min: 2, max: 30 },
-  playersPerTeam: { max: 15 },
+  playersPerTeam: { max: 30 },
   substitutesAllowed: { min: 0, max: 11 },
 } as const;
 
@@ -11,7 +11,7 @@ export const TOURNAMENT_FIELD_LIMITS = {
 export const DEFAULT_SUBSTITUTES_ALLOWED = 2;
 
 /** Playing XI size is fixed at 11 per spec; squad size is configured separately. */
-export const DEFAULT_PLAYERS_PER_TEAM = 15;
+export const DEFAULT_PLAYERS_PER_TEAM = 28;
 
 export function parsePositiveInt(value: string): number | null {
   const trimmed = value.trim();
@@ -63,7 +63,7 @@ export function validatePlayersPerTeam(value: string): string | null {
     return 'Players per team must be a number';
   }
   if (num > TOURNAMENT_FIELD_LIMITS.playersPerTeam.max) {
-    return 'Maximum 15 players per team';
+    return `Maximum ${TOURNAMENT_FIELD_LIMITS.playersPerTeam.max} players per team`;
   }
   return null;
 }

@@ -14,18 +14,22 @@ import {
   partnershipRunRate,
 } from '@acc/types';
 import { useState } from 'react';
-import { useWindowDimensions, View, type LayoutChangeEvent } from 'react-native';
+import { View } from 'react-native';
 
 import type { NameResolver } from './LiveScorecard';
 import {
   SCORECARD_NAME_COLUMN_GAP,
   SCORECARD_STAT_COLS,
-  SCORECARD_TABLE_HORIZONTAL_INSET,
   scorecardBattingStatsTotalWidth,
-  scorecardPlayerNameColumnWidth,
   scorecardStatWidth,
 } from './scorecardTableWidths';
 import { BowlerFiguresScrollTable } from './scoring/BowlerFiguresScrollTable';
+import {
+  INNINGS_SCORECARD_TABLE_TYPE,
+  SCORECARD_WICKET_EVENT_CARD,
+  SCORECARD_WICKET_EVENT_DETAIL,
+  SCORECARD_WICKET_EVENT_HEADLINE,
+} from './scoring/liveScoringScorecardTypography';
 import { RecentBallsStrip } from './scoring/RecentBallsStrip';
 import { TeamAvatar } from './ui/TeamAvatar';
 import { Text } from './ui/Text';
@@ -37,6 +41,8 @@ export interface InningsScorecardViewProps {
   nameOf: NameResolver;
   teamNameOf: NameResolver;
   teamLogoUrl?: string | null;
+  droppedCatchSlot?: React.ReactNode;
+  manOfMatchSlot?: React.ReactNode;
 }
 
 function inningsTeamMeta(
@@ -110,7 +116,7 @@ function BattingStatsHeader(): React.ReactElement {
         <Text
           key={col}
           style={{ width: battingStatWidth(col) }}
-          className="text-right font-sans-semibold text-[10px] uppercase tracking-wide text-on-surface-variant"
+          className={`text-right ${INNINGS_SCORECARD_TABLE_TYPE.columnHeader}`}
         >
           {col}
         </Text>
@@ -443,18 +449,14 @@ function BattingTable({
     extrasParts.length > 0 ? `Extras (${extrasParts.join(', ')})` : 'Extras';
 
   const figureClass = (highlight: boolean): string =>
-    highlight
-      ? 'font-sans-semibold text-xs text-primary'
-      : 'font-sans text-xs text-on-surface';
+    highlight ? INNINGS_SCORECARD_TABLE_TYPE.statActive : INNINGS_SCORECARD_TABLE_TYPE.stat;
 
   return (
     <SectionCard title={`${teamName} innings scorecard`}>
       <Text className="font-sans-bold text-base text-on-surface">Batting</Text>
 
       <View className="flex-row items-end justify-between border-b border-outline-variant pb-2 pt-1">
-        <Text className="font-sans-semibold text-[10px] uppercase tracking-wide text-on-surface-variant">
-          Batsman
-        </Text>
+        <Text className={INNINGS_SCORECARD_TABLE_TYPE.columnHeader}>Batsman</Text>
         <BattingStatsHeader />
       </View>
 
@@ -464,11 +466,11 @@ function BattingTable({
         const liveRow = isLive && notOut;
         const statusText = formatBatterStatus(batter, nameOf);
         const nameClass = liveRow
-          ? 'font-sans-semibold text-sm text-primary'
-          : 'font-sans-semibold text-sm text-on-surface';
+          ? INNINGS_SCORECARD_TABLE_TYPE.playerNameActive
+          : `${INNINGS_SCORECARD_TABLE_TYPE.playerName} text-on-surface`;
         const statusClass = liveRow
-          ? 'font-sans text-[11px] text-primary'
-          : 'font-sans text-[11px] text-on-surface-variant';
+          ? INNINGS_SCORECARD_TABLE_TYPE.statusActive
+          : INNINGS_SCORECARD_TABLE_TYPE.status;
 
         return (
           <View
@@ -524,40 +526,26 @@ function BowlingTable({
   innings: InningsScorecard;
   nameOf: NameResolver;
 }): React.ReactElement | null {
-  const { width: screenWidth } = useWindowDimensions();
-  const [contentWidth, setContentWidth] = useState(
-    () => screenWidth - SCORECARD_TABLE_HORIZONTAL_INSET,
-  );
-
   if (innings.bowlers.length === 0) {
     return null;
   }
 
-  const onLayout = (event: LayoutChangeEvent): void => {
-    const width = event.nativeEvent.layout.width;
-    setContentWidth((prev) => (prev === width ? prev : width));
-  };
-
-  const nameColumnWidth = scorecardPlayerNameColumnWidth(contentWidth);
-
   return (
     <SectionCard>
       <Text className="mb-2 font-sans-semibold text-sm text-on-surface-variant">Bowling</Text>
-      <View onLayout={onLayout}>
-        <BowlerFiguresScrollTable
-          scorecardNameColumnWidth={nameColumnWidth}
-          rows={innings.bowlers.map((bowler) => {
-            const isCurrent = bowler.playerId === innings.currentBowlerId;
-            return {
-              id: bowler.playerId,
-              name: nameOf(bowler.playerId),
-              card: bowler,
-              highlightName: isCurrent,
-              nameSuffix: isCurrent ? '*' : '',
-            };
-          })}
-        />
-      </View>
+      <BowlerFiguresScrollTable
+        density="innings"
+        rows={innings.bowlers.map((bowler) => {
+          const isCurrent = bowler.playerId === innings.currentBowlerId;
+          return {
+            id: bowler.playerId,
+            name: nameOf(bowler.playerId),
+            card: bowler,
+            highlightName: isCurrent,
+            nameSuffix: isCurrent ? '*' : '',
+          };
+        })}
+      />
     </SectionCard>
   );
 }
@@ -576,14 +564,11 @@ function FallOfWicketsSection({
     <SectionCard title="Fall of Wickets">
       <View className="gap-2">
         {innings.fallOfWickets.map((fow) => (
-          <View
-            key={fow.wicketNumber}
-            className="gap-1 rounded-control bg-surface-container-low px-3 py-2.5"
-          >
-            <Text className="font-sans-bold text-sm uppercase text-primary">
+          <View key={fow.wicketNumber} className={SCORECARD_WICKET_EVENT_CARD}>
+            <Text className={SCORECARD_WICKET_EVENT_HEADLINE}>
               {formatFallOfWicketHeadline(fow)}
             </Text>
-            <Text className="font-sans text-sm text-on-surface">
+            <Text className={SCORECARD_WICKET_EVENT_DETAIL}>
               {formatFallOfWicketDetail(fow, nameOf)}
             </Text>
           </View>
@@ -717,23 +702,19 @@ export function InningsScorecardView({
   nameOf,
   teamNameOf,
   teamLogoUrl,
+  droppedCatchSlot,
+  manOfMatchSlot,
 }: InningsScorecardViewProps): React.ReactElement {
   const { battingTeamName } = inningsTeamMeta(card, innings, teamNameOf, teamLogoUrl);
 
   return (
     <View className="gap-4">
       <BattingTable innings={innings} nameOf={nameOf} teamName={battingTeamName} />
+      {manOfMatchSlot}
       <BowlingTable innings={innings} nameOf={nameOf} />
+      {droppedCatchSlot}
       <FallOfWicketsSection innings={innings} nameOf={nameOf} />
       <PartnershipsSection innings={innings} nameOf={nameOf} />
-      {card.result.decided && innings.closed ? (
-        <View className={`${WHITE_CARD}`} style={INPUT_SHADOW_STYLE}>
-          <Text className="font-sans-bold text-sm text-primary">
-            {teamNameOf(card.result.winningTeamId)} won
-            {card.result.note ? ` · ${card.result.note}` : ''}
-          </Text>
-        </View>
-      ) : null}
     </View>
   );
 }

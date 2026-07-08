@@ -7,11 +7,12 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
+import { ActivityIndicator, Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { OtpInput } from '../src/components/OtpInput';
 import { Button } from '../src/components/ui/Button';
+import { KeyboardAwareFormScrollView } from '../src/components/ui/KeyboardAwareFormScrollView';
 import { Text } from '../src/components/ui/Text';
 import { forgotPassword, verifyResetOtp } from '../src/lib/api';
 import { FIELD_ORANGE } from '@/components/ui/fieldStyles';
@@ -100,9 +101,9 @@ export default function EnterOtpScreen(): React.ReactElement {
         <Text className="font-sans-bold text-xl text-on-surface">Verify OTP</Text>
       </View>
 
-      <ScrollView
-        contentContainerClassName="flex-grow items-center px-6 pb-12 pt-6"
-        keyboardShouldPersistTaps="handled"
+      <KeyboardAwareFormScrollView
+        contentContainerClassName="flex-grow items-center px-6 pt-6"
+        extraBottomPadding={48}
       >
         <View className="mb-8 rounded-full bg-surface-container-lowest p-6 shadow-sm">
           <Ionicons name="shield-checkmark" size={48} color={FIELD_ORANGE} />
@@ -158,7 +159,7 @@ export default function EnterOtpScreen(): React.ReactElement {
             ) : null}
           </View>
         </View>
-      </ScrollView>
+      </KeyboardAwareFormScrollView>
     </SafeAreaView>
   );
 }

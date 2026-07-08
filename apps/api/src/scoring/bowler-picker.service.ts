@@ -13,6 +13,7 @@ import {
   MatchSquadRole,
   MatchState,
   type InningsScorecard,
+  isExternalOpponentMatch,
 } from '@acc/types';
 import {
   BadRequestException,
@@ -171,6 +172,72 @@ export class BowlerPickerService {
     });
 
     return this.toExternalView(created);
+  }
+
+  /** §9.5: rename a name-only external opponent player during live scoring. */
+  async renameExternalPlayer(
+    actor: AuthUser,
+    matchId: string,
+    playerId: string,
+    name: string,
+  ): Promise<ExternalPlayerView> {
+    const trimmed = name.trim();
+    if (!trimmed) {
+      throw new BadRequestException({ message: 'Player name is required', error: 'NAME_REQUIRED' });
+    }
+
+    const match = await this.prisma.match.findUnique({ where: { id: matchId } });
+    if (!match) {
+      throw new NotFoundException({ message: 'Match not found', error: 'MATCH_NOT_FOUND' });
+    }
+    if (!isExternalOpponentMatch(match)) {
+      throw new BadRequestException({
+        message: 'External players can only be renamed for external-opponent fixtures',
+        error: 'NOT_EXTERNAL_OPPONENT',
+      });
+    }
+    if (!SCORABLE_STATES.includes(match.state as MatchState)) {
+      throw new BadRequestException({
+        message: 'External players can only be renamed during live scoring',
+        error: 'MATCH_NOT_SCORABLE',
+      });
+    }
+
+    const existing = await this.prisma.externalPlayer.findUnique({ where: { id: playerId } });
+    if (!existing || existing.matchId !== matchId) {
+      throw new NotFoundException({ message: 'External player not found', error: 'NOT_FOUND' });
+    }
+
+    const duplicate = await this.prisma.externalPlayer.findFirst({
+      where: {
+        matchId,
+        id: { not: playerId },
+        name: { equals: trimmed, mode: 'insensitive' },
+      },
+      select: { id: true },
+    });
+    if (duplicate) {
+      throw new BadRequestException({
+        message: 'This player name is already on the opponent list',
+        error: 'DUPLICATE_OPPONENT_NAME',
+      });
+    }
+
+    const updated = await this.prisma.externalPlayer.update({
+      where: { id: playerId },
+      data: { name: trimmed },
+    });
+
+    await this.audit.record({
+      action: MatchAuditAction.ExternalPlayerRenamed,
+      actorUserId: actor.id,
+      targetEntityType: 'external_player',
+      targetEntityId: updated.id,
+      before: { name: existing.name },
+      after: { matchId, name: updated.name, slot: updated.slot },
+    });
+
+    return this.toExternalView(updated);
   }
 
   private async getRegisteredPicker(

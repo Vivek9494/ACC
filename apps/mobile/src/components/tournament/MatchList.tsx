@@ -8,13 +8,17 @@ import { Pressable, View } from 'react-native';
 
 import {
   formatMatchListContextLabel,
+  formatMatchListDeletedAttribution,
   formatMatchLiveScoreLine,
 } from '../../lib/match-display';
 import { Button } from '../ui/Button';
-import { INPUT_SHADOW_STYLE } from '../ui/fieldStyles';
+import { FIELD_ORANGE, INPUT_SHADOW_STYLE } from '../ui/fieldStyles';
+import { OverflowMenu, type OverflowMenuAction } from '../ui/OverflowMenu';
 import { TeamAvatar } from '../ui/TeamAvatar';
 import { Text } from '../ui/Text';
+import { MatchHomeAwayBadge } from '../match/MatchHomeAwayBadge';
 import { MatchCardDisplayBadge } from './MatchCardDisplayBadge';
+import { MatchDeletedBadge } from './MatchDeletedBadge';
 
 function TeamColumn({
   name,
@@ -46,71 +50,194 @@ function VenueRow({ venue }: { venue: string }): React.ReactElement {
 
 function MatchListCard({
   match,
+  menuActions,
   onPress,
   onWatchLivePress,
+  onScorecardPress,
+  showLiveMatchDetails = false,
+  showCancelledMatchDetails = false,
 }: {
   match: MatchListItem;
+  menuActions: OverflowMenuAction[];
   onPress: () => void;
   onWatchLivePress: () => void;
+  onScorecardPress: () => void;
+  showLiveMatchDetails?: boolean;
+  showCancelledMatchDetails?: boolean;
 }): React.ReactElement {
+  const isDeleted = match.isDeleted === true;
   const contextLabel = formatMatchListContextLabel(match);
-  const isLive = match.displayState === MatchCardDisplayState.Live;
+  const isLive = !isDeleted && match.displayState === MatchCardDisplayState.Live;
+  const isCancelled = !isDeleted && match.displayState === MatchCardDisplayState.Cancelled;
+  const isCompletedTerminal =
+    !isDeleted && match.displayState === MatchCardDisplayState.Completed;
   const liveScoreLine = match.liveScore ? formatMatchLiveScoreLine(match.liveScore) : null;
   const venue = match.groundLocation?.trim();
+  const showLiveScore = isLive && liveScoreLine;
+  const bodyGap = showLiveScore || (match.displayState === MatchCardDisplayState.Scheduled && venue)
+    ? 'gap-6'
+    : 'gap-4';
 
   return (
     <View
       className={`gap-4 rounded-control border border-outline-variant bg-surface p-4 ${
-        isLive ? 'border-primary/30' : ''
+        isDeleted
+          ? 'border-primary bg-surface-container-low opacity-75'
+          : isLive
+            ? 'border-primary/30'
+            : isCancelled
+              ? 'border-error/20'
+              : ''
       }`}
       style={INPUT_SHADOW_STYLE}
     >
+      <View className="flex-row items-center justify-between gap-2">
+        <Text
+          className="min-w-0 flex-1 font-sans-semibold text-sm text-on-surface-variant"
+          numberOfLines={1}
+        >
+          {contextLabel}
+        </Text>
+        <View className="shrink-0 flex-row items-center gap-1.5">
+          {match.homeAway ? <MatchHomeAwayBadge homeAway={match.homeAway} /> : null}
+          {isDeleted ? (
+            <MatchDeletedBadge />
+          ) : (
+            <MatchCardDisplayBadge state={match.state} variant="tournamentPrimary" />
+          )}
+          {!isDeleted && menuActions.length > 0 ? (
+            <OverflowMenu actions={menuActions} iconColor={FIELD_ORANGE} />
+          ) : null}
+        </View>
+      </View>
+
       <Pressable
         accessibilityRole="button"
-        onPress={isLive ? onWatchLivePress : onPress}
-        className="gap-6 active:opacity-90"
+        onPress={
+          isDeleted
+            ? onPress
+            : isLive
+              ? onWatchLivePress
+              : isCancelled || isCompletedTerminal
+                ? onScorecardPress
+                : onPress
+        }
+        className={`${bodyGap} active:opacity-90`}
       >
-        <View className="flex-row items-center justify-between gap-3">
-          <Text
-            className="flex-1 font-sans-semibold text-sm text-on-surface-variant"
-            numberOfLines={1}
-          >
-            {contextLabel}
-          </Text>
-          <MatchCardDisplayBadge displayState={match.displayState} />
-        </View>
-
         <View className="flex-row items-center justify-between gap-2">
           <TeamColumn name={match.teamA.name} logoUrl={match.teamA.logoUrl} />
           <Text className="px-2 font-sans-bold text-xl italic text-primary">VS</Text>
           <TeamColumn name={match.teamB.name} logoUrl={match.teamB.logoUrl} />
         </View>
 
-        {match.displayState === MatchCardDisplayState.Completed && match.resultSummary ? (
+        {isDeleted ? (
+          <Text className="text-center font-sans text-sm text-on-surface-variant">
+            {formatMatchListDeletedAttribution(match)}
+          </Text>
+        ) : null}
+
+        {!isDeleted && match.displayState === MatchCardDisplayState.Completed && match.resultSummary ? (
           <Text className="text-center font-sans-bold text-base text-primary">
             {match.resultSummary}
           </Text>
         ) : null}
 
-        {isLive && liveScoreLine ? (
+        {showLiveScore ? (
           <View className="items-center gap-1">
-            <Text className="font-sans-bold text-2xl text-on-surface">{liveScoreLine.score}</Text>
-            <Text className="font-sans text-sm text-on-surface-variant">{liveScoreLine.overs}</Text>
+            <Text className="font-sans-bold text-2xl text-on-surface">{liveScoreLine!.score}</Text>
+            <Text className="font-sans text-sm text-on-surface-variant">{liveScoreLine!.overs}</Text>
           </View>
         ) : null}
 
-        {match.displayState === MatchCardDisplayState.Scheduled && venue ? (
+        {!isDeleted && match.displayState === MatchCardDisplayState.Scheduled && venue ? (
           <VenueRow venue={venue} />
         ) : null}
       </Pressable>
 
+      {isDeleted ? (
+        <View className="flex-row gap-2">
+          <Button
+            label="Scorecard"
+            variant="outline"
+            className="h-12 min-w-0 flex-1"
+            onPress={onScorecardPress}
+          />
+          <Button
+            label="Details"
+            variant="outline"
+            className="h-12 min-w-0 flex-1"
+            onPress={onPress}
+          />
+        </View>
+      ) : null}
+
       {isLive ? (
-        <Button
-          label="Watch Live"
-          variant="amber"
-          className="h-12 w-full"
-          onPress={onWatchLivePress}
-        />
+        showLiveMatchDetails ? (
+          <View className="flex-row gap-2">
+            <Button
+              label="Watch Live"
+              variant="amber"
+              className="h-12 min-w-0 flex-1"
+              onPress={onWatchLivePress}
+            />
+            <Button
+              label="Details"
+              variant="outline"
+              className="h-12 min-w-0 flex-1"
+              onPress={onPress}
+            />
+          </View>
+        ) : (
+          <Button
+            label="Watch Live"
+            variant="amber"
+            className="h-12 w-full"
+            onPress={onWatchLivePress}
+          />
+        )
+      ) : null}
+
+      {isCancelled ? (
+        showCancelledMatchDetails ? (
+          <View className="flex-row gap-2">
+            <Button
+              label="Scorecard"
+              variant="outline"
+              className="h-12 min-w-0 flex-1"
+              onPress={onScorecardPress}
+            />
+            <Button
+              label="Details"
+              variant="outline"
+              className="h-12 min-w-0 flex-1"
+              onPress={onPress}
+            />
+          </View>
+        ) : (
+          <Button
+            label="Scorecard"
+            variant="outline"
+            className="h-12 w-full"
+            onPress={onScorecardPress}
+          />
+        )
+      ) : null}
+
+      {isCompletedTerminal ? (
+        <View className="flex-row gap-2">
+          <Button
+            label="Scorecard"
+            variant="outline"
+            className="h-12 min-w-0 flex-1"
+            onPress={onScorecardPress}
+          />
+          <Button
+            label="Details"
+            variant="outline"
+            className="h-12 min-w-0 flex-1"
+            onPress={onPress}
+          />
+        </View>
       ) : null}
     </View>
   );
@@ -120,6 +247,12 @@ export interface MatchListProps {
   matches: MatchListItem[];
   onMatchPress: (matchId: string) => void;
   onWatchLivePress: (matchId: string) => void;
+  onScorecardPress: (matchId: string) => void;
+  buildMenuActions?: (match: MatchListItem) => OverflowMenuAction[];
+  /** Admin / Club Manager — secondary Details CTA beside Watch Live on live cards. */
+  showLiveMatchDetails?: boolean;
+  /** Admin / Club Manager / confirmed registrant — Details beside Scorecard on cancelled cards. */
+  showCancelledMatchDetails?: boolean;
 }
 
 /** Tournament Matches tab — date-ordered match cards. */
@@ -127,6 +260,10 @@ export function MatchList({
   matches,
   onMatchPress,
   onWatchLivePress,
+  onScorecardPress,
+  buildMenuActions,
+  showLiveMatchDetails = false,
+  showCancelledMatchDetails = false,
 }: MatchListProps): React.ReactElement {
   return (
     <View className="gap-4">
@@ -134,8 +271,12 @@ export function MatchList({
         <MatchListCard
           key={match.id}
           match={match}
+          menuActions={buildMenuActions?.(match) ?? []}
           onPress={() => onMatchPress(match.id)}
           onWatchLivePress={() => onWatchLivePress(match.id)}
+          onScorecardPress={() => onScorecardPress(match.id)}
+          showLiveMatchDetails={showLiveMatchDetails}
+          showCancelledMatchDetails={showCancelledMatchDetails}
         />
       ))}
     </View>

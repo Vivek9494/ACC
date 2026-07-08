@@ -4,6 +4,7 @@ import {
   type AuthUser,
   BallType,
   FeeStatus,
+  RegistrationPlayerType,
   TournamentFeesTrackerLayout,
   UserRole,
 } from '@acc/types';
@@ -17,14 +18,28 @@ const tennisTournament = {
   id: 'tour-tennis',
   isDeleted: false,
   ballType: BallType.Tennis,
+  type: 'APL',
+  provinceId: 'prov-1',
   defaultPlayerFeeCents: BigInt(5000),
+  feeFullTime: { toNumber: () => 250 },
+  feePartTime: null,
+};
+
+const centerLevelTennisTournament = {
+  ...tennisTournament,
+  id: 'tour-center',
+  type: 'CENTER',
 };
 
 const leatherTournament = {
   id: 'tour-acc',
   isDeleted: false,
   ballType: BallType.Leather,
+  type: 'ACC',
+  provinceId: 'prov-1',
   defaultPlayerFeeCents: BigInt(5000),
+  feeFullTime: { toNumber: () => 300 },
+  feePartTime: { toNumber: () => 150 },
 };
 
 const sevak: AuthUser = {
@@ -37,6 +52,19 @@ const sevak: AuthUser = {
   jerseyNumber: 0,
   profilePhotoUrl: null,
   role: UserRole.Player,
+  isActive: true,
+};
+
+const admin: AuthUser = {
+  id: 'admin-1',
+  firstName: 'Admin',
+  lastName: 'User',
+  mobileNumber: '+15555550001',
+  email: 'admin@acc.local',
+  centerId: 'center-A',
+  jerseyNumber: 0,
+  profilePhotoUrl: null,
+  role: UserRole.Admin,
   isActive: true,
 };
 
@@ -66,6 +94,8 @@ describe('FeesService', () => {
     roleAssignment: { findMany: jest.Mock };
     registration: { findUnique: jest.Mock; findMany: jest.Mock };
     teamMembership: { findMany: jest.Mock };
+    tournamentCenter: { findMany: jest.Mock };
+    province: { findUnique: jest.Mock };
     fee: { findMany: jest.Mock; upsert: jest.Mock; findUnique: jest.Mock; update: jest.Mock };
   };
   let audit: { record: jest.Mock };
@@ -87,6 +117,12 @@ describe('FeesService', () => {
           { userId: 'player-2', teamId: 'team-2' },
         ]),
       },
+      tournamentCenter: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+      province: {
+        findUnique: jest.fn().mockResolvedValue({ name: 'Ontario' }),
+      },
       fee: {
         findMany: jest.fn(),
         upsert: jest.fn().mockResolvedValue({}),
@@ -98,7 +134,7 @@ describe('FeesService', () => {
     service = new FeesService(prisma as unknown as PrismaService, audit as unknown as AuditService);
   });
 
-  it('returns a flat list for Center Sevak on a tennis tournament', async () => {
+  it('returns a flat list for Center Sevak on a tennis tournament with display fee', async () => {
     prisma.tournament.findUnique.mockResolvedValue(tennisTournament);
     prisma.roleAssignment.findMany.mockResolvedValue([{ centerId: 'center-A' }]);
     prisma.fee.findMany.mockResolvedValue([
@@ -109,9 +145,26 @@ describe('FeesService', () => {
     const result = await service.getTracker(sevak, 'tour-tennis');
 
     expect(result.layout).toBe(TournamentFeesTrackerLayout.Flat);
+    expect(result.ballType).toBe(BallType.Tennis);
     expect(result.paid).toHaveLength(1);
     expect(result.paid[0]?.entries).toHaveLength(1);
-    expect(result.unpaid[0]?.entries[0]?.amountCents).toBe(12000);
+    expect(result.unpaid[0]?.entries[0]?.amountCents).toBe(25000);
+    expect(result.unpaid[0]?.entries[0]?.cardSubtitle).toBe('Barrie Center');
+  });
+
+  it('returns grouped-by-center lists for Admin on tennis', async () => {
+    prisma.tournament.findUnique.mockResolvedValue(tennisTournament);
+    prisma.fee.findMany.mockResolvedValue([
+      feeRow('fee-paid', 'player-1', 'team-1', 'Team A', 'PAID', 'center-A', 5000, 'tour-tennis'),
+      feeRow('fee-unpaid', 'player-2', 'team-2', 'Team B', 'PENDING', 'center-B', 12000, 'tour-tennis'),
+    ]);
+
+    const result = await service.getTracker(admin, 'tour-tennis');
+
+    expect(result.layout).toBe(TournamentFeesTrackerLayout.GroupedByCenter);
+    expect(result.unpaid).toHaveLength(1);
+    expect(result.unpaid[0]?.teamName).toBe('Mississauga Center');
+    expect(result.unpaid[0]?.entries[0]?.amountCents).toBe(25000);
   });
 
   it('rejects Center Sevak on a leather ACC tournament', async () => {
@@ -121,25 +174,100 @@ describe('FeesService', () => {
     await expect(service.getTracker(sevak, 'tour-acc')).rejects.toBeInstanceOf(ForbiddenException);
   });
 
+  it('returns grouped-by-center lists for Club Manager on all-centers tennis (APL)', async () => {
+    prisma.tournament.findUnique.mockResolvedValue(tennisTournament);
+    prisma.fee.findMany.mockResolvedValue([
+      feeRow('fee-paid', 'player-1', 'team-1', 'Team A', 'PAID', 'center-A', 5000, 'tour-tennis'),
+      feeRow('fee-unpaid', 'player-2', 'team-2', 'Team B', 'PENDING', 'center-B', 12000, 'tour-tennis'),
+    ]);
+
+    const result = await service.getTracker(clubManager, 'tour-tennis');
+
+    expect(result.layout).toBe(TournamentFeesTrackerLayout.GroupedByCenter);
+    expect(result.unpaid).toHaveLength(1);
+    expect(result.unpaid[0]?.teamName).toBe('Mississauga Center');
+  });
+
+  it('forbids Club Manager on a center-level tennis tournament', async () => {
+    prisma.tournament.findUnique.mockResolvedValue(centerLevelTennisTournament);
+    prisma.tournamentCenter.findMany.mockResolvedValue([
+      {
+        center: { name: 'Barrie Center', province: { name: 'Ontario' } },
+      },
+    ]);
+
+    await expect(service.getTracker(clubManager, 'tour-center')).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
+  });
+
+  it('returns leather full-time and part-time display fees for grouped teams', async () => {
+    prisma.tournament.findUnique.mockResolvedValue(leatherTournament);
+    prisma.fee.findMany.mockResolvedValue([
+      feeRow(
+        'fee-unpaid-ft',
+        'player-1',
+        'team-1',
+        'ACC 3',
+        'PENDING',
+        'center-A',
+        5000,
+        'tour-acc',
+        RegistrationPlayerType.FullTime,
+      ),
+      feeRow(
+        'fee-unpaid-pt',
+        'player-2',
+        'team-2',
+        'ACC 6',
+        'PENDING',
+        'center-A',
+        12000,
+        'tour-acc',
+        RegistrationPlayerType.PartTime,
+      ),
+    ]);
+
+    const result = await service.getTracker(clubManager, 'tour-acc');
+
+    expect(result.layout).toBe(TournamentFeesTrackerLayout.GroupedByTeam);
+    const unpaid = result.unpaid.flatMap((group) => group.entries);
+    expect(unpaid.find((entry) => entry.userId === 'player-1')?.amountCents).toBe(30000);
+    expect(unpaid.find((entry) => entry.userId === 'player-2')?.amountCents).toBe(15000);
+    expect(unpaid.find((entry) => entry.userId === 'player-1')?.cardSubtitle).toBe(
+      'ACC 3 · Full-time Player',
+    );
+  });
+
   it('returns a flat own-team list for Captain on leather', async () => {
     prisma.tournament.findUnique.mockResolvedValue(leatherTournament);
     prisma.roleAssignment.findMany.mockResolvedValue([{ teamId: 'team-1' }]);
     prisma.fee.findMany.mockResolvedValue([
-      feeRow('fee-unpaid', 'player-1', 'team-1', 'ACC 3', 'PENDING', 'center-A'),
+      feeRow(
+        'fee-unpaid',
+        'player-1',
+        'team-1',
+        'ACC 3',
+        'PENDING',
+        'center-A',
+        5000,
+        'tour-acc',
+        RegistrationPlayerType.FullTime,
+      ),
     ]);
 
     const result = await service.getTracker(captain, 'tour-acc');
 
     expect(result.layout).toBe(TournamentFeesTrackerLayout.Flat);
     expect(result.unpaidCount).toBe(1);
-    expect(prisma.fee.findMany).toHaveBeenCalled();
+    expect(result.unpaid[0]?.entries[0]?.cardSubtitle).toBe('ACC 3 · Full-time Player');
   });
 
   it('returns grouped-by-team lists for Club Manager on leather', async () => {
     prisma.tournament.findUnique.mockResolvedValue(leatherTournament);
     prisma.fee.findMany.mockResolvedValue([
-      feeRow('fee-paid', 'player-1', 'team-1', 'ACC 3', 'PAID', 'center-A'),
-      feeRow('fee-unpaid', 'player-2', 'team-2', 'ACC 6', 'PENDING', 'center-A'),
+      feeRow('fee-paid', 'player-1', 'team-1', 'ACC 3', 'PAID', 'center-A', 5000, 'tour-acc'),
+      feeRow('fee-unpaid', 'player-2', 'team-2', 'ACC 6', 'PENDING', 'center-A', 12000, 'tour-acc'),
     ]);
 
     const result = await service.getTracker(clubManager, 'tour-acc');
@@ -202,7 +330,13 @@ function feeRow(
   centerId: string,
   amountCents = 5000,
   tournamentId = 'tour-1',
+  playerType: RegistrationPlayerType | null = null,
 ): Record<string, unknown> {
+  const centerNames: Record<string, string> = {
+    'center-A': 'Barrie Center',
+    'center-B': 'Mississauga Center',
+  };
+
   return {
     id,
     tournamentId,
@@ -218,6 +352,11 @@ function feeRow(
       profilePhotoUrl: null,
     },
     team: { name: teamName },
-    registration: { id: `reg-${userId}`, centerId },
+    registration: {
+      id: `reg-${userId}`,
+      centerId,
+      playerType,
+      center: { name: centerNames[centerId] ?? 'Unassigned' },
+    },
   };
 }

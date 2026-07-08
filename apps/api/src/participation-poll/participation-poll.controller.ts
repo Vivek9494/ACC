@@ -1,9 +1,10 @@
 import type {
   ParticipationPollCardView,
   ParticipationPollTallyView,
+  PlayingXiConfirmFromPollView,
   PollPlayingXiSelectionView,
 } from '@acc/types';
-import { Body, Controller, Get, Param, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
 
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import type { AuthenticatedRequest } from '../auth/jwt-auth.guard';
@@ -25,6 +26,15 @@ export class ParticipationPollController {
     @Body() dto: SubmitParticipationPollVoteDto,
   ): Promise<ParticipationPollCardView> {
     return this.polls.submitVote(req.user, pollId, dto.choice);
+  }
+
+  @Get('playing-xi-confirm')
+  playingXiConfirmFromPoll(
+    @Req() req: AuthenticatedRequest,
+    @Query('matchId') matchId: string,
+    @Query('teamId') teamId: string,
+  ): Promise<PlayingXiConfirmFromPollView> {
+    return this.polls.getPlayingXiConfirmFromPoll(req.user, matchId, teamId);
   }
 
   @Get(':pollId/tally')

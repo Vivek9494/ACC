@@ -1,8 +1,11 @@
 import {
-  SIGNUP_PROFILE_PHOTO_MAX_BYTES,
+  DEFAULT_IMAGE_UPLOAD_MAX_MB,
+  mbToBytes,
+  profilePhotoSizeError,
   SIGNUP_VALIDATION_MESSAGES,
   TOURNAMENT_FORM_MESSAGES,
   TOURNAMENT_POSTER_MAX_BYTES,
+  type UploadLimits,
 } from '@acc/types';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -106,6 +109,17 @@ export function storedImageFromRemoteUrl(url: string): StoredImageFile {
   };
 }
 
+/** Presigned read URL for display; storage key is unknown — omit posterUrl on save unless re-uploaded. */
+export function storedImageFromPresignedReadUrl(displayUrl: string): StoredImageFile {
+  return {
+    uri: displayUrl,
+    name: null,
+    mimeType: null,
+    sizeBytes: null,
+    remoteUrl: null,
+  };
+}
+
 export function pickedToStored(file: PickedImageFile): StoredImageFile {
   return { ...file, remoteUrl: null };
 }
@@ -128,7 +142,7 @@ async function validatePickedFile(
   options: PickImageOptions,
 ): Promise<PickImageResult> {
   const allowedMimeTypes = options.allowedMimeTypes ?? JPEG_MIME_TYPES;
-  const maxSizeBytes = options.maxSizeBytes ?? SIGNUP_PROFILE_PHOTO_MAX_BYTES;
+  const maxSizeBytes = options.maxSizeBytes ?? mbToBytes(DEFAULT_IMAGE_UPLOAD_MAX_MB);
   const sizeBytes = await resolveImageFileSize(file.uri, file.sizeBytes);
   const normalized: PickedImageFile = { ...file, sizeBytes };
 
@@ -182,15 +196,32 @@ export function tournamentPosterPickOptions(): PickImageOptions {
   };
 }
 
-/** Profile photo — JPEG, square crop, max 5MB. */
-export function profilePhotoPickOptions(): PickImageOptions {
+/** JPEG broadcast image — no crop; max size from app settings. */
+export function broadcastImagePickOptions(
+  limits?: Pick<UploadLimits, 'imageUploadMaxMb'>,
+): PickImageOptions {
+  const maxMb = limits?.imageUploadMaxMb ?? DEFAULT_IMAGE_UPLOAD_MAX_MB;
+  return {
+    allowsEditing: false,
+    quality: 0.9,
+    maxSizeBytes: mbToBytes(maxMb),
+    typeErrorMessage: SIGNUP_VALIDATION_MESSAGES.profilePhoto.type,
+    sizeErrorMessage: profilePhotoSizeError(maxMb),
+  };
+}
+
+/** Profile photo — JPEG, square crop; max size from app settings. */
+export function profilePhotoPickOptions(
+  limits?: Pick<UploadLimits, 'imageUploadMaxMb'>,
+): PickImageOptions {
+  const maxMb = limits?.imageUploadMaxMb ?? DEFAULT_IMAGE_UPLOAD_MAX_MB;
   return {
     allowsEditing: true,
     aspect: [1, 1],
     quality: 0.85,
-    maxSizeBytes: SIGNUP_PROFILE_PHOTO_MAX_BYTES,
+    maxSizeBytes: mbToBytes(maxMb),
     typeErrorMessage: SIGNUP_VALIDATION_MESSAGES.profilePhoto.type,
-    sizeErrorMessage: SIGNUP_VALIDATION_MESSAGES.profilePhoto.size,
+    sizeErrorMessage: profilePhotoSizeError(maxMb),
   };
 }
 

@@ -6,28 +6,32 @@ import { buildPlayerDashboardSections } from '../../../src/components/dashboard/
 import { MatchSetupDialog } from '../../../src/components/dashboard/MatchSetupDialog';
 import { DashboardScaffold } from '../../../src/components/dashboard/DashboardScaffold';
 import { usePlayerDashboard } from '../../../src/hooks/usePlayerDashboard';
+import { useActiveBroadcast } from '../../../src/hooks/useActiveBroadcast';
 import { useAttendanceMonitor } from '../../../src/hooks/useAttendanceMonitor';
-import { usePlayerTabConfig } from '../../../src/lib/player-tabs';
+import { prependBroadcastSection } from '../../../src/lib/dashboard-broadcast';
+import { useAuth } from '../../../src/lib/auth-context';
 
 export default function PlayerDashboardScreen(): React.ReactElement {
   const router = useRouter();
+  const { user } = useAuth();
   const { dashboard, isLoading, error, retry } = usePlayerDashboard();
+  const { broadcast } = useActiveBroadcast(!isLoading && !error);
   useAttendanceMonitor(true);
-  const tabConfig = usePlayerTabConfig('index');
   const [setupMatch, setSetupMatch] = useState<ScorerStartableMatch | null>(null);
 
-  const sections = useMemo(
-    () =>
-      dashboard
+  const sections = useMemo(() => {
+    const base =
+      dashboard && user
         ? buildPlayerDashboardSections(
             dashboard,
             router,
+            user,
             (match) => setSetupMatch(match),
             retry,
           )
-        : [],
-    [dashboard, router, retry],
-  );
+        : [];
+    return prependBroadcastSection(base, broadcast);
+  }, [broadcast, dashboard, router, retry, user]);
 
   return (
     <>
@@ -37,7 +41,6 @@ export default function PlayerDashboardScreen(): React.ReactElement {
         error={error}
         onRetry={retry}
         sections={sections}
-        tabConfig={tabConfig}
       />
       <MatchSetupDialog
         visible={setupMatch !== null}

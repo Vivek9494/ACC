@@ -1,8 +1,14 @@
 import {
   type AuthUser,
   BallType,
+  buildTournamentFeeCardSubtitle,
   FeeStatus,
+  isAllCentersTennisScope,
+  resolveTournamentFeeDisplayCents,
   TournamentFeesTrackerLayout,
+  TOURNAMENT_FEE_UNASSIGNED_CENTER_LABEL,
+  TournamentType,
+  type RegistrationPlayerType,
   type TournamentFeeEntry,
   type TournamentFeesTracker,
   type TournamentFeeTeamGroup,
@@ -17,7 +23,9 @@ import {
 import { FeeStatus as PrismaFeeStatus, type Prisma } from '@prisma/client';
 
 import { AuditService } from '../audit/audit.service';
+import { decimalToNumberOrNull } from '../common/decimal.util';
 import { PrismaService } from '../prisma/prisma.service';
+import { buildTournamentScopeDisplay } from '../tournaments/tournament-scope-display';
 
 const FEE_INCLUDE = {
   user: {
@@ -36,6 +44,8 @@ const FEE_INCLUDE = {
     select: {
       id: true,
       centerId: true,
+      playerType: true,
+      center: { select: { name: true } },
     },
   },
 } satisfies Prisma.FeeInclude;
@@ -49,8 +59,17 @@ type FeesScope =
   | { type: 'all_centers' };
 
 interface FeesAccessContext {
-  layout: typeof TournamentFeesTrackerLayout.Flat | typeof TournamentFeesTrackerLayout.GroupedByTeam;
+  layout:
+    | typeof TournamentFeesTrackerLayout.Flat
+    | typeof TournamentFeesTrackerLayout.GroupedByTeam
+    | typeof TournamentFeesTrackerLayout.GroupedByCenter;
   scope: FeesScope;
+}
+
+interface TournamentFeeContext {
+  ballType: BallType;
+  feeFullTime: number | null;
+  feePartTime: number | null;
 }
 
 @Injectable()
@@ -63,27 +82,31 @@ export class FeesService {
   /** §20: role- and ball-type-aware fee tracker (manual tracking only). */
   async getTracker(actor: AuthUser, tournamentId: string): Promise<TournamentFeesTracker> {
     const access = await this.resolveAccess(actor, tournamentId);
+    const feeContext = await this.loadTournamentFeeContext(tournamentId);
     await this.syncFees(tournamentId, access.scope);
 
     const fees = await this.prisma.fee.findMany({
       where: this.buildFeeWhere(tournamentId, access.scope),
       include: FEE_INCLUDE,
-      orderBy: [{ team: { name: 'asc' } }, { user: { lastName: 'asc' } }, { user: { firstName: 'asc' } }],
+      orderBy: [
+        { registration: { center: { name: 'asc' } } },
+        { team: { name: 'asc' } },
+        { user: { lastName: 'asc' } },
+        { user: { firstName: 'asc' } },
+      ],
     });
 
     const paidEntries = fees
       .filter((fee) => fee.status === PrismaFeeStatus.PAID)
-      .map((fee) => this.toEntry(fee));
+      .map((fee) => this.toEntry(fee, feeContext));
     const unpaidEntries = fees
       .filter((fee) => fee.status === PrismaFeeStatus.PENDING)
-      .map((fee) => this.toEntry(fee));
+      .map((fee) => this.toEntry(fee, feeContext));
 
-    const format =
-      access.layout === TournamentFeesTrackerLayout.GroupedByTeam
-        ? (entries: TournamentFeeEntry[]) => this.groupByTeam(entries)
-        : (entries: TournamentFeeEntry[]) => this.asFlatList(entries);
+    const format = this.buildGroupFormatter(access.layout);
 
     return {
+      ballType: feeContext.ballType,
       layout: access.layout,
       paid: format(paidEntries),
       unpaid: format(unpaidEntries),
@@ -154,7 +177,7 @@ export class FeesService {
 
     // TODO(§20): enqueue fee reminder notification 1 day before tournament start (FCM later phase).
 
-    return this.toEntry(row);
+    return this.toEntry(row, await this.loadTournamentFeeContext(tournamentId));
   }
 
   /** @deprecated alias */
@@ -173,12 +196,32 @@ export class FeesService {
         };
       }
       return {
-        layout: TournamentFeesTrackerLayout.Flat,
+        layout: TournamentFeesTrackerLayout.GroupedByCenter,
         scope: { type: 'all_centers' },
       };
     }
 
     if (tournament.ballType === BallType.Tennis) {
+      if (actor.role === UserRole.ClubManager) {
+        const scopeDisplay = await buildTournamentScopeDisplay(
+          this.prisma,
+          tournamentId,
+          tournament.type as TournamentType,
+          BallType.Tennis,
+          tournament.provinceId,
+        );
+        if (isAllCentersTennisScope(scopeDisplay)) {
+          return {
+            layout: TournamentFeesTrackerLayout.GroupedByCenter,
+            scope: { type: 'all_centers' },
+          };
+        }
+        throw new ForbiddenException({
+          message: 'Fees tracker is not available for your role on this tournament',
+          error: 'FORBIDDEN',
+        });
+      }
+
       const centerIds = await this.getSevakCenterIds(actor);
       if (centerIds.length === 0) {
         throw new ForbiddenException({
@@ -390,6 +433,38 @@ export class FeesService {
     }
   }
 
+  private buildGroupFormatter(
+    layout: FeesAccessContext['layout'],
+  ): (entries: TournamentFeeEntry[]) => TournamentFeeTeamGroup[] {
+    switch (layout) {
+      case TournamentFeesTrackerLayout.GroupedByTeam:
+        return (entries) => this.groupByTeam(entries);
+      case TournamentFeesTrackerLayout.GroupedByCenter:
+        return (entries) => this.groupByCenter(entries);
+      case TournamentFeesTrackerLayout.Flat:
+        return (entries) => this.asFlatList(entries);
+      default: {
+        const _exhaustive: never = layout;
+        return _exhaustive;
+      }
+    }
+  }
+
+  private async loadTournamentFeeContext(tournamentId: string): Promise<TournamentFeeContext> {
+    const tournament = await this.prisma.tournament.findUnique({
+      where: { id: tournamentId },
+      select: { ballType: true, feeFullTime: true, feePartTime: true },
+    });
+    if (!tournament) {
+      throw new NotFoundException({ message: 'Tournament not found', error: 'NOT_FOUND' });
+    }
+    return {
+      ballType: tournament.ballType as BallType,
+      feeFullTime: decimalToNumberOrNull(tournament.feeFullTime),
+      feePartTime: decimalToNumberOrNull(tournament.feePartTime),
+    };
+  }
+
   private asFlatList(entries: TournamentFeeEntry[]): TournamentFeeTeamGroup[] {
     if (entries.length === 0) {
       return [];
@@ -431,7 +506,59 @@ export class FeesService {
       .sort((a, b) => a.teamName.localeCompare(b.teamName));
   }
 
-  private toEntry(row: FeeRow): TournamentFeeEntry {
+  private groupByCenter(entries: TournamentFeeEntry[]): TournamentFeeTeamGroup[] {
+    const groups = new Map<string, TournamentFeeTeamGroup>();
+    for (const entry of entries) {
+      const key = entry.centerId ?? '__unassigned__';
+      const existing = groups.get(key);
+      if (existing) {
+        existing.entries.push(entry);
+        continue;
+      }
+      groups.set(key, {
+        teamId: entry.centerId,
+        teamName: entry.centerName,
+        entries: [entry],
+      });
+    }
+
+    return [...groups.values()]
+      .map((group) => ({
+        ...group,
+        entries: [...group.entries].sort((a, b) =>
+          `${a.lastName} ${a.firstName}`.localeCompare(`${b.lastName} ${b.firstName}`),
+        ),
+      }))
+      .sort((a, b) => {
+        if (a.teamName === TOURNAMENT_FEE_UNASSIGNED_CENTER_LABEL) {
+          return 1;
+        }
+        if (b.teamName === TOURNAMENT_FEE_UNASSIGNED_CENTER_LABEL) {
+          return -1;
+        }
+        return a.teamName.localeCompare(b.teamName);
+      });
+  }
+
+  private toEntry(row: FeeRow, feeContext: TournamentFeeContext): TournamentFeeEntry {
+    const teamName = row.team?.name ?? 'Unassigned';
+    const centerId = row.registration?.centerId ?? null;
+    const centerName =
+      row.registration?.center?.name ?? TOURNAMENT_FEE_UNASSIGNED_CENTER_LABEL;
+    const playerType = (row.registration?.playerType as RegistrationPlayerType | null) ?? null;
+    const cardSubtitle = buildTournamentFeeCardSubtitle(
+      feeContext.ballType,
+      teamName,
+      centerName,
+      playerType,
+    );
+    const amountCents = resolveTournamentFeeDisplayCents(
+      feeContext.ballType,
+      feeContext.feeFullTime,
+      feeContext.feePartTime,
+      playerType,
+    );
+
     return {
       id: row.id,
       registrationId: row.registrationId ?? row.registration?.id ?? '',
@@ -440,8 +567,12 @@ export class FeesService {
       lastName: row.user.lastName,
       profilePhotoUrl: row.user.profilePhotoUrl,
       teamId: row.teamId,
-      teamName: row.team?.name ?? 'Unassigned',
-      amountCents: centsToNumber(row.amountCents),
+      teamName,
+      centerId,
+      centerName,
+      playerType,
+      cardSubtitle,
+      amountCents,
       status: row.status === PrismaFeeStatus.PAID ? FeeStatus.Paid : FeeStatus.Pending,
       paidAt: row.paidAt?.toISOString() ?? null,
     };
@@ -451,10 +582,12 @@ export class FeesService {
     id: string;
     isDeleted: boolean;
     ballType: string;
+    type: string;
+    provinceId: string | null;
   }> {
     const tournament = await this.prisma.tournament.findUnique({
       where: { id: tournamentId },
-      select: { id: true, isDeleted: true, ballType: true },
+      select: { id: true, isDeleted: true, ballType: true, type: true, provinceId: true },
     });
     if (!tournament || tournament.isDeleted) {
       throw new NotFoundException({ message: 'Tournament not found', error: 'NOT_FOUND' });
@@ -486,12 +619,4 @@ export class FeesService {
       .map((assignment) => assignment.teamId)
       .filter((id): id is string => typeof id === 'string');
   }
-}
-
-function centsToNumber(value: bigint): number {
-  const asNumber = Number(value);
-  if (!Number.isSafeInteger(asNumber)) {
-    throw new Error('Fee amount exceeds safe integer range');
-  }
-  return asNumber;
 }

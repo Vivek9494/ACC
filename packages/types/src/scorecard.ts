@@ -68,18 +68,101 @@ export function isManOfMatchOverdue(
   return Date.now() > new Date(dueAt).getTime();
 }
 
+/** Human-readable countdown until the §13.1 auto-confirm deadline. */
+export function formatAutoConfirmCountdown(iso: string | null | undefined): string {
+  if (!iso) return '';
+  const ms = new Date(iso).getTime() - Date.now();
+  if (ms <= 0) return 'now';
+  const mins = Math.round(ms / 60000);
+  if (mins < 60) return `${mins}m`;
+  return `${Math.floor(mins / 60)}h ${mins % 60}m`;
+}
+
 /** Whether the current user may award Man of the Match on a completed match. */
 export interface ManOfMatchEligibilityView {
-  /** A registered winning team exists and MoM is not yet set. */
+  /** A registered winning team exists (MoM applies; includes after a pick for re-select). */
   offered: boolean;
-  /** The authenticated user is the winning team's Captain (or VC when Captain is suspended). */
+  /** The authenticated user is the winning team's Captain or Vice-Captain. */
   canSelect: boolean;
-  /** MoM is mandatory for registered winning teams (§13.3). */
+  /** MoM is mandatory and not yet selected (§13.3 end-of-day deadline). */
   required: boolean;
   /** End of the match calendar day by which MoM should be selected (UTC ISO). */
   dueAt: string | null;
   /** Past the deadline with no selection — still selectable (§13.3). */
   overdue: boolean;
+}
+
+/** Whether the current user may manually confirm the scorecard (§13.1). */
+export const ScorecardConfirmSide = {
+  Home: 'HOME',
+  Away: 'AWAY',
+  Admin: 'ADMIN',
+} as const;
+export type ScorecardConfirmSide =
+  (typeof ScorecardConfirmSide)[keyof typeof ScorecardConfirmSide];
+
+export interface TeamScorecardConfirmationView {
+  teamId: string | null;
+  confirmed: boolean;
+  confirmedByUserId: string | null;
+  confirmedAt: string | null;
+}
+
+/** Minimal match fields for two-sided confirmation derivation. */
+export interface ScorecardConfirmationTeamsInput {
+  state: string;
+  homeTeamId: string | null;
+  awayTeamId: string | null;
+  homeTeamConfirmed: boolean;
+  awayTeamConfirmed: boolean;
+  adminConfirmed: boolean;
+}
+
+/** True when both participating sides confirmed or an admin override locked the card. */
+export function isScorecardFinalized(match: ScorecardConfirmationTeamsInput): boolean {
+  if (match.state === 'SCORECARD_LOCKED' || match.adminConfirmed) {
+    return true;
+  }
+  const homeOk = match.homeTeamId == null || match.homeTeamConfirmed;
+  const awayOk = match.awayTeamId == null || match.awayTeamConfirmed;
+  return homeOk && awayOk;
+}
+
+/** True when the scorecard is locked (§13.1) — independent of match `state`. */
+export function isScorecardLocked(
+  match: ScorecardConfirmationTeamsInput & { confirmedAt?: string | Date | null },
+): boolean {
+  if (match.state === 'SCORECARD_LOCKED') {
+    return true;
+  }
+  return match.confirmedAt != null;
+}
+
+export interface ScorecardConfirmEligibilityView {
+  /** Match is in COMPLETED or NO_RESULT awaiting confirmation. */
+  awaitingConfirmation: boolean;
+  /** User may submit a confirmation action now. */
+  canConfirm: boolean;
+  /** Which side the user confirms — home, away, or admin override. */
+  confirmSide: ScorecardConfirmSide | null;
+  scorecardFinalized: boolean;
+  homeTeam: TeamScorecardConfirmationView;
+  awayTeam: TeamScorecardConfirmationView;
+  adminConfirmed: boolean;
+}
+
+/** Captain/VC dashboard prompt for a match awaiting their team's confirmation (§13.1). */
+export interface PendingScorecardConfirmationCardView {
+  matchId: string;
+  tournamentName: string;
+  homeTeamName: string;
+  awayTeamName: string;
+  /** The participating side this user confirms (home or away). */
+  confirmSide: typeof ScorecardConfirmSide.Home | typeof ScorecardConfirmSide.Away;
+  homeTeamConfirmed: boolean;
+  awayTeamConfirmed: boolean;
+  /** UTC ISO deadline for the 5-hour auto-confirm window. */
+  autoConfirmDueAt: string | null;
 }
 
 // --- Read projections -------------------------------------------------------
@@ -101,6 +184,17 @@ export interface ScorecardConfirmationView {
   autoConfirmDueAt: string | null;
   /** True while a manual Captain/VC confirmation is still possible. */
   withinConfirmWindow: boolean;
+  /** Both sides confirmed or admin override applied. */
+  scorecardFinalized: boolean;
+  homeTeamConfirmed: boolean;
+  homeTeamConfirmedByUserId: string | null;
+  homeTeamConfirmedAt: string | null;
+  awayTeamConfirmed: boolean;
+  awayTeamConfirmedByUserId: string | null;
+  awayTeamConfirmedAt: string | null;
+  adminConfirmed: boolean;
+  adminConfirmedByUserId: string | null;
+  adminConfirmedAt: string | null;
   manOfTheMatchUserId: string | null;
   /** When the winning captain confirmed MoM (UTC ISO); null until selected. */
   manOfTheMatchSelectedAt: string | null;

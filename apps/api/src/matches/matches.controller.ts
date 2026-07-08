@@ -1,5 +1,6 @@
 import {
   type AuthUser,
+  type ExternalPlayerView,
   type MatchDetail,
   type MatchListItem,
   type MatchSummary,
@@ -13,29 +14,42 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
+  Patch,
   Post,
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
+import type { Request } from 'express';
 
 import { CurrentUser } from '../auth/current-user.decorator';
+import { AuthService } from '../auth/auth.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PermissionGuard } from '../authz/permission.guard';
 import { RequirePermission } from '../authz/require-permission.decorator';
+import { AddOpponentPlayerDto } from './dto/add-opponent-player.dto';
 import { CreateMatchDto } from './dto/create-match.dto';
+import { FinalizeBothPlayingXiDto } from './dto/finalize-both-playing-xi.dto';
 import { LockPlayingXiDto } from './dto/lock-playing-xi.dto';
 import { RecordTossDto } from './dto/record-toss.dto';
-import { AssignScorerDto, HandoverScorerDto } from './dto/scorer.dto';
+import { AssignScorerDto, HandoverScorerDto, SwapMatchScorerDto } from './dto/scorer.dto';
 import { StartMatchSetupDto } from './dto/start-match-setup.dto';
 import { TransitionMatchStateDto } from './dto/transition-match-state.dto';
+import { DelayMatchDto } from './dto/delay-match.dto';
+import { UpdateMatchDto } from './dto/update-match.dto';
 import { MatchesService } from './matches.service';
 
 /** Match setup endpoints (spec §5.2, §11). */
 @Controller()
 @UseGuards(JwtAuthGuard)
 export class MatchesController {
-  constructor(private readonly matches: MatchesService) {}
+  constructor(
+    private readonly matches: MatchesService,
+    private readonly auth: AuthService,
+  ) {}
 
   @Post('tournaments/:tournamentId/matches')
   create(
@@ -54,13 +68,41 @@ export class MatchesController {
   }
 
   @Get('tournaments/:tournamentId/matches')
-  list(@Param('tournamentId') tournamentId: string): Promise<MatchListItem[]> {
-    return this.matches.list(tournamentId);
+  async list(
+    @Param('tournamentId') tournamentId: string,
+    @Query('teamId') teamId: string | undefined,
+    @Req() req: Request,
+  ): Promise<MatchListItem[]> {
+    const viewer = await this.auth.resolveOptionalUser(req);
+    return this.matches.list(tournamentId, teamId?.trim() || undefined, viewer);
+  }
+
+  @Patch('matches/:matchId')
+  @RequirePermission(Permission.EDIT_MATCH)
+  @UseGuards(PermissionGuard)
+  update(
+    @CurrentUser() user: AuthUser,
+    @Param('matchId') matchId: string,
+    @Body() dto: UpdateMatchDto,
+  ): Promise<MatchDetail> {
+    return this.matches.update(user, matchId, dto);
+  }
+
+  @Delete('matches/:matchId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @RequirePermission(Permission.DELETE_MATCH)
+  @UseGuards(PermissionGuard)
+  async remove(
+    @CurrentUser() user: AuthUser,
+    @Param('matchId') matchId: string,
+  ): Promise<void> {
+    await this.matches.remove(user, matchId);
   }
 
   @Get('matches/:matchId')
-  detail(@Param('matchId') matchId: string): Promise<MatchDetail> {
-    return this.matches.getDetail(matchId);
+  async detail(@Param('matchId') matchId: string, @Req() req: Request): Promise<MatchDetail> {
+    const viewer = await this.auth.resolveOptionalUser(req);
+    return this.matches.getDetail(matchId, viewer);
   }
 
   @Get('matches/:matchId/squad-candidates')
@@ -85,14 +127,40 @@ export class MatchesController {
     return this.matches.lockPlayingXi(user, matchId, dto);
   }
 
+  @Post('matches/:matchId/playing-xi/finalize-both')
+  finalizeBothPlayingXi(
+    @CurrentUser() user: AuthUser,
+    @Param('matchId') matchId: string,
+    @Body() dto: FinalizeBothPlayingXiDto,
+  ): Promise<MatchDetail> {
+    return this.matches.finalizeBothPlayingXi(user, matchId, dto);
+  }
+
+  @Post('matches/:matchId/opponent-players')
+  addOpponentPlayer(
+    @CurrentUser() user: AuthUser,
+    @Param('matchId') matchId: string,
+    @Body() dto: AddOpponentPlayerDto,
+  ): Promise<ExternalPlayerView> {
+    return this.matches.addOpponentPlayer(user, matchId, dto.name);
+  }
+
+  @Delete('matches/:matchId/opponent-players/:playerId')
+  removeOpponentPlayer(
+    @CurrentUser() user: AuthUser,
+    @Param('matchId') matchId: string,
+    @Param('playerId') playerId: string,
+  ): Promise<MatchDetail> {
+    return this.matches.removeOpponentPlayer(user, matchId, playerId);
+  }
+
   @Post('matches/:matchId/toss')
-  @RequirePermission(Permission.RECORD_TOSS)
-  @UseGuards(PermissionGuard)
   recordToss(
+    @CurrentUser() user: AuthUser,
     @Param('matchId') matchId: string,
     @Body() dto: RecordTossDto,
   ): Promise<MatchDetail> {
-    return this.matches.recordToss(matchId, dto);
+    return this.matches.recordToss(user, matchId, dto);
   }
 
   @Post('matches/:matchId/start-scoring')
@@ -126,6 +194,15 @@ export class MatchesController {
     return this.matches.transition(user, matchId, dto.state);
   }
 
+  @Post('matches/:matchId/delay')
+  delayMatch(
+    @CurrentUser() user: AuthUser,
+    @Param('matchId') matchId: string,
+    @Body() dto: DelayMatchDto,
+  ): Promise<MatchDetail> {
+    return this.matches.applyDelay(user, matchId, dto.delayMinutes);
+  }
+
   @Post('matches/:matchId/scorer')
   assignScorer(
     @CurrentUser() user: AuthUser,
@@ -133,6 +210,15 @@ export class MatchesController {
     @Body() dto: AssignScorerDto,
   ): Promise<MatchDetail> {
     return this.matches.assignScorer(user, matchId, dto);
+  }
+
+  @Post('matches/:matchId/scorer/swap')
+  swapMatchScorer(
+    @CurrentUser() user: AuthUser,
+    @Param('matchId') matchId: string,
+    @Body() dto: SwapMatchScorerDto,
+  ): Promise<MatchDetail> {
+    return this.matches.swapMatchScorer(user, matchId, dto);
   }
 
   @Post('matches/:matchId/scorer/handover')

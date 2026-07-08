@@ -1,25 +1,21 @@
 import { formatBowlerEconomyDisplay, type BowlerCard } from '@acc/types';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  ScrollView,
-  View,
-  type LayoutChangeEvent,
-  type NativeScrollEvent,
-  type NativeSyntheticEvent,
-} from 'react-native';
+import { useCallback, useMemo, useState } from 'react';
+import { ScrollView, View, type LayoutChangeEvent } from 'react-native';
 
 import {
-  SCORECARD_BOWLING_BOUNDARY_STAT_WIDTH,
-  SCORECARD_BOWLING_RATE_STAT_WIDTH,
-  SCORECARD_BOWLING_STANDARD_STAT_WIDTH,
-  SCORECARD_NAME_COLUMN_GAP,
-} from '../scorecardTableWidths';
+  BOWLING_TABLE_METRICS,
+  type BowlingTableDensity,
+} from './liveScoringScorecardTypography';
 import { Text } from '../ui/Text';
 
-/** Live scoring Bowling card — compact fixed widths. */
-const LIVE_NAME_COLUMN_WIDTH = 88;
-const LIVE_STANDARD_STAT_WIDTH = 48;
-const LIVE_RATE_STAT_WIDTH = 52;
+/** Live scoring Bowling card — pinned name + scrollable stats. */
+export const LIVE_BOWLING_PINNED_COL_WIDTH = BOWLING_TABLE_METRICS.live.pinnedColWidth;
+export const LIVE_BOWLING_SCROLL_STAT_WIDTH = BOWLING_TABLE_METRICS.live.scrollStatWidth;
+export const LIVE_BOWLING_ECO_WIDTH = BOWLING_TABLE_METRICS.live.ecoWidth;
+export const LIVE_BOWLING_HEADER_HEIGHT = BOWLING_TABLE_METRICS.live.headerHeight;
+export const LIVE_BOWLING_ROW_HEIGHT = BOWLING_TABLE_METRICS.live.rowHeight;
+
+const CORE_COLUMN_KEYS = ['O', 'M', 'R', 'W', 'Eco'] as const;
 
 interface StatColumn {
   key: string;
@@ -29,54 +25,31 @@ interface StatColumn {
   value: (card: BowlerCard) => string;
 }
 
-interface ColumnWidths {
-  standard: number;
-  boundary: number;
-  rate: number;
-}
-
-function buildStatColumns(widths: ColumnWidths): StatColumn[] {
-  const { standard, boundary, rate } = widths;
+function buildStatColumns(scrollStatWidth: number, ecoWidth: number): StatColumn[] {
   return [
-    { key: 'O', label: 'O', width: standard, value: (card) => card.oversText },
-    { key: 'M', label: 'M', width: standard, value: (card) => String(card.maidens) },
-    { key: 'R', label: 'R', width: standard, value: (card) => String(card.runsConceded) },
+    { key: 'O', label: 'O', width: scrollStatWidth, value: (card) => card.oversText },
+    { key: 'M', label: 'M', width: scrollStatWidth, value: (card) => String(card.maidens) },
+    { key: 'R', label: 'R', width: scrollStatWidth, value: (card) => String(card.runsConceded) },
     {
       key: 'W',
       label: 'W',
-      width: standard,
+      width: scrollStatWidth,
       emphasize: true,
       value: (card) => String(card.wickets),
     },
     {
       key: 'Eco',
       label: 'Eco',
-      width: rate,
+      width: ecoWidth,
       value: (card) => formatBowlerEconomyDisplay(card),
     },
-    { key: '0s', label: '0s', width: standard, value: (card) => String(card.dotBalls) },
-    { key: 'Wd', label: 'Wd', width: standard, value: (card) => String(card.wides) },
-    { key: 'NB', label: 'NB', width: standard, value: (card) => String(card.noBalls) },
-    { key: '4s', label: '4s', width: boundary, value: (card) => String(card.fours) },
-    { key: '6s', label: '6s', width: boundary, value: (card) => String(card.sixes) },
+    { key: '0s', label: '0s', width: scrollStatWidth, value: (card) => String(card.dotBalls) },
+    { key: 'Wd', label: 'Wd', width: scrollStatWidth, value: (card) => String(card.wides) },
+    { key: 'NB', label: 'NB', width: scrollStatWidth, value: (card) => String(card.noBalls) },
+    { key: '4s', label: '4s', width: scrollStatWidth, value: (card) => String(card.fours) },
+    { key: '6s', label: '6s', width: scrollStatWidth, value: (card) => String(card.sixes) },
   ];
 }
-
-const LIVE_STAT_COLUMNS = buildStatColumns({
-  standard: LIVE_STANDARD_STAT_WIDTH,
-  boundary: LIVE_STANDARD_STAT_WIDTH,
-  rate: LIVE_RATE_STAT_WIDTH,
-});
-
-const SCORECARD_STAT_COLUMNS = buildStatColumns({
-  standard: SCORECARD_BOWLING_STANDARD_STAT_WIDTH,
-  boundary: SCORECARD_BOWLING_BOUNDARY_STAT_WIDTH,
-  rate: SCORECARD_BOWLING_RATE_STAT_WIDTH,
-});
-
-const STATS_PANE_STYLE = { flex: 1, minWidth: 0, overflow: 'hidden' as const };
-const STATS_SCROLL_STYLE = { width: '100%' as const };
-const SCORECARD_ROW_PY = 8;
 
 export interface BowlerFiguresRow {
   id: string;
@@ -88,197 +61,193 @@ export interface BowlerFiguresRow {
 
 export interface BowlerFiguresScrollTableProps {
   rows: BowlerFiguresRow[];
-  /** Tighter chrome for the live scoring Bowling card. */
-  compact?: boolean;
-  /**
-   * Innings scorecard: frozen name width matching the Batting card name column
-   * (from {@link scorecardPlayerNameColumnWidth}).
-   */
-  scorecardNameColumnWidth?: number;
+  /** `scorecard` enlarges type for the Live Scoring Scorecard tab; default keeps Live sizing. */
+  density?: BowlingTableDensity;
 }
 
-function StatHeaderCell({ column }: { column: StatColumn }): React.ReactElement {
-  return (
-    <Text
-      style={{ width: column.width }}
-      className={`shrink-0 text-right font-sans-semibold text-[10px] uppercase tracking-wide ${
-        column.emphasize ? 'text-primary' : 'text-on-surface-variant'
-      }`}
-    >
-      {column.label}
-    </Text>
-  );
+function statTableWidth(columns: StatColumn[]): number {
+  return columns.reduce((sum, column) => sum + column.width, 0);
 }
 
-function StatValueCell({
-  column,
-  card,
-  scorecard,
-  highlightRow,
+function BowlingPinnedSplitTable({
+  rows,
+  density,
 }: {
-  column: StatColumn;
-  card: BowlerCard;
-  scorecard: boolean;
-  highlightRow: boolean;
+  rows: BowlerFiguresRow[];
+  density: BowlingTableDensity;
 }): React.ReactElement {
-  const figureClass = scorecard
-    ? highlightRow
-      ? 'font-sans-semibold text-xs text-primary'
-      : 'font-sans text-xs text-on-surface'
-    : column.emphasize
-      ? 'font-sans-bold text-sm text-primary'
-      : 'font-sans text-sm text-on-surface';
+  const metrics = BOWLING_TABLE_METRICS[density];
+  const statColumns = useMemo(
+    () => buildStatColumns(metrics.scrollStatWidth, metrics.ecoWidth),
+    [metrics.ecoWidth, metrics.scrollStatWidth],
+  );
+  const coreColumns = useMemo(
+    () =>
+      statColumns.filter((column) => (CORE_COLUMN_KEYS as readonly string[]).includes(column.key)),
+    [statColumns],
+  );
+  const scrollColumns = useMemo(
+    () =>
+      statColumns.filter(
+        (column) => !(CORE_COLUMN_KEYS as readonly string[]).includes(column.key),
+      ),
+    [statColumns],
+  );
+
+  const [statsViewportWidth, setStatsViewportWidth] = useState(0);
+  const lastIndex = rows.length - 1;
+  const scrollContentWidth = statTableWidth(scrollColumns);
+  const statsReady = statsViewportWidth > 0;
+
+  const onStatsViewportLayout = useCallback((event: LayoutChangeEvent) => {
+    const width = Math.floor(event.nativeEvent.layout.width);
+    setStatsViewportWidth((prev) => (prev === width ? prev : width));
+  }, []);
 
   return (
-    <Text style={{ width: column.width }} numberOfLines={1} className={`shrink-0 text-right ${figureClass}`}>
-      {column.value(card)}
-    </Text>
+    <View className="flex-row">
+      <View className="shrink-0">
+        <View
+          className="justify-center border-b border-outline-variant/30 px-1"
+          style={{
+            height: metrics.headerHeight,
+            width: metrics.pinnedColWidth,
+          }}
+        >
+          <Text className={metrics.headerLabelClass}>Bowler</Text>
+        </View>
+        {rows.map((row, index) => (
+          <View
+            key={row.id}
+            className={`justify-center px-1 ${index < lastIndex ? 'border-b border-outline-variant/30' : ''}`}
+            style={{ height: metrics.rowHeight, width: metrics.pinnedColWidth }}
+          >
+            <Text
+              className={`${metrics.nameClass} ${
+                row.highlightName ? 'text-primary' : 'text-on-surface'
+              }`}
+              numberOfLines={1}
+            >
+              {row.name}
+              {row.nameSuffix ?? ''}
+            </Text>
+          </View>
+        ))}
+      </View>
+
+      <View className="min-w-0 flex-1 overflow-hidden" onLayout={onStatsViewportLayout}>
+        {statsReady ? (
+          <ScrollView
+            horizontal
+            bounces={false}
+            nestedScrollEnabled
+            showsHorizontalScrollIndicator={false}
+            contentOffset={{ x: 0, y: 0 }}
+          >
+            <View style={{ width: statsViewportWidth + scrollContentWidth }}>
+              <View
+                className="flex-row items-center border-b border-outline-variant/30"
+                style={{
+                  height: metrics.headerHeight,
+                  width: statsViewportWidth + scrollContentWidth,
+                }}
+              >
+                <View style={{ width: statsViewportWidth }} className="flex-row">
+                  {coreColumns.map((column) => (
+                    <View key={column.key} className="flex-1 justify-center px-0.5">
+                      <Text
+                        className={`w-full text-right ${
+                          column.emphasize
+                            ? metrics.headerCellEmphasisClass
+                            : metrics.headerCellClass
+                        }`}
+                      >
+                        {column.label}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+                <View
+                  style={{ width: scrollContentWidth }}
+                  className="flex-row items-center pr-1"
+                >
+                  {scrollColumns.map((column) => (
+                    <Text
+                      key={column.key}
+                      style={{ width: column.width }}
+                      className={`shrink-0 text-right ${metrics.headerCellClass} text-on-surface-variant`}
+                    >
+                      {column.label}
+                    </Text>
+                  ))}
+                </View>
+              </View>
+
+              {rows.map((row, index) => (
+                <View
+                  key={row.id}
+                  className={`flex-row items-center ${index < lastIndex ? 'border-b border-outline-variant/30' : ''}`}
+                  style={{
+                    height: metrics.rowHeight,
+                    width: statsViewportWidth + scrollContentWidth,
+                  }}
+                >
+                  <View style={{ width: statsViewportWidth }} className="flex-row">
+                    {coreColumns.map((column) => (
+                      <View key={column.key} className="flex-1 justify-center px-0.5">
+                        <Text
+                          numberOfLines={1}
+                          className={`w-full text-right ${
+                            column.emphasize
+                              ? metrics.valueEmphasisClass
+                              : `${metrics.valueClass} ${
+                                  row.highlightName ? 'text-primary' : 'text-on-surface'
+                                }`
+                          }`}
+                        >
+                          {column.value(row.card)}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                  <View
+                    style={{ width: scrollContentWidth }}
+                    className="flex-row items-center pr-1"
+                  >
+                    {scrollColumns.map((column) => (
+                      <Text
+                        key={column.key}
+                        style={{ width: column.width }}
+                        numberOfLines={1}
+                        className={`shrink-0 text-right ${metrics.valueClass} ${
+                          row.highlightName ? 'text-primary' : 'text-on-surface'
+                        }`}
+                      >
+                        {column.value(row.card)}
+                      </Text>
+                    ))}
+                  </View>
+                </View>
+              ))}
+            </View>
+          </ScrollView>
+        ) : (
+          <View
+            style={{ height: metrics.headerHeight + metrics.rowHeight * rows.length }}
+          />
+        )}
+      </View>
+    </View>
   );
 }
 
 /**
  * Frozen bowler name + horizontally scrollable figures (O…Eco default; 0s…6s on scroll).
- * Shared by the live scoring Bowling card and the innings scorecard Bowling section.
+ * Shared by the Live and Scorecard bowling sections.
  */
 export function BowlerFiguresScrollTable({
   rows,
-  compact = false,
-  scorecardNameColumnWidth,
+  density = 'live',
 }: BowlerFiguresScrollTableProps): React.ReactElement {
-  const scorecard = scorecardNameColumnWidth != null;
-  const statColumns = scorecard ? SCORECARD_STAT_COLUMNS : LIVE_STAT_COLUMNS;
-  const statTableWidth = useMemo(
-    () => statColumns.reduce((sum, column) => sum + column.width, 0),
-    [statColumns],
-  );
-  const nameColumnWidth = scorecard ? scorecardNameColumnWidth : LIVE_NAME_COLUMN_WIDTH;
-  const nameColumnGap = scorecard ? SCORECARD_NAME_COLUMN_GAP : 8;
-
-  const bodyScrollRef = useRef<ScrollView>(null);
-  const headerScrollRef = useRef<ScrollView>(null);
-  const syncingScroll = useRef(false);
-  const [rowHeights, setRowHeights] = useState<Record<number, number>>({});
-
-  useEffect(() => {
-    setRowHeights({});
-  }, [rows, nameColumnWidth]);
-
-  const onStatsRowLayout = useCallback((index: number, event: LayoutChangeEvent) => {
-    const height = event.nativeEvent.layout.height;
-    setRowHeights((prev) => (prev[index] === height ? prev : { ...prev, [index]: height }));
-  }, []);
-
-  const syncHeaderToBody = useCallback((x: number) => {
-    if (syncingScroll.current) {
-      return;
-    }
-    syncingScroll.current = true;
-    headerScrollRef.current?.scrollTo({ x, animated: false });
-    syncingScroll.current = false;
-  }, []);
-
-  const onBodyScroll = useCallback(
-    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-      syncHeaderToBody(event.nativeEvent.contentOffset.x);
-    },
-    [syncHeaderToBody],
-  );
-
-  const borderClass = compact ? 'border-outline-variant/30' : 'border-outline-variant';
-  const nameHeaderPad = compact ? 'py-1.5' : 'pb-2 pt-1';
-  const rowPy = compact ? undefined : SCORECARD_ROW_PY;
-
-  return (
-    <View>
-      <View className="flex-row">
-        <View
-          style={{ width: nameColumnWidth, paddingRight: nameColumnGap }}
-          className={`border-b ${borderClass} ${nameHeaderPad}`}
-        >
-          <Text className="font-sans-semibold text-[10px] uppercase tracking-wide text-on-surface-variant">
-            Bowler
-          </Text>
-        </View>
-        <View style={STATS_PANE_STYLE}>
-          <ScrollView
-            ref={headerScrollRef}
-            horizontal
-            scrollEnabled={false}
-            nestedScrollEnabled
-            showsHorizontalScrollIndicator={false}
-            style={STATS_SCROLL_STYLE}
-          >
-            <View
-              style={{ width: statTableWidth }}
-              className={`flex-row border-b ${borderClass} ${nameHeaderPad}`}
-            >
-              {statColumns.map((column) => (
-                <StatHeaderCell key={column.key} column={column} />
-              ))}
-            </View>
-          </ScrollView>
-        </View>
-      </View>
-
-      <View className="flex-row">
-        <View style={{ width: nameColumnWidth, paddingRight: nameColumnGap }} className="shrink-0">
-          {rows.map((row, index) => {
-            const measuredHeight = rowHeights[index];
-            return (
-              <View
-                key={row.id}
-                className={`justify-center border-b border-separator ${compact ? 'py-1.5' : ''}`}
-                style={{
-                  paddingVertical: rowPy,
-                  minHeight: measuredHeight,
-                }}
-              >
-                <Text
-                  className={`font-sans-semibold text-sm ${
-                    row.highlightName ? 'text-primary' : 'text-on-surface'
-                  }`}
-                >
-                  {row.name}
-                  {row.nameSuffix ?? ''}
-                </Text>
-              </View>
-            );
-          })}
-        </View>
-
-        <View style={STATS_PANE_STYLE}>
-          <ScrollView
-            ref={bodyScrollRef}
-            horizontal
-            nestedScrollEnabled
-            showsHorizontalScrollIndicator={false}
-            scrollEventThrottle={16}
-            onScroll={onBodyScroll}
-            style={STATS_SCROLL_STYLE}
-          >
-            <View style={{ width: statTableWidth }}>
-              {rows.map((row, index) => (
-                <View
-                  key={row.id}
-                  className={`flex-row items-center border-b border-separator ${compact ? 'pb-1.5' : ''}`}
-                  style={{ paddingVertical: rowPy }}
-                  onLayout={(event) => onStatsRowLayout(index, event)}
-                >
-                  {statColumns.map((column) => (
-                    <StatValueCell
-                      key={column.key}
-                      column={column}
-                      card={row.card}
-                      scorecard={scorecard}
-                      highlightRow={Boolean(row.highlightName)}
-                    />
-                  ))}
-                </View>
-              ))}
-            </View>
-          </ScrollView>
-        </View>
-      </View>
-    </View>
-  );
+  return <BowlingPinnedSplitTable rows={rows} density={density} />;
 }

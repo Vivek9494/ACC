@@ -1,6 +1,7 @@
 import {
   formatMatchDateTimeLine,
   isMatchDayTodayInZone,
+  isMatchScheduledDateBeforeTodayInZone,
   MatchSide,
   serverVenueTimezone,
   TossDecision,
@@ -38,12 +39,40 @@ export function isScorerMatchDayToday(
     startTime: Date | null;
   },
   tournamentTimezone: string | null | undefined = null,
+  now: Date = new Date(),
 ): boolean {
   const timeZone = serverVenueTimezone(tournamentTimezone);
   if (!matchScheduledInstant(match)) {
     return false;
   }
-  return isMatchDayTodayInZone(match, timeZone);
+  return isMatchDayTodayInZone(match, timeZone, now);
+}
+
+/**
+ * Whether an assigned scorer's dashboard card should surface for this fixture.
+ * Hidden when the scheduled calendar day is strictly before today (venue tz) — including
+ * live/in-progress fixtures (§11.1). Pure SCHEDULED fixtures also wait until match day.
+ */
+export function isDashboardScorerCardVisible(
+  state: string,
+  match: { matchDate: Date | null; startTime: Date | null },
+  tournamentTimezone: string | null | undefined = null,
+  now: Date = new Date(),
+): boolean {
+  const timeZone = serverVenueTimezone(tournamentTimezone);
+  if (isMatchScheduledDateBeforeTodayInZone(match, timeZone, now)) {
+    return false;
+  }
+  if ((SCORER_IN_PROGRESS_MATCH_STATES as readonly string[]).includes(state)) {
+    return true;
+  }
+  if (!(SCORER_STARTABLE_MATCH_STATES as readonly string[]).includes(state)) {
+    return false;
+  }
+  if (state === 'SCHEDULED') {
+    return isScorerMatchDayToday(match, tournamentTimezone, now);
+  }
+  return true;
 }
 
 const SCORER_ASSIGNMENT_LEAD_MS = 2 * 60 * 60 * 1000;

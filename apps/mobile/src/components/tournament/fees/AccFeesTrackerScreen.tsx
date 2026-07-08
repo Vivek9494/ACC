@@ -1,18 +1,24 @@
 import { Ionicons } from '@expo/vector-icons';
 import {
   TournamentFeesTrackerLayout,
+  buildFeeTrackerCenterOptions,
+  countFeeTrackerEntries,
+  FEES_TRACKER_ALL_CENTERS,
+  filterFeeTrackerGroupsByCenter,
   formatFeeAmountCents,
   type TournamentFeeEntry,
   type TournamentFeeTeamGroup,
   type TournamentFeesTracker,
 } from '@acc/types';
 import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Alert, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ApiRequestError, getTournamentFeesTracker, markTournamentFeePaid } from '../../../lib/api';
-import { ProfileMenu } from '../../ui/ProfileMenu';
+import { ScreenHeader } from '../../ui/ScreenHeader';
+import { Select } from '../../ui/Select';
+import { UnderlineTabBar } from '../../ui/UnderlineTabBar';
 import { FIELD_ORANGE } from '../../ui/fieldStyles';
 import { Text } from '../../ui/Text';
 import { FeePaidPlayerCard, FeeUnpaidPlayerCard } from './FeePlayerCard';
@@ -26,38 +32,31 @@ export interface AccFeesTrackerScreenProps {
 function FeeListSection({
   group,
   tab,
-  showTeamHeaders,
-  showTeamNameOnCards,
+  showSectionHeaders,
   busyId,
   onPay,
 }: {
   group: TournamentFeeTeamGroup;
   tab: FeesTab;
-  showTeamHeaders: boolean;
-  showTeamNameOnCards: boolean;
+  showSectionHeaders: boolean;
   busyId: string | null;
   onPay: (entry: TournamentFeeEntry) => void;
 }): React.ReactElement {
   return (
     <View className="gap-3">
-      {showTeamHeaders ? (
+      {showSectionHeaders ? (
         <Text className="font-sans-semibold text-xs uppercase tracking-wider text-primary">
           {group.teamName}
         </Text>
       ) : null}
       {group.entries.map((entry) =>
         tab === 'paid' ? (
-          <FeePaidPlayerCard
-            key={entry.id}
-            entry={entry}
-            showTeamName={showTeamNameOnCards}
-          />
+          <FeePaidPlayerCard key={entry.id} entry={entry} />
         ) : (
           <FeeUnpaidPlayerCard
             key={entry.id}
             entry={entry}
             busy={busyId === entry.id}
-            showTeamName={showTeamNameOnCards}
             onPay={() => onPay(entry)}
           />
         ),
@@ -69,6 +68,7 @@ function FeeListSection({
 export function AccFeesTrackerScreen({ tournamentId }: AccFeesTrackerScreenProps): React.ReactElement {
   const router = useRouter();
   const [tab, setTab] = useState<FeesTab>('remaining');
+  const [centerFilter, setCenterFilter] = useState<string>(FEES_TRACKER_ALL_CENTERS);
   const [tracker, setTracker] = useState<TournamentFeesTracker | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -93,6 +93,43 @@ export function AccFeesTrackerScreen({ tournamentId }: AccFeesTrackerScreenProps
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    setCenterFilter(FEES_TRACKER_ALL_CENTERS);
+  }, [tournamentId]);
+
+  const showCenterFilter = tracker?.layout === TournamentFeesTrackerLayout.GroupedByCenter;
+
+  const centerOptions = useMemo(
+    () => (tracker && showCenterFilter ? buildFeeTrackerCenterOptions(tracker) : []),
+    [showCenterFilter, tracker],
+  );
+
+  const selectedCenterId = useMemo(
+    () => (centerFilter === FEES_TRACKER_ALL_CENTERS ? null : centerFilter),
+    [centerFilter],
+  );
+
+  const filteredPaidGroups = useMemo(
+    () => filterFeeTrackerGroupsByCenter(tracker?.paid ?? [], selectedCenterId),
+    [selectedCenterId, tracker?.paid],
+  );
+
+  const filteredUnpaidGroups = useMemo(
+    () => filterFeeTrackerGroupsByCenter(tracker?.unpaid ?? [], selectedCenterId),
+    [selectedCenterId, tracker?.unpaid],
+  );
+
+  const paidCount = countFeeTrackerEntries(filteredPaidGroups);
+  const unpaidCount = countFeeTrackerEntries(filteredUnpaidGroups);
+
+  const tabOptions = useMemo(
+    () => [
+      { value: 'paid' as const, label: 'Paid', count: paidCount },
+      { value: 'remaining' as const, label: 'Remaining to Pay', count: unpaidCount },
+    ],
+    [paidCount, unpaidCount],
+  );
 
   function confirmPay(entry: TournamentFeeEntry): void {
     const playerName = `${entry.firstName} ${entry.lastName}`;
@@ -120,57 +157,30 @@ export function AccFeesTrackerScreen({ tournamentId }: AccFeesTrackerScreenProps
     );
   }
 
-  const groups = tab === 'paid' ? (tracker?.paid ?? []) : (tracker?.unpaid ?? []);
-  const showTeamHeaders = tracker?.layout === TournamentFeesTrackerLayout.GroupedByTeam;
-  const showTeamNameOnCards = true;
+  const groups = tab === 'paid' ? filteredPaidGroups : filteredUnpaidGroups;
+  const showSectionHeaders =
+    (tracker?.layout === TournamentFeesTrackerLayout.GroupedByTeam ||
+      tracker?.layout === TournamentFeesTrackerLayout.GroupedByCenter) &&
+    selectedCenterId == null;
   const emptyLabel =
     tab === 'paid' ? 'No players have paid fees yet.' : 'All players have paid their fees.';
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
-      <View className="flex-row items-center justify-between px-4 py-3">
-        <Pressable
-          onPress={() => router.back()}
-          className="h-10 w-10 items-center justify-center rounded-full active:bg-black/5"
-          accessibilityRole="button"
-          accessibilityLabel="Go back"
-        >
-          <Ionicons name="arrow-back" size={24} color={FIELD_ORANGE} />
-        </Pressable>
-        <ProfileMenu />
-      </View>
+      <ScreenHeader title="Fees Tracker" onBack={() => router.back()} />
 
-      <View className="px-4 pb-2">
-        <Text className="font-sans-bold text-2xl text-on-surface">ACC Fees Tracker</Text>
-      </View>
+      <View className="mx-4 mt-4 gap-4">
+        {showCenterFilter && centerOptions.length > 1 ? (
+          <Select
+            label="Center"
+            value={centerFilter}
+            options={centerOptions}
+            onChange={setCenterFilter}
+            placeholder="All Centers"
+          />
+        ) : null}
 
-      <View className="mx-4 mt-4 flex-row border-b border-outline-variant">
-        {(
-          [
-            { key: 'paid' as const, label: 'Paid' },
-            { key: 'remaining' as const, label: 'Remaining to Pay' },
-          ] as const
-        ).map((item) => {
-          const active = tab === item.key;
-          return (
-            <Pressable
-              key={item.key}
-              onPress={() => setTab(item.key)}
-              className="flex-1 pb-4"
-              accessibilityRole="tab"
-              accessibilityState={{ selected: active }}
-            >
-              <Text
-                className={`text-center font-sans-semibold text-sm ${
-                  active ? 'text-primary' : 'text-on-surface-variant'
-                }`}
-              >
-                {item.label}
-              </Text>
-              {active ? <View className="mt-2 h-0.5 rounded-full bg-primary-container" /> : null}
-            </Pressable>
-          );
-        })}
+        <UnderlineTabBar layout="spread" options={tabOptions} value={tab} onChange={setTab} />
       </View>
 
       <ScrollView contentContainerClassName="gap-6 px-4 py-5 pb-28" showsVerticalScrollIndicator={false}>
@@ -190,8 +200,7 @@ export function AccFeesTrackerScreen({ tournamentId }: AccFeesTrackerScreenProps
               key={group.teamId ?? (group.teamName || 'flat')}
               group={group}
               tab={tab}
-              showTeamHeaders={showTeamHeaders}
-              showTeamNameOnCards={showTeamNameOnCards}
+              showSectionHeaders={showSectionHeaders}
               busyId={busyId}
               onPay={confirmPay}
             />

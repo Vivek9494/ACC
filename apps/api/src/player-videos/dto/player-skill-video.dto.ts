@@ -1,7 +1,6 @@
-import { IsIn, IsInt, IsString, Max, Min } from 'class-validator';
+import { IsIn, IsInt, IsString, Min } from 'class-validator';
 import {
   PLAYER_SKILL_VIDEO_ACCEPTED_MIME_TYPES,
-  PLAYER_SKILL_VIDEO_MAX_BYTES,
   type PlayerSkillVideoCompleteUploadRequest,
   type PlayerSkillVideoUploadSessionRequest,
 } from '@acc/types';
@@ -12,7 +11,6 @@ export class PlayerSkillVideoUploadSessionDto implements PlayerSkillVideoUploadS
 
   @IsInt()
   @Min(1)
-  @Max(PLAYER_SKILL_VIDEO_MAX_BYTES)
   sizeBytes!: number;
 }
 
@@ -25,6 +23,5 @@ export class PlayerSkillVideoCompleteUploadDto implements PlayerSkillVideoComple
 
   @IsInt()
   @Min(1)
-  @Max(PLAYER_SKILL_VIDEO_MAX_BYTES)
   sizeBytes!: number;
 }

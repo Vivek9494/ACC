@@ -1,4 +1,8 @@
-import { MATCH_STATE_LABELS, type MatchState } from '@acc/types';
+import {
+  normalizeMatchStateForBadge,
+  resolveMatchStateBadge,
+  type MatchState,
+} from '@acc/types';
 import { View } from 'react-native';
 import { Text } from './ui/Text';
 
@@ -30,10 +34,15 @@ const STATE_TEXT: Record<MatchState, string> = {
 };
 
 export function MatchStateBadge({ state }: { state: MatchState }): React.ReactElement {
+  const displayState = normalizeMatchStateForBadge(state);
+  const { label } = resolveMatchStateBadge(state);
+
   return (
-    <View className={`self-start rounded-full px-3 py-1 ${STATE_STYLES[state]}`}>
-      <Text className={`font-sans-medium text-[11px] uppercase tracking-wider ${STATE_TEXT[state]}`}>
-        {MATCH_STATE_LABELS[state]}
+    <View className={`self-start rounded-full px-3 py-1 ${STATE_STYLES[displayState]}`}>
+      <Text
+        className={`font-sans-medium text-[11px] uppercase tracking-wider ${STATE_TEXT[displayState]}`}
+      >
+        {label}
       </Text>
     </View>
   );

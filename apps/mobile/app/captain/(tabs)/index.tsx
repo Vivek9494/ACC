@@ -1,33 +1,40 @@
-import type { CaptainScorerAssignmentMatch } from '@acc/types';
+import type { CaptainScorerAssignmentMatch, ScorerStartableMatch } from '@acc/types';
 import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 
 import { buildCaptainDashboardSections } from '../../../src/components/dashboard/buildCaptainDashboardSections';
 import { DashboardScaffold } from '../../../src/components/dashboard/DashboardScaffold';
+import { MatchSetupDialog } from '../../../src/components/dashboard/MatchSetupDialog';
 import { AssignScorerDialog } from '../../../src/components/scoring/AssignScorerDialog';
 import { useCaptainDashboard } from '../../../src/hooks/useCaptainDashboard';
+import { useActiveBroadcast } from '../../../src/hooks/useActiveBroadcast';
 import { useAttendanceMonitor } from '../../../src/hooks/useAttendanceMonitor';
-import { useCaptainTabConfig } from '../../../src/lib/captain-tabs';
+import { prependBroadcastSection } from '../../../src/lib/dashboard-broadcast';
+import { useAuth } from '../../../src/lib/auth-context';
 
 export default function CaptainDashboardScreen(): React.ReactElement {
   const router = useRouter();
+  const { user } = useAuth();
   const { dashboard, isLoading, error, retry } = useCaptainDashboard();
+  const { broadcast } = useActiveBroadcast(!isLoading && !error);
   useAttendanceMonitor(true);
-  const tabConfig = useCaptainTabConfig('index');
   const [assignmentMatch, setAssignmentMatch] = useState<CaptainScorerAssignmentMatch | null>(null);
+  const [setupMatch, setSetupMatch] = useState<ScorerStartableMatch | null>(null);
 
-  const sections = useMemo(
-    () =>
-      dashboard
+  const sections = useMemo(() => {
+    const base =
+      dashboard && user
         ? buildCaptainDashboardSections(
             dashboard,
             router,
+            user,
             (match) => setAssignmentMatch(match),
             retry,
+            (match) => setSetupMatch(match),
           )
-        : [],
-    [dashboard, router, retry],
-  );
+        : [];
+    return prependBroadcastSection(base, broadcast);
+  }, [broadcast, dashboard, router, retry, user]);
 
   return (
     <>
@@ -37,7 +44,6 @@ export default function CaptainDashboardScreen(): React.ReactElement {
         error={error}
         onRetry={retry}
         sections={sections}
-        tabConfig={tabConfig}
       />
       <AssignScorerDialog
         visible={assignmentMatch !== null}
@@ -45,6 +51,11 @@ export default function CaptainDashboardScreen(): React.ReactElement {
         assignedScorerUserId={assignmentMatch?.assignedScorer?.userId ?? null}
         onClose={() => setAssignmentMatch(null)}
         onAssigned={retry}
+      />
+      <MatchSetupDialog
+        visible={setupMatch !== null}
+        match={setupMatch}
+        onClose={() => setSetupMatch(null)}
       />
     </>
   );

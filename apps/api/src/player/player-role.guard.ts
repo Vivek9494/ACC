@@ -21,7 +21,7 @@ export class PlayerRoleGuard implements CanActivate {
       select: { role: true },
     });
 
-    if (user?.role !== UserRole.Player) {
+    if (user?.role !== UserRole.Player && user?.role !== UserRole.Manager) {
       throw new ForbiddenException({
         message: 'Player access required',
         error: AuthErrorCode.Forbidden,

@@ -16,6 +16,9 @@
     "prisma:studio": "prisma studio",
     "db:seed": "ts-node prisma/seed.ts",
     "db:seed-scorer-card": "ts-node prisma/seed-scorer-card.ts",
+    "seed:apl2026:fetch": "ts-node scripts/apl-2026/fetch-and-build.ts",
+    "seed:apl2026": "ts-node prisma/seeds/apl-2026.seed.ts",
+    "seed:apl2026:all": "pnpm seed:apl2026:fetch && pnpm seed:apl2026",
     "db:up": "docker compose -f ../../docker/docker-compose.yml up -d",
     "db:down": "docker compose -f ../../docker/docker-compose.yml down"
   },
@@ -38,6 +41,7 @@
     "bcrypt": "^6.0.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",
+    "firebase-admin": "^14.1.0",
     "geo-tz": "^8.1.4",
     "ioredis": "^5.11.1",
     "reflect-metadata": "^0.2.2",

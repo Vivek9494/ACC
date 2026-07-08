@@ -80,8 +80,8 @@ describe('Scoring engine — a full over with every extra (§12.1, §32)', () =>
   it('credits batter figures to the engine-derived striker', () => {
     const a = card.batters.find((b) => b.playerId === 'A');
     const b = card.batters.find((x) => x.playerId === 'B');
-    expect(a).toMatchObject({ runs: 7, balls: 4, fours: 1, sixes: 0 });
-    expect(b).toMatchObject({ runs: 0, balls: 3 });
+    expect(a).toMatchObject({ runs: 7, balls: 4, ones: 1, twos: 1, threes: 0, fours: 1, sixes: 0 });
+    expect(b).toMatchObject({ runs: 0, balls: 3, ones: 0, twos: 0, threes: 0 });
   });
 
   it('leaves the correct batter on strike after the over swap', () => {
@@ -311,6 +311,19 @@ describe('Scoring engine — dismissal modes (§12.1; §30.3 exclusions)', () =>
     expect(after.currentStrikerId).toBe(before.currentStrikerId);
     expect(after.currentNonStrikerId).toBe(before.currentNonStrikerId);
     expect(after.droppedCatches).toEqual([{ playerId: 'F1', count: 1 }]);
+    expect(after.droppedCatchEvents).toEqual([
+      {
+        sequence: 3,
+        overNumber: 1,
+        ballNumber: 2,
+        overBallLabel: '1.2',
+        batsmanId: 'A',
+        batsmanRuns: 1,
+        batsmanBalls: 1,
+        bowlerId: 'X',
+        fielderId: 'F1',
+      },
+    ]);
     expect(after.timeline.at(-1)).toMatchObject({
       code: 'Drop',
       description: 'Catch dropped',

@@ -8,6 +8,7 @@ import {
   type RegistrationSummary,
   type RegistrationVerificationQueue,
   type VerifiedRegisteredPlayersView,
+  type LeatherRegisteredPlayersView,
 } from '@acc/types';
 import {
   Body,
@@ -28,6 +29,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PermissionGuard } from '../authz/permission.guard';
 import { RequirePermission } from '../authz/require-permission.decorator';
 import { BuildCustomFormDto, CreateCustomFormRequestDto } from './dto/custom-form.dto';
+import { ListLeatherRegisteredPlayersDto } from './dto/list-leather-registrations.dto';
 import { ListRegistrationsDto } from './dto/list-registrations.dto';
 import { LateRegistrationDto, SubmitRegistrationDto } from './dto/submit-registration.dto';
 import { UpdateAvailabilityDto } from './dto/update-availability.dto';
@@ -75,6 +77,18 @@ export class RegistrationsController {
     @Query() query: ListRegistrationsDto,
   ): Promise<VerifiedRegisteredPlayersView> {
     return this.registrations.listVerifiedRegisteredPlayers(user, tournamentId, query);
+  }
+
+  /** Leather ACC registrants — Admin / Club Manager squad-building (view-only). */
+  @Get('leather')
+  @RequirePermission(Permission.VIEW_LEATHER_REGISTERED_PLAYERS)
+  @UseGuards(PermissionGuard)
+  listLeather(
+    @CurrentUser() user: AuthUser,
+    @Param('tournamentId') tournamentId: string,
+    @Query() query: ListLeatherRegisteredPlayersDto,
+  ): Promise<LeatherRegisteredPlayersView> {
+    return this.registrations.listLeatherRegisteredPlayers(user, tournamentId, query);
   }
 
   @Get('me')

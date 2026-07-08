@@ -5,11 +5,12 @@ import { colors } from '@/theme/colors';
 
 import {
   formatTournamentDateRange,
-  tournamentLocation,
+  tournamentCardScopeLine,
   tournamentStatusPill,
 } from '../../lib/tournament-display';
+import { resolveMediaDisplayUrl } from '../../lib/media-url';
 import { BallTypeIcon } from './BallTypeIcon';
-import { INPUT_SHADOW_STYLE } from './fieldStyles';
+import { INPUT_SHADOW_STYLE, STAT_LABEL_TEXT_CLASS } from './fieldStyles';
 import { OverflowMenu, type OverflowMenuAction } from './OverflowMenu';
 import { StatusPill } from './StatusPill';
 import { Text } from './Text';
@@ -17,6 +18,8 @@ import { Text } from './Text';
 export interface TournamentDashboardCardProps {
   tournament: TournamentSummary;
   onPress?: () => void;
+  /** When true, shows a Cancelled badge instead of lifecycle state. */
+  cancelled?: boolean;
   /** Permission-driven overflow actions; when set, replaces the default ellipsis handler. */
   menuActions?: OverflowMenuAction[];
   onOverflowPress?: () => void;
@@ -29,18 +32,20 @@ export interface TournamentDashboardCardProps {
 export function TournamentDashboardCard({
   tournament,
   onPress,
+  cancelled = false,
   menuActions,
   onOverflowPress,
 }: TournamentDashboardCardProps): React.ReactElement {
-  const pill = tournamentStatusPill(tournament.state);
+  const pill = tournamentStatusPill(tournament, { cancelled });
+  const displayPosterUrl = resolveMediaDisplayUrl(tournament.posterUrl);
 
   const shell = (
     <View className="rounded-control bg-surface" style={INPUT_SHADOW_STYLE}>
       <View className="overflow-hidden rounded-control">
         <View className="relative h-36 w-full bg-surface-container-high">
-          {tournament.posterUrl ? (
+          {displayPosterUrl ? (
             <Image
-              source={{ uri: tournament.posterUrl }}
+              source={{ uri: displayPosterUrl }}
               className="h-full w-full"
               resizeMode="cover"
             />
@@ -63,7 +68,7 @@ export function TournamentDashboardCard({
             </Text>
             {menuActions && menuActions.length > 0 ? (
               <OverflowMenu actions={menuActions} />
-            ) : (
+            ) : onOverflowPress ? (
               <Pressable
                 onPress={onOverflowPress}
                 hitSlop={8}
@@ -72,24 +77,26 @@ export function TournamentDashboardCard({
               >
                 <Ionicons name="ellipsis-vertical" size={20} color={colors.textMuted} />
               </Pressable>
-            )}
+            ) : null}
           </View>
 
-          <View className="flex-row items-center gap-2">
-            <Ionicons name="location-outline" size={16} color={colors.textMuted} />
-            <Text className="flex-1 font-sans text-sm text-on-surface-variant" numberOfLines={1}>
-              {tournamentLocation(tournament)}
-            </Text>
-          </View>
-
-          <View className="flex-row items-center justify-between">
+          <View className="gap-[10px]">
             <View className="flex-row items-center gap-2">
-              <Ionicons name="calendar-outline" size={16} color={colors.textMuted} />
-              <Text className="font-sans text-sm text-on-surface-variant">
-                {formatTournamentDateRange(tournament.startAt, tournament.endAt)}
+              <Ionicons name="location-outline" size={16} color={colors.textMuted} />
+              <Text className={`flex-1 ${STAT_LABEL_TEXT_CLASS}`} numberOfLines={1}>
+                {tournamentCardScopeLine(tournament)}
               </Text>
             </View>
-            <BallTypeIcon ballType={tournament.ballType} size={24} />
+
+            <View className="flex-row items-center justify-between">
+              <View className="flex-row items-center gap-2">
+                <Ionicons name="calendar-outline" size={16} color={colors.textMuted} />
+                <Text className={STAT_LABEL_TEXT_CLASS}>
+                  {formatTournamentDateRange(tournament.startAt, tournament.endAt)}
+                </Text>
+              </View>
+              <BallTypeIcon ballType={tournament.ballType} size={24} />
+            </View>
           </View>
         </View>
       </View>

@@ -12,6 +12,7 @@ import { BadRequestException, ForbiddenException, NotFoundException } from '@nes
 
 import { PermissionService } from '../authz/permission.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { AppSettingsService } from '../settings/app-settings.service';
 import { VIDEO_STORAGE_PROVIDER } from '../video-storage/video-storage.provider';
 import { PlayerSkillVideosService } from './player-skill-videos.service';
 
@@ -50,6 +51,10 @@ describe('PlayerSkillVideosService', () => {
     getPlaybackUrl: jest.Mock;
     deleteObject: jest.Mock;
   };
+  let settings: {
+    getVideoUploadMaxBytes: jest.Mock;
+    getUploadLimits: jest.Mock;
+  };
 
   const closedTournament = {
     id: 'tour-1',
@@ -57,6 +62,7 @@ describe('PlayerSkillVideosService', () => {
     isDeleted: false,
     registrationOpenAt: new Date('2026-01-01T00:00:00.000Z'),
     registrationCloseAt: new Date('2026-02-01T00:00:00.000Z'),
+    videoRequired: true,
     videoUploadEndDate: new Date('2099-03-01T00:00:00.000Z'),
   };
 
@@ -98,10 +104,15 @@ describe('PlayerSkillVideosService', () => {
         .mockReturnValue('https://storage.example/skill-videos/tour-1/player-1/file.mp4'),
       deleteObject: jest.fn().mockResolvedValue(undefined),
     };
+    settings = {
+      getVideoUploadMaxBytes: jest.fn().mockResolvedValue(100 * 1024 * 1024),
+      getUploadLimits: jest.fn().mockResolvedValue({ videoUploadMaxMb: 100, imageUploadMaxMb: 5 }),
+    };
 
     service = new PlayerSkillVideosService(
       prisma as unknown as PrismaService,
       permissions as unknown as PermissionService,
+      settings as unknown as AppSettingsService,
       storage,
     );
   });
@@ -127,6 +138,28 @@ describe('PlayerSkillVideosService', () => {
     await expect(
       service.createUploadSession(player, 'tour-1', { mimeType: 'video/mp4', sizeBytes: 1024 }),
     ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('rejects upload when video is not required for the tournament', async () => {
+    prisma.tournament.findUnique.mockResolvedValue({ ...closedTournament, videoRequired: false });
+
+    await expect(
+      service.createUploadSession(player, 'tour-1', { mimeType: 'video/mp4', sizeBytes: 1024 }),
+    ).rejects.toMatchObject({
+      response: { error: 'VIDEO_NOT_REQUIRED' },
+    });
+  });
+
+  it('rejects upload when video exceeds configured max size', async () => {
+    settings.getVideoUploadMaxBytes.mockResolvedValue(10 * 1024 * 1024);
+    settings.getUploadLimits.mockResolvedValue({ videoUploadMaxMb: 10, imageUploadMaxMb: 5 });
+
+    await expect(
+      service.createUploadSession(player, 'tour-1', {
+        mimeType: 'video/mp4',
+        sizeBytes: 11 * 1024 * 1024,
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('rejects storage keys for another player', async () => {

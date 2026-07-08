@@ -11,22 +11,24 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
   Platform,
   Pressable,
-  ScrollView,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '../../../src/components/ui/Button';
+import { KeyboardAwareFormScrollView } from '../../../src/components/ui/KeyboardAwareFormScrollView';
 import { FIELD_ORANGE, labelClassName } from '../../../src/components/ui/fieldStyles';
-import { ProfileMenu } from '../../../src/components/ui/ProfileMenu';
+import { ScreenHeader } from '../../../src/components/ui/ScreenHeader';
 import { SuccessDialog } from '../../../src/components/ui/SuccessDialog';
 import { TeamAvatar } from '../../../src/components/ui/TeamAvatar';
 import { Text } from '../../../src/components/ui/Text';
 import { TextInput } from '../../../src/components/ui/TextInput';
 import { ApiRequestError, createGroup, listGroups, listTeams } from '../../../src/lib/api';
+import { useAuth } from '../../../src/lib/auth-context';
+import { TOURNAMENT_DETAIL_TAB } from '../../../src/lib/tournament-detail-tabs';
+import { tournamentDetailHref } from '../../../src/lib/tournament-detail-route';
 
 function TeamSelectRow({
   team,
@@ -63,6 +65,7 @@ function TeamSelectRow({
 export default function CreateGroupScreen(): React.ReactElement {
   const { id: tournamentId } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { user } = useAuth();
 
   const [loadingTeams, setLoadingTeams] = useState(true);
   const [teams, setTeams] = useState<TeamSummary[]>([]);
@@ -183,10 +186,7 @@ export default function CreateGroupScreen(): React.ReactElement {
   function handleSuccessDismiss(): void {
     setShowSuccessDialog(false);
     if (tournamentId) {
-      router.replace({
-        pathname: '/tournaments/[id]',
-        params: { id: tournamentId, tab: 'Groups' },
-      });
+      router.replace(tournamentDetailHref(user, tournamentId, TOURNAMENT_DETAIL_TAB.Groups));
     } else {
       router.back();
     }
@@ -194,35 +194,33 @@ export default function CreateGroupScreen(): React.ReactElement {
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
-      <View className="flex-row items-center justify-between px-4 py-3">
-        <Pressable
-          onPress={() => router.back()}
-          className="h-10 w-10 items-center justify-center rounded-full active:bg-black/5"
-          accessibilityRole="button"
-          accessibilityLabel="Go back"
-        >
-          <Ionicons name="arrow-back" size={24} color={FIELD_ORANGE} />
-        </Pressable>
-        <ProfileMenu />
-      </View>
+      <ScreenHeader
+        title="Add New Group"
+        subtitle="Fill in the details to create a new group for your tournament."
+        onBack={() => router.back()}
+      />
 
-      <KeyboardAvoidingView
-        className="flex-1"
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      <KeyboardAwareFormScrollView
         keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
-      >
-        <View className="flex-1">
-          <ScrollView
-            contentContainerClassName="gap-6 px-4 pb-6 pt-2"
-            keyboardShouldPersistTaps="handled"
+        contentContainerClassName="gap-6 px-4 pt-2"
+        extraBottomPadding={24}
+        footer={
+          <SafeAreaView
+            edges={['bottom']}
+            className="border-t border-outline-variant/20 bg-background px-4 pt-3"
           >
-            <View>
-              <Text className="font-sans-bold text-2xl text-on-surface">Add New Group</Text>
-              <Text className="mt-2 font-sans text-base text-on-surface-variant">
-                Fill in the details to create a new group for your tournament.
-              </Text>
-            </View>
-
+            {submitError ? (
+              <Text className="mb-2 font-sans text-sm text-primary">{submitError}</Text>
+            ) : null}
+            <Button
+              label={submitting ? 'Creating…' : 'Create Group'}
+              onPress={() => void handleSubmit()}
+              disabled={!canSubmit}
+              className="h-14 w-full"
+            />
+          </SafeAreaView>
+        }
+      >
             <TextInput
               label="Group Name"
               placeholder="e.g., Group A"
@@ -291,24 +289,7 @@ export default function CreateGroupScreen(): React.ReactElement {
                 </View>
               )}
             </View>
-          </ScrollView>
-
-          <SafeAreaView
-            edges={['bottom']}
-            className="border-t border-outline-variant/20 bg-background px-4 pt-3"
-          >
-            {submitError ? (
-              <Text className="mb-2 font-sans text-sm text-primary">{submitError}</Text>
-            ) : null}
-            <Button
-              label={submitting ? 'Creating…' : 'Create Group'}
-              onPress={() => void handleSubmit()}
-              disabled={!canSubmit}
-              className="h-14 w-full"
-            />
-          </SafeAreaView>
-        </View>
-      </KeyboardAvoidingView>
+      </KeyboardAwareFormScrollView>
 
       {submitting ? (
         <View className="absolute inset-0 items-center justify-center bg-black/10">

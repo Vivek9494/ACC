@@ -11,6 +11,7 @@ import {
   type PlayerSkillVideoSummary,
   type PlayerSkillVideoUploadSessionRequest,
   type PlayerSkillVideoUploadSessionResponse,
+  playerSkillVideoSizeError,
   tournamentHasRegistrationWindow,
   tournamentUsesRegistrationVerification,
 } from '@acc/types';
@@ -24,6 +25,7 @@ import {
 
 import { PermissionService } from '../authz/permission.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { AppSettingsService } from '../settings/app-settings.service';
 import {
   VIDEO_STORAGE_PROVIDER,
   type VideoStorageProvider,
@@ -34,6 +36,7 @@ export class PlayerSkillVideosService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly permissions: PermissionService,
+    private readonly settings: AppSettingsService,
     @Inject(VIDEO_STORAGE_PROVIDER) private readonly storage: VideoStorageProvider,
   ) {}
 
@@ -45,7 +48,6 @@ export class PlayerSkillVideosService {
     return row ? this.toSummary(row) : null;
   }
 
-  /** Captain / VC / Club Manager scouting playback (same gate as verified player lists). */
   async getScoutingPlayback(
     actor: AuthUser,
     tournamentId: string,
@@ -65,7 +67,7 @@ export class PlayerSkillVideosService {
 
     return {
       skillVideoId: row.id,
-      playbackUrl: this.storage.getPlaybackUrl(row.storageKey),
+      playbackUrl: await this.storage.getPlaybackUrl(row.storageKey),
       mimeType: row.mimeType,
       status: row.status as PlayerSkillVideoPlaybackView['status'],
     };
@@ -77,6 +79,7 @@ export class PlayerSkillVideosService {
     dto: PlayerSkillVideoUploadSessionRequest,
   ): Promise<PlayerSkillVideoUploadSessionResponse> {
     await this.assertUploadEligible(actor, tournamentId);
+    await this.assertVideoSizeWithinLimit(dto.sizeBytes);
 
     const storageKey = buildPlayerSkillVideoStorageKey(tournamentId, actor.id, dto.mimeType);
     const target = await this.storage.getUploadTarget({
@@ -100,6 +103,7 @@ export class PlayerSkillVideosService {
     dto: PlayerSkillVideoCompleteUploadRequest,
   ): Promise<PlayerSkillVideoSummary> {
     await this.assertUploadEligible(actor, tournamentId);
+    await this.assertVideoSizeWithinLimit(dto.sizeBytes);
 
     const expectedPrefix = `skill-videos/${tournamentId}/${actor.id}/`;
     if (!dto.storageKey.startsWith(expectedPrefix)) {
@@ -115,8 +119,6 @@ export class PlayerSkillVideosService {
       sizeBytes: dto.sizeBytes,
     });
 
-    const playbackUrl = this.storage.getPlaybackUrl(dto.storageKey);
-
     const existing = await this.prisma.playerSkillVideo.findUnique({
       where: { tournamentId_userId: { tournamentId, userId: actor.id } },
     });
@@ -129,14 +131,14 @@ export class PlayerSkillVideosService {
       create: {
         tournamentId,
         userId: actor.id,
-        url: playbackUrl,
+        url: dto.storageKey,
         mimeType: dto.mimeType,
         sizeBytes: dto.sizeBytes,
         storageKey: dto.storageKey,
         status: PlayerSkillVideoStatus.Ready,
       },
       update: {
-        url: playbackUrl,
+        url: dto.storageKey,
         mimeType: dto.mimeType,
         sizeBytes: dto.sizeBytes,
         storageKey: dto.storageKey,
@@ -157,6 +159,7 @@ export class PlayerSkillVideosService {
       registrationOpenAt: string | null;
       registrationCloseAt: string | null;
       registrationVerificationComplete: boolean;
+      videoRequired: boolean;
       videoUploadEndDate: string | null;
     },
   ): Promise<{ canUploadSkillVideo: boolean; hasSkillVideo: boolean }> {
@@ -175,6 +178,7 @@ export class PlayerSkillVideosService {
         id: tournament.id,
         ballType: tournament.ballType as never,
         registrationVerificationComplete: tournament.registrationVerificationComplete,
+        videoRequired: tournament.videoRequired,
         videoUploadEndDate: tournament.videoUploadEndDate,
       },
       registration?.status ?? null,
@@ -265,6 +269,7 @@ export class PlayerSkillVideosService {
         isDeleted: true,
         registrationOpenAt: true,
         registrationCloseAt: true,
+        videoRequired: true,
         videoUploadEndDate: true,
       },
     });
@@ -276,6 +281,13 @@ export class PlayerSkillVideosService {
       throw new BadRequestException({
         message: 'Skill video upload is available for tennis tournaments only',
         error: 'VIDEO_TENNIS_ONLY',
+      });
+    }
+
+    if (!tournament.videoRequired) {
+      throw new BadRequestException({
+        message: 'Skill video upload is not enabled for this tournament',
+        error: 'VIDEO_NOT_REQUIRED',
       });
     }
 
@@ -339,21 +351,32 @@ export class PlayerSkillVideosService {
     }
   }
 
-  private toSummary(row: {
+  private async assertVideoSizeWithinLimit(sizeBytes: number): Promise<void> {
+    const maxBytes = await this.settings.getVideoUploadMaxBytes();
+    const limits = await this.settings.getUploadLimits();
+    if (!Number.isInteger(sizeBytes) || sizeBytes <= 0 || sizeBytes > maxBytes) {
+      throw new BadRequestException({
+        message: playerSkillVideoSizeError(limits.videoUploadMaxMb),
+        error: 'VIDEO_SIZE',
+      });
+    }
+  }
+
+  private async toSummary(row: {
     id: string;
     tournamentId: string;
     userId: string;
-    url: string;
+    storageKey: string;
     mimeType: string;
     sizeBytes: number;
     status: string;
     uploadedAt: Date;
-  }): PlayerSkillVideoSummary {
+  }): Promise<PlayerSkillVideoSummary> {
     return {
       id: row.id,
       tournamentId: row.tournamentId,
       userId: row.userId,
-      playbackUrl: row.url,
+      playbackUrl: await this.storage.getPlaybackUrl(row.storageKey),
       mimeType: row.mimeType,
       sizeBytes: row.sizeBytes,
       status: row.status as PlayerSkillVideoSummary['status'],

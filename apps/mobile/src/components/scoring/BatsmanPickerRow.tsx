@@ -1,11 +1,11 @@
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import {
   BATTING_HAND_LABELS,
   type BattingStyle,
   type BatsmanPickerPlayerRow,
   BatsmanPickerStatus,
 } from '@acc/types';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
 import { PlayerAvatar } from '../tournament/PlayerAvatar';
 import { Card } from '../ui/Card';
@@ -43,18 +43,20 @@ function SelectionIndicator({ selected }: { selected: boolean }): React.ReactEle
 export interface BatsmanPickerRowProps {
   row: BatsmanPickerPlayerRow;
   onPress: (userId: string) => void;
+  onEdit?: (row: BatsmanPickerPlayerRow) => void;
 }
 
-export function BatsmanPickerRow({ row, onPress }: BatsmanPickerRowProps): React.ReactElement {
+export function BatsmanPickerRow({ row, onPress, onEdit }: BatsmanPickerRowProps): React.ReactElement {
   const disabled = !row.selectable;
   const highlighted = row.selected && row.selectable;
+  const showEdit = row.isExternal && onEdit != null;
 
   return (
     <Card
       onPress={disabled ? undefined : () => onPress(row.userId)}
       disabled={disabled}
       className={[
-        'flex-row items-center gap-4 rounded-control',
+        'flex-row items-center gap-3 rounded-control',
         highlighted ? 'border-2 border-primary bg-primary-container' : 'border border-outline-variant',
         disabled ? 'opacity-50' : '',
       ]
@@ -82,7 +84,19 @@ export function BatsmanPickerRow({ row, onPress }: BatsmanPickerRowProps): React
           <Text className="mt-0.5 font-sans text-sm text-on-surface-variant">{statusLine(row)}</Text>
         )}
       </View>
-      <SelectionIndicator selected={row.selected} />
+      <View className="shrink-0 flex-row items-center gap-1">
+        {showEdit ? (
+          <Pressable
+            onPress={() => onEdit(row)}
+            accessibilityRole="button"
+            accessibilityLabel="Edit player name"
+            className="h-10 w-10 items-center justify-center active:opacity-70"
+          >
+            <MaterialIcons name="edit" size={22} color={FIELD_ORANGE} />
+          </Pressable>
+        ) : null}
+        <SelectionIndicator selected={row.selected} />
+      </View>
     </Card>
   );
 }

@@ -1,18 +1,19 @@
-import { Ionicons } from '@expo/vector-icons';
 import {
+  type BatsmanPickerPlayerRow,
   type BatsmanPickerResponse,
   BatsmanPickerRole,
   type BatsmanPickerRole as BatsmanPickerRoleValue,
 } from '@acc/types';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
+import { ActivityIndicator, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AddExternalBatsmanDialog } from './AddExternalBatsmanDialog';
 import { BatsmanPickerRow } from './BatsmanPickerRow';
+import { EditExternalPlayerNameDialog } from './EditExternalPlayerNameDialog';
 import { Button } from '../ui/Button';
-import { ProfileMenu } from '../ui/ProfileMenu';
+import { ScreenHeader } from '../ui/ScreenHeader';
 import { Text } from '../ui/Text';
 import { FIELD_ORANGE } from '../ui/fieldStyles';
 import { ApiRequestError, getBatsmanPicker } from '../../lib/api';
@@ -24,6 +25,11 @@ export interface SelectBatsmanScreenProps {
   role: BatsmanPickerRoleValue;
   otherSlotUserId?: string | null;
   incomingSlot?: IncomingCreaseSlot | null;
+}
+
+interface EditTarget {
+  playerId: string;
+  name: string;
 }
 
 export function SelectBatsmanScreen({
@@ -38,6 +44,7 @@ export function SelectBatsmanScreen({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showAddExternal, setShowAddExternal] = useState(false);
+  const [editTarget, setEditTarget] = useState<EditTarget | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -69,24 +76,16 @@ export function SelectBatsmanScreen({
     router.back();
   }
 
+  function openEdit(row: BatsmanPickerPlayerRow): void {
+    const name = `${row.firstName} ${row.lastName}`.trim();
+    setEditTarget({ playerId: row.userId, name });
+  }
+
   const isExternalSide = data?.battingSideIsExternal === true;
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
-      <View className="flex-row items-center justify-between px-4 pb-2 pt-1">
-        <View className="flex-row items-center gap-3">
-          <Pressable
-            onPress={() => router.back()}
-            className="h-10 w-10 items-center justify-center rounded-full active:bg-black/5"
-            accessibilityRole="button"
-            accessibilityLabel="Back"
-          >
-            <Ionicons name="arrow-back" size={24} color={FIELD_ORANGE} />
-          </Pressable>
-          <Text className="font-sans-bold text-xl text-primary">Select Batsman</Text>
-        </View>
-        <ProfileMenu />
-      </View>
+      <ScreenHeader title="Select Batsman" accentTitle onBack={() => router.back()} />
 
       {loading ? (
         <View className="flex-1 items-center justify-center">
@@ -131,7 +130,12 @@ export function SelectBatsmanScreen({
             ) : (
               <View className="gap-3">
                 {data.players.map((row) => (
-                  <BatsmanPickerRow key={row.userId} row={row} onPress={choose} />
+                  <BatsmanPickerRow
+                    key={row.userId}
+                    row={row}
+                    onPress={choose}
+                    onEdit={isExternalSide ? openEdit : undefined}
+                  />
                 ))}
               </View>
             )}
@@ -154,6 +158,18 @@ export function SelectBatsmanScreen({
             onCancel={() => setShowAddExternal(false)}
             onAdded={() => {
               setShowAddExternal(false);
+              void load();
+            }}
+          />
+
+          <EditExternalPlayerNameDialog
+            visible={editTarget != null}
+            matchId={matchId}
+            playerId={editTarget?.playerId ?? null}
+            initialName={editTarget?.name ?? ''}
+            onCancel={() => setEditTarget(null)}
+            onSaved={() => {
+              setEditTarget(null);
               void load();
             }}
           />

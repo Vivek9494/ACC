@@ -132,7 +132,7 @@ function LeaderboardSubTabButton({
   return (
     <Pressable
       onPress={onPress}
-      className={`flex-1 items-center py-3 ${active ? 'border-b-2 border-primary' : ''}`}
+      className={`flex-1 items-center py-3 -mb-px ${active ? 'border-b-2 border-primary' : ''}`}
       accessibilityRole="tab"
       accessibilityState={{ selected: active }}
     >

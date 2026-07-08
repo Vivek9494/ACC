@@ -1,10 +1,13 @@
 import { type AuthUser, UserRole, type TeamLeadAssignment } from './auth';
 import { BallType, type BallType as BallTypeValue } from './rbac';
+import type { TournamentScopeDisplay } from './tournament';
+import { isAllCentersTennisScope } from './tournament-scorers';
 
 /** Tournament fields needed to decide Fees Tracker button visibility. */
 export interface FeesTrackerTournamentContext {
   id: string;
   ballType: BallTypeValue;
+  scopeDisplay: TournamentScopeDisplay;
 }
 
 function leadsTeamInTournament(
@@ -35,6 +38,9 @@ export function canShowTournamentFeesTracker(
   }
 
   if (tournament.ballType === BallType.Tennis) {
+    if (user.role === UserRole.ClubManager && isAllCentersTennisScope(tournament.scopeDisplay)) {
+      return true;
+    }
     return (user.centerSevakCenterIds?.length ?? 0) > 0;
   }
 

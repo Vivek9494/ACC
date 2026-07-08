@@ -1,5 +1,4 @@
 import type { TournamentPlayerProfileView } from '@acc/types';
-import { formatPlayerProfileDisplayName } from '@acc/types';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
@@ -43,13 +42,9 @@ export default function TournamentPlayerProfileScreen(): React.ReactElement {
       .finally(() => setLoading(false));
   }, [tournamentId, userId]);
 
-  const title = profile
-    ? formatPlayerProfileDisplayName(profile.firstName, profile.lastName)
-    : 'Player';
-
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right']}>
-      <ScreenHeader title={title} onBack={() => router.back()} showProfileMenu={false} />
+      <ScreenHeader onBack={() => router.back()} />
 
       {loading ? (
         <View className="flex-1 items-center justify-center">

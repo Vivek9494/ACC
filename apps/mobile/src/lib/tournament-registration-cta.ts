@@ -1,9 +1,11 @@
 import {
+  BallType,
+  canSelfRegisterForTournament,
   RegistrationStatus,
   TOURNAMENT_REGISTRATION_STATUS_INDICATOR_LABELS,
   type RegistrationStatus as RegistrationStatusType,
   type TournamentDetail,
-  UserRole,
+  type UserRole,
 } from '@acc/types';
 
 export type RegistrationStatusIndicatorVariant = 'waitlist' | 'confirmed' | 'declined';
@@ -21,10 +23,13 @@ export interface RegistrationCtaInput {
     | 'registrationIsOpen'
     | 'registrationOpenAt'
     | 'registrationCloseAt'
+    | 'ballType'
   >;
   isAuthenticated: boolean;
   userRole: UserRole | null | undefined;
   registrationStatus: RegistrationStatusType | null;
+  /** Leather only — from tournament detail API. */
+  leatherRegistrationEligible?: boolean;
   formatOpensLabel: (iso: string) => string;
 }
 
@@ -49,13 +54,27 @@ function registeredStatusCta(
 
 /** Resolve the bottom Registration CTA for the tournament details screen. */
 export function resolveRegistrationCta(input: RegistrationCtaInput): RegistrationCtaState {
-  const { tournament, isAuthenticated, userRole, registrationStatus, formatOpensLabel } = input;
+  const {
+    tournament,
+    isAuthenticated,
+    userRole,
+    registrationStatus,
+    leatherRegistrationEligible,
+    formatOpensLabel,
+  } = input;
 
   if (!tournament.hasRegistrationWindow) {
     return { kind: 'hidden' };
   }
 
-  if (!isAuthenticated || userRole !== UserRole.Player) {
+  if (!isAuthenticated || !canSelfRegisterForTournament(userRole)) {
+    return { kind: 'hidden' };
+  }
+
+  if (
+    tournament.ballType === BallType.Leather &&
+    leatherRegistrationEligible === false
+  ) {
     return { kind: 'hidden' };
   }
 
@@ -92,7 +111,7 @@ export function resolveRegistrationCta(input: RegistrationCtaInput): Registratio
   }
 
   if (closeAt != null && now > closeAt) {
-    return { kind: 'disabled', label: 'Registration', reason: 'Registration closed' };
+    return { kind: 'hidden' };
   }
 
   return { kind: 'disabled', label: 'Registration', reason: 'Registration is not open' };

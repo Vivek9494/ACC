@@ -103,6 +103,23 @@ export class MatchScorerGrantService {
     });
   }
 
+  /** Replace the single active grant (tennis organizer pick — any authorized manager). */
+  async replaceActiveGrant(
+    matchId: string,
+    userId: string,
+    grantedByUserId: string,
+  ): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      await tx.matchScorerGrant.updateMany({
+        where: { matchId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+      await tx.matchScorerGrant.create({
+        data: { matchId, userId, grantedByUserId },
+      });
+    });
+  }
+
   /**
    * Auto-revokes every active grant for a match. Called by the System actor at
    * match completion (§2, §11.1).

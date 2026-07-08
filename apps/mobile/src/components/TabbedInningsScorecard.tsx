@@ -1,4 +1,10 @@
-import type { InningsScorecard, MatchDetail, ScorecardResponse } from '@acc/types';
+import {
+  isWinningTeamInningsTab,
+  type AuthUser,
+  type InningsScorecard,
+  type MatchDetail,
+  type ScorecardResponse,
+} from '@acc/types';
 import { useMemo } from 'react';
 import { View } from 'react-native';
 
@@ -10,6 +16,7 @@ import {
   shouldShowLiveTopCards,
 } from '../lib/scorecardInningsTabs';
 import type { NameResolver } from './LiveScorecard';
+import { DroppedCatchCardSection } from './scoring/DroppedCatchCardSection';
 import { InningsNotStartedPlaceholder } from './InningsNotStartedPlaceholder';
 import { InningsLiveTopCards, InningsScorecardView } from './InningsScorecardView';
 import { InningsTabs } from './InningsTabs';
@@ -25,6 +32,11 @@ export interface TabbedInningsScorecardProps {
   /** When true, pinned live top cards may render above the tab bar. */
   isMatchLive: boolean;
   matchOversPerInnings: number | null;
+  user?: AuthUser | null;
+  /** MoM card — rendered below Batting on the winning team's tab when set. */
+  manOfMatchSlot?: React.ReactNode;
+  /** Registered winning team — gates MoM to that team's innings tab(s). */
+  winningTeamId?: string | null;
 }
 
 /**
@@ -41,6 +53,9 @@ export function TabbedInningsScorecard({
   onInningsIndexChange,
   isMatchLive,
   matchOversPerInnings,
+  user,
+  manOfMatchSlot,
+  winningTeamId = null,
 }: TabbedInningsScorecardProps): React.ReactElement {
   const tabLabels = useMemo(
     () => inningsTabLabels(card, match, teamNameOf, battingTeamLabel),
@@ -50,6 +65,10 @@ export function TabbedInningsScorecard({
   const selectedInnings = inningsForTab(card, inningsIndex);
   const pinnedLiveInnings = liveInnings(card);
   const showLiveTopCards = shouldShowLiveTopCards(isMatchLive, card);
+  const showManOfMatchOnTab =
+    manOfMatchSlot != null &&
+    selectedInnings != null &&
+    isWinningTeamInningsTab(selectedInnings, winningTeamId);
 
   return (
     <View className="gap-4">
@@ -60,7 +79,7 @@ export function TabbedInningsScorecard({
           nameOf={nameOf}
           teamNameOf={teamNameOf}
           totalOvers={matchOversPerInnings ?? pinnedLiveInnings.oversAllotted}
-          showLiveBadge={isMatchLive}
+          showLiveBadge={false}
         />
       ) : null}
 
@@ -76,6 +95,16 @@ export function TabbedInningsScorecard({
           innings={selectedInnings}
           nameOf={nameOf}
           teamNameOf={teamNameOf}
+          manOfMatchSlot={showManOfMatchOnTab ? manOfMatchSlot : null}
+          droppedCatchSlot={
+            <DroppedCatchCardSection
+              card={card}
+              match={match}
+              user={user}
+              nameOf={nameOf}
+              innings={selectedInnings}
+            />
+          }
         />
       ) : (
         <InningsNotStartedPlaceholder teamName={tabLabels[inningsIndex] ?? 'Team'} />

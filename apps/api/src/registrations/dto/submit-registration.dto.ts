@@ -12,6 +12,11 @@ import {
   type SubmitRegistrationRequest,
 } from '@acc/types';
 import {
+  SIGNUP_NAME_MAX_LENGTH,
+  SIGNUP_NAME_REGEX,
+  SIGNUP_VALIDATION_MESSAGES,
+} from '@acc/types';
+import {
   IsIn,
   IsInt,
   IsNotEmpty,
@@ -19,6 +24,7 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  Matches,
   Max,
   MaxLength,
   Min,
@@ -32,13 +38,15 @@ const PLAYER_TYPES = Object.values(RegistrationPlayerType);
 /** Default §7.1 registration form. Profile name/center may be updated on submit. */
 export class SubmitRegistrationDto implements SubmitRegistrationRequest {
   @IsString()
-  @IsNotEmpty()
-  @MaxLength(60)
+  @IsNotEmpty({ message: SIGNUP_VALIDATION_MESSAGES.firstName.required })
+  @MaxLength(SIGNUP_NAME_MAX_LENGTH, { message: SIGNUP_VALIDATION_MESSAGES.firstName.max })
+  @Matches(SIGNUP_NAME_REGEX, { message: SIGNUP_VALIDATION_MESSAGES.firstName.invalid })
   firstName!: string;
 
   @IsString()
-  @IsNotEmpty()
-  @MaxLength(60)
+  @IsNotEmpty({ message: SIGNUP_VALIDATION_MESSAGES.lastName.required })
+  @MaxLength(SIGNUP_NAME_MAX_LENGTH, { message: SIGNUP_VALIDATION_MESSAGES.lastName.max })
+  @Matches(SIGNUP_NAME_REGEX, { message: SIGNUP_VALIDATION_MESSAGES.lastName.invalid })
   lastName!: string;
 
   @IsUUID()

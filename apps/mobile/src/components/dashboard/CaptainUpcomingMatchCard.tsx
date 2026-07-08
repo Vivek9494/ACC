@@ -1,7 +1,7 @@
 import type { CaptainScorerAssignmentMatch, CaptainUpcomingMatchCardView } from '@acc/types';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter, type Href } from 'expo-router';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { colors } from '@/theme/colors';
 
 import { ParticipationPollSection } from './ParticipationPollSection';
@@ -61,6 +61,20 @@ export function CaptainUpcomingMatchCard({
           poll={card.participationPoll}
           onPollUpdated={() => onPollUpdated?.()}
         />
+      ) : null}
+
+      {!pollOpen && card.playingXiEntry ? (
+        <Pressable
+          onPress={() =>
+            router.push(
+              `/participation-polls/${card.playingXiEntry!.pollId}/results` as Href,
+            )
+          }
+          accessibilityRole="button"
+          className="items-center py-1 active:opacity-80"
+        >
+          <Text className="font-sans-semibold text-sm text-primary">View Poll</Text>
+        </Pressable>
       ) : null}
 
       {hasVisibleActions ? (

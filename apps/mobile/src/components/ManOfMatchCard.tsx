@@ -1,14 +1,15 @@
+import {
+  buildPlayerMomMatchFigures,
+  formatPlayerMomBattingLine,
+  formatPlayerMomBowlingLine,
+  type MatchDetail,
+  type ScorecardResponse,
+} from '@acc/types';
 import { Ionicons } from '@expo/vector-icons';
-import type { MatchDetail, ScorecardResponse } from '@acc/types';
 import { View } from 'react-native';
 import { colors } from '@/theme/colors';
 
-import {
-  buildManOfMatchStatBlocks,
-  resolveManOfMatchPlayer,
-  shouldShowManOfMatchCard,
-  type ManOfMatchStatBlock,
-} from '../lib/match-completion';
+import { resolveManOfMatchPlayer, shouldShowManOfMatchCard } from '../lib/match-completion';
 import { PlayerAvatar } from './tournament/PlayerAvatar';
 import { Text } from './ui/Text';
 import { INPUT_SHADOW_STYLE } from './ui/fieldStyles';
@@ -20,18 +21,18 @@ export interface ManOfMatchCardProps {
   nameOf: (id: string) => string;
 }
 
-function StatBlock({ block }: { block: ManOfMatchStatBlock }): React.ReactElement {
+function FigureRow({ label, value }: { label: string; value: string }): React.ReactElement {
   return (
-    <View className="min-w-[88px] rounded-md bg-surface/20 px-3 py-2">
-      <Text className="font-sans-medium text-[10px] uppercase tracking-wider text-text-inverse/80">
-        {block.label}
+    <View className="gap-0.5">
+      <Text className="font-sans-semibold text-xs uppercase tracking-wider text-text-inverse/80">
+        {label}
       </Text>
-      <Text className="font-sans-bold text-sm text-text-inverse">{block.value}</Text>
+      <Text className="font-sans text-sm text-text-inverse">{value}</Text>
     </View>
   );
 }
 
-/** Gold finalized MoM card on the completed-match scorecard (§13.3) — all viewers. */
+/** MoM card on the winning team's scorecard tab (§13.3) — read-only, conditional figures. */
 export function ManOfMatchCard({
   match,
   card,
@@ -43,7 +44,7 @@ export function ManOfMatchCard({
   }
 
   const player = resolveManOfMatchPlayer(match, momUserId, nameOf);
-  const statBlocks = buildManOfMatchStatBlocks(card, momUserId);
+  const figures = buildPlayerMomMatchFigures(card, momUserId);
 
   return (
     <View
@@ -57,29 +58,33 @@ export function ManOfMatchCard({
         <Ionicons name="star" size={112} color={colors.textMuted} style={{ opacity: 0.12 }} />
       </View>
 
-      <Text className="font-sans-semibold text-[10px] uppercase tracking-widest text-text-inverse/80">
-        Man of the Match
-      </Text>
+      <View className="flex-row items-center gap-2">
+        <Text className="font-sans-semibold text-xs uppercase tracking-widest text-text-inverse/80">
+          Man of the Match
+        </Text>
+        <View className="rounded-md bg-primary px-2 py-0.5">
+          <Text className="font-sans-bold text-[10px] uppercase tracking-wider text-text-inverse">
+            MoM
+          </Text>
+        </View>
+      </View>
 
-      <View className="mt-3 flex-row items-center gap-3">
+      <View className="mt-3 flex-row items-start gap-3">
         <PlayerAvatar
           firstName={player.firstName}
           profilePhotoUrl={player.profilePhotoUrl}
           size="md"
           highlighted
         />
-        <View className="min-w-0 flex-1 gap-2">
-          <View className="self-start rounded-md bg-primary px-2.5 py-1">
-            <Text className="font-sans-bold text-lg text-text-inverse" numberOfLines={2}>
-              {player.displayName}
-            </Text>
-          </View>
-          {statBlocks.length > 0 ? (
-            <View className="flex-row flex-wrap gap-2">
-              {statBlocks.map((block) => (
-                <StatBlock key={block.label} block={block} />
-              ))}
-            </View>
+        <View className="min-w-0 flex-1 gap-3">
+          <Text className="font-sans-bold text-lg text-text-inverse" numberOfLines={2}>
+            {player.displayName}
+          </Text>
+          {figures.batting ? (
+            <FigureRow label="Batting" value={formatPlayerMomBattingLine(figures.batting)} />
+          ) : null}
+          {figures.bowling ? (
+            <FigureRow label="Bowling" value={formatPlayerMomBowlingLine(figures.bowling)} />
           ) : null}
         </View>
       </View>

@@ -1,4 +1,4 @@
-import { type CreateMatchRequest, MatchType } from '@acc/types';
+import { type CreateMatchRequest, HomeAway, MatchType } from '@acc/types';
 import { Type } from 'class-transformer';
 import {
   IsDateString,
@@ -13,6 +13,7 @@ import {
 } from 'class-validator';
 
 const MATCH_TYPES = Object.values(MatchType);
+const HOME_AWAY_VALUES = Object.values(HomeAway);
 
 /** Create a match / fixture entry (spec §11, §27). */
 export class CreateMatchDto implements CreateMatchRequest {
@@ -100,6 +101,10 @@ export class CreateMatchDto implements CreateMatchRequest {
   @Min(0)
   @Max(50)
   battingPowerplayOvers?: number | null;
+
+  @IsOptional()
+  @IsIn(HOME_AWAY_VALUES)
+  homeAway?: HomeAway | null;
 
   @IsOptional()
   @IsString()

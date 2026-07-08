@@ -18,11 +18,13 @@ import {
   formatUtcIsoDate,
 } from '@acc/types';
 import { Injectable } from '@nestjs/common';
-import type { Match, Prisma } from '@prisma/client';
+import { type Match, type Prisma } from '@prisma/client';
 
 import { PrismaService } from '../prisma/prisma.service';
 import { ScorecardReader } from '../scoring/scorecard-reader';
+import { MediaUrlResolver } from '../storage/media-url.resolver';
 import { activeTournamentRelationWhere } from '../tournaments/tournament-query';
+import { myMatchesStateWhere, findPlayingXiMatchIds } from '../matches/match-visibility.utils';
 
 type MatchRow = Match & {
   homeTeam: { id: string; name: string; logoUrl: string | null } | null;
@@ -36,15 +38,13 @@ type MatchRow = Match & {
   };
 };
 
-/** Pre–Playing-XI-lock states where roster membership can surface an upcoming match. */
-const ROSTER_FALLBACK_STATES: MatchState[] = [MatchState.Scheduled, MatchState.Delayed];
-
 const SCORECARD_STATES: MatchState[] = [
   MatchState.Live,
   MatchState.RainInterrupted,
   MatchState.Completed,
   MatchState.ScorecardLocked,
   MatchState.NoResult,
+  MatchState.Cancelled,
 ];
 
 const MY_MATCH_INCLUDE = {
@@ -58,10 +58,11 @@ export class MyMatchesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly scorecardReader: ScorecardReader,
+    private readonly mediaUrls: MediaUrlResolver,
   ) {}
 
   async listForUser(userId: string): Promise<MyMatchesResponse> {
-    const matchIds = await this.findPlayedMatchIds(userId);
+    const matchIds = await findPlayingXiMatchIds(this.prisma, userId);
     if (matchIds.length === 0) {
       return { ballTypes: [], matches: [], tournaments: [] };
     }
@@ -70,7 +71,7 @@ export class MyMatchesService {
       where: {
         id: { in: matchIds },
         isDeleted: false,
-        state: { not: MatchState.Cancelled },
+        ...myMatchesStateWhere,
         ...activeTournamentRelationWhere,
       },
       include: MY_MATCH_INCLUDE,
@@ -82,64 +83,6 @@ export class MyMatchesService {
     const tournaments = this.collectTournaments(matches);
 
     return { ballTypes, matches, tournaments };
-  }
-
-  /**
-   * Playing XI membership: locked {@link MatchSquadPlayer} row with role PLAYING_XI.
-   * Before the XI is locked, rostered players on a participating team also see the fixture.
-   */
-  private async findPlayedMatchIds(userId: string): Promise<string[]> {
-    const xiRows = await this.prisma.matchSquadPlayer.findMany({
-      where: {
-        userId,
-        role: 'PLAYING_XI',
-        squad: {
-          match: {
-            isDeleted: false,
-            state: { not: MatchState.Cancelled },
-            ...activeTournamentRelationWhere,
-          },
-        },
-      },
-      select: { squad: { select: { matchId: true } } },
-    });
-
-    const matchIds = new Set(xiRows.map((row) => row.squad.matchId));
-
-    const memberships = await this.prisma.teamMembership.findMany({
-      where: { userId },
-      select: { teamId: true, tournamentId: true },
-    });
-
-    const teamIds = [...new Set(memberships.map((row) => row.teamId))];
-
-    if (teamIds.length === 0) {
-      return [...matchIds];
-    }
-
-    const rosterMatches = await this.prisma.match.findMany({
-      where: {
-        isDeleted: false,
-        state: { in: ROSTER_FALLBACK_STATES },
-        ...activeTournamentRelationWhere,
-        OR: [{ homeTeamId: { in: teamIds } }, { awayTeamId: { in: teamIds } }],
-        ...(matchIds.size > 0 ? { id: { notIn: [...matchIds] } } : {}),
-      },
-      select: { id: true, homeTeamId: true, awayTeamId: true, tournamentId: true },
-    });
-
-    for (const match of rosterMatches) {
-      const onParticipatingTeam = memberships.some(
-        (membership) =>
-          membership.tournamentId === match.tournamentId &&
-          (membership.teamId === match.homeTeamId || membership.teamId === match.awayTeamId),
-      );
-      if (onParticipatingTeam) {
-        matchIds.add(match.id);
-      }
-    }
-
-    return [...matchIds];
   }
 
   private collectTournaments(matches: readonly MyMatchListItem[]): MyMatchesTournamentOption[] {
@@ -167,8 +110,13 @@ export class MyMatchesService {
     const matchDate = row.matchDate ? formatUtcIsoDate(row.matchDate) : null;
     const startTime = row.startTime?.toISOString() ?? null;
 
-    let teamA = this.emptyTeamRow(homeId, homeName, row.homeTeam?.logoUrl ?? null);
-    let teamB = this.emptyTeamRow(awayId, awayName, row.awayTeam?.logoUrl ?? null);
+    const [homeLogo, awayLogo] = await this.mediaUrls.resolveReadUrls([
+      row.homeTeam?.logoUrl ?? null,
+      row.awayTeam?.logoUrl ?? null,
+    ]);
+
+    let teamA = this.emptyTeamRow(homeId, homeName, homeLogo ?? null);
+    let teamB = this.emptyTeamRow(awayId, awayName, awayLogo ?? null);
     let footerLine: string | null = null;
 
     if (displayState === MatchCardDisplayState.Scheduled) {
@@ -176,13 +124,16 @@ export class MyMatchesService {
         matchDate,
         startTime,
         tournamentTimezone: row.tournament.timezone,
+        delayMinutes: row.delayMinutes ?? 0,
       });
+    } else if (displayState === MatchCardDisplayState.Cancelled) {
+      footerLine = null;
     } else if (SCORECARD_STATES.includes(state)) {
       try {
         const card = await this.scorecardReader.build(row);
         const winnerId = card.result.winningTeamId;
-        teamA = this.teamRowFromScorecard(homeId, homeName, row.homeTeam?.logoUrl ?? null, card, winnerId);
-        teamB = this.teamRowFromScorecard(awayId, awayName, row.awayTeam?.logoUrl ?? null, card, winnerId);
+        teamA = this.teamRowFromScorecard(homeId, homeName, homeLogo ?? null, card, winnerId);
+        teamB = this.teamRowFromScorecard(awayId, awayName, awayLogo ?? null, card, winnerId);
         footerLine = this.resolveFooterLine(row, displayState, card, homeName, awayName);
       } catch {
         footerLine =
@@ -202,6 +153,7 @@ export class MyMatchesService {
       displayState,
       matchDate,
       startTime,
+      delayMinutes: row.delayMinutes ?? 0,
       teamA,
       teamB,
       footerLine,

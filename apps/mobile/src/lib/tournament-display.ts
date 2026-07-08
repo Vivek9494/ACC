@@ -1,16 +1,29 @@
-import { TournamentState, type TournamentSummary } from '@acc/types';
+import {
+  formatTournamentScopeLine,
+  formatTournamentScopeLineTruncated,
+  resolveTournamentDisplayStatus,
+  TournamentDisplayStatus,
+  type TournamentSummary,
+} from '@acc/types';
 
 import type { StatusPillVariant } from '../components/ui/StatusPill';
 
-export function tournamentStatusPill(state: TournamentState): {
+export function tournamentStatusPill(
+  tournament: Pick<TournamentSummary, 'startAt' | 'endAt' | 'timezone' | 'displayStatus'>,
+  options?: { cancelled?: boolean },
+): {
   variant: StatusPillVariant;
   label: string;
 } {
-  if (state === TournamentState.Completed) {
+  const displayStatus = resolveTournamentDisplayStatus(tournament, options);
+  if (displayStatus === TournamentDisplayStatus.Cancelled) {
+    return { variant: 'cancelled', label: 'Cancelled' };
+  }
+  if (displayStatus === TournamentDisplayStatus.Completed) {
     return { variant: 'completed', label: 'Completed' };
   }
-  if (state === TournamentState.Live || state === TournamentState.Knockout) {
-    return { variant: 'ongoing', label: 'Ongoing' };
+  if (displayStatus === TournamentDisplayStatus.Live) {
+    return { variant: 'live', label: 'Live' };
   }
   return { variant: 'upcoming', label: 'Upcoming' };
 }
@@ -74,6 +87,16 @@ export function formatTournamentCalendarDate(iso: string | null | undefined): st
   });
 }
 
+/** Leather span label for the schedule card, e.g. "March 1, 2026 – June 30, 2026". */
+export function formatTournamentLeatherSpanLabel(startAt: string, endAt: string): string {
+  const startLabel = formatTournamentCalendarDate(startAt);
+  const endLabel = formatTournamentCalendarDate(endAt);
+  if (startLabel === endLabel) {
+    return startLabel;
+  }
+  return `${startLabel} – ${endLabel}`;
+}
+
 /** Individual match day (YYYY-MM-DD), e.g. "Sat, June 15, 2024". */
 export function formatTournamentMatchDay(dateOnly: string): string {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateOnly);
@@ -102,6 +125,24 @@ export function formatRegistrationOpensLabel(iso: string): string {
   return new Date(iso).toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
 }
 
+/** Scope-based location line for dashboard tournament cards (not the venue address). */
+export function tournamentCardScopeLine(tournament: TournamentSummary): string {
+  return formatTournamentScopeLineTruncated(tournament.scopeDisplay) ?? 'Scope not set';
+}
+
+export function tournamentScopeLine(
+  tournament: Pick<TournamentSummary, 'scopeDisplay'>,
+): string | null {
+  return formatTournamentScopeLine(tournament.scopeDisplay);
+}
+
+export function tournamentScopeLineTruncated(
+  tournament: Pick<TournamentSummary, 'scopeDisplay'>,
+): string | null {
+  return formatTournamentScopeLineTruncated(tournament.scopeDisplay);
+}
+
+/** @deprecated Use {@link tournamentCardScopeLine} for dashboard cards. */
 export function tournamentLocation(tournament: TournamentSummary): string {
-  return tournament.locationAddress?.trim() || 'Location TBD';
+  return tournamentCardScopeLine(tournament);
 }

@@ -1,8 +1,10 @@
 import { type CreateMatchRequest, type TournamentDetail } from '@acc/types';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
+import { ActivityIndicator, Pressable, View } from 'react-native';
+import { ScreenHeader } from '../../src/components/ui/ScreenHeader';
 import { Button } from '../../src/components/ui/Button';
+import { KeyboardAwareFormScrollView } from '../../src/components/ui/KeyboardAwareFormScrollView';
 import { Text } from '../../src/components/ui/Text';
 import { TextInput } from '../../src/components/ui/TextInput';
 import { FIELD_ORANGE } from '../../src/components/ui/fieldStyles';
@@ -93,18 +95,13 @@ export default function NewMatchScreen(): React.ReactElement {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-background">
-      <ScrollView contentContainerClassName="px-6 py-6 gap-5">
-        <Pressable onPress={() => router.back()}>
-          <Text className="font-sans text-primary">← Back</Text>
-        </Pressable>
-        <Text className="font-sans-bold text-2xl text-on-surface">New Match Setup</Text>
-        {tournament ? (
-          <Text className="font-sans text-sm text-on-surface-variant">
-            Tournament: {tournament.name}
-          </Text>
-        ) : null}
-
+    <SafeAreaView className="flex-1 bg-background" edges={['top']}>
+      <ScreenHeader
+        title="New Match Setup"
+        subtitle={tournament ? `Tournament: ${tournament.name}` : undefined}
+        onBack={() => router.back()}
+      />
+      <KeyboardAwareFormScrollView contentContainerClassName="px-6 py-6 gap-5">
         {error ? (
           <View className="rounded-lg bg-primary-50 px-4 py-3">
             <Text className="font-sans text-sm text-primary">{error}</Text>
@@ -184,7 +181,7 @@ export default function NewMatchScreen(): React.ReactElement {
           textClassName="text-base"
           label={saving ? 'Creating…' : 'Create Match'}
         />
-      </ScrollView>
+      </KeyboardAwareFormScrollView>
     </SafeAreaView>
   );
 }

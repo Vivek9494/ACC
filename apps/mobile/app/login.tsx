@@ -1,11 +1,12 @@
-import { AuthErrorCode } from '@acc/types';
+import { APP_ORG_NAME, APP_SHORT_NAME, AuthErrorCode } from '@acc/types';
 import { Link, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
+import { ActivityIndicator, Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/theme/colors';
 
 import { Button } from '../src/components/ui/Button';
+import { KeyboardAwareFormScrollView } from '../src/components/ui/KeyboardAwareFormScrollView';
 import { PasswordToggle } from '../src/components/ui/PasswordToggle';
 import { Text } from '../src/components/ui/Text';
 import { TextInput } from '../src/components/ui/TextInput';
@@ -27,6 +28,9 @@ function mapLoginApiError(err: unknown): string {
   }
   if (err.status === 401 && err.error.code === AuthErrorCode.InvalidCredentials) {
     return LOGIN_MESSAGES.invalidCredentials;
+  }
+  if (err.status === 401 && err.error.code === AuthErrorCode.TempPasswordExpired) {
+    return LOGIN_MESSAGES.tempPasswordExpired;
   }
   return LOGIN_MESSAGES.genericError;
 }
@@ -71,7 +75,7 @@ export default function LoginScreen(): React.ReactElement {
     try {
       await signIn({
         mobileNumber: loginMobileForApi(mobileNumber),
-        password,
+        password: password.trim(),
       });
       // Navigation to /home is handled by the root navigator on status change.
     } catch (err) {
@@ -83,10 +87,10 @@ export default function LoginScreen(): React.ReactElement {
 
   return (
     <SafeAreaView className="flex-1 bg-background">
-      <ScrollView contentContainerClassName="flex-grow px-6 py-12" keyboardShouldPersistTaps="handled">
+      <KeyboardAwareFormScrollView contentContainerClassName="flex-grow px-6 py-12">
         <View className="mt-8 gap-2">
           <Text className="font-sans-medium text-sm uppercase tracking-widest text-primary">
-            Atmiya Cricket Club
+            {APP_ORG_NAME}
           </Text>
           <Text className="font-sans-bold text-3xl text-on-surface">Welcome back</Text>
           <Text className="font-sans text-base text-on-surface-variant">
@@ -151,12 +155,12 @@ export default function LoginScreen(): React.ReactElement {
         </View>
 
         <View className="mt-auto flex-row justify-center gap-1 pt-6">
-          <Text className="font-sans text-sm text-on-surface-variant">New to ACC?</Text>
+          <Text className="font-sans text-sm text-on-surface-variant">New to {APP_SHORT_NAME}?</Text>
           <Link href="/signup" className="font-sans-semibold text-sm text-primary">
             Create an account
           </Link>
         </View>
-      </ScrollView>
+      </KeyboardAwareFormScrollView>
     </SafeAreaView>
   );
 }

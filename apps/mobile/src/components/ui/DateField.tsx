@@ -51,6 +51,14 @@ function parseIsoDate(value: string): Date | null {
   return date;
 }
 
+function calendarDayKey(date: Date): number {
+  return date.getFullYear() * 10000 + (date.getMonth() + 1) * 100 + date.getDate();
+}
+
+function isBeforeCalendarDay(a: Date, b: Date): boolean {
+  return calendarDayKey(a) < calendarDayKey(b);
+}
+
 /** Latest selectable DOB so the user is at least MIN_SIGNUP_AGE (spec §3.1). */
 export function maxBirthDateForSignup(today = new Date()): Date {
   return new Date(today.getFullYear() - MIN_SIGNUP_AGE, today.getMonth(), today.getDate());
@@ -87,9 +95,16 @@ export function DateField({
 }: DateFieldProps): React.ReactElement {
   const [showPicker, setShowPicker] = useState(false);
   const signupMaxDate = useMemo(() => maxBirthDateForSignup(), []);
+  const defaultPickerDate = useMemo(() => new Date(), []);
   const effectiveMaximumDate = maximumDate ?? (enforceSignupAgeMax ? signupMaxDate : undefined);
   const parsed = value ? parseIsoDate(value) : null;
-  const pickerValue = parsed ?? effectiveMaximumDate ?? new Date();
+  const pickerValue = useMemo(() => {
+    const selected = parseIsoDate(value);
+    if (selected && minimumDate && isBeforeCalendarDay(selected, minimumDate)) {
+      return minimumDate;
+    }
+    return selected ?? minimumDate ?? effectiveMaximumDate ?? defaultPickerDate;
+  }, [defaultPickerDate, effectiveMaximumDate, minimumDate, value]);
 
   function onAndroidPickerChange(event: DateTimePickerEvent, selected?: Date): void {
     setShowPicker(false);

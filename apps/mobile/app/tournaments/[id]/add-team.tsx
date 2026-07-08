@@ -2,29 +2,35 @@ import { Ionicons } from '@expo/vector-icons';
 import {
   TEAM_FORM_MESSAGES,
   TEAM_NAME_MAX_LENGTH,
+  type BallType,
+  canAssignTeamRoles,
   normalizeTeamName,
   validateTeamName,
+  validateTeamRoleAssignments,
 } from '@acc/types';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
-  ScrollView,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '../../../src/components/ui/Button';
+import { KeyboardAwareFormScrollView } from '../../../src/components/ui/KeyboardAwareFormScrollView';
 import { FIELD_ORANGE } from '../../../src/components/ui/fieldStyles';
-import { ProfileMenu } from '../../../src/components/ui/ProfileMenu';
+import { ScreenHeader } from '../../../src/components/ui/ScreenHeader';
 import { SuccessDialog } from '../../../src/components/ui/SuccessDialog';
+import { TeamCreateRoleAssignmentFields } from '../../../src/components/tournament/TeamCreateRoleAssignmentFields';
 import { TeamLogoField } from '../../../src/components/ui/TeamLogoField';
 import { Text } from '../../../src/components/ui/Text';
 import { TextInput } from '../../../src/components/ui/TextInput';
-import { ApiRequestError, createTeam, listTeams, uploadTeamLogo } from '../../../src/lib/api';
+import { ApiRequestError, createTeam, getTournament, listTeams } from '../../../src/lib/api';
+import { uploadTeamLogo } from '../../../src/lib/imageUpload';
+import { useAuth } from '../../../src/lib/auth-context';
+import { TOURNAMENT_DETAIL_TAB } from '../../../src/lib/tournament-detail-tabs';
+import { tournamentDetailHref } from '../../../src/lib/tournament-detail-route';
 import {
   ensureUploadableUri,
   isLocalImageUri,
@@ -36,6 +42,12 @@ import {
 export default function AddTeamScreen(): React.ReactElement {
   const { id: tournamentId } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { user } = useAuth();
+
+  const [ballType, setBallType] = useState<BallType | null>(null);
+  const [captainUserId, setCaptainUserId] = useState<string | null>(null);
+  const [viceCaptainUserId, setViceCaptainUserId] = useState<string | null>(null);
+  const [managerUserId, setManagerUserId] = useState<string | null>(null);
 
   const [teamName, setTeamName] = useState('');
   const [logo, setLogo] = useState<StoredImageFile | null>(null);
@@ -47,6 +59,16 @@ export default function AddTeamScreen(): React.ReactElement {
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
 
   const previewUri = logo?.uri ?? null;
+  const showRoleFields = canAssignTeamRoles(user) && ballType != null;
+
+  useEffect(() => {
+    if (!tournamentId || !canAssignTeamRoles(user)) {
+      return;
+    }
+    getTournament(tournamentId)
+      .then((tournament) => setBallType(tournament.ballType))
+      .catch(() => setBallType(null));
+  }, [tournamentId, user]);
 
   const handleLogoPicked = useCallback(async (file: PickedImageFile) => {
     const stored = pickedToStored(file);
@@ -61,10 +83,10 @@ export default function AddTeamScreen(): React.ReactElement {
     setLogoUploading(true);
     try {
       const uploadUri = await ensureUploadableUri(file.uri, 'team-logo');
-      const remoteUrl = await uploadTeamLogo(uploadUri);
-      setLogo({ ...file, uri: remoteUrl, remoteUrl });
+      const uploaded = await uploadTeamLogo(uploadUri, file.sizeBytes ?? 0);
+      setLogo({ ...stored, remoteUrl: uploaded.storageKey, uri: uploaded.logoUrl });
     } catch (err) {
-      setLogo(null);
+      setLogo(stored);
       setLogoError(err instanceof ApiRequestError ? err.message : 'Could not upload team logo.');
     } finally {
       setLogoUploading(false);
@@ -109,11 +131,28 @@ export default function AddTeamScreen(): React.ReactElement {
       return;
     }
 
+    const roleConflict = validateTeamRoleAssignments(
+      captainUserId,
+      viceCaptainUserId,
+      managerUserId,
+    );
+    if (roleConflict) {
+      setSubmitError(roleConflict);
+      return;
+    }
+
     setSubmitting(true);
     try {
       await createTeam(tournamentId, {
         name: teamName.trim(),
         logoUrl: logo?.remoteUrl ?? null,
+        ...(showRoleFields
+          ? {
+              captainUserId,
+              viceCaptainUserId,
+              managerUserId,
+            }
+          : {}),
       });
       setShowSuccessDialog(true);
     } catch (err) {
@@ -136,10 +175,7 @@ export default function AddTeamScreen(): React.ReactElement {
   function handleSuccessDismiss(): void {
     setShowSuccessDialog(false);
     if (tournamentId) {
-      router.replace({
-        pathname: '/tournaments/[id]',
-        params: { id: tournamentId, tab: 'Teams' },
-      });
+      router.replace(tournamentDetailHref(user, tournamentId, TOURNAMENT_DETAIL_TAB.Teams));
     } else {
       router.back();
     }
@@ -147,33 +183,13 @@ export default function AddTeamScreen(): React.ReactElement {
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
-      <View className="flex-row items-center justify-between px-4 py-3">
-        <Pressable
-          onPress={() => router.back()}
-          className="h-10 w-10 items-center justify-center rounded-full active:bg-black/5"
-          accessibilityRole="button"
-          accessibilityLabel="Go back"
-        >
-          <Ionicons name="arrow-back" size={24} color={FIELD_ORANGE} />
-        </Pressable>
-        <ProfileMenu />
-      </View>
+      <ScreenHeader title="Add Team" subtitle="Upload logo and name your team" onBack={() => router.back()} />
 
-      <KeyboardAvoidingView
-        className="flex-1"
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      <KeyboardAwareFormScrollView
+        contentContainerClassName="px-4 pt-2"
+        extraBottomPadding={48}
       >
-        <ScrollView
-          contentContainerClassName="gap-6 px-4 pb-12 pt-2"
-          keyboardShouldPersistTaps="handled"
-        >
-          <View>
-            <Text className="font-sans-bold text-2xl text-on-surface">Add Team</Text>
-            <Text className="mt-1 font-sans text-base text-on-surface-variant">
-              Upload logo and name your team
-            </Text>
-          </View>
-
+        <View className="gap-6">
           <TeamLogoField
             uri={previewUri}
             uploading={logoUploading}
@@ -196,6 +212,20 @@ export default function AddTeamScreen(): React.ReactElement {
             error={nameError ?? undefined}
           />
 
+          {showRoleFields ? (
+            <TeamCreateRoleAssignmentFields
+              tournamentId={tournamentId!}
+              ballType={ballType!}
+              captainUserId={captainUserId}
+              viceCaptainUserId={viceCaptainUserId}
+              managerUserId={managerUserId}
+              onCaptainChange={setCaptainUserId}
+              onViceCaptainChange={setViceCaptainUserId}
+              onManagerChange={setManagerUserId}
+              disabled={submitting}
+            />
+          ) : null}
+
           {submitError ? (
             <Text className="font-sans text-sm text-primary">{submitError}</Text>
           ) : null}
@@ -206,8 +236,8 @@ export default function AddTeamScreen(): React.ReactElement {
             disabled={submitting || logoUploading}
             className="h-14 w-full"
           />
-        </ScrollView>
-      </KeyboardAvoidingView>
+        </View>
+      </KeyboardAwareFormScrollView>
 
       {submitting ? (
         <View className="absolute inset-0 items-center justify-center bg-black/10">

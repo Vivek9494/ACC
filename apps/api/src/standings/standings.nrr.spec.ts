@@ -165,6 +165,79 @@ describe('standings NRR', () => {
     expect(alpha?.netRunRate).toBe(roundNetRunRate(120 / 20 - 100 / 20));
   });
 
+  it('treats cancelled matches like no-result (1 pt each, NR++, partial score excluded from NRR)', () => {
+    const { tables, dataErrors } = computeStandings({
+      tournamentId: 't',
+      matchSchedulingFormat: null,
+      groupCount: 0,
+      teams: [
+        { teamId: 'a', teamName: 'Alpha', logoUrl: null, groupId: null },
+        { teamId: 'b', teamName: 'Beta', logoUrl: null, groupId: null },
+      ],
+      groups: [],
+      matches: [
+        {
+          matchId: 'm1',
+          groupId: null,
+          homeTeamId: 'a',
+          awayTeamId: 'b',
+          isNoResult: false,
+          winningTeamId: 'a',
+          innings: [
+            {
+              battingTeamId: 'a',
+              bowlingTeamId: 'b',
+              runs: 120,
+              legalBalls: 120,
+              wasAllOut: false,
+              oversAllotted: 20,
+            },
+            {
+              battingTeamId: 'b',
+              bowlingTeamId: 'a',
+              runs: 100,
+              legalBalls: 120,
+              wasAllOut: false,
+              oversAllotted: 20,
+            },
+          ],
+        },
+        {
+          matchId: 'm-cancelled',
+          groupId: null,
+          homeTeamId: 'a',
+          awayTeamId: 'b',
+          isNoResult: true,
+          winningTeamId: null,
+          innings: [
+            {
+              battingTeamId: 'a',
+              bowlingTeamId: 'b',
+              runs: 9,
+              legalBalls: 7,
+              wasAllOut: false,
+              oversAllotted: 20,
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(dataErrors).toHaveLength(0);
+
+    const alpha = tables[0]?.teams.find((row: TeamStandingRow) => row.teamId === 'a');
+    const beta = tables[0]?.teams.find((row: TeamStandingRow) => row.teamId === 'b');
+    expect(alpha?.matches).toBe(2);
+    expect(alpha?.wins).toBe(1);
+    expect(alpha?.noResults).toBe(1);
+    expect(alpha?.points).toBe(3);
+    expect(beta?.matches).toBe(2);
+    expect(beta?.noResults).toBe(1);
+    expect(beta?.points).toBe(1);
+    expect(alpha?.netRunRate).toBe(roundNetRunRate(120 / 20 - 100 / 20));
+    expect(beta?.netRunRate).toBe(roundNetRunRate(100 / 20 - 120 / 20));
+  });
+
   it('awards 2/0 for a Super Over winner, not split points', () => {
     const tiedInnings = [
       {

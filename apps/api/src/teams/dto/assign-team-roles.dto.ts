@@ -12,4 +12,9 @@ export class AssignTeamRolesDto implements AssignTeamRolesRequest {
   @ValidateIf((_obj, value) => value != null)
   @IsUUID()
   viceCaptainUserId?: string | null;
+
+  @IsOptional()
+  @ValidateIf((_obj, value) => value != null)
+  @IsUUID()
+  managerUserId?: string | null;
 }

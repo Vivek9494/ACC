@@ -44,6 +44,7 @@ export class AttendanceController {
       dto.latitude,
       dto.longitude,
       dto.capturedAt,
+      dto.geofenceEnter,
     );
   }
 

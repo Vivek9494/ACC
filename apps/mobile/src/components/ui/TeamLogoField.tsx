@@ -49,11 +49,16 @@ export function TeamLogoField({
         disabled={uploading}
         accessibilityRole="button"
         accessibilityLabel="Upload team logo"
-        className={`aspect-square w-full items-center justify-center gap-3 rounded-control border-2 border-dashed bg-surface-container-lowest ${borderClass} ${uploading ? 'opacity-70' : ''}`}
+        className={`relative w-full overflow-hidden rounded-control border-2 border-dashed bg-surface-container-lowest ${borderClass} ${uploading ? 'opacity-70' : ''} ${uri ? '' : 'aspect-square items-center justify-center gap-3'}`}
       >
         {uri ? (
           <>
-            <Image source={{ uri }} className="h-full w-full rounded-control" resizeMode="contain" />
+            <Image
+              source={{ uri }}
+              className="aspect-square w-full rounded-control"
+              resizeMode="contain"
+              accessibilityIgnoresInvertColors
+            />
             {uploading ? (
               <View className="absolute inset-0 items-center justify-center rounded-control bg-black/30">
                 <ActivityIndicator color={colors.textInverse} />

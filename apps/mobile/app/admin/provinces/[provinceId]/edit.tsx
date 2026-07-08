@@ -1,10 +1,11 @@
-import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '../../../../src/components/ui/Button';
+import { KeyboardAwareFormScrollView } from '../../../../src/components/ui/KeyboardAwareFormScrollView';
+import { ScreenHeader } from '../../../../src/components/ui/ScreenHeader';
 import { FIELD_ORANGE } from '../../../../src/components/ui/fieldStyles';
 import { Text } from '../../../../src/components/ui/Text';
 import { TextInput } from '../../../../src/components/ui/TextInput';
@@ -51,17 +52,12 @@ export default function EditProvinceScreen(): React.ReactElement {
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
-      <View className="flex-row items-center gap-3 border-b border-border px-4 py-3">
-        <Pressable onPress={() => router.back()} className="h-10 w-10 items-center justify-center">
-          <Ionicons name="arrow-back" size={24} color={FIELD_ORANGE} />
-        </Pressable>
-        <Text className="font-sans-bold text-xl text-text">Edit Province</Text>
-      </View>
+      <ScreenHeader title="Edit Province" onBack={() => router.back()} />
 
       {loading ? (
         <ActivityIndicator className="mt-8" color={FIELD_ORANGE} />
       ) : (
-        <ScrollView contentContainerClassName="gap-5 px-4 py-6">
+        <KeyboardAwareFormScrollView contentContainerClassName="gap-5 px-4 py-6">
           <TextInput
             label="Province Name"
             value={name}
@@ -76,7 +72,7 @@ export default function EditProvinceScreen(): React.ReactElement {
             disabled={submitting}
             onPress={() => void onSubmit()}
           />
-        </ScrollView>
+        </KeyboardAwareFormScrollView>
       )}
     </SafeAreaView>
   );

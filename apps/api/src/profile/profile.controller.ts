@@ -1,34 +1,54 @@
-import type { AuthUser, ProfileDetail, UploadProfilePhotoResponse } from '@acc/types';
+import type { AuthUser, OwnPlayerMomMatchesView, OwnPlayerStatsView, ProfileDetail, UploadProfilePhotoResponse } from '@acc/types';
 import {
   Body,
   Controller,
   Get,
-  BadRequestException,
   HttpCode,
   HttpStatus,
   Patch,
   Post,
-  UploadedFile,
+  Query,
   UseGuards,
-  UseInterceptors,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
-import { SIGNUP_PROFILE_PHOTO_MAX_BYTES } from '@acc/types';
 
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { MediaUploadCompleteDto, MediaUploadSessionDto } from '../media/dto/media-upload.dto';
+import { MediaUploadService } from '../media/media-upload.service';
 import { RequestProfileMobileOtpDto } from './dto/request-profile-mobile-otp.dto';
+import { GetOwnPlayerStatsDto } from './dto/get-own-player-stats.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { ProfileService } from './profile.service';
 
 @Controller('profile')
 @UseGuards(JwtAuthGuard)
 export class ProfileController {
-  constructor(private readonly profile: ProfileService) {}
+  constructor(
+    private readonly profile: ProfileService,
+    private readonly mediaUpload: MediaUploadService,
+  ) {}
 
   @Get()
   getProfile(@CurrentUser() user: AuthUser): Promise<ProfileDetail> {
     return this.profile.getProfile(user.id);
+  }
+
+  /** Logged-in player's overall career stats (ball-type scoped). */
+  @Get('stats')
+  getOwnStats(
+    @CurrentUser() user: AuthUser,
+    @Query() query: GetOwnPlayerStatsDto,
+  ): Promise<OwnPlayerStatsView> {
+    return this.profile.getOwnStats(user.id, query.ballType);
+  }
+
+  /** Logged-in player's Man of the Match awards (ball-type scoped, newest first). */
+  @Get('stats/man-of-the-match')
+  getOwnMomMatches(
+    @CurrentUser() user: AuthUser,
+    @Query() query: GetOwnPlayerStatsDto,
+  ): Promise<OwnPlayerMomMatchesView> {
+    return this.profile.getOwnMomMatches(user.id, query.ballType);
   }
 
   @Patch()
@@ -48,18 +68,23 @@ export class ProfileController {
     return this.profile.requestMobileChangeOtp(user.id, dto.newMobileNumber);
   }
 
-  @Post('photo')
-  @UseInterceptors(
-    FileInterceptor('photo', { limits: { fileSize: SIGNUP_PROFILE_PHOTO_MAX_BYTES } }),
-  )
-  async uploadPhoto(
+  @Post('photo/upload-session')
+  createPhotoUploadSession(
     @CurrentUser() user: AuthUser,
-    @UploadedFile() file: { buffer: Buffer } | undefined,
+    @Body() dto: MediaUploadSessionDto,
+  ) {
+    return this.mediaUpload.createProfilePhotoUploadSession(user.id, dto);
+  }
+
+  @Post('photo/complete')
+  async completePhotoUpload(
+    @CurrentUser() user: AuthUser,
+    @Body() dto: MediaUploadCompleteDto,
   ): Promise<UploadProfilePhotoResponse> {
-    if (!file?.buffer?.length) {
-      throw new BadRequestException({ message: 'Profile photo is required' });
-    }
-    const profilePhotoUrl = await this.profile.uploadProfilePhoto(user.id, file.buffer);
-    return { profilePhotoUrl };
+    const result = await this.mediaUpload.completeProfilePhotoUpload(user.id, dto);
+    return {
+      storageKey: result.storageKey,
+      profilePhotoUrl: result.displayUrl,
+    };
   }
 }

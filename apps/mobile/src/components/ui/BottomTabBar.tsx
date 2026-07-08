@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { cssInterop } from 'nativewind';
 import { Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -12,11 +12,29 @@ cssInterop(Ionicons, {
   },
 });
 
-export interface BottomTabItem {
-  key: string;
-  label: string;
-  icon: React.ComponentProps<typeof Ionicons>['name'];
-}
+cssInterop(MaterialCommunityIcons, {
+  className: {
+    target: 'style',
+    nativeStyleToProp: { color: true },
+  },
+});
+
+type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
+type MaterialCommunityIconName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
+
+export type BottomTabItem =
+  | {
+      key: string;
+      label: string;
+      icon: IoniconName;
+      iconLibrary?: 'ionicons';
+    }
+  | {
+      key: string;
+      label: string;
+      icon: MaterialCommunityIconName;
+      iconLibrary: 'material-community';
+    };
 
 export interface BottomTabBarProps {
   tabs: BottomTabItem[];
@@ -55,11 +73,19 @@ export function BottomTabBar({
                   : 'flex-1 items-center bg-transparent py-1'
               }
             >
-              <Ionicons
-                name={tab.icon}
-                size={22}
-                className={active ? 'text-on-primary' : 'text-on-surface-variant'}
-              />
+              {tab.iconLibrary === 'material-community' ? (
+                <MaterialCommunityIcons
+                  name={tab.icon}
+                  size={22}
+                  className={active ? 'text-on-primary' : 'text-on-surface-variant'}
+                />
+              ) : (
+                <Ionicons
+                  name={tab.icon}
+                  size={22}
+                  className={active ? 'text-on-primary' : 'text-on-surface-variant'}
+                />
+              )}
               <Text
                 className={`mt-0.5 font-sans-semibold text-[10px] ${
                   active ? 'text-on-primary' : 'text-on-surface-variant'

@@ -7,6 +7,7 @@ import {
   DeliveryType,
   DISMISSAL_TYPE_LABELS,
   DismissalType,
+  type DroppedCatchEventView,
   type ExtrasBreakdown,
   type FallOfWicket,
   InningsCloseReason,
@@ -183,6 +184,9 @@ interface MutableBatter {
   playerId: string;
   runs: number;
   balls: number;
+  ones: number;
+  twos: number;
+  threes: number;
   fours: number;
   sixes: number;
   isOut: boolean;
@@ -236,6 +240,7 @@ export function deriveInnings(events: ScoringEvent[], ctx: InningsContext = {}):
   const completedPartnerships: CompletedPartnership[] = [];
   const timeline: TimelineEntry[] = [];
   const droppedCatchCounts = new Map<string, number>();
+  const droppedCatchEvents: DroppedCatchEventView[] = [];
   let legalBallsAtLastWicket = 0;
   const batterRunsAtLastWicket = new Map<string, number>();
   /** Continuing batter (left/orange) and incoming batter (right/brown) for the active stand. */
@@ -250,6 +255,9 @@ export function deriveInnings(events: ScoringEvent[], ctx: InningsContext = {}):
         playerId: id,
         runs: 0,
         balls: 0,
+        ones: 0,
+        twos: 0,
+        threes: 0,
         fours: 0,
         sixes: 0,
         isOut: false,
@@ -313,6 +321,20 @@ export function deriveInnings(events: ScoringEvent[], ctx: InningsContext = {}):
 
     if (e.type === DeliveryType.CatchDrop && e.fielderId) {
       droppedCatchCounts.set(e.fielderId, (droppedCatchCounts.get(e.fielderId) ?? 0) + 1);
+      const batsmanId = e.strikerId ?? striker;
+      const batsmanCard = batsmanId ? ensureBatter(batsmanId) : null;
+      droppedCatchEvents.push({
+        sequence: e.sequence,
+        overNumber: e.overNumber,
+        ballNumber: e.ballNumber,
+        overBallLabel:
+          e.overNumber !== null && e.ballNumber !== null ? `${e.overNumber}.${e.ballNumber}` : '',
+        batsmanId: batsmanId ?? '',
+        batsmanRuns: batsmanCard?.runs ?? 0,
+        batsmanBalls: batsmanCard?.balls ?? 0,
+        bowlerId: e.bowlerId ?? currentBowlerId,
+        fielderId: e.fielderId,
+      });
     }
 
     if (striker && nonStriker && standLeftBatterId === null) {
@@ -390,8 +412,17 @@ export function deriveInnings(events: ScoringEvent[], ctx: InningsContext = {}):
       const runsCard = runsRecipientId ? ensureBatter(runsRecipientId) : null;
       if (runsCard) {
         runsCard.runs += e.runsBat;
-        if (e.isBoundary && e.runsBat === 4) runsCard.fours += 1;
-        if (e.isBoundary && e.runsBat === 6) runsCard.sixes += 1;
+        if (e.isBoundary && e.runsBat === 4) {
+          runsCard.fours += 1;
+        } else if (e.isBoundary && e.runsBat === 6) {
+          runsCard.sixes += 1;
+        } else if (e.runsBat === 1) {
+          runsCard.ones += 1;
+        } else if (e.runsBat === 2) {
+          runsCard.twos += 1;
+        } else if (e.runsBat === 3) {
+          runsCard.threes += 1;
+        }
       }
     }
 
@@ -567,6 +598,9 @@ export function deriveInnings(events: ScoringEvent[], ctx: InningsContext = {}):
       playerId: b.playerId,
       runs: b.runs,
       balls: b.balls,
+      ones: b.ones,
+      twos: b.twos,
+      threes: b.threes,
       fours: b.fours,
       sixes: b.sixes,
       strikeRate: b.balls > 0 ? round((b.runs / b.balls) * 100, 2) : 0,
@@ -690,6 +724,9 @@ export function deriveInnings(events: ScoringEvent[], ctx: InningsContext = {}):
       playerId,
       count,
     })),
+    droppedCatchEvents,
+    battingIsExternal: ctx.battingIsExternal ?? false,
+    bowlingIsExternal: ctx.bowlingIsExternal ?? false,
   };
 }
 

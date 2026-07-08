@@ -13,6 +13,12 @@ export const TOURNAMENT_FORM_MESSAGES = {
   },
   tournamentDates: {
     required: 'Select at least one tournament date',
+    leatherFromRequired: 'From date is required',
+    leatherEndRequired: 'End date is required',
+    past: 'Choose today or a future date',
+    endBeforeFrom: 'End date must be on or after from date',
+    matchOutsideSpan: (date: string) =>
+      `Cannot shorten the span — a match is scheduled on ${date}`,
     hasScheduledMatch: (date: string) =>
       `Cannot remove ${date} — a match is already scheduled on this date`,
   },
@@ -35,7 +41,7 @@ export const TOURNAMENT_FORM_MESSAGES = {
   },
   playersPerTeam: {
     notNumeric: 'Players per team must be a number',
-    max: 'Maximum 15 players per team',
+    max: 'Maximum 30 players per team',
   },
   registration: {
     required: 'Registration open/close date and time are required',
@@ -47,6 +53,16 @@ export const TOURNAMENT_FORM_MESSAGES = {
   videoUploadEndDate: {
     required: 'Video upload end date is required',
     afterRegistrationClose: 'Video upload end date must be after registration close',
+  },
+  knockoutTeamCount: {
+    required: 'Select knockout team count',
+    odd: 'Knockout team count must be an even number',
+    belowGroupFloor: (min: number) =>
+      `Must be at least ${min} to include all group toppers`,
+    aboveTotalTeams: (max: number) => `Cannot exceed ${max} teams`,
+    notApl: 'Knockout team count applies to APL tournaments only',
+    prerequisites: 'Set groups and teams first',
+    locked: 'Locked — delete the bracket to change knockout size',
   },
 } as const;
 
@@ -66,4 +82,5 @@ export type TournamentFormFieldKey =
   | 'registrationCloseDate'
   | 'registrationCloseTime'
   | 'auctionDate'
-  | 'videoUploadEndDate';
+  | 'videoUploadEndDate'
+  | 'knockoutTeamCount';

@@ -1,5 +1,8 @@
 import { View } from 'react-native';
 
+import type { HomeAway } from '@acc/types';
+
+import { MatchHomeAwayBadgeOrNull } from '../match/MatchHomeAwayBadge';
 import { Card } from './Card';
 import { StatusPill } from './StatusPill';
 import { TeamAvatar } from './TeamAvatar';
@@ -24,6 +27,10 @@ export interface MatchSummaryCardProps {
   infoLine?: string | null;
   /** Completed-match result line (blue). Shown for COMPLETED only. */
   resultLine?: string | null;
+  /** ACC ground-setup responsibility; omitted when unset. */
+  homeAway?: HomeAway | null;
+  /** Venue-local schedule line shown below the tournament name. */
+  dateTimeLine?: string | null;
   onPress?: () => void;
 }
 
@@ -65,6 +72,8 @@ export function MatchSummaryCard({
   status,
   infoLine,
   resultLine,
+  homeAway,
+  dateTimeLine,
   onPress,
 }: MatchSummaryCardProps): React.ReactElement {
   const showScore = status !== 'UPCOMING';
@@ -77,12 +86,20 @@ export function MatchSummaryCard({
 
   return (
     <Card accent onPress={onPress} className="gap-4 rounded-control">
-      <View className="flex-row items-start justify-between gap-2">
-        <Text className="flex-1 font-sans-medium text-sm text-on-surface-variant" numberOfLines={1}>
-          {tournamentName}
-        </Text>
-        {status === 'LIVE' ? <StatusPill variant="live" label="Live" /> : null}
-        {status === 'UPCOMING' ? <StatusPill variant="upcoming" label="Upcoming" /> : null}
+      <View className="gap-1">
+        <View className="flex-row items-start justify-between gap-2">
+          <Text className="flex-1 font-sans-medium text-sm text-on-surface-variant" numberOfLines={1}>
+            {tournamentName}
+          </Text>
+          <View className="shrink-0 flex-row items-center gap-1.5">
+            <MatchHomeAwayBadgeOrNull homeAway={homeAway} />
+            {status === 'LIVE' ? <StatusPill variant="live" label="Live" /> : null}
+            {status === 'UPCOMING' ? <StatusPill variant="upcoming" label="Upcoming" /> : null}
+          </View>
+        </View>
+        {dateTimeLine ? (
+          <Text className="font-sans text-sm text-on-surface-variant">{dateTimeLine}</Text>
+        ) : null}
       </View>
 
       <TeamRow team={teamA} showScore={showScore} />

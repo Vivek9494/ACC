@@ -1,6 +1,7 @@
 import type { BallType } from './rbac';
 import { BallType as BallTypeValues } from './rbac';
 import { computeBattingAverage, computeStrikeRate } from './leaderboard';
+import type { OwnPlayerMomStatsSummary } from './player-mom-stats';
 
 /** Period-scoped stats (year or tournament drilldown). */
 export interface PlayerProfilePeriodStats {
@@ -78,6 +79,25 @@ export interface TournamentPlayerProfileView {
   career: PlayerProfileCareerStats;
   byYear: PlayerProfileYearSummary[];
   byTournament: PlayerProfileTournamentSummary[];
+}
+
+/** Logged-in player's overall career stats (GET /profile/stats). */
+export interface OwnPlayerStatsView {
+  firstName: string;
+  lastName: string;
+  profilePhotoUrl: string | null;
+  centerName: string | null;
+  playerRoleLabel: string | null;
+  isCaptain: boolean;
+  isViceCaptain: boolean;
+  ballType: BallType;
+  ballTypeLabel: string;
+  career: PlayerProfileCareerStats;
+  byYear: PlayerProfileYearSummary[];
+  byTournament: PlayerProfileTournamentSummary[];
+  showStumpingsCard: boolean;
+  /** Man of the Match awards in this ball-type scope (logged-in user only). */
+  manOfTheMatch: OwnPlayerMomStatsSummary;
 }
 
 export function formatPlayerProfileDisplayName(firstName: string, lastName: string): string {

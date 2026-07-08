@@ -1,6 +1,7 @@
 import { View } from 'react-native';
 
 import { Card } from './Card';
+import { STAT_LABEL_TEXT_CLASS } from './fieldStyles';
 import { Text } from './Text';
 
 export interface StatItem {
@@ -32,7 +33,7 @@ export function StatTile({ title, items, className }: StatTileProps): React.Reac
           <View key={item.label} className="flex-1 flex-row">
             {index > 0 ? <View className="mr-4 w-0.5 self-stretch bg-separator" /> : null}
             <View className={`flex-1 ${index > 0 ? 'pl-4' : ''}`.trim()}>
-              <Text className="font-sans-medium text-[11px] uppercase tracking-wider text-on-surface-variant">
+              <Text className={STAT_LABEL_TEXT_CLASS}>
                 {item.label}
               </Text>
               <Text

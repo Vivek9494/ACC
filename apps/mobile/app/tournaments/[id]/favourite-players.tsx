@@ -1,7 +1,7 @@
 import type { VerifiedRegisteredPlayerRow } from '@acc/types';
 import { useFocusEffect, useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, ScrollView, View } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { RegisteredPlayerListCard } from '../../../src/components/tournament/RegisteredPlayerListCard';
@@ -16,7 +16,7 @@ import {
   setRegistrationFavourite,
 } from '../../../src/lib/api';
 
-/** Per-team shared favourites — Captain / Vice-Captain (same list as Registered Players hearts). */
+/** Per-team shared favourites — Captain / Vice-Captain / Manager (same list as Registered Players hearts). */
 export default function FavouritePlayersScreen(): React.ReactElement {
   const router = useRouter();
   const { id: tournamentId } = useLocalSearchParams<{ id: string }>();
@@ -77,8 +77,9 @@ export default function FavouritePlayersScreen(): React.ReactElement {
           `${a.lastName} ${a.firstName}`.localeCompare(`${b.lastName} ${b.firstName}`),
         );
       });
-      setError(
-        err instanceof ApiRequestError ? err.message : 'Could not remove favourite.',
+      Alert.alert(
+        'Could not remove favourite',
+        err instanceof ApiRequestError ? err.message : 'Please try again.',
       );
     } finally {
       setPendingFavouriteUserId(null);
@@ -96,7 +97,7 @@ export default function FavouritePlayersScreen(): React.ReactElement {
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right']}>
-      <ScreenHeader title="Favourite Players" onBack={() => router.back()} showProfileMenu={false} />
+      <ScreenHeader title="Favourite Players" onBack={() => router.back()} />
 
       {loading ? (
         <View className="flex-1 items-center justify-center">

@@ -1,3 +1,4 @@
+import { APP_SHORT_NAME } from '@acc/types';
 import type { Twilio } from 'twilio';
 
 import type { SmsProvider } from './sms-provider';
@@ -13,7 +14,7 @@ export class TwilioSmsProvider implements SmsProvider {
     await this.client.messages.create({
       to: e164Number,
       from: this.fromNumber,
-      body: `Your ACC verification code is ${code}. It expires in 5 minutes.`,
+      body: `Your ${APP_SHORT_NAME} verification code is ${code}. It expires in 5 minutes.`,
     });
   }
 }

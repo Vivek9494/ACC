@@ -1,9 +1,11 @@
 import {
+  DEFAULT_VIDEO_UPLOAD_MAX_MB,
   isPlayerSkillVideoMimeType,
-  PLAYER_SKILL_VIDEO_MAX_BYTES,
+  mbToBytes,
   playerSkillVideoSizeError,
   playerSkillVideoTypeError,
   type PlayerSkillVideoMimeType,
+  type UploadLimits,
 } from '@acc/types';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -57,7 +59,9 @@ export async function resolveVideoFileSize(
   return null;
 }
 
-export async function pickVideoFromLibrary(): Promise<PickVideoResult> {
+export async function pickVideoFromLibrary(
+  limits?: Pick<UploadLimits, 'videoUploadMaxMb'>,
+): Promise<PickVideoResult> {
   const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (!permission.granted) {
     return { ok: false, error: 'Photo library access is required to select a video.' };
@@ -79,12 +83,15 @@ export async function pickVideoFromLibrary(): Promise<PickVideoResult> {
     return { ok: false, error: playerSkillVideoTypeError() };
   }
 
+  const maxMb = limits?.videoUploadMaxMb ?? DEFAULT_VIDEO_UPLOAD_MAX_MB;
+  const maxBytes = mbToBytes(maxMb);
+
   const sizeBytes = await resolveVideoFileSize(asset.uri, asset.fileSize ?? null);
   if (sizeBytes == null) {
     return { ok: false, error: 'Could not read the selected video file size.' };
   }
-  if (sizeBytes > PLAYER_SKILL_VIDEO_MAX_BYTES) {
-    return { ok: false, error: playerSkillVideoSizeError() };
+  if (sizeBytes > maxBytes) {
+    return { ok: false, error: playerSkillVideoSizeError(maxMb) };
   }
 
   return {

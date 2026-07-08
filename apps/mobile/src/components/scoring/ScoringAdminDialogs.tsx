@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Modal, Pressable, View } from 'react-native';
 
 import { Button } from '../ui/Button';
+import { KeyboardAwareFormScrollView } from '../ui/KeyboardAwareFormScrollView';
 import { Text } from '../ui/Text';
 import { TextInput } from '../ui/TextInput';
 import { FIELD_ORANGE, INPUT_SHADOW_STYLE } from '../ui/fieldStyles';
@@ -78,6 +79,49 @@ export function ChangeTargetBlockedDialog({
   );
 }
 
+const SCORING_NOT_ALLOWED_AUTO_DISMISS_MS = 5000;
+
+export interface ScoringNotAllowedDialogProps {
+  visible: boolean;
+  message: string;
+  onClose: () => void;
+}
+
+/** Shown when a scoring write or picker is blocked because the match is no longer live. */
+export function ScoringNotAllowedDialog({
+  visible,
+  message,
+  onClose,
+}: ScoringNotAllowedDialogProps): React.ReactElement {
+  useEffect(() => {
+    if (!visible) {
+      return;
+    }
+    const timer = setTimeout(onClose, SCORING_NOT_ALLOWED_AUTO_DISMISS_MS);
+    return () => clearTimeout(timer);
+  }, [visible, onClose]);
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable className="flex-1 items-center justify-center bg-black/40 px-4" onPress={onClose}>
+        <Pressable
+          className="w-full max-w-sm overflow-hidden rounded-control bg-surface"
+          style={INPUT_SHADOW_STYLE}
+          onPress={(event) => event.stopPropagation()}
+        >
+          <View className="border-b border-outline-variant px-4 py-3">
+            <Text className="font-sans-bold text-lg text-on-surface">Scoring unavailable</Text>
+          </View>
+          <View className="gap-3 p-4">
+            <Text className="font-sans text-sm text-on-surface">{message}</Text>
+            <Button label="Cancel" variant="outline" onPress={onClose} className="h-11" />
+          </View>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
 export interface ChangeTargetDialogProps {
   visible: boolean;
   currentTarget: number | null;
@@ -116,7 +160,7 @@ export function ChangeTargetDialog({
               <Ionicons name="close" size={22} color={FIELD_ORANGE} />
             </Pressable>
           </View>
-          <View className="gap-3 p-4">
+          <KeyboardAwareFormScrollView compact contentContainerClassName="gap-3 p-4" keyboardVerticalOffset={64}>
             <TextInput
               label="Revised target (runs to win)"
               value={value}
@@ -135,7 +179,7 @@ export function ChangeTargetDialog({
                 className="h-11 flex-1"
               />
             </View>
-          </View>
+          </KeyboardAwareFormScrollView>
         </Pressable>
       </Pressable>
     </Modal>
@@ -192,7 +236,7 @@ export function ChangeOversDialog({
             </Pressable>
             <Text className="min-w-0 flex-1 font-sans-bold text-lg text-on-surface">Change Overs</Text>
           </View>
-          <View className="gap-3 p-4">
+          <KeyboardAwareFormScrollView compact contentContainerClassName="gap-3 p-4" keyboardVerticalOffset={64}>
             <TextInput
               label="Enter Overs"
               labelVariant="brand"
@@ -213,7 +257,7 @@ export function ChangeOversDialog({
               />
               <Button label="Cancel" variant="outline" onPress={onBack} className="h-11" />
             </View>
-          </View>
+          </KeyboardAwareFormScrollView>
         </Pressable>
       </Pressable>
     </Modal>

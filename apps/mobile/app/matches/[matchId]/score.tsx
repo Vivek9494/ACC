@@ -11,18 +11,21 @@ import {
   WICKETS_FOR_SUPER_OVER_ALL_OUT,
   type MatchDetail,
   type RecordDeliveryRequest,
+  type InningsScorecard,
   resolveOversAllotment,
   minimumOversAllotmentFromLegalBalls,
   type ScorecardResponse,
+  type ScorerRevokedReason,
   type SetInningsParticipantsRequest,
 } from '@acc/types';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
+import { ActivityIndicator, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BonusRunsDialog } from '../../../src/components/scoring/BonusRunsDialog';
 import { CatchDropFielderPicker } from '../../../src/components/scoring/CatchDropFielderPicker';
+import { DroppedCatchCardSection } from '../../../src/components/scoring/DroppedCatchCardSection';
 import { MoreOptionsModal, type MoreOptionsAction } from '../../../src/components/scoring/MoreOptionsModal';
 import { PenaltyRunsDialog } from '../../../src/components/scoring/PenaltyRunsDialog';
 import {
@@ -30,6 +33,7 @@ import {
   ChangeTargetBlockedDialog,
   ChangeTargetDialog,
   EndInningsConfirmDialog,
+  ScoringNotAllowedDialog,
 } from '../../../src/components/scoring/ScoringAdminDialogs';
 import { ByesDialog } from '../../../src/components/scoring/ByesDialog';
 import { LegByesDialog } from '../../../src/components/scoring/LegByesDialog';
@@ -38,6 +42,8 @@ import { WideBallDialog } from '../../../src/components/scoring/WideBallDialog';
 import { LiveScoringHeader } from '../../../src/components/scoring/LiveScoringHeader';
 import { LiveScoringKeypad } from '../../../src/components/scoring/LiveScoringKeypad';
 import { LiveScoringPlayerCards } from '../../../src/components/scoring/LiveScoringPlayerCards';
+import { LiveScoringScorecardTab } from '../../../src/components/scoring/LiveScoringScorecardTab';
+import { ScorerRevokedDialog } from '../../../src/components/scoring/ScorerRevokedDialog';
 import {
   WicketDismissalSheet,
   WicketFlowType,
@@ -47,17 +53,20 @@ import {
 import type { RunOutExtraOption } from '../../../src/components/scoring/RunOutDetailsDialog';
 import { Button } from '../../../src/components/ui/Button';
 import { ScreenHeader } from '../../../src/components/ui/ScreenHeader';
+import { SegmentedControl } from '../../../src/components/ui/SegmentedControl';
 import { Text } from '../../../src/components/ui/Text';
 import { FIELD_ORANGE } from '../../../src/components/ui/fieldStyles';
 import {
   ApiRequestError,
   endInnings,
+  enterScoringSession,
   getMatch,
   getScorecard,
   recordDelivery,
   setDlsTarget,
   setInningsParticipants,
   setOversAllotted,
+  startScoring,
   undoLastDelivery,
 } from '../../../src/lib/api';
 import { isInningsTransitionPending } from '../../../src/lib/match-completion';
@@ -66,6 +75,26 @@ import {
   setScoringPickResult,
   type ScoringPickResult,
 } from '../../../src/lib/scoring-pick-session';
+import {
+  beginExplicitPickerNavigation,
+  clearPickerNavigationGuard,
+  handlePickerDismissWithoutSelection,
+  isPickerAutoPromptSuppressed,
+} from '../../../src/lib/scoring-picker-navigation';
+import { useAuth } from '../../../src/lib/auth-context';
+import { homeRouteForUser } from '../../../src/lib/home-route';
+import { useMatchScorerRevokeListener } from '../../../src/lib/live-socket';
+
+type ScoringViewTab = 'live' | 'scorecard';
+
+const SCORING_VIEW_TAB_OPTIONS = [
+  { value: 'live' as const, label: 'Live' },
+  { value: 'scorecard' as const, label: 'Scorecard' },
+] as const;
+
+function incomingBatterAutoPromptKey(live: InningsScorecard): string {
+  return `${live.legalBalls}:${live.wickets}:${live.currentStrikerId ?? ''}:${live.currentNonStrikerId ?? ''}`;
+}
 
 function buildNoBallDelivery(
   selection: NoBallSelection,
@@ -120,6 +149,28 @@ function buildRunOutDelivery(
   }
 }
 
+function scoringWriteErrorMessage(err: ApiRequestError): string {
+  if (err.status === 403) {
+    return err.message || 'You are not authorized to score this match.';
+  }
+  return err.message;
+}
+
+const SCORING_NOT_ALLOWED_MESSAGE =
+  'The match is not live; scoring is not allowed in its current state';
+
+function isScoringNotAllowedError(err: ApiRequestError): boolean {
+  return err.error.code === 'MATCH_NOT_LIVE' || err.message === SCORING_NOT_ALLOWED_MESSAGE;
+}
+
+function isScoringNotAllowedMessage(message: string): boolean {
+  return message === SCORING_NOT_ALLOWED_MESSAGE;
+}
+
+function isMatchScoringAllowed(match: Pick<MatchDetail, 'state'> | null): boolean {
+  return match?.state === 'LIVE' || match?.state === 'RAIN_INTERRUPTED';
+}
+
 type NameResolver = (id: string | null | undefined) => string;
 
 interface BattingSlots {
@@ -169,11 +220,18 @@ function applyBattingSlotPick(pick: ScoringPickResult, prev: BattingSlots): Batt
 export default function LiveScoringScreen(): React.ReactElement {
   const { matchId } = useLocalSearchParams<{ matchId: string }>();
   const router = useRouter();
+  const { user } = useAuth();
 
   const [match, setMatch] = useState<MatchDetail | null>(null);
   const [card, setCard] = useState<ScorecardResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
+  const [scorerRevokedOpen, setScorerRevokedOpen] = useState(false);
+  const [scorerRevokedReason, setScorerRevokedReason] = useState<ScorerRevokedReason | undefined>(
+    undefined,
+  );
+  const [scoringViewTab, setScoringViewTab] = useState<ScoringViewTab>('live');
+  const [sessionBlocked, setSessionBlocked] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const [strikerId, setStrikerId] = useState<string | null>(null);
@@ -194,16 +252,50 @@ export default function LiveScoringScreen(): React.ReactElement {
   const [moreAction, setMoreAction] = useState<MoreOptionsAction | null>(null);
   const [showChangeTargetBlocked, setShowChangeTargetBlocked] = useState(false);
   const [showEndInningsConfirm, setShowEndInningsConfirm] = useState(false);
+  const [scoringBlockedOpen, setScoringBlockedOpen] = useState(false);
+  const [scoringBlockedMessage, setScoringBlockedMessage] = useState(SCORING_NOT_ALLOWED_MESSAGE);
   const endInningsPromptDismissedRef = useRef(false);
-  const pendingIncomingRef = useRef(false);
+  const pendingBatsmanPickerRef = useRef(false);
   const pendingBowlerRef = useRef(false);
+  /** Suppress auto incoming-batsman prompt after user backs out of the picker. */
+  const batsmanAutoPromptSuppressedKeyRef = useRef<string | null>(null);
+  /** Suppress auto bowler prompt after user backs out of picker at this legalBalls count. */
+  const bowlerAutoPromptSuppressedForBallsRef = useRef<number | null>(null);
   const skipNextFocusLoadRef = useRef(true);
   const cardRef = useRef<ScorecardResponse | null>(null);
   cardRef.current = card;
 
+  const dismissScoringBlocked = useCallback(() => {
+    setScoringBlockedOpen(false);
+  }, []);
+
+  const showScoringBlocked = useCallback((message: string = SCORING_NOT_ALLOWED_MESSAGE) => {
+    setScoringBlockedMessage(message);
+    setScoringBlockedOpen(true);
+    setError(null);
+  }, []);
+
+  const reportWriteError = useCallback(
+    (err: unknown, fallback: string): void => {
+      if (err instanceof ApiRequestError && isScoringNotAllowedError(err)) {
+        showScoringBlocked(err.message || SCORING_NOT_ALLOWED_MESSAGE);
+        return;
+      }
+      if (err instanceof ApiRequestError) {
+        setError(scoringWriteErrorMessage(err));
+        return;
+      }
+      setError(fallback);
+    },
+    [showScoringBlocked],
+  );
+
   const load = useCallback(async () => {
     if (!matchId) return;
+    setLoading(true);
+    setSessionBlocked(null);
     try {
+      await enterScoringSession(matchId);
       const [m, c] = await Promise.all([getMatch(matchId).catch(() => null), getScorecard(matchId)]);
       setMatch(m);
       setCard(c);
@@ -224,7 +316,13 @@ export default function LiveScoringScreen(): React.ReactElement {
       }
       setError(null);
     } catch (err) {
-      setError(err instanceof ApiRequestError ? err.message : 'Could not load match.');
+      if (err instanceof ApiRequestError && err.status === 403) {
+        setSessionBlocked(err.message);
+        setMatch(null);
+        setCard(null);
+      } else {
+        setError(err instanceof ApiRequestError ? err.message : 'Could not load match.');
+      }
     } finally {
       setLoading(false);
     }
@@ -234,7 +332,49 @@ export default function LiveScoringScreen(): React.ReactElement {
     void load();
   }, [load]);
 
+  const handleScorerRevoked = useCallback((reason?: ScorerRevokedReason) => {
+    setScorerRevokedReason(reason);
+    setScorerRevokedOpen(true);
+  }, []);
+
+  const dismissScorerRevoked = useCallback(() => {
+    setScorerRevokedOpen(false);
+    setScorerRevokedReason(undefined);
+    router.replace(homeRouteForUser(user));
+  }, [router, user]);
+
+  useMatchScorerRevokeListener(matchId, user?.id, handleScorerRevoked);
+
   const inn = card?.innings.at(-1) ?? null;
+
+  const canCompleteScoringSetup =
+    !inn &&
+    match?.state === 'LIVE' &&
+    match.tossWinner != null &&
+    match.tossDecision != null;
+
+  async function completeScoringSetup(): Promise<void> {
+    if (!matchId || !match?.tossWinner || !match.tossDecision) {
+      return;
+    }
+    setWorking(true);
+    setError(null);
+    try {
+      await startScoring(matchId, {
+        tossWinner: match.tossWinner,
+        decision: match.tossDecision,
+      });
+      await load();
+    } catch (err) {
+      setError(
+        err instanceof ApiRequestError
+          ? err.message
+          : 'Could not open the first innings.',
+      );
+    } finally {
+      setWorking(false);
+    }
+  }
 
   /** One crease vacant after a wicket — scorer must name the incoming batter. */
   function needIncomingBatter(live: NonNullable<typeof inn>): boolean {
@@ -258,7 +398,16 @@ export default function LiveScoringScreen(): React.ReactElement {
     role: 'striker' | 'nonStriker' | 'incoming',
     liveInnings: NonNullable<typeof inn> | null = inn,
   ): void {
-    if (!matchId || !liveInnings?.inningsId) return;
+    if (!matchId || !liveInnings?.inningsId || pendingBatsmanPickerRef.current) return;
+    if (!isMatchScoringAllowed(match)) {
+      showScoringBlocked();
+      return;
+    }
+    beginExplicitPickerNavigation(
+      pendingBatsmanPickerRef,
+      batsmanAutoPromptSuppressedKeyRef,
+      skipNextFocusLoadRef,
+    );
     const pickerRole =
       role === 'striker'
         ? BatsmanPickerRole.Striker
@@ -292,8 +441,10 @@ export default function LiveScoringScreen(): React.ReactElement {
   }
 
   function promptIncomingIfNeeded(live: NonNullable<typeof inn>): void {
-    if (!needIncomingBatter(live) || pendingIncomingRef.current) return;
-    pendingIncomingRef.current = true;
+    if (!needIncomingBatter(live) || pendingBatsmanPickerRef.current) return;
+    if (isPickerAutoPromptSuppressed(batsmanAutoPromptSuppressedKeyRef, incomingBatterAutoPromptKey(live))) {
+      return;
+    }
     openBatsmanPicker('incoming', live);
   }
 
@@ -316,9 +467,23 @@ export default function LiveScoringScreen(): React.ReactElement {
     return !bowlerIdForOver;
   }
 
+  function promptBowlerIfNeeded(live: NonNullable<typeof inn>): void {
+    if (!needsBowlerSelection(live, live.currentBowlerId)) return;
+    if (isPickerAutoPromptSuppressed(bowlerAutoPromptSuppressedForBallsRef, live.legalBalls)) return;
+    openBowlerPicker(live);
+  }
+
   function openBowlerPicker(liveInnings: NonNullable<typeof inn> | null = inn): void {
     if (!matchId || !liveInnings?.inningsId || pendingBowlerRef.current) return;
-    pendingBowlerRef.current = true;
+    if (!isMatchScoringAllowed(match)) {
+      showScoringBlocked();
+      return;
+    }
+    beginExplicitPickerNavigation(
+      pendingBowlerRef,
+      bowlerAutoPromptSuppressedForBallsRef,
+      skipNextFocusLoadRef,
+    );
     router.push({
       pathname: '/matches/[matchId]/select-bowler',
       params: {
@@ -327,11 +492,6 @@ export default function LiveScoringScreen(): React.ReactElement {
         ...(bowlerId ? { selectedBowlerId: bowlerId } : {}),
       },
     });
-  }
-
-  function promptBowlerIfNeeded(live: NonNullable<typeof inn>): void {
-    if (!needsBowlerSelection(live, live.currentBowlerId)) return;
-    openBowlerPicker(live);
   }
 
   function syncFromCard(updated: ScorecardResponse, opts: { promptBowlers?: boolean } = {}): void {
@@ -343,9 +503,11 @@ export default function LiveScoringScreen(): React.ReactElement {
     setNonStrikerId(live.currentNonStrikerId);
     setBattingSlots((prev) => syncBattingSlots(live, match, prev));
     setBowlerId(live.currentBowlerId);
-    pendingIncomingRef.current = false;
+    if (!needIncomingBatter(live)) {
+      clearPickerNavigationGuard(pendingBatsmanPickerRef, batsmanAutoPromptSuppressedKeyRef);
+    }
     if (live.currentBowlerId) {
-      pendingBowlerRef.current = false;
+      clearPickerNavigationGuard(pendingBowlerRef, bowlerAutoPromptSuppressedForBallsRef);
     }
     if (promptBowlers && !needIncomingBatter(live)) {
       promptBowlerIfNeeded(live);
@@ -388,9 +550,10 @@ export default function LiveScoringScreen(): React.ReactElement {
 
         if (pick.kind === 'bowler') {
           setBowlerId(pick.userId);
-          pendingBowlerRef.current = false;
+          clearPickerNavigationGuard(pendingBowlerRef, bowlerAutoPromptSuppressedForBallsRef);
         } else {
           setBattingSlots((prev) => applyBattingSlotPick(pick, prev));
+          clearPickerNavigationGuard(pendingBatsmanPickerRef, batsmanAutoPromptSuppressedKeyRef);
         }
 
         void (async () => {
@@ -407,7 +570,11 @@ export default function LiveScoringScreen(): React.ReactElement {
             );
           } catch (err) {
             if (err instanceof ApiRequestError) {
-              setError(err.message);
+              if (isScoringNotAllowedError(err)) {
+                showScoringBlocked(err.message || SCORING_NOT_ALLOWED_MESSAGE);
+              } else {
+                setError(scoringWriteErrorMessage(err));
+              }
               if (err.status === 409) {
                 syncFromCard(await getScorecard(matchId), { promptBowlers: false });
               } else if (pick.kind === 'bowler') {
@@ -430,7 +597,25 @@ export default function LiveScoringScreen(): React.ReactElement {
       }
 
       if (pendingBowlerRef.current) {
-        pendingBowlerRef.current = false;
+        const liveOnReturn = cardRef.current?.innings.at(-1);
+        handlePickerDismissWithoutSelection(
+          pendingBowlerRef,
+          bowlerAutoPromptSuppressedForBallsRef,
+          liveOnReturn && needsBowlerSelection(liveOnReturn, liveOnReturn.currentBowlerId)
+            ? liveOnReturn.legalBalls
+            : null,
+        );
+      }
+
+      if (pendingBatsmanPickerRef.current) {
+        const liveOnReturn = cardRef.current?.innings.at(-1);
+        handlePickerDismissWithoutSelection(
+          pendingBatsmanPickerRef,
+          batsmanAutoPromptSuppressedKeyRef,
+          liveOnReturn && needIncomingBatter(liveOnReturn)
+            ? incomingBatterAutoPromptKey(liveOnReturn)
+            : null,
+        );
       }
 
       if (matchId && !loading) {
@@ -440,11 +625,16 @@ export default function LiveScoringScreen(): React.ReactElement {
         }
         void load();
       }
-    }, [load, loading, matchId]),
+    }, [load, loading, matchId, showScoringBlocked]),
   );
 
   const nameOf = useMemo((): NameResolver => {
     const players = new Map<string, string>();
+    if (card?.display.players) {
+      for (const [id, label] of Object.entries(card.display.players)) {
+        players.set(id, label);
+      }
+    }
     if (match) {
       for (const squad of match.squads) {
         for (const p of squad.players) players.set(p.userId, `${p.firstName} ${p.lastName}`);
@@ -454,7 +644,7 @@ export default function LiveScoringScreen(): React.ReactElement {
       }
     }
     return (id) => (id ? (players.get(id) ?? 'Player') : '—');
-  }, [match]);
+  }, [card?.display.players, match]);
 
   const battingTeamId = inn?.battingTeamId ?? match?.battingFirstTeamId ?? null;
   const bowlingTeamId = inn?.bowlingTeamId ?? match?.bowlingFirstTeamId ?? null;
@@ -506,7 +696,7 @@ export default function LiveScoringScreen(): React.ReactElement {
   useEffect(() => {
     if (loading || !inn?.inningsId || inn.closed) return;
     if (battersReady) return;
-    if (!needIncomingBatter(inn) || pendingIncomingRef.current) return;
+    if (!needIncomingBatter(inn) || pendingBatsmanPickerRef.current) return;
     promptIncomingIfNeeded(inn);
   }, [
     loading,
@@ -526,7 +716,7 @@ export default function LiveScoringScreen(): React.ReactElement {
       syncFromCard(await action());
     } catch (err) {
       if (err instanceof ApiRequestError) {
-        setError(err.message);
+        reportWriteError(err, 'Could not save change.');
         if (err.status === 409) {
           syncFromCard(await getScorecard(matchId));
         }
@@ -612,15 +802,11 @@ export default function LiveScoringScreen(): React.ReactElement {
         setBattingSlots({ batsman1Id: null, batsman2Id: null });
       }
     } catch (err) {
-      if (err instanceof ApiRequestError) {
-        setError(err.message);
-        if (err.status === 409) {
-          const refreshed = await getScorecard(matchId);
-          syncFromCard(refreshed);
-          setMatch(await getMatch(matchId));
-        }
-      } else {
-        setError('Could not end the innings.');
+      reportWriteError(err, 'Could not end the innings.');
+      if (err instanceof ApiRequestError && err.status === 409) {
+        const refreshed = await getScorecard(matchId);
+        syncFromCard(refreshed);
+        setMatch(await getMatch(matchId));
       }
     } finally {
       setWorking(false);
@@ -632,11 +818,11 @@ export default function LiveScoringScreen(): React.ReactElement {
     endInningsPromptDismissedRef.current = true;
     closeMoreFlows();
   }
-  const matchDecided = Boolean(card?.result.decided && match?.state === 'COMPLETED');
-  const matchLabel =
+  const teamsLabel =
     match?.homeTeamName && (match?.awayTeamName || match?.externalOpponentName)
       ? `${match.homeTeamName} vs ${match.awayTeamName ?? match.externalOpponentName}`
       : (match?.homeTeamName ?? 'Match');
+  const tournamentName = match?.tournamentName ?? null;
   const matchTypeLabel = match?.matchType ? MATCH_TYPE_LABELS[match.matchType] : '';
 
   async function applyMutation(
@@ -649,13 +835,9 @@ export default function LiveScoringScreen(): React.ReactElement {
     try {
       syncFromCard(await action(), opts);
     } catch (err) {
-      if (err instanceof ApiRequestError) {
-        setError(err.message);
-        if (err.status === 409) {
-          syncFromCard(await getScorecard(matchId), opts);
-        }
-      } else {
-        setError('Could not update the scorecard.');
+      reportWriteError(err, 'Could not update the scorecard.');
+      if (err instanceof ApiRequestError && err.status === 409) {
+        syncFromCard(await getScorecard(matchId), opts);
       }
     } finally {
       setWorking(false);
@@ -793,9 +975,23 @@ export default function LiveScoringScreen(): React.ReactElement {
   if (loading) {
     return (
       <SafeAreaView className="flex-1 bg-background" edges={['top', 'bottom']}>
-        <ScreenHeader compact />
+        <ScreenHeader compact showProfileMenu={false} />
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator color={FIELD_ORANGE} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (sessionBlocked) {
+    return (
+      <SafeAreaView className="flex-1 bg-background" edges={['top', 'bottom']}>
+        <ScreenHeader compact showProfileMenu={false} />
+        <View className="flex-1 justify-center gap-4 px-4">
+          <View className="rounded-control border border-outline-variant bg-surface-container-lowest p-4">
+            <Text className="font-sans text-sm text-on-surface">{sessionBlocked}</Text>
+          </View>
+          <Button className="h-12" label="Go Back" onPress={() => router.back()} />
         </View>
       </SafeAreaView>
     );
@@ -806,22 +1002,45 @@ export default function LiveScoringScreen(): React.ReactElement {
   const bowlerCard = inn?.bowlers.find((b) => b.playerId === bowlerId);
   const keypadDisabled = working || !openersReady || Boolean(inn?.closed);
 
+  const scoringViewToggle =
+    inn != null ? (
+      <SegmentedControl
+        size="sm"
+        options={SCORING_VIEW_TAB_OPTIONS}
+        value={scoringViewTab}
+        onChange={setScoringViewTab}
+        accessibilityLabel="Live scoring view"
+      />
+    ) : undefined;
+
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'bottom']}>
-      <ScreenHeader compact />
+      <ScreenHeader compact showProfileMenu={false} trailing={scoringViewToggle} />
       <View className="min-h-0 flex-1">
         {!inn ? (
-          <View className="flex-1 justify-center px-4">
+          <View className="flex-1 justify-center gap-4 px-4">
             {error ? (
-              <View className="mb-3 rounded-control bg-primary-50 px-3 py-2">
+              <View className="rounded-control bg-primary-50 px-3 py-2">
                 <Text className="font-sans text-xs text-primary">{error}</Text>
               </View>
             ) : null}
             <View className="rounded-control border border-outline-variant bg-surface p-4">
               <Text className="font-sans text-sm text-on-surface">
-                Start the match from your dashboard (Start Match → toss) before scoring.
+                {canCompleteScoringSetup
+                  ? 'The match is live but the first innings has not been opened yet. Complete setup to begin scoring.'
+                  : 'Complete match setup (toss and first innings) from your dashboard before scoring.'}
               </Text>
             </View>
+            {canCompleteScoringSetup ? (
+              <Button
+                className="h-12"
+                disabled={working}
+                label={working ? 'Opening innings…' : 'Complete match setup'}
+                onPress={() => void completeScoringSetup()}
+              />
+            ) : (
+              <Button className="h-12" label="Go Back" onPress={() => router.back()} />
+            )}
           </View>
         ) : (
           <>
@@ -831,7 +1050,7 @@ export default function LiveScoringScreen(): React.ReactElement {
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
             >
-              {error ? (
+              {error && !isScoringNotAllowedMessage(error) ? (
                 <View className="rounded-control bg-primary-50 px-3 py-2">
                   <Text className="font-sans text-xs text-primary">{error}</Text>
                 </View>
@@ -839,8 +1058,11 @@ export default function LiveScoringScreen(): React.ReactElement {
 
               <LiveScoringHeader
                 compact
-                matchLabel={matchLabel}
+                tournamentName={tournamentName}
+                teamsLabel={teamsLabel}
                 matchTypeLabel={matchTypeLabel}
+                resultLine={completedResultLine}
+                matchState={match?.state ?? 'LIVE'}
                 innings={inn}
                 totalOvers={
                   resolveOversAllotment(
@@ -852,6 +1074,8 @@ export default function LiveScoringScreen(): React.ReactElement {
                 showRunStats={openersReady}
               />
 
+              {scoringViewTab === 'live' ? (
+                <>
               <LiveScoringPlayerCards
                 compact
                 batsman1Id={battingSlots.batsman1Id}
@@ -861,6 +1085,7 @@ export default function LiveScoringScreen(): React.ReactElement {
                 batsman1Card={batsman1Card}
                 batsman2Card={batsman2Card}
                 bowlerCard={bowlerCard}
+                inningsBowlers={inn.bowlers}
                 needsIncomingBatter={needsIncomingBatter}
                 needsBowlerPick={needsBowlerForNewOver}
                 extras={inn.extras}
@@ -871,13 +1096,13 @@ export default function LiveScoringScreen(): React.ReactElement {
                 onPickBowler={() => openBowlerPicker()}
               />
 
-              {matchDecided ? (
-                <View className="rounded-control border border-primary bg-primary-container px-3 py-1.5">
-                  <Text className="font-sans-semibold text-[11px] text-on-primary-container">
-                    {completedResultLine ?? 'Match complete'}
-                  </Text>
-                </View>
-              ) : null}
+              <DroppedCatchCardSection
+                card={card}
+                match={match}
+                user={user}
+                nameOf={nameOf}
+                innings={inn}
+              />
 
               {inn && inn.inningsType === InningsType.SuperOver && !openersReady && !inn.closed ? (
                 <View className="rounded-control border border-primary bg-primary-container px-3 py-1.5">
@@ -934,8 +1159,19 @@ export default function LiveScoringScreen(): React.ReactElement {
                   </Text>
                 </View>
               ) : null}
+                </>
+              ) : card ? (
+                <LiveScoringScorecardTab card={card} match={match} />
+              ) : (
+                <View className="rounded-control border border-outline-variant bg-surface-container-low px-4 py-8">
+                  <Text className="text-center font-sans text-sm text-on-surface-variant">
+                    Scorecard unavailable
+                  </Text>
+                </View>
+              )}
             </ScrollView>
 
+            {scoringViewTab === 'live' ? (
             <View className="flex-shrink-0 px-4 pb-1 pt-1">
               <LiveScoringKeypad
                 compact
@@ -963,6 +1199,7 @@ export default function LiveScoringScreen(): React.ReactElement {
                 onCatchDrop={() => setShowCatchDrop(true)}
               />
             </View>
+            ) : null}
           </>
         )}
       </View>
@@ -1055,6 +1292,12 @@ export default function LiveScoringScreen(): React.ReactElement {
         onClose={() => setShowChangeTargetBlocked(false)}
       />
 
+      <ScoringNotAllowedDialog
+        visible={scoringBlockedOpen}
+        message={scoringBlockedMessage}
+        onClose={dismissScoringBlocked}
+      />
+
       <EndInningsConfirmDialog
         visible={showEndInningsConfirm}
         onCancel={cancelEndInningsConfirm}
@@ -1115,6 +1358,12 @@ export default function LiveScoringScreen(): React.ReactElement {
             }),
           );
         }}
+      />
+
+      <ScorerRevokedDialog
+        visible={scorerRevokedOpen}
+        reason={scorerRevokedReason}
+        onDismiss={dismissScorerRevoked}
       />
     </SafeAreaView>
   );

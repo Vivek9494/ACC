@@ -96,6 +96,8 @@ export class ScorecardReader {
           inningsType: inn.inningsType as InningsType,
           battingTeamId: inn.battingTeamId,
           bowlingTeamId: inn.bowlingTeamId,
+          battingIsExternal: inn.battingIsExternal,
+          bowlingIsExternal: inn.bowlingIsExternal,
           oversAllotted: inn.oversAllotted,
           target,
           ...selectedParticipantContext(inn),

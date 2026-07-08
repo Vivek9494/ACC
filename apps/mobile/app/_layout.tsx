@@ -1,6 +1,5 @@
 import '../global.css';
 
-import { UserRole, type AuthUser } from '@acc/types';
 import {
   Montserrat_400Regular,
   Montserrat_500Medium,
@@ -18,8 +17,8 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { buildNavTheme, colors } from '@/theme/colors';
 
 import { AuthProvider, useAuth } from '../src/lib/auth-context';
-import { hasCenterSevakAccess } from '../src/lib/center-sevak-access';
-import { hasTeamLeadAccess } from '../src/lib/team-lead-access';
+import { GlobalAttendanceMonitor } from '../src/components/attendance/GlobalAttendanceMonitor';
+import { homeRouteForUser } from '../src/lib/home-route';
 // Geofence attendance: registers the background task at startup (see match-geofence-task.ts).
 import '../src/geofence/match-geofence-task';
 
@@ -54,25 +53,6 @@ function isGuestAccessibleRoute(segments: readonly string[]): boolean {
   return false;
 }
 
-/** Post-login home route by role. */
-function homeRouteForRole(
-  user: AuthUser | null | undefined,
-): '/admin' | '/club-manager' | '/captain' | '/center-sevak' | '/home' {
-  if (user?.role === UserRole.Admin) {
-    return '/admin';
-  }
-  if (user?.role === UserRole.ClubManager) {
-    return '/club-manager';
-  }
-  if (hasTeamLeadAccess(user)) {
-    return '/captain';
-  }
-  if (hasCenterSevakAccess(user)) {
-    return '/center-sevak';
-  }
-  return '/home';
-}
-
 /** Redirects between the auth screens and the app based on session state. */
 function RootNavigator(): React.ReactElement {
   const { status, user } = useAuth();
@@ -85,21 +65,30 @@ function RootNavigator(): React.ReactElement {
     }
     const onAuthRoute = AUTH_ROUTES.has(segments[0]);
     const guestRoute = isGuestAccessibleRoute(segments);
+    const onForcedPasswordRoute = segments[0] === 'forced-password-change';
+
+    if (status === 'authenticated' && user?.mustChangePassword && !onForcedPasswordRoute) {
+      router.replace('/forced-password-change');
+      return;
+    }
     if (status === 'authenticated' && onAuthRoute) {
-      router.replace(homeRouteForRole(user));
+      router.replace(homeRouteForUser(user));
     } else if (status === 'unauthenticated' && !onAuthRoute && !guestRoute) {
       router.replace('/login');
     }
   }, [status, user, segments, router]);
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
+    <>
+      <GlobalAttendanceMonitor />
+      <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="index" />
       <Stack.Screen name="login" />
       <Stack.Screen name="signup" />
       <Stack.Screen name="forgot-password" />
       <Stack.Screen name="enter-otp" />
       <Stack.Screen name="reset-password" />
+      <Stack.Screen name="forced-password-change" />
       <Stack.Screen name="change-password" />
       <Stack.Screen name="edit-profile" />
       <Stack.Screen name="guest" options={{ headerShown: false }} />
@@ -117,6 +106,8 @@ function RootNavigator(): React.ReactElement {
       <Stack.Screen name="tournaments/[id]/create-group" />
       <Stack.Screen name="tournaments/[id]/match-setup" />
       <Stack.Screen name="tournaments/[id]/teams/[teamId]" />
+      <Stack.Screen name="tournaments/[id]/teams/[teamId]/add-players" />
+      <Stack.Screen name="tournaments/[id]/teams/[teamId]/edit" />
       <Stack.Screen name="tournaments/[id]/players/[userId]" />
       <Stack.Screen name="registrations/[tournamentId]/index" />
       <Stack.Screen name="registrations/[tournamentId]/register" />
@@ -127,10 +118,12 @@ function RootNavigator(): React.ReactElement {
       <Stack.Screen name="matches/new" />
       <Stack.Screen name="matches/[matchId]/index" />
       <Stack.Screen name="matches/[matchId]/playing-xi" />
+      <Stack.Screen name="matches/[matchId]/confirm-playing-xi" />
       <Stack.Screen name="matches/[matchId]/toss" />
       <Stack.Screen name="matches/[matchId]/score" />
       <Stack.Screen name="matches/[matchId]/live" />
       <Stack.Screen name="matches/[matchId]/scorecard" />
+      <Stack.Screen name="matches/[matchId]/man-of-the-match" />
       <Stack.Screen name="matches/[matchId]/punch-time" />
       <Stack.Screen name="participation-polls/[pollId]/results" />
       <Stack.Screen name="participation-polls/[pollId]/playing-xi" />
@@ -140,7 +133,9 @@ function RootNavigator(): React.ReactElement {
       <Stack.Screen name="club-manager" options={{ headerShown: false }} />
       <Stack.Screen name="captain" options={{ headerShown: false }} />
       <Stack.Screen name="center-sevak" options={{ headerShown: false }} />
+      <Stack.Screen name="stats/man-of-the-match" />
     </Stack>
+    </>
   );
 }
 

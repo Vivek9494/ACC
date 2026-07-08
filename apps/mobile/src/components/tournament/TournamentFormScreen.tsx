@@ -4,13 +4,23 @@ import {
   BallType,
   CitySelection,
   DEFAULT_TOURNAMENT_FORMAT,
+  KNOCKOUT_TEAM_COUNT_MESSAGES,
   TOURNAMENT_FIELD_LIMITS,
+  TournamentType,
+  buildKnockoutTeamCountOptions,
+  canConfigureKnockoutTeamCount,
+  isMediaStorageKey,
+  parseOptionalTournamentFee,
+  resolveTournamentFormDates,
+  resolvesToAplOnCreate,
+  sanitizeTournamentFeeInput,
+  startOfTodayForDatePicker,
   type CreateTournamentRequest,
   deferredMaxOversPerBowler,
   type TournamentDetail,
   type UpdateTournamentRequest,
 } from '@acc/types';
-import { useRouter, type Href } from 'expo-router';
+import { useFocusEffect, useRouter, type Href } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -22,13 +32,13 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BallTypeIcon } from '../ui/BallTypeIcon';
-import { BottomTabBar } from '../ui/BottomTabBar';
 import { Button } from '../ui/Button';
+import { KeyboardAwareFormScrollView } from '../ui/KeyboardAwareFormScrollView';
 import { Checkbox } from '../ui/Checkbox';
 import { DateField } from '../ui/DateField';
 import { FIELD_ORANGE, labelClassName } from '../ui/fieldStyles';
 import { MultiSelect } from '../ui/MultiSelect';
-import { ProfileMenu } from '../ui/ProfileMenu';
+import { ScreenHeader } from '../ui/ScreenHeader';
 import { RadioGroup } from '../ui/RadioGroup';
 import { Select, type SelectOption } from '../ui/Select';
 import { SuccessDialog } from '../ui/SuccessDialog';
@@ -36,6 +46,7 @@ import { Text } from '../ui/Text';
 import { TextInput } from '../ui/TextInput';
 import { TimeField } from '../ui/TimeField';
 import { TournamentDatesField } from '../ui/TournamentDatesField';
+import { TournamentLeatherDateRangeField } from '../ui/TournamentLeatherDateRangeField';
 import { TournamentLocationField } from '../ui/TournamentLocationField';
 import { TournamentPosterField } from '../ui/TournamentPosterField';
 import {
@@ -44,12 +55,13 @@ import {
   getProfile,
   getTournamentEditForm,
   updateTournament,
-  uploadTournamentPoster,
 } from '../../lib/api';
-import type { PickedImageFile } from '../../lib/imagePicker';
+import { uploadTournamentPoster } from '../../lib/imageUpload';
+import { isLocalImageUri, type PickedImageFile } from '../../lib/imagePicker';
 import { useAuth } from '../../lib/auth-context';
+import { tournamentDetailHref } from '../../lib/tournament-detail-route';
+import { resolveVenueDisplayTimezone } from '../../lib/venue-time';
 import { canCreateTournament } from '../../lib/can-create-tournament';
-import { useRoleTabConfig } from '../../lib/role-tab-config';
 import { useSignupGeography } from '../../lib/signup-geography';
 import {
   combineLocalDateAndTimeToIso,
@@ -98,7 +110,6 @@ export function TournamentFormScreen({
   const isEditMode = mode === 'edit';
   const router = useRouter();
   const { user, status } = useAuth();
-  const tabConfig = useRoleTabConfig('index');
 
   const [profileLoading, setProfileLoading] = useState(!isEditMode);
   const [editLoading, setEditLoading] = useState(isEditMode);
@@ -109,7 +120,6 @@ export function TournamentFormScreen({
   const [minTeamCount, setMinTeamCount] = useState(0);
   const [datesWithMatches, setDatesWithMatches] = useState<string[]>([]);
   const [scopeLabel, setScopeLabel] = useState('');
-  const [provinceLabel, setProvinceLabel] = useState<string | null>(null);
   const [centerLabels, setCenterLabels] = useState<string[]>([]);
 
   const [poster, setPoster] = useState<TournamentPosterSelection | null>(null);
@@ -118,12 +128,19 @@ export function TournamentFormScreen({
   const [name, setName] = useState('');
   const [year, setYear] = useState<string | null>(String(CURRENT_YEAR));
   const [tournamentDates, setTournamentDates] = useState<string[]>([]);
+  const [leatherFromDate, setLeatherFromDate] = useState('');
+  const [leatherEndDate, setLeatherEndDate] = useState('');
+  const [tournamentTimezone, setTournamentTimezone] = useState<string | null>(null);
   const [locationAddress, setLocationAddress] = useState('');
   const [latitude, setLatitude] = useState<number | null>(null);
   const [longitude, setLongitude] = useState<number | null>(null);
   const [ballType, setBallType] = useState<BallType | null>(null);
   const [citySelection, setCitySelection] = useState<CitySelection | null>(null);
   const [numberOfTeams, setNumberOfTeams] = useState<string | null>(null);
+  const [knockoutTeamCount, setKnockoutTeamCount] = useState<string | null>(null);
+  const [editTournamentType, setEditTournamentType] = useState<TournamentType | null>(null);
+  const [editGroupCount, setEditGroupCount] = useState(0);
+  const [hasKnockoutBracket, setHasKnockoutBracket] = useState(false);
   const [playersPerTeam, setPlayersPerTeam] = useState('');
 
   const [hasRegistrationWindow, setHasRegistrationWindow] = useState(false);
@@ -139,6 +156,9 @@ export function TournamentFormScreen({
   const [videoRequired, setVideoRequired] = useState(false);
   const [videoUploadEndDate, setVideoUploadEndDate] = useState('');
 
+  const [feeFullTime, setFeeFullTime] = useState('');
+  const [feePartTime, setFeePartTime] = useState('');
+
   const [fieldErrors, setFieldErrors] = useState<TournamentFormFieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -146,6 +166,10 @@ export function TournamentFormScreen({
   const [savedTournamentId, setSavedTournamentId] = useState<string | null>(null);
   const savedTournamentIdRef = useRef<string | null>(null);
   const successNavigatedRef = useRef(false);
+  /** Prevents edit load from overwriting in-progress form edits when load re-runs. */
+  const editFormHydratedForTournamentIdRef = useRef<string | null>(null);
+  const initialLeatherFromDateRef = useRef('');
+  const initialLeatherEndDateRef = useRef('');
 
   const scrollRef = useRef<ScrollView>(null);
   const fieldOffsets = useRef<Partial<Record<TournamentFormFieldKey, number>>>({});
@@ -206,7 +230,44 @@ export function TournamentFormScreen({
   );
 
   const isTennisBall = ballType === BallType.Tennis;
+  const isLeatherBall = ballType === BallType.Leather;
+  const venueTimezone = resolveVenueDisplayTimezone(tournamentTimezone).timezone;
+  const leatherDateMinimum = useMemo(
+    () => startOfTodayForDatePicker(venueTimezone),
+    [venueTimezone],
+  );
+
+  function datesForSubmit(): string[] {
+    return resolveTournamentFormDates({
+      ballType,
+      tournamentDates,
+      leatherFromDate,
+      leatherEndDate,
+    });
+  }
   const isMultiCenters = isTennisBall && citySelection === CitySelection.Multi;
+  const showKnockoutTeamCountField = isEditMode
+    ? editTournamentType === TournamentType.APL
+    : resolvesToAplOnCreate(ballType, citySelection);
+  const configuredTotalTeams = numberOfTeams ? Number(numberOfTeams) : 0;
+  const knockoutPrerequisitesMet = canConfigureKnockoutTeamCount(
+    isEditMode ? editGroupCount : 0,
+    configuredTotalTeams,
+  );
+  const knockoutTeamCountOptions = useMemo(
+    () =>
+      buildKnockoutTeamCountOptions(
+        isEditMode ? editGroupCount : 0,
+        configuredTotalTeams,
+      ),
+    [configuredTotalTeams, editGroupCount, isEditMode],
+  );
+  const knockoutFieldLocked = isEditMode && hasKnockoutBracket;
+  const knockoutFieldDisabled =
+    !isEditMode || !knockoutPrerequisitesMet || knockoutFieldLocked;
+  const knockoutDisabledHint = !isEditMode || !knockoutPrerequisitesMet
+    ? KNOCKOUT_TEAM_COUNT_MESSAGES.prerequisites
+    : null;
 
   const { provinces, centers, provinceField, centerField } =
     useSignupGeography(isMultiCenters ? tournamentProvinceId : null);
@@ -239,6 +300,7 @@ export function TournamentFormScreen({
     try {
       const profile = await getProfile();
       setDefaultProvinceId(profile.provinceId);
+      setTournamentProvinceId((current) => current ?? profile.provinceId);
     } catch {
       setFormError('Could not load your profile. Pull to retry from dashboard.');
     } finally {
@@ -253,43 +315,60 @@ export function TournamentFormScreen({
     setSelectedCenterIds((prev) => prev.filter((id) => centers.some((center) => center.id === id)));
   }, [centers, isMultiCenters]);
 
-  const loadEditForm = useCallback(async () => {
+  const loadEditForm = useCallback(async (options?: { silent?: boolean }) => {
     if (!tournamentId) {
       setAccessDenied(true);
       setEditLoading(false);
       return;
     }
 
-    setEditLoading(true);
+    if (!options?.silent) {
+      setEditLoading(true);
+    }
     try {
       const data = await getTournamentEditForm(tournamentId);
       const hydrated = hydrateTournamentFormFromEditData(data);
-      setPoster(hydrated.poster);
-      setName(hydrated.name);
-      setYear(hydrated.year);
-      setTournamentDates(hydrated.tournamentDates);
-      setLocationAddress(hydrated.locationAddress);
-      setLatitude(hydrated.latitude);
-      setLongitude(hydrated.longitude);
-      setBallType(hydrated.ballType);
-      setCitySelection(hydrated.citySelection);
-      setNumberOfTeams(hydrated.numberOfTeams);
-      setPlayersPerTeam(hydrated.playersPerTeam);
-      setHasRegistrationWindow(hydrated.hasRegistrationWindow);
-      setRegistrationOpenDate(hydrated.registrationOpenDate);
-      setRegistrationOpenTime(hydrated.registrationOpenTime);
-      setRegistrationCloseDate(hydrated.registrationCloseDate);
-      setRegistrationCloseTime(hydrated.registrationCloseTime);
-      setHasAuctionDate(hydrated.hasAuctionDate);
-      setAuctionDate(hydrated.auctionDate);
-      setImpactPlayerEnabled(hydrated.impactPlayerEnabled);
-      setVideoRequired(hydrated.videoRequired);
-      setVideoUploadEndDate(hydrated.videoUploadEndDate);
+      // Server-driven constraints — refresh even when skipping full re-hydration.
       setMinTeamCount(hydrated.minTeamCount);
       setDatesWithMatches(hydrated.datesWithMatches);
-      setScopeLabel(hydrated.scopeLabel);
-      setProvinceLabel(hydrated.provinceLabel);
-      setCenterLabels(hydrated.centerLabels);
+      if (editFormHydratedForTournamentIdRef.current !== tournamentId) {
+        editFormHydratedForTournamentIdRef.current = tournamentId;
+        setPoster(hydrated.poster);
+        setName(hydrated.name);
+        setYear(hydrated.year);
+        setTournamentDates(hydrated.tournamentDates);
+        setLeatherFromDate(hydrated.leatherFromDate);
+        setLeatherEndDate(hydrated.leatherEndDate);
+        initialLeatherFromDateRef.current = hydrated.leatherFromDate;
+        initialLeatherEndDateRef.current = hydrated.leatherEndDate;
+        setLocationAddress(hydrated.locationAddress);
+        setLatitude(hydrated.latitude);
+        setLongitude(hydrated.longitude);
+        setBallType(hydrated.ballType);
+        setCitySelection(hydrated.citySelection);
+        setNumberOfTeams(hydrated.numberOfTeams);
+        setPlayersPerTeam(hydrated.playersPerTeam);
+        setHasRegistrationWindow(hydrated.hasRegistrationWindow);
+        setRegistrationOpenDate(hydrated.registrationOpenDate);
+        setRegistrationOpenTime(hydrated.registrationOpenTime);
+        setRegistrationCloseDate(hydrated.registrationCloseDate);
+        setRegistrationCloseTime(hydrated.registrationCloseTime);
+        setHasAuctionDate(hydrated.hasAuctionDate);
+        setAuctionDate(hydrated.auctionDate);
+        setImpactPlayerEnabled(hydrated.impactPlayerEnabled);
+        setVideoRequired(hydrated.videoRequired);
+        setVideoUploadEndDate(hydrated.videoUploadEndDate);
+        setFeeFullTime(hydrated.feeFullTime);
+        setFeePartTime(hydrated.feePartTime);
+        setScopeLabel(hydrated.scopeLabel);
+        setTournamentProvinceId(hydrated.provinceId);
+        setCenterLabels(hydrated.centerLabels);
+        setEditTournamentType(hydrated.tournamentType);
+        setEditGroupCount(hydrated.groupCount);
+        setKnockoutTeamCount(hydrated.knockoutTeamCount);
+        setHasKnockoutBracket(hydrated.hasKnockoutBracket);
+      }
+      setTournamentTimezone(data.timezone);
     } catch (err) {
       if (err instanceof ApiRequestError && err.status === 403) {
         setAccessDenied(true);
@@ -301,8 +380,25 @@ export function TournamentFormScreen({
         );
       }
     } finally {
-      setEditLoading(false);
+      if (!options?.silent) {
+        setEditLoading(false);
+      }
     }
+  }, [tournamentId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!isEditMode || status === 'loading') {
+        return;
+      }
+      void loadEditForm({ silent: true });
+    }, [isEditMode, loadEditForm, status]),
+  );
+
+  useEffect(() => {
+    editFormHydratedForTournamentIdRef.current = null;
+    initialLeatherFromDateRef.current = '';
+    initialLeatherEndDateRef.current = '';
   }, [tournamentId]);
 
   useEffect(() => {
@@ -366,10 +462,8 @@ export function TournamentFormScreen({
     }
   }
 
-  function clearGeographyPickers(): void {
-    setTournamentProvinceId(null);
+  function clearCenterPicker(): void {
     setSelectedCenterIds([]);
-    clearFieldError('province');
     clearFieldError('centers');
   }
 
@@ -377,7 +471,7 @@ export function TournamentFormScreen({
     setCitySelection(value);
     clearFieldError('citySelection');
     if (value !== CitySelection.Multi) {
-      clearGeographyPickers();
+      clearCenterPicker();
     }
   }
 
@@ -391,11 +485,66 @@ export function TournamentFormScreen({
   function onBallTypeChange(value: BallType): void {
     setBallType(value);
     clearFieldError('ballType');
+    setTournamentDates([]);
+    setLeatherFromDate('');
+    setLeatherEndDate('');
+    clearFieldError('tournamentDates');
     if (value === BallType.Leather) {
       setCitySelection(null);
       clearFieldError('citySelection');
-      clearGeographyPickers();
+      clearCenterPicker();
+      setHasAuctionDate(false);
+      setAuctionDate('');
+      setImpactPlayerEnabled(false);
+      setVideoRequired(false);
+      setVideoUploadEndDate('');
+      setFieldErrors((prev) => {
+        const next = { ...prev };
+        delete next.auctionDate;
+        delete next.videoUploadEndDate;
+        return next;
+      });
     }
+    if (value === BallType.Tennis) {
+      setFeePartTime('');
+    }
+  }
+
+  function feesForSubmit(): { feeFullTime: number | null; feePartTime: number | null } {
+    const full = parseOptionalTournamentFee(feeFullTime);
+    if (isLeatherBall) {
+      return {
+        feeFullTime: full,
+        feePartTime: parseOptionalTournamentFee(feePartTime),
+      };
+    }
+    return {
+      feeFullTime: full,
+      feePartTime: null,
+    };
+  }
+
+  function tennisOptionsForSubmit(): {
+    impactPlayerEnabled: boolean;
+    videoRequired: boolean;
+    videoUploadEndDate: string | null;
+    auctionAt: string | null;
+  } {
+    if (!isTennisBall) {
+      return {
+        impactPlayerEnabled: false,
+        videoRequired: false,
+        videoUploadEndDate: null,
+        auctionAt: null,
+      };
+    }
+    return {
+      impactPlayerEnabled,
+      videoRequired,
+      videoUploadEndDate:
+        videoRequired && videoUploadEndDate ? dateOnlyToUtcIso(videoUploadEndDate) : null,
+      auctionAt: hasAuctionDate && auctionDate ? dateOnlyToUtcIso(auctionDate) : null,
+    };
   }
 
   function clearRegistrationFieldErrors(): void {
@@ -428,11 +577,15 @@ export function TournamentFormScreen({
     selection: TournamentPosterSelection,
   ): Promise<string | null> {
     const uploadUri = await ensureUploadablePosterUri(selection.uri);
-    const remoteUrl = await uploadTournamentPoster(uploadUri);
-    setPoster({ ...selection, remoteUrl });
+    const uploaded = await uploadTournamentPoster(uploadUri, selection.sizeBytes ?? 0);
+    setPoster({
+      ...selection,
+      remoteUrl: uploaded.storageKey,
+      uri: uploaded.posterUrl || selection.uri,
+    });
     setPosterError(null);
     clearFieldError('poster');
-    return remoteUrl;
+    return uploaded.storageKey;
   }
 
   async function onPosterPicked(file: PickedImageFile): Promise<void> {
@@ -476,6 +629,8 @@ export function TournamentFormScreen({
           name,
           year,
           tournamentDates,
+          leatherFromDate,
+          leatherEndDate,
           ballType,
           citySelection,
           tournamentProvinceId,
@@ -487,12 +642,19 @@ export function TournamentFormScreen({
           registrationOpenTime,
           registrationCloseDate,
           registrationCloseTime,
-          hasAuctionDate,
-          auctionDate,
-          videoRequired,
-          videoUploadEndDate,
+          hasAuctionDate: isTennisBall && hasAuctionDate,
+          auctionDate: isTennisBall ? auctionDate : '',
+          videoRequired: isTennisBall && videoRequired,
+          videoUploadEndDate: isTennisBall ? videoUploadEndDate : '',
+          venueTimezone,
+          initialLeatherFromDate: initialLeatherFromDateRef.current,
+          initialLeatherEndDate: initialLeatherEndDateRef.current,
           minTeamCount,
           datesWithMatches,
+          tournamentType: editTournamentType ?? TournamentType.ACC,
+          groupCount: editGroupCount,
+          knockoutTeamCount,
+          hasKnockoutBracket,
         })
       : validateTournamentForm({
           hasPoster: posterAttached,
@@ -502,6 +664,8 @@ export function TournamentFormScreen({
           name,
           year,
           tournamentDates,
+          leatherFromDate,
+          leatherEndDate,
           ballType,
           citySelection,
           tournamentProvinceId,
@@ -513,10 +677,11 @@ export function TournamentFormScreen({
           registrationOpenTime,
           registrationCloseDate,
           registrationCloseTime,
-          hasAuctionDate,
-          auctionDate,
-          videoRequired,
-          videoUploadEndDate,
+          hasAuctionDate: isTennisBall && hasAuctionDate,
+          auctionDate: isTennisBall ? auctionDate : '',
+          videoRequired: isTennisBall && videoRequired,
+          videoUploadEndDate: isTennisBall ? videoUploadEndDate : '',
+          venueTimezone,
         });
 
     setFieldErrors(errors);
@@ -527,7 +692,7 @@ export function TournamentFormScreen({
       return;
     }
 
-    if (!ballType || !year || !numberOfTeams || !posterAttached || !poster) {
+    if (!ballType || !year || !numberOfTeams || !posterAttached || !poster || !tournamentProvinceId) {
       return;
     }
     if (ballType === BallType.Tennis && !citySelection) {
@@ -541,11 +706,22 @@ export function TournamentFormScreen({
     setSubmitting(true);
 
     try {
-      let posterUrl = attachedPoster.remoteUrl;
-      if (!posterUrl) {
+      let posterStorageKey: string | undefined =
+        attachedPoster.remoteUrl && isMediaStorageKey(attachedPoster.remoteUrl)
+          ? attachedPoster.remoteUrl
+          : undefined;
+
+      const needsPosterUpload = !posterStorageKey && isLocalImageUri(attachedPoster.uri);
+      if (needsPosterUpload) {
         setPosterUploading(true);
         try {
-          posterUrl = await uploadPosterSelection(attachedPoster);
+          const uploadedKey = await uploadPosterSelection(attachedPoster);
+          if (!uploadedKey) {
+            applyPosterUploadError(new Error('Poster upload returned no URL'));
+            scrollToField('poster');
+            return;
+          }
+          posterStorageKey = uploadedKey;
         } catch (err) {
           applyPosterUploadError(err);
           scrollToField('poster');
@@ -555,15 +731,21 @@ export function TournamentFormScreen({
         }
       }
 
-      if (!posterUrl) {
+      if (!isEditMode && !posterStorageKey) {
         applyPosterUploadError(new Error('Poster upload returned no URL'));
+        scrollToField('poster');
+        return;
+      }
+
+      if (!isEditMode && posterStorageKey && !isMediaStorageKey(posterStorageKey)) {
+        applyPosterUploadError(new Error('Poster upload returned an invalid storage key'));
         scrollToField('poster');
         return;
       }
 
       if (__DEV__) {
         console.log('[AddTournament] poster upload complete', {
-          posterUrl,
+          posterUrl: posterStorageKey ?? '(unchanged)',
           ...posterSelectionDebug(attachedPoster),
         });
       }
@@ -577,6 +759,9 @@ export function TournamentFormScreen({
           ? combineLocalDateAndTimeToIso(registrationCloseDate, registrationCloseTime)
           : null;
 
+      const tennisOptions = tennisOptionsForSubmit();
+      const fees = feesForSubmit();
+
       if (isEditMode) {
         if (!tournamentId) {
           return;
@@ -584,27 +769,36 @@ export function TournamentFormScreen({
 
         const updatePayload: UpdateTournamentRequest = {
           name: name.trim(),
-          posterUrl,
+          ...(posterStorageKey !== undefined ? { posterUrl: posterStorageKey } : {}),
           numberOfTeams: Number(numberOfTeams),
-          playersPerTeam: playersPerTeam.trim()
-            ? Number(playersPerTeam)
-            : DEFAULT_PLAYERS_PER_TEAM,
+          playersPerTeam: playersPerTeam.trim() ? Number(playersPerTeam) : undefined,
           substitutesAllowed: DEFAULT_SUBSTITUTES_ALLOWED,
           locationAddress: locationAddress.trim() || null,
           latitude,
           longitude,
-          dates: tournamentDates,
+          dates: datesForSubmit(),
           format: DEFAULT_TOURNAMENT_FORMAT,
-          impactPlayerEnabled,
-          videoRequired,
-          videoUploadEndDate:
-            videoRequired && videoUploadEndDate ? dateOnlyToUtcIso(videoUploadEndDate) : null,
+          impactPlayerEnabled: tennisOptions.impactPlayerEnabled,
+          videoRequired: tennisOptions.videoRequired,
+          videoUploadEndDate: tennisOptions.videoUploadEndDate,
           registrationOpenAt,
           registrationCloseAt,
-          auctionAt: hasAuctionDate && auctionDate ? dateOnlyToUtcIso(auctionDate) : null,
+          auctionAt: tennisOptions.auctionAt,
+          feeFullTime: fees.feeFullTime,
+          feePartTime: fees.feePartTime,
+          provinceId: tournamentProvinceId ?? undefined,
+          ...(editTournamentType === TournamentType.APL && !knockoutFieldLocked
+            ? {
+                knockoutTeamCount: knockoutTeamCount
+                  ? Number(knockoutTeamCount)
+                  : null,
+              }
+            : {}),
         };
 
         const updated = await updateTournament(tournamentId, updatePayload);
+        initialLeatherFromDateRef.current = leatherFromDate;
+        initialLeatherEndDateRef.current = leatherEndDate;
         savedTournamentIdRef.current = updated.id;
         setSavedTournamentId(updated.id);
         successNavigatedRef.current = false;
@@ -615,31 +809,29 @@ export function TournamentFormScreen({
       const payload: CreateTournamentRequest = {
         name: name.trim(),
         year: Number(year),
-        posterUrl,
+        posterUrl: posterStorageKey!,
         maxOversPerBowler: deferredMaxOversPerBowler(ballType),
         numberOfTeams: Number(numberOfTeams),
-        ...(playersPerTeam.trim() ? { playersPerTeam: Number(playersPerTeam) } : {}),
+        playersPerTeam: playersPerTeam.trim() ? Number(playersPerTeam) : undefined,
         substitutesAllowed: DEFAULT_SUBSTITUTES_ALLOWED,
         locationAddress: locationAddress.trim() || null,
         latitude,
         longitude,
-        dates: tournamentDates,
+        dates: datesForSubmit(),
         ballType,
         format: DEFAULT_TOURNAMENT_FORMAT,
-        impactPlayerEnabled,
-        videoRequired,
-        videoUploadEndDate:
-          videoRequired && videoUploadEndDate ? dateOnlyToUtcIso(videoUploadEndDate) : null,
+        impactPlayerEnabled: tennisOptions.impactPlayerEnabled,
+        videoRequired: tennisOptions.videoRequired,
+        videoUploadEndDate: tennisOptions.videoUploadEndDate,
         registrationOpenAt,
         registrationCloseAt,
-        auctionAt: hasAuctionDate && auctionDate ? dateOnlyToUtcIso(auctionDate) : null,
+        auctionAt: tennisOptions.auctionAt,
+        feeFullTime: fees.feeFullTime,
+        feePartTime: fees.feePartTime,
+        provinceId: tournamentProvinceId as string,
         ...(ballType === BallType.Tennis && citySelection
           ? {
               citySelection,
-              provinceId:
-                citySelection === CitySelection.Multi
-                  ? (tournamentProvinceId as string)
-                  : (defaultProvinceId as string),
               ...(citySelection === CitySelection.Multi
                 ? { centerIds: selectedCenterIds }
                 : {}),
@@ -711,12 +903,8 @@ export function TournamentFormScreen({
       });
     }
 
-    const detailsHref = {
-      pathname: '/tournaments/[id]',
-      params: { id: tournamentIdToOpen },
-    } satisfies Href;
-    router.replace(detailsHref);
-  }, [router, savedTournamentId]);
+    router.replace(tournamentDetailHref(user, tournamentIdToOpen));
+  }, [router, savedTournamentId, user]);
 
   if (status === 'loading' || profileLoading || editLoading) {
     return (
@@ -744,34 +932,20 @@ export function TournamentFormScreen({
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
       <View className="flex-1">
-        <View className="flex-row items-start justify-between px-4 py-3">
-          <View className="min-w-0 flex-1 gap-1 pr-3">
-            <View className="flex-row items-center gap-3">
-              <Pressable
-                onPress={() => router.back()}
-                className="h-10 w-10 items-center justify-center rounded-full active:bg-black/5"
-                accessibilityRole="button"
-                accessibilityLabel="Go back"
-              >
-                <Ionicons name="arrow-back" size={24} color={FIELD_ORANGE} />
-              </Pressable>
-              <Text className="font-sans-bold text-xl text-on-surface">
-                {isEditMode ? 'Edit Tournament' : 'Add Tournament'}
-              </Text>
-            </View>
-            <Text className="pl-[52px] font-sans text-sm text-on-surface-variant">
-              {isEditMode
-                ? 'Update tournament details. Ball type and scope cannot be changed.'
-                : 'Fill in the details to create a new tournament event.'}
-            </Text>
-          </View>
-          <ProfileMenu />
-        </View>
+        <ScreenHeader
+          title={isEditMode ? 'Edit Tournament' : 'Add Tournament'}
+          subtitle={
+            isEditMode
+              ? 'Update tournament details. Ball type and scope cannot be changed.'
+              : 'Fill in the details to create a new tournament event.'
+          }
+          onBack={() => router.back()}
+        />
 
-        <ScrollView
+        <KeyboardAwareFormScrollView
           ref={scrollRef}
-          contentContainerClassName="px-4 pb-8 pt-2"
-          keyboardShouldPersistTaps="handled"
+          contentContainerClassName="px-4 pt-2"
+          extraBottomPadding={32}
           showsVerticalScrollIndicator={false}
         >
           <View className="gap-5">
@@ -802,50 +976,6 @@ export function TournamentFormScreen({
             />
             </View>
 
-            <View onLayout={layoutField('year')}>
-            {isEditMode ? (
-              <View className="gap-1">
-                <Text className={labelClassName('brand')}>Tournament Year</Text>
-                <View className="rounded-control border border-outline-variant bg-surface-container-low px-4 py-3">
-                  <Text className="font-sans text-base text-on-surface-variant">{year}</Text>
-                </View>
-              </View>
-            ) : (
-            <Select
-              label="Tournament Year"
-              value={year}
-              options={yearOptions}
-              onChange={(value) => {
-                setYear(value);
-                clearFieldError('year');
-              }}
-              error={fieldErrors.year}
-            />
-            )}
-            </View>
-
-            <View onLayout={layoutField('tournamentDates')}>
-            <TournamentDatesField
-              values={tournamentDates}
-              onChange={(next) => {
-                setTournamentDates(next);
-                clearFieldError('tournamentDates');
-              }}
-              error={fieldErrors.tournamentDates}
-            />
-            </View>
-
-            <TournamentLocationField
-              address={locationAddress}
-              latitude={latitude}
-              longitude={longitude}
-              onAddressChange={setLocationAddress}
-              onCoordinatesChange={(lat, lng) => {
-                setLatitude(lat);
-                setLongitude(lng);
-              }}
-            />
-
             <View onLayout={layoutField('ballType')}>
             {isEditMode ? (
               <View className="gap-1">
@@ -869,6 +999,83 @@ export function TournamentFormScreen({
             )}
             </View>
 
+            <View onLayout={layoutField('year')}>
+            {isEditMode ? (
+              <View className="gap-1">
+                <Text className={labelClassName('brand')}>Tournament Year</Text>
+                <View className="rounded-control border border-outline-variant bg-surface-container-low px-4 py-3">
+                  <Text className="font-sans text-base text-on-surface-variant">{year}</Text>
+                </View>
+              </View>
+            ) : (
+            <Select
+              label="Tournament Year"
+              value={year}
+              options={yearOptions}
+              onChange={(value) => {
+                setYear(value);
+                clearFieldError('year');
+              }}
+              error={fieldErrors.year}
+            />
+            )}
+            </View>
+
+            {ballType ? (
+            <View onLayout={layoutField('tournamentDates')}>
+            {isLeatherBall ? (
+              <TournamentLeatherDateRangeField
+                fromDate={leatherFromDate}
+                endDate={leatherEndDate}
+                minimumFromDate={leatherDateMinimum}
+                onFromDateChange={(value) => {
+                  setLeatherFromDate(value);
+                  clearFieldError('tournamentDates');
+                }}
+                onEndDateChange={(value) => {
+                  setLeatherEndDate(value);
+                  clearFieldError('tournamentDates');
+                }}
+                error={fieldErrors.tournamentDates}
+              />
+            ) : (
+              <TournamentDatesField
+                values={tournamentDates}
+                onChange={(next) => {
+                  setTournamentDates(next);
+                  clearFieldError('tournamentDates');
+                }}
+                error={fieldErrors.tournamentDates}
+              />
+            )}
+            </View>
+            ) : null}
+
+            <View onLayout={layoutField('province')}>
+              <Select
+                label="Province"
+                placeholder="Select province"
+                value={tournamentProvinceId}
+                options={provinceOptions}
+                onChange={onTournamentProvinceChange}
+                loading={provinceField.loading}
+                error={provinceSelectError}
+                emptyMessage="No provinces available."
+                onRetry={provinceField.retry}
+              />
+            </View>
+
+            <TournamentLocationField
+              address={locationAddress}
+              latitude={latitude}
+              longitude={longitude}
+              onAddressChange={setLocationAddress}
+              onCoordinatesChange={(lat, lng) => {
+                setLatitude(lat);
+                setLongitude(lng);
+              }}
+            />
+
             {isEditMode && ballType === BallType.Tennis ? (
               <View className="gap-3">
                 <View className="gap-1">
@@ -877,16 +1084,6 @@ export function TournamentFormScreen({
                     <Text className="font-sans text-base text-on-surface-variant">{scopeLabel}</Text>
                   </View>
                 </View>
-                {provinceLabel ? (
-                  <View className="gap-1">
-                    <Text className={labelClassName('brand')}>Province</Text>
-                    <View className="rounded-control border border-outline-variant bg-surface-container-low px-4 py-3">
-                      <Text className="font-sans text-base text-on-surface-variant">
-                        {provinceLabel}
-                      </Text>
-                    </View>
-                  </View>
-                ) : null}
                 {centerLabels.length > 0 ? (
                   <View className="gap-1">
                     <Text className={labelClassName('brand')}>Centers</Text>
@@ -915,19 +1112,6 @@ export function TournamentFormScreen({
 
             {!isEditMode && isMultiCenters ? (
               <View className="gap-4">
-                <View onLayout={layoutField('province')}>
-                <Select
-                  label="Province"
-                  placeholder="Select province"
-                  value={tournamentProvinceId}
-                  options={provinceOptions}
-                  onChange={onTournamentProvinceChange}
-                  loading={provinceField.loading}
-                  error={provinceSelectError}
-                  emptyMessage="No provinces available."
-                  onRetry={provinceField.retry}
-                />
-                </View>
                 <View onLayout={layoutField('centers')}>
                 <MultiSelect
                   label="Centers"
@@ -971,11 +1155,49 @@ export function TournamentFormScreen({
                   clearFieldError('playersPerTeam');
                 }}
                 keyboardType="number-pad"
-                placeholder="e.g. 15"
+                placeholder="e.g. 28"
                 error={fieldErrors.playersPerTeam}
               />
               </View>
             </View>
+
+            {showKnockoutTeamCountField ? (
+              <View onLayout={layoutField('knockoutTeamCount')}>
+                {knockoutFieldLocked ? (
+                  <View className="gap-1">
+                    <Text className={labelClassName('brand')}>Knockout Teams</Text>
+                    <View className="rounded-control border border-outline-variant bg-surface-container-low px-4 py-3">
+                      <Text className="font-sans text-base text-on-surface-variant">
+                        {knockoutTeamCount ?? 'Not set'}
+                      </Text>
+                    </View>
+                    <Text className="font-sans text-sm text-on-surface-variant">
+                      {KNOCKOUT_TEAM_COUNT_MESSAGES.locked}
+                    </Text>
+                  </View>
+                ) : (
+                  <View className="gap-1">
+                    <Select
+                      label="Knockout Teams"
+                      placeholder="Select knockout team count"
+                      value={knockoutTeamCount}
+                      options={knockoutTeamCountOptions}
+                      onChange={(value) => {
+                        setKnockoutTeamCount(value);
+                        clearFieldError('knockoutTeamCount');
+                      }}
+                      disabled={knockoutFieldDisabled}
+                      error={fieldErrors.knockoutTeamCount}
+                    />
+                    {knockoutFieldDisabled && knockoutDisabledHint ? (
+                      <Text className="font-sans text-sm text-on-surface-variant">
+                        {knockoutDisabledHint}
+                      </Text>
+                    ) : null}
+                  </View>
+                )}
+              </View>
+            ) : null}
 
             <Checkbox checked={hasRegistrationWindow} onChange={onRegistrationToggle}>
               <Text className="font-sans text-base text-on-surface">
@@ -1034,50 +1256,94 @@ export function TournamentFormScreen({
               </View>
             ) : null}
 
-            <Checkbox checked={hasAuctionDate} onChange={onAuctionToggle}>
-              <Text className="font-sans text-base text-on-surface">Have Auction Date?</Text>
-            </Checkbox>
-
-            {hasAuctionDate ? (
-              <View onLayout={layoutField('auctionDate')}>
-              <DateField
-                label="Auction Date"
-                value={auctionDate}
-                onChange={(value) => {
-                  setAuctionDate(value);
-                  clearFieldError('auctionDate');
-                }}
-                enforceSignupAgeMax={false}
-                error={fieldErrors.auctionDate}
-              />
+            {isLeatherBall ? (
+              <View className="flex-row gap-3">
+                <View className="min-w-0 flex-1">
+                  <TextInput
+                    label="Full-time Player Fees"
+                    value={feeFullTime}
+                    onChangeText={(text) => setFeeFullTime(sanitizeTournamentFeeInput(text))}
+                    keyboardType="decimal-pad"
+                    placeholder="0.00"
+                    leadingIcon={
+                      <Text className="font-sans-semibold text-base text-on-surface">$</Text>
+                    }
+                  />
+                </View>
+                <View className="min-w-0 flex-1">
+                  <TextInput
+                    label="Part-time Player Fees"
+                    value={feePartTime}
+                    onChangeText={(text) => setFeePartTime(sanitizeTournamentFeeInput(text))}
+                    keyboardType="decimal-pad"
+                    placeholder="0.00"
+                    leadingIcon={
+                      <Text className="font-sans-semibold text-base text-on-surface">$</Text>
+                    }
+                  />
+                </View>
               </View>
+            ) : isTennisBall ? (
+              <TextInput
+                label="Tournament Fees"
+                value={feeFullTime}
+                onChangeText={(text) => setFeeFullTime(sanitizeTournamentFeeInput(text))}
+                keyboardType="decimal-pad"
+                placeholder="0.00"
+                leadingIcon={
+                  <Text className="font-sans-semibold text-base text-on-surface">$</Text>
+                }
+              />
             ) : null}
 
-            <Checkbox checked={impactPlayerEnabled} onChange={setImpactPlayerEnabled}>
-              <Text className="font-sans text-base text-on-surface">
-                Impact Player — Enable strategic player substitution during the match
-              </Text>
-            </Checkbox>
+            {isTennisBall ? (
+              <>
+                <Checkbox checked={hasAuctionDate} onChange={onAuctionToggle}>
+                  <Text className="font-sans text-base text-on-surface">Have Auction Date?</Text>
+                </Checkbox>
 
-            <Checkbox checked={videoRequired} onChange={onVideoToggle}>
-              <Text className="font-sans text-base text-on-surface">
-                Video Required? — Request players to upload their batting/bowling short video
-              </Text>
-            </Checkbox>
+                {hasAuctionDate ? (
+                  <View onLayout={layoutField('auctionDate')}>
+                    <DateField
+                      label="Auction Date"
+                      value={auctionDate}
+                      onChange={(value) => {
+                        setAuctionDate(value);
+                        clearFieldError('auctionDate');
+                      }}
+                      enforceSignupAgeMax={false}
+                      error={fieldErrors.auctionDate}
+                    />
+                  </View>
+                ) : null}
 
-            {videoRequired ? (
-              <View onLayout={layoutField('videoUploadEndDate')}>
-              <DateField
-                label="Video Upload End Date"
-                value={videoUploadEndDate}
-                onChange={(value) => {
-                  setVideoUploadEndDate(value);
-                  clearFieldError('videoUploadEndDate');
-                }}
-                enforceSignupAgeMax={false}
-                error={fieldErrors.videoUploadEndDate}
-              />
-              </View>
+                <Checkbox checked={impactPlayerEnabled} onChange={setImpactPlayerEnabled}>
+                  <Text className="font-sans text-base text-on-surface">
+                    Impact Player — Enable strategic player substitution during the match
+                  </Text>
+                </Checkbox>
+
+                <Checkbox checked={videoRequired} onChange={onVideoToggle}>
+                  <Text className="font-sans text-base text-on-surface">
+                    Video Required? — Request players to upload their batting/bowling short video
+                  </Text>
+                </Checkbox>
+
+                {videoRequired ? (
+                  <View onLayout={layoutField('videoUploadEndDate')}>
+                    <DateField
+                      label="Video Upload End Date"
+                      value={videoUploadEndDate}
+                      onChange={(value) => {
+                        setVideoUploadEndDate(value);
+                        clearFieldError('videoUploadEndDate');
+                      }}
+                      enforceSignupAgeMax={false}
+                      error={fieldErrors.videoUploadEndDate}
+                    />
+                  </View>
+                ) : null}
+              </>
             ) : null}
 
             {formError ? (
@@ -1095,14 +1361,8 @@ export function TournamentFormScreen({
               {submitting ? <ActivityIndicator color={colors.textInverse} /> : null}
             </Button>
           </View>
-        </ScrollView>
+        </KeyboardAwareFormScrollView>
       </View>
-
-      <BottomTabBar
-        tabs={tabConfig.tabs}
-        activeKey={tabConfig.activeKey}
-        onTabPress={tabConfig.onTabPress}
-      />
 
       <SuccessDialog
         visible={showSuccessDialog}

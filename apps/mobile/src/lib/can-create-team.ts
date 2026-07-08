@@ -1,8 +1,8 @@
 import { type AuthUser, UserRole } from '@acc/types';
 
 /**
- * Optimistic UI gate for EDIT_TOURNAMENT (§6.3 team setup): Admin everywhere; Club
- * Manager and Center Sevak when organizing. Server RBAC still enforces organizer scope.
+ * Optimistic UI gate for EDIT_TOURNAMENT (§6.3 team setup): Admin and Club Manager
+ * everywhere; Center Sevak when organizing. Server RBAC enforces scope for Sevak.
  */
 export function canCreateTournamentTeam(user: AuthUser | null | undefined): boolean {
   if (!user) {

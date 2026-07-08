@@ -12,6 +12,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { ScreenHeader } from '../../../src/components/ui/ScreenHeader';
 import { Button } from '../../../src/components/ui/Button';
 import { FIELD_ORANGE, INPUT_SHADOW_STYLE } from '../../../src/components/ui/fieldStyles';
 import { RadioGroup } from '../../../src/components/ui/RadioGroup';
@@ -176,19 +177,13 @@ export default function RegistrationRatingsReviewScreen(): React.ReactElement {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-background">
+    <SafeAreaView className="flex-1 bg-background" edges={['top']}>
+      <ScreenHeader
+        title="Adjust player ratings"
+        subtitle={tournament?.name}
+        onBack={() => router.back()}
+      />
       <ScrollView contentContainerClassName="gap-4 px-4 py-4">
-        <Pressable onPress={() => router.back()} accessibilityRole="button">
-          <Text className="font-sans text-primary">← Back</Text>
-        </Pressable>
-
-        <View className="gap-1">
-          <Text className="font-sans-bold text-2xl text-on-surface">Adjust player ratings</Text>
-          {tournament ? (
-            <Text className="font-sans text-sm text-on-surface-variant">{tournament.name}</Text>
-          ) : null}
-        </View>
-
         {!windowClosed ? (
           <View className="rounded-control bg-surface-container-high px-4 py-3">
             <Text className="font-sans text-sm text-on-surface-variant">

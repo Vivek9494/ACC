@@ -2,6 +2,7 @@ import {
   type AuthUser,
   Permission,
   type ManOfMatchEligibilityView,
+  type ScorecardConfirmEligibilityView,
   type ScorecardConfirmationView,
 } from '@acc/types';
 import {
@@ -54,6 +55,16 @@ export class ScorecardController {
     @Body() dto: ConfirmScorecardDto,
   ): Promise<ScorecardConfirmationView> {
     return this.confirmation.confirm(user, matchId, dto.expectedVersion);
+  }
+
+  /** Whether the authenticated user may confirm this scorecard (§13.1). */
+  @Get('confirm-scorecard/eligibility')
+  @UseGuards(JwtAuthGuard)
+  confirmEligibility(
+    @CurrentUser() user: AuthUser,
+    @Param('matchId') matchId: string,
+  ): Promise<ScorecardConfirmEligibilityView> {
+    return this.confirmation.confirmEligibility(user, matchId);
   }
 
   /** §13.3: Captain selects the Man of the Match after the game. */

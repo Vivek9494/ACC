@@ -1,5 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
-import type { MatchSummaryTeamView, ScorerStartableMatch } from '@acc/types';
+import {
+  isScorerMatchResumable,
+  scorerStartMatchDisabledHint,
+  type ScorerStartableMatch,
+} from '@acc/types';
 import { View } from 'react-native';
 import { colors } from '@/theme/colors';
 
@@ -27,6 +31,14 @@ export function ScorerStartMatchCard({
   onStartPress,
   buttonLabel = 'Start Match',
 }: ScorerStartMatchCardProps): React.ReactElement {
+  const resumable = isScorerMatchResumable(match.state, match.hasScoringSession);
+  const startFlow = match.bothTeamsFinalized && !resumable;
+  const startDisabled = startFlow && !match.canStartMatch;
+  const timeHint =
+    startDisabled && match.startMatchBlockedReason === 'TOO_EARLY'
+      ? scorerStartMatchDisabledHint(match.startMatchBlockedReason, match.startAllowedAtLine)
+      : null;
+
   return (
     <View
       className="rounded-control border border-outline-variant bg-surface p-5"
@@ -39,26 +51,40 @@ export function ScorerStartMatchCard({
         {match.tournamentName}
       </Text>
 
-      <View className="my-6 flex-row items-center justify-center gap-6">
-        <View className="items-center gap-2">
+      <View className="my-6 flex-row items-center">
+        <View className="min-w-0 flex-1 items-center gap-2 px-2">
           <TeamAvatar name={match.teamA.name} logoUrl={match.teamA.logoUrl} size="md" />
-          <Text className="max-w-[120px] text-center font-sans-semibold text-sm text-on-surface">
+          <Text
+            className="w-full text-center font-sans-semibold text-sm text-on-surface"
+            numberOfLines={2}
+          >
             {match.teamA.name}
           </Text>
         </View>
-        <Text className="font-sans-bold text-lg text-primary">VS</Text>
-        <View className="items-center gap-2">
+        <Text className="shrink-0 px-2 font-sans-bold text-lg text-primary">VS</Text>
+        <View className="min-w-0 flex-1 items-center gap-2 px-2">
           <TeamAvatar name={match.teamB.name} logoUrl={match.teamB.logoUrl} size="md" />
-          <Text className="max-w-[120px] text-center font-sans-semibold text-sm text-on-surface">
+          <Text
+            className="w-full text-center font-sans-semibold text-sm text-on-surface"
+            numberOfLines={2}
+          >
             {match.teamB.name}
           </Text>
         </View>
       </View>
 
-      <Button onPress={onStartPress} className="h-14 w-full flex-row gap-2">
+      <Button
+        onPress={onStartPress}
+        disabled={startDisabled}
+        className="h-14 w-full flex-row gap-2"
+      >
         <Text className="font-sans-semibold text-base text-on-primary">{buttonLabel}</Text>
         <Ionicons name="arrow-forward" size={20} color={colors.textInverse} />
       </Button>
+
+      {timeHint ? (
+        <Text className="text-center font-sans text-sm text-on-surface-variant">{timeHint}</Text>
+      ) : null}
     </View>
   );
 }

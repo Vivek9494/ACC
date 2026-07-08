@@ -1,21 +1,38 @@
-import type { MatchListItem } from '@acc/types';
 import {
+  BallType,
   MatchSchedulingFormat,
+  MATCH_LIST_GROUP_FILTER,
+  canViewAdminUsersDirectory,
+  canViewCancelledMatchDetails,
+  filterMatchList,
+  tournamentSupportsGroups,
+  type GroupSummary,
+  type MatchListItem,
   type MatchSchedulingFormat as MatchSchedulingFormatType,
+  type RegistrationStatus,
+  type TournamentDetail,
+  type TournamentType,
 } from '@acc/types';
-import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 
 import { ApiRequestError, listMatches, selectMatchSchedulingFormat } from '../../lib/api';
 import { useAuth } from '../../lib/auth-context';
+import { buildMatchMenuActions } from '../../lib/build-match-menu-actions';
+import { subscribeMatchDataInvalidation } from '../../lib/match-data-invalidation';
 import { canCreateTournamentTeam } from '../../lib/can-create-team';
-import { canScheduleTournamentMatches } from '../../lib/can-schedule-matches';
+import {
+  canManageUpcomingMatchSchedule,
+  canScheduleTournamentMatchesAsOrganizer,
+} from '../../lib/can-schedule-matches';
+import { shouldShowKnockoutBracketEntry } from './KnockoutBracketManageScreen';
 import { GroupSetupRequiredDialog } from '../ui/GroupSetupRequiredDialog';
 import { ScheduleMatchesNoTeamsDialog } from '../ui/ScheduleMatchesNoTeamsDialog';
 import { SelectFormatModal } from '../ui/SelectFormatModal';
 import { Button } from '../ui/Button';
 import { FIELD_ORANGE } from '../ui/fieldStyles';
+import { Select } from '../ui/Select';
 import { Text } from '../ui/Text';
 import { MatchList } from './MatchList';
 import { TournamentMatchesEmptyState } from './TournamentMatchesEmptyState';
@@ -24,12 +41,32 @@ export interface TournamentMatchesTabProps {
   tournamentId: string;
   active: boolean;
   teamCount: number;
+  ballType: TournamentDetail['ballType'];
+  teams?: TournamentDetail['teams'];
+  groups?: GroupSummary[];
+  tournamentType?: TournamentType;
+  /** Server-resolved CREATE_MATCH gate for this tournament (includes Leather captains). */
+  canScheduleMatches?: boolean;
+  matchSchedulingFormat?: TournamentDetail['matchSchedulingFormat'];
+  hasKnockoutBracket?: boolean;
+  tournamentName?: string;
+  /** Viewer's registration in this tournament (`GET .../registrations/me`). */
+  viewerRegistrationStatus?: RegistrationStatus | null;
 }
 
 export function TournamentMatchesTab({
   tournamentId,
   active,
   teamCount,
+  ballType,
+  teams = [],
+  groups = [],
+  tournamentType,
+  canScheduleMatches = false,
+  matchSchedulingFormat = null,
+  hasKnockoutBracket = false,
+  tournamentName = '',
+  viewerRegistrationStatus = null,
 }: TournamentMatchesTabProps): React.ReactElement {
   const router = useRouter();
   const { user } = useAuth();
@@ -44,12 +81,93 @@ export function TournamentMatchesTab({
   const [selectingFormat, setSelectingFormat] = useState(false);
   const [selectFormatError, setSelectFormatError] = useState<string | null>(null);
 
-  const canSchedule = canScheduleTournamentMatches(user);
-  const canCreateTeam = canCreateTournamentTeam(user);
-  const hasMatches = matches.length > 0;
+  const isLeatherBall = ballType === BallType.Leather;
+  const showTeamFilter = isLeatherBall && teams.length > 0;
+  const [teamFilter, setTeamFilter] = useState<string | null>(null);
+  const showGroupFilter =
+    tournamentType != null &&
+    tournamentSupportsGroups({
+      type: tournamentType,
+      matchSchedulingFormat,
+      groupCount: groups.length,
+    });
+  const [groupFilter, setGroupFilter] = useState<string>(MATCH_LIST_GROUP_FILTER.All);
 
-  const loadMatches = useCallback(async () => {
-    setLoading(true);
+  const teamFilterOptions = useMemo(
+    () => [
+      { value: 'all', label: 'All Teams' },
+      ...teams.map((team) => ({ value: team.id, label: team.name })),
+    ],
+    [teams],
+  );
+
+  const groupFilterOptions = useMemo(
+    () => [
+      { value: MATCH_LIST_GROUP_FILTER.All, label: 'All groups' },
+      ...groups.map((group) => ({ value: group.id, label: group.name })),
+      { value: MATCH_LIST_GROUP_FILTER.Knockout, label: 'Knockout' },
+    ],
+    [groups],
+  );
+
+  const filteredMatches = useMemo(
+    () =>
+      filterMatchList(matches, {
+        teamId: teamFilter,
+        groupFilter,
+      }),
+    [matches, teamFilter, groupFilter],
+  );
+
+  const hasMatches = matches.length > 0;
+  const hasFilteredMatches = filteredMatches.length > 0;
+
+  const emptyFilterMessage = useMemo((): string | null => {
+    if (hasFilteredMatches || !hasMatches) {
+      return null;
+    }
+    if (groupFilter !== MATCH_LIST_GROUP_FILTER.All) {
+      if (groupFilter === MATCH_LIST_GROUP_FILTER.Knockout) {
+        return 'No knockout matches yet.';
+      }
+      return 'No matches for this group.';
+    }
+    if (teamFilter) {
+      return 'No matches for this team yet.';
+    }
+    return null;
+  }, [groupFilter, hasFilteredMatches, hasMatches, teamFilter]);
+
+  const canSchedule = canScheduleMatches;
+  const canManageGroups = canScheduleTournamentMatchesAsOrganizer(user);
+  const canCreateTeam = canCreateTournamentTeam(user);
+  const canManageMatches = canManageUpcomingMatchSchedule(user);
+  const showLiveMatchDetails = user != null && canViewAdminUsersDirectory(user.role);
+  const showCancelledMatchDetails =
+    user != null &&
+    canViewCancelledMatchDetails({
+      role: user.role,
+      registrationStatus: viewerRegistrationStatus,
+    });
+  const showKnockoutBracketEntry = shouldShowKnockoutBracketEntry(
+    { matchSchedulingFormat },
+    user,
+  );
+  const knockoutBracketButtonLabel = hasKnockoutBracket
+    ? 'Knockout Bracket'
+    : 'Generate Knockout Bracket';
+
+  function handleKnockoutBracketPress(): void {
+    router.push({
+      pathname: '/tournaments/[id]/knockout-bracket',
+      params: { id: tournamentId, name: tournamentName },
+    });
+  }
+
+  const loadMatches = useCallback(async (options?: { silent?: boolean }) => {
+    if (!options?.silent) {
+      setLoading(true);
+    }
     setError(null);
     try {
       setMatches(await listMatches(tournamentId));
@@ -62,11 +180,38 @@ export function TournamentMatchesTab({
     }
   }, [tournamentId]);
 
+  const buildMenuActions = useCallback(
+    (match: MatchListItem) =>
+      buildMatchMenuActions(match, tournamentId, matchSchedulingFormat, router, {
+        canManage: canManageMatches,
+        onDeleted: () => void loadMatches(),
+      }),
+    [canManageMatches, loadMatches, matchSchedulingFormat, router, tournamentId],
+  );
+
   useEffect(() => {
     if (!active) {
       return;
     }
     void loadMatches();
+  }, [active, loadMatches]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!active) {
+        return;
+      }
+      void loadMatches({ silent: loaded });
+    }, [active, loadMatches, loaded]),
+  );
+
+  useEffect(() => {
+    if (!active) {
+      return;
+    }
+    return subscribeMatchDataInvalidation(() => {
+      void loadMatches({ silent: true });
+    });
   }, [active, loadMatches]);
 
   function handleSchedulePress(): void {
@@ -123,6 +268,14 @@ export function TournamentMatchesTab({
     }
   }
 
+  function handleTeamFilterChange(value: string): void {
+    setTeamFilter(value === 'all' ? null : value);
+  }
+
+  function handleGroupFilterChange(value: string): void {
+    setGroupFilter(value);
+  }
+
   if (loading && !loaded) {
     return (
       <View className="items-center py-16">
@@ -143,6 +296,15 @@ export function TournamentMatchesTab({
     <>
       {hasMatches ? (
         <View className="gap-4">
+          {showKnockoutBracketEntry ? (
+            <Button
+              label={knockoutBracketButtonLabel}
+              variant="secondary"
+              onPress={handleKnockoutBracketPress}
+              className="h-12 w-full"
+            />
+          ) : null}
+
           {canSchedule ? (
             <Button
               label="Schedule Matches"
@@ -151,11 +313,44 @@ export function TournamentMatchesTab({
               className="h-12 w-full"
             />
           ) : null}
-          <MatchList
-            matches={matches}
-            onMatchPress={(matchId) => router.push(`/matches/${matchId}`)}
-            onWatchLivePress={(matchId) => router.push(`/matches/${matchId}/live`)}
-          />
+
+          {showTeamFilter ? (
+            <Select
+              label="Teams"
+              labelVariant="brand"
+              placeholder="All Teams"
+              value={teamFilter ?? 'all'}
+              options={teamFilterOptions}
+              onChange={handleTeamFilterChange}
+            />
+          ) : null}
+
+          {showGroupFilter ? (
+            <Select
+              label="Group"
+              labelVariant="brand"
+              placeholder="All groups"
+              value={groupFilter}
+              options={groupFilterOptions}
+              onChange={handleGroupFilterChange}
+            />
+          ) : null}
+
+          {hasFilteredMatches ? (
+            <MatchList
+              matches={filteredMatches}
+              onMatchPress={(matchId) => router.push(`/matches/${matchId}`)}
+              onWatchLivePress={(matchId) => router.push(`/matches/${matchId}/live`)}
+              onScorecardPress={(matchId) => router.push(`/matches/${matchId}/scorecard`)}
+              buildMenuActions={buildMenuActions}
+              showLiveMatchDetails={showLiveMatchDetails}
+              showCancelledMatchDetails={showCancelledMatchDetails}
+            />
+          ) : emptyFilterMessage ? (
+            <Text className="py-8 text-center font-sans text-sm text-on-surface-variant">
+              {emptyFilterMessage}
+            </Text>
+          ) : null}
         </View>
       ) : (
         <TournamentMatchesEmptyState
@@ -187,9 +382,9 @@ export function TournamentMatchesTab({
 
       <GroupSetupRequiredDialog
         visible={setupRequiredVisible}
-        canCreateGroup={canSchedule}
+        canCreateGroup={canManageGroups}
         onCancel={() => setSetupRequiredVisible(false)}
-        onCreateGroup={canSchedule ? handleCreateGroup : undefined}
+        onCreateGroup={canManageGroups ? handleCreateGroup : undefined}
       />
     </>
   );

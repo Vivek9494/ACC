@@ -6,6 +6,7 @@ import {
   computeAttendanceCaptureWindow,
   formatPunchTimeLabel,
   formatVenueDateTime,
+  GEOFENCE_MONITOR_RADIUS_METERS,
   GEOFENCE_RADIUS_METERS,
   isAttendanceMatchDay,
   isWithinAttendanceCaptureWindow,
@@ -14,7 +15,9 @@ import {
   MatchSquadRole,
   MatchState,
   Permission,
+  PLAYERS_PUNCH_TIME_MATCH_STATES,
   serverVenueTimezone,
+  UserRole,
   type AttendanceMonitoringTarget,
   type AttendanceMonitoringView,
   type AuthUser,
@@ -22,7 +25,6 @@ import {
   type CaptainPunchTimeCardView,
   type PunchTimeAttendanceView,
   type PunchTimePlayerRow,
-  UserRole,
 } from '@acc/types';
 import {
   BadRequestException,
@@ -133,7 +135,8 @@ export class AttendanceService {
         teamId: row.squad.teamId,
         geofenceLat: match.geofenceLat,
         geofenceLng: match.geofenceLng,
-        radiusMeters: GEOFENCE_RADIUS_METERS,
+        radiusMeters: GEOFENCE_MONITOR_RADIUS_METERS,
+        punchRadiusMeters: GEOFENCE_RADIUS_METERS,
         windowOpensAt: window.opensAt.toISOString(),
         windowClosesAt: window.closesAt.toISOString(),
         hasPunched: existing != null,
@@ -181,7 +184,8 @@ export class AttendanceService {
         teamId: assignment.teamId,
         geofenceLat: match.geofenceLat,
         geofenceLng: match.geofenceLng,
-        radiusMeters: GEOFENCE_RADIUS_METERS,
+        radiusMeters: GEOFENCE_MONITOR_RADIUS_METERS,
+        punchRadiusMeters: GEOFENCE_RADIUS_METERS,
         windowOpensAt: window.opensAt.toISOString(),
         windowClosesAt: window.closesAt.toISOString(),
         hasPunched: existing != null,
@@ -197,6 +201,7 @@ export class AttendanceService {
     latitude: number,
     longitude: number,
     capturedAt?: string,
+    geofenceEnter?: boolean,
   ): Promise<AutoAttendancePunchResponse> {
     const match = await this.requireAttendanceMatch(matchId);
     const now = capturedAt ? new Date(capturedAt) : new Date();
@@ -209,7 +214,18 @@ export class AttendanceService {
       });
     }
 
-    if (!isWithinGeofence(latitude, longitude, match.geofenceLat, match.geofenceLng)) {
+    const verifyRadius = geofenceEnter
+      ? GEOFENCE_MONITOR_RADIUS_METERS
+      : GEOFENCE_RADIUS_METERS;
+    if (
+      !isWithinGeofence(
+        latitude,
+        longitude,
+        match.geofenceLat,
+        match.geofenceLng,
+        verifyRadius,
+      )
+    ) {
       throw new BadRequestException({
         message: 'You are not within the match ground geofence',
         error: 'OUTSIDE_GEOFENCE',
@@ -269,7 +285,8 @@ export class AttendanceService {
     teamId: string,
   ): Promise<PunchTimeAttendanceView> {
     const match = await this.requireAttendanceMatch(matchId);
-    await this.assertTeamLeaderForTeam(actor, match, teamId);
+    this.assertPunchTimeViewMatchState(match);
+    await this.assertPunchTimeViewAccess(actor, match, teamId);
 
     await this.penalties.evaluateNoShowServes(matchId, teamId);
 
@@ -413,7 +430,7 @@ export class AttendanceService {
     punchTimeUtc: string,
   ): Promise<PunchTimeAttendanceView> {
     const match = await this.requireAttendanceMatch(matchId);
-    await this.assertTeamLeaderCanOverride(actor, match, teamId);
+    await this.assertPunchTimeOverrideAccess(actor, match, teamId);
     await this.requireAttendanceTargetOnTeam(userId, matchId, teamId);
 
     const punchInstant = new Date(punchTimeUtc);
@@ -485,7 +502,7 @@ export class AttendanceService {
     userId: string,
   ): Promise<PunchTimeAttendanceView> {
     const match = await this.requireAttendanceMatch(matchId);
-    await this.assertTeamLeaderCanOverride(actor, match, teamId);
+    await this.assertPunchTimeOverrideAccess(actor, match, teamId);
 
     const existing = await this.prisma.matchAttendancePunch.findUnique({
       where: { matchId_userId: { matchId, userId } },
@@ -514,7 +531,7 @@ export class AttendanceService {
     userId: string,
   ): Promise<PunchTimeAttendanceView> {
     const match = await this.requireAttendanceMatch(matchId);
-    await this.assertTeamLeaderCanOverride(actor, match, teamId);
+    await this.assertPunchTimeOverrideAccess(actor, match, teamId);
 
     const existing = await this.prisma.matchAttendancePunch.findUnique({
       where: { matchId_userId: { matchId, userId } },
@@ -817,11 +834,34 @@ export class AttendanceService {
     }
   }
 
-  private async assertTeamLeaderForTeam(
+  private assertPunchTimeViewMatchState(match: AttendanceMatchRow): void {
+    if (!PLAYERS_PUNCH_TIME_MATCH_STATES.includes(match.state as MatchState)) {
+      throw new BadRequestException({
+        message: 'Punch time is not available for this match state',
+        error: 'INVALID_MATCH_STATE',
+      });
+    }
+  }
+
+  private async assertPunchTimeViewAccess(
     actor: AuthUser,
     match: AttendanceMatchRow,
     teamId: string,
   ): Promise<void> {
+    const participatingTeamIds = [match.homeTeamId, match.awayTeamId].filter(
+      (id): id is string => id != null,
+    );
+    if (!participatingTeamIds.includes(teamId)) {
+      throw new ForbiddenException({
+        message: 'Team is not part of this match',
+        error: 'FORBIDDEN',
+      });
+    }
+
+    if (actor.role === UserRole.Admin || actor.role === UserRole.ClubManager) {
+      return;
+    }
+
     const isLeader = await isCaptainOrViceCaptain(
       this.prisma,
       actor.id,
@@ -830,18 +870,18 @@ export class AttendanceService {
     );
     if (!isLeader) {
       throw new ForbiddenException({
-        message: 'Only the team Captain or Vice-Captain may view punch time attendance',
+        message: 'You may only view punch time for your own team',
         error: 'FORBIDDEN',
       });
     }
   }
 
-  private async assertTeamLeaderCanOverride(
+  private async assertPunchTimeOverrideAccess(
     actor: AuthUser,
     match: AttendanceMatchRow,
     teamId: string,
   ): Promise<void> {
-    await this.assertTeamLeaderForTeam(actor, match, teamId);
+    await this.assertPunchTimeViewAccess(actor, match, teamId);
     const allowed = await this.permissions.check(Permission.OVERRIDE_ARRIVAL_TIME, actor, {
       matchId: match.id,
       teamId,

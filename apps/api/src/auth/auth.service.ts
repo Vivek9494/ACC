@@ -17,6 +17,7 @@ import {
   PASSWORD_POLICY_INVALID_MESSAGE,
   REFRESH_IDLE_DAYS,
   SIGNUP_VALIDATION_MESSAGES,
+  TEMP_PASSWORD_EXPIRED_MESSAGE,
   UserRole,
 } from '@acc/types';
 import {
@@ -36,6 +37,7 @@ import { randomUUID } from 'node:crypto';
 import type { Request } from 'express';
 
 import { PrismaService } from '../prisma/prisma.service';
+import { MediaUrlResolver } from '../storage/media-url.resolver';
 import { RedisService } from '../redis/redis.service';
 import {
   type AccessTokenPayload,
@@ -56,6 +58,7 @@ export class AuthService {
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
     private readonly redis: RedisService,
+    private readonly mediaUrls: MediaUrlResolver,
   ) {}
 
   async signup(dto: SignupDto): Promise<AuthResponse> {
@@ -125,7 +128,7 @@ export class AuthService {
     });
 
     const tokens = await this.startSession(user);
-    return { user: await loadAuthUser(this.prisma, user), tokens };
+    return { user: await loadAuthUser(this.prisma, user, this.mediaUrls), tokens };
   }
 
   async login(dto: LoginDto): Promise<AuthResponse> {
@@ -146,12 +149,25 @@ export class AuthService {
       where: { mobileNumber },
     });
 
-    const passwordOk = user ? await bcrypt.compare(dto.password, user.passwordHash) : false;
-    if (!user || !passwordOk || !user.isActive) {
+    const passwordOk = user
+      ? await bcrypt.compare(dto.password.trim(), user.passwordHash)
+      : false;
+    if (!user || !passwordOk || !user.isActive || user.deletedAt) {
       await this.redis.incrementWithTtl(attemptsKey, LOGIN_RATE_LIMIT.windowSeconds);
       throw new UnauthorizedException({
         message: 'Invalid mobile number or password',
         error: AuthErrorCode.InvalidCredentials,
+      });
+    }
+
+    if (
+      user.mustChangePassword &&
+      user.tempPasswordExpiresAt &&
+      user.tempPasswordExpiresAt.getTime() <= Date.now()
+    ) {
+      throw new UnauthorizedException({
+        message: TEMP_PASSWORD_EXPIRED_MESSAGE,
+        error: AuthErrorCode.TempPasswordExpired,
       });
     }
 
@@ -160,7 +176,7 @@ export class AuthService {
     // Single-device enforcement (§3.2): bumping tokenVersion on every login
     // invalidates any token still held by a previously logged-in device.
     const tokens = await this.startSession(user);
-    return { user: await loadAuthUser(this.prisma, user), tokens };
+    return { user: await loadAuthUser(this.prisma, user, this.mediaUrls), tokens };
   }
 
   async refresh(refreshToken: string): Promise<AuthTokens> {
@@ -194,7 +210,7 @@ export class AuthService {
     }
 
     const user = await this.prisma.user.findUnique({ where: { id: payload.sub } });
-    if (!user || !user.isActive || user.tokenVersion !== payload.tokenVersion) {
+    if (!user || !user.isActive || user.deletedAt || user.tokenVersion !== payload.tokenVersion) {
       throw new UnauthorizedException({
         message: 'Session is no longer valid',
         error: AuthErrorCode.TokenVersionMismatch,
@@ -207,7 +223,7 @@ export class AuthService {
 
   async getMe(userId: string): Promise<AuthUser> {
     const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
-    return loadAuthUser(this.prisma, user);
+    return loadAuthUser(this.prisma, user, this.mediaUrls);
   }
 
   /** Invalidates the current session (§3.2 single-device logout). */
@@ -264,6 +280,44 @@ export class AuthService {
       data: { passwordHash, tokenVersion: { increment: 1 } },
     });
     await this.redis.del(refreshKey(userId));
+  }
+
+  /**
+   * Completes a forced password change after an admin-issued temporary password.
+   * Clears the must-change flag without invalidating the current session.
+   */
+  async completeForcedPasswordChange(userId: string, newPassword: string): Promise<void> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user || !user.isActive || user.deletedAt) {
+      throw new UnauthorizedException({
+        message: 'Authentication required',
+        error: AuthErrorCode.InvalidCredentials,
+      });
+    }
+
+    if (!user.mustChangePassword) {
+      throw new BadRequestException({
+        message: 'No password change is required for this account',
+        error: 'PASSWORD_CHANGE_NOT_REQUIRED',
+      });
+    }
+
+    if (!isPasswordPolicyCompliant(newPassword)) {
+      throw new BadRequestException({
+        message: PASSWORD_POLICY_INVALID_MESSAGE,
+        error: 'INVALID_PASSWORD',
+      });
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, BCRYPT_SALT_ROUNDS);
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        passwordHash,
+        mustChangePassword: false,
+        tempPasswordExpiresAt: null,
+      },
+    });
   }
 
   /** Bumps tokenVersion, then mints a fresh token pair (login/signup entry). */
@@ -378,15 +432,20 @@ export function toAuthUser(
     isActive: user.isActive,
     teamLeadAssignments,
     centerSevakCenterIds,
+    ...(user.mustChangePassword ? { mustChangePassword: true as const } : {}),
   };
 }
 
-export async function loadAuthUser(prisma: PrismaService, user: User): Promise<AuthUser> {
+export async function loadAuthUser(
+  prisma: PrismaService,
+  user: User,
+  mediaUrls?: MediaUrlResolver,
+): Promise<AuthUser> {
   const [leadAssignments, sevakAssignments] = await Promise.all([
     prisma.roleAssignment.findMany({
       where: {
         userId: user.id,
-        role: { in: [UserRole.Captain, UserRole.ViceCaptain] },
+        role: { in: [UserRole.Captain, UserRole.ViceCaptain, UserRole.Manager] },
       },
       select: { role: true, tournamentId: true, teamId: true },
     }),
@@ -400,7 +459,11 @@ export async function loadAuthUser(prisma: PrismaService, user: User): Promise<A
     if (!row.tournamentId || !row.teamId) {
       return [];
     }
-    if (row.role !== UserRole.Captain && row.role !== UserRole.ViceCaptain) {
+    if (
+      row.role !== UserRole.Captain &&
+      row.role !== UserRole.ViceCaptain &&
+      row.role !== UserRole.Manager
+    ) {
       return [];
     }
     return [
@@ -416,5 +479,9 @@ export async function loadAuthUser(prisma: PrismaService, user: User): Promise<A
     .map((row) => row.centerId)
     .filter((id): id is string => id !== null);
 
-  return toAuthUser(user, teamLeadAssignments, centerSevakCenterIds);
+  const authUser = toAuthUser(user, teamLeadAssignments, centerSevakCenterIds);
+  if (mediaUrls) {
+    authUser.profilePhotoUrl = await mediaUrls.resolveReadUrl(authUser.profilePhotoUrl);
+  }
+  return authUser;
 }

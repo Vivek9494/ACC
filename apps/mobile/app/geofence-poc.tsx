@@ -13,10 +13,12 @@ import * as Location from 'expo-location';
 import * as Notifications from 'expo-notifications';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { ScreenHeader } from '../src/components/ui/ScreenHeader';
 import { Button } from '../src/components/ui/Button';
 import { Text } from '../src/components/ui/Text';
 import { FIELD_ORANGE } from '../src/components/ui/fieldStyles';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
   clearLog,
@@ -77,7 +79,7 @@ export default function GeofencePocScreen(): React.ReactElement {
     setBg(bgRes.status === 'granted' ? 'granted' : 'denied');
     if (bgRes.status !== 'granted') {
       setError(
-        'Background location not granted. Open Settings → ACC → Location and choose ' +
+        'Background location not granted. Open Settings → ASC → Location and choose ' +
           '"Always" (iOS) / "Allow all the time" (Android), then start again.',
       );
       return false;
@@ -154,22 +156,16 @@ export default function GeofencePocScreen(): React.ReactElement {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-background">
+    <SafeAreaView className="flex-1 bg-background" edges={['top']}>
+      <ScreenHeader
+        title="Geofence spike"
+        subtitle="Throwaway test for geofence attendance. Needs a development build (not Expo Go)."
+        onBack={() => router.back()}
+      />
       <ScrollView
         contentContainerClassName="px-6 py-6 gap-4"
         refreshControl={<RefreshControl refreshing={false} onRefresh={() => void refresh()} />}
       >
-        <Pressable onPress={() => router.back()}>
-          <Text className="font-sans text-primary">← Back</Text>
-        </Pressable>
-
-        <View className="gap-1">
-          <Text className="font-sans-bold text-2xl text-on-surface">Geofence spike</Text>
-          <Text className="font-sans text-sm text-on-surface-variant">
-            Throwaway test for §geofence attendance. Needs a development build (not Expo Go).
-          </Text>
-        </View>
-
         <View className="gap-1 rounded-xl border border-outline-variant bg-surface-container-lowest p-4">
           <Text className="font-sans-medium text-[11px] uppercase tracking-wider text-on-surface-variant">
             Region

@@ -4,46 +4,62 @@ import {
   type CloneSuggestion,
   compareIsoDateOnly,
   DEFAULT_PLAYERS_PER_TEAM,
+  deriveTournamentDisplayStatus,
   deriveTournamentWindowFromDates,
   formatUtcIsoDate,
+  formatTodayDateOnlyInZone,
+  isDateWithinLeatherSpan,
   isIsoDateOnly,
   isTournamentRegistrationOpen,
+  hasRegistrationOpened,
   isRegistrationVerificationComplete,
   type MatchSchedulingFormat,
   normalizeTournamentDates,
   normalizeTeamName,
   Permission,
   RegistrationStatus,
+  selectDashboardTournaments,
+  serverVenueTimezone,
   TOURNAMENT_FORM_MESSAGES,
   TournamentState,
   TOURNAMENT_STATE_TRANSITIONS,
   tournamentHasRegistrationWindow,
   type TournamentDashboardPermissions,
   type TournamentDashboardEntry,
+  type TournamentBrowseEntry,
   type TournamentDetail,
   type TournamentEditFormData,
-  type TournamentScopeDisplay,
   type TournamentSummary,
   CitySelection,
   TournamentType,
   UserRole,
+  canManageLeatherInvites,
 } from '@acc/types';
+import { decimalToNumberOrNull, numberToDecimalOrNull } from '../common/decimal.util';
 import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import type { Prisma, Tournament } from '@prisma/client';
 
 import { PermissionService } from '../authz/permission.service';
+import {
+  assertCanScheduleTournamentMatches,
+  canActorScheduleTournamentMatches,
+  viewerLeaderTeamIdsInTournament,
+} from '../matches/create-match-auth.util';
 import { TournamentTypeResolverService } from '../authz/tournament-type-resolver.service';
+import { NotificationAudienceService } from '../notifications/notification-audience.service';
 import {
   NotificationsService,
   NotificationTrigger,
 } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { MediaService } from '../media/media.service';
+import { MediaUrlResolver } from '../storage/media-url.resolver';
+import { S3StorageService } from '../storage/s3-storage.service';
 import { PlayerSkillVideosService } from '../player-videos/player-skill-videos.service';
 import type { CreateTournamentDto } from './dto/create-tournament.dto';
 import type { UpdateTournamentDto } from './dto/update-tournament.dto';
@@ -52,6 +68,12 @@ import {
   assertTournamentActive,
   withActiveTournamentWhere,
 } from './tournament-query';
+import { resolveGroupBlockingLiveMatchCounts } from '../groups/group-match-query';
+import {
+  activeTeamCountSelect,
+  activeTeamWhere,
+  resolveTeamHasMatches,
+} from '../teams/team-query';
 import {
   assertCreateTournamentFormValid,
   registrationCloseBeforeOpenFields,
@@ -59,6 +81,16 @@ import {
   videoDateRequiredFields,
 } from './tournament-create-validation';
 import { resolveTournamentTimezone } from './tournament-timezone.utils';
+import { LeatherTournamentVisibilityService } from './leather-tournament-visibility.service';
+import { TournamentScorersService } from './tournament-scorers.service';
+import {
+  buildTournamentScopeDisplay,
+} from './tournament-scope-display';
+import {
+  assertKnockoutTeamCountOnCreate,
+  assertKnockoutTeamCountOnUpdate,
+} from './tournament-knockout-team-count.validation';
+import { KnockoutBracketService } from '../knockout-bracket/knockout-bracket.service';
 
 const CREATE_PERMISSION: Record<TournamentType, Permission> = {
   ACC: Permission.CREATE_ACC_TOURNAMENT,
@@ -66,17 +98,37 @@ const CREATE_PERMISSION: Record<TournamentType, Permission> = {
   CENTER: Permission.CREATE_CENTER_TOURNAMENT,
 };
 
+/** Type-appropriate body copy for the §17 new-tournament announcement. */
+function newTournamentBody(name: string, type: TournamentType): string {
+  switch (type) {
+    case TournamentType.APL:
+      return `${name} (APL) has been announced. Tap to view details.`;
+    case TournamentType.Center:
+      return `${name} has been announced in your area. Tap to view details.`;
+    case TournamentType.ACC:
+    default:
+      return `${name} has been announced. Tap to view details.`;
+  }
+}
+
 type TournamentWithCounts = Tournament & { _count: { teams: number } };
 
 @Injectable()
 export class TournamentsService {
+  private readonly logger = new Logger(TournamentsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly typeResolver: TournamentTypeResolverService,
     private readonly permissions: PermissionService,
     private readonly notifications: NotificationsService,
-    private readonly media: MediaService,
+    private readonly notificationAudience: NotificationAudienceService,
+    private readonly storage: S3StorageService,
+    private readonly mediaUrls: MediaUrlResolver,
     private readonly playerSkillVideos: PlayerSkillVideosService,
+    private readonly leatherVisibility: LeatherTournamentVisibilityService,
+    private readonly tournamentScorers: TournamentScorersService,
+    private readonly knockoutBracket: KnockoutBracketService,
   ) {}
 
   /** Creates a tournament (§6.1), deriving the type server-side and RBAC-gating it. */
@@ -95,15 +147,22 @@ export class TournamentsService {
     }
 
     assertCreateTournamentFormValid(dto);
+    assertKnockoutTeamCountOnCreate(type, dto.knockoutTeamCount);
+    await this.assertActiveProvince(dto.provinceId);
 
-    this.validateTournamentDates(dto.dates);
+    if (dto.ballType === BallType.Leather) {
+      this.validateLeatherTournamentSpan(dto.dates, { timezone: dto.timezone });
+    } else {
+      this.validateTournamentDates(dto.dates);
+    }
     const { startAt, endAt, normalizedDates } = this.deriveTournamentSchedule(dto.dates);
     const dtoWithWindow = { ...dto, startAt, endAt };
 
     this.validateDates(dtoWithWindow);
     this.validateCenterParticipation(dto, type);
 
-    const playersPerTeam = dto.playersPerTeam ?? DEFAULT_PLAYERS_PER_TEAM;
+    const playersPerTeam = dto.playersPerTeam ?? null;
+    const fees = this.resolveTournamentFees(dto.ballType, dto.feeFullTime, dto.feePartTime);
     const timezone = resolveTournamentTimezone({
       latitude: dto.latitude,
       longitude: dto.longitude,
@@ -115,7 +174,7 @@ export class TournamentsService {
         data: {
           name: dto.name,
           year: dto.year,
-          posterUrl: dto.posterUrl,
+          posterUrl: this.normalizePosterUrlForStorage(dto.posterUrl),
           maxOversPerBowler: dto.maxOversPerBowler,
           numberOfTeams: dto.numberOfTeams,
           playersPerTeam,
@@ -137,6 +196,9 @@ export class TournamentsService {
           registrationOpenAt: dto.registrationOpenAt ? new Date(dto.registrationOpenAt) : null,
           registrationCloseAt: dto.registrationCloseAt ? new Date(dto.registrationCloseAt) : null,
           auctionAt: dto.auctionAt ? new Date(dto.auctionAt) : null,
+          feeFullTime: fees.feeFullTime,
+          feePartTime: fees.feePartTime,
+          provinceId: dto.provinceId,
           createdByUserId: actor.id,
         },
       });
@@ -162,38 +224,85 @@ export class TournamentsService {
       return tournament.id;
     });
 
+    await this.notifyNewTournament(created, dto.name, type);
+
     return this.getDetail(created);
   }
 
-  async uploadPoster(actor: AuthUser, buffer: Buffer): Promise<string> {
-    return this.media.uploadTournamentPoster(actor.id, buffer);
+  /**
+   * §17 Phase B: announce a newly created tournament to its resolved audience
+   * (APL/CENTER → selected centers' users; ACC/Leather → past leather players).
+   * Best-effort — never fails the create if push/log has an issue.
+   */
+  private async notifyNewTournament(
+    tournamentId: string,
+    name: string,
+    type: TournamentType,
+  ): Promise<void> {
+    try {
+      const userIds = await this.notificationAudience.resolveTournamentAudience(tournamentId);
+      if (userIds.length === 0) {
+        return;
+      }
+      await this.notifications.sendToAudience(userIds, {
+        triggerKey: NotificationTrigger.NewTournamentCreated,
+        dedupeKey: `${NotificationTrigger.NewTournamentCreated}:${tournamentId}`,
+        title: `New tournament: ${name}`,
+        body: newTournamentBody(name, type),
+        data: { tournamentId, screen: 'tournament' },
+        audienceSummary: `New ${type} tournament ${tournamentId}`,
+      });
+    } catch (err) {
+      this.logger.error(`Failed to send new-tournament notification for ${tournamentId}`, err as Error);
+    }
   }
 
   /** Lists tournaments newest-first for the dashboard list. */
-  async list(): Promise<TournamentSummary[]> {
+  async list(viewer: AuthUser | null = null): Promise<TournamentSummary[]> {
     const rows = await this.prisma.tournament.findMany({
       where: activeTournamentWhere,
-      include: { _count: { select: { teams: true } } },
+      include: { _count: { select: activeTeamCountSelect } },
       orderBy: [{ year: 'desc' }, { createdAt: 'desc' }],
     });
-    return rows.map((row) => this.toSummary(row));
+
+    let visibleLeatherIds: Set<string> | null = null;
+    if (viewer) {
+      const ids = await this.leatherVisibility.getVisibleLeatherTournamentIds(viewer.id);
+      visibleLeatherIds = new Set(ids);
+    }
+
+    return Promise.all(
+      rows
+        .filter((row) => {
+          if (row.ballType !== BallType.Leather) {
+            return true;
+          }
+          if (!viewer) {
+            return false;
+          }
+          return visibleLeatherIds?.has(row.id) ?? false;
+        })
+        .map((row) => this.toSummary(row)),
+    );
   }
 
   async getDetail(id: string, viewer: AuthUser | null = null): Promise<TournamentDetail> {
     const row = await this.prisma.tournament.findUnique({
       where: { id },
       include: {
-        _count: { select: { teams: true, groups: true } },
+        _count: { select: { ...activeTeamCountSelect, groups: true } },
         groups: {
           orderBy: { name: 'asc' },
           include: {
             teams: {
+              where: activeTeamWhere,
               orderBy: { name: 'asc' },
               include: { _count: { select: { memberships: true } } },
             },
           },
         },
         teams: {
+          where: activeTeamWhere,
           select: {
             id: true,
             name: true,
@@ -207,10 +316,42 @@ export class TournamentsService {
         scheduledDates: { select: { date: true }, orderBy: { date: 'asc' } },
       },
     });
-    assertTournamentActive(row);
+    if (!row) {
+      throw new NotFoundException({ message: 'Tournament not found', error: 'NOT_FOUND' });
+    }
+    const isCancelled = row.isDeleted;
+    if (isCancelled && !viewer) {
+      throw new NotFoundException({ message: 'Tournament not found', error: 'NOT_FOUND' });
+    }
+    if (!isCancelled) {
+      assertTournamentActive(row);
+    }
+
+    let canEditForView = false;
+    if (viewer && !isCancelled) {
+      const menuPermissions = await this.resolveTournamentMenuPermissions(viewer, {
+        id: row.id,
+        createdByUserId: row.createdByUserId,
+        ballType: row.ballType as BallType,
+      });
+      canEditForView = menuPermissions.canEdit;
+    }
+
+    if (!isCancelled) {
+      await this.leatherVisibility.assertCanViewLeatherTournament(
+        viewer,
+        id,
+        row.ballType as BallType,
+        {
+          allowClubManagerManagement: viewer?.role === UserRole.ClubManager,
+          allowEditor: canEditForView,
+        },
+      );
+    }
 
     let myTeamId: string | null = null;
     if (viewer) {
+      // Roster membership in this tournament — role-independent (Admin/Club Manager may also play).
       const membership = await this.prisma.teamMembership.findUnique({
         where: {
           tournamentId_userId: { tournamentId: id, userId: viewer.id },
@@ -218,10 +359,39 @@ export class TournamentsService {
         select: { teamId: true },
       });
       myTeamId = membership?.teamId ?? null;
+      if (myTeamId && !row.teams.some((team) => team.id === myTeamId)) {
+        myTeamId = null;
+      }
     }
 
+    const teamIds = row.teams.map((team) => team.id);
+    const hasMatchesByTeamId = await resolveTeamHasMatches(this.prisma, id, teamIds);
+
+    const scopeDisplay = await buildTournamentScopeDisplay(
+      this.prisma,
+      id,
+      row.type as TournamentType,
+      row.ballType as BallType,
+      row.provinceId,
+    );
+
+    const summaryFields = await this.toSummaryFields(row);
+
+    const teamLogoKeys = row.teams.map((team) => team.logoUrl);
+    const resolvedTeamLogos = await this.mediaUrls.resolveReadUrls(teamLogoKeys);
+    const logoByTeamId = new Map(
+      row.teams.map((team, index) => [team.id, resolvedTeamLogos[index] ?? null]),
+    );
+
+    const groupBlockingMatchCounts = await resolveGroupBlockingLiveMatchCounts(
+      this.prisma,
+      id,
+      row.groups.map((group) => group.id),
+    );
+
     const detailBase = {
-      ...this.toSummary(row),
+      ...summaryFields,
+      scopeDisplay,
       dates: row.scheduledDates.map((entry) => formatUtcIsoDate(entry.date)),
       oversPerInnings: row.oversPerInnings,
       maxOversPerBowler: row.maxOversPerBowler,
@@ -237,25 +407,31 @@ export class TournamentsService {
       registrationOpenAt: row.registrationOpenAt?.toISOString() ?? null,
       registrationCloseAt: row.registrationCloseAt?.toISOString() ?? null,
       auctionAt: row.auctionAt?.toISOString() ?? null,
+      feeFullTime: decimalToNumberOrNull(row.feeFullTime),
+      feePartTime: decimalToNumberOrNull(row.feePartTime),
       groupCount: row._count.groups,
+      knockoutTeamCount: row.knockoutTeamCount,
       groups: row.groups.map((group) => ({
         id: group.id,
         tournamentId: row.id,
         name: group.name,
+        liveMatchCount: groupBlockingMatchCounts.get(group.id) ?? 0,
+        hasLiveMatches: (groupBlockingMatchCounts.get(group.id) ?? 0) > 0,
         teams: group.teams.map((team) => ({
           id: team.id,
           name: team.name,
-          logoUrl: team.logoUrl,
+          logoUrl: logoByTeamId.get(team.id) ?? null,
           memberCount: team._count.memberships,
         })),
       })),
       teams: row.teams.map((team) => ({
         id: team.id,
         name: team.name,
-        logoUrl: team.logoUrl,
+        logoUrl: logoByTeamId.get(team.id) ?? null,
         memberCount: team._count.memberships,
         groupId: team.groupId,
         groupName: team.group?.name ?? null,
+        hasMatches: hasMatchesByTeamId.get(team.id) ?? false,
       })),
     };
     const hasRegistrationWindow = tournamentHasRegistrationWindow(detailBase);
@@ -281,13 +457,25 @@ export class TournamentsService {
 
     let canViewRegisteredPlayersList = false;
     let canViewFavouritePlayers = false;
-    if (viewer && registrationVerificationComplete) {
-      [canViewRegisteredPlayersList, canViewFavouritePlayers] = await Promise.all([
-        this.permissions.check(Permission.VIEW_VERIFIED_REGISTERED_PLAYERS, viewer, {
-          tournamentId: id,
-        }),
-        this.permissions.check(Permission.FAVOURITE_PLAYERS, viewer, { tournamentId: id }),
-      ]);
+    if (viewer) {
+      if (
+        row.ballType === BallType.Leather &&
+        hasRegistrationWindow &&
+        hasRegistrationOpened(detailBase)
+      ) {
+        canViewRegisteredPlayersList = await this.permissions.check(
+          Permission.VIEW_LEATHER_REGISTERED_PLAYERS,
+          viewer,
+          { tournamentId: id },
+        );
+      } else if (registrationVerificationComplete) {
+        [canViewRegisteredPlayersList, canViewFavouritePlayers] = await Promise.all([
+          this.permissions.check(Permission.VIEW_VERIFIED_REGISTERED_PLAYERS, viewer, {
+            tournamentId: id,
+          }),
+          this.permissions.check(Permission.FAVOURITE_PLAYERS, viewer, { tournamentId: id }),
+        ]);
+      }
     }
 
     const videoFlags = await this.playerSkillVideos.viewerUploadFlags(viewer, {
@@ -297,21 +485,76 @@ export class TournamentsService {
       registrationOpenAt: detailBase.registrationOpenAt,
       registrationCloseAt: detailBase.registrationCloseAt,
       registrationVerificationComplete,
+      videoRequired: detailBase.videoRequired,
       videoUploadEndDate: detailBase.videoUploadEndDate,
     });
 
+    let canEdit = false;
+    let canRegisterForLeatherTournament = false;
+    let canManageLeatherInvitesFlag = false;
+    let canScheduleMatches = false;
+    let viewerLeaderTeamIds: string[] = [];
+    if (viewer && !isCancelled) {
+      const activeTeamIds = new Set(row.teams.map((team) => team.id));
+      viewerLeaderTeamIds = await viewerLeaderTeamIdsInTournament(
+        this.prisma,
+        viewer.id,
+        id,
+        activeTeamIds,
+      );
+      canScheduleMatches = await canActorScheduleTournamentMatches(
+        this.permissions,
+        this.prisma,
+        viewer,
+        { id, ballType: row.ballType as BallType },
+      );
+
+      const menuPermissions = await this.resolveTournamentMenuPermissions(viewer, {
+        id: row.id,
+        createdByUserId: row.createdByUserId,
+        ballType: row.ballType as BallType,
+      });
+      canEdit = menuPermissions.canEdit;
+      if (row.ballType === BallType.Leather) {
+        canRegisterForLeatherTournament =
+          await this.leatherVisibility.canRegisterForLeatherTournament(viewer.id, id, viewer);
+        canManageLeatherInvitesFlag = canManageLeatherInvites(viewer, {
+          ballType: BallType.Leather,
+          startAt: row.startAt.toISOString(),
+        });
+      }
+    }
+
+    const participatingCenterIds = await this.tournamentScorers.loadParticipatingCenterIds(id);
+    const hasKnockoutBracket = await this.knockoutBracket.hasKnockoutBracket(id);
+    const scorerFlags = await this.tournamentScorers.buildViewerFlags(
+      viewer,
+      id,
+      row.ballType as BallType,
+      scopeDisplay,
+      participatingCenterIds,
+    );
+
     return {
       ...detailBase,
+      hasKnockoutBracket,
       myTeamId,
       hasRegistrationWindow,
       registrationIsOpen: isTournamentRegistrationOpen(detailBase),
       registrationVerificationComplete,
       canViewRegisteredPlayersList,
       canViewFavouritePlayers,
+      canRegisterForLeatherTournament,
+      canManageLeatherInvites: canManageLeatherInvitesFlag,
+      canEdit,
+      canScheduleMatches,
+      viewerLeaderTeamIds,
       canUploadSkillVideo: videoFlags.canUploadSkillVideo,
       hasSkillVideo: videoFlags.hasSkillVideo,
       canUploadPlayerVideo: videoFlags.canUploadSkillVideo,
       hasPlayerVideo: videoFlags.hasSkillVideo,
+      canManageTournamentScorers: scorerFlags.canManageTournamentScorers,
+      tournamentScorerCount: scorerFlags.tournamentScorerCount,
     };
   }
 
@@ -352,7 +595,7 @@ export class TournamentsService {
     const existing = await this.prisma.tournament.findUnique({
       where: { id },
       include: {
-        _count: { select: { teams: true } },
+        _count: { select: { ...activeTeamCountSelect, groups: true } },
         scheduledDates: { select: { date: true }, orderBy: { date: 'asc' } },
       },
     });
@@ -398,33 +641,70 @@ export class TournamentsService {
 
     let normalizedDates: string[] | undefined;
     if (dto.dates !== undefined) {
-      this.validateTournamentDatesForUpdate(existingDates, dto.dates);
-      normalizedDates = normalizeTournamentDates(dto.dates);
-      const removed = existingDates.filter((date) => !normalizedDates!.includes(date));
-      if (removed.length > 0) {
+      if (existing.ballType === BallType.Leather) {
+        this.validateLeatherTournamentSpan(dto.dates, {
+          timezone: existing.timezone,
+          existingSpanDates: existingDates,
+        });
+        normalizedDates = normalizeTournamentDates(dto.dates);
+        const spanStart = normalizedDates[0] as string;
+        const spanEnd = normalizedDates[normalizedDates.length - 1] as string;
         const datesWithMatches = await this.getDatesWithScheduledMatches(id);
-        for (const date of removed) {
-          if (datesWithMatches.includes(date)) {
+        for (const matchDate of datesWithMatches) {
+          if (!isDateWithinLeatherSpan(matchDate, spanStart, spanEnd)) {
             throw new BadRequestException({
-              message: TOURNAMENT_FORM_MESSAGES.tournamentDates.hasScheduledMatch(date),
+              message: TOURNAMENT_FORM_MESSAGES.tournamentDates.matchOutsideSpan(matchDate),
               error: 'DATE_HAS_SCHEDULED_MATCH',
               fields: {
-                tournamentDates: TOURNAMENT_FORM_MESSAGES.tournamentDates.hasScheduledMatch(date),
+                tournamentDates:
+                  TOURNAMENT_FORM_MESSAGES.tournamentDates.matchOutsideSpan(matchDate),
               },
             });
           }
         }
+        const { startAt, endAt } = deriveTournamentWindowFromDates(normalizedDates);
+        merged.startAt = startAt;
+        merged.endAt = endAt;
+      } else {
+        this.validateTournamentDatesForUpdate(existingDates, dto.dates, existing.timezone);
+        normalizedDates = normalizeTournamentDates(dto.dates);
+        const removed = existingDates.filter((date) => !normalizedDates!.includes(date));
+        if (removed.length > 0) {
+          const datesWithMatches = await this.getDatesWithScheduledMatches(id);
+          for (const date of removed) {
+            if (datesWithMatches.includes(date)) {
+              throw new BadRequestException({
+                message: TOURNAMENT_FORM_MESSAGES.tournamentDates.hasScheduledMatch(date),
+                error: 'DATE_HAS_SCHEDULED_MATCH',
+                fields: {
+                  tournamentDates: TOURNAMENT_FORM_MESSAGES.tournamentDates.hasScheduledMatch(date),
+                },
+              });
+            }
+          }
+        }
+        const { startAt, endAt } = deriveTournamentWindowFromDates(normalizedDates);
+        merged.startAt = startAt;
+        merged.endAt = endAt;
       }
-      const { startAt, endAt } = deriveTournamentWindowFromDates(normalizedDates);
-      merged.startAt = startAt;
-      merged.endAt = endAt;
     }
 
     this.validateDates(merged);
 
     const data: Prisma.TournamentUpdateInput = {};
     if (dto.name !== undefined) data.name = dto.name;
-    if (dto.posterUrl !== undefined) data.posterUrl = dto.posterUrl;
+    if (dto.posterUrl !== undefined) {
+      const nextPosterKey =
+        dto.posterUrl === null ? null : this.normalizePosterUrlForStorage(dto.posterUrl);
+      const existingPosterKey =
+        existing.posterUrl != null
+          ? (this.storage.resolveObjectKey(existing.posterUrl) ?? existing.posterUrl)
+          : null;
+      if (existingPosterKey && existingPosterKey !== nextPosterKey) {
+        await this.storage.deleteObject(existing.posterUrl);
+      }
+      data.posterUrl = nextPosterKey;
+    }
     if (dto.oversPerInnings !== undefined) data.oversPerInnings = dto.oversPerInnings;
     if (dto.maxOversPerBowler !== undefined) data.maxOversPerBowler = dto.maxOversPerBowler;
     if (dto.numberOfTeams !== undefined) data.numberOfTeams = dto.numberOfTeams;
@@ -469,6 +749,34 @@ export class TournamentsService {
     if (dto.auctionAt !== undefined) {
       data.auctionAt = dto.auctionAt ? new Date(dto.auctionAt) : null;
     }
+    if (dto.feeFullTime !== undefined || dto.feePartTime !== undefined) {
+      const fees = this.resolveTournamentFees(
+        existing.ballType as BallType,
+        dto.feeFullTime !== undefined ? dto.feeFullTime : decimalToNumberOrNull(existing.feeFullTime),
+        dto.feePartTime !== undefined ? dto.feePartTime : decimalToNumberOrNull(existing.feePartTime),
+      );
+      data.feeFullTime = fees.feeFullTime;
+      data.feePartTime = fees.feePartTime;
+    }
+    if (dto.provinceId !== undefined) {
+      await this.assertActiveProvince(dto.provinceId);
+      data.province = { connect: { id: dto.provinceId } };
+    }
+
+    if (dto.knockoutTeamCount !== undefined) {
+      const nextNumberOfTeams =
+        dto.numberOfTeams !== undefined ? dto.numberOfTeams : existing.numberOfTeams;
+      const hasKnockoutBracket = await this.knockoutBracket.hasKnockoutBracket(id);
+      await assertKnockoutTeamCountOnUpdate(
+        existing.type as TournamentType,
+        existing._count.groups,
+        nextNumberOfTeams,
+        existing.knockoutTeamCount,
+        dto.knockoutTeamCount,
+        hasKnockoutBracket,
+      );
+      data.knockoutTeamCount = dto.knockoutTeamCount;
+    }
 
     await this.prisma.$transaction(async (tx) => {
       await tx.tournament.update({ where: { id }, data });
@@ -486,7 +794,7 @@ export class TournamentsService {
 
     await this.notifyOnTournamentEdit(existing, dto, normalizedDates);
 
-    return this.getDetail(id);
+    return this.getDetail(id, actor);
   }
 
   /** Edit-form payload with locked scope display and scheduling constraints. */
@@ -497,8 +805,14 @@ export class TournamentsService {
     await this.assertCenterSevakTournamentAccess(actor, existing);
 
     const [detail, scopeDisplay, datesWithMatches] = await Promise.all([
-      this.getDetail(id),
-      this.buildScopeDisplay(id, existing.type as TournamentType, existing.ballType as BallType),
+      this.getDetail(id, actor),
+      buildTournamentScopeDisplay(
+        this.prisma,
+        id,
+        existing.type as TournamentType,
+        existing.ballType as BallType,
+        existing.provinceId,
+      ),
       this.getDatesWithScheduledMatches(id),
     ]);
 
@@ -507,18 +821,33 @@ export class TournamentsService {
 
   /** Dashboard tournament rows with per-record permissions for the current user. */
   async listDashboardEntries(actor: AuthUser): Promise<TournamentDashboardEntry[]> {
+    const browse = await this.listBrowseEntries(actor);
+    return selectDashboardTournaments(browse);
+  }
+
+  /** Dashboard tournament summaries (no permissions) — same priority selection as browse. */
+  async listDashboardSummaries(actor: AuthUser): Promise<TournamentSummary[]> {
+    const entries = await this.listDashboardEntries(actor);
+    return entries.map((entry) => entry.tournament);
+  }
+
+  /**
+   * Browse tab — all tournaments for every authenticated user (no leather/membership filter).
+   * Includes soft-deleted rows as cancelled entries.
+   */
+  async listBrowseEntries(actor: AuthUser): Promise<TournamentBrowseEntry[]> {
     const rows = await this.prisma.tournament.findMany({
-      where: withActiveTournamentWhere(
-        actor.role === UserRole.ClubManager ? { type: TournamentType.APL } : {},
-      ),
-      include: { _count: { select: { teams: true } } },
+      include: { _count: { select: activeTeamCountSelect } },
       orderBy: [{ year: 'desc' }, { createdAt: 'desc' }],
     });
 
     return Promise.all(
       rows.map(async (row) => ({
-        tournament: this.toSummary(row),
-        permissions: await this.resolveTournamentMenuPermissions(actor, row),
+        tournament: await this.toSummary(row),
+        cancelled: row.isDeleted,
+        permissions: row.isDeleted
+          ? { canEdit: false, canDelete: false, canManageCenterPlayers: false }
+          : await this.resolveTournamentMenuPermissions(actor, row),
       })),
     );
   }
@@ -535,13 +864,10 @@ export class TournamentsService {
     const existing = await this.prisma.tournament.findUnique({ where: { id: tournamentId } });
     assertTournamentActive(existing);
 
-    const allowed = await this.permissions.check(Permission.CREATE_MATCH, actor, { tournamentId });
-    if (!allowed) {
-      throw new ForbiddenException({
-        message: 'You do not have permission to schedule matches',
-        error: 'FORBIDDEN',
-      });
-    }
+    await assertCanScheduleTournamentMatches(this.permissions, this.prisma, actor, {
+      id: existing.id,
+      ballType: existing.ballType as BallType,
+    });
 
     await this.assertCenterSevakTournamentAccess(actor, existing);
 
@@ -550,7 +876,7 @@ export class TournamentsService {
       data: { matchSchedulingFormat: schedulingFormat },
     });
 
-    return this.getDetail(tournamentId);
+    return this.getDetail(tournamentId, actor);
   }
 
   /** Soft-deletes a tournament; related rows are retained (§6.4 notifications). */
@@ -689,6 +1015,20 @@ export class TournamentsService {
     return this.resolveTournamentMenuPermissions(actor, tournament, actionCenterId);
   }
 
+  private resolveTournamentFees(
+    ballType: BallType,
+    feeFullTime: number | null | undefined,
+    feePartTime: number | null | undefined,
+  ): { feeFullTime: ReturnType<typeof numberToDecimalOrNull>; feePartTime: ReturnType<typeof numberToDecimalOrNull> } {
+    return {
+      feeFullTime: numberToDecimalOrNull(feeFullTime ?? null),
+      feePartTime:
+        ballType === BallType.Leather
+          ? numberToDecimalOrNull(feePartTime ?? null)
+          : null,
+    };
+  }
+
   private validateDates(dto: {
     startAt: string;
     endAt: string;
@@ -733,6 +1073,55 @@ export class TournamentsService {
     }
   }
 
+  private validateLeatherTournamentSpan(
+    dates: string[],
+    options?: {
+      timezone?: string | null;
+      existingSpanDates?: string[];
+    },
+  ): void {
+    if (!dates || dates.length === 0) {
+      throw new BadRequestException({
+        message: TOURNAMENT_FORM_MESSAGES.tournamentDates.leatherFromRequired,
+        error: 'TOURNAMENT_DATES_REQUIRED',
+        fields: { tournamentDates: TOURNAMENT_FORM_MESSAGES.tournamentDates.leatherFromRequired },
+      });
+    }
+
+    const timeZone = serverVenueTimezone(options?.timezone);
+    const todayOnly = formatTodayDateOnlyInZone(timeZone);
+    const unchangedDates = new Set(options?.existingSpanDates ?? []);
+
+    for (const raw of dates) {
+      if (!isIsoDateOnly(raw)) {
+        throw new BadRequestException({
+          message: TOURNAMENT_FORM_MESSAGES.tournamentDates.leatherFromRequired,
+          error: 'INVALID_TOURNAMENT_DATE',
+          fields: { tournamentDates: TOURNAMENT_FORM_MESSAGES.tournamentDates.leatherFromRequired },
+        });
+      }
+      const isUnchanged = unchangedDates.has(raw);
+      if (compareIsoDateOnly(raw, todayOnly) < 0 && !isUnchanged) {
+        throw new BadRequestException({
+          message: TOURNAMENT_FORM_MESSAGES.tournamentDates.past,
+          error: 'PAST_TOURNAMENT_DATE',
+          fields: { tournamentDates: TOURNAMENT_FORM_MESSAGES.tournamentDates.past },
+        });
+      }
+    }
+
+    const normalized = normalizeTournamentDates(dates);
+    const fromDate = normalized[0] as string;
+    const endDate = normalized[normalized.length - 1] as string;
+    if (compareIsoDateOnly(endDate, fromDate) < 0) {
+      throw new BadRequestException({
+        message: TOURNAMENT_FORM_MESSAGES.tournamentDates.endBeforeFrom,
+        error: 'INVALID_TOURNAMENT_DATE_RANGE',
+        fields: { tournamentDates: TOURNAMENT_FORM_MESSAGES.tournamentDates.endBeforeFrom },
+      });
+    }
+  }
+
   private validateTournamentDates(dates: string[]): void {
     if (!dates || dates.length === 0) {
       throw new BadRequestException({
@@ -762,7 +1151,11 @@ export class TournamentsService {
   }
 
   /** Allows keeping existing past dates; only validates newly added calendar days. */
-  private validateTournamentDatesForUpdate(existingDates: string[], dates: string[]): void {
+  private validateTournamentDatesForUpdate(
+    existingDates: string[],
+    dates: string[],
+    timezone?: string | null,
+  ): void {
     if (!dates || dates.length === 0) {
       throw new BadRequestException({
         message: TOURNAMENT_FORM_MESSAGES.tournamentDates.required,
@@ -771,7 +1164,7 @@ export class TournamentsService {
       });
     }
 
-    const todayUtc = formatUtcIsoDate(new Date());
+    const todayOnly = formatTodayDateOnlyInZone(serverVenueTimezone(timezone));
     const existingSet = new Set(existingDates);
     for (const raw of dates) {
       if (!isIsoDateOnly(raw)) {
@@ -781,11 +1174,11 @@ export class TournamentsService {
           fields: { tournamentDates: TOURNAMENT_FORM_MESSAGES.tournamentDates.required },
         });
       }
-      if (!existingSet.has(raw) && compareIsoDateOnly(raw, todayUtc) < 0) {
+      if (!existingSet.has(raw) && compareIsoDateOnly(raw, todayOnly) < 0) {
         throw new BadRequestException({
-          message: TOURNAMENT_FORM_MESSAGES.tournamentDates.required,
+          message: TOURNAMENT_FORM_MESSAGES.tournamentDates.past,
           error: 'PAST_TOURNAMENT_DATE',
-          fields: { tournamentDates: TOURNAMENT_FORM_MESSAGES.tournamentDates.required },
+          fields: { tournamentDates: TOURNAMENT_FORM_MESSAGES.tournamentDates.past },
         });
       }
     }
@@ -803,32 +1196,6 @@ export class TournamentsService {
       }
     }
     return [...unique].sort();
-  }
-
-  private async buildScopeDisplay(
-    tournamentId: string,
-    type: TournamentType,
-    ballType: BallType,
-  ): Promise<TournamentScopeDisplay> {
-    if (type === TournamentType.ACC || ballType === BallType.Leather) {
-      return { citySelection: null, provinceName: null, centerNames: [] };
-    }
-
-    const links = await this.prisma.tournamentCenter.findMany({
-      where: { tournamentId },
-      include: { center: { include: { province: true } } },
-      orderBy: { center: { name: 'asc' } },
-    });
-
-    const provinceName = links[0]?.center.province.name ?? null;
-    const centerNames = links.map((link) => link.center.name);
-    let citySelection: CitySelection | null = CitySelection.All;
-    if (type === TournamentType.Center) {
-      citySelection =
-        centerNames.length === 1 ? CitySelection.Single : CitySelection.Multi;
-    }
-
-    return { citySelection, provinceName, centerNames };
   }
 
   private async notifyOnTournamentEdit(
@@ -888,14 +1255,6 @@ export class TournamentsService {
       return;
     }
 
-    if (!dto.provinceId) {
-      throw new BadRequestException({
-        message: TOURNAMENT_FORM_MESSAGES.province.required,
-        error: 'PROVINCE_REQUIRED',
-        fields: { province: TOURNAMENT_FORM_MESSAGES.province.required },
-      });
-    }
-
     if (dto.citySelection === 'MULTI' || type === 'CENTER') {
       if (!dto.centerIds || dto.centerIds.length === 0) {
         throw new BadRequestException({
@@ -904,6 +1263,20 @@ export class TournamentsService {
           fields: { centers: TOURNAMENT_FORM_MESSAGES.centers.required },
         });
       }
+    }
+  }
+
+  private async assertActiveProvince(provinceId: string): Promise<void> {
+    const province = await this.prisma.province.findUnique({
+      where: { id: provinceId },
+      select: { id: true, isActive: true },
+    });
+    if (!province?.isActive) {
+      throw new BadRequestException({
+        message: TOURNAMENT_FORM_MESSAGES.province.required,
+        error: 'INVALID_PROVINCE',
+        fields: { province: TOURNAMENT_FORM_MESSAGES.province.required },
+      });
     }
   }
 
@@ -1021,22 +1394,49 @@ export class TournamentsService {
     });
   }
 
-  private toSummary(row: TournamentWithCounts): TournamentSummary {
+  private normalizePosterUrlForStorage(posterUrl: string): string {
+    return this.storage.resolveObjectKey(posterUrl) ?? posterUrl;
+  }
+
+  private async toSummaryFields(row: TournamentWithCounts): Promise<Omit<TournamentSummary, 'scopeDisplay'>> {
+    const posterUrl = await this.mediaUrls.resolveReadUrl(row.posterUrl);
+    const startAt = row.startAt.toISOString();
+    const endAt = row.endAt.toISOString();
     return {
       id: row.id,
       name: row.name,
       year: row.year,
       type: row.type,
       state: row.state,
+      displayStatus: deriveTournamentDisplayStatus({
+        startAt,
+        endAt,
+        timezone: row.timezone,
+      }),
       ballType: row.ballType,
-      posterUrl: row.posterUrl,
-      startAt: row.startAt.toISOString(),
-      endAt: row.endAt.toISOString(),
+      posterUrl,
+      startAt,
+      endAt,
       locationAddress: row.locationAddress,
       latitude: row.latitude,
       longitude: row.longitude,
+      provinceId: row.provinceId,
       timezone: row.timezone,
       teamCount: row._count.teams,
+    };
+  }
+
+  private async toSummary(row: TournamentWithCounts): Promise<TournamentSummary> {
+    const scopeDisplay = await buildTournamentScopeDisplay(
+      this.prisma,
+      row.id,
+      row.type as TournamentType,
+      row.ballType as BallType,
+      row.provinceId,
+    );
+    return {
+      ...(await this.toSummaryFields(row)),
+      scopeDisplay,
     };
   }
 }

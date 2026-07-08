@@ -1,5 +1,5 @@
 import { TEAM_FORM_MESSAGES, TEAM_NAME_MAX_LENGTH, type CreateTeamRequest } from '@acc/types';
-import { IsOptional, IsString, IsUrl, MaxLength, MinLength } from 'class-validator';
+import { IsOptional, IsString, IsUrl, IsUUID, MaxLength, MinLength, ValidateIf } from 'class-validator';
 
 import { APP_URL_VALIDATION_OPTIONS } from '../../common/validation/url-options';
 
@@ -12,4 +12,19 @@ export class CreateTeamDto implements CreateTeamRequest {
   @IsOptional()
   @IsUrl(APP_URL_VALIDATION_OPTIONS)
   logoUrl?: string | null;
+
+  @IsOptional()
+  @ValidateIf((_obj, value) => value != null)
+  @IsUUID()
+  captainUserId?: string | null;
+
+  @IsOptional()
+  @ValidateIf((_obj, value) => value != null)
+  @IsUUID()
+  viceCaptainUserId?: string | null;
+
+  @IsOptional()
+  @ValidateIf((_obj, value) => value != null)
+  @IsUUID()
+  managerUserId?: string | null;
 }

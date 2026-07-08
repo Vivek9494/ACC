@@ -2,7 +2,7 @@ import { View } from 'react-native';
 
 import { Text } from './Text';
 
-export type StatusPillVariant = 'ongoing' | 'upcoming' | 'completed' | 'live';
+export type StatusPillVariant = 'ongoing' | 'upcoming' | 'completed' | 'live' | 'cancelled';
 
 export interface StatusPillProps {
   variant: StatusPillVariant;
@@ -15,6 +15,7 @@ const VARIANT_BG: Record<StatusPillVariant, string> = {
   upcoming: 'bg-secondary-100',
   completed: 'bg-stone-200',
   live: 'bg-primary',
+  cancelled: 'bg-surface-container-high',
 };
 
 const VARIANT_TEXT: Record<StatusPillVariant, string> = {
@@ -22,6 +23,7 @@ const VARIANT_TEXT: Record<StatusPillVariant, string> = {
   upcoming: 'text-secondary-700',
   completed: 'text-stone-700',
   live: 'text-text-inverse',
+  cancelled: 'text-on-surface-variant',
 };
 
 export function StatusPill({ variant, label, className }: StatusPillProps): React.ReactElement {

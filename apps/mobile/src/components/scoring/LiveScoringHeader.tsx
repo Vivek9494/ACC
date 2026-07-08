@@ -3,17 +3,25 @@ import {
   PROJECTED_SCORE_REFERENCE_RPO,
   type InningsScorecard,
   type LiveInningsRunStats,
+  type MatchState,
 } from '@acc/types';
 import { View } from 'react-native';
 
+import { MatchCardDisplayBadge } from '../tournament/MatchCardDisplayBadge';
 import { Text } from '../ui/Text';
 import { INPUT_SHADOW_STYLE } from '../ui/fieldStyles';
 
 export interface LiveScoringHeaderProps {
-  /** e.g. "Barrie Cobras vs Scarborough Strikeforce" */
-  matchLabel: string;
+  /** Tournament display name — e.g. "APL 2026". Omitted when unavailable. */
+  tournamentName?: string | null;
+  /** e.g. "Bhakti Colony Lions vs Brampton Bombers" */
+  teamsLabel: string;
   /** e.g. "League Match" from MatchType */
   matchTypeLabel: string;
+  /** Match result line when decided — e.g. "Brantford Sharks won by 8 wickets". */
+  resultLine?: string | null;
+  /** Machine match state — drives the status badge via shared list-card mapping. */
+  matchState: MatchState | string;
   innings: InningsScorecard | null;
   /** Resolved match allotment (`oversPerInnings` / innings `oversAllotted`). */
   totalOvers: number | null;
@@ -34,8 +42,8 @@ function StatsLine({
   }
 
   const textClass = compact
-    ? 'font-sans text-[11px] text-on-surface-variant'
-    : 'font-sans text-sm text-on-surface-variant';
+    ? 'font-sans text-sm text-on-surface-variant'
+    : 'font-sans text-base text-on-surface-variant';
 
   if (stats.isChase && !stats.ratesReady) {
     return (
@@ -48,7 +56,7 @@ function StatsLine({
 
   if (stats.isChase && stats.ratesReady) {
     return (
-      <Text className={textClass}>
+      <Text className={`${textClass} flex-shrink`}>
         CRR:{' '}
         <Text className="font-sans-semibold text-on-surface">{stats.crrText}</Text>
         {' • '}
@@ -126,29 +134,15 @@ function ChaseInfoBox({
   compact: boolean;
 }): React.ReactElement {
   return (
-    <View className={`rounded-control bg-primary-container ${compact ? 'px-3 py-2' : 'p-4'}`}>
-      {stats.ratesReady && stats.rrrText != null ? (
-        <View className="mb-1.5">
-          <Text
-            className={`font-sans-semibold uppercase tracking-wide text-on-primary-container/80 ${
-              compact ? 'text-[10px]' : 'text-xs'
-            }`}
-          >
-            Required run rate
-          </Text>
-          <Text
-            className={`font-sans-bold leading-none text-on-primary-container ${
-              compact ? 'text-2xl' : 'text-3xl'
-            }`}
-          >
-            {stats.rrrText}
-          </Text>
-        </View>
-      ) : null}
+    <View
+      className={`rounded-control bg-primary-container ${
+        compact ? 'px-3 py-2.5' : 'px-4 py-3.5'
+      }`}
+    >
       {stats.chaseNeedsLine ? (
         <Text
-          className={`font-sans-semibold text-on-primary-container ${
-            compact ? 'text-sm' : 'text-base'
+          className={`text-left font-sans-semibold text-on-primary-container ${
+            compact ? 'text-sm leading-5' : 'text-base leading-6'
           }`}
         >
           {stats.chaseNeedsLine}
@@ -158,21 +152,49 @@ function ChaseInfoBox({
   );
 }
 
-function LivePill({ compact }: { compact: boolean }): React.ReactElement {
+function TournamentMatchTypeLine({
+  tournamentName,
+  matchTypeLabel,
+  compact,
+}: {
+  tournamentName?: string | null;
+  matchTypeLabel: string;
+  compact: boolean;
+}): React.ReactElement | null {
+  const tournament = tournamentName?.trim();
+  const matchType = matchTypeLabel.trim();
+
+  if (!tournament && !matchType) {
+    return null;
+  }
+
+  let line: React.ReactNode;
+  if (tournament && matchType) {
+    line = (
+      <>
+        <Text className="uppercase text-primary">{tournament}</Text>
+        <Text className="text-on-surface-variant">{` · ${matchType}`}</Text>
+      </>
+    );
+  } else if (tournament) {
+    line = <Text className="uppercase text-primary">{tournament}</Text>;
+  } else {
+    line = matchType;
+  }
+
   return (
-    <View
-      className={`flex-row items-center rounded-full bg-primary ${
-        compact ? 'gap-1 px-2 py-0.5' : 'gap-1.5 px-2.5 py-1'
+    <Text
+      className={`font-sans-medium tracking-wide text-on-surface-variant text-xs ${
+        compact ? 'pr-16' : 'pr-24'
       }`}
     >
-      <View className={`rounded-full bg-text-inverse ${compact ? 'h-1.5 w-1.5' : 'h-2 w-2'}`} />
-      <Text
-        className={`font-sans-semibold text-text-inverse ${compact ? 'text-[10px]' : 'text-xs'}`}
-      >
-        LIVE
-      </Text>
-    </View>
+      {line}
+    </Text>
   );
+}
+
+function MatchStatusBadge({ state }: { state: MatchState | string }): React.ReactElement {
+  return <MatchCardDisplayBadge state={state} />;
 }
 
 function showStatsLine(stats: LiveInningsRunStats): boolean {
@@ -217,10 +239,31 @@ function StatsPanel({
   );
 }
 
+function MatchResultLine({
+  resultLine,
+  compact,
+}: {
+  resultLine: string;
+  compact: boolean;
+}): React.ReactElement {
+  return (
+    <Text
+      className={`font-sans-semibold text-primary ${
+        compact ? 'text-sm leading-5' : 'text-base leading-6'
+      }`}
+    >
+      {resultLine}
+    </Text>
+  );
+}
+
 /** Live score card — match stage, LIVE pill, derived score/overs, CRR, and projections/chase. */
 export function LiveScoringHeader({
-  matchLabel,
+  tournamentName,
+  teamsLabel,
   matchTypeLabel,
+  resultLine,
+  matchState,
   innings,
   totalOvers,
   showRunStats = false,
@@ -236,25 +279,31 @@ export function LiveScoringHeader({
   if (compact) {
     return (
       <View
-        className="gap-2 rounded-control border border-outline-variant bg-surface px-3 py-2"
+        className="gap-1.5 rounded-control border border-outline-variant bg-surface px-3 py-2"
         style={INPUT_SHADOW_STYLE}
       >
-        <Text
-          className="font-sans-medium text-[10px] uppercase tracking-wide text-on-surface-variant"
-          numberOfLines={1}
-        >
-          {matchLabel}
-          {matchTypeLabel ? ` · ${matchTypeLabel}` : ''}
-        </Text>
+        <TournamentMatchTypeLine
+          tournamentName={tournamentName}
+          matchTypeLabel={matchTypeLabel}
+          compact
+        />
 
         <View className="flex-row items-start justify-between gap-2">
-          <View className="min-w-0 flex-1">
-            <View className="flex-row flex-wrap items-baseline gap-x-2 gap-y-0.5">
+          <View className="min-w-0 flex-1 gap-0.5">
+            <Text className="font-sans-semibold text-base text-on-surface" numberOfLines={2}>
+              {teamsLabel}
+            </Text>
+            <View className="mt-1 flex-row flex-wrap items-baseline gap-x-2 gap-y-0.5">
               <Text className="font-sans-bold text-3xl text-on-surface">{scoreLine}</Text>
-              <Text className="font-sans-medium text-sm text-on-surface-variant">
+              <Text className="font-sans-medium text-base text-on-surface-variant">
                 ({oversLine} Overs)
               </Text>
             </View>
+            {resultLine ? (
+              <View className="mt-1">
+                <MatchResultLine resultLine={resultLine} compact />
+              </View>
+            ) : null}
             {stats ? (
               <View className="mt-1 gap-2">
                 <StatsPanel stats={stats} compact />
@@ -262,7 +311,7 @@ export function LiveScoringHeader({
             ) : null}
           </View>
           <View className="items-end gap-1">
-            <LivePill compact />
+            <MatchStatusBadge state={matchState} />
             {innings?.freeHitNext ? (
               <Text className="font-sans-semibold text-[10px] uppercase tracking-wide text-primary">
                 Free hit
@@ -280,18 +329,23 @@ export function LiveScoringHeader({
       style={INPUT_SHADOW_STYLE}
     >
       <View className="absolute right-4 top-4">
-        <LivePill compact={false} />
+        <MatchStatusBadge state={matchState} />
       </View>
 
-      <Text className="pr-24 font-sans-medium text-xs text-on-surface-variant">
-        {matchLabel}
-        {matchTypeLabel ? ` · ${matchTypeLabel}` : ''}
-      </Text>
+      <TournamentMatchTypeLine
+        tournamentName={tournamentName}
+        matchTypeLabel={matchTypeLabel}
+        compact={false}
+      />
+
+      <Text className="pr-24 font-sans-semibold text-base text-on-surface">{teamsLabel}</Text>
 
       <View className="flex-row flex-wrap items-baseline gap-2">
         <Text className="font-sans-bold text-4xl text-on-surface">{scoreLine}</Text>
         <Text className="font-sans text-lg text-on-surface-variant">({oversLine} Overs)</Text>
       </View>
+
+      {resultLine ? <MatchResultLine resultLine={resultLine} compact={false} /> : null}
 
       {stats ? <StatsPanel stats={stats} compact={false} /> : null}
 

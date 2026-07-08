@@ -75,6 +75,68 @@ export function bowlingTypeDisplayLabel(type: string | null | undefined): string
   return labels[type] ?? type;
 }
 
+/** Short Left/Right label from stored batting style (RHB/LHB). */
+export function registrationBattingHandShortLabel(
+  battingStyle: BattingStyle | null | undefined,
+): string | null {
+  if (battingStyle === BattingStyle.RHB) {
+    return 'Right';
+  }
+  if (battingStyle === BattingStyle.LHB) {
+    return 'Left';
+  }
+  return null;
+}
+
+/** Display label for self-reported registration role (§7.1). */
+export function registrationPlayerRoleLabel(
+  playerRole: PlayerRegistrationRole | null | undefined,
+): string | null {
+  if (!playerRole) {
+    return null;
+  }
+  return PLAYER_REGISTRATION_ROLE_LABELS[playerRole];
+}
+
+/**
+ * Read-only chip labels for the registration form's "Skill Assessment" section (§7.1).
+ * Stored as separate scalar columns on the tournament Registration row — not a multi-select.
+ */
+export function buildRegistrationSkillAssessmentChipLabels(
+  registration: Pick<
+    RegistrationSummary,
+    | 'battingRating'
+    | 'battingPosition'
+    | 'bowlingRating'
+    | 'bowlingType'
+    | 'fieldingRating'
+    | 'fieldingPosition'
+  >,
+): string[] {
+  const chips: string[] = [];
+
+  if (registration.battingRating != null) {
+    chips.push(`Batting · ${formatRegistrationSkillRating(registration.battingRating)}`);
+  }
+  if (registration.battingPosition) {
+    chips.push(registration.battingPosition);
+  }
+  if (registration.bowlingRating != null) {
+    chips.push(`Bowling · ${formatRegistrationSkillRating(registration.bowlingRating)}`);
+  }
+  if (registration.bowlingType) {
+    chips.push(registration.bowlingType);
+  }
+  if (registration.fieldingRating != null) {
+    chips.push(`Fielding · ${formatRegistrationSkillRating(registration.fieldingRating)}`);
+  }
+  if (registration.fieldingPosition) {
+    chips.push(registration.fieldingPosition);
+  }
+
+  return chips;
+}
+
 /** Poll Results row subtitle from per-tournament registration (§7.1). */
 export function formatPollPlayerSkillLabel(input: {
   battingPosition: string | null;
@@ -448,6 +510,18 @@ export interface VerifiedRegisteredPlayersView {
   players: VerifiedRegisteredPlayerRow[];
   canFavourite: boolean;
   favouriteTeamId: string | null;
+}
+
+/** Leather ACC registrants — Admin / Club Manager squad-building list. */
+export interface LeatherRegisteredPlayersView {
+  players: RegistrationSummary[];
+  totalCount: number;
+}
+
+export interface ListLeatherRegisteredPlayersQuery {
+  search?: string;
+  page?: number;
+  limit?: number;
 }
 
 export interface SetRegistrationFavouriteRequest {

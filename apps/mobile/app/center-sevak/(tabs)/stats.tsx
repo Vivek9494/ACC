@@ -1,11 +1,5 @@
-import { CenterSevakTabShell } from '../../../src/components/dashboard/CenterSevakTabShell';
-import { Text } from '../../../src/components/ui/Text';
+import { OwnPlayerStatsScreen } from '../../../src/components/dashboard/OwnPlayerStatsScreen';
 
 export default function CenterSevakStatsScreen(): React.ReactElement {
-  return (
-    <CenterSevakTabShell activeKey="stats">
-      <Text className="px-4 pt-4 font-sans-bold text-xl text-on-surface">Stats</Text>
-      <Text className="mt-2 px-4 font-sans text-sm text-on-surface-variant">Coming soon.</Text>
-    </CenterSevakTabShell>
-  );
+  return <OwnPlayerStatsScreen />;
 }

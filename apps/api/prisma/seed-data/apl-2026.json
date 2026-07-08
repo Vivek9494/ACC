@@ -1,0 +1,1797 @@
+{
+  "tournament": {
+    "name": "APL 2026",
+    "ballType": "TENNIS",
+    "year": 2026
+  },
+  "teams": [
+    {
+      "sourceId": "cmoyv79ww000boie2y1mq1j8i",
+      "name": "GTA Gladiators",
+      "players": [
+        {
+          "sourceId": "cmp4vfvuy00dtwdx739jb1c55",
+          "name": "Harsh Patel",
+          "role": "ALL_ROUNDER",
+          "phone": "+15199959561",
+          "phoneIsSentinel": false,
+          "center": "Scarborough",
+          "battingRating": 7,
+          "bowlingRating": 7,
+          "fieldingRating": 8
+        },
+        {
+          "sourceId": "cmp4vfv9k00b1wdx7x3wyjcrg",
+          "name": "Swayam Patel",
+          "role": "BATSMAN",
+          "phone": "+14378585652",
+          "phoneIsSentinel": false,
+          "center": "Brampton",
+          "battingRating": 8,
+          "bowlingRating": 6,
+          "fieldingRating": 8
+        },
+        {
+          "sourceId": "cmp4vfuzh009lwdx7faijybvn",
+          "name": "Rikin Gajjar",
+          "role": "ALL_ROUNDER",
+          "phone": "+16475271992",
+          "phoneIsSentinel": false,
+          "center": "Brampton",
+          "battingRating": 9,
+          "bowlingRating": 9,
+          "fieldingRating": 9
+        },
+        {
+          "sourceId": "cmp4vfzib00rxwdx77vq65963",
+          "name": "Abhishek Pandya",
+          "role": "BATSMAN",
+          "phone": "+15199957901",
+          "phoneIsSentinel": false,
+          "center": "Brampton",
+          "battingRating": 7,
+          "bowlingRating": 3,
+          "fieldingRating": 7
+        },
+        {
+          "sourceId": "cmp4vfupf0085wdx7u01exzu6",
+          "name": "Prince Valand",
+          "role": "ALL_ROUNDER",
+          "phone": "+13658836636",
+          "phoneIsSentinel": false,
+          "center": "Hamilton",
+          "battingRating": 5,
+          "bowlingRating": 5,
+          "fieldingRating": 7
+        },
+        {
+          "sourceId": "cmp4vfufn006pwdx7fweft7cw",
+          "name": "Yash Gandhi",
+          "role": "BATSMAN",
+          "phone": "+16475753691",
+          "phoneIsSentinel": false,
+          "center": "Hamilton",
+          "battingRating": 7,
+          "bowlingRating": 6,
+          "fieldingRating": 7
+        },
+        {
+          "sourceId": "cmp4vfw8v00f9wdx7no46hiv1",
+          "name": "Karan Gandhi",
+          "role": "BOWLER",
+          "phone": "+14379735472",
+          "phoneIsSentinel": false,
+          "center": "Scarborough",
+          "battingRating": 6,
+          "bowlingRating": 8,
+          "fieldingRating": 7
+        },
+        {
+          "sourceId": "cmp4vfvdf00blwdx7ur509knm",
+          "name": "Jigar Sodhagar",
+          "role": "BOWLER",
+          "phone": "+13657734715",
+          "phoneIsSentinel": false,
+          "center": "Brampton",
+          "battingRating": 5,
+          "bowlingRating": 10,
+          "fieldingRating": 7
+        },
+        {
+          "sourceId": "cmp4vftpo002xwdx7m3gmw8e5",
+          "name": "Kishan Patel",
+          "role": "ALL_ROUNDER",
+          "phone": "+14374100076",
+          "phoneIsSentinel": false,
+          "center": "North York",
+          "battingRating": 5,
+          "bowlingRating": 5,
+          "fieldingRating": 5
+        },
+        {
+          "sourceId": "cmp69g91r00acch4no68uie8g",
+          "name": "Niravbhai Abrama",
+          "role": "ALL_ROUNDER",
+          "phone": "+1555010446880",
+          "phoneIsSentinel": true,
+          "center": null,
+          "battingRating": 10,
+          "bowlingRating": 10,
+          "fieldingRating": 10
+        },
+        {
+          "sourceId": "cmp69g94e00agch4ne281b2wk",
+          "name": "Ravibhai Mori",
+          "role": "BATSMAN",
+          "phone": "+1555010906797",
+          "phoneIsSentinel": true,
+          "center": null,
+          "battingRating": 10,
+          "bowlingRating": 0,
+          "fieldingRating": 10
+        },
+        {
+          "sourceId": "cmp69g96p00akch4nskawcb2t",
+          "name": "Vijaybhai Panchal",
+          "role": "BATSMAN",
+          "phone": "+1555010008485",
+          "phoneIsSentinel": true,
+          "center": null,
+          "battingRating": null,
+          "bowlingRating": null,
+          "fieldingRating": null
+        },
+        {
+          "sourceId": "cmp4vftr60035wdx73s6o7qm3",
+          "name": "Meet Sonani",
+          "role": "BATSMAN",
+          "phone": "+16474658910",
+          "phoneIsSentinel": false,
+          "center": "North York",
+          "battingRating": 6,
+          "bowlingRating": 4,
+          "fieldingRating": 7
+        }
+      ]
+    },
+    {
+      "sourceId": "cmoyv79ww0002oie2lu90qo4n",
+      "name": "Niagra Defenders",
+      "players": [
+        {
+          "sourceId": "cmp4vfyrj00opwdx7ejojqlr4",
+          "name": "Aashutosh Patel",
+          "role": "ALL_ROUNDER",
+          "phone": "+14374503699",
+          "phoneIsSentinel": false,
+          "center": "Shaheed",
+          "battingRating": 5,
+          "bowlingRating": 5,
+          "fieldingRating": 8
+        },
+        {
+          "sourceId": "cmp4vfubr0065wdx771zbgssy",
+          "name": "Shreyansh Chaudhari",
+          "role": "ALL_ROUNDER",
+          "phone": "+13657792098",
+          "phoneIsSentinel": false,
+          "center": "Hamilton",
+          "battingRating": 8,
+          "bowlingRating": 8,
+          "fieldingRating": 8
+        },
+        {
+          "sourceId": "cmp4vfv6j00alwdx7wojuqe8b",
+          "name": "Vinay Patel",
+          "role": "BATSMAN",
+          "phone": "+16475717245",
+          "phoneIsSentinel": false,
+          "center": "Brampton",
+          "battingRating": 5,
+          "bowlingRating": 2,
+          "fieldingRating": 7
+        },
+        {
+          "sourceId": "cmp4vfwwe00hpwdx7rpcglgx5",
+          "name": "Hardik Parekh",
+          "role": "BOWLER",
+          "phone": "+16473211597",
+          "phoneIsSentinel": false,
+          "center": "Etobicoke",
+          "battingRating": 7,
+          "bowlingRating": 8,
+          "fieldingRating": 10
+        },
+        {
+          "sourceId": "cmp4vfxby00j9wdx7z9yxj96q",
+          "name": "Romik Vadhvana",
+          "role": "ALL_ROUNDER",
+          "phone": "+16475683875",
+          "phoneIsSentinel": false,
+          "center": "Etobicoke",
+          "battingRating": 8,
+          "bowlingRating": 8,
+          "fieldingRating": 8
+        },
+        {
+          "sourceId": "cmp4vfxnn00khwdx7cqm1oc5e",
+          "name": "Ronak Patel",
+          "role": "ALL_ROUNDER",
+          "phone": "+16475712845",
+          "phoneIsSentinel": false,
+          "center": "Etobicoke",
+          "battingRating": 7,
+          "bowlingRating": 7,
+          "fieldingRating": 7
+        },
+        {
+          "sourceId": "cmp4vfxg200jpwdx7ujx8bc9l",
+          "name": "Bhargav Patel",
+          "role": "ALL_ROUNDER",
+          "phone": "+12899434698",
+          "phoneIsSentinel": false,
+          "center": "Etobicoke",
+          "battingRating": 5,
+          "bowlingRating": 5,
+          "fieldingRating": 5
+        },
+        {
+          "sourceId": "cmp4vftoy002twdx75ll20vdc",
+          "name": "Jaydeep Chotaliya",
+          "role": "ALL_ROUNDER",
+          "phone": "+16479781569",
+          "phoneIsSentinel": false,
+          "center": "North York",
+          "battingRating": 7,
+          "bowlingRating": 7,
+          "fieldingRating": 7
+        },
+        {
+          "sourceId": "cmp4vfyv700p5wdx7a5je8bk6",
+          "name": "Aman Patel",
+          "role": "BATSMAN",
+          "phone": "+16478044522",
+          "phoneIsSentinel": false,
+          "center": "Haridham Canada",
+          "battingRating": 7,
+          "bowlingRating": 6,
+          "fieldingRating": 7
+        },
+        {
+          "sourceId": "cmp69g2rc0015ch4n7xr6dj8t",
+          "name": "Harshit Master",
+          "role": "ALL_ROUNDER",
+          "phone": "+1555010003774",
+          "phoneIsSentinel": true,
+          "center": null,
+          "battingRating": 10,
+          "bowlingRating": 10,
+          "fieldingRating": 10
+        },
+        {
+          "sourceId": "cmp69g2v6001bch4ng4755hvd",
+          "name": "Hardik Mistry",
+          "role": "ALL_ROUNDER",
+          "phone": "+1555010634997",
+          "phoneIsSentinel": true,
+          "center": null,
+          "battingRating": 10,
+          "bowlingRating": 10,
+          "fieldingRating": 10
+        },
+        {
+          "sourceId": "cmp69g31f001ich4nnjf0ixf3",
+          "name": "Shashank Patel",
+          "role": "BATSMAN",
+          "phone": "+1555010831451",
+          "phoneIsSentinel": true,
+          "center": null,
+          "battingRating": null,
+          "bowlingRating": null,
+          "fieldingRating": null
+        },
+        {
+          "sourceId": "cmp4vftvp003twdx7ububxyv3",
+          "name": "Nishant Solanki",
+          "role": "BATSMAN",
+          "phone": "+12263493690",
+          "phoneIsSentinel": false,
+          "center": "North York",
+          "battingRating": 5,
+          "bowlingRating": 3,
+          "fieldingRating": 5
+        }
+      ]
+    },
+    {
+      "sourceId": "cmoyv79ww0000oie2goe9e5kt",
+      "name": "Brantford Sharks",
+      "players": [
+        {
+          "sourceId": "cmp4vfuqw008dwdx7j84mjsn9",
+          "name": "JINKAL Patel",
+          "role": "ALL_ROUNDER",
+          "phone": "+19059257472",
+          "phoneIsSentinel": false,
+          "center": "Hamilton",
+          "battingRating": 6,
+          "bowlingRating": 6,
+          "fieldingRating": 10
+        },
+        {
+          "sourceId": "cmp4vfvqq00ddwdx71q9hagkv",
+          "name": "Manan Kholiya",
+          "role": "ALL_ROUNDER",
+          "phone": "+14372692278",
+          "phoneIsSentinel": false,
+          "center": "Scarborough",
+          "battingRating": 10,
+          "bowlingRating": 10,
+          "fieldingRating": 10
+        },
+        {
+          "sourceId": "cmp4vfvy100e5wdx7pfm1ax25",
+          "name": "Vishal Patel",
+          "role": "ALL_ROUNDER",
+          "phone": "+16472310369",
+          "phoneIsSentinel": false,
+          "center": "Scarborough",
+          "battingRating": 1,
+          "bowlingRating": 1,
+          "fieldingRating": 1
+        },
+        {
+          "sourceId": "cmp4vfujg0079wdx7px11i8md",
+          "name": "Keval Patel",
+          "role": "BATSMAN",
+          "phone": "+12899258081",
+          "phoneIsSentinel": false,
+          "center": "Hamilton",
+          "battingRating": 8,
+          "bowlingRating": 5,
+          "fieldingRating": 7
+        },
+        {
+          "sourceId": "cmp4vfv5s00ahwdx7k0jg6gee",
+          "name": "Bhadresh Chabhadiya",
+          "role": "BATSMAN",
+          "phone": "+12267243125",
+          "phoneIsSentinel": false,
+          "center": "Brampton",
+          "battingRating": 10,
+          "bowlingRating": 5,
+          "fieldingRating": 8
+        },
+        {
+          "sourceId": "cmp4vfwnz00gtwdx71l3pqcfx",
+          "name": "Vivek Patel",
+          "role": "ALL_ROUNDER",
+          "phone": "+15488810161",
+          "phoneIsSentinel": false,
+          "center": "London",
+          "battingRating": 2,
+          "bowlingRating": 2,
+          "fieldingRating": 2
+        },
+        {
+          "sourceId": "cmp4vfyns00o9wdx7akxzu04a",
+          "name": "Vrutik Patel",
+          "role": "ALL_ROUNDER",
+          "phone": "+14375577709",
+          "phoneIsSentinel": false,
+          "center": "Kitchener",
+          "battingRating": 2,
+          "bowlingRating": 2,
+          "fieldingRating": 2
+        },
+        {
+          "sourceId": "cmp69ga2h00bxch4nkz66nvyz",
+          "name": "Santoshbhai",
+          "role": "ALL_ROUNDER",
+          "phone": "+1555010551414",
+          "phoneIsSentinel": true,
+          "center": null,
+          "battingRating": 10,
+          "bowlingRating": 10,
+          "fieldingRating": 10
+        },
+        {
+          "sourceId": "cmp69ga4q00c1ch4nzlbc0pqe",
+          "name": "Ankitbhai Jamai",
+          "role": "BATSMAN",
+          "phone": "+1555010208666",
+          "phoneIsSentinel": true,
+          "center": null,
+          "battingRating": 10,
+          "bowlingRating": 0,
+          "fieldingRating": 10
+        },
+        {
+          "sourceId": "cmp69ga6s00c5ch4nnz40t0vw",
+          "name": "Falgun Bhanderi",
+          "role": "BATSMAN",
+          "phone": "+1555010634245",
+          "phoneIsSentinel": true,
+          "center": null,
+          "battingRating": null,
+          "bowlingRating": null,
+          "fieldingRating": null
+        },
+        {
+          "sourceId": "cmp4vfzw100t9wdx74xeyfv8p",
+          "name": "Parth Amin",
+          "role": "ALL_ROUNDER",
+          "phone": "+2897070081",
+          "phoneIsSentinel": false,
+          "center": "London",
+          "battingRating": 5,
+          "bowlingRating": 5,
+          "fieldingRating": 5
+        },
+        {
+          "sourceId": "cmp4vg04x00u5wdx7n710jxka",
+          "name": "Mihal Joshi",
+          "role": "ALL_ROUNDER",
+          "phone": "+13828852152",
+          "phoneIsSentinel": false,
+          "center": "Barrie",
+          "battingRating": 10,
+          "bowlingRating": 10,
+          "fieldingRating": 10
+        },
+        {
+          "sourceId": "cmp4vfws800h9wdx7qpjjpzs5",
+          "name": "Parthil Vaddoriya",
+          "role": "ALL_ROUNDER",
+          "phone": "+14374225600",
+          "phoneIsSentinel": false,
+          "center": "London",
+          "battingRating": 2,
+          "bowlingRating": 2,
+          "fieldingRating": 1
+        }
+      ]
+    },
+    {
+      "sourceId": "cmoyv79ww0001oie254fyz5ws",
+      "name": "Guelph Royals",
+      "players": [
+        {
+          "sourceId": "cmp4vfy3d00m1wdx7c4j8xc7f",
+          "name": "Sapan Patel",
+          "role": "ALL_ROUNDER",
+          "phone": "+16472150410",
+          "phoneIsSentinel": false,
+          "center": "Etobicoke",
+          "battingRating": 5,
+          "bowlingRating": 5,
+          "fieldingRating": 5
+        },
+        {
+          "sourceId": "cmp4vfzo100shwdx7cvwz2b17",
+          "name": "Kush Sanjaykumar Prajapati",
+          "role": "BATSMAN",
+          "phone": "+14375591369",
+          "phoneIsSentinel": false,
+          "center": "Brampton",
+          "battingRating": 8,
+          "bowlingRating": 7,
+          "fieldingRating": 9
+        },
+        {
+          "sourceId": "cmp4vfuau0061wdx7uoqnj7f1",
+          "name": "Yash Maisuriya",
+          "role": "BATSMAN",
+          "phone": "+11212121212",
+          "phoneIsSentinel": false,
+          "center": "Hamilton",
+          "battingRating": 5,
+          "bowlingRating": 3,
+          "fieldingRating": 8
+        },
+        {
+          "sourceId": "cmp4vfw6q00f1wdx78nthaauo",
+          "name": "Ronakbhai Kaushikbhai Parekh",
+          "role": "BATSMAN",
+          "phone": "+15195219923",
+          "phoneIsSentinel": false,
+          "center": "Scarborough",
+          "battingRating": 10,
+          "bowlingRating": 6,
+          "fieldingRating": 9
+        },
+        {
+          "sourceId": "cmp4vfx0y00i5wdx7yye7wcho",
+          "name": "Mukund Nayi",
+          "role": "BATSMAN",
+          "phone": "+13658888414",
+          "phoneIsSentinel": false,
+          "center": "Etobicoke",
+          "battingRating": 10,
+          "bowlingRating": 5,
+          "fieldingRating": 5
+        },
+        {
+          "sourceId": "cmp4vftmj002hwdx7a74wgp0o",
+          "name": "Divyam Patel",
+          "role": "ALL_ROUNDER",
+          "phone": "+14372367830",
+          "phoneIsSentinel": false,
+          "center": "North York",
+          "battingRating": 9,
+          "bowlingRating": 9,
+          "fieldingRating": 10
+        },
+        {
+          "sourceId": "cmp4vfu71005hwdx7adfrcbfd",
+          "name": "Tejas Sadrani",
+          "role": "BOWLER",
+          "phone": "+14389269309",
+          "phoneIsSentinel": false,
+          "center": "North York",
+          "battingRating": 2,
+          "bowlingRating": 4,
+          "fieldingRating": 5
+        },
+        {
+          "sourceId": "cmp4vfyji00npwdx79xbdhhrs",
+          "name": "Vraj Patel",
+          "role": "BATSMAN",
+          "phone": "+15483339283",
+          "phoneIsSentinel": false,
+          "center": "Kitchener",
+          "battingRating": 10,
+          "bowlingRating": 7,
+          "fieldingRating": 8
+        },
+        {
+          "sourceId": "cmp4vfx6f00ipwdx7ht6exbnx",
+          "name": "Megh Shah",
+          "role": "ALL_ROUNDER",
+          "phone": "+16478715250",
+          "phoneIsSentinel": false,
+          "center": "Etobicoke",
+          "battingRating": 8,
+          "bowlingRating": 8,
+          "fieldingRating": 7
+        },
+        {
+          "sourceId": "cmp4vfypq00ohwdx7bfiwimsg",
+          "name": "Bhautik Gondaliya",
+          "role": "ALL_ROUNDER",
+          "phone": "+12899255241",
+          "phoneIsSentinel": false,
+          "center": "Niagara",
+          "battingRating": 5,
+          "bowlingRating": 5,
+          "fieldingRating": 5
+        },
+        {
+          "sourceId": "cmp69g6860067ch4nlzxnzel6",
+          "name": "Hardik Patel",
+          "role": "ALL_ROUNDER",
+          "phone": "+1555010997923",
+          "phoneIsSentinel": true,
+          "center": null,
+          "battingRating": 10,
+          "bowlingRating": 10,
+          "fieldingRating": 10
+        },
+        {
+          "sourceId": "cmp69g6cr006ech4nc0fw8x83",
+          "name": "Nirav Gardharia",
+          "role": "ALL_ROUNDER",
+          "phone": "+1555010245979",
+          "phoneIsSentinel": true,
+          "center": null,
+          "battingRating": 10,
+          "bowlingRating": 10,
+          "fieldingRating": 10
+        },
+        {
+          "sourceId": "cmp69gapy00cych4nesrz7jey",
+          "name": "Rutulbhai Soni",
+          "role": "BATSMAN",
+          "phone": "+1555010893625",
+          "phoneIsSentinel": true,
+          "center": null,
+          "battingRating": null,
+          "bowlingRating": null,
+          "fieldingRating": null
+        }
+      ]
+    },
+    {
+      "sourceId": "cmoyv79ww0003oie2exbh0tln",
+      "name": "Waterloo Star",
+      "players": [
+        {
+          "sourceId": "cmp4vfuk6007dwdx7hhpa0hct",
+          "name": "Silen Patel",
+          "role": "ALL_ROUNDER",
+          "phone": "+16478775303",
+          "phoneIsSentinel": false,
+          "center": "Hamilton",
+          "battingRating": 7,
+          "bowlingRating": 7,
+          "fieldingRating": 7
+        },
+        {
+          "sourceId": "cmp4vfy2a00lxwdx7qcpgihm7",
+          "name": "Hepin Thakkar",
+          "role": "ALL_ROUNDER",
+          "phone": "+15195044361",
+          "phoneIsSentinel": false,
+          "center": "Etobicoke",
+          "battingRating": 5,
+          "bowlingRating": 5,
+          "fieldingRating": 5
+        },
+        {
+          "sourceId": "cmp4vfzrg00stwdx78szl2b0o",
+          "name": "Hardik Jagtap",
+          "role": "BATSMAN",
+          "phone": "+14168384904",
+          "phoneIsSentinel": false,
+          "center": "Brampton",
+          "battingRating": 8,
+          "bowlingRating": 7,
+          "fieldingRating": 7
+        },
+        {
+          "sourceId": "cmp4vfxou00klwdx7vf5rveab",
+          "name": "Bhargav Thakar",
+          "role": "BATSMAN",
+          "phone": "+15482551011",
+          "phoneIsSentinel": false,
+          "center": "Etobicoke",
+          "battingRating": 8,
+          "bowlingRating": 5,
+          "fieldingRating": 7
+        },
+        {
+          "sourceId": "cmp4vfvrn00dhwdx7pl0qkneb",
+          "name": "Kuldeep Fatepara",
+          "role": "ALL_ROUNDER",
+          "phone": "+12269390369",
+          "phoneIsSentinel": false,
+          "center": "Scarborough",
+          "battingRating": 5,
+          "bowlingRating": 5,
+          "fieldingRating": 5
+        },
+        {
+          "sourceId": "cmp4vfui00071wdx7nq0jme9e",
+          "name": "Abhishek Patel",
+          "role": "BATSMAN",
+          "phone": "+14379904740",
+          "phoneIsSentinel": false,
+          "center": "Hamilton",
+          "battingRating": 6,
+          "bowlingRating": 1,
+          "fieldingRating": 5
+        },
+        {
+          "sourceId": "cmp4vfv0a009pwdx7vhafwvs2",
+          "name": "Akash Patel",
+          "role": "ALL_ROUNDER",
+          "phone": "+14379873690",
+          "phoneIsSentinel": false,
+          "center": "Brampton",
+          "battingRating": 7,
+          "bowlingRating": 7,
+          "fieldingRating": 6
+        },
+        {
+          "sourceId": "cmp4vfuut008xwdx7nbmx7dxa",
+          "name": "Krish Patel",
+          "role": "ALL_ROUNDER",
+          "phone": "+16474505615",
+          "phoneIsSentinel": false,
+          "center": "Barrie",
+          "battingRating": 8,
+          "bowlingRating": 8,
+          "fieldingRating": 8
+        },
+        {
+          "sourceId": "cmp4vfvsv00dlwdx71ks3riu3",
+          "name": "Jigar Patel",
+          "role": "BATSMAN",
+          "phone": "+16479141256",
+          "phoneIsSentinel": false,
+          "center": "Scarborough",
+          "battingRating": 7,
+          "bowlingRating": 6,
+          "fieldingRating": 9
+        },
+        {
+          "sourceId": "cmp69g7t1008gch4no6m8vji8",
+          "name": "Tanmay Parmar",
+          "role": "ALL_ROUNDER",
+          "phone": "+1555010995255",
+          "phoneIsSentinel": true,
+          "center": null,
+          "battingRating": 10,
+          "bowlingRating": 10,
+          "fieldingRating": 10
+        },
+        {
+          "sourceId": "cmp69g7wi008mch4ns0m2f7ps",
+          "name": "Vishal Desai",
+          "role": "BATSMAN",
+          "phone": "+1555010428999",
+          "phoneIsSentinel": true,
+          "center": null,
+          "battingRating": 10,
+          "bowlingRating": 0,
+          "fieldingRating": 10
+        },
+        {
+          "sourceId": "cmp69g814008tch4ntzyi54tp",
+          "name": "Atmiya Jadvani",
+          "role": "BATSMAN",
+          "phone": "+1555010250554",
+          "phoneIsSentinel": true,
+          "center": null,
+          "battingRating": null,
+          "bowlingRating": null,
+          "fieldingRating": null
+        },
+        {
+          "sourceId": "cmp4vftx60041wdx7mbv9a7x2",
+          "name": "Parth Nayak",
+          "role": "ALL_ROUNDER",
+          "phone": "+14389924566",
+          "phoneIsSentinel": false,
+          "center": "North York",
+          "battingRating": 6,
+          "bowlingRating": 6,
+          "fieldingRating": 6
+        }
+      ]
+    },
+    {
+      "sourceId": "cmoyv79ww0004oie2u5kls2rj",
+      "name": "Hamilton Chargers",
+      "players": [
+        {
+          "sourceId": "cmp4vfvtv00dpwdx77grb05uw",
+          "name": "Jagrat Patel",
+          "role": "BATSMAN",
+          "phone": "+14379830369",
+          "phoneIsSentinel": false,
+          "center": "Scarborough",
+          "battingRating": 4,
+          "bowlingRating": 1,
+          "fieldingRating": 6
+        },
+        {
+          "sourceId": "cmp4vfx8m00ixwdx76jubo7uh",
+          "name": "Ashish Kadavla",
+          "role": "BATSMAN",
+          "phone": "+12269984381",
+          "phoneIsSentinel": false,
+          "center": "Etobicoke",
+          "battingRating": 8,
+          "bowlingRating": 7,
+          "fieldingRating": 7
+        },
+        {
+          "sourceId": "cmp4vfuon0081wdx7ftyqf5x4",
+          "name": "Het Desai",
+          "role": "BOWLER",
+          "phone": "+12898878981",
+          "phoneIsSentinel": false,
+          "center": "Hamilton",
+          "battingRating": 5,
+          "bowlingRating": 8,
+          "fieldingRating": 7
+        },
+        {
+          "sourceId": "cmp4vfzmp00sdwdx7w85vvwpc",
+          "name": "Marvinkumar Chaudhari",
+          "role": "BOWLER",
+          "phone": "+12896546676",
+          "phoneIsSentinel": false,
+          "center": "Brampton",
+          "battingRating": 5,
+          "bowlingRating": 9,
+          "fieldingRating": 8
+        },
+        {
+          "sourceId": "cmp4vfuta008pwdx76ke29gx8",
+          "name": "Akash Patel",
+          "role": "ALL_ROUNDER",
+          "phone": "+16479151294",
+          "phoneIsSentinel": false,
+          "center": "Barrie",
+          "battingRating": 9,
+          "bowlingRating": 9,
+          "fieldingRating": 9
+        },
+        {
+          "sourceId": "cmp4vfyka00ntwdx7bk4mdp1e",
+          "name": "Abhi Kevadiya",
+          "role": "ALL_ROUNDER",
+          "phone": "+14379370809",
+          "phoneIsSentinel": false,
+          "center": "Kitchener",
+          "battingRating": 5,
+          "bowlingRating": 5,
+          "fieldingRating": 6
+        },
+        {
+          "sourceId": "cmp4vfxdy00jhwdx7y3kpjcws",
+          "name": "Umang Bhavsar",
+          "role": "BATSMAN",
+          "phone": "+16475451193",
+          "phoneIsSentinel": false,
+          "center": "Etobicoke",
+          "battingRating": 7,
+          "bowlingRating": 5,
+          "fieldingRating": 8
+        },
+        {
+          "sourceId": "cmp4vfumg007pwdx7yt5fya1w",
+          "name": "Keyur Patel",
+          "role": "ALL_ROUNDER",
+          "phone": "+12264484815",
+          "phoneIsSentinel": false,
+          "center": "Hamilton",
+          "battingRating": 6,
+          "bowlingRating": 6,
+          "fieldingRating": 6
+        },
+        {
+          "sourceId": "cmp4vfwim00g9wdx7rue4jl2l",
+          "name": "Vivek Vaghasiya",
+          "role": "ALL_ROUNDER",
+          "phone": "+15196974673",
+          "phoneIsSentinel": false,
+          "center": "London",
+          "battingRating": 3,
+          "bowlingRating": 3,
+          "fieldingRating": 5
+        },
+        {
+          "sourceId": "cmp69g98x00aoch4n5oi53l7c",
+          "name": "Rahulbhai Kambhariya",
+          "role": "ALL_ROUNDER",
+          "phone": "+1555010635035",
+          "phoneIsSentinel": true,
+          "center": null,
+          "battingRating": 10,
+          "bowlingRating": 10,
+          "fieldingRating": 10
+        },
+        {
+          "sourceId": "cmp69g9b500asch4nj0jucvy2",
+          "name": "Yash Dave",
+          "role": "ALL_ROUNDER",
+          "phone": "+1555010183992",
+          "phoneIsSentinel": true,
+          "center": null,
+          "battingRating": 10,
+          "bowlingRating": 10,
+          "fieldingRating": 10
+        },
+        {
+          "sourceId": "cmp69g9dv00awch4ntcl3pz8c",
+          "name": "Atmiyabhai Patel (TR)",
+          "role": "BATSMAN",
+          "phone": "+1555010906686",
+          "phoneIsSentinel": true,
+          "center": null,
+          "battingRating": null,
+          "bowlingRating": null,
+          "fieldingRating": null
+        },
+        {
+          "sourceId": "cmp4vfzx400tdwdx70ahm63d8",
+          "name": "Vasu Patel",
+          "role": "ALL_ROUNDER",
+          "phone": "+14379829211",
+          "phoneIsSentinel": false,
+          "center": "Belleville",
+          "battingRating": 7,
+          "bowlingRating": 7,
+          "fieldingRating": 7
+        }
+      ]
+    },
+    {
+      "sourceId": "cmoyv79ww0005oie2chmsyvyc",
+      "name": "London Knights",
+      "players": [
+        {
+          "sourceId": "cmp4vfto6002pwdx7yay5i2yi",
+          "name": "Jatan Gohel",
+          "role": "ALL_ROUNDER",
+          "phone": "+15148133690",
+          "phoneIsSentinel": false,
+          "center": "North York",
+          "battingRating": 5,
+          "bowlingRating": 5,
+          "fieldingRating": 5
+        },
+        {
+          "sourceId": "cmp4vftf9001hwdx7u7biqlb5",
+          "name": "Anand Hingu",
+          "role": "ALL_ROUNDER",
+          "phone": "+15146908933",
+          "phoneIsSentinel": false,
+          "center": "North York",
+          "battingRating": 5,
+          "bowlingRating": 5,
+          "fieldingRating": 5
+        },
+        {
+          "sourceId": "cmp4vftic001xwdx7nrqp7mxi",
+          "name": "Ateet Dave",
+          "role": "BATSMAN",
+          "phone": "+14166253941",
+          "phoneIsSentinel": false,
+          "center": "North York",
+          "battingRating": 9,
+          "bowlingRating": 5,
+          "fieldingRating": 10
+        },
+        {
+          "sourceId": "cmp4vftu8003lwdx72ukayc91",
+          "name": "Nimit Lukhi",
+          "role": "BATSMAN",
+          "phone": "+14379876230",
+          "phoneIsSentinel": false,
+          "center": "North York",
+          "battingRating": 7,
+          "bowlingRating": 2,
+          "fieldingRating": 6
+        },
+        {
+          "sourceId": "cmp4vfv1w009xwdx79ec5wd78",
+          "name": "Siddharth Jani",
+          "role": "BATSMAN",
+          "phone": "+12898855433",
+          "phoneIsSentinel": false,
+          "center": "Brampton",
+          "battingRating": 8,
+          "bowlingRating": 7,
+          "fieldingRating": 9
+        },
+        {
+          "sourceId": "cmp4vfvcm00bhwdx7ux4n4674",
+          "name": "Vivek Patel",
+          "role": "ALL_ROUNDER",
+          "phone": "+16477839921",
+          "phoneIsSentinel": false,
+          "center": "Brampton",
+          "battingRating": 6,
+          "bowlingRating": 6,
+          "fieldingRating": 6
+        },
+        {
+          "sourceId": "cmp4vfun7007twdx7oo1pd43c",
+          "name": "Krushnasinh Vihol",
+          "role": "BOWLER",
+          "phone": "+14377666167",
+          "phoneIsSentinel": false,
+          "center": "Hamilton",
+          "battingRating": 7,
+          "bowlingRating": 8,
+          "fieldingRating": 8
+        },
+        {
+          "sourceId": "cmp4vfue0006hwdx7ugy8e6jc",
+          "name": "Dharmik Patel",
+          "role": "BOWLER",
+          "phone": "+16139701717",
+          "phoneIsSentinel": false,
+          "center": "Hamilton",
+          "battingRating": 7,
+          "bowlingRating": 8,
+          "fieldingRating": 8
+        },
+        {
+          "sourceId": "cmp4vfway00fhwdx7al7ubsv0",
+          "name": "Diparth Rana",
+          "role": "BOWLER",
+          "phone": "+12896717485",
+          "phoneIsSentinel": false,
+          "center": "Scarborough",
+          "battingRating": 6,
+          "bowlingRating": 8,
+          "fieldingRating": 8
+        },
+        {
+          "sourceId": "cmp4vfz3m00q5wdx7dht41cv0",
+          "name": "Gagan Thakkar",
+          "role": "ALL_ROUNDER",
+          "phone": "+14372261906",
+          "phoneIsSentinel": false,
+          "center": "Hamilton",
+          "battingRating": 5,
+          "bowlingRating": 5,
+          "fieldingRating": 5
+        },
+        {
+          "sourceId": "cmp69g4qg003xch4n3mz02ted",
+          "name": "Brijesh",
+          "role": "ALL_ROUNDER",
+          "phone": "+1555010807409",
+          "phoneIsSentinel": true,
+          "center": null,
+          "battingRating": 10,
+          "bowlingRating": 10,
+          "fieldingRating": 10
+        },
+        {
+          "sourceId": "cmp69g4tn0043ch4ntp91789m",
+          "name": "Sankalp",
+          "role": "BATSMAN",
+          "phone": "+1555010428300",
+          "phoneIsSentinel": true,
+          "center": null,
+          "battingRating": 10,
+          "bowlingRating": 0,
+          "fieldingRating": 10
+        },
+        {
+          "sourceId": "cmp69g4yq004ach4n4kvj7t0y",
+          "name": "Kuldeep Kapadia",
+          "role": "BATSMAN",
+          "phone": "+1555010127631",
+          "phoneIsSentinel": true,
+          "center": null,
+          "battingRating": null,
+          "bowlingRating": null,
+          "fieldingRating": null
+        }
+      ]
+    },
+    {
+      "sourceId": "cmoyv79ww0006oie25nifusyb",
+      "name": "Oshawa Warriors",
+      "players": [
+        {
+          "sourceId": "cmp7uq0na0003lb3qitfw4qrl",
+          "name": "Divya Mehta",
+          "role": "ALL_ROUNDER",
+          "phone": "+4378184387",
+          "phoneIsSentinel": false,
+          "center": null,
+          "battingRating": 4,
+          "bowlingRating": 4,
+          "fieldingRating": 4
+        },
+        {
+          "sourceId": "cmp4vfvna00cxwdx7qgp6cv6x",
+          "name": "Puneet Thakkar",
+          "role": "ALL_ROUNDER",
+          "phone": "+14378762301",
+          "phoneIsSentinel": false,
+          "center": "Scarborough",
+          "battingRating": 8,
+          "bowlingRating": 8,
+          "fieldingRating": 7
+        },
+        {
+          "sourceId": "cmp4vfwlt00glwdx7jh3a5tk2",
+          "name": "Dhairya Badodariya",
+          "role": "BATSMAN",
+          "phone": "+14163172722",
+          "phoneIsSentinel": false,
+          "center": "London",
+          "battingRating": 7,
+          "bowlingRating": 2,
+          "fieldingRating": 7
+        },
+        {
+          "sourceId": "cmp4vfy9k00mlwdx72z1us0b9",
+          "name": "Trupal Patel",
+          "role": "ALL_ROUNDER",
+          "phone": "+16136617962",
+          "phoneIsSentinel": false,
+          "center": "Belleville",
+          "battingRating": 10,
+          "bowlingRating": 10,
+          "fieldingRating": 8
+        },
+        {
+          "sourceId": "cmp4vfx5d00ilwdx7n5vhl9pr",
+          "name": "Bhushan Patel",
+          "role": "BATSMAN",
+          "phone": "+12267598918",
+          "phoneIsSentinel": false,
+          "center": "Etobicoke",
+          "battingRating": 3,
+          "bowlingRating": 2,
+          "fieldingRating": 3
+        },
+        {
+          "sourceId": "cmp4vfw4q00etwdx7pf64ltmd",
+          "name": "Dharm Patel",
+          "role": "BATSMAN",
+          "phone": "+16479135911",
+          "phoneIsSentinel": false,
+          "center": "Scarborough",
+          "battingRating": 9,
+          "bowlingRating": 8,
+          "fieldingRating": 10
+        },
+        {
+          "sourceId": "cmp4vfyw500p9wdx7sw2wopwx",
+          "name": "Dhruv Patel",
+          "role": "ALL_ROUNDER",
+          "phone": "+19052601008",
+          "phoneIsSentinel": false,
+          "center": "Haridham Canada",
+          "battingRating": 3,
+          "bowlingRating": 3,
+          "fieldingRating": 3
+        },
+        {
+          "sourceId": "cmp4vfz5c00qdwdx7z77fpl5x",
+          "name": "Hardikkumar Waghela",
+          "role": "BATSMAN",
+          "phone": "+19055982399",
+          "phoneIsSentinel": false,
+          "center": "Hamilton",
+          "battingRating": 8,
+          "bowlingRating": 5,
+          "fieldingRating": 8
+        },
+        {
+          "sourceId": "cmp4vfzcg00r9wdx7m2agta2h",
+          "name": "Dhrushil Patel",
+          "role": "BATSMAN",
+          "phone": "+16476321476",
+          "phoneIsSentinel": false,
+          "center": "Barrie",
+          "battingRating": 9,
+          "bowlingRating": 4,
+          "fieldingRating": 9
+        },
+        {
+          "sourceId": "cmp69g3zt002tch4nswwefo7h",
+          "name": "Yash Gandhi",
+          "role": "ALL_ROUNDER",
+          "phone": "+1555010985981",
+          "phoneIsSentinel": true,
+          "center": null,
+          "battingRating": 10,
+          "bowlingRating": 10,
+          "fieldingRating": 10
+        },
+        {
+          "sourceId": "cmp69g43y002zch4n34r2e08j",
+          "name": "Nitin Patel (Dubai)",
+          "role": "ALL_ROUNDER",
+          "phone": "+1555010985122",
+          "phoneIsSentinel": true,
+          "center": null,
+          "battingRating": 10,
+          "bowlingRating": 10,
+          "fieldingRating": 10
+        },
+        {
+          "sourceId": "cmp69g49j0036ch4nq20yjzqj",
+          "name": "Ketul Patel",
+          "role": "BATSMAN",
+          "phone": "+1555010514880",
+          "phoneIsSentinel": true,
+          "center": null,
+          "battingRating": null,
+          "bowlingRating": null,
+          "fieldingRating": null
+        },
+        {
+          "sourceId": "cmp4vfzfv00rpwdx7o1c9hxet",
+          "name": "Krutik Patel",
+          "role": "ALL_ROUNDER",
+          "phone": "+14376659121",
+          "phoneIsSentinel": false,
+          "center": "Brampton",
+          "battingRating": 8,
+          "bowlingRating": 8,
+          "fieldingRating": 8
+        }
+      ]
+    },
+    {
+      "sourceId": "cmoyv79ww0007oie2k4s8c179",
+      "name": "Toronto Thunder",
+      "players": [
+        {
+          "sourceId": "cmp4vfwgd00g1wdx7fkvsllqr",
+          "name": "Dhruv Raval",
+          "role": "ALL_ROUNDER",
+          "phone": "+12266370054",
+          "phoneIsSentinel": false,
+          "center": "London",
+          "battingRating": 7,
+          "bowlingRating": 7,
+          "fieldingRating": 9
+        },
+        {
+          "sourceId": "cmp4vfvhf00c5wdx7kk2840ua",
+          "name": "Nishit Shah",
+          "role": "ALL_ROUNDER",
+          "phone": "+16474820607",
+          "phoneIsSentinel": false,
+          "center": "Brampton",
+          "battingRating": 7,
+          "bowlingRating": 7,
+          "fieldingRating": 7
+        },
+        {
+          "sourceId": "cmp4vftkt0029wdx7um2z8sb7",
+          "name": "Dhrumil Desai",
+          "role": "ALL_ROUNDER",
+          "phone": "+14375562400",
+          "phoneIsSentinel": false,
+          "center": "North York",
+          "battingRating": 9,
+          "bowlingRating": 9,
+          "fieldingRating": 8
+        },
+        {
+          "sourceId": "cmp4vftte003hwdx7xw26c70i",
+          "name": "Milan Radadiya",
+          "role": "BATSMAN",
+          "phone": "+16475757046",
+          "phoneIsSentinel": false,
+          "center": "North York",
+          "battingRating": 7,
+          "bowlingRating": 4,
+          "fieldingRating": 6
+        },
+        {
+          "sourceId": "cmp4vfw5p00exwdx7grtkrzz1",
+          "name": "Vedant Pandit",
+          "role": "BATSMAN",
+          "phone": "+14166786091",
+          "phoneIsSentinel": false,
+          "center": "Scarborough",
+          "battingRating": 8,
+          "bowlingRating": 1,
+          "fieldingRating": 8
+        },
+        {
+          "sourceId": "cmp4vftdp0019wdx73ky6ceb2",
+          "name": "Akshay Soni",
+          "role": "BATSMAN",
+          "phone": "+14379896309",
+          "phoneIsSentinel": false,
+          "center": "North York",
+          "battingRating": 7,
+          "bowlingRating": 4,
+          "fieldingRating": 8
+        },
+        {
+          "sourceId": "cmp4vfu05004hwdx7qwu722op",
+          "name": "Pratyushsinh Rana",
+          "role": "ALL_ROUNDER",
+          "phone": "+16478688369",
+          "phoneIsSentinel": false,
+          "center": "North York",
+          "battingRating": 5,
+          "bowlingRating": 5,
+          "fieldingRating": 5
+        },
+        {
+          "sourceId": "cmp4vfv5100adwdx7d1z2aloc",
+          "name": "Ruchir Patel",
+          "role": "ALL_ROUNDER",
+          "phone": "+16476087959",
+          "phoneIsSentinel": false,
+          "center": "Brampton",
+          "battingRating": 7,
+          "bowlingRating": 7,
+          "fieldingRating": 6
+        },
+        {
+          "sourceId": "cmp4vfusk008lwdx736zs3y30",
+          "name": "Vatsal Joshi",
+          "role": "BATSMAN",
+          "phone": "+15195777160",
+          "phoneIsSentinel": false,
+          "center": "Barrie",
+          "battingRating": 8,
+          "bowlingRating": 2,
+          "fieldingRating": 8
+        },
+        {
+          "sourceId": "cmp4vfz1t00pxwdx76m6szefg",
+          "name": "Het Patel",
+          "role": "BATSMAN",
+          "phone": "+14372174514",
+          "phoneIsSentinel": false,
+          "center": "North York",
+          "battingRating": 10,
+          "bowlingRating": 6,
+          "fieldingRating": 10
+        },
+        {
+          "sourceId": "cmp69g2360003ch4nos4cy8ao",
+          "name": "Piyush Tanna",
+          "role": "BOWLER",
+          "phone": "+1555010623467",
+          "phoneIsSentinel": true,
+          "center": null,
+          "battingRating": 0,
+          "bowlingRating": 10,
+          "fieldingRating": 10
+        },
+        {
+          "sourceId": "cmp69g26x0009ch4nb6i0qeds",
+          "name": "Darshan Patel",
+          "role": "ALL_ROUNDER",
+          "phone": "+1555010077139",
+          "phoneIsSentinel": true,
+          "center": null,
+          "battingRating": 10,
+          "bowlingRating": 10,
+          "fieldingRating": 10
+        },
+        {
+          "sourceId": "cmp69g2ar000fch4ncqaqfsja",
+          "name": "Shrimad Painter",
+          "role": "BATSMAN",
+          "phone": "+1555010901546",
+          "phoneIsSentinel": true,
+          "center": null,
+          "battingRating": null,
+          "bowlingRating": null,
+          "fieldingRating": null
+        }
+      ]
+    },
+    {
+      "sourceId": "cmoyv79ww0008oie27jvklx5c",
+      "name": "Bhakti Colony Lions",
+      "players": [
+        {
+          "sourceId": "cmp4vftlm002dwdx7ufwz1qxf",
+          "name": "Dhruv Chauhan",
+          "role": "ALL_ROUNDER",
+          "phone": "+13439879696",
+          "phoneIsSentinel": false,
+          "center": "North York",
+          "battingRating": 10,
+          "bowlingRating": 10,
+          "fieldingRating": 10
+        },
+        {
+          "sourceId": "cmp4vfw9v00fdwdx7ypbnkg61",
+          "name": "Het Patel",
+          "role": "BATSMAN",
+          "phone": "+14372216389",
+          "phoneIsSentinel": false,
+          "center": "Scarborough",
+          "battingRating": 10,
+          "bowlingRating": 8,
+          "fieldingRating": 10
+        },
+        {
+          "sourceId": "cmp4vfud8006dwdx739n705uf",
+          "name": "Dhaval Thakkar",
+          "role": "BATSMAN",
+          "phone": "+15193293788",
+          "phoneIsSentinel": false,
+          "center": "Hamilton",
+          "battingRating": 7,
+          "bowlingRating": 4,
+          "fieldingRating": 6
+        },
+        {
+          "sourceId": "cmp4vfu4s0055wdx775czqn4j",
+          "name": "Saurabh Patel",
+          "role": "ALL_ROUNDER",
+          "phone": "+12499940369",
+          "phoneIsSentinel": false,
+          "center": "North York",
+          "battingRating": 5,
+          "bowlingRating": 5,
+          "fieldingRating": 8
+        },
+        {
+          "sourceId": "cmp4vfu7t005lwdx71evruj5d",
+          "name": "Tejas Tank",
+          "role": "BOWLER",
+          "phone": "+19057818673",
+          "phoneIsSentinel": false,
+          "center": "North York",
+          "battingRating": 1,
+          "bowlingRating": 4,
+          "fieldingRating": 1
+        },
+        {
+          "sourceId": "cmp4vfxf000jlwdx7t49acj9l",
+          "name": "Mithil Mehta",
+          "role": "BATSMAN",
+          "phone": "+13433675384",
+          "phoneIsSentinel": false,
+          "center": "Etobicoke",
+          "battingRating": 10,
+          "bowlingRating": 7,
+          "fieldingRating": 8
+        },
+        {
+          "sourceId": "cmp4vg06100u9wdx7tzjfj7df",
+          "name": "Sagar Patel",
+          "role": "BATSMAN",
+          "phone": "+16475676248",
+          "phoneIsSentinel": false,
+          "center": "Brampton",
+          "battingRating": 9,
+          "bowlingRating": 5,
+          "fieldingRating": 8
+        },
+        {
+          "sourceId": "cmp4vfygs00ndwdx7s6bwrnqf",
+          "name": "Vikram Raj",
+          "role": "BOWLER",
+          "phone": "+16477619135",
+          "phoneIsSentinel": false,
+          "center": "Kitchener",
+          "battingRating": 6,
+          "bowlingRating": 7,
+          "fieldingRating": 7
+        },
+        {
+          "sourceId": "cmp4vfxuf00l5wdx73v3qi7bv",
+          "name": "Akshay Gajera",
+          "role": "BATSMAN",
+          "phone": "+16479369320",
+          "phoneIsSentinel": false,
+          "center": "Etobicoke",
+          "battingRating": 4,
+          "bowlingRating": 2,
+          "fieldingRating": 8
+        },
+        {
+          "sourceId": "cmp69g58z004rch4ni0mfjq8g",
+          "name": "Ankit Thakkar (Bapa)",
+          "role": "BATSMAN",
+          "phone": "+1555010567753",
+          "phoneIsSentinel": true,
+          "center": null,
+          "battingRating": null,
+          "bowlingRating": null,
+          "fieldingRating": null
+        },
+        {
+          "sourceId": "cmp69gab100cbch4nh4sgi4t2",
+          "name": "Nirmal Patel",
+          "role": "ALL_ROUNDER",
+          "phone": "+1555010235857",
+          "phoneIsSentinel": true,
+          "center": null,
+          "battingRating": 10,
+          "bowlingRating": 10,
+          "fieldingRating": 10
+        },
+        {
+          "sourceId": "cmp69gagg00cich4nq97amkm5",
+          "name": "Anandbhai",
+          "role": "BATSMAN",
+          "phone": "+1555010930449",
+          "phoneIsSentinel": true,
+          "center": null,
+          "battingRating": 10,
+          "bowlingRating": 0,
+          "fieldingRating": 10
+        },
+        {
+          "sourceId": "cmp4vftuy003pwdx7i4mp6id6",
+          "name": "Niravkumar Patel",
+          "role": "BOWLER",
+          "phone": "+19029164724",
+          "phoneIsSentinel": false,
+          "center": "North York",
+          "battingRating": 5,
+          "bowlingRating": 7,
+          "fieldingRating": 8
+        }
+      ]
+    },
+    {
+      "sourceId": "cmoyv79ww0009oie2djicffhr",
+      "name": "Brampton Bombers",
+      "players": [
+        {
+          "sourceId": "cmp77scsg0001j53c0546rrpq",
+          "name": "Varshit Bharatbhai\tKaswala",
+          "role": "BATSMAN",
+          "phone": "+4377668895",
+          "phoneIsSentinel": false,
+          "center": "North York",
+          "battingRating": 7,
+          "bowlingRating": 3,
+          "fieldingRating": 8
+        },
+        {
+          "sourceId": "cmp4vfuci0069wdx77hs4ypa3",
+          "name": "Nirav Parekh",
+          "role": "BATSMAN",
+          "phone": "+14168334952",
+          "phoneIsSentinel": false,
+          "center": "Hamilton",
+          "battingRating": 8,
+          "bowlingRating": 5,
+          "fieldingRating": 10
+        },
+        {
+          "sourceId": "cmp4vfugf006twdx74vsodrqu",
+          "name": "Ankit Bhatt",
+          "role": "ALL_ROUNDER",
+          "phone": "+12897009648",
+          "phoneIsSentinel": false,
+          "center": "Hamilton",
+          "battingRating": 6,
+          "bowlingRating": 6,
+          "fieldingRating": 8
+        },
+        {
+          "sourceId": "cmp4vfxka00k5wdx788zelxcg",
+          "name": "Param Patel",
+          "role": "BATSMAN",
+          "phone": "+14165777932",
+          "phoneIsSentinel": false,
+          "center": "Etobicoke",
+          "battingRating": 4,
+          "bowlingRating": 3,
+          "fieldingRating": 3
+        },
+        {
+          "sourceId": "cmp4vfux90099wdx72lno5pks",
+          "name": "Ruchit Suhagia",
+          "role": "BATSMAN",
+          "phone": "+17057176951",
+          "phoneIsSentinel": false,
+          "center": "Barrie",
+          "battingRating": 8,
+          "bowlingRating": 4,
+          "fieldingRating": 7
+        },
+        {
+          "sourceId": "cmp4vfvvy00dxwdx734duxwcg",
+          "name": "Parth Kishorbhai Mavani",
+          "role": "BATSMAN",
+          "phone": "+15199956596",
+          "phoneIsSentinel": false,
+          "center": "Scarborough",
+          "battingRating": 7,
+          "bowlingRating": 6,
+          "fieldingRating": 9
+        },
+        {
+          "sourceId": "cmp4vfuu0008twdx7xst00ono",
+          "name": "Akshat Parikh",
+          "role": "ALL_ROUNDER",
+          "phone": "+17053054064",
+          "phoneIsSentinel": false,
+          "center": "Barrie",
+          "battingRating": 7,
+          "bowlingRating": 7,
+          "fieldingRating": 8
+        },
+        {
+          "sourceId": "cmp4vftj40021wdx7gcex4ec1",
+          "name": "Darshan Trivedi",
+          "role": "ALL_ROUNDER",
+          "phone": "+12897076776",
+          "phoneIsSentinel": false,
+          "center": "North York",
+          "battingRating": 8,
+          "bowlingRating": 8,
+          "fieldingRating": 8
+        },
+        {
+          "sourceId": "cmp4vfvb400b9wdx7ijm5qupm",
+          "name": "Parth Patel",
+          "role": "BATSMAN",
+          "phone": "+14375180369",
+          "phoneIsSentinel": false,
+          "center": "Brampton",
+          "battingRating": 10,
+          "bowlingRating": 5,
+          "fieldingRating": 8
+        },
+        {
+          "sourceId": "cmp4vfv3j00a5wdx7dmrde9uk",
+          "name": "Avi Patel",
+          "role": "BOWLER",
+          "phone": "+12898901292",
+          "phoneIsSentinel": false,
+          "center": "Brampton",
+          "battingRating": 4,
+          "bowlingRating": 5,
+          "fieldingRating": 4
+        },
+        {
+          "sourceId": "cmp69g5cl004xch4nye382yca",
+          "name": "Sahishnu Shah",
+          "role": "BATSMAN",
+          "phone": "+1555010215212",
+          "phoneIsSentinel": true,
+          "center": null,
+          "battingRating": 10,
+          "bowlingRating": 0,
+          "fieldingRating": 10
+        },
+        {
+          "sourceId": "cmp69gaik00cmch4n6lid9z7p",
+          "name": "Hardikbhai Gadani",
+          "role": "ALL_ROUNDER",
+          "phone": "+1555010617804",
+          "phoneIsSentinel": true,
+          "center": null,
+          "battingRating": 10,
+          "bowlingRating": 10,
+          "fieldingRating": 10
+        },
+        {
+          "sourceId": "cmp69gal000cqch4nzg8x7jdq",
+          "name": "Manavbhai",
+          "role": "BATSMAN",
+          "phone": "+1555010100047",
+          "phoneIsSentinel": true,
+          "center": null,
+          "battingRating": null,
+          "bowlingRating": null,
+          "fieldingRating": null
+        }
+      ]
+    },
+    {
+      "sourceId": "cmoyv79ww000coie2fchqj112",
+      "name": "Malton Monsoon",
+      "players": [
+        {
+          "sourceId": "cmp4vfvac00b5wdx7hdan4ycp",
+          "name": "Vinay Tamboli",
+          "role": "BOWLER",
+          "phone": "+16475407013",
+          "phoneIsSentinel": false,
+          "center": "Brampton",
+          "battingRating": 7,
+          "bowlingRating": 8,
+          "fieldingRating": 8
+        },
+        {
+          "sourceId": "cmp4vftsm003dwdx7ovrd42g2",
+          "name": "Mihir Dholariya",
+          "role": "BATSMAN",
+          "phone": "+14377991612",
+          "phoneIsSentinel": false,
+          "center": "North York",
+          "battingRating": 10,
+          "bowlingRating": 7,
+          "fieldingRating": 9
+        },
+        {
+          "sourceId": "cmp4vfwf900fxwdx7ktebyyxz",
+          "name": "Jaykumar Patel",
+          "role": "BATSMAN",
+          "phone": "+15197010515",
+          "phoneIsSentinel": false,
+          "center": "London",
+          "battingRating": 8,
+          "bowlingRating": 7,
+          "fieldingRating": 8
+        },
+        {
+          "sourceId": "cmp4vfwyp00hxwdx79q2vxkg9",
+          "name": "Savan Babariya",
+          "role": "BOWLER",
+          "phone": "+16473902710",
+          "phoneIsSentinel": false,
+          "center": "Etobicoke",
+          "battingRating": 5,
+          "bowlingRating": 9,
+          "fieldingRating": 9
+        },
+        {
+          "sourceId": "cmp4vfxwn00ldwdx7taqt6xuy",
+          "name": "Nisarg Patel",
+          "role": "ALL_ROUNDER",
+          "phone": "+16472908804",
+          "phoneIsSentinel": false,
+          "center": "Etobicoke",
+          "battingRating": 8,
+          "bowlingRating": 8,
+          "fieldingRating": 8
+        },
+        {
+          "sourceId": "cmp4vfz2p00q1wdx7k7l5vpwh",
+          "name": "Kamal Sharma",
+          "role": "ALL_ROUNDER",
+          "phone": "+14377705357",
+          "phoneIsSentinel": false,
+          "center": "North York",
+          "battingRating": 5,
+          "bowlingRating": 5,
+          "fieldingRating": 5
+        },
+        {
+          "sourceId": "cmp4vg0bg00utwdx7drq3bbap",
+          "name": "Kaumil Shah",
+          "role": "BATSMAN",
+          "phone": "+19054291710",
+          "phoneIsSentinel": false,
+          "center": "Brampton",
+          "battingRating": 5,
+          "bowlingRating": 1,
+          "fieldingRating": 8
+        },
+        {
+          "sourceId": "cmp4vfw1e00ehwdx7elna2mxb",
+          "name": "Yash Desai",
+          "role": "ALL_ROUNDER",
+          "phone": "+12262349828",
+          "phoneIsSentinel": false,
+          "center": "Scarborough",
+          "battingRating": 8,
+          "bowlingRating": 8,
+          "fieldingRating": 7
+        },
+        {
+          "sourceId": "cmp4vg0ae00upwdx7tnkuq6ks",
+          "name": "Krupesh Patel",
+          "role": "BATSMAN",
+          "phone": "+14375591512",
+          "phoneIsSentinel": false,
+          "center": "Etobicoke",
+          "battingRating": 9,
+          "bowlingRating": 1,
+          "fieldingRating": 9
+        },
+        {
+          "sourceId": "cmp69g4d9003cch4nak9ur6eq",
+          "name": "Amit Jivani",
+          "role": "ALL_ROUNDER",
+          "phone": "+1555010771704",
+          "phoneIsSentinel": true,
+          "center": null,
+          "battingRating": 10,
+          "bowlingRating": 10,
+          "fieldingRating": 10
+        },
+        {
+          "sourceId": "cmp69g4hs003jch4nw8vjn4c0",
+          "name": "Siddharaj Chauhan",
+          "role": "ALL_ROUNDER",
+          "phone": "+1555010612305",
+          "phoneIsSentinel": true,
+          "center": null,
+          "battingRating": 10,
+          "bowlingRating": 10,
+          "fieldingRating": 10
+        },
+        {
+          "sourceId": "cmp69g4m3003qch4nw4pqbayl",
+          "name": "Parth Shah",
+          "role": "BATSMAN",
+          "phone": "+1555010799529",
+          "phoneIsSentinel": true,
+          "center": null,
+          "battingRating": null,
+          "bowlingRating": null,
+          "fieldingRating": null
+        },
+        {
+          "sourceId": "cmp4vg00d00tpwdx71fotwram",
+          "name": "Hardik Rana",
+          "role": "BOWLER",
+          "phone": "+15199827063",
+          "phoneIsSentinel": false,
+          "center": "Windsor",
+          "battingRating": 5,
+          "bowlingRating": 6,
+          "fieldingRating": 5
+        }
+      ]
+    }
+  ]
+}

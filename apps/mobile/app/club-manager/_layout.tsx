@@ -3,7 +3,7 @@ import { Redirect, Stack } from 'expo-router';
 
 import { useAuth } from '../../src/lib/auth-context';
 
-/** Club Manager-only section: dashboard tabs. */
+/** Club Manager — stack for tab roots + detail overlays. Bottom bar lives in `(tabs)/_layout`. */
 export default function ClubManagerLayout(): React.ReactElement {
   const { user } = useAuth();
 
@@ -14,6 +14,9 @@ export default function ClubManagerLayout(): React.ReactElement {
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="birthdays" />
+      <Stack.Screen name="broadcast" />
+      <Stack.Screen name="users/[userId]" />
     </Stack>
   );
 }

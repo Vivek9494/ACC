@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
 
-import { MediaService } from './media.service';
+import { MediaUploadService } from './media-upload.service';
 
 @Module({
-  providers: [MediaService],
-  exports: [MediaService],
+  providers: [MediaUploadService],
+  exports: [MediaUploadService],
 })
 export class MediaModule {}

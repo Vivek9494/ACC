@@ -1,10 +1,12 @@
-import { forwardRef, type ReactNode } from 'react';
+import { forwardRef, useCallback, useRef, type ReactNode } from 'react';
 import {
   TextInput as RNTextInput,
   Platform,
   View,
   type TextInputProps as RNTextInputProps,
 } from 'react-native';
+
+import { useKeyboardAwareFormScroll } from './KeyboardAwareFormScrollView';
 
 import {
   DEFAULT_PLACEHOLDER_COLOR,
@@ -45,10 +47,22 @@ export const TextInput = forwardRef<RNTextInput, TextInputProps>(function TextIn
     containerClassName,
     style,
     placeholderTextColor = DEFAULT_PLACEHOLDER_COLOR,
+    onFocus,
     ...props
   },
   ref,
 ) {
+  const keyboardScroll = useKeyboardAwareFormScroll();
+  const containerRef = useRef<View>(null);
+
+  const handleFocus = useCallback<NonNullable<RNTextInputProps['onFocus']>>(
+    (event) => {
+      onFocus?.(event);
+      keyboardScroll?.scrollFieldIntoView(containerRef.current);
+    },
+    [keyboardScroll, onFocus],
+  );
+
   const hasChrome = Boolean(label || leadingIcon || rightAccessory || error);
   let inputClassName = mergeFieldClassName(className, {
     hasLeadingIcon: Boolean(leadingIcon),
@@ -65,6 +79,7 @@ export const TextInput = forwardRef<RNTextInput, TextInputProps>(function TextIn
       placeholderTextColor={placeholderTextColor}
       style={[INPUT_SHADOW_STYLE, INPUT_TEXT_STYLE, style]}
       textAlignVertical="center"
+      onFocus={handleFocus}
       {...props}
       {...(Platform.OS === 'android' ? { includeFontPadding: false as const } : {})}
     />
@@ -85,15 +100,11 @@ export const TextInput = forwardRef<RNTextInput, TextInputProps>(function TextIn
       input
     );
 
-  if (!hasChrome) {
-    return fieldBody;
-  }
-
   return (
-    <View className={containerClassName}>
+    <View ref={containerRef} collapsable={false} className={containerClassName}>
       {label ? <Text className={labelClassName(labelVariant)}>{label}</Text> : null}
       {fieldBody}
-      <FormErrorText inline>{error}</FormErrorText>
+      {error ? <FormErrorText inline>{error}</FormErrorText> : null}
     </View>
   );
 });

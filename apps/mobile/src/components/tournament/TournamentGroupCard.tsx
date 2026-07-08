@@ -1,8 +1,10 @@
+import type { ReactNode } from 'react';
 import { View } from 'react-native';
 
 import { INPUT_SHADOW_STYLE } from '../ui/fieldStyles';
 import { TeamAvatar } from '../ui/TeamAvatar';
 import { Text } from '../ui/Text';
+import { ListRowIconButton } from '../ui/ListRowIconButton';
 
 export interface GroupCardTeam {
   id: string;
@@ -15,16 +17,18 @@ export interface TournamentGroupCardProps {
   teams: GroupCardTeam[];
   showGroupHeader?: boolean;
   emptyMessage?: string;
-  /** When provided, renders beside a fixed team column (Points Table stats). */
-  statsContent?: React.ReactNode;
+  headerTrailing?: ReactNode;
+  editMode?: boolean;
+  onRemoveTeam?: (teamId: string) => void;
+  editFooter?: ReactNode;
 }
 
-function TournamentGroupCardHeader({
+export function TournamentGroupCardHeader({
   groupName,
-  teamCount,
+  trailing,
 }: {
   groupName: string;
-  teamCount: number;
+  trailing?: ReactNode;
 }): React.ReactElement {
   return (
     <View className="flex-row items-center justify-between px-4 py-3">
@@ -34,10 +38,28 @@ function TournamentGroupCardHeader({
           {groupName}
         </Text>
       </View>
-      <Text className="font-sans-medium text-[10px] uppercase tracking-wider text-on-surface-variant">
-        {teamCount} TEAMS
-      </Text>
+      {trailing}
     </View>
+  );
+}
+
+/** @deprecated Use header without team count — kept for Points Table reuse. */
+export function TournamentGroupCardHeaderWithCount({
+  groupName,
+  teamCount,
+}: {
+  groupName: string;
+  teamCount: number;
+}): React.ReactElement {
+  return (
+    <TournamentGroupCardHeader
+      groupName={groupName}
+      trailing={
+        <Text className="font-sans-medium text-[10px] uppercase tracking-wider text-on-surface-variant">
+          {teamCount} TEAMS
+        </Text>
+      }
+    />
   );
 }
 
@@ -58,11 +80,15 @@ export function GroupCardTeamRow({
   logoUrl,
   showBottomDivider = false,
   boldName = false,
+  editMode = false,
+  onRemove,
 }: {
   name: string;
   logoUrl: string | null;
   showBottomDivider?: boolean;
   boldName?: boolean;
+  editMode?: boolean;
+  onRemove?: () => void;
 }): React.ReactElement {
   return (
     <View
@@ -70,27 +96,37 @@ export function GroupCardTeamRow({
     >
       <TeamAvatar name={name} logoUrl={logoUrl} size="xs" />
       <Text
-        className={`flex-1 text-sm text-on-surface ${boldName ? 'font-sans-bold' : 'font-sans'}`}
+        className={`min-w-0 flex-1 text-sm text-on-surface ${boldName ? 'font-sans-bold' : 'font-sans'}`}
         numberOfLines={1}
       >
         {name}
       </Text>
+      {editMode && onRemove ? (
+        <ListRowIconButton
+          icon="remove-circle-outline"
+          accessibilityLabel={`Remove ${name} from group`}
+          onPress={onRemove}
+        />
+      ) : null}
     </View>
   );
 }
 
 /**
- * Shared group card shell — accent-dash header, white card, Team column header.
- * Pass `statsContent` for the Points Table stat columns; omit for Groups tab team-only list.
+ * Shared group card shell — accent-dash header, white card, team list (Groups tab).
  */
 export function TournamentGroupCard({
   groupName,
   teams,
   showGroupHeader = true,
   emptyMessage = 'No teams assigned yet.',
-  statsContent,
+  headerTrailing,
+  editMode = false,
+  onRemoveTeam,
+  editFooter,
 }: TournamentGroupCardProps): React.ReactElement {
   const teamCount = teams.length;
+  const showTeamList = editMode || teamCount > 0;
 
   return (
     <View
@@ -98,37 +134,34 @@ export function TournamentGroupCard({
       style={INPUT_SHADOW_STYLE}
     >
       {showGroupHeader ? (
-        <TournamentGroupCardHeader groupName={groupName} teamCount={teamCount} />
+        <TournamentGroupCardHeader groupName={groupName} trailing={headerTrailing} />
       ) : null}
 
-      {teamCount === 0 ? (
+      {!showTeamList ? (
         <Text className="px-4 py-4 text-center font-sans text-sm text-on-surface-variant">
           {emptyMessage}
         </Text>
-      ) : statsContent ? (
-        <View className="flex-row">
-          <View className="w-[42%] max-w-[160px] shrink-0 border-r border-separator">
-            <GroupCardTeamHeaderRow />
-            {teams.map((team, index) => (
-              <GroupCardTeamRow
-                key={team.id}
-                name={team.name}
-                logoUrl={team.logoUrl}
-                boldName
-                showBottomDivider={index < teamCount - 1}
-              />
-            ))}
-          </View>
-          {statsContent}
-        </View>
       ) : (
         <View>
-          <GroupCardTeamHeaderRow />
+          {teamCount > 0 ? <GroupCardTeamHeaderRow /> : null}
           {teams.map((team) => (
-            <GroupCardTeamRow key={team.id} name={team.name} logoUrl={team.logoUrl} />
+            <GroupCardTeamRow
+              key={team.id}
+              name={team.name}
+              logoUrl={team.logoUrl}
+              editMode={editMode}
+              onRemove={onRemoveTeam ? () => onRemoveTeam(team.id) : undefined}
+            />
           ))}
+          {editMode && teamCount === 0 ? (
+            <Text className="px-4 pb-2 text-center font-sans text-sm text-on-surface-variant">
+              {emptyMessage}
+            </Text>
+          ) : null}
         </View>
       )}
+
+      {editFooter}
     </View>
   );
 }

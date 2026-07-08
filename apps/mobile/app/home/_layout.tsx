@@ -12,22 +12,30 @@ export default function HomeLayout(): React.ReactElement {
   if (!user) {
     return <Redirect href="/login" />;
   }
+  if (user.mustChangePassword) {
+    return <Redirect href="/forced-password-change" />;
+  }
   if (user.role === UserRole.Admin) {
     return <Redirect href="/admin" />;
   }
   if (user.role === UserRole.ClubManager) {
     return <Redirect href="/club-manager" />;
   }
-  if (hasTeamLeadAccess(user)) {
+  if (
+    user.role === UserRole.Captain ||
+    user.role === UserRole.ViceCaptain ||
+    hasTeamLeadAccess(user)
+  ) {
     return <Redirect href="/captain" />;
   }
-  if (hasCenterSevakAccess(user)) {
+  if (user.role === UserRole.CenterSevak || hasCenterSevakAccess(user)) {
     return <Redirect href="/center-sevak" />;
   }
 
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="birthdays" />
     </Stack>
   );
 }

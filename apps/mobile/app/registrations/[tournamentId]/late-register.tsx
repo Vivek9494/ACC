@@ -6,7 +6,7 @@ import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PlayerAvatarWithStatus } from '../../../src/components/tournament/verify-players/PlayerAvatarWithStatus';
-import { ProfileMenu } from '../../../src/components/ui/ProfileMenu';
+import { ScreenHeader } from '../../../src/components/ui/ScreenHeader';
 import { Text } from '../../../src/components/ui/Text';
 import { FIELD_ORANGE, INPUT_SHADOW_STYLE } from '../../../src/components/ui/fieldStyles';
 import { ApiRequestError, getRegistrationVerificationQueue } from '../../../src/lib/api';
@@ -55,24 +55,11 @@ export default function LateRegisterPickerScreen(): React.ReactElement {
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
-      <View className="flex-row items-center justify-between px-4 py-3">
-        <Pressable
-          onPress={() => router.back()}
-          className="h-10 w-10 items-center justify-center rounded-full active:bg-black/5"
-          accessibilityRole="button"
-          accessibilityLabel="Go back"
-        >
-          <Ionicons name="arrow-back" size={24} color={FIELD_ORANGE} />
-        </Pressable>
-        <ProfileMenu />
-      </View>
-
-      <View className="gap-1 px-4 pb-4">
-        <Text className="font-sans-bold text-2xl text-on-surface">Late registration</Text>
-        <Text className="font-sans text-sm text-on-surface-variant">
-          Select a player from your center who missed the registration window.
-        </Text>
-      </View>
+      <ScreenHeader
+        title="Late registration"
+        subtitle="Select a player from your center who missed the registration window."
+        onBack={() => router.back()}
+      />
 
       <ScrollView contentContainerClassName="gap-3 px-4 pb-8">
         {loading ? (

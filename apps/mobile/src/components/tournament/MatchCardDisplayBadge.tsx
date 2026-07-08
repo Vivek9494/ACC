@@ -1,42 +1,102 @@
-import { MatchCardDisplayState } from '@acc/types';
+import {
+  MatchStateBadgeStyle,
+  resolveMatchStateBadge,
+  type MatchState,
+} from '@acc/types';
 import { View } from 'react-native';
 
 import { StatusPill } from '../ui/StatusPill';
 import { Text } from '../ui/Text';
 
-const BADGE_LABEL: Record<MatchCardDisplayState, string> = {
-  [MatchCardDisplayState.Completed]: 'RESULT',
-  [MatchCardDisplayState.Live]: 'LIVE',
-  [MatchCardDisplayState.Scheduled]: 'SCHEDULED',
+/** Inactive/cancelled — taupe grey, distinct from primary orange statuses. */
+const CANCELLED_BADGE = {
+  container: 'bg-stone-300',
+  text: 'text-stone-800',
+} as const;
+
+const BADGE_CLASS: Record<
+  Exclude<MatchStateBadgeStyle, typeof MatchStateBadgeStyle.Live>,
+  { container: string; text: string; uppercase: boolean }
+> = {
+  [MatchStateBadgeStyle.Muted]: {
+    container: 'bg-surface-container-high',
+    text: 'text-on-surface-variant',
+    uppercase: false,
+  },
+  [MatchStateBadgeStyle.Completed]: {
+    container: 'bg-secondary-100',
+    text: 'text-secondary-700',
+    uppercase: false,
+  },
+  [MatchStateBadgeStyle.Cancelled]: {
+    ...CANCELLED_BADGE,
+    uppercase: false,
+  },
+  [MatchStateBadgeStyle.Paused]: {
+    container: 'bg-secondary-container',
+    text: 'text-secondary',
+    uppercase: false,
+  },
+  [MatchStateBadgeStyle.Delayed]: {
+    container: 'bg-primary-container',
+    text: 'text-on-primary-container',
+    uppercase: false,
+  },
+  [MatchStateBadgeStyle.PreLive]: {
+    container: 'bg-surface-container-high',
+    text: 'text-on-surface-variant',
+    uppercase: false,
+  },
 };
 
-const BADGE_CLASS: Record<MatchCardDisplayState, string> = {
-  [MatchCardDisplayState.Completed]: 'bg-surface-container-high',
-  [MatchCardDisplayState.Live]: 'bg-secondary-900',
-  [MatchCardDisplayState.Scheduled]: 'bg-surface-container-high',
-};
-
-const BADGE_TEXT_CLASS: Record<MatchCardDisplayState, string> = {
-  [MatchCardDisplayState.Completed]: 'text-on-surface-variant',
-  [MatchCardDisplayState.Live]: 'text-text-inverse',
-  [MatchCardDisplayState.Scheduled]: 'text-on-surface-variant',
-};
+function CancelledStatusBadge({ label }: { label: string }): React.ReactElement {
+  return (
+    <View className={`self-start rounded-full px-3 py-1 ${CANCELLED_BADGE.container}`}>
+      <Text className={`font-sans-semibold text-[10px] tracking-wider ${CANCELLED_BADGE.text}`}>
+        {label}
+      </Text>
+    </View>
+  );
+}
 
 export function MatchCardDisplayBadge({
-  displayState,
+  state,
+  variant = 'default',
 }: {
-  displayState: MatchCardDisplayState;
+  state: MatchState | string;
+  /** Tournament Matches tab — primary orange for every status except Cancelled. */
+  variant?: 'default' | 'tournamentPrimary';
 }): React.ReactElement {
-  if (displayState === MatchCardDisplayState.Live) {
-    return <StatusPill variant="live" label={BADGE_LABEL[displayState]} />;
+  const { label, style } = resolveMatchStateBadge(state);
+
+  if (style === MatchStateBadgeStyle.Cancelled) {
+    return <CancelledStatusBadge label={label} />;
   }
 
+  if (variant === 'tournamentPrimary') {
+    return (
+      <View className="self-start rounded-full bg-primary px-3 py-1">
+        <Text className="font-sans-semibold text-[10px] tracking-wider text-text-inverse">
+          {label}
+        </Text>
+      </View>
+    );
+  }
+
+  if (style === MatchStateBadgeStyle.Live) {
+    return <StatusPill variant="live" label={label} />;
+  }
+
+  const classes = BADGE_CLASS[style];
+
   return (
-    <View className={`self-start rounded-full px-3 py-1 ${BADGE_CLASS[displayState]}`}>
+    <View className={`self-start rounded-full px-3 py-1 ${classes.container}`}>
       <Text
-        className={`font-sans-semibold text-[10px] uppercase tracking-wider ${BADGE_TEXT_CLASS[displayState]}`}
+        className={`font-sans-semibold text-[10px] tracking-wider ${classes.text}${
+          classes.uppercase ? ' uppercase' : ''
+        }`}
       >
-        {BADGE_LABEL[displayState]}
+        {label}
       </Text>
     </View>
   );

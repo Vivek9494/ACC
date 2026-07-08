@@ -1,8 +1,14 @@
 /** Player skill video constraints (§19 scouting / auction). */
-export const PLAYER_SKILL_VIDEO_MAX_BYTES = 100 * 1024 * 1024;
+import {
+  DEFAULT_VIDEO_UPLOAD_MAX_MB,
+  LEGACY_PLAYER_SKILL_VIDEO_MAX_BYTES,
+  playerSkillVideoSizeError as skillVideoSizeError,
+} from './app-settings';
 
-/** @deprecated Use {@link PLAYER_SKILL_VIDEO_MAX_BYTES}. */
-export const PLAYER_VIDEO_MAX_BYTES = PLAYER_SKILL_VIDEO_MAX_BYTES;
+export const PLAYER_SKILL_VIDEO_MAX_BYTES = LEGACY_PLAYER_SKILL_VIDEO_MAX_BYTES;
+
+/** @deprecated Use settings-backed limits; kept for legacy imports. */
+export const PLAYER_VIDEO_MAX_BYTES = DEFAULT_VIDEO_UPLOAD_MAX_MB * 1024 * 1024;
 
 export const PLAYER_SKILL_VIDEO_ACCEPTED_MIME_TYPES = ['video/mp4', 'video/quicktime'] as const;
 
@@ -81,12 +87,10 @@ export interface PlayerSkillVideoCompleteUploadRequest {
 /** @deprecated Use {@link PlayerSkillVideoCompleteUploadRequest}. */
 export type PlayerVideoCompleteUploadRequest = PlayerSkillVideoCompleteUploadRequest;
 
-export function playerSkillVideoSizeError(): string {
-  return 'Video must be no larger than 100MB';
+/** @deprecated Use {@link skillVideoSizeError} from app-settings (`playerSkillVideoSizeError`). */
+export function playerVideoSizeError(maxMb?: number): string {
+  return skillVideoSizeError(maxMb);
 }
-
-/** @deprecated Use {@link playerSkillVideoSizeError}. */
-export const playerVideoSizeError = playerSkillVideoSizeError;
 
 export function playerSkillVideoTypeError(): string {
   return 'Video must be MP4 or MOV format';

@@ -1,5 +1,5 @@
 import { type AutoAttendancePunchRequest } from '@acc/types';
-import { IsISO8601, IsNumber, IsOptional, Max, Min } from 'class-validator';
+import { IsBoolean, IsISO8601, IsNumber, IsOptional, Max, Min } from 'class-validator';
 
 export class AutoAttendancePunchDto implements AutoAttendancePunchRequest {
   @IsNumber()
@@ -15,4 +15,8 @@ export class AutoAttendancePunchDto implements AutoAttendancePunchRequest {
   @IsOptional()
   @IsISO8601()
   capturedAt?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  geofenceEnter?: boolean;
 }

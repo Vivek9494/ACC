@@ -8,11 +8,17 @@ import { validateSync } from 'class-validator';
 
 import { PermissionService } from '../authz/permission.service';
 import { TournamentTypeResolverService } from '../authz/tournament-type-resolver.service';
-import { MediaService } from '../media/media.service';
+import { MediaUrlResolver } from '../storage/media-url.resolver';
+import { S3StorageService } from '../storage/s3-storage.service';
+import { NotificationAudienceService } from '../notifications/notification-audience.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTournamentDto } from './dto/create-tournament.dto';
+import { LeatherTournamentVisibilityService } from './leather-tournament-visibility.service';
 import { TournamentsService } from './tournaments.service';
+import { TournamentScorersService } from './tournament-scorers.service';
+import { KnockoutBracketService } from '../knockout-bracket/knockout-bracket.service';
+import { PlayerSkillVideosService } from '../player-videos/player-skill-videos.service';
 
 interface TxMock {
   tournament: { create: jest.Mock };
@@ -40,6 +46,7 @@ function detailRow(overrides: Record<string, unknown> = {}): Record<string, unkn
     playersPerTeam: 15,
     substitutesAllowed: 2,
     locationAddress: null,
+    provinceId: null,
     format: 'LEAGUE_SINGLE_ROUND_ROBIN',
     impactPlayerEnabled: false,
     videoRequired: false,
@@ -57,7 +64,7 @@ function detailRow(overrides: Record<string, unknown> = {}): Record<string, unkn
       { date: new Date('2026-06-15T00:00:00.000Z') },
       { date: new Date('2026-09-30T00:00:00.000Z') },
     ],
-    _count: { teams: 0 },
+    _count: { teams: 0, groups: 0 },
     ...overrides,
   };
 }
@@ -101,7 +108,8 @@ describe('TournamentsService', () => {
   };
   let permissions: { check: jest.Mock };
   let notifications: { notify: jest.Mock };
-  let media: { uploadTournamentPoster: jest.Mock };
+  let storage: { deleteObject: jest.Mock; resolveObjectKey: jest.Mock };
+  let mediaUrls: { resolveReadUrl: jest.Mock; resolveReadUrls: jest.Mock };
   let tx: TxMock;
 
   beforeEach(async () => {
@@ -146,7 +154,14 @@ describe('TournamentsService', () => {
     };
     permissions = { check: jest.fn().mockResolvedValue(true) };
     notifications = { notify: jest.fn().mockResolvedValue(undefined) };
-    media = { uploadTournamentPoster: jest.fn().mockResolvedValue('https://example.com/poster.jpg') };
+    storage = {
+      deleteObject: jest.fn().mockResolvedValue(undefined),
+      resolveObjectKey: jest.fn((value: string | null | undefined) => value ?? null),
+    };
+    mediaUrls = {
+      resolveReadUrl: jest.fn(async (value: string | null) => value),
+      resolveReadUrls: jest.fn(async (values: (string | null)[]) => values),
+    };
 
     const moduleRef = await Test.createTestingModule({
       providers: [
@@ -155,7 +170,37 @@ describe('TournamentsService', () => {
         { provide: PrismaService, useValue: prisma },
         { provide: PermissionService, useValue: permissions },
         { provide: NotificationsService, useValue: notifications },
-        { provide: MediaService, useValue: media },
+        {
+          provide: NotificationAudienceService,
+          useValue: { resolveTournamentAudience: jest.fn().mockResolvedValue([]) },
+        },
+        { provide: S3StorageService, useValue: storage },
+        { provide: MediaUrlResolver, useValue: mediaUrls },
+        {
+          provide: PlayerSkillVideosService,
+          useValue: { resolveViewerUploadFlags: jest.fn().mockResolvedValue({}) },
+        },
+        {
+          provide: LeatherTournamentVisibilityService,
+          useValue: {
+            getVisibleLeatherTournamentIds: jest.fn().mockResolvedValue([]),
+            assertCanViewLeatherTournament: jest.fn().mockResolvedValue(undefined),
+          },
+        },
+        {
+          provide: TournamentScorersService,
+          useValue: {
+            loadParticipatingCenterIds: jest.fn().mockResolvedValue([]),
+            buildViewerFlags: jest.fn().mockResolvedValue({
+              canManageTournamentScorers: false,
+              tournamentScorerCount: 0,
+            }),
+          },
+        },
+        {
+          provide: KnockoutBracketService,
+          useValue: { hasKnockoutBracket: jest.fn().mockResolvedValue(false) },
+        },
       ],
     }).compile();
 
@@ -174,6 +219,7 @@ describe('TournamentsService', () => {
       dates: ['2026-06-15', '2026-07-01', '2026-09-30'],
       ballType: 'LEATHER',
       citySelection: 'SINGLE',
+      provinceId: 'prov-1',
       format: 'LEAGUE_SINGLE_ROUND_ROBIN',
       impactPlayerEnabled: false,
       videoRequired: false,
@@ -359,6 +405,29 @@ describe('TournamentsService', () => {
     });
   });
 
+  describe('numberOfTeams on edit', () => {
+    it('allows setting numberOfTeams to the active team count (soft-deleted teams excluded)', async () => {
+      prisma.tournament.findUnique.mockResolvedValueOnce(
+        detailRow({ numberOfTeams: 28, _count: { teams: 8, groups: 0 } }),
+      );
+
+      await service.update(actor, 'tid', { numberOfTeams: 8 });
+
+      expect(prisma.tournament.update).toHaveBeenCalled();
+    });
+
+    it('rejects numberOfTeams below the active team count', async () => {
+      prisma.tournament.findUnique.mockResolvedValueOnce(
+        detailRow({ numberOfTeams: 28, _count: { teams: 8, groups: 0 } }),
+      );
+
+      await expect(service.update(actor, 'tid', { numberOfTeams: 7 })).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+      expect(prisma.tournament.update).not.toHaveBeenCalled();
+    });
+  });
+
   describe('Center Sevak tournament ownership (§7.4)', () => {
     it('allows a Center Sevak to update a tournament they created', async () => {
       prisma.tournament.findUnique.mockResolvedValueOnce(
@@ -459,6 +528,7 @@ describe('CreateTournamentDto', () => {
       substitutesAllowed: 2,
       dates: ['2026-06-15', '2026-09-30'],
       ballType: 'LEATHER',
+      provinceId: 'prov-1',
       format: 'LEAGUE_SINGLE_ROUND_ROBIN',
       impactPlayerEnabled: false,
       videoRequired: false,
@@ -479,6 +549,7 @@ describe('CreateTournamentDto', () => {
       substitutesAllowed: 2,
       dates: ['2026-06-15', '2026-09-30'],
       ballType: 'LEATHER',
+      provinceId: 'prov-1',
       format: 'LEAGUE_SINGLE_ROUND_ROBIN',
       impactPlayerEnabled: false,
       videoRequired: false,
@@ -498,6 +569,7 @@ describe('CreateTournamentDto', () => {
       substitutesAllowed: 2,
       dates: ['2026-06-15', '2026-09-30'],
       ballType: 'LEATHER',
+      provinceId: 'prov-1',
       format: 'LEAGUE_SINGLE_ROUND_ROBIN',
       impactPlayerEnabled: false,
       videoRequired: false,

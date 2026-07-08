@@ -1,3 +1,4 @@
+import type { CaptainFeaturedMatchSummary } from './captain';
 import type { TournamentSummary } from './tournament';
 
 /** One ball in the current over strip on the guest live card. */
@@ -31,6 +32,7 @@ export interface GuestFeaturedLiveMatch {
 
 /** Guest dashboard payload — public, no auth (spec §2). */
 export interface GuestDashboard {
-  featuredLiveMatch: GuestFeaturedLiveMatch | null;
+  /** App-wide fixtures scheduled today (venue-local), same set for all viewers. */
+  featuredMatches: CaptainFeaturedMatchSummary[];
   tournaments: TournamentSummary[];
 }

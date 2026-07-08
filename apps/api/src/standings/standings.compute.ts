@@ -54,6 +54,7 @@ function classifyOutcome(match: StandingsMatchInput): ClassifyResult {
   }
 
   if (match.isNoResult) {
+    // Includes No Result, Cancelled, and scorecard-flagged NR — shared split-point path.
     return { ok: true, outcome: { kind: 'no_result' } };
   }
 

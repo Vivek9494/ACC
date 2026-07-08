@@ -1,10 +1,11 @@
 import type { TeamDetailView } from '@acc/types';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { ActivityIndicator, ScrollView, View } from 'react-native';
-import { useRouter, type Href } from 'expo-router';
+import { useRouter, useFocusEffect, type Href } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ApiRequestError, getTeamDetail } from '../../lib/api';
+import { CircularAddButton } from '../ui/CircularAddButton';
 import { ScreenHeader } from '../ui/ScreenHeader';
 import { Text } from '../ui/Text';
 import { FIELD_ORANGE } from '../ui/fieldStyles';
@@ -65,13 +66,24 @@ export function TeamDetailScreen({
     }
   }, [teamId, tournamentId]);
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+  useFocusEffect(
+    useCallback(() => {
+      void load();
+    }, [load]),
+  );
 
   function openPlayerProfile(userId: string, firstName: string, lastName: string): void {
     router.push(
       `/tournaments/${tournamentId}/players/${userId}?firstName=${encodeURIComponent(firstName)}&lastName=${encodeURIComponent(lastName)}` as Href,
+    );
+  }
+
+  function openAddPlayers(): void {
+    if (!detail) {
+      return;
+    }
+    router.push(
+      `/tournaments/${tournamentId}/teams/${teamId}/add-players?teamName=${encodeURIComponent(detail.name)}` as Href,
     );
   }
 
@@ -107,7 +119,16 @@ export function TeamDetailScreen({
           />
 
           <View className="gap-3">
-            <Text className="font-sans-bold text-xl text-on-surface">Team Players</Text>
+            <View className="flex-row items-center justify-between gap-3">
+              <Text className="font-sans-bold text-xl text-on-surface">Team Players</Text>
+              {detail.canAddPlayers &&
+              (detail.rosterSlotsRemaining == null || detail.rosterSlotsRemaining > 0) ? (
+                <CircularAddButton
+                  accessibilityLabel="Add players to team"
+                  onPress={openAddPlayers}
+                />
+              ) : null}
+            </View>
             {detail.players.length === 0 ? (
               <Text className="font-sans text-sm text-on-surface-variant">
                 No players on this team yet.

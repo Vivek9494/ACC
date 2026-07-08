@@ -18,28 +18,23 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
-  ScrollView,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '../src/components/ui/Button';
+import { KeyboardAwareFormScrollView } from '../src/components/ui/KeyboardAwareFormScrollView';
 import { Checkbox } from '../src/components/ui/Checkbox';
 import { DateField } from '../src/components/ui/DateField';
 import { EditProfilePhoto } from '../src/components/ui/EditProfilePhoto';
 import { FIELD_ORANGE } from '../src/components/ui/fieldStyles';
-import { ProfileMenu } from '../src/components/ui/ProfileMenu';
-import { SectionCard } from '../src/components/ui/SectionCard';
+import { ScreenHeader } from '../src/components/ui/ScreenHeader';
 import { Select } from '../src/components/ui/Select';
 import { SuccessDialog } from '../src/components/ui/SuccessDialog';
 import { Text } from '../src/components/ui/Text';
 import { TextInput } from '../src/components/ui/TextInput';
-import {
-  ApiRequestError,
-  getProfile,
-  updateProfile,
-  uploadProfilePhoto,
-} from '../src/lib/api';
+import { ApiRequestError, getProfile, updateProfile } from '../src/lib/api';
+import { uploadProfilePhoto } from '../src/lib/imageUpload';
 import { useAuth } from '../src/lib/auth-context';
 import {
   isJerseySizeValue,
@@ -123,18 +118,6 @@ export default function EditProfileScreen(): React.ReactElement {
     (provinceId && (centerField.errorType === 'network' || centerField.errorType === 'empty')
       ? centerField.errorMessage
       : null);
-
-  const jerseyPreview = useMemo(() => {
-    const name = jerseyName.trim();
-    const num = jerseyNumber.trim();
-    if (!name && !num) {
-      return null;
-    }
-    if (name && num) {
-      return `${name} #${num}`;
-    }
-    return name || `#${num}`;
-  }, [jerseyName, jerseyNumber]);
 
   function onProvinceChange(next: string): void {
     setProvinceId(next);
@@ -237,13 +220,22 @@ export default function EditProfileScreen(): React.ReactElement {
     setFormError(null);
     setSubmitting(true);
     try {
-      let photoUrl = savedPhotoUrl;
+      let photoStorageKey = savedPhotoUrl;
       if (profilePhoto) {
         if (isLocalImageUri(profilePhoto.uri)) {
           const uploadUri = await ensureUploadableUri(profilePhoto.uri, 'profile-photo');
-          photoUrl = await uploadProfilePhoto(uploadUri);
-        } else if (profilePhoto.uri !== savedPhotoUrl) {
-          photoUrl = profilePhoto.uri;
+          const uploaded = await uploadProfilePhoto(
+            uploadUri,
+            profilePhoto.sizeBytes ?? 0,
+          );
+          photoStorageKey = uploaded.storageKey;
+          setProfilePhoto({
+            ...profilePhoto,
+            uri: uploaded.profilePhotoUrl,
+            remoteUrl: uploaded.storageKey,
+          });
+        } else if (profilePhoto.remoteUrl) {
+          photoStorageKey = profilePhoto.remoteUrl;
         }
       }
 
@@ -260,8 +252,8 @@ export default function EditProfileScreen(): React.ReactElement {
         emergencyContactName: emergencyContactName.trim(),
         emergencyContactNumber: emergencyContactNumber.replace(/\D/g, ''),
         hasHealthCard,
-        profilePhotoUrl: photoUrl,
-        ...(trimmedEmail ? { email: trimmedEmail } : {}),
+        profilePhotoUrl: photoStorageKey,
+        email: trimmedEmail,
         ...(address.trim() ? { address: address.trim() } : { address: '' }),
         ...(trimmedPostal
           ? { postalCode: normalizeCanadianPostalCode(trimmedPostal) }
@@ -314,24 +306,11 @@ export default function EditProfileScreen(): React.ReactElement {
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
-      <View className="flex-row items-center justify-between px-4 py-3">
-        <View className="min-w-0 flex-1 flex-row items-center gap-3">
-          <Pressable
-            onPress={() => router.back()}
-            className="h-10 w-10 items-center justify-center rounded-full active:bg-black/5"
-            accessibilityRole="button"
-            accessibilityLabel="Go back"
-          >
-            <Ionicons name="arrow-back" size={24} color={FIELD_ORANGE} />
-          </Pressable>
-          <Text className="font-sans-bold text-xl text-on-surface">Edit Profile</Text>
-        </View>
-        <ProfileMenu />
-      </View>
+      <ScreenHeader title="Edit Profile" onBack={() => router.back()} />
 
-      <ScrollView
-        contentContainerClassName="px-4 pb-12 pt-2"
-        keyboardShouldPersistTaps="handled"
+      <KeyboardAwareFormScrollView
+        contentContainerClassName="px-4 pt-2"
+        extraBottomPadding={48}
         showsVerticalScrollIndicator={false}
       >
         <View className="mb-6 items-center">
@@ -483,84 +462,82 @@ export default function EditProfileScreen(): React.ReactElement {
         </View>
 
         <View className="mt-8 gap-5">
-          <SectionCard heading="Health Section">
-            <Checkbox checked={hasHealthCard} onChange={setHasHealthCard}>
-              <Text className="font-sans text-sm text-on-surface">Do you have a healthcard?</Text>
-            </Checkbox>
-          </SectionCard>
+          <Text className="font-sans-bold text-sm uppercase tracking-wider text-primary">
+            Health Section
+          </Text>
+          <Checkbox checked={hasHealthCard} onChange={setHasHealthCard}>
+            <Text className="font-sans text-sm text-on-surface">Do you have a healthcard?</Text>
+          </Checkbox>
         </View>
 
         <View className="mt-8 gap-5">
-          <SectionCard
-            heading="Emergency Contact"
-            icon={<Ionicons name="alert-circle-outline" size={18} color={FIELD_ORANGE} />}
-          >
-            <TextInput
-              label="Contact Name"
-              value={emergencyContactName}
-              onChangeText={(text) => {
-                setEmergencyContactName(formatSignupNameInput(text));
-                clearFieldError('emergencyContactName');
-              }}
-              autoCapitalize="words"
-              maxLength={SIGNUP_NAME_MAX_LENGTH}
-              error={fieldErrors.emergencyContactName}
-            />
-            <TextInput
-              label="Contact Number"
-              value={emergencyContactNumber}
-              onChangeText={(text) => {
-                setEmergencyContactNumber(formatSignupMobileInput(text));
-                clearFieldError('emergencyContactNumber');
-              }}
-              keyboardType="phone-pad"
-              placeholder="0000000000"
-              error={fieldErrors.emergencyContactNumber}
-            />
-          </SectionCard>
+          <View className="flex-row items-center gap-2">
+            <Ionicons name="alert-circle-outline" size={18} color={FIELD_ORANGE} />
+            <Text className="font-sans-bold text-sm uppercase tracking-wider text-primary">
+              Emergency Contact
+            </Text>
+          </View>
+          <TextInput
+            label="Contact Name"
+            value={emergencyContactName}
+            onChangeText={(text) => {
+              setEmergencyContactName(formatSignupNameInput(text));
+              clearFieldError('emergencyContactName');
+            }}
+            autoCapitalize="words"
+            maxLength={SIGNUP_NAME_MAX_LENGTH}
+            error={fieldErrors.emergencyContactName}
+          />
+          <TextInput
+            label="Contact Number"
+            value={emergencyContactNumber}
+            onChangeText={(text) => {
+              setEmergencyContactNumber(formatSignupMobileInput(text));
+              clearFieldError('emergencyContactNumber');
+            }}
+            keyboardType="phone-pad"
+            placeholder="0000000000"
+            error={fieldErrors.emergencyContactNumber}
+          />
         </View>
 
         <View className="mt-8 gap-5">
-          <SectionCard
-            heading="Equipment & Gear"
-            icon={<Ionicons name="shirt-outline" size={18} color={FIELD_ORANGE} />}
-          >
-            <Select
-              label="Jersey Size"
-              placeholder="Select size"
-              value={jerseySize}
-              options={jerseySizeOptions}
-              onChange={(value) => setJerseySize(value)}
-            />
-            <TextInput
-              label="Jersey Name"
-              value={jerseyName}
-              onChangeText={(text) => {
-                setJerseyName(formatSignupNameInput(text));
-                clearFieldError('jerseyName');
-              }}
-              placeholder="e.g. Casablancas"
-              autoCapitalize="words"
-              maxLength={SIGNUP_NAME_MAX_LENGTH}
-              error={fieldErrors.jerseyName}
-            />
-            <TextInput
-              label="Jersey Number"
-              value={jerseyNumber}
-              onChangeText={(text) => {
-                setJerseyNumber(text.replace(/\D/g, '').slice(0, 3));
-                clearFieldError('jerseyNumber');
-              }}
-              keyboardType="number-pad"
-              placeholder="13"
-              error={fieldErrors.jerseyNumber}
-            />
-            {jerseyPreview ? (
-              <Text className="font-sans text-sm text-on-surface-variant">
-                Display: {jerseyPreview}
-              </Text>
-            ) : null}
-          </SectionCard>
+          <View className="flex-row items-center gap-2">
+            <Ionicons name="shirt-outline" size={18} color={FIELD_ORANGE} />
+            <Text className="font-sans-bold text-sm uppercase tracking-wider text-primary">
+              Equipment & Gear
+            </Text>
+          </View>
+          <Select
+            label="Jersey Size"
+            placeholder="Select size"
+            value={jerseySize}
+            options={jerseySizeOptions}
+            onChange={(value) => setJerseySize(value)}
+          />
+          <TextInput
+            label="Jersey Name"
+            value={jerseyName}
+            onChangeText={(text) => {
+              setJerseyName(formatSignupNameInput(text));
+              clearFieldError('jerseyName');
+            }}
+            placeholder="e.g. Casablancas"
+            autoCapitalize="words"
+            maxLength={SIGNUP_NAME_MAX_LENGTH}
+            error={fieldErrors.jerseyName}
+          />
+          <TextInput
+            label="Jersey Number"
+            value={jerseyNumber}
+            onChangeText={(text) => {
+              setJerseyNumber(text.replace(/\D/g, '').slice(0, 3));
+              clearFieldError('jerseyNumber');
+            }}
+            keyboardType="number-pad"
+            placeholder="13"
+            error={fieldErrors.jerseyNumber}
+          />
         </View>
 
         {formError ? (
@@ -582,7 +559,7 @@ export default function EditProfileScreen(): React.ReactElement {
             </Text>
           )}
         </Button>
-      </ScrollView>
+      </KeyboardAwareFormScrollView>
 
       <SuccessDialog
         visible={showSuccessDialog}

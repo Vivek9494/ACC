@@ -17,11 +17,28 @@ export const LiveEvent = {
   Subscribed: 'live:subscribed',
   /** Server → client: a full live-state snapshot/update. */
   State: 'live:state',
+  /** Server → match room: outgoing scorer revoked mid-match (Admin/CM swap). */
+  ScorerRevoked: 'live:scorer-revoked',
 } as const;
 export type LiveEvent = (typeof LiveEvent)[keyof typeof LiveEvent];
 
 /** The Socket.IO namespace the live gateway is mounted on. */
 export const LIVE_NAMESPACE = '/live';
+
+/** Authenticated user notification namespace (scorer swap, dashboard refresh). */
+export const USER_NAMESPACE = '/user';
+
+/** Socket.IO room for a signed-in user. */
+export function userNotificationRoom(userId: string): string {
+  return `user:${userId}`;
+}
+
+/** User-namespace events (authenticated). */
+export const UserEvent = {
+  /** Server → user room: this user gained per-match scoring access. */
+  ScorerAssigned: 'user:scorer-assigned',
+} as const;
+export type UserEvent = (typeof UserEvent)[keyof typeof UserEvent];
 
 /** Redis key for a match's cached live state (spec §29 live match cache). */
 export function liveStateCacheKey(matchId: string): string {
@@ -50,3 +67,31 @@ export interface LiveStateMessage {
   /** Server timestamp (UTC ISO-8601) the frame was produced. */
   updatedAt: string;
 }
+
+/** Why the scorer's grant was revoked mid-session. */
+export const ScorerRevokedReason = {
+  Swap: 'swap',
+  Cancelled: 'cancelled',
+} as const;
+export type ScorerRevokedReason = (typeof ScorerRevokedReason)[keyof typeof ScorerRevokedReason];
+
+/** Emitted to the match room when the per-match scorer loses access mid-match. */
+export interface LiveScorerRevokedMessage {
+  matchId: string;
+  /** Outgoing scorer whose grant was revoked. */
+  userId: string;
+  reason?: ScorerRevokedReason;
+}
+
+/** Emitted to the incoming scorer's user room after a mid-match swap. */
+export interface UserScorerAssignedMessage {
+  matchId: string;
+}
+
+/** Shown to the outgoing scorer when their grant is revoked mid-match (organizer swap). */
+export const SCORER_REVOKED_MID_MATCH_MESSAGE =
+  'Tournament organizer swapped you with another scorer. We are revoking your scoring access of the match.';
+
+/** Shown when the match is cancelled while the scorer is on the scoring screen. */
+export const SCORER_REVOKED_MATCH_CANCELLED_MESSAGE =
+  'This match was cancelled by the tournament organizer. Your scoring access has been revoked.';

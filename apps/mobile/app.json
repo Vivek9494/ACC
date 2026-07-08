@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "ACC",
+    "name": "ASC",
     "slug": "acc",
     "scheme": "acc",
     "version": "0.0.0",
@@ -24,7 +24,7 @@
           "location",
           "location"
         ],
-        "NSLocalNetworkUsageDescription": "ACC connects to the development API on your local network.",
+        "NSLocalNetworkUsageDescription": "ASC connects to the development API on your local network.",
         "NSAppTransportSecurity": {
           "NSAllowsLocalNetworking": true
         },
@@ -54,25 +54,27 @@
     },
     "plugins": [
       "./plugins/withIosScriptSandboxDisabled.js",
+      "./plugins/withDateTimePickerNewArchFix.js",
       "expo-router",
       "expo-secure-store",
       [
         "expo-image-picker",
         {
-          "photosPermission": "Allow ACC to access your photos for your profile picture."
+          "photosPermission": "Allow ASC to access your photos for your profile picture."
         }
       ],
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "ACC uses your location to confirm you arrived at the ground for a match.",
-          "locationAlwaysAndWhenInUsePermission": "ACC uses your location in the background to mark match attendance via a geofence around the ground.",
+          "locationWhenInUsePermission": "ASC uses your location to confirm you arrived at the ground for a match.",
+          "locationAlwaysAndWhenInUsePermission": "ASC uses your location in the background to mark match attendance via a geofence around the ground.",
           "isIosBackgroundLocationEnabled": true,
           "isAndroidBackgroundLocationEnabled": true,
           "isAndroidForegroundServiceEnabled": true
         }
       ],
-      "expo-video"
+      "expo-video",
+      "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": true

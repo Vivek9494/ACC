@@ -14,7 +14,8 @@ function makeService(prisma: unknown): ScoringService {
   const live = { publish: async () => undefined } as never;
   const audit = { record: async () => undefined } as never;
   const confirmation = { evaluateAutoConfirm: async () => undefined } as never;
-  return new ScoringService(prisma as never, live, reader, audit, confirmation);
+  const tennisScoringAuth = { assertCanEnterScoringSession: async () => undefined } as never;
+  return new ScoringService(prisma as never, live, reader, audit, confirmation, { generateForCompletedMatch: jest.fn() } as never, tennisScoringAuth);
 }
 
 const scorer: AuthUser = {

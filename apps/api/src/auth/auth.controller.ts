@@ -1,9 +1,11 @@
-import type { AuthResponse, AuthTokens, AuthUser, ChangePasswordResponse } from '@acc/types';
+import type { AuthResponse, AuthTokens, AuthUser, ChangePasswordResponse, CompleteForcedPasswordChangeResponse } from '@acc/types';
 import { Body, Controller, Get, HttpCode, HttpStatus, Post, UseGuards } from '@nestjs/common';
 
+import { AllowMustChangePassword } from './allow-must-change-password.decorator';
 import { AuthService } from './auth.service';
 import { CurrentUser } from './current-user.decorator';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { CompleteForcedPasswordChangeDto } from './dto/complete-forced-password-change.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshDto } from './dto/refresh.dto';
 import { SignupDto } from './dto/signup.dto';
@@ -33,12 +35,14 @@ export class AuthController {
   @Post('logout')
   @HttpCode(HttpStatus.NO_CONTENT)
   @UseGuards(JwtAuthGuard)
+  @AllowMustChangePassword()
   logout(@CurrentUser() user: AuthUser): Promise<void> {
     return this.authService.logout(user.id);
   }
 
   @Get('me')
   @UseGuards(JwtAuthGuard)
+  @AllowMustChangePassword()
   me(@CurrentUser() user: AuthUser): Promise<AuthUser> {
     return this.authService.getMe(user.id);
   }
@@ -53,5 +57,18 @@ export class AuthController {
     return this.authService.changePassword(user.id, dto.currentPassword, dto.newPassword).then(() => ({
       success: true as const,
     }));
+  }
+
+  @Post('complete-forced-password-change')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  @AllowMustChangePassword()
+  completeForcedPasswordChange(
+    @CurrentUser() user: AuthUser,
+    @Body() dto: CompleteForcedPasswordChangeDto,
+  ): Promise<CompleteForcedPasswordChangeResponse> {
+    return this.authService
+      .completeForcedPasswordChange(user.id, dto.newPassword)
+      .then(() => ({ success: true as const }));
   }
 }

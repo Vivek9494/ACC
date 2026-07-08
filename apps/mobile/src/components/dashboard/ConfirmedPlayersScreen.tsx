@@ -12,12 +12,17 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { applyPlayingXiSwitch, ApiRequestError, getPollPlayingXiSelection } from '../../lib/api';
 import { PlayerAvatar } from '../tournament/PlayerAvatar';
 import { Button } from '../ui/Button';
+import { Card } from '../ui/Card';
 import { ScreenHeader } from '../ui/ScreenHeader';
 import { Text } from '../ui/Text';
 import { ERROR_ALERT_SURFACE_CLASS, FIELD_ORANGE } from '../ui/fieldStyles';
 
 const XI_COLLAPSED_COUNT = 6;
 const PENALTY_SERVING_STATUS = 'Serving Penalty';
+
+/** Player row chrome — matches Confirmed List of Players (`PlayingXiSelectionScreen`). */
+const SQUAD_PLAYER_ROW_CLASS =
+  'flex-row items-center gap-3 rounded-control border border-outline-variant';
 
 type SwitchCandidate =
   | { kind: 'substitute'; player: PollPlayingXiPlayerRow }
@@ -62,7 +67,7 @@ function PlayingXiRow({
   onSwitch: () => void;
 }): React.ReactElement {
   return (
-    <View className="flex-row items-center gap-3 border-b border-outline-variant/60 py-3">
+    <Card className={SQUAD_PLAYER_ROW_CLASS}>
       <PlayerAvatar
         firstName={player.firstName}
         profilePhotoUrl={player.profilePhotoUrl}
@@ -81,13 +86,13 @@ function PlayingXiRow({
           textClassName="text-xs"
         />
       ) : null}
-    </View>
+    </Card>
   );
 }
 
 function SquadPlayerRow({ player }: { player: PollPlayingXiPlayerRow }): React.ReactElement {
   return (
-    <View className="flex-row items-center gap-3 border-b border-outline-variant/60 py-3">
+    <Card className={SQUAD_PLAYER_ROW_CLASS}>
       <PlayerAvatar
         firstName={player.firstName}
         profilePhotoUrl={player.profilePhotoUrl}
@@ -97,7 +102,7 @@ function SquadPlayerRow({ player }: { player: PollPlayingXiPlayerRow }): React.R
       <Text className="min-w-0 flex-1 font-sans-bold text-base text-on-surface">
         {player.firstName} {player.lastName}
       </Text>
-    </View>
+    </Card>
   );
 }
 
@@ -107,7 +112,7 @@ function PenaltyServingRow({
   player: PollPenaltyServingPlayerRow;
 }): React.ReactElement {
   return (
-    <View className="flex-row items-center gap-3 border-b border-outline-variant/60 py-3">
+    <Card className={SQUAD_PLAYER_ROW_CLASS}>
       <PlayerAvatar
         firstName={player.firstName}
         profilePhotoUrl={player.profilePhotoUrl}
@@ -122,7 +127,7 @@ function PenaltyServingRow({
           {player.statusLabel || PENALTY_SERVING_STATUS}
         </Text>
       </View>
-    </View>
+    </Card>
   );
 }
 
@@ -479,17 +484,19 @@ export function ConfirmedPlayersScreen({ pollId }: ConfirmedPlayersScreenProps):
               <Text className="font-sans text-sm text-on-surface-variant">No Playing 11 saved yet.</Text>
             ) : (
               <>
-                {visibleXi.map((player) => (
-                  <PlayingXiRow
-                    key={player.userId}
-                    player={player}
-                    switchEnabled={switchEnabled}
-                    onSwitch={() => {
-                      setError(null);
-                      setSwitchTarget(player);
-                    }}
-                  />
-                ))}
+                <View className="gap-3">
+                  {visibleXi.map((player) => (
+                    <PlayingXiRow
+                      key={player.userId}
+                      player={player}
+                      switchEnabled={switchEnabled}
+                      onSwitch={() => {
+                        setError(null);
+                        setSwitchTarget(player);
+                      }}
+                    />
+                  ))}
+                </View>
                 {!xiExpanded && hiddenXiCount > 0 ? (
                   <Pressable
                     onPress={() => setXiExpanded(true)}
@@ -526,9 +533,11 @@ export function ConfirmedPlayersScreen({ pollId }: ConfirmedPlayersScreenProps):
             {selection.substitutes.length === 0 ? (
               <Text className="font-sans text-sm text-on-surface-variant">No substitutes selected.</Text>
             ) : (
-              selection.substitutes.map((player) => (
-                <SquadPlayerRow key={player.userId} player={player} />
-              ))
+              <View className="gap-3">
+                {selection.substitutes.map((player) => (
+                  <SquadPlayerRow key={player.userId} player={player} />
+                ))}
+              </View>
             )}
           </View>
 
@@ -546,9 +555,11 @@ export function ConfirmedPlayersScreen({ pollId }: ConfirmedPlayersScreenProps):
                 No players serving a penalty.
               </Text>
             ) : (
-              selection.penaltyServing.map((player) => (
-                <PenaltyServingRow key={player.userId} player={player} />
-              ))
+              <View className="gap-3">
+                {selection.penaltyServing.map((player) => (
+                  <PenaltyServingRow key={player.userId} player={player} />
+                ))}
+              </View>
             )}
           </View>
 

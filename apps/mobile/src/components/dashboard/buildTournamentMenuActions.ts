@@ -3,6 +3,7 @@ import type { Router } from 'expo-router';
 import { Alert } from 'react-native';
 
 import { ApiRequestError, deleteTournament } from '../../lib/api';
+import { confirmDestructiveDeleteAlert } from '../../lib/confirm-destructive-delete';
 import type { OverflowMenuAction } from '../ui/OverflowMenu';
 
 export function buildTournamentMenuActions(
@@ -15,14 +16,7 @@ export function buildTournamentMenuActions(
     includeManageCenterPlayers?: boolean;
   },
 ): OverflowMenuAction[] {
-  const actions: OverflowMenuAction[] = [
-    {
-      key: 'view-details',
-      label: 'View details',
-      icon: 'eye-outline',
-      onPress: () => router.push(`/tournaments/${tournamentId}`),
-    },
-  ];
+  const actions: OverflowMenuAction[] = [];
 
   if (options?.includeManageCenterPlayers && permissions.canManageCenterPlayers) {
     actions.push({
@@ -44,6 +38,7 @@ export function buildTournamentMenuActions(
       key: 'edit-tournament',
       label: 'Edit tournament',
       icon: 'create-outline',
+      secondary: true,
       onPress: () => router.push(`/tournaments/${tournamentId}/edit`),
     });
   }
@@ -53,29 +48,26 @@ export function buildTournamentMenuActions(
       key: 'delete-tournament',
       label: 'Delete tournament',
       icon: 'trash-outline',
+      destructive: true,
       onPress: () => {
-        Alert.alert('Delete Tournament?', `Delete "${tournamentName}"?`, [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Delete',
-            style: 'destructive',
-            onPress: () => {
-              void deleteTournament(tournamentId)
-                .then(() => {
-                  options?.onDeleted?.();
-                  Alert.alert('Tournament deleted', `"${tournamentName}" was removed.`);
-                })
-                .catch((err: unknown) => {
-                  Alert.alert(
-                    'Could not delete tournament',
-                    err instanceof ApiRequestError
-                      ? err.message
-                      : 'You do not have permission to delete this tournament.',
-                  );
-                });
-            },
+        confirmDestructiveDeleteAlert({
+          title: 'Delete Tournament?',
+          message: `Delete "${tournamentName}"?`,
+          onConfirm: async () => {
+            try {
+              await deleteTournament(tournamentId);
+              options?.onDeleted?.();
+              Alert.alert('Tournament deleted', `"${tournamentName}" was removed.`);
+            } catch (err: unknown) {
+              Alert.alert(
+                'Could not delete tournament',
+                err instanceof ApiRequestError
+                  ? err.message
+                  : 'You do not have permission to delete this tournament.',
+              );
+            }
           },
-        ]);
+        });
       },
     });
   }

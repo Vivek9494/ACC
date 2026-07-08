@@ -1,22 +1,29 @@
 import { colors } from '@/theme/colors';
 import {
   POLL_RESULTS_SECTION_LABELS,
+  formatPollVoteTimeLabel,
   type ParticipationPollTallyView,
   type PollResultsTab,
   type PollTallyPlayerRow,
 } from '@acc/types';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
+import { ActivityIndicator, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { getParticipationPollTally } from '../../lib/api';
 import { PlayerAvatar } from '../tournament/PlayerAvatar';
+import { Card } from '../ui/Card';
 import { ScreenHeader } from '../ui/ScreenHeader';
 import { Text } from '../ui/Text';
+import { UnderlineTabBar } from '../ui/UnderlineTabBar';
 import { FIELD_ORANGE } from '../ui/fieldStyles';
 
 type PollTabKey = PollResultsTab;
+
+/** Matches Confirmed List / Registered Players row chrome. */
+const POLL_PLAYER_CARD_CLASS =
+  'flex-row items-center gap-3 rounded-control border border-outline-variant';
 
 function playersForTab(tally: ParticipationPollTallyView, tab: PollTabKey): PollTallyPlayerRow[] {
   if (tab === 'in') return tally.in;
@@ -58,53 +65,45 @@ function PollResultsTabBar({
     tabs.push({ key: 'pending', label: `PENDING (${tally.pendingCount})` });
   }
 
+  const options = tabs.map((tab) => ({ value: tab.key, label: tab.label }));
+
   return (
-    <View className="flex-row border-b border-outline-variant">
-      {tabs.map((tab) => {
-        const active = tab.key === activeTab;
-        return (
-          <Pressable
-            key={tab.key}
-            onPress={() => onChange(tab.key)}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: active }}
-            className="flex-1 items-center py-3 active:opacity-80"
-          >
-            <Text
-              className={`font-sans-semibold text-sm ${
-                active ? 'text-primary' : 'text-on-surface-variant'
-              }`}
-            >
-              {tab.label}
-            </Text>
-            {active ? <View className="mt-2 h-0.5 w-full rounded-full bg-primary" /> : null}
-          </Pressable>
-        );
-      })}
-    </View>
+    <UnderlineTabBar layout="spread" options={options} value={activeTab} onChange={onChange} />
   );
 }
 
-function PollResultsPlayerRow({
+function PollResultsPlayerCard({
   player,
   tab,
+  timezone,
 }: {
   player: PollTallyPlayerRow;
   tab: PollTabKey;
+  timezone: string | null;
 }): React.ReactElement {
+  const voteTimeLabel =
+    tab !== 'pending' && player.votedAt
+      ? formatPollVoteTimeLabel(player.votedAt, timezone)
+      : null;
+
   return (
-    <View className="flex-row items-center gap-3 border-b border-outline-variant/60 py-2.5">
+    <Card className={POLL_PLAYER_CARD_CLASS}>
       <PlayerAvatar
         firstName={player.firstName}
         profilePhotoUrl={player.profilePhotoUrl}
         size="sm"
         shape="square"
       />
-      <Text className="min-w-0 flex-1 font-sans-bold text-base text-on-surface">
-        {player.firstName} {player.lastName}
-      </Text>
+      <View className="min-w-0 flex-1">
+        <Text className="font-sans-bold text-base text-on-surface">
+          {player.firstName} {player.lastName}
+        </Text>
+        {voteTimeLabel ? (
+          <Text className="font-sans text-sm text-on-surface-variant">{voteTimeLabel}</Text>
+        ) : null}
+      </View>
       {statusIcon(tab)}
-    </View>
+    </Card>
   );
 }
 
@@ -112,7 +111,7 @@ export interface PollResultsScreenProps {
   pollId: string;
 }
 
-/** Tabbed IN / OUT / (captain) PENDING lists for a team participation poll (§9.7). */
+/** Tabbed IN / OUT / PENDING lists for a team participation poll (§9.7). */
 export function PollResultsScreen({ pollId }: PollResultsScreenProps): React.ReactElement {
   const [tally, setTally] = useState<ParticipationPollTallyView | null>(null);
   const [activeTab, setActiveTab] = useState<PollTabKey>('in');
@@ -153,7 +152,7 @@ export function PollResultsScreen({ pollId }: PollResultsScreenProps): React.Rea
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right']}>
-      <ScreenHeader title="Poll Results" accentTitle showProfileMenu={false} />
+      <ScreenHeader title="Poll Results" accentTitle />
 
       {loading ? (
         <View className="flex-1 items-center justify-center">
@@ -180,12 +179,17 @@ export function PollResultsScreen({ pollId }: PollResultsScreenProps): React.Rea
             </View>
           </View>
 
-          <ScrollView className="flex-1 px-4" contentContainerClassName="pb-8">
+          <ScrollView className="flex-1 px-4" contentContainerClassName="gap-3 pb-8">
             {activePlayers.length === 0 ? (
               <Text className="py-6 font-sans text-sm text-on-surface-variant">No players</Text>
             ) : (
               activePlayers.map((player) => (
-                <PollResultsPlayerRow key={player.userId} player={player} tab={activeTab} />
+                <PollResultsPlayerCard
+                  key={player.userId}
+                  player={player}
+                  tab={activeTab}
+                  timezone={tally.timezone}
+                />
               ))
             )}
           </ScrollView>

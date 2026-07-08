@@ -43,8 +43,16 @@ export function MatchSetupDialog({
     if (!match || !tossWinner || !tossDecision) {
       return;
     }
-    if (!match.playingXiLocked) {
-      setError('Lock the Playing 11 for all teams before starting (§11).');
+    if (!match.bothTeamsFinalized) {
+      setError('Complete Playing 11 setup before starting the match.');
+      return;
+    }
+    if (!match.canStartMatch) {
+      setError(
+        match.startAllowedAtLine
+          ? `Start Match is available from ${match.startAllowedAtLine} (30 minutes before scheduled start)`
+          : 'Start Match is not available yet (opens 30 minutes before scheduled start)',
+      );
       return;
     }
 

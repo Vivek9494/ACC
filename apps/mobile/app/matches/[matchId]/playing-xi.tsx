@@ -1,17 +1,18 @@
 import {
-  BATTING_STYLE_LABELS,
-  type BattingStyle,
-  BOWLING_STYLE_LABELS,
-  type BowlingStyle,
   MAX_IMPACT_CANDIDATES,
   MAX_SUBSTITUTES,
   PLAYING_XI_SIZE,
+  REGISTRATION_PLAYER_TYPE_LABELS,
+  RegistrationPlayerType,
   type SquadCandidate,
 } from '@acc/types';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
+import { PlayerAvatar } from '../../../src/components/tournament/PlayerAvatar';
+import { ScreenHeader } from '../../../src/components/ui/ScreenHeader';
 import { Button } from '../../../src/components/ui/Button';
+import { Card } from '../../../src/components/ui/Card';
 import { Text } from '../../../src/components/ui/Text';
 import { FIELD_ORANGE } from '../../../src/components/ui/fieldStyles';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -20,10 +21,8 @@ import { ApiRequestError, getMatch, getSquadCandidates, lockPlayingXi } from '..
 
 type Bucket = 'XI' | 'SUB' | 'IMP';
 
-function styleLabel(c: SquadCandidate): string {
-  const bat = c.battingStyle ? BATTING_STYLE_LABELS[c.battingStyle as BattingStyle] : null;
-  const bowl = c.bowlingStyle ? BOWLING_STYLE_LABELS[c.bowlingStyle as BowlingStyle] : null;
-  return [bat, bowl].filter(Boolean).join(' · ') || 'No style on file';
+function playerTypeLabel(candidate: SquadCandidate): string | null {
+  return candidate.playerType ? REGISTRATION_PLAYER_TYPE_LABELS[candidate.playerType] : null;
 }
 
 export default function PlayingXiScreen(): React.ReactElement {
@@ -39,6 +38,7 @@ export default function PlayingXiScreen(): React.ReactElement {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [isFinalized, setIsFinalized] = useState(false);
 
   const [bucket, setBucket] = useState<Bucket>('XI');
   const [xi, setXi] = useState<string[]>([]);
@@ -61,6 +61,9 @@ export default function PlayingXiScreen(): React.ReactElement {
         const imp = existing.players.filter((p) => p.role === 'IMPACT_CANDIDATE');
         setImpact(imp.map((p) => p.userId));
         setActiveImpact(imp.find((p) => p.isActiveImpact)?.userId ?? null);
+        setIsFinalized(existing.isFinalized);
+      } else {
+        setIsFinalized(false);
       }
       setError(null);
     } catch (err) {
@@ -160,22 +163,21 @@ export default function PlayingXiScreen(): React.ReactElement {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-background">
-      <View className="px-6 pt-6">
-        <Pressable onPress={() => router.back()} className="mb-3">
-          <Text className="font-sans text-primary">← Back</Text>
-        </Pressable>
+    <SafeAreaView className="flex-1 bg-background" edges={['top']}>
+      <ScreenHeader
+        title={teamName ?? 'Team'}
+        subtitle={isFinalized ? 'Edit Playing 11' : 'Playing 11'}
+        onBack={() => router.back()}
+      />
+      <View className="px-6 pt-2">
+        {isFinalized ? (
+          <Text className="font-sans text-sm text-primary">
+            Finalized — you can still edit before the match goes live.
+          </Text>
+        ) : null}
         <Text className="font-sans-medium text-xs uppercase tracking-wider text-on-surface-variant">
           Selecting Team
         </Text>
-        <View className="flex-row items-center gap-3">
-          <Text className="font-sans-bold text-2xl text-on-surface">{teamName ?? 'Team'}</Text>
-          <View className="rounded-full bg-primary px-3 py-1">
-            <Text className="font-sans-medium text-[11px] uppercase tracking-wider text-on-primary">
-              Playing 11
-            </Text>
-          </View>
-        </View>
 
         {/* Bucket selector with live counts */}
         <View className="mt-4 flex-row flex-wrap gap-2">
@@ -209,27 +211,22 @@ export default function PlayingXiScreen(): React.ReactElement {
         ) : (
           candidates.map((c) => {
             const role = roleOf(c.userId);
-            const selectedHere = role === bucket;
             return (
-              <Button
+              <Card
                 key={c.userId}
                 onPress={() => toggle(c)}
-                variant={selectedHere ? 'primary' : 'outline'}
-                className={`flex-row gap-3 p-4 ${
-                  selectedHere
-                    ? 'border-primary bg-primary-container/20'
-                    : 'bg-surface-container-lowest'
-                }`}
+                accessibilityRole="button"
+                className="flex-row items-center gap-3 rounded-control border border-outline-variant"
               >
-                <View className="h-12 w-12 items-center justify-center rounded-lg bg-surface-container-high">
-                  <Text className="font-sans-bold text-base text-on-surface-variant">
-                    {c.firstName.slice(0, 1)}
-                    {c.lastName.slice(0, 1)}
-                  </Text>
-                </View>
-                <View className="flex-1">
+                <PlayerAvatar
+                  firstName={c.firstName}
+                  profilePhotoUrl={null}
+                  size="sm"
+                  shape="square"
+                />
+                <View className="min-w-0 flex-1 gap-0.5">
                   <View className="flex-row items-center gap-2">
-                    <Text className="font-sans-semibold text-base text-on-surface">
+                    <Text className="font-sans-bold text-base text-on-surface">
                       {c.firstName} {c.lastName}
                     </Text>
                     {c.isSuspended ? (
@@ -240,7 +237,9 @@ export default function PlayingXiScreen(): React.ReactElement {
                       </View>
                     ) : null}
                   </View>
-                  <Text className="font-sans text-sm text-on-surface-variant">{styleLabel(c)}</Text>
+                  <Text className="font-sans text-sm text-on-surface-variant">
+                    {playerTypeLabel(c) ?? ''}
+                  </Text>
                 </View>
 
                 {/* Active-impact star toggle (only for impact candidates). */}
@@ -269,7 +268,7 @@ export default function PlayingXiScreen(): React.ReactElement {
                     </Text>
                   ) : null}
                 </View>
-              </Button>
+              </Card>
             );
           })
         )}
@@ -282,7 +281,7 @@ export default function PlayingXiScreen(): React.ReactElement {
           variant="secondary"
           className="h-12"
           textClassName="text-base"
-          label={saving ? 'Locking…' : `Lock Playing 11 (${xi.length}/${PLAYING_XI_SIZE})`}
+          label={saving ? 'Confirming…' : `Confirm Playing 11 (${xi.length}/${PLAYING_XI_SIZE})`}
         />
       </View>
     </SafeAreaView>

@@ -24,6 +24,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '../src/components/ui/Button';
+import { KeyboardAwareFormScrollView } from '../src/components/ui/KeyboardAwareFormScrollView';
 import { DateField } from '../src/components/ui/DateField';
 import { FIELD_ORANGE } from '../src/components/ui/fieldStyles';
 import { PasswordRequirements } from '../src/components/ui/PasswordRequirements';
@@ -221,10 +222,10 @@ export default function SignupScreen(): React.ReactElement {
         <Text className="font-sans-bold text-xl text-text">Welcome</Text>
       </View>
 
-      <ScrollView
+      <KeyboardAwareFormScrollView
         ref={scrollRef}
-        contentContainerClassName="px-4 pb-12 pt-6"
-        keyboardShouldPersistTaps="handled"
+        contentContainerClassName="px-4 pt-6"
+        extraBottomPadding={48}
         showsVerticalScrollIndicator={false}
       >
         <View className="mb-8 gap-2">
@@ -515,7 +516,7 @@ export default function SignupScreen(): React.ReactElement {
             </Link>
           </View>
         </View>
-      </ScrollView>
+      </KeyboardAwareFormScrollView>
     </SafeAreaView>
   );
 }

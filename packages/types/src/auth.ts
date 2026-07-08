@@ -33,6 +33,13 @@ export const OTP_IP_RATE_LIMIT = {
   windowSeconds: 15 * 60,
 } as const;
 
+/** Default lifetime of an admin-generated temporary password (hours). */
+export const TEMP_PASSWORD_TTL_HOURS = 72;
+
+/** Shown when a user tries to log in with an expired temporary password. */
+export const TEMP_PASSWORD_EXPIRED_MESSAGE =
+  'This temporary password has expired. Ask your admin for a new one.';
+
 /** Per-mobile-number login rate limit (§31 #6). */
 export const LOGIN_RATE_LIMIT = {
   /** Max failed attempts allowed inside the window before lockout. */
@@ -47,6 +54,7 @@ export const LOGIN_RATE_LIMIT = {
  */
 export const AuthErrorCode = {
   MobileNumberExists: 'MOBILE_NUMBER_EXISTS',
+  EmailExists: 'EMAIL_EXISTS',
   Underage: 'UNDERAGE',
   InvalidCredentials: 'INVALID_CREDENTIALS',
   TooManyAttempts: 'TOO_MANY_LOGIN_ATTEMPTS',
@@ -74,6 +82,10 @@ export const AuthErrorCode = {
   SamePassword: 'SAME_PASSWORD',
   /** Profile mobile change requires OTP verification of the new number. */
   MobileChangeOtpRequired: 'MOBILE_CHANGE_OTP_REQUIRED',
+  /** Admin-issued temporary password has passed its expiry window. */
+  TempPasswordExpired: 'TEMP_PASSWORD_EXPIRED',
+  /** Account must complete a forced password change before other access. */
+  MustChangePassword: 'MUST_CHANGE_PASSWORD',
 } as const;
 
 export type AuthErrorCode = (typeof AuthErrorCode)[keyof typeof AuthErrorCode];
@@ -96,6 +108,7 @@ export type UserRole = (typeof UserRole)[keyof typeof UserRole];
 
 /** Exact message required by the spec for a duplicate mobile number (§3.1). */
 export const MOBILE_NUMBER_EXISTS_MESSAGE = 'Mobile number already exists';
+export const EMAIL_EXISTS_MESSAGE = 'Email address already exists';
 
 /** Signup payload — all §3.1 fields (`profilePhotoUrl` is optional). */
 export interface SignupRequest {
@@ -155,6 +168,15 @@ export interface ChangePasswordResponse {
   success: true;
 }
 
+/** Set a new password after logging in with an admin temporary password. */
+export interface CompleteForcedPasswordChangeRequest {
+  newPassword: string;
+}
+
+export interface CompleteForcedPasswordChangeResponse {
+  success: true;
+}
+
 export interface UnlockAccountRequest {
   userId: string;
 }
@@ -165,9 +187,9 @@ export interface AuthTokens {
   refreshToken: string;
 }
 
-/** Scoped Captain / Vice-Captain team leadership (from RoleAssignment). */
+/** Scoped Captain / Vice-Captain / Manager team leadership (from RoleAssignment). */
 export interface TeamLeadAssignment {
-  role: typeof UserRole.Captain | typeof UserRole.ViceCaptain;
+  role: typeof UserRole.Captain | typeof UserRole.ViceCaptain | typeof UserRole.Manager;
   tournamentId: string;
   teamId: string;
 }
@@ -188,6 +210,8 @@ export interface AuthUser {
   teamLeadAssignments?: TeamLeadAssignment[];
   /** Center ids where the user holds a scoped Center Sevak assignment. */
   centerSevakCenterIds?: string[];
+  /** Present and true when the user must set a new password before other access. */
+  mustChangePassword?: boolean;
 }
 
 /** Response body for signup and login. */

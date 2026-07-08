@@ -1,4 +1,4 @@
-import { type AuthUser, Permission, type ScorecardResponse, type BatsmanPickerResponse, type BowlerPickerResponse, type FielderPickerResponse, type ExternalPlayerView } from '@acc/types';
+import { type AuthUser, Permission, type ScorecardResponse, type BatsmanPickerResponse, type BowlerPickerResponse, type FielderPickerResponse, type ExternalPlayerView, type EnterScoringSessionResponse } from '@acc/types';
 import { Body, Controller, Get, Param, Patch, Post, Put, Query, UseGuards } from '@nestjs/common';
 
 import { CurrentUser } from '../auth/current-user.decorator';
@@ -10,6 +10,7 @@ import { BatsmanPickerQueryDto } from './dto/batsman-picker.dto';
 import { FielderPickerQueryDto } from './dto/fielder-picker.dto';
 import { AddExternalBatsmanDto } from './dto/add-external-batsman.dto';
 import { AddExternalBowlerDto } from './dto/add-external-bowler.dto';
+import { RenameExternalPlayerDto } from './dto/rename-external-player.dto';
 import { SetDlsTargetDto, SetInningsParticipantsDto, StartInningsDto, UpdateOversAllottedDto, EndInningsDto } from './dto/innings.dto';
 import { UndoDeliveryDto } from './dto/undo-delivery.dto';
 import { BatsmanPickerService } from './batsman-picker.service';
@@ -33,6 +34,16 @@ export class ScoringController {
   @Get('scorecard')
   scorecard(@Param('matchId') matchId: string): Promise<ScorecardResponse> {
     return this.scoring.getScorecard(matchId);
+  }
+
+  /** Tennis Phase 2: one-time auth when opening the live scoring screen. */
+  @Post('scoring-session')
+  @UseGuards(JwtAuthGuard)
+  enterScoringSession(
+    @CurrentUser() user: AuthUser,
+    @Param('matchId') matchId: string,
+  ): Promise<EnterScoringSessionResponse> {
+    return this.scoring.enterScoringSession(user, matchId);
   }
 
   /** State-aware Select Batsman picker rows (derived innings + squad profiles). */
@@ -84,6 +95,19 @@ export class ScoringController {
     @Body() dto: AddExternalBowlerDto,
   ): Promise<ExternalPlayerView> {
     return this.bowlerPicker.addExternalBowler(user, matchId, inningsId, dto);
+  }
+
+  /** §9.5: rename a name-only external opponent player during live scoring. */
+  @Patch('external-players/:playerId')
+  @RequirePermission(Permission.SCORE_BALL)
+  @UseGuards(JwtAuthGuard, PermissionGuard)
+  renameExternalPlayer(
+    @CurrentUser() user: AuthUser,
+    @Param('matchId') matchId: string,
+    @Param('playerId') playerId: string,
+    @Body() dto: RenameExternalPlayerDto,
+  ): Promise<ExternalPlayerView> {
+    return this.bowlerPicker.renameExternalPlayer(user, matchId, playerId, dto.name);
   }
 
   /** Bowling squad list for caught / run-out / stumped fielder selection. */

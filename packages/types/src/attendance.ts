@@ -2,8 +2,15 @@ import { DateTime } from 'luxon';
 
 import { isMatchDayTodayInZone, type MatchScheduleAnchor } from './timezone';
 
-/** Geofence radius around the match ground (§geofence attendance). */
+/** Punch verification radius — player must be within this distance to record (§geofence attendance). */
 export const GEOFENCE_RADIUS_METERS = 50;
+
+/**
+ * Native OS geofence monitor radius (iOS is unreliable below ~100–150 m).
+ * Used for region registration; punch may still verify at {@link GEOFENCE_RADIUS_METERS}
+ * when GPS is available, or this radius on geofence-enter when GPS is unavailable.
+ */
+export const GEOFENCE_MONITOR_RADIUS_METERS = 150;
 
 /** Default attendance capture window opens this many hours before reporting time. */
 export const ATTENDANCE_CAPTURE_LEAD_HOURS = 3;
@@ -168,6 +175,11 @@ export interface AutoAttendancePunchRequest {
   longitude: number;
   /** Client capture instant (ISO UTC); defaults to server now when omitted. */
   capturedAt?: string;
+  /**
+   * True when triggered by OS geofence enter (or register-while-inside fallback).
+   * Server accepts the wider {@link GEOFENCE_MONITOR_RADIUS_METERS} when GPS is coarse.
+   */
+  geofenceEnter?: boolean;
 }
 
 export interface AutoAttendancePunchResponse {
@@ -188,7 +200,10 @@ export interface AttendanceMonitoringTarget {
   teamId: string;
   geofenceLat: number;
   geofenceLng: number;
+  /** Native OS monitor region radius ({@link GEOFENCE_MONITOR_RADIUS_METERS}). */
   radiusMeters: number;
+  /** Strict punch verification radius ({@link GEOFENCE_RADIUS_METERS}). */
+  punchRadiusMeters: number;
   windowOpensAt: string;
   windowClosesAt: string;
   hasPunched: boolean;

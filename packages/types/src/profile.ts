@@ -55,6 +55,8 @@ export interface RequestProfileMobileOtpRequest {
 }
 
 export interface UploadProfilePhotoResponse {
+  storageKey: string;
+  /** Presigned read URL for immediate display. Persist storageKey on the profile record. */
   profilePhotoUrl: string;
 }
 
@@ -88,6 +90,17 @@ export function formatCanadianMobileMasked(storedOrLocal: string): string {
     return '+1 (***) ***-****';
   }
   return `+1 (***) ***-${local.slice(6)}`;
+}
+
+/** Human-readable Canadian mobile for admin contact display: +1 519-995-5472. */
+export function formatCanadianMobileForDisplay(stored: string): string {
+  const digits = stored.replace(/\D/g, '');
+  const local =
+    digits.length === 11 && digits.startsWith('1') ? digits.slice(1) : digits.slice(-10);
+  if (local.length !== 10) {
+    return stored.trim().length > 0 ? stored : 'No phone on file';
+  }
+  return `+1 ${local.slice(0, 3)}-${local.slice(3, 6)}-${local.slice(6)}`;
 }
 
 /** Normalize a validated 10-digit local number for storage/API (+1 prefix). */

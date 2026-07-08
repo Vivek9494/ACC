@@ -1,16 +1,21 @@
 import {
   MatchSchedulingFormat,
+  mergeStandingsTablesForListView,
+  shouldShowStandingsListViewToggle,
   shouldSplitStandingsByGroup,
   type TournamentStandings,
 } from '@acc/types';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 
 import { ApiRequestError, getTournamentStandings } from '../../lib/api';
+import { Button } from '../ui/Button';
 import { FIELD_ORANGE } from '../ui/fieldStyles';
 import { Text } from '../ui/Text';
 import { StandingsCombinedTable } from './StandingsCombinedTable';
 import { StandingsGroupTable } from './StandingsGroupTable';
+
+export type PointsTableViewMode = 'grouped' | 'list';
 
 export interface TournamentPointsTableTabProps {
   tournamentId: string;
@@ -29,6 +34,7 @@ export function TournamentPointsTableTab({
   const [standings, setStandings] = useState<TournamentStandings | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<PointsTableViewMode>('grouped');
 
   const splitByGroup = shouldSplitStandingsByGroup(matchSchedulingFormat, groupCount);
 
@@ -54,6 +60,25 @@ export function TournamentPointsTableTab({
     }
   }, [active, tournamentId, load]);
 
+  useEffect(() => {
+    setViewMode('grouped');
+  }, [tournamentId]);
+
+  const tables = standings?.tables ?? [];
+  const dataErrors = standings?.dataErrors ?? [];
+  const showListViewToggle = shouldShowStandingsListViewToggle(
+    matchSchedulingFormat,
+    groupCount,
+    tables.length,
+  );
+
+  const mergedListView = useMemo(() => {
+    if (!showListViewToggle) {
+      return null;
+    }
+    return mergeStandingsTablesForListView(tables);
+  }, [showListViewToggle, tables]);
+
   if (loading && !standings) {
     return (
       <View className="items-center py-16">
@@ -70,9 +95,6 @@ export function TournamentPointsTableTab({
     );
   }
 
-  const tables = standings?.tables ?? [];
-  const dataErrors = standings?.dataErrors ?? [];
-
   if (tables.length === 0) {
     const message =
       splitByGroup && groupCount === 0
@@ -83,8 +105,21 @@ export function TournamentPointsTableTab({
     );
   }
 
+  const showGroupedView = !showListViewToggle || viewMode === 'grouped';
+
   return (
     <View className="gap-4">
+      {showListViewToggle ? (
+        <View className="flex-row justify-end">
+          <Button
+            variant="outline"
+            className="h-10 px-4"
+            label={showGroupedView ? 'List View' : 'Grouped View'}
+            onPress={() => setViewMode(showGroupedView ? 'list' : 'grouped')}
+          />
+        </View>
+      ) : null}
+
       {dataErrors.length > 0 ? (
         <View className="rounded-control bg-primary-50 px-4 py-3">
           <Text className="font-sans text-sm text-primary">
@@ -93,7 +128,8 @@ export function TournamentPointsTableTab({
           </Text>
         </View>
       ) : null}
-      {splitByGroup
+
+      {showGroupedView
         ? tables.map((section) => (
             <StandingsGroupTable
               key={section.groupId ?? section.groupName}
@@ -101,9 +137,16 @@ export function TournamentPointsTableTab({
               showGroupHeader
             />
           ))
-        : tables.map((section) => (
-            <StandingsCombinedTable key={section.groupId ?? 'combined'} section={section} />
-          ))}
+        : mergedListView ? (
+            <StandingsCombinedTable
+              section={{
+                groupId: null,
+                groupName: 'All teams',
+                teams: mergedListView.teams,
+              }}
+              groupLabelByTeamId={mergedListView.groupLabelByTeamId}
+            />
+          ) : null}
     </View>
   );
 }

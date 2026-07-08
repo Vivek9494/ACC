@@ -2,8 +2,9 @@
 import { DateTime } from 'luxon';
 
 import type { RegistrationPlayerType } from './registration';
+import type { PollSuspensionActionedRow, PollSuspensionPlayerRow } from './suspension';
 import type { MatchScheduleAnchor } from './timezone';
-import { getMatchCalendarDayInZone } from './timezone';
+import { getMatchCalendarDayInZone, serverVenueTimezone } from './timezone';
 
 export const PollVoteChoice = {
   In: 'IN',
@@ -42,6 +43,8 @@ export interface ParticipationPollCardView {
   /** True while the player may submit or change their vote. */
   isOpen: boolean;
   userVote: PollVoteChoice | null;
+  /** Rostered squad members may open the full In/Out/Pending tally via View Poll. */
+  canViewPollResults: boolean;
 }
 
 export interface PollTallyPlayerRow {
@@ -51,6 +54,8 @@ export interface PollTallyPlayerRow {
   profilePhotoUrl: string | null;
   /** Registration-derived role/skill line (e.g. "Opening Batsman", "Fast Bowler"). */
   skillLabel: string | null;
+  /** ISO UTC instant when the player last submitted or changed their vote; absent on pending rows. */
+  votedAt?: string | null;
   /** Leather registration player type; null for tennis. */
   playerType?: RegistrationPlayerType | null;
   /** Locked Playing XI appearances this tournament (part-time leather only). */
@@ -64,6 +69,9 @@ export const POLL_RESULTS_SECTION_LABELS = {
   pending: 'AWAITING RESPONSE',
 } as const;
 
+/** Late-arrival penalty subsection on Confirm Playing 11 IN/OUT tabs. */
+export const LATE_ARRIVAL_SECTION_LABEL = 'LATE ARRIVAL';
+
 export type PollResultsTab = keyof typeof POLL_RESULTS_SECTION_LABELS;
 
 /** Team poll results for View Poll (§9.7). */
@@ -71,14 +79,16 @@ export interface ParticipationPollTallyView {
   pollId: string;
   matchId: string;
   teamName: string;
+  /** IANA timezone for vote-time display; null when not resolved on the tournament. */
+  timezone: string | null;
   inCount: number;
   outCount: number;
-  /** Zero and empty when the requester is not the team captain. */
+  /** Zero when no roster members are awaiting a vote. */
   pendingCount: number;
   in: PollTallyPlayerRow[];
   out: PollTallyPlayerRow[];
   pending: PollTallyPlayerRow[];
-  /** Captain-only: whether {@link pending} is populated. */
+  /** Whether {@link pending} is populated (full squad on leather polls). */
   canViewPending: boolean;
 }
 
@@ -200,6 +210,23 @@ export interface ConfirmPollPlayingXiRequest {
   penaltyServerUserIds: string[];
 }
 
+/** Leather match-detail flow: In/Out poll page as Playing XI selection surface. */
+export interface PlayingXiConfirmFromPollView {
+  pollId: string;
+  matchId: string;
+  teamId: string;
+  teamName: string;
+  isFinalized: boolean;
+  savedPlayingXiIds: string[];
+  /** True when the actor is Captain/VC and may use poll-based confirm (IN voters only). */
+  canUsePollConfirm: boolean;
+  tally: ParticipationPollTallyView;
+  /** Pending late-arrival suspensions for this match — drives the Penalty tab. */
+  pendingSuspensions: PollSuspensionPlayerRow[];
+  /** Captain actioned suspensions (carry forward / cancel) — shown in IN with a badge. */
+  actionedSuspensions: PollSuspensionActionedRow[];
+}
+
 function matchDayInZone(match: MatchScheduleAnchor, timeZone: string): DateTime {
   const { year, month, day } = getMatchCalendarDayInZone(match, timeZone);
   return DateTime.fromObject({ year, month, day }, { zone: timeZone });
@@ -243,4 +270,23 @@ export function isParticipationPollOpen(
   const open = typeof opensAt === 'string' ? new Date(opensAt) : opensAt;
   const close = typeof closesAt === 'string' ? new Date(closesAt) : closesAt;
   return now >= open && now < close;
+}
+
+/** Poll Results row — "Voted at 3:45 PM" today, or "Voted Jun 12 · 3:45 PM" on other days (venue-local). */
+export function formatPollVoteTimeLabel(
+  votedAtIso: string,
+  persistedTimezone: string | null | undefined,
+  now: Date = new Date(),
+): string {
+  const timeZone = serverVenueTimezone(persistedTimezone);
+  const voted = DateTime.fromISO(votedAtIso, { zone: 'utc' }).setZone(timeZone);
+  const today = DateTime.fromJSDate(now, { zone: 'utc' }).setZone(timeZone);
+  const isToday =
+    voted.year === today.year && voted.month === today.month && voted.day === today.day;
+  const timePart = voted.toLocaleString(DateTime.TIME_SIMPLE);
+  if (isToday) {
+    return `Voted at ${timePart}`;
+  }
+  const datePart = voted.toLocaleString({ month: 'short', day: 'numeric' });
+  return `Voted ${datePart} · ${timePart}`;
 }

@@ -11,6 +11,7 @@ import { JwtService } from '@nestjs/jwt';
 import type { Request } from 'express';
 
 import { PrismaService } from '../prisma/prisma.service';
+import { ALLOW_MUST_CHANGE_PASSWORD_KEY } from './allow-must-change-password.decorator';
 import { IS_PUBLIC_KEY } from './public.decorator';
 import { toAuthUser } from './auth.service';
 import type { AccessTokenPayload } from './auth.constants';
@@ -73,10 +74,21 @@ export class JwtAuthGuard implements CanActivate {
     }
 
     const user = await this.prisma.user.findUnique({ where: { id: payload.sub } });
-    if (!user || !user.isActive || user.tokenVersion !== payload.tokenVersion) {
+    if (!user || !user.isActive || user.deletedAt || user.tokenVersion !== payload.tokenVersion) {
       throw new UnauthorizedException({
         message: 'Session is no longer valid',
         error: AuthErrorCode.TokenVersionMismatch,
+      });
+    }
+
+    const allowMustChangePassword = this.reflector.getAllAndOverride<boolean>(
+      ALLOW_MUST_CHANGE_PASSWORD_KEY,
+      [context.getHandler(), context.getClass()],
+    );
+    if (user.mustChangePassword && !allowMustChangePassword) {
+      throw new UnauthorizedException({
+        message: 'You must set a new password before continuing',
+        error: AuthErrorCode.MustChangePassword,
       });
     }
 

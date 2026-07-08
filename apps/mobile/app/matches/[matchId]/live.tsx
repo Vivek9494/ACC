@@ -1,11 +1,14 @@
 import type { MatchDetail, ScorecardResponse } from '@acc/types';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { TabbedInningsScorecard } from '../../../src/components/TabbedInningsScorecard';
+import { MatchTossSummaryLine } from '../../../src/components/match/MatchTossSummaryLine';
+import { Button } from '../../../src/components/ui/Button';
 import { ScreenHeader } from '../../../src/components/ui/ScreenHeader';
+import { StatusPill } from '../../../src/components/ui/StatusPill';
 import { Text } from '../../../src/components/ui/Text';
 import { FIELD_ORANGE } from '../../../src/components/ui/fieldStyles';
 import { useScorecardResolvers } from '../../../src/hooks/useMatchResolvers';
@@ -19,6 +22,7 @@ import {
 /** Read-only live / completed innings scorecard for all users (spec §28). */
 export default function LiveViewScreen(): React.ReactElement {
   const { matchId } = useLocalSearchParams<{ matchId: string }>();
+  const router = useRouter();
 
   const [match, setMatch] = useState<MatchDetail | null>(null);
   const [seed, setSeed] = useState<ScorecardResponse | null>(null);
@@ -53,7 +57,7 @@ export default function LiveViewScreen(): React.ReactElement {
     };
   }, [matchId]);
 
-  const { state, status } = useLiveScore(matchId, seed);
+  const { state } = useLiveScore(matchId, seed);
   const { nameOf, teamNameOf, battingTeamLabel } = useScorecardResolvers(state ?? seed, match);
 
   useEffect(() => {
@@ -81,26 +85,30 @@ export default function LiveViewScreen(): React.ReactElement {
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
-      <ScreenHeader title="Innings scorecard" compact showProfileMenu={false} />
+      <ScreenHeader title="Innings scorecard" compact />
 
       <ScrollView contentContainerClassName="gap-4 px-4 pb-8">
-        <View className="flex-row items-center justify-between">
-          <Text className="flex-1 font-sans-bold text-lg text-on-surface" numberOfLines={2}>
+        <View className="flex-row flex-wrap items-center gap-x-2 gap-y-2">
+          <Text className="min-w-0 flex-1 font-sans-bold text-lg text-on-surface" numberOfLines={2}>
             {match
               ? `${match.homeTeamName ?? 'TBD'} vs ${match.awayTeamName ?? match.externalOpponentName ?? 'TBD'}`
               : 'Match scorecard'}
           </Text>
-          {isLive ? (
-            <View className="flex-row items-center gap-2">
-              <View
-                className={`h-2 w-2 rounded-full ${status === 'live' ? 'bg-secondary-900' : 'bg-on-surface-variant'}`}
+          <View className="shrink-0 flex-row items-center gap-2">
+            {matchId ? (
+              <Button
+                label="Details"
+                variant="outline"
+                className="h-9 px-3"
+                textClassName="text-xs"
+                onPress={() => router.push(`/matches/${matchId}`)}
               />
-              <Text className="font-sans-medium text-[10px] uppercase tracking-wider text-on-surface-variant">
-                {status === 'live' ? 'Live' : status === 'connecting' ? 'Connecting' : 'Offline'}
-              </Text>
-            </View>
-          ) : null}
+            ) : null}
+            {isLive ? <StatusPill variant="live" label="Live" /> : null}
+          </View>
         </View>
+
+        <MatchTossSummaryLine match={match} />
 
         {error && !state ? (
           <Text className="font-sans text-sm text-on-surface-variant">{error}</Text>

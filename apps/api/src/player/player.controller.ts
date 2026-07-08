@@ -13,7 +13,7 @@ export class PlayerController {
 
   @Get('dashboard')
   dashboard(@Req() req: AuthenticatedRequest): Promise<PlayerDashboard> {
-    return this.player.getDashboard(req.user.id);
+    return this.player.getDashboard(req.user);
   }
 
   @Get('scorer-match')

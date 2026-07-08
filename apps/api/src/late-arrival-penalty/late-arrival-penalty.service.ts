@@ -9,6 +9,7 @@ import {
   Permission,
   UserRole,
   computeAttendanceCaptureWindow,
+  serverVenueTimezone,
   type AuthUser,
   type CancelLateArrivalPenaltyRequest,
   type DesignatePenaltyServeRequest,
@@ -21,6 +22,7 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import type { LateArrivalPenalty, Prisma } from '@prisma/client';
@@ -29,6 +31,10 @@ import { Prisma as PrismaNamespace } from '@prisma/client';
 import { AuditService } from '../audit/audit.service';
 import { PermissionService } from '../authz/permission.service';
 import { isCaptainOrViceCaptain } from '../authz/team-leader.util';
+import {
+  NotificationsService,
+  NotificationTrigger,
+} from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 
 const PENALTY_INCLUDE = {
@@ -39,10 +45,13 @@ type PenaltyRow = Prisma.LateArrivalPenaltyGetPayload<{ include: typeof PENALTY_
 
 @Injectable()
 export class LateArrivalPenaltyService {
+  private readonly logger = new Logger(LateArrivalPenaltyService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly permissions: PermissionService,
     private readonly audit: AuditService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   /** Captain verified a late punch — create OWED or evaluate serve carry-forward. */
@@ -251,7 +260,50 @@ export class LateArrivalPenaltyService {
       body.serveMatchId,
     );
 
+    await this.notifyServeDesignated(penalty.playerId, body.serveMatchId, serveMatch.startTime);
+
     return this.toActionResponse(updated);
+  }
+
+  /**
+   * §17 Phase B: notify a player when they're designated to serve a late-arrival
+   * penalty in a specific match. `designateToServe` only fires on the OWED →
+   * ASSIGNED transition, so an unchanged re-sync is a no-op here. Deduped by
+   * penalty + serve match (undesignate clears the assignment, so re-designating
+   * a different match produces a fresh key). Best-effort — never fails the flow.
+   */
+  private async notifyServeDesignated(
+    playerId: string,
+    serveMatchId: string,
+    serveStartTime: Date | null,
+  ): Promise<void> {
+    try {
+      const whenText = serveStartTime
+        ? new Intl.DateTimeFormat('en-US', {
+            timeZone: serverVenueTimezone(null),
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric',
+          }).format(serveStartTime)
+        : null;
+      const body = whenText
+        ? `You've been selected to serve your late-arrival penalty in the match on ${whenText}.`
+        : "You've been selected to serve your late-arrival penalty in an upcoming match.";
+      await this.notifications.sendNotification({
+        userIds: [playerId],
+        triggerKey: NotificationTrigger.PenaltyServeDesignated,
+        dedupeKey: `${NotificationTrigger.PenaltyServeDesignated}:${serveMatchId}:${playerId}`,
+        title: 'Penalty to serve',
+        body,
+        data: { matchId: serveMatchId, screen: 'match' },
+        audienceSummary: `Penalty serve designation for player ${playerId} in match ${serveMatchId}`,
+      });
+    } catch (err) {
+      this.logger.error(
+        `Failed to send penalty-serve notification for player ${playerId} match ${serveMatchId}`,
+        err as Error,
+      );
+    }
   }
 
   async cancelPenalty(

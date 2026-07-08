@@ -3,6 +3,7 @@ import { MatchSchedulingFormat } from './match-scheduling-format';
 
 /** Select options for per-match overs at setup (§6.1). */
 export const MATCH_OVERS_PER_INNINGS_OPTIONS = [
+  { value: 3, label: '3 Overs' },
   { value: 5, label: '5 Overs' },
   { value: 6, label: '6 Overs' },
   { value: 8, label: '8 Overs' },
@@ -10,6 +11,7 @@ export const MATCH_OVERS_PER_INNINGS_OPTIONS = [
   { value: 12, label: '12 Overs' },
   { value: 15, label: '15 Overs' },
   { value: 20, label: '20 Overs (T20)' },
+  { value: 25, label: '25 Overs (ACC)' },
   { value: 50, label: '50 Overs (ODI)' },
 ] as const;
 
@@ -17,6 +19,7 @@ export type MatchOversPerInnings = (typeof MATCH_OVERS_PER_INNINGS_OPTIONS)[numb
 
 /** Common max-overs-per-bowler presets keyed by innings length. */
 export const MATCH_MAX_OVERS_PER_BOWLER_OPTIONS: Record<number, readonly number[]> = {
+  3: [1, 2],
   5: [1, 2],
   6: [2, 3],
   8: [2, 4],
@@ -24,6 +27,7 @@ export const MATCH_MAX_OVERS_PER_BOWLER_OPTIONS: Record<number, readonly number[
   12: [2, 3, 4],
   15: [3, 5],
   20: [4, 5],
+  25: [4, 5],
   50: [10, 12],
 };
 
@@ -110,6 +114,7 @@ export const MATCH_SETUP_FORM_MESSAGES = {
   matchDate: {
     required: 'Match date is required',
     invalid: 'Match date must be one of the tournament match days',
+    past: 'Choose today or a future date',
   },
   matchTime: { required: 'Match time is required' },
   matchType: { required: 'Match type is required' },

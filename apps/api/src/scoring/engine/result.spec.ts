@@ -38,6 +38,7 @@ function inn(
     closeReason: null,
     target: null,
     droppedCatches: [],
+    droppedCatchEvents: [],
   };
 }
 

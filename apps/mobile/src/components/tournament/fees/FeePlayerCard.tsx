@@ -24,10 +24,9 @@ function PlayerAvatar({
 
 export interface FeePaidPlayerCardProps {
   entry: TournamentFeeEntry;
-  showTeamName: boolean;
 }
 
-export function FeePaidPlayerCard({ entry, showTeamName }: FeePaidPlayerCardProps): React.ReactElement {
+export function FeePaidPlayerCard({ entry }: FeePaidPlayerCardProps): React.ReactElement {
   return (
     <View
       className="flex-row items-center gap-4 rounded-xl border border-outline-variant bg-surface p-4"
@@ -38,9 +37,9 @@ export function FeePaidPlayerCard({ entry, showTeamName }: FeePaidPlayerCardProp
         <Text className="font-sans-bold text-base text-on-surface" numberOfLines={1}>
           {entry.firstName} {entry.lastName}
         </Text>
-        {showTeamName ? (
+        {entry.cardSubtitle ? (
           <Text className="font-sans text-sm text-on-surface-variant" numberOfLines={1}>
-            {entry.teamName}
+            {entry.cardSubtitle}
           </Text>
         ) : null}
       </View>
@@ -54,14 +53,12 @@ export function FeePaidPlayerCard({ entry, showTeamName }: FeePaidPlayerCardProp
 export interface FeeUnpaidPlayerCardProps {
   entry: TournamentFeeEntry;
   busy: boolean;
-  showTeamName: boolean;
   onPay: () => void;
 }
 
 export function FeeUnpaidPlayerCard({
   entry,
   busy,
-  showTeamName,
   onPay,
 }: FeeUnpaidPlayerCardProps): React.ReactElement {
   return (
@@ -74,9 +71,9 @@ export function FeeUnpaidPlayerCard({
         <Text className="font-sans-bold text-base text-on-surface" numberOfLines={1}>
           {entry.firstName} {entry.lastName}
         </Text>
-        {showTeamName ? (
+        {entry.cardSubtitle ? (
           <Text className="font-sans text-sm text-on-surface-variant" numberOfLines={1}>
-            {entry.teamName}
+            {entry.cardSubtitle}
           </Text>
         ) : null}
         <Text className="mt-1 font-sans-semibold text-sm text-primary">

@@ -1,7 +1,6 @@
 import type { PlayerProfileCareerStats } from '@acc/types';
 import {
   formatPlayerProfileAverage,
-  formatPlayerProfileCareerSpanYears,
   formatPlayerProfileInteger,
   formatPlayerProfileStrikeRate,
 } from '@acc/types';
@@ -48,8 +47,6 @@ export function PlayerProfileCareerStatsGrid({
   career,
   showStumpingsCard,
 }: PlayerProfileCareerStatsGridProps): React.ReactElement {
-  const careerSpan = formatPlayerProfileCareerSpanYears(career.careerSpanYears);
-
   return (
     <View className="flex-row flex-wrap gap-3">
       <View className="w-[48%]">
@@ -77,31 +74,13 @@ export function PlayerProfileCareerStatsGrid({
               </Text>
             ) : null}
           </View>
-          {career.highestScoreContext ? (
-            <Text className="mt-1 font-sans text-xs text-on-surface-variant">
-              {career.highestScoreContext}
-            </Text>
-          ) : null}
         </View>
       </View>
       <View className="w-[48%]">
-        <StatCard label="Strike Rate" value={formatPlayerProfileStrikeRate(career.strikeRate)}>
-          {career.strikeRateBarPercent != null ? (
-            <View className="mt-2 h-1 w-full overflow-hidden rounded-full bg-surface-container">
-              <View
-                className="h-1 rounded-full bg-primary"
-                style={{ width: `${career.strikeRateBarPercent}%` }}
-              />
-            </View>
-          ) : null}
-        </StatCard>
+        <StatCard label="Strike Rate" value={formatPlayerProfileStrikeRate(career.strikeRate)} />
       </View>
       <View className="w-[48%]">
-        <StatCard
-          label="Total Wickets"
-          value={formatPlayerProfileInteger(career.wickets)}
-          subline={careerSpan ? `Career Span: ${careerSpan}` : null}
-        />
+        <StatCard label="Total Wickets" value={formatPlayerProfileInteger(career.wickets)} />
       </View>
       <View className="w-[48%]">
         <StatCard

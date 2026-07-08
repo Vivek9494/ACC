@@ -16,6 +16,14 @@ import { FIELD_ORANGE } from '../../ui/fieldStyles';
 
 type PeriodTab = 'tournaments' | 'year';
 
+/** Matches PeriodTabButton label — font-sans-semibold text-sm (14px). */
+const PERIOD_TAB_TEXT = 'font-sans-semibold text-sm';
+const CARD_TITLE_TEXT = 'font-sans-bold text-base text-on-surface';
+const CARD_SUBLINE_TEXT = 'font-sans text-sm text-on-surface-variant';
+const CARD_INLINE_LABEL_TEXT = 'font-sans text-sm text-on-surface-variant';
+const CARD_INLINE_VALUE_TEXT = 'font-sans-semibold text-sm text-on-surface';
+const CARD_LINK_TEXT = `${PERIOD_TAB_TEXT} text-primary`;
+
 interface PeriodStatCellProps {
   label: string;
   value: string;
@@ -58,17 +66,74 @@ function PeriodTabButton({
 }): React.ReactElement {
   return (
     <Pressable
-      className={`flex-1 border-b-2 py-3 ${active ? 'border-primary' : 'border-transparent'}`}
+      className={`flex-1 border-b-2 py-3 -mb-px ${active ? 'border-primary' : 'border-transparent'}`}
       onPress={onPress}
     >
       <Text
-        className={`text-center font-sans-semibold text-sm ${
+        className={`text-center ${PERIOD_TAB_TEXT} ${
           active ? 'text-primary' : 'text-on-surface-variant'
         }`}
       >
         {label}
       </Text>
     </Pressable>
+  );
+}
+
+function TournamentInlineStat({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}): React.ReactElement {
+  return (
+    <View className="min-w-0 flex-1 flex-row items-baseline justify-center gap-0.5">
+      <Text className={CARD_INLINE_LABEL_TEXT}>{label}</Text>
+      <Text className={CARD_INLINE_VALUE_TEXT} numberOfLines={1}>
+        {value}
+      </Text>
+    </View>
+  );
+}
+
+function TournamentSummaryCard({
+  row,
+  onViewDetails,
+}: {
+  row: PlayerProfileTournamentSummary;
+  onViewDetails: () => void;
+}): React.ReactElement {
+  const { stats } = row;
+
+  return (
+    <View className="rounded-xl border border-outline-variant/30 bg-surface-container-lowest p-4">
+      <View className="mb-3 flex-row items-start justify-between gap-3">
+        <View className="min-w-0 flex-1">
+          <Text className={CARD_TITLE_TEXT}>{row.tournamentName}</Text>
+          <Text className={`mt-1 ${CARD_SUBLINE_TEXT}`}>
+            {row.year}
+            {row.teamName ? ` • ${row.teamName}` : ''}
+          </Text>
+        </View>
+        <Pressable onPress={onViewDetails} hitSlop={8} accessibilityRole="button">
+          <Text className={CARD_LINK_TEXT}>View Details</Text>
+        </Pressable>
+      </View>
+      <View className="flex-row items-center gap-0.5">
+        <TournamentInlineStat
+          label="Matches"
+          value={formatPlayerProfileInteger(stats.matches)}
+        />
+        <Text className={CARD_SUBLINE_TEXT}>·</Text>
+        <TournamentInlineStat label="Runs" value={formatPlayerProfileInteger(stats.runs)} />
+        <Text className={CARD_SUBLINE_TEXT}>·</Text>
+        <TournamentInlineStat
+          label="Wickets"
+          value={formatPlayerProfileInteger(stats.wickets)}
+        />
+      </View>
+    </View>
   );
 }
 
@@ -134,17 +199,11 @@ export function PlayerProfilePeriodSection({
               </Text>
             ) : (
               byTournament.map((row) => (
-                <Pressable
+                <TournamentSummaryCard
                   key={row.tournamentId}
-                  className="rounded-xl border border-outline-variant/30 bg-surface-container-lowest p-4 active:border-primary"
-                  onPress={() => setSelectedTournamentId(row.tournamentId)}
-                >
-                  <Text className="font-sans-bold text-base text-on-surface">{row.tournamentName}</Text>
-                  <Text className="mt-1 font-sans text-sm text-on-surface-variant">
-                    {row.year}
-                    {row.teamName ? ` • ${row.teamName}` : ''}
-                  </Text>
-                </Pressable>
+                  row={row}
+                  onViewDetails={() => setSelectedTournamentId(row.tournamentId)}
+                />
               ))
             )}
           </View>
@@ -174,10 +233,8 @@ export function PlayerProfilePeriodSection({
                 className="w-[48%] rounded-xl border border-outline-variant/30 bg-surface-container-lowest p-4 active:border-primary"
                 onPress={() => setSelectedYear(row.year)}
               >
-                <Text className="font-sans-bold text-base text-on-surface">{row.year}</Text>
-                <Text className="mt-1 font-sans text-sm text-on-surface-variant">
-                  Click for details
-                </Text>
+                <Text className={CARD_TITLE_TEXT}>{row.year}</Text>
+                <Text className={`mt-1 ${CARD_SUBLINE_TEXT}`}>Click for details</Text>
               </Pressable>
             ))
           )}

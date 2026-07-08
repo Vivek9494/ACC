@@ -67,7 +67,7 @@ export class CreateTournamentDto implements CreateTournamentRequest {
   @IsOptional()
   @IsInt()
   @Min(1)
-  @Max(15, { message: M.playersPerTeam.max })
+  @Max(30, { message: M.playersPerTeam.max })
   playersPerTeam?: number;
 
   @IsInt()
@@ -115,13 +115,9 @@ export class CreateTournamentDto implements CreateTournamentRequest {
   @IsIn(CITY_SELECTIONS, { message: M.citySelection.required })
   citySelection?: CitySelection;
 
-  @ValidateIf(
-    (dto: CreateTournamentDto) =>
-      dto.ballType === BallType.Tennis && dto.citySelection === CitySelection.Multi,
-  )
   @IsString()
   @MinLength(1, { message: M.province.required })
-  provinceId?: string;
+  provinceId!: string;
 
   @ValidateIf(
     (dto: CreateTournamentDto) =>
@@ -162,12 +158,30 @@ export class CreateTournamentDto implements CreateTournamentRequest {
   auctionAt?: string | null;
 
   @IsOptional()
+  @IsNumber()
+  @Min(0)
+  feeFullTime?: number | null;
+
+  /** Leather only — ignored for tennis tournaments. */
+  @ValidateIf((dto: CreateTournamentDto) => dto.ballType === BallType.Leather)
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  feePartTime?: number | null;
+
+  @IsOptional()
   @IsString()
   cloneFromTournamentId?: string | null;
 
   @IsOptional()
   @IsBoolean()
   copyRoleAssignments?: boolean;
+
+  @IsOptional()
+  @IsInt()
+  @Min(2)
+  @Max(64)
+  knockoutTeamCount?: number | null;
 
   @IsEmpty({ message: 'Powerplay Overs was removed per spec §6.1 and is not accepted' })
   powerplayOvers?: never;

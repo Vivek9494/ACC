@@ -1,24 +1,29 @@
-import { Ionicons } from '@expo/vector-icons';
-import type { ClubManagerDashboard } from '@acc/types';
+import { type ClubManagerDashboard, type CaptainScorerAssignmentMatch } from '@acc/types';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pressable, View } from 'react-native';
-import { colors } from '@/theme/colors';
+import { View } from 'react-native';
 
+import { buildCaptainFeaturedMatchSections } from '../../../src/components/dashboard/buildDashboardFeaturedMatchSections';
+import { buildTeamLeadPollSections } from '../../../src/components/dashboard/buildTeamLeadPollSections';
 import { buildTournamentMenuActions } from '../../../src/components/dashboard/buildTournamentMenuActions';
 import { DashboardScaffold } from '../../../src/components/dashboard/DashboardScaffold';
-import { MatchSummaryCard } from '../../../src/components/ui/MatchSummaryCard';
+import { AssignScorerDialog } from '../../../src/components/scoring/AssignScorerDialog';
+import { CircularAddButton } from '../../../src/components/ui/CircularAddButton';
 import { StatTile } from '../../../src/components/ui/StatTile';
 import { Text } from '../../../src/components/ui/Text';
 import { TournamentDashboardCard } from '../../../src/components/ui/TournamentDashboardCard';
 import { getClubManagerDashboard } from '../../../src/lib/api';
+import { prependBroadcastSection } from '../../../src/lib/dashboard-broadcast';
 import { dashboardFetchError, logFetchError } from '../../../src/lib/fetch-error';
+import { useActiveBroadcast } from '../../../src/hooks/useActiveBroadcast';
 
 export default function ClubManagerDashboardScreen(): React.ReactElement {
   const router = useRouter();
   const [dashboard, setDashboard] = useState<ClubManagerDashboard | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [assignmentMatch, setAssignmentMatch] = useState<CaptainScorerAssignmentMatch | null>(null);
+  const { broadcast } = useActiveBroadcast(!loading && !error);
 
   const load = useCallback(() => {
     let cancelled = false;
@@ -64,55 +69,33 @@ export default function ClubManagerDashboardScreen(): React.ReactElement {
         : [];
 
     return [
-      dashboard.featuredMatch ? (
-        <MatchSummaryCard
-          key="featured-match"
-          tournamentName={dashboard.featuredMatch.tournamentName}
-          teamA={dashboard.featuredMatch.teamA}
-          teamB={dashboard.featuredMatch.teamB}
-          status={
-            dashboard.featuredMatch.isLive
-              ? 'LIVE'
-              : dashboard.featuredMatch.isUpcoming
-                ? 'UPCOMING'
-                : 'COMPLETED'
-          }
-          resultLine={dashboard.featuredMatch.resultNote}
-          onPress={() =>
-            router.push(
-              dashboard.featuredMatch.isLive
-                ? `/matches/${dashboard.featuredMatch!.matchId}/live`
-                : `/matches/${dashboard.featuredMatch!.matchId}`,
-            )
-          }
-        />
-      ) : null,
+      ...buildCaptainFeaturedMatchSections(dashboard.featuredMatches, router),
+      ...buildTeamLeadPollSections(
+        dashboard.upcomingMatchCard,
+        dashboard.participationPoll,
+        (match) => setAssignmentMatch(match),
+        load,
+      ),
       dashboard.playerStats != null ? (
         <View key="performance" className="gap-3">
           <Text className="font-sans-bold text-xl text-on-surface">Your Performance</Text>
           <StatTile items={performanceItems} />
         </View>
       ) : null,
-      <View key="tournaments" className="gap-3">
-        <View className="flex-row items-center justify-between">
-          <Text className="font-sans-bold text-xl text-on-surface">Tournaments</Text>
-          <Pressable
-            onPress={() => router.push('/tournaments/new')}
-            accessibilityRole="button"
-            accessibilityLabel="Add tournament"
-            className="h-10 w-10 items-center justify-center rounded-full bg-primary"
-          >
-            <Ionicons name="add" size={24} color={colors.textInverse} />
-          </Pressable>
-        </View>
-        {dashboard.tournaments.length === 0 ? (
-          <Text className="font-sans text-sm text-on-surface-variant">No tournaments yet.</Text>
-        ) : (
-          dashboard.tournaments.map(({ tournament, permissions }) => (
+      dashboard.tournaments.length > 0 ? (
+        <View key="tournaments" className="gap-3">
+          <View className="flex-row items-center justify-between">
+            <Text className="font-sans-bold text-xl text-on-surface">Tournaments</Text>
+            <CircularAddButton
+              accessibilityLabel="Add tournament"
+              onPress={() => router.push('/tournaments/new')}
+            />
+          </View>
+          {dashboard.tournaments.map(({ tournament, permissions }) => (
             <TournamentDashboardCard
               key={tournament.id}
               tournament={tournament}
-              onPress={() => router.push(`/tournaments/${tournament.id}`)}
+              onPress={() => router.push(`/club-manager/tournament/${tournament.id}`)}
               menuActions={buildTournamentMenuActions(
                 permissions,
                 tournament.id,
@@ -121,19 +104,33 @@ export default function ClubManagerDashboardScreen(): React.ReactElement {
                 { onDeleted: load },
               )}
             />
-          ))
-        )}
-      </View>,
+          ))}
+        </View>
+      ) : null,
     ].filter((section) => section !== null);
-  }, [dashboard, router]);
+  }, [dashboard, load, router]);
+
+  const sectionsWithBroadcast = useMemo(
+    () => prependBroadcastSection(sections, broadcast),
+    [broadcast, sections],
+  );
 
   return (
-    <DashboardScaffold
-      headerFallbackName="Manager"
-      isLoading={loading}
-      error={error}
-      onRetry={load}
-      sections={sections}
-    />
+    <>
+      <DashboardScaffold
+        headerFallbackName="Manager"
+        isLoading={loading}
+        error={error}
+        onRetry={load}
+        sections={sectionsWithBroadcast}
+      />
+      <AssignScorerDialog
+        visible={assignmentMatch !== null}
+        matchId={assignmentMatch?.matchId ?? null}
+        assignedScorerUserId={assignmentMatch?.assignedScorer?.userId ?? null}
+        onClose={() => setAssignmentMatch(null)}
+        onAssigned={load}
+      />
+    </>
   );
 }

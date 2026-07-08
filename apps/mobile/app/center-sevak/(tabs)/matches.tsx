@@ -1,10 +1,11 @@
-import { CenterSevakTabShell } from '../../../src/components/dashboard/CenterSevakTabShell';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
 import { MyMatchesScreen } from '../../../src/components/my-matches/MyMatchesScreen';
 
 export default function CenterSevakMatchesScreen(): React.ReactElement {
   return (
-    <CenterSevakTabShell activeKey="matches">
+    <SafeAreaView className="flex-1 bg-background" edges={['top']}>
       <MyMatchesScreen />
-    </CenterSevakTabShell>
+    </SafeAreaView>
   );
 }

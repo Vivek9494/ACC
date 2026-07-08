@@ -2,7 +2,7 @@ import { AuthErrorCode, CHANGE_PASSWORD_MESSAGES, isPasswordPolicyCompliant } fr
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
+import { ActivityIndicator, Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/theme/colors';
 
@@ -10,6 +10,7 @@ import { SuccessDialog } from '../src/components/ui/SuccessDialog';
 import { PasswordRequirements } from '../src/components/ui/PasswordRequirements';
 import { PasswordToggle } from '../src/components/ui/PasswordToggle';
 import { Button } from '../src/components/ui/Button';
+import { KeyboardAwareFormScrollView } from '../src/components/ui/KeyboardAwareFormScrollView';
 import { Text } from '../src/components/ui/Text';
 import { TextInput } from '../src/components/ui/TextInput';
 import { FIELD_ORANGE } from '../src/components/ui/fieldStyles';
@@ -115,10 +116,7 @@ export default function ChangePasswordScreen(): React.ReactElement {
 
   return (
     <SafeAreaView className="flex-1 bg-background">
-      <ScrollView
-        contentContainerClassName="flex-grow px-6 pb-12 pt-4"
-        keyboardShouldPersistTaps="handled"
-      >
+      <KeyboardAwareFormScrollView contentContainerClassName="flex-grow px-6 pb-12 pt-4">
         <View className="mb-6 flex-row items-center gap-3">
           <Pressable
             onPress={() => router.back()}
@@ -208,7 +206,7 @@ export default function ChangePasswordScreen(): React.ReactElement {
             )}
           </Button>
         </View>
-      </ScrollView>
+      </KeyboardAwareFormScrollView>
 
       <SuccessDialog
         visible={showSuccessDialog}

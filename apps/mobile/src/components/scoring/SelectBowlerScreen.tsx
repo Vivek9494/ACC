@@ -1,13 +1,18 @@
 import { Ionicons } from '@expo/vector-icons';
-import type { BowlerPickerResponse } from '@acc/types';
+import type { BowlerPickerPlayerRow, BowlerPickerResponse } from '@acc/types';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
+import { ActivityIndicator, Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AddExternalBowlerDialog } from './AddExternalBowlerDialog';
 import { BowlerPickerRow } from './BowlerPickerRow';
+import { EditExternalPlayerNameDialog } from './EditExternalPlayerNameDialog';
 import { Button } from '../ui/Button';
+import {
+  KeyboardAwareFormContainer,
+  KeyboardAwareFormScrollView,
+} from '../ui/KeyboardAwareFormScrollView';
+import { ScreenHeader } from '../ui/ScreenHeader';
 import { Text } from '../ui/Text';
 import { TextInput } from '../ui/TextInput';
 import { FIELD_ORANGE } from '../ui/fieldStyles';
@@ -20,6 +25,11 @@ export interface SelectBowlerScreenProps {
   selectedBowlerId?: string | null;
 }
 
+interface EditTarget {
+  playerId: string;
+  name: string;
+}
+
 export function SelectBowlerScreen({
   matchId,
   inningsId,
@@ -29,9 +39,9 @@ export function SelectBowlerScreen({
   const [data, setData] = useState<BowlerPickerResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showAddExternal, setShowAddExternal] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [editTarget, setEditTarget] = useState<EditTarget | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -55,6 +65,11 @@ export function SelectBowlerScreen({
     router.back();
   }
 
+  function openEdit(row: BowlerPickerPlayerRow): void {
+    const name = `${row.firstName} ${row.lastName}`.trim();
+    setEditTarget({ playerId: row.userId, name });
+  }
+
   const isExternalSide = data?.bowlingSideIsExternal === true;
 
   const filteredPlayers = useMemo(() => {
@@ -69,30 +84,26 @@ export function SelectBowlerScreen({
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
-      <View className="flex-row items-center justify-between px-4 pb-2 pt-1">
-        <View className="flex-row items-center gap-3">
+      <KeyboardAwareFormContainer className="flex-1">
+      <ScreenHeader
+        title={data ? `${data.bowlingTeamName} - Bowling Team` : undefined}
+        subtitle={data ? 'Select Bowler' : undefined}
+        accentTitle={data != null}
+        onBack={() => router.back()}
+        trailing={
           <Pressable
-            onPress={() => router.back()}
+            onPress={() => {
+              setSearchOpen((open) => !open);
+              if (searchOpen) setSearchQuery('');
+            }}
             className="h-10 w-10 items-center justify-center rounded-full active:bg-black/5"
             accessibilityRole="button"
-            accessibilityLabel="Back"
+            accessibilityLabel="Search bowlers"
           >
-            <Ionicons name="arrow-back" size={24} color={FIELD_ORANGE} />
+            <Ionicons name="search" size={24} color={FIELD_ORANGE} />
           </Pressable>
-          <Text className="font-sans-bold text-xl text-primary">Select Bowler</Text>
-        </View>
-        <Pressable
-          onPress={() => {
-            setSearchOpen((open) => !open);
-            if (searchOpen) setSearchQuery('');
-          }}
-          className="h-10 w-10 items-center justify-center rounded-full active:bg-black/5"
-          accessibilityRole="button"
-          accessibilityLabel="Search bowlers"
-        >
-          <Ionicons name="search" size={24} color={FIELD_ORANGE} />
-        </Pressable>
-      </View>
+        }
+      />
 
       {searchOpen ? (
         <View className="px-4 pb-2">
@@ -120,30 +131,15 @@ export function SelectBowlerScreen({
         </View>
       ) : data ? (
         <>
-          <ScrollView
-            contentContainerClassName={`gap-4 px-4 pt-2 ${isExternalSide ? 'pb-32' : 'pb-8'}`}
+          <KeyboardAwareFormScrollView
+            contentContainerClassName="gap-4 px-4 pt-2 pb-8"
+            extraBottomPadding={32}
           >
-            <View>
-              <Text className="font-sans-semibold text-xs uppercase tracking-wider text-on-surface-variant">
-                Bowling Team
-              </Text>
-              <View className="mt-1 flex-row flex-wrap items-center gap-3">
-                <Text className="font-sans-bold text-2xl text-primary">{data.bowlingTeamName}</Text>
-                {!isExternalSide ? (
-                  <View className="rounded-full bg-primary-container px-3 py-1">
-                    <Text className="font-sans-semibold text-sm text-on-primary-container">
-                      Playing 11
-                    </Text>
-                  </View>
-                ) : null}
-              </View>
-            </View>
-
             {filteredPlayers.length === 0 ? (
               <View className="rounded-control border border-outline-variant bg-surface p-4">
                 <Text className="font-sans text-sm text-on-surface-variant">
                   {isExternalSide
-                    ? 'No bowlers added yet. Use Add New Bowler to enter opponent players by name as they bowl.'
+                    ? 'No opponent players on this match yet. Add them from the opponent players list before or during setup.'
                     : 'No players available. Lock the Playing 11 before the match.'}
                 </Text>
               </View>
@@ -155,34 +151,27 @@ export function SelectBowlerScreen({
                     row={row}
                     selectedBowlerId={selectedBowlerId}
                     onPress={choose}
+                    onEdit={isExternalSide ? openEdit : undefined}
                   />
                 ))}
               </View>
             )}
-          </ScrollView>
+          </KeyboardAwareFormScrollView>
 
-          {isExternalSide ? (
-            <View className="absolute bottom-0 left-0 right-0 border-t border-outline-variant bg-background px-4 pb-8 pt-4">
-              <Button
-                label="Add New Bowler"
-                onPress={() => setShowAddExternal(true)}
-                className="h-12"
-              />
-            </View>
-          ) : null}
-
-          <AddExternalBowlerDialog
-            visible={showAddExternal}
+          <EditExternalPlayerNameDialog
+            visible={editTarget != null}
             matchId={matchId}
-            inningsId={inningsId}
-            onCancel={() => setShowAddExternal(false)}
-            onAdded={() => {
-              setShowAddExternal(false);
+            playerId={editTarget?.playerId ?? null}
+            initialName={editTarget?.name ?? ''}
+            onCancel={() => setEditTarget(null)}
+            onSaved={() => {
+              setEditTarget(null);
               void load();
             }}
           />
         </>
       ) : null}
+      </KeyboardAwareFormContainer>
     </SafeAreaView>
   );
 }

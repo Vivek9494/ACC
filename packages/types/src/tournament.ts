@@ -7,6 +7,7 @@
 import type { GroupSummary } from './group';
 import type { MatchSchedulingFormat } from './match-scheduling-format';
 import type { BallType, CitySelection, TournamentType } from './rbac';
+import type { TournamentDisplayStatus } from './tournament-display-status';
 
 /** Tournament lifecycle states (spec §5.1). */
 export const TournamentState = {
@@ -107,12 +108,12 @@ export interface CreateTournamentRequest {
   citySelection?: CitySelection;
   /** Expected teams for fixture/setup (§6.1). */
   numberOfTeams: number;
-  /** Squad size per team; defaults to 15 when omitted. Max 15 when provided. */
-  playersPerTeam?: number;
+  /** Squad size per team; omit or leave unset for no roster cap. Max 30 when provided. */
+  playersPerTeam?: number | null;
   /** Substitutes allowed per match (§9.7). */
   substitutesAllowed: number;
-  /** Province whose Centers participate (tennis tournaments only). */
-  provinceId?: string;
+  /** Province the tournament belongs to (required on create). */
+  provinceId: string;
   /** Participating Center ids for MULTI/SINGLE; ignored when citySelection=ALL. */
   centerIds?: string[];
   format: TournamentFormat;
@@ -125,10 +126,16 @@ export interface CreateTournamentRequest {
   registrationCloseAt?: string | null;
   /** Optional player auction date (§6.1 extension). */
   auctionAt?: string | null;
+  /** Tennis: single fee; Leather: full-time player fee (CAD dollars). */
+  feeFullTime?: number | null;
+  /** Leather part-time player fee (CAD dollars); omitted/null for tennis. */
+  feePartTime?: number | null;
   /** Optional: clone team names (never players, §6.2) from this past tournament. */
   cloneFromTournamentId?: string | null;
   /** When cloning, also copy Captain/VC/Manager assignments (§6.2). */
   copyRoleAssignments?: boolean;
+  /** APL only — set in Edit once groups exist; omitted on create. */
+  knockoutTeamCount?: number | null;
 }
 
 /** Mid-tournament edits (§6.4). All fields optional; only sent ones change. */
@@ -138,7 +145,7 @@ export interface UpdateTournamentRequest {
   oversPerInnings?: number;
   maxOversPerBowler?: number;
   numberOfTeams?: number;
-  playersPerTeam?: number;
+  playersPerTeam?: number | null;
   substitutesAllowed?: number;
   locationAddress?: string | null;
   /** Set when the user picks a place or adjusts the map marker. */
@@ -156,6 +163,14 @@ export interface UpdateTournamentRequest {
   registrationOpenAt?: string | null;
   registrationCloseAt?: string | null;
   auctionAt?: string | null;
+  /** Tennis: single fee; Leather: full-time player fee (CAD dollars). */
+  feeFullTime?: number | null;
+  /** Leather part-time player fee (CAD dollars); omitted/null for tennis. */
+  feePartTime?: number | null;
+  /** Province the tournament belongs to. */
+  provinceId?: string;
+  /** APL only — even knockout size; locked once a bracket exists. */
+  knockoutTeamCount?: number | null;
 }
 
 /** Locked scope summary for the edit form (type/ball/centers cannot change). */
@@ -182,7 +197,10 @@ export interface TournamentSummary {
   name: string;
   year: number;
   type: TournamentType;
+  /** Stored lifecycle state (registration, fixtures, etc.). */
   state: TournamentState;
+  /** Date-derived status for badges/lists (Upcoming / Live / Completed). */
+  displayStatus: TournamentDisplayStatus;
   ballType: BallType;
   posterUrl: string | null;
   /** Derived min/max of scheduled dates; ISO 8601 UTC midnight. */
@@ -191,6 +209,10 @@ export interface TournamentSummary {
   locationAddress: string | null;
   latitude: number | null;
   longitude: number | null;
+  /** Province the tournament belongs to; null on legacy rows until edited. */
+  provinceId: string | null;
+  /** Tournament For scope (province / centers) derived at read time. */
+  scopeDisplay: TournamentScopeDisplay;
   /** IANA timezone for venue-local display and schedule rules; resolved once from location. */
   timezone: string | null;
   teamCount: number;
@@ -204,7 +226,8 @@ export interface TournamentDetail extends TournamentSummary {
   oversPerInnings: number | null;
   maxOversPerBowler: number;
   numberOfTeams: number;
-  playersPerTeam: number;
+  /** Null when no roster cap is configured (Players per Team unset). */
+  playersPerTeam: number | null;
   substitutesAllowed: number;
   format: TournamentFormat;
   impactPlayerEnabled: boolean;
@@ -214,6 +237,10 @@ export interface TournamentDetail extends TournamentSummary {
   registrationOpenAt: string | null;
   registrationCloseAt: string | null;
   auctionAt: string | null;
+  /** Tennis: single fee; Leather: full-time player fee (CAD dollars). */
+  feeFullTime: number | null;
+  /** Leather part-time player fee (CAD dollars); null for tennis. */
+  feePartTime: number | null;
   /** True when both registrationOpenAt and registrationCloseAt are set. */
   hasRegistrationWindow: boolean;
   /** Whether the current instant is within the registration window. */
@@ -221,6 +248,10 @@ export interface TournamentDetail extends TournamentSummary {
   /** Set when the organizer picks a scheduling mode (Schedule Matches modal). */
   matchSchedulingFormat: MatchSchedulingFormat | null;
   groupCount: number;
+  /** APL only — configured knockout size; null until set. */
+  knockoutTeamCount: number | null;
+  /** True when a live KnockoutBracket row exists — locks knockoutTeamCount. */
+  hasKnockoutBracket: boolean;
   groups: GroupSummary[];
   teams: {
     id: string;
@@ -229,8 +260,9 @@ export interface TournamentDetail extends TournamentSummary {
     memberCount: number;
     groupId: string | null;
     groupName: string | null;
+    hasMatches: boolean;
   }[];
-  /** Logged-in viewer's team in this tournament; null when unauthenticated or not rostered. */
+  /** Logged-in viewer's rostered team in this tournament (membership, not role); null when unauthenticated or not rostered. */
   myTeamId: string | null;
   /**
    * Tennis only: registration window closed and every registrant approved or declined.
@@ -241,6 +273,16 @@ export interface TournamentDetail extends TournamentSummary {
   canViewRegisteredPlayersList: boolean;
   /** Tennis + team lead + verification complete — Favourite Players button. */
   canViewFavouritePlayers: boolean;
+  /** Leather: viewer may self-register (existing leather player or invited). */
+  canRegisterForLeatherTournament: boolean;
+  /** Leather: Admin / Club Manager may invite until start date. */
+  canManageLeatherInvites: boolean;
+  /** Authenticated viewer may open Edit Tournament (EDIT_TOURNAMENT). */
+  canEdit: boolean;
+  /** Viewer may schedule matches (organizer, or Captain/VC on Leather — server-resolved). */
+  canScheduleMatches: boolean;
+  /** Team ids the viewer leads (Captain/VC) in this tournament; empty when none. */
+  viewerLeaderTeamIds: string[];
   /**
    * Tennis only: verified (confirmed) registrant may upload their own skill video
    * after Center Sevak verification completes and before videoUploadEndDate (if set).
@@ -252,6 +294,10 @@ export interface TournamentDetail extends TournamentSummary {
   canUploadPlayerVideo: boolean;
   /** @deprecated Use {@link hasSkillVideo}. */
   hasPlayerVideo: boolean;
+  /** Tennis Phase 1: viewer may assign/manage the shared 5 tournament scorers. */
+  canManageTournamentScorers: boolean;
+  /** Count of assigned tournament scorers (0–5); tennis only. */
+  tournamentScorerCount: number;
 }
 
 /** Clone suggestion returned when a name matches a past tournament (§6.2). */

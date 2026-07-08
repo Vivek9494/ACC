@@ -1,5 +1,5 @@
 import { type AuthUser, UserRole } from './auth';
-import { hasTeamLeadershipInTournament } from './team-access';
+import { hasTeamFavouritesLeadInTournament, hasTeamLeadershipInTournament } from './team-access';
 import { BallType, type BallType as BallTypeValue } from './rbac';
 import { RegistrationStatus } from './registration';
 import {
@@ -22,6 +22,23 @@ export interface RegistrationManagementTournamentContext {
 /** True when the actor holds a scoped Center Sevak assignment. */
 export function hasCenterSevakAssignment(user: AuthUser | null | undefined): boolean {
   return (user?.centerSevakCenterIds?.length ?? 0) > 0;
+}
+
+/** Platform roles that may self-register during an open registration window. */
+export function canSelfRegisterForTournament(
+  userRole: UserRole | null | undefined,
+): boolean {
+  if (!userRole) {
+    return false;
+  }
+  return (
+    userRole === UserRole.Player ||
+    userRole === UserRole.Captain ||
+    userRole === UserRole.ViceCaptain ||
+    userRole === UserRole.Manager ||
+    userRole === UserRole.CenterSevak ||
+    userRole === UserRole.ClubManager
+  );
 }
 
 /** Leather ACC has no post-submit verification gate; tennis (Center / APL) does. */
@@ -98,7 +115,7 @@ export function isRegistrationVerificationComplete(
 
 /**
  * Tennis Details-tab buttons (Registered Players List / Favourite Players).
- * Hidden until verification completes; Captain / VC / Club Manager only.
+ * Hidden until verification completes; Captain / VC / Manager (plus Admin / Club Manager).
  */
 export function canShowTournamentRegistrationPlayerButtons(
   user: AuthUser | null | undefined,
@@ -116,7 +133,7 @@ export function canShowTournamentRegistrationPlayerButtons(
   if (user.role === UserRole.ClubManager || user.role === UserRole.Admin) {
     return true;
   }
-  return isTournamentTeamLead(user, tournament.id);
+  return hasTeamFavouritesLeadInTournament(user, tournament.id);
 }
 
 /**
@@ -128,6 +145,7 @@ export function canUploadPlayerSkillVideo(
   tournament:
     | (RegistrationManagementTournamentContext & {
         registrationVerificationComplete?: boolean;
+        videoRequired?: boolean;
         videoUploadEndDate?: string | null;
       })
     | null
@@ -139,6 +157,9 @@ export function canUploadPlayerSkillVideo(
     return false;
   }
   if (!tournamentUsesRegistrationVerification(tournament.ballType)) {
+    return false;
+  }
+  if (!tournament.videoRequired) {
     return false;
   }
   if (!tournament.registrationVerificationComplete) {

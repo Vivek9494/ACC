@@ -2,6 +2,7 @@ import {
   ATTENDANCE_CAPTURE_LEAD_HOURS,
   classifyAttendanceStatus,
   computeAttendanceCaptureWindow,
+  GEOFENCE_MONITOR_RADIUS_METERS,
   GEOFENCE_RADIUS_METERS,
   isWithinGeofence,
   AttendancePunchStatus,
@@ -44,6 +45,7 @@ describe('attendance helpers', () => {
 
   it('exports default geofence radius and lead hours', () => {
     expect(GEOFENCE_RADIUS_METERS).toBe(50);
+    expect(GEOFENCE_MONITOR_RADIUS_METERS).toBe(150);
     expect(ATTENDANCE_CAPTURE_LEAD_HOURS).toBe(3);
   });
 });

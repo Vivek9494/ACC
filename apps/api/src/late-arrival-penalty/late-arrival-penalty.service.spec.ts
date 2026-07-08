@@ -12,6 +12,7 @@ import { BadRequestException, ForbiddenException } from '@nestjs/common';
 
 import { AuditService } from '../audit/audit.service';
 import { PermissionService } from '../authz/permission.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { LateArrivalPenaltyService } from './late-arrival-penalty.service';
 
@@ -57,6 +58,7 @@ describe('LateArrivalPenaltyService', () => {
   };
   let permissions: { check: jest.Mock };
   let audit: { record: jest.Mock };
+  let notifications: { sendNotification: jest.Mock };
 
   beforeEach(() => {
     prisma = {
@@ -106,10 +108,12 @@ describe('LateArrivalPenaltyService', () => {
     };
     permissions = { check: jest.fn().mockResolvedValue(true) };
     audit = { record: jest.fn().mockResolvedValue(undefined) };
+    notifications = { sendNotification: jest.fn().mockResolvedValue(undefined) };
     service = new LateArrivalPenaltyService(
       prisma as unknown as PrismaService,
       permissions as unknown as PermissionService,
       audit as unknown as AuditService,
+      notifications as unknown as NotificationsService,
     );
   });
 
@@ -166,6 +170,14 @@ describe('LateArrivalPenaltyService', () => {
     expect(result.assignedServeMatchId).toBe('match-c');
     expect(audit.record).toHaveBeenCalledWith(
       expect.objectContaining({ action: 'LATE_ARRIVAL_PENALTY_DESIGNATED' }),
+    );
+    expect(notifications.sendNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userIds: ['player-1'],
+        triggerKey: 'PENALTY_SERVE_DESIGNATED',
+        dedupeKey: 'PENALTY_SERVE_DESIGNATED:match-c:player-1',
+        data: { matchId: 'match-c', screen: 'match' },
+      }),
     );
   });
 

@@ -22,22 +22,46 @@ export interface OverflowMenuAction {
   label: string;
   icon: IoniconName;
   onPress: () => void;
+  /** Renders label and icon in brand secondary blue (e.g. Edit). */
+  secondary?: boolean;
+  /** Renders label and icon in system destructive red (e.g. Delete). */
+  destructive?: boolean;
 }
 
 interface OverflowMenuProps {
   actions: OverflowMenuAction[];
   accessibilityLabel?: string;
+  /** Ellipsis icon color; defaults to muted text. */
+  iconColor?: string;
 }
+
+/** Matches native Alert destructive button red on iOS. */
+const DESTRUCTIVE_MENU_COLOR = '#FF3B30';
 
 function MenuItem({
   label,
   icon,
   onPress,
+  secondary = false,
+  destructive = false,
 }: {
   label: string;
   icon: IoniconName;
   onPress: () => void;
+  secondary?: boolean;
+  destructive?: boolean;
 }): React.ReactElement {
+  const iconColor = destructive
+    ? DESTRUCTIVE_MENU_COLOR
+    : secondary
+      ? colors.secondary
+      : colors.textMuted;
+  const textColor = destructive
+    ? DESTRUCTIVE_MENU_COLOR
+    : secondary
+      ? colors.secondary
+      : undefined;
+
   return (
     <Pressable
       onPress={onPress}
@@ -45,8 +69,13 @@ function MenuItem({
       accessibilityLabel={label}
       className="flex-row items-center gap-3 px-4 py-2.5 active:bg-surface-container-high"
     >
-      <Ionicons name={icon} size={20} color={colors.textMuted} />
-      <Text className="font-sans text-sm text-on-surface">{label}</Text>
+      <Ionicons name={icon} size={20} color={iconColor} />
+      <Text
+        className="font-sans text-sm text-on-surface"
+        style={textColor ? { color: textColor } : undefined}
+      >
+        {label}
+      </Text>
     </Pressable>
   );
 }
@@ -55,6 +84,7 @@ function MenuItem({
 export function OverflowMenu({
   actions,
   accessibilityLabel = 'More options',
+  iconColor = colors.textMuted,
 }: OverflowMenuProps): React.ReactElement | null {
   const anchorRef = useRef<View>(null);
   const [open, setOpen] = useState(false);
@@ -90,7 +120,7 @@ export function OverflowMenu({
           accessibilityRole="button"
           accessibilityLabel={accessibilityLabel}
         >
-          <Ionicons name="ellipsis-vertical" size={20} color={colors.textMuted} />
+          <Ionicons name="ellipsis-vertical" size={20} color={iconColor} />
         </Pressable>
       </View>
 
@@ -120,6 +150,8 @@ export function OverflowMenu({
                   <MenuItem
                     label={action.label}
                     icon={action.icon}
+                    secondary={action.secondary}
+                    destructive={action.destructive}
                     onPress={() => {
                       close();
                       action.onPress();

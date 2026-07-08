@@ -1,21 +1,29 @@
-import type { CaptainDashboard, CaptainScorerAssignmentMatch } from '@acc/types';
+import type { CaptainDashboard, CaptainScorerAssignmentMatch, ScorerStartableMatch, AuthUser } from '@acc/types';
 import type { Router } from 'expo-router';
 import type { ReactNode } from 'react';
 import { View } from 'react-native';
 
-import { CaptainUpcomingMatchCard } from './CaptainUpcomingMatchCard';
-import { ParticipationPollCard } from './ParticipationPollCard';
+import { buildCaptainFeaturedMatchSections } from './buildDashboardFeaturedMatchSections';
+import { buildTeamLeadPollSections } from './buildTeamLeadPollSections';
+import { ConfirmScorecardDashboardCard } from './ConfirmScorecardDashboardCard';
+import { ScorerStartMatchCard } from './ScorerStartMatchCard';
 import { Button } from '../ui/Button';
-import { MatchSummaryCard } from '../ui/MatchSummaryCard';
 import { StatTile } from '../ui/StatTile';
 import { Text } from '../ui/Text';
 import { TournamentDashboardCard } from '../ui/TournamentDashboardCard';
+import {
+  handleScorerDashboardPress,
+  scorerDashboardButtonLabel,
+} from '../../lib/scorer-dashboard';
+import { tournamentDetailHref } from '../../lib/tournament-detail-route';
 
 export function buildCaptainDashboardSections(
   dashboard: CaptainDashboard,
   router: Router,
+  user: AuthUser,
   onOpenScorerAssignment?: (match: CaptainScorerAssignmentMatch) => void,
   onParticipationPollUpdated?: () => void,
+  onOpenMatchSetup?: (match: ScorerStartableMatch) => void,
 ): ReactNode[] {
   const performanceItems = [
     { label: 'Matches', value: dashboard.playerStats.matches },
@@ -27,47 +35,36 @@ export function buildCaptainDashboardSections(
   ];
 
   const mom = dashboard.pendingManOfMatch;
-  const featured = dashboard.featuredMatch;
-  const showFeaturedOnly =
-    featured != null &&
-    (featured.status === 'LIVE' ||
-      featured.status === 'COMPLETED' ||
-      dashboard.upcomingMatchCard == null);
 
   return [
-    showFeaturedOnly && featured ? (
-      <MatchSummaryCard
-        key="featured-match"
-        tournamentName={featured.tournamentName}
-        teamA={featured.teamA}
-        teamB={featured.teamB}
-        status={featured.status}
-        infoLine={featured.infoLine}
-        resultLine={featured.resultLine}
-        onPress={() =>
-          router.push(
-            featured.status === 'LIVE'
-              ? `/matches/${featured.matchId}/live`
-              : `/matches/${featured.matchId}`,
+    dashboard.scorerMatch ? (
+      <ScorerStartMatchCard
+        key="scorer-match"
+        match={dashboard.scorerMatch}
+        buttonLabel={scorerDashboardButtonLabel(dashboard.scorerMatch)}
+        onStartPress={() =>
+          handleScorerDashboardPress(
+            dashboard.scorerMatch!,
+            router,
+            onOpenMatchSetup,
           )
         }
       />
     ) : null,
-    dashboard.upcomingMatchCard ? (
-      <CaptainUpcomingMatchCard
-        key="upcoming-match-card"
-        card={dashboard.upcomingMatchCard}
-        onOpenScorerAssignment={onOpenScorerAssignment}
-        onPollUpdated={onParticipationPollUpdated}
+    ...dashboard.pendingScorecardConfirmations.map((item) => (
+      <ConfirmScorecardDashboardCard
+        key={`confirm-scorecard-${item.matchId}`}
+        item={item}
+        onPress={() => router.push(`/matches/${item.matchId}/scorecard`)}
       />
-    ) : null,
-    dashboard.participationPoll ? (
-      <ParticipationPollCard
-        key="participation-poll"
-        poll={dashboard.participationPoll}
-        onPollUpdated={() => onParticipationPollUpdated?.()}
-      />
-    ) : null,
+    )),
+    ...buildCaptainFeaturedMatchSections(dashboard.featuredMatches, router),
+    ...buildTeamLeadPollSections(
+      dashboard.upcomingMatchCard,
+      dashboard.participationPoll,
+      onOpenScorerAssignment,
+      onParticipationPollUpdated,
+    ),
     mom ? (
       <View
         key="pending-mom"
@@ -104,19 +101,17 @@ export function buildCaptainDashboardSections(
       <Text className="font-sans-bold text-xl text-on-surface">Your Performance</Text>
       <StatTile items={performanceItems} />
     </View>,
-    <View key="tournaments" className="gap-3">
-      <Text className="font-sans-bold text-xl text-on-surface">Tournaments</Text>
-      {dashboard.tournaments.length === 0 ? (
-        <Text className="font-sans text-sm text-on-surface-variant">No tournaments yet.</Text>
-      ) : (
-        dashboard.tournaments.map((tournament) => (
+    dashboard.tournaments.length > 0 ? (
+      <View key="tournaments" className="gap-3">
+        <Text className="font-sans-bold text-xl text-on-surface">Tournaments</Text>
+        {dashboard.tournaments.map((tournament) => (
           <TournamentDashboardCard
             key={tournament.id}
             tournament={tournament}
-            onPress={() => router.push(`/tournaments/${tournament.id}`)}
+            onPress={() => router.push(tournamentDetailHref(user, tournament.id))}
           />
-        ))
-      )}
-    </View>,
+        ))}
+      </View>
+    ) : null,
   ].filter((section) => section !== null);
 }

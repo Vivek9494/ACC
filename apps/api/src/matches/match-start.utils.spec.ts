@@ -1,83 +1,75 @@
-import { formatUtcIsoDate } from '@acc/types';
+import { MatchState } from '@acc/types';
 
-import {
-  isScorerMatchDayToday,
-  isWithinScorerAssignmentWindow,
-  SCORER_DASHBOARD_CARD_STATES,
-  SCORER_STARTABLE_MATCH_STATES,
-} from './match-start.utils';
+import { isDashboardScorerCardVisible } from './match-start.utils';
 
-describe('match-start.utils', () => {
-  describe('isScorerMatchDayToday', () => {
-    it('returns true when matchDate is today (UTC)', () => {
-      const today = formatUtcIsoDate(new Date());
-      expect(
-        isScorerMatchDayToday({
-          matchDate: new Date(`${today}T14:00:00.000Z`),
-          startTime: null,
-        }),
-      ).toBe(true);
-    });
+describe('isDashboardScorerCardVisible', () => {
+  const toronto = 'America/Toronto';
+  const referenceNow = new Date('2026-07-01T18:00:00.000Z');
 
-    it('prefers startTime local date over matchDate when both are set', () => {
-      const today = formatUtcIsoDate(new Date());
-      expect(
-        isScorerMatchDayToday({
-          matchDate: new Date('2099-01-01T00:00:00.000Z'),
-          startTime: new Date(`${today}T10:30:00.000Z`),
-        }),
-      ).toBe(true);
-    });
+  const futureMatch = {
+    matchDate: new Date('2099-06-01T00:00:00.000Z'),
+    startTime: new Date('2099-06-01T14:00:00.000Z'),
+  };
 
-    it('returns false for a future match day', () => {
-      const today = formatUtcIsoDate(new Date());
-      const future = new Date(`${today}T00:00:00.000Z`);
-      future.setUTCDate(future.getUTCDate() + 7);
-      expect(
-        isScorerMatchDayToday({
-          matchDate: future,
-          startTime: null,
-        }),
-      ).toBe(false);
-    });
+  const pastMatch = {
+    matchDate: new Date('2026-03-30T04:00:00.000Z'),
+    startTime: new Date('2026-03-30T18:00:00.000Z'),
+  };
 
-  it('returns false when neither matchDate nor startTime is set', () => {
-    expect(isScorerMatchDayToday({ matchDate: null, startTime: null })).toBe(false);
-  });
-  });
+  const todayMatch = {
+    matchDate: new Date('2026-07-01T04:00:00.000Z'),
+    startTime: new Date('2026-07-01T22:00:00.000Z'),
+  };
 
-  describe('isWithinScorerAssignmentWindow', () => {
-  it('opens two hours before scheduled start on match day', () => {
-    const today = formatUtcIsoDate(new Date());
-    const startTime = new Date(`${today}T14:00:00.000Z`);
-    const twoHoursBefore = new Date(startTime.getTime() - 2 * 60 * 60 * 1000);
-    const tooEarly = new Date(twoHoursBefore.getTime() - 60_000);
-
+  it('hides live fixtures on a past scheduled calendar day', () => {
     expect(
-      isWithinScorerAssignmentWindow({ matchDate: startTime, startTime }, tooEarly),
+      isDashboardScorerCardVisible(MatchState.Live, pastMatch, toronto, referenceNow),
     ).toBe(false);
+  });
+
+  it('hides in-progress XI-locked fixtures on a past scheduled calendar day', () => {
     expect(
-      isWithinScorerAssignmentWindow({ matchDate: startTime, startTime }, twoHoursBefore),
+      isDashboardScorerCardVisible(
+        MatchState.PlayingXiLocked,
+        pastMatch,
+        toronto,
+        referenceNow,
+      ),
+    ).toBe(false);
+  });
+
+  it('shows live fixtures scheduled for today', () => {
+    expect(
+      isDashboardScorerCardVisible(MatchState.Live, todayMatch, toronto, referenceNow),
     ).toBe(true);
   });
 
-  it('returns false on a non-match day', () => {
-    const future = new Date('2099-06-08T14:00:00.000Z');
-    expect(isWithinScorerAssignmentWindow({ matchDate: future, startTime: future })).toBe(false);
-  });
+  it('shows Playing XI Locked for future fixtures before match day', () => {
+    expect(
+      isDashboardScorerCardVisible(
+        MatchState.PlayingXiLocked,
+        futureMatch,
+        toronto,
+        referenceNow,
+      ),
+    ).toBe(true);
   });
 
-  describe('scorer dashboard card states', () => {
-    it('excludes terminal states from pre-live scorer start list', () => {
-      expect(SCORER_STARTABLE_MATCH_STATES).not.toContain('LIVE');
-      expect(SCORER_STARTABLE_MATCH_STATES).not.toContain('COMPLETED');
-      expect(SCORER_STARTABLE_MATCH_STATES).not.toContain('SCORECARD_LOCKED');
-    });
+  it('shows live fixtures on future calendar days', () => {
+    expect(
+      isDashboardScorerCardVisible(MatchState.Live, futureMatch, toronto, referenceNow),
+    ).toBe(true);
+  });
 
-    it('includes live states on the scorer dashboard card list', () => {
-      expect(SCORER_DASHBOARD_CARD_STATES).toContain('LIVE');
-      expect(SCORER_DASHBOARD_CARD_STATES).toContain('RAIN_INTERRUPTED');
-      expect(SCORER_DASHBOARD_CARD_STATES).not.toContain('COMPLETED');
-    });
+  it('waits until match day for pure SCHEDULED fixtures', () => {
+    expect(
+      isDashboardScorerCardVisible(MatchState.Scheduled, futureMatch, toronto, referenceNow),
+    ).toBe(false);
+  });
+
+  it('shows pure SCHEDULED fixtures on match day', () => {
+    expect(
+      isDashboardScorerCardVisible(MatchState.Scheduled, todayMatch, toronto, referenceNow),
+    ).toBe(true);
   });
 });

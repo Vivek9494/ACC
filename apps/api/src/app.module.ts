@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 
 import { LateArrivalPenaltyModule } from './late-arrival-penalty/late-arrival-penalty.module';
+import { SuspensionModule } from './suspension/suspension.module';
 import { AttendanceModule } from './attendance/attendance.module';
 import { CaptainModule } from './captain/captain.module';
 import { CenterSevakModule } from './center-sevak/center-sevak.module';
@@ -16,6 +17,7 @@ import { AuthModule } from './auth/auth.module';
 import { AuthzModule } from './authz/authz.module';
 import { CentersModule } from './centers/centers.module';
 import { validateEnv } from './config/env.validation';
+import { StorageModule } from './storage/storage.module';
 import { HealthModule } from './health/health.module';
 import { LiveModule } from './live/live.module';
 import { MyMatchesModule } from './my-matches/my-matches.module';
@@ -34,7 +36,13 @@ import { FeesModule } from './fees/fees.module';
 import { GroupsModule } from './groups/groups.module';
 import { LeaderboardModule } from './leaderboard/leaderboard.module';
 import { PlayerSkillVideosModule } from './player-videos/player-skill-videos.module';
+import { AppSettingsModule } from './settings/app-settings.module';
+import { BroadcastModule } from './broadcast/broadcast.module';
+import { BirthdaysModule } from './birthdays/birthdays.module';
 import { StandingsModule } from './standings/standings.module';
+import { KnockoutBracketModule } from './knockout-bracket/knockout-bracket.module';
+import { KnockoutQualificationModule } from './knockout-qualification/knockout-qualification.module';
+import { KnockoutSeedingModule } from './knockout-seeding/knockout-seeding.module';
 
 @Module({
   imports: [
@@ -43,11 +51,15 @@ import { StandingsModule } from './standings/standings.module';
       validate: validateEnv,
     }),
     ScheduleModule.forRoot(),
+    StorageModule,
     PrismaModule,
     RedisModule,
     SmsModule,
     AuditModule,
     AuthzModule,
+    AppSettingsModule,
+    BroadcastModule,
+    BirthdaysModule,
     NotificationsModule,
     AuthModule,
     AdminModule,
@@ -67,9 +79,13 @@ import { StandingsModule } from './standings/standings.module';
     MatchesModule,
     AttendanceModule,
     LateArrivalPenaltyModule,
+    SuspensionModule,
     MyMatchesModule,
     ScoringModule,
     StandingsModule,
+    KnockoutBracketModule,
+    KnockoutQualificationModule,
+    KnockoutSeedingModule,
     LeaderboardModule,
     LiveModule,
     HealthModule,

@@ -1,39 +1,51 @@
 import {
+  buildMatchPlayingXiFinalizationStatus,
+  BallType,
+  canViewAdminUsersDirectory,
+  getMatchDetailStatusTransitions,
+  isAccRegisteredOpponent,
+  isExternalOpponentMatch,
   MATCH_STATE_LABELS,
-  MATCH_STATE_TRANSITIONS,
+  MatchState,
+  canShowRecordToss,
+  canViewMatchPlayersPunchTimeButton,
+  PLAYING_XI_SIZE,
   type MatchDetail,
   type MatchSquadRole,
-  type MatchState,
   type SquadPlayerView,
 } from '@acc/types';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
+import { useCallback, useMemo, useState } from 'react';
+import { ActivityIndicator, ScrollView, View } from 'react-native';
 import { Button } from '../../../src/components/ui/Button';
 import { Select } from '../../../src/components/ui/Select';
+import { ScreenHeader } from '../../../src/components/ui/ScreenHeader';
 import { Text } from '../../../src/components/ui/Text';
 import { FIELD_ORANGE } from '../../../src/components/ui/fieldStyles';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { MatchStateBadge } from '../../../src/components/MatchStateBadge';
+import { DelayMatchDialog } from '../../../src/components/match/DelayMatchDialog';
+import { MatchDetailsSection } from '../../../src/components/match/MatchDetailsSection';
+import { MatchManOfMatchBlock } from '../../../src/components/match/MatchManOfMatchBlock';
+import { MatchTennisScorerSection } from '../../../src/components/match/MatchTennisScorerSection';
 import {
   ApiRequestError,
   assignScorer,
+  delayMatch,
   getMatch,
   revokeScorer,
   setMatchState,
 } from '../../../src/lib/api';
+import { useAuth } from '../../../src/lib/auth-context';
+import { confirmActionAlert } from '../../../src/lib/confirm-action-alert';
+import { invalidateMatchData } from '../../../src/lib/match-data-invalidation';
+import { canLockPlayingXiForTeam, canVerifyPlayingXiForMatch } from '../../../src/lib/team-lead-access';
+import { resolveVenueDisplayTimezone } from '../../../src/lib/venue-time';
 
-// States reachable only through their dedicated payload endpoints (incl. the
-// §13.1 scorecard confirmation, which has its own Result screen).
-const DEDICATED_STATES: MatchState[] = [
-  'PLAYING_XI_LOCKED',
-  'TOSS_COMPLETED',
-  'SCORECARD_LOCKED',
-];
-const LOCKABLE: MatchState[] = ['SCHEDULED', 'DELAYED'];
-/** Post-match states that expose the Result & scorecard-confirmation screen. */
+/** Post-match states where the scorecard result screen is the primary view. */
 const POST_MATCH: MatchState[] = ['COMPLETED', 'NO_RESULT', 'SCORECARD_LOCKED'];
+const LOCKABLE: MatchState[] = ['SCHEDULED', 'PLAYING_XI_LOCKED', 'TOSS_COMPLETED', 'DELAYED'];
 
 const ROLE_LABELS: Record<MatchSquadRole, string> = {
   PLAYING_XI: 'Playing 11',
@@ -41,24 +53,17 @@ const ROLE_LABELS: Record<MatchSquadRole, string> = {
   IMPACT_CANDIDATE: 'Impact',
 };
 
-function tossSummary(match: MatchDetail): string | null {
-  if (!match.tossWinner || !match.tossDecision) return null;
-  const winner =
-    match.tossWinner === 'TEAM_A'
-      ? (match.homeTeamName ?? 'Home')
-      : (match.awayTeamName ?? match.externalOpponentName ?? 'Away');
-  return `${winner} won the toss and chose to ${match.tossDecision === 'BAT' ? 'bat' : 'bowl'}`;
-}
-
 export default function MatchDetailScreen(): React.ReactElement {
   const { matchId } = useLocalSearchParams<{ matchId: string }>();
   const router = useRouter();
+  const { user } = useAuth();
 
   const [match, setMatch] = useState<MatchDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [working, setWorking] = useState(false);
   const [assignScorerUserId, setAssignScorerUserId] = useState<string | null>(null);
+  const [delayDialogVisible, setDelayDialogVisible] = useState(false);
 
   const load = useCallback(async () => {
     if (!matchId) return;
@@ -78,16 +83,52 @@ export default function MatchDetailScreen(): React.ReactElement {
     }, [load]),
   );
 
+  const transitions = useMemo(() => {
+    if (!match) {
+      return [];
+    }
+    const { timezone } = resolveVenueDisplayTimezone(match.tournamentTimezone);
+    const options = getMatchDetailStatusTransitions({
+      state: match.state,
+      matchDate: match.matchDate,
+      startTime: match.startTime,
+      timeZone: timezone,
+    });
+    if (user != null && canViewAdminUsersDirectory(user.role)) {
+      return options;
+    }
+    return options.filter((next) => next !== MatchState.Delayed);
+  }, [match, user]);
+
   async function run(action: () => Promise<MatchDetail>): Promise<void> {
     setWorking(true);
     try {
       setMatch(await action());
       setError(null);
+      invalidateMatchData();
     } catch (err) {
       setError(err instanceof ApiRequestError ? err.message : 'Action failed.');
     } finally {
       setWorking(false);
     }
+  }
+
+  function handleStateTransition(next: MatchState): void {
+    if (next === MatchState.Delayed) {
+      setDelayDialogVisible(true);
+      return;
+    }
+    if (next === MatchState.Cancelled) {
+      confirmActionAlert({
+        title: 'Cancel match?',
+        message:
+          'This will mark the match as cancelled. Players will no longer be able to score or update the Playing 11 for this fixture.',
+        confirmLabel: 'Cancel Match',
+        onConfirm: () => run(() => setMatchState(match!.id, next)),
+      });
+      return;
+    }
+    void run(() => setMatchState(match!.id, next));
   }
 
   if (loading) {
@@ -100,12 +141,10 @@ export default function MatchDetailScreen(): React.ReactElement {
 
   if (error && !match) {
     return (
-      <SafeAreaView className="flex-1 bg-background">
-        <View className="px-6 py-12">
-          <Pressable onPress={() => router.back()}>
-            <Text className="font-sans text-primary">← Back</Text>
-          </Pressable>
-          <Text className="mt-6 font-sans text-base text-on-surface-variant">{error}</Text>
+      <SafeAreaView className="flex-1 bg-background" edges={['top']}>
+        <ScreenHeader />
+        <View className="flex-1 justify-center px-6">
+          <Text className="font-sans text-base text-on-surface-variant">{error}</Text>
         </View>
       </SafeAreaView>
     );
@@ -117,7 +156,24 @@ export default function MatchDetailScreen(): React.ReactElement {
   if (match.homeTeamId) systemTeams.push({ id: match.homeTeamId, name: match.homeTeamName ?? 'Home' });
   if (match.awayTeamId) systemTeams.push({ id: match.awayTeamId, name: match.awayTeamName ?? 'Away' });
 
-  const transitions = MATCH_STATE_TRANSITIONS[state].filter((s) => !DEDICATED_STATES.includes(s));
+  const scorerCanVerify = canVerifyPlayingXiForMatch(user, match);
+  /** Mirrors match-setup checkbox `opponentIsAccTeam` (persisted as awayTeamId vs externalOpponentName). */
+  const opponentIsAccTeam = isAccRegisteredOpponent(match);
+  const externalOpponent = isExternalOpponentMatch(match);
+  const xiFinalization = buildMatchPlayingXiFinalizationStatus({
+    homeTeamId: match.homeTeamId,
+    awayTeamId: match.awayTeamId,
+    homeTeamName: match.homeTeamName ?? 'Home',
+    awayTeamName: match.awayTeamName ?? match.externalOpponentName ?? 'Away',
+    squads: match.squads,
+    externalOpponentPlayerCount: externalOpponent ? match.externalPlayers.length : undefined,
+  });
+  const selectablePlayingXiTeams = systemTeams.filter(
+    (team) =>
+      canLockPlayingXiForTeam(user, match.tournamentId, team.id) ||
+      scorerCanVerify,
+  );
+
   const lockedUserIds = new Set(match.squads.flatMap((s) => s.players.map((p) => p.userId)));
   const activeScorerIds = new Set(match.activeScorers.map((s) => s.userId));
   const candidates: SquadPlayerView[] = match.squads.flatMap((s) =>
@@ -138,15 +194,30 @@ export default function MatchDetailScreen(): React.ReactElement {
       }));
   })();
 
-  const toss = tossSummary(match);
+  const scoreViewAction = (() => {
+    if (state === 'LIVE' || state === 'RAIN_INTERRUPTED') {
+      return { label: 'View Live Score', href: `/matches/${match.id}/live` as const };
+    }
+    if (POST_MATCH.includes(state)) {
+      return { label: 'View Scorecard', href: `/matches/${match.id}/scorecard` as const };
+    }
+    return null;
+  })();
+
+  function resolvePlayingXiRoute(team: { id: string; name: string }): string {
+    if (match.ballType === BallType.Leather) {
+      return `/matches/${match.id}/confirm-playing-xi?teamId=${team.id}&teamName=${encodeURIComponent(team.name)}`;
+    }
+    if (scorerCanVerify && !canLockPlayingXiForTeam(user, match.tournamentId, team.id)) {
+      return `/matches/${match.id}/verify-playing-xi?teamId=${team.id}&teamName=${encodeURIComponent(team.name)}`;
+    }
+    return `/matches/${match.id}/playing-xi?teamId=${team.id}&teamName=${encodeURIComponent(team.name)}`;
+  }
 
   return (
-    <SafeAreaView className="flex-1 bg-background">
-      <ScrollView contentContainerClassName="px-6 py-6 gap-4">
-        <Pressable onPress={() => router.back()}>
-          <Text className="font-sans text-primary">← Back</Text>
-        </Pressable>
-
+    <SafeAreaView className="flex-1 bg-background" edges={['top']}>
+      <ScreenHeader />
+      <ScrollView contentContainerClassName="px-6 pb-6 pt-2 gap-4">
         <View className="gap-2">
           <Text className="font-sans-bold text-2xl text-on-surface">
             {match.homeTeamName ?? 'TBD'} vs{' '}
@@ -158,10 +229,9 @@ export default function MatchDetailScreen(): React.ReactElement {
               {match.matchCode}
             </Text>
           ) : null}
-          {toss ? (
-            <Text className="font-sans text-sm text-on-surface-variant">{toss}</Text>
-          ) : null}
         </View>
+
+        <MatchDetailsSection match={match} />
 
         {error ? (
           <View className="rounded-lg bg-primary-50 px-4 py-3">
@@ -169,69 +239,97 @@ export default function MatchDetailScreen(): React.ReactElement {
           </View>
         ) : null}
 
-        {/* Live scoring & viewing (§28, §29) */}
-        {(['LIVE', 'RAIN_INTERRUPTED', 'COMPLETED', 'SCORECARD_LOCKED'] as MatchState[]).includes(
-          state,
-        ) ? (
-          <View className="gap-2">
-            <Button
-              onPress={() => router.push(`/matches/${match.id}/live`)}
-              variant="secondary"
-              className="h-12"
-              label="View Live Score"
-            />
-            {(['LIVE', 'RAIN_INTERRUPTED'] as MatchState[]).includes(state) ? (
+        {/* Live scoring (§28) or post-match scorecard (§13, §16) */}
+        {scoreViewAction ? (
+          <Button
+            onPress={() => router.push(scoreViewAction.href)}
+            variant="secondary"
+            className="h-12"
+            label={scoreViewAction.label}
+          />
+        ) : null}
+
+        {(state === 'COMPLETED' || state === 'SCORECARD_LOCKED') ? (
+          <MatchManOfMatchBlock
+            matchId={match.id}
+            match={match}
+            actionStyle="inline"
+          />
+        ) : null}
+
+        {canViewMatchPlayersPunchTimeButton(user, match) ? (
+          <Button
+            onPress={() => router.push(`/matches/${match.id}/punch-time`)}
+            variant="secondary"
+            className="h-12"
+            label="Players Punch Time"
+          />
+        ) : null}
+
+        {/* Playing 11 lock (§9.7) */}
+        {LOCKABLE.includes(state) && (selectablePlayingXiTeams.length > 0 || externalOpponent) ? (
+          <View className="gap-2 rounded-xl border border-outline-variant bg-surface-container-lowest p-4">
+            <Text className="font-sans-bold text-lg text-primary">Playing 11</Text>
+            <Text className="font-sans text-sm text-on-surface-variant">
+              {externalOpponent
+                ? `Confirm your team's 11 starters and add ${PLAYING_XI_SIZE} opponent player names before the match goes live.`
+                : 'Confirm exactly 11 starters per team (substitutes optional) before the match goes live.'}
+            </Text>
+            {selectablePlayingXiTeams.map((t) => {
+              const squad = match.squads.find((s) => s.teamId === t.id);
+              const finalized = Boolean(squad?.isFinalized);
+              return (
+                <Button
+                  key={t.id}
+                  onPress={() => router.push(resolvePlayingXiRoute(t))}
+                  variant="outline"
+                  className="h-12 flex-row justify-between border-primary px-4"
+                >
+                  <Text className="font-sans-semibold text-sm text-primary">
+                    {finalized ? 'Edit' : 'Confirm'} Playing 11 · {t.name}
+                  </Text>
+                  {finalized ? (
+                    <Text className="font-sans text-xs text-primary">Finalized ✓</Text>
+                  ) : null}
+                </Button>
+              );
+            })}
+            {externalOpponent && scorerCanVerify ? (
               <Button
-                onPress={() => router.push(`/matches/${match.id}/score`)}
-                variant="outline"
-                className="h-12 border-primary"
-                textClassName="text-primary"
-                label="Open Scoring"
+                onPress={() => router.push(`/matches/${match.id}/opponent-players`)}
+                className="h-12"
+                label={
+                  xiFinalization.awayTeamFinalized
+                    ? `Opponent Players (${PLAYING_XI_SIZE}/${PLAYING_XI_SIZE})`
+                    : `Add Opponent Team Players (${match.externalPlayers.length}/${PLAYING_XI_SIZE})`
+                }
+              />
+            ) : null}
+            {scorerCanVerify &&
+            opponentIsAccTeam &&
+            !xiFinalization.homeTeamFinalized &&
+            !xiFinalization.awayTeamFinalized ? (
+              <Button
+                onPress={() => router.push(`/matches/${match.id}/verify-playing-xi`)}
+                className="h-12"
+                label="Verify Both Teams' Playing 11"
               />
             ) : null}
           </View>
         ) : null}
 
-        {/* Result & scorecard confirmation (§13, §16) */}
-        {POST_MATCH.includes(state) ? (
-          <Button
-            onPress={() => router.push(`/matches/${match.id}/scorecard`)}
-            className="h-12"
-            label={
-              state === 'SCORECARD_LOCKED'
-                ? 'View Result & Scorecard'
-                : 'Confirm Scorecard & Result'
-            }
-          />
-        ) : null}
-
-        {/* Playing 11 lock (§9.7) */}
-        {LOCKABLE.includes(state) ? (
+        {externalOpponent && match.externalPlayers.length > 0 ? (
           <View className="gap-2 rounded-xl border border-outline-variant bg-surface-container-lowest p-4">
-            <Text className="font-sans-bold text-lg text-primary">Playing 11</Text>
-            <Text className="font-sans text-sm text-on-surface-variant">
-              Post the final 11 + 2 substitutes for each team.
+            <Text className="font-sans-bold text-lg text-primary">
+              {match.externalOpponentName ?? 'Opponent'} XI
             </Text>
-            {systemTeams.map((t) => {
-              const locked = match.squads.some((s) => s.teamId === t.id);
-              return (
-                <Button
-                  key={t.id}
-                  onPress={() =>
-                    router.push(
-                      `/matches/${match.id}/playing-xi?teamId=${t.id}&teamName=${encodeURIComponent(t.name)}`,
-                    )
-                  }
-                  variant="outline"
-                  className="h-12 flex-row justify-between border-primary px-4"
-                >
-                  <Text className="font-sans-semibold text-sm text-primary">
-                    {locked ? 'Edit' : 'Select'} 11 · {t.name}
-                  </Text>
-                  {locked ? <Text className="font-sans text-xs text-primary">Locked ✓</Text> : null}
-                </Button>
-              );
-            })}
+            {[...match.externalPlayers]
+              .sort((a, b) => a.slot - b.slot)
+              .map((player) => (
+                <Text key={player.id} className="font-sans text-sm text-on-surface">
+                  {player.name}
+                </Text>
+              ))}
           </View>
         ) : null}
 
@@ -253,11 +351,21 @@ export default function MatchDetailScreen(): React.ReactElement {
                 </Text>
               </View>
             ))}
+            {squad.penaltyServing.map((p) => (
+              <View key={`penalty-${p.userId}`} className="flex-row items-center justify-between">
+                <Text className="font-sans text-sm text-on-surface">
+                  {p.firstName} {p.lastName}
+                </Text>
+                <Text className="font-sans-medium text-[10px] uppercase tracking-wider text-on-surface-variant">
+                  Penalty Serving
+                </Text>
+              </View>
+            ))}
           </View>
         ))}
 
-        {/* Toss (§11.2) */}
-        {state === 'PLAYING_XI_LOCKED' ? (
+        {/* Toss (§11.2) — tennis: assigned match scorer + organizers; leather: existing rule */}
+        {canShowRecordToss(user, match) ? (
           <Button
             onPress={() => router.push(`/matches/${match.id}/toss`)}
             className="h-12"
@@ -266,7 +374,18 @@ export default function MatchDetailScreen(): React.ReactElement {
         ) : null}
 
         {/* Scorer assignment (§11.1) */}
-        {lockedUserIds.size > 0 ? (
+        {match.tennisScorer ? (
+          <MatchTennisScorerSection
+            matchId={match.id}
+            tournamentId={match.tournamentId}
+            tennisScorer={match.tennisScorer}
+            working={working}
+            onAssign={async (userId) => {
+              await run(() => assignScorer(match.id, { userId }));
+            }}
+            onScorerSwapped={() => void load()}
+          />
+        ) : lockedUserIds.size > 0 ? (
           <View className="gap-3 rounded-xl border border-outline-variant bg-surface-container-lowest p-4">
             <Text className="font-sans-bold text-lg text-primary">Scorer</Text>
             {match.activeScorers.length > 0 ? (
@@ -327,7 +446,7 @@ export default function MatchDetailScreen(): React.ReactElement {
                 <Button
                   key={next}
                   disabled={working}
-                  onPress={() => void run(() => setMatchState(match.id, next))}
+                  onPress={() => handleStateTransition(next)}
                   variant="outline"
                   className="border-primary px-4 py-2"
                   textClassName="text-primary"
@@ -338,6 +457,19 @@ export default function MatchDetailScreen(): React.ReactElement {
           </View>
         ) : null}
       </ScrollView>
+
+      <DelayMatchDialog
+        visible={delayDialogVisible}
+        working={working}
+        onClose={() => setDelayDialogVisible(false)}
+        onApply={async (delayMinutes) => {
+          await run(async () => {
+            const updated = await delayMatch(match!.id, { delayMinutes });
+            setDelayDialogVisible(false);
+            return updated;
+          });
+        }}
+      />
     </SafeAreaView>
   );
 }

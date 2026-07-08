@@ -4,18 +4,23 @@ import { useMemo } from 'react';
 import { buildCenterSevakDashboardSections } from '../../../src/components/dashboard/buildCenterSevakDashboardSections';
 import { DashboardScaffold } from '../../../src/components/dashboard/DashboardScaffold';
 import { useCenterSevakDashboard } from '../../../src/hooks/useCenterSevakDashboard';
-import { useCenterSevakTabConfig } from '../../../src/lib/center-sevak-tabs';
+import { useActiveBroadcast } from '../../../src/hooks/useActiveBroadcast';
+import { prependBroadcastSection } from '../../../src/lib/dashboard-broadcast';
+import { useAuth } from '../../../src/lib/auth-context';
 
 export default function CenterSevakDashboardScreen(): React.ReactElement {
   const router = useRouter();
+  const { user } = useAuth();
   const { dashboard, isLoading, error, retry } = useCenterSevakDashboard();
-  const tabConfig = useCenterSevakTabConfig('index');
+  const { broadcast } = useActiveBroadcast(!isLoading && !error);
 
-  const sections = useMemo(
-    () =>
-      dashboard ? buildCenterSevakDashboardSections(dashboard, router, retry) : [],
-    [dashboard, router, retry],
-  );
+  const sections = useMemo(() => {
+    const base =
+      dashboard && user
+        ? buildCenterSevakDashboardSections(dashboard, router, user, retry, retry)
+        : [];
+    return prependBroadcastSection(base, broadcast);
+  }, [broadcast, dashboard, router, retry, user]);
 
   return (
     <DashboardScaffold
@@ -24,7 +29,6 @@ export default function CenterSevakDashboardScreen(): React.ReactElement {
       error={error}
       onRetry={retry}
       sections={sections}
-      tabConfig={tabConfig}
     />
   );
 }

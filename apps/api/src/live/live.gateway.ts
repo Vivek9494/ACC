@@ -1,10 +1,13 @@
 import {
   LIVE_NAMESPACE,
   LiveEvent,
+  type LiveScorerRevokedMessage,
   type LiveStateMessage,
   type LiveSubscribeMessage,
   type LiveSubscribedMessage,
   type ScorecardResponse,
+  type ScorerRevokedReason,
+  ScorerRevokedReason as ScorerRevokedReasonConst,
   liveMatchRoom,
   liveStateCacheKey,
 } from '@acc/types';
@@ -93,6 +96,19 @@ export class LiveGateway implements OnGatewayConnection, OnGatewayDisconnect {
       updatedAt: new Date().toISOString(),
     };
     this.server.to(liveMatchRoom(matchId)).emit(LiveEvent.State, frame);
+  }
+
+  /** Notify match-room subscribers that the per-match scorer lost access mid-match. */
+  broadcastScorerRevoked(
+    matchId: string,
+    userId: string,
+    reason: ScorerRevokedReason = ScorerRevokedReasonConst.Swap,
+  ): void {
+    if (!this.server) {
+      return;
+    }
+    const frame: LiveScorerRevokedMessage = { matchId, userId, reason };
+    this.server.to(liveMatchRoom(matchId)).emit(LiveEvent.ScorerRevoked, frame);
   }
 
   private async readCached(matchId: string): Promise<ScorecardResponse | null> {

@@ -4,6 +4,7 @@ export const LOGIN_MESSAGES = {
   mobileInvalid: 'Enter a valid 10-digit mobile number',
   passwordRequired: 'Password is required',
   invalidCredentials: 'Invalid mobile number or password',
+  tempPasswordExpired: 'This temporary password has expired. Ask your admin for a new one.',
   tooManyAttempts: 'Too many attempts. Please try again in a few minutes.',
   genericError: 'Something went wrong. Please try again.',
 } as const;

@@ -1,17 +1,14 @@
 import {
   type AuthUser,
   type CaptainDashboard,
-  type CaptainFeaturedMatchStatus,
   type CaptainFeaturedMatchSummary,
   type CaptainPendingManOfMatch,
   type CaptainScorerAssignmentMatch,
   type CaptainUpcomingMatchCardView,
   type ManagerPlayerStats,
+  type ParticipationPollCardView,
   MatchState,
-  type MatchSummaryTeamView,
   Permission,
-  type TournamentSummary,
-  TossDecision,
   TournamentType,
   UserRole,
   computeManOfMatchDueAt,
@@ -22,28 +19,26 @@ import {
   serverVenueTimezone,
 } from '@acc/types';
 import { Injectable } from '@nestjs/common';
-import type { Match, Tournament } from '@prisma/client';
+import type { Match } from '@prisma/client';
 
 import { PermissionService } from '../authz/permission.service';
 import { isCaptainOrViceCaptain } from '../authz/team-leader.util';
+import { ScorerDashboardMatchService } from '../matches/scorer-dashboard-match.service';
+import { DashboardFeaturedMatchesService } from '../matches/dashboard-featured-matches.service';
 import { ParticipationPollService } from '../participation-poll/participation-poll.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { activeTournamentRelationWhere, activeTournamentWhere } from '../tournaments/tournament-query';
+import { LeatherTournamentVisibilityService } from '../tournaments/leather-tournament-visibility.service';
+import { TennisTournamentVisibilityService } from '../tournaments/tennis-tournament-visibility.service';
+import { TournamentsService } from '../tournaments/tournaments.service';
+import { activeTournamentRelationWhere } from '../tournaments/tournament-query';
 import { canShowScorerAssignmentCard } from '../matches/scorer-assignment.utils';
 import { ScorecardReader } from '../scoring/scorecard-reader';
+import { ScorecardConfirmationService } from '../scoring/scorecard-confirmation.service';
 import {
   formatScorerMatchDateTimeLine,
   isScorerMatchDayToday,
   SCORER_STARTABLE_MATCH_STATES,
 } from '../matches/match-start.utils';
-
-type TournamentWithCounts = Tournament & { _count: { teams: number } };
-
-type MatchWithTeams = Match & {
-  homeTeam: { id: string; name: string } | null;
-  awayTeam: { id: string; name: string } | null;
-  tournament: { name: string };
-};
 
 const UPCOMING_STATES: MatchState[] = [
   MatchState.Scheduled,
@@ -75,7 +70,17 @@ export class CaptainService {
     private readonly scorecardReader: ScorecardReader,
     private readonly permissions: PermissionService,
     private readonly participationPolls: ParticipationPollService,
+    private readonly leatherVisibility: LeatherTournamentVisibilityService,
+    private readonly tennisVisibility: TennisTournamentVisibilityService,
+    private readonly scorerDashboardMatch: ScorerDashboardMatchService,
+    private readonly scorecardConfirmation: ScorecardConfirmationService,
+    private readonly dashboardFeaturedMatches: DashboardFeaturedMatchesService,
+    private readonly tournaments: TournamentsService,
   ) {}
+
+  async loadSquadParticipationPoll(userId: string): Promise<ParticipationPollCardView | null> {
+    return this.participationPolls.loadDashboardPoll(userId);
+  }
 
   async getDashboard(actor: AuthUser): Promise<CaptainDashboard> {
     const userId = actor.id;
@@ -96,6 +101,14 @@ export class CaptainService {
       ),
     ];
 
+    const [visibleLeatherIds, centerTennisIds] = await Promise.all([
+      this.leatherVisibility.getVisibleLeatherTournamentIds(userId),
+      this.tennisVisibility.getCenterParticipatingTournamentIds(actor.centerId),
+    ]);
+    const mergedTournamentIds = [
+      ...new Set([...tournamentIds, ...visibleLeatherIds, ...centerTennisIds]),
+    ];
+
     const leadershipTeamIds = [
       ...new Set(
         leadership
@@ -104,14 +117,72 @@ export class CaptainService {
       ),
     ];
 
-    const [featuredMatch, captainPollCards, pendingManOfMatch, scorerAssignmentMatch, playerStats, tournaments] =
+    const [featuredMatchesRaw, teamLeadMatchCards, squadParticipationPoll, pendingManOfMatch, pendingScorecardConfirmations, scorerMatch, playerStats, tournaments] =
       await Promise.all([
-      this.loadFeaturedMatch(teamIds),
-      this.participationPolls.loadCaptainDashboardCards(userId),
+      this.dashboardFeaturedMatches.loadTodayMatches(),
+      this.loadTeamLeadMatchCards(actor),
+      this.loadSquadParticipationPoll(userId),
       this.loadPendingManOfMatch(userId, teamIds),
-      this.loadScorerAssignmentMatch(actor, teamIds),
-      this.loadPlayerStats(userId, tournamentIds),
-      this.listTeamTournaments(tournamentIds),
+      this.scorecardConfirmation.listPendingDashboardConfirmations(actor),
+      this.scorerDashboardMatch.loadStartableMatch(userId),
+      this.loadPlayerStats(userId, mergedTournamentIds),
+      this.tournaments.listDashboardSummaries(actor),
+    ]);
+
+    const featuredMatches = scorerMatch
+      ? featuredMatchesRaw.filter((match) => match.matchId !== scorerMatch.matchId)
+      : featuredMatchesRaw;
+
+    const { upcomingMatchCard, scorerAssignmentMatch } = teamLeadMatchCards;
+    const participationPoll = upcomingMatchCard ? null : squadParticipationPoll;
+
+    return {
+      featuredMatches,
+      upcomingMatchCard,
+      participationPoll,
+      playingXiCard: null,
+      punchTimeCard: null,
+      pendingManOfMatch,
+      pendingScorecardConfirmations,
+      scorerAssignmentMatch: upcomingMatchCard ? null : scorerAssignmentMatch,
+      scorerMatch,
+      playerStats,
+      tournaments,
+    };
+  }
+
+  /**
+   * Participation poll and upcoming-match prep cards for any user with Captain/VC
+   * team assignments (including Club Managers who captain an ACC team).
+   */
+  async loadTeamLeadMatchCards(actor: AuthUser): Promise<{
+    upcomingMatchCard: CaptainUpcomingMatchCardView | null;
+    participationPoll: ParticipationPollCardView | null;
+    scorerAssignmentMatch: CaptainScorerAssignmentMatch | null;
+  }> {
+    const leadership = await this.prisma.roleAssignment.findMany({
+      where: {
+        userId: actor.id,
+        role: { in: [UserRole.Captain, UserRole.ViceCaptain] },
+      },
+      select: { teamId: true },
+    });
+    const leadershipTeamIds = [
+      ...new Set(
+        leadership.map((row) => row.teamId).filter((id): id is string => Boolean(id)),
+      ),
+    ];
+    if (leadershipTeamIds.length === 0) {
+      return {
+        upcomingMatchCard: null,
+        participationPoll: null,
+        scorerAssignmentMatch: null,
+      };
+    }
+
+    const [captainPollCards, scorerAssignmentMatch] = await Promise.all([
+      this.participationPolls.loadCaptainDashboardCards(actor.id),
+      this.loadScorerAssignmentMatch(actor, leadershipTeamIds),
     ]);
 
     const upcomingMatchCard = await this.buildUpcomingMatchCard(
@@ -121,15 +192,9 @@ export class CaptainService {
     );
 
     return {
-      featuredMatch,
       upcomingMatchCard,
-      participationPoll: upcomingMatchCard ? null : captainPollCards.participationPoll,
-      playingXiCard: null,
-      punchTimeCard: null,
-      pendingManOfMatch,
+      participationPoll: null,
       scorerAssignmentMatch: upcomingMatchCard ? null : scorerAssignmentMatch,
-      playerStats,
-      tournaments,
     };
   }
 
@@ -420,161 +485,6 @@ export class CaptainService {
     return false;
   }
 
-  private async loadFeaturedMatch(teamIds: string[]): Promise<CaptainFeaturedMatchSummary | null> {
-    if (teamIds.length === 0) {
-      return null;
-    }
-
-    const teamFilter = {
-      OR: [{ homeTeamId: { in: teamIds } }, { awayTeamId: { in: teamIds } }],
-    };
-
-    const liveMatch = await this.prisma.match.findFirst({
-      where: { ...teamFilter, state: { in: LIVE_STATES }, ...activeTournamentRelationWhere },
-      orderBy: [{ matchDate: 'desc' }, { createdAt: 'desc' }],
-      include: {
-        homeTeam: { select: { id: true, name: true } },
-        awayTeam: { select: { id: true, name: true } },
-        tournament: { select: { name: true } },
-      },
-    });
-
-    const match =
-      liveMatch ??
-      (await this.prisma.match.findFirst({
-        where: { ...teamFilter, state: { in: UPCOMING_STATES }, ...activeTournamentRelationWhere },
-        orderBy: [{ matchDate: 'asc' }, { createdAt: 'asc' }],
-        include: {
-          homeTeam: { select: { id: true, name: true } },
-          awayTeam: { select: { id: true, name: true } },
-          tournament: { select: { name: true } },
-        },
-      }));
-
-    if (!match) {
-      return null;
-    }
-
-    return this.buildFeaturedMatch(match);
-  }
-
-  private async buildFeaturedMatch(
-    match: MatchWithTeams,
-  ): Promise<CaptainFeaturedMatchSummary> {
-    const state = match.state as MatchState;
-    const status = this.resolveStatus(state);
-    const isUpcoming = status === 'UPCOMING';
-
-    const homeName = match.homeTeam?.name ?? 'TBD';
-    const awayName = match.awayTeam?.name ?? match.externalOpponentName ?? 'TBD';
-
-    let teamA: MatchSummaryTeamView = {
-      name: homeName,
-      logoUrl: null,
-      score: null,
-      overs: null,
-      isWinner: false,
-    };
-    let teamB: MatchSummaryTeamView = {
-      name: awayName,
-      logoUrl: null,
-      score: null,
-      overs: null,
-      isWinner: false,
-    };
-    let resultLine: string | null = null;
-
-    if (!isUpcoming) {
-      try {
-        const card = await this.scorecardReader.build(match);
-        const homeId = match.homeTeamId;
-        const awayId = match.awayTeamId;
-
-        const homeInnings = card.innings.filter((inn) => inn.battingTeamId === homeId);
-        const awayInnings = card.innings.filter((inn) => inn.battingTeamId === awayId);
-
-        const homeAgg = this.aggregateInnings(homeInnings);
-        const awayAgg = this.aggregateInnings(awayInnings);
-
-        const winnerId = card.result.winningTeamId;
-        const homeWinner = winnerId !== null && winnerId === homeId;
-        const awayWinner = winnerId !== null && winnerId === awayId;
-
-        teamA = {
-          name: homeName,
-          logoUrl: null,
-          score: homeAgg.score,
-          overs: homeAgg.overs,
-          isWinner: homeWinner,
-        };
-        teamB = {
-          name: awayName,
-          logoUrl: null,
-          score: awayAgg.score,
-          overs: awayAgg.overs,
-          isWinner: awayWinner,
-        };
-
-        if (status === 'COMPLETED' && card.result.note) {
-          resultLine = card.result.note;
-        }
-      } catch {
-        // Scorecard not yet available — keep rows without scores.
-      }
-    }
-
-    const infoLine = status === 'LIVE' || status === 'UPCOMING' ? this.tossLine(match) : null;
-
-    return {
-      matchId: match.id,
-      tournamentName: match.tournament.name,
-      state,
-      status,
-      teamA,
-      teamB,
-      infoLine,
-      resultLine,
-    };
-  }
-
-  private resolveStatus(state: MatchState): CaptainFeaturedMatchStatus {
-    if (LIVE_STATES.includes(state)) {
-      return 'LIVE';
-    }
-    if (UPCOMING_STATES.includes(state)) {
-      return 'UPCOMING';
-    }
-    return 'COMPLETED';
-  }
-
-  private tossLine(match: MatchWithTeams): string | null {
-    if (!match.tossWinner || !match.tossDecision) {
-      return null;
-    }
-    const homeName = match.homeTeam?.name ?? 'TBD';
-    const awayName = match.awayTeam?.name ?? match.externalOpponentName ?? 'TBD';
-    const winnerName = match.tossWinner === 'TEAM_A' ? homeName : awayName;
-    const decision = match.tossDecision === TossDecision.Bat ? 'bat' : 'bowl';
-    return `${winnerName} won the toss and chose to ${decision}`;
-  }
-
-  private aggregateInnings(
-    innings: { runs: number; wickets: number; oversText: string; closed: boolean }[],
-  ): { score: string | null; overs: string | null } {
-    if (innings.length === 0) {
-      return { score: null, overs: null };
-    }
-
-    const primary = innings[0]!;
-    const runs = innings.reduce((sum, inn) => sum + inn.runs, 0);
-    const wickets = innings.reduce((sum, inn) => sum + inn.wickets, 0);
-    const score =
-      primary.closed && wickets >= 10 ? `${runs}` : `${runs}/${wickets}`;
-    const overs = `${primary.oversText} OVERS`;
-
-    return { score, overs };
-  }
-
   private async loadPlayerStats(
     userId: string,
     tournamentIds: string[],
@@ -619,38 +529,5 @@ export class CaptainService {
     }
 
     return { matches: matchIds.length, runs, wickets };
-  }
-
-  private async listTeamTournaments(tournamentIds: string[]): Promise<TournamentSummary[]> {
-    if (tournamentIds.length === 0) {
-      return [];
-    }
-
-    const rows = await this.prisma.tournament.findMany({
-      where: { id: { in: tournamentIds }, ...activeTournamentWhere },
-      orderBy: [{ startAt: 'desc' }, { createdAt: 'desc' }],
-      include: { _count: { select: { teams: true } } },
-    });
-
-    return rows.map((row) => this.toTournamentSummary(row));
-  }
-
-  private toTournamentSummary(row: TournamentWithCounts): TournamentSummary {
-    return {
-      id: row.id,
-      name: row.name,
-      year: row.year,
-      type: row.type,
-      state: row.state,
-      ballType: row.ballType,
-      posterUrl: row.posterUrl,
-      startAt: row.startAt.toISOString(),
-      endAt: row.endAt.toISOString(),
-      locationAddress: row.locationAddress,
-      latitude: row.latitude,
-      longitude: row.longitude,
-      timezone: row.timezone,
-      teamCount: row._count.teams,
-    };
   }
 }

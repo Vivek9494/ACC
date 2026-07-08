@@ -28,9 +28,9 @@ export function ParticipationPollCard({
           <Text className="font-sans text-sm text-on-surface-variant">{poll.dateTimeLine}</Text>
         </View>
         {poll.venue ? (
-          <View className="flex-row items-center gap-2">
+          <View className="flex-row items-start gap-2">
             <MaterialIcons name="location-on" size={16} color={colors.textMuted} />
-            <Text className="font-sans text-sm text-on-surface-variant" numberOfLines={2}>
+            <Text className="min-w-0 flex-1 font-sans text-sm text-on-surface-variant">
               {poll.venue}
             </Text>
           </View>

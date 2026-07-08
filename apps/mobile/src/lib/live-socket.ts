@@ -7,6 +7,7 @@
 import {
   LIVE_NAMESPACE,
   LiveEvent,
+  type LiveScorerRevokedMessage,
   type LiveStateMessage,
   type LiveSubscribeMessage,
   type ScorecardResponse,
@@ -73,4 +74,48 @@ export function useLiveScore(
   }, [matchId]);
 
   return { state, status };
+}
+
+/**
+ * Listens for mid-match scorer revoke events on the match room. The outgoing
+ * scorer's scoring screen subscribes so it can show the revoke dialog.
+ */
+export function useMatchScorerRevokeListener(
+  matchId: string | undefined,
+  userId: string | undefined,
+  onRevoked: (reason?: LiveScorerRevokedMessage['reason']) => void,
+): void {
+  const onRevokedRef = useRef(onRevoked);
+  onRevokedRef.current = onRevoked;
+
+  useEffect(() => {
+    if (!matchId || !userId) {
+      return;
+    }
+
+    const socket = io(`${API_BASE_URL}${LIVE_NAMESPACE}`, {
+      transports: ['websocket'],
+      forceNew: true,
+    });
+
+    const subscribe = (): void => {
+      const msg: LiveSubscribeMessage = { matchId };
+      socket.emit(LiveEvent.Subscribe, msg);
+    };
+
+    socket.on('connect', subscribe);
+    socket.io.on('reconnect', subscribe);
+    socket.on(LiveEvent.ScorerRevoked, (frame: LiveScorerRevokedMessage) => {
+      if (frame.matchId === matchId && frame.userId === userId) {
+        onRevokedRef.current(frame.reason);
+      }
+    });
+
+    return () => {
+      const msg: LiveSubscribeMessage = { matchId };
+      socket.emit(LiveEvent.Unsubscribe, msg);
+      socket.removeAllListeners();
+      socket.disconnect();
+    };
+  }, [matchId, userId]);
 }

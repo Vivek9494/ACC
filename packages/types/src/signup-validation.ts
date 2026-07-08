@@ -5,13 +5,22 @@ import {
 } from './password-policy';
 import { CANADIAN_POSTAL_CODE_REGEX } from './postal-code';
 
-export const SIGNUP_NAME_MAX_LENGTH = 20;
+export const SIGNUP_NAME_MAX_LENGTH = 40;
 export const SIGNUP_ADDRESS_MAX_LENGTH = 200;
 export const SIGNUP_MOBILE_LENGTH = 10;
 export const SIGNUP_PROFILE_PHOTO_MAX_BYTES = 5 * 1024 * 1024;
 
-/** Letters plus spaces, hyphens, and apostrophes for personal names. */
-export const SIGNUP_NAME_REGEX = /^[A-Za-z\s'-]+$/;
+/**
+ * Strip XSS / control characters while typing. Does not remove other disallowed
+ * punctuation — those fail {@link validateSignupName} on submit.
+ */
+export const SIGNUP_NAME_UNSAFE_CHARS_REGEX = /[<>\u0000-\u001F\u007F-\u009F]/g;
+
+/**
+ * Personal names: Unicode letters and marks, spaces, apostrophes (' and ’),
+ * hyphens, periods, and parentheses. Used by client + server validators.
+ */
+export const SIGNUP_NAME_REGEX = /^[\p{L}\p{M} '\u2019().\-]+$/u;
 
 /** Exactly ten digits (Canadian local mobile without country code). */
 export const SIGNUP_MOBILE_REGEX = /^\d{10}$/;
@@ -23,13 +32,13 @@ export const SIGNUP_VALIDATION_MESSAGES = {
   },
   firstName: {
     required: 'First name is required',
-    invalid: 'First name can only contain letters',
-    max: 'Max 20 characters',
+    invalid: "Use letters, spaces, and common punctuation only (' - . ( ))",
+    max: `Max ${SIGNUP_NAME_MAX_LENGTH} characters`,
   },
   lastName: {
     required: 'Last name is required',
-    invalid: 'Last name can only contain letters',
-    max: 'Max 20 characters',
+    invalid: "Use letters, spaces, and common punctuation only (' - . ( ))",
+    max: `Max ${SIGNUP_NAME_MAX_LENGTH} characters`,
   },
   mobileNumber: {
     required: 'Mobile number is required',
@@ -61,8 +70,8 @@ export const SIGNUP_VALIDATION_MESSAGES = {
   },
   emergencyContactName: {
     required: 'Contact name is required',
-    invalid: 'Contact name can only contain letters',
-    max: 'Max 20 characters',
+    invalid: "Use letters, spaces, and common punctuation only (' - . ( ))",
+    max: `Max ${SIGNUP_NAME_MAX_LENGTH} characters`,
   },
   emergencyContactNumber: {
     required: 'Contact number is required',
@@ -117,7 +126,18 @@ function ageInYears(dob: Date, today: Date): number {
 }
 
 export function formatSignupNameInput(input: string): string {
-  return input.slice(0, SIGNUP_NAME_MAX_LENGTH);
+  return input.replace(SIGNUP_NAME_UNSAFE_CHARS_REGEX, '').slice(0, SIGNUP_NAME_MAX_LENGTH);
+}
+
+export function isSignupNameValid(value: string): boolean {
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.length > SIGNUP_NAME_MAX_LENGTH) {
+    return false;
+  }
+  if (SIGNUP_NAME_UNSAFE_CHARS_REGEX.test(trimmed)) {
+    return false;
+  }
+  return SIGNUP_NAME_REGEX.test(trimmed);
 }
 
 export function formatSignupMobileInput(input: string): string {
@@ -143,7 +163,7 @@ export function validateSignupName(
   if (trimmed.length > SIGNUP_NAME_MAX_LENGTH) {
     return messages.max;
   }
-  if (!SIGNUP_NAME_REGEX.test(trimmed)) {
+  if (!isSignupNameValid(trimmed)) {
     return messages.invalid;
   }
   return null;

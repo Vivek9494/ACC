@@ -2,12 +2,13 @@ import { type MatchDetail, type MatchSide, type TossDecision } from '@acc/types'
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
+import { ScreenHeader } from '../../../src/components/ui/ScreenHeader';
 import { Button } from '../../../src/components/ui/Button';
 import { Text } from '../../../src/components/ui/Text';
 import { FIELD_ORANGE } from '../../../src/components/ui/fieldStyles';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ApiRequestError, getMatch, recordToss, setMatchState } from '../../../src/lib/api';
+import { ApiRequestError, getMatch, startScoring } from '../../../src/lib/api';
 
 function initials(name: string): string {
   return name
@@ -54,12 +55,10 @@ export default function TossScreen(): React.ReactElement {
     }
     setSaving(true);
     try {
-      await recordToss(matchId, { tossWinner: winner, decision });
-      // §11.2: once the toss is captured the Scorer can begin — move to Live.
-      await setMatchState(matchId, 'LIVE');
-      router.back();
+      await startScoring(matchId, { tossWinner: winner, decision });
+      router.push(`/matches/${matchId}/score`);
     } catch (err) {
-      setError(err instanceof ApiRequestError ? err.message : 'Could not record the toss.');
+      setError(err instanceof ApiRequestError ? err.message : 'Could not start scoring.');
     } finally {
       setSaving(false);
     }
@@ -74,12 +73,10 @@ export default function TossScreen(): React.ReactElement {
   }
   if (!match) {
     return (
-      <SafeAreaView className="flex-1 bg-background">
-        <View className="px-6 py-12">
-          <Pressable onPress={() => router.back()}>
-            <Text className="font-sans text-primary">← Back</Text>
-          </Pressable>
-          <Text className="mt-6 font-sans text-base text-on-surface-variant">
+      <SafeAreaView className="flex-1 bg-background" edges={['top']}>
+        <ScreenHeader title="Match Setup" onBack={() => router.back()} />
+        <View className="flex-1 px-6 py-12">
+          <Text className="font-sans text-base text-on-surface-variant">
             {error ?? 'Match not found.'}
           </Text>
         </View>
@@ -95,13 +92,9 @@ export default function TossScreen(): React.ReactElement {
   ];
 
   return (
-    <SafeAreaView className="flex-1 bg-background">
+    <SafeAreaView className="flex-1 bg-background" edges={['top']}>
+      <ScreenHeader title="Match Setup" onBack={() => router.back()} />
       <ScrollView contentContainerClassName="px-6 py-6 gap-6">
-        <Pressable onPress={() => router.back()}>
-          <Text className="font-sans text-primary">← Back</Text>
-        </Pressable>
-        <Text className="font-sans-bold text-2xl text-on-surface">Match Setup</Text>
-
         {error ? (
           <View className="rounded-lg bg-primary-50 px-4 py-3">
             <Text className="font-sans text-sm text-primary">{error}</Text>

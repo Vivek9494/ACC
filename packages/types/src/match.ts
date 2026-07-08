@@ -4,6 +4,15 @@
  * matchday squad (§9.7, §8) and the per-match Scorer grant (§11.1).
  */
 
+import { APP_SHORT_NAME } from './app-branding';
+
+import type { RegistrationPlayerType } from './registration';
+import { type AuthUser, UserRole } from './auth';
+import { BallType } from './rbac';
+import type { MatchTennisScorerView } from './tournament-scorers';
+import { canManageTournamentScorers } from './tournament-scorers';
+import { canViewAdminUsersDirectory } from './admin';
+
 /** Match states (spec §5.2). */
 export const MatchState = {
   Scheduled: 'SCHEDULED',
@@ -34,9 +43,9 @@ export const MATCH_STATE_LABELS: Record<MatchState, string> = {
 
 /**
  * Allowed match-state transitions (§5.2). The happy path is
- * Scheduled → Playing 11 Locked → Toss Completed → Live → Completed →
- * Scorecard Locked. Delayed/Rain Interrupted are recoverable side states;
- * Cancelled / No Result are terminal-ish (No Result still locks a scorecard).
+ * Scheduled → Playing 11 Locked → Toss Completed → Live → Completed.
+ * Scorecard lock (§13.1) is tracked via confirmation fields, not a state change.
+ * Delayed/Rain Interrupted are recoverable side states; Cancelled / No Result are terminal.
  */
 export const MATCH_STATE_TRANSITIONS: Record<MatchState, MatchState[]> = {
   SCHEDULED: ['PLAYING_XI_LOCKED', 'DELAYED', 'CANCELLED'],
@@ -45,8 +54,8 @@ export const MATCH_STATE_TRANSITIONS: Record<MatchState, MatchState[]> = {
   DELAYED: ['PLAYING_XI_LOCKED', 'TOSS_COMPLETED', 'LIVE', 'CANCELLED'],
   LIVE: ['RAIN_INTERRUPTED', 'COMPLETED', 'NO_RESULT', 'CANCELLED'],
   RAIN_INTERRUPTED: ['LIVE', 'COMPLETED', 'NO_RESULT', 'CANCELLED'],
-  COMPLETED: ['SCORECARD_LOCKED'],
-  NO_RESULT: ['SCORECARD_LOCKED'],
+  COMPLETED: [],
+  NO_RESULT: [],
   CANCELLED: [],
   SCORECARD_LOCKED: [],
 };
@@ -58,6 +67,75 @@ export const MATCH_END_STATES: MatchState[] = [
   MatchState.Cancelled,
   MatchState.ScorecardLocked,
 ];
+
+/**
+ * Match states in which ball-by-ball scoring is active (§12) — same values the
+ * scoring engine accepts via `SCORABLE_STATES`.
+ */
+export const LIVE_MATCH_STATES: MatchState[] = [MatchState.Live, MatchState.RainInterrupted];
+
+/**
+ * Pre-live fixture states where a per-match scorer assignment may be cleared when
+ * a player is removed from the tournament scorer pool.
+ */
+export const PRE_LIVE_MATCH_STATES: MatchState[] = [
+  MatchState.Scheduled,
+  MatchState.Delayed,
+  MatchState.PlayingXiLocked,
+  MatchState.TossCompleted,
+];
+
+/** True when the fixture has not yet gone Live (status-based, not date-based). */
+export function isPreLiveMatchState(state: MatchState): boolean {
+  return PRE_LIVE_MATCH_STATES.includes(state);
+}
+
+/** Targets reachable only after the match is underway (Match Detail status controls). */
+export const IN_PLAY_ONLY_STATUS_TARGETS: MatchState[] = [
+  MatchState.RainInterrupted,
+  MatchState.Completed,
+  MatchState.NoResult,
+];
+
+/** §5.2 states that use dedicated endpoints — excluded from generic status buttons. */
+export const MATCH_DETAIL_DEDICATED_TRANSITION_STATES: MatchState[] = [
+  MatchState.PlayingXiLocked,
+  MatchState.TossCompleted,
+  MatchState.ScorecardLocked,
+];
+
+export const MATCH_SCORER_CHANGE_LOCKED_LIVE_ERROR = 'MATCH_SCORER_CHANGE_LOCKED_LIVE';
+
+export const MATCH_SCORER_CHANGE_LOCKED_LIVE_MESSAGE =
+  "Can't change the scorer while the match is in progress.";
+
+export const MATCH_SCORER_CHANGE_LOCKED_FINAL_ERROR = 'MATCH_SCORER_CHANGE_LOCKED_FINAL';
+
+export const MATCH_SCORER_CHANGE_LOCKED_FINAL_MESSAGE =
+  'The match scorer cannot be changed after the match is finished.';
+
+/** Whether the per-match scorer picker is blocked for this fixture state. */
+export function resolveMatchScorerEditLock(state: MatchState): {
+  locked: boolean;
+  message: string | null;
+  error: string | null;
+} {
+  if (LIVE_MATCH_STATES.includes(state)) {
+    return {
+      locked: true,
+      message: MATCH_SCORER_CHANGE_LOCKED_LIVE_MESSAGE,
+      error: MATCH_SCORER_CHANGE_LOCKED_LIVE_ERROR,
+    };
+  }
+  if (MATCH_END_STATES.includes(state)) {
+    return {
+      locked: true,
+      message: MATCH_SCORER_CHANGE_LOCKED_FINAL_MESSAGE,
+      error: MATCH_SCORER_CHANGE_LOCKED_FINAL_ERROR,
+    };
+  }
+  return { locked: false, message: null, error: null };
+}
 
 /** One of a match's two sides (spec §11.2 toss inputs). */
 export const MatchSide = {
@@ -88,6 +166,26 @@ export const MatchType = {
 } as const;
 export type MatchType = (typeof MatchType)[keyof typeof MatchType];
 
+/**
+ * Knockout (cross-group) round types. These matches pair teams from different
+ * groups, so no Group is required and teams are not filtered to a single group.
+ * SUPER_LEAGUE / SUPER_EIGHT are league-style phases and are NOT knockout.
+ */
+export const KNOCKOUT_MATCH_TYPES: readonly MatchType[] = [
+  MatchType.PreQuarterFinal,
+  MatchType.QuarterFinal,
+  MatchType.SemiFinal,
+  MatchType.Final,
+  MatchType.Qualifier1,
+  MatchType.Qualifier2,
+  MatchType.Eliminator,
+];
+
+/** True for cross-group knockout round types — group is optional for these. */
+export function isKnockoutMatchType(type: MatchType | string | null | undefined): boolean {
+  return type != null && (KNOCKOUT_MATCH_TYPES as readonly string[]).includes(type);
+}
+
 export const MATCH_TYPE_LABELS: Record<MatchType, string> = {
   LEAGUE_MATCH: 'League Match',
   PRE_QUARTER_FINAL: 'Pre Quarter Final',
@@ -100,6 +198,26 @@ export const MATCH_TYPE_LABELS: Record<MatchType, string> = {
   ELIMINATOR: 'Eliminator',
   SUPER_EIGHT: 'Super Eight',
 };
+
+/** Ground-setup responsibility on ACC schedule entries (spec §27). */
+export const HomeAway = {
+  Home: 'HOME',
+  Away: 'AWAY',
+} as const;
+export type HomeAway = (typeof HomeAway)[keyof typeof HomeAway];
+
+export const HOME_AWAY_LABELS: Record<HomeAway, string> = {
+  HOME: 'Home',
+  AWAY: 'Away',
+};
+
+/** Match Detail copy — which side sets up stumps and boundary cones. */
+export function formatMatchGroundSetupLabel(homeAway: HomeAway): string {
+  if (homeAway === HomeAway.Home) {
+    return `Home (${APP_SHORT_NAME} team sets up stumps & boundary cones)`;
+  }
+  return 'Away (Opponent team sets up stumps & boundary cones)';
+}
 
 /** Role of a player within a locked matchday squad (spec §9.7, §8). */
 export const MatchSquadRole = {
@@ -152,8 +270,13 @@ export interface CreateMatchRequest {
   powerplayOvers?: number | null;
   /** Tennis-ball batting powerplay; optional (0 = none). Ignored for leather. */
   battingPowerplayOvers?: number | null;
+  /** ACC ground-setup responsibility (§27); optional. */
+  homeAway?: HomeAway | null;
   youtubeUrl?: string | null;
 }
+
+/** Update an upcoming match fixture — same fields as create (§11). */
+export type UpdateMatchRequest = CreateMatchRequest;
 
 /** Lock a team's Playing 11 + substitutes (+ impact candidates) — §9.7, §8. */
 export interface LockPlayingXiRequest {
@@ -201,11 +324,28 @@ export interface HandoverScorerRequest {
   toUserId: string;
 }
 
+/** Admin/Club Manager mid-match scorer swap — incoming user from the tournament pool of 5. */
+export interface SwapMatchScorerRequest {
+  userId: string;
+}
+
+/**
+ * Platform roles that may override the live-match scorer lock via "Change Scorer".
+ * Reuses the Admin/Club Manager directory signal (DP2).
+ */
+export function canMidMatchSwapMatchScorer(role: UserRole | undefined): boolean {
+  return role !== undefined && canViewAdminUsersDirectory(role);
+}
+
 // --- Read projections -------------------------------------------------------
 
 export interface MatchSummary {
   id: string;
   tournamentId: string;
+  /** Tournament display name (from tournament relation). */
+  tournamentName: string;
+  /** Tournament ball type — drives tennis vs leather scorer flows. */
+  ballType: BallType;
   matchCode: string | null;
   matchType: MatchType;
   state: MatchState;
@@ -214,8 +354,12 @@ export interface MatchSummary {
   awayTeamId: string | null;
   awayTeamName: string | null;
   externalOpponentName: string | null;
+  /** ACC ground-setup responsibility (§27); null on older fixtures. */
+  homeAway: HomeAway | null;
   matchDate: string | null;
   startTime: string | null;
+  /** Cumulative pre-live delay in minutes; original startTime unchanged. */
+  delayMinutes: number;
 }
 
 export interface SquadPlayerView {
@@ -227,12 +371,19 @@ export interface SquadPlayerView {
   battingOrder: number | null;
 }
 
+import type { PenaltyServingPlayerView } from './suspension';
+
 export interface SquadView {
   teamId: string;
   teamName: string;
   lockedByUserId: string;
   lockedAt: string;
+  isFinalized: boolean;
+  finalizedByUserId: string | null;
+  finalizedAt: string | null;
   players: SquadPlayerView[];
+  /** Suspended players sitting out this match (not in the Playing 11). */
+  penaltyServing: PenaltyServingPlayerView[];
 }
 
 export interface ScorerGrantView {
@@ -244,6 +395,9 @@ export interface ScorerGrantView {
 }
 
 export interface MatchDetail extends MatchSummary {
+  groupId: string | null;
+  /** Group display name when `groupId` is set (group-stage fixtures). */
+  groupName: string | null;
   reportingTime: string | null;
   groundLocation: string | null;
   /** Geofence centre latitude (leather matches). */
@@ -252,6 +406,8 @@ export interface MatchDetail extends MatchSummary {
   geofenceLng: number | null;
   /** Tournament venue IANA timezone for local display. */
   tournamentTimezone: string | null;
+  /** Tournament default overs when the match row has no per-match value. */
+  tournamentOversPerInnings: number | null;
   oversPerInnings: number | null;
   maxOversPerBowler: number | null;
   powerplayOvers: number | null;
@@ -287,6 +443,8 @@ export interface MatchDetail extends MatchSummary {
   /** Derived/persisted match winner; null for a tie/No Result. */
   winningTeamId: string | null;
   isNoResult: boolean;
+  /** Tennis Phase 2: per-match scorer picker state; null for leather. */
+  tennisScorer: MatchTennisScorerView | null;
 }
 
 /** A selectable player for the Playing-11 screen (§9.7). */
@@ -296,6 +454,8 @@ export interface SquadCandidate {
   lastName: string;
   battingStyle: string | null;
   bowlingStyle: string | null;
+  /** Leather registration player type; null for tennis or unset. */
+  playerType: RegistrationPlayerType | null;
   /** §9.7: shown with a "Suspended" badge; allowed in XI, never as substitute. */
   isSuspended: boolean;
 }
@@ -316,6 +476,12 @@ export interface AddExternalBatsmanRequest {
   battingStyle?: string | null;
 }
 
+/** Pre-match opponent roster entry (§9.5) — same shape as live external players. */
+export type AddOpponentPlayerRequest = Pick<AddExternalBatsmanRequest, 'name'>;
+
+/** Rename a name-only external opponent player (§9.5 runtime typo correction). */
+export type UpdateOpponentPlayerRequest = Pick<AddExternalBatsmanRequest, 'name'>;
+
 /** Add a name-only bowler to the external opponent's match roster (§9.5). */
 export interface AddExternalBowlerRequest {
   name: string;
@@ -326,5 +492,65 @@ export interface AddExternalBowlerRequest {
 export const MatchAuditAction = {
   ExternalBatsmanAdded: 'EXTERNAL_BATSMAN_ADDED',
   ExternalBowlerAdded: 'EXTERNAL_BOWLER_ADDED',
+  ExternalPlayerRenamed: 'EXTERNAL_PLAYER_RENAMED',
 } as const;
 export type MatchAuditAction = (typeof MatchAuditAction)[keyof typeof MatchAuditAction];
+
+/** Active per-match scorer id from the tennis picker view; null when unassigned or stale. */
+export function assignedMatchScorerUserId(
+  tennisScorer: MatchTennisScorerView | null | undefined,
+): string | null {
+  if (!tennisScorer?.assignedScorer || tennisScorer.assignedScorer.isStale) {
+    return null;
+  }
+  return tennisScorer.assignedScorer.userId;
+}
+
+export interface MatchTossSummaryInput {
+  tossWinner: MatchSide | null;
+  tossDecision: TossDecision | null;
+  homeTeamName: string | null;
+  awayTeamName: string | null;
+  externalOpponentName: string | null;
+}
+
+/** Human-readable toss line for live/completed scorecards and dashboard cards. */
+export function formatMatchTossSummaryLine(match: MatchTossSummaryInput): string | null {
+  if (!match.tossWinner || !match.tossDecision) {
+    return null;
+  }
+  const winnerName =
+    match.tossWinner === MatchSide.TeamA
+      ? (match.homeTeamName ?? 'Home')
+      : (match.awayTeamName ?? match.externalOpponentName ?? 'Away');
+  const decisionWord = match.tossDecision === TossDecision.Bat ? 'bat' : 'bowl';
+  return `${winnerName} won the toss and chose to ${decisionWord}`;
+}
+
+/**
+ * Tennis: assigned match scorer + Admin/tournament organizers (DP1). Leather: unchanged
+ * visibility — show whenever Playing 11 is locked; server enforces RECORD_TOSS (DP3).
+ */
+export function canShowRecordToss(
+  user: AuthUser | null | undefined,
+  match: Pick<MatchDetail, 'state' | 'ballType' | 'tennisScorer'>,
+): boolean {
+  if (match.state !== MatchState.PlayingXiLocked) {
+    return false;
+  }
+
+  if (match.ballType !== BallType.Tennis) {
+    return true;
+  }
+
+  if (!user || !match.tennisScorer) {
+    return false;
+  }
+
+  if (user.role === UserRole.Admin || match.tennisScorer.canManageTournamentScorers) {
+    return true;
+  }
+
+  const assignedScorerId = assignedMatchScorerUserId(match.tennisScorer);
+  return assignedScorerId !== null && user.id === assignedScorerId;
+}

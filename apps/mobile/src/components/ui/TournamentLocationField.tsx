@@ -1,40 +1,62 @@
 import { Ionicons } from '@expo/vector-icons';
-import type { PlaceSuggestion } from '@acc/types';
+import {
+  LOCATION_INPUT_MESSAGES,
+  isCoordinateLikeInput,
+  looksLikeGoogleMapsUrl,
+  normalizeMapsUrlInput,
+  parseCoordinatePair,
+  parseGoogleMapsUrlCoordinates,
+  type PlaceSuggestion,
+} from '@acc/types';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Keyboard,
-  Platform,
   Pressable,
   View,
   type LayoutChangeEvent,
 } from 'react-native';
-import MapView, {
-  Marker,
-  type MapPressEvent,
-  type MarkerDragStartEndEvent,
-  type Region,
-} from 'react-native-maps';
 
-import { ApiRequestError, placesAutocomplete, placesDetails, placesReverse } from '../../lib/api';
+import {
+  ApiRequestError,
+  placesAutocomplete,
+  placesDetails,
+  placesResolveMapsLink,
+  placesReverse,
+} from '../../lib/api';
 import { createPlacesSessionToken } from '../../lib/places-session';
 import { FIELD_ORANGE, INPUT_SHADOW_STYLE } from './fieldStyles';
 import { FormErrorText } from './FormErrorText';
+import {
+  DEFAULT_MAP_REGION,
+  regionForCoordinate,
+  type MapRegion,
+} from './map-region';
 import { Text } from './Text';
 import { TextInput } from './TextInput';
+import {
+  TournamentLocationMap,
+  type TournamentLocationMapHandle,
+} from './TournamentLocationMap';
 
-/** Default map center (Toronto) when no place is selected yet. */
-const DEFAULT_REGION: Region = {
-  latitude: 43.6532,
-  longitude: -79.3832,
-  latitudeDelta: 0.08,
-  longitudeDelta: 0.08,
-};
-
-const SELECTED_REGION_DELTA = 0.02;
 const AUTOCOMPLETE_DEBOUNCE_MS = 350;
 const REVERSE_GEOCODE_DEBOUNCE_MS = 400;
-const ZOOM_FACTOR = 0.5;
+
+type LocationSuggestion =
+  | ({ kind: 'place' } & PlaceSuggestion)
+  | {
+      kind: 'resolved';
+      latitude: number;
+      longitude: number;
+      description: string;
+    };
+
+function suggestionKey(item: LocationSuggestion): string {
+  if (item.kind === 'place') {
+    return item.placeId;
+  }
+  return `resolved:${item.latitude},${item.longitude}`;
+}
 
 function placesSearchErrorMessage(err: unknown): string {
   if (err instanceof ApiRequestError) {
@@ -44,6 +66,9 @@ function placesSearchErrorMessage(err: unknown): string {
     if (err.error.code === 'PLACES_RATE_LIMIT') {
       return 'Too many searches. Wait a moment and try again.';
     }
+    if (err.error.code === 'MAPS_LINK_UNRESOLVED') {
+      return LOCATION_INPUT_MESSAGES.mapsLinkFailed;
+    }
     const message = Array.isArray(err.error.message)
       ? err.error.message.join(', ')
       : err.error.message;
@@ -52,15 +77,6 @@ function placesSearchErrorMessage(err: unknown): string {
     }
   }
   return 'Could not search locations. Check your connection and try again.';
-}
-
-function regionForCoordinate(latitude: number, longitude: number, delta = SELECTED_REGION_DELTA): Region {
-  return {
-    latitude,
-    longitude,
-    latitudeDelta: delta,
-    longitudeDelta: delta,
-  };
 }
 
 export interface TournamentLocationFieldProps {
@@ -86,30 +102,44 @@ export function TournamentLocationField({
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reverseDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const skipAutocompleteRef = useRef(false);
-  const mapRef = useRef<MapView>(null);
-  const mapRegionRef = useRef<Region>(DEFAULT_REGION);
+  const mapRef = useRef<TournamentLocationMapHandle>(null);
+  const mapRegionRef = useRef<MapRegion>(DEFAULT_MAP_REGION);
 
-  const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
+  const [suggestions, setSuggestions] = useState<LocationSuggestion[]>([]);
+  const [previewCoords, setPreviewCoords] = useState<{ latitude: number; longitude: number } | null>(
+    null,
+  );
   const [searching, setSearching] = useState(false);
   const [selecting, setSelecting] = useState(false);
   const [updatingAddress, setUpdatingAddress] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [searchStatus, setSearchStatus] = useState<string | null>(null);
 
   const hasCoordinates = latitude != null && longitude != null;
+  const displayLatitude = latitude ?? previewCoords?.latitude ?? null;
+  const displayLongitude = longitude ?? previewCoords?.longitude ?? null;
+  const hasMapPreview = displayLatitude != null && displayLongitude != null;
+  const isPreviewOnly = !hasCoordinates && previewCoords != null;
   const trimmedAddress = address.trim();
   const showEmptyState =
-    showSuggestions && !searching && !searchError && trimmedAddress.length >= 2 && suggestions.length === 0;
+    showSuggestions &&
+    !searching &&
+    !searchError &&
+    trimmedAddress.length >= 2 &&
+    suggestions.length === 0 &&
+    !looksLikeGoogleMapsUrl(trimmedAddress) &&
+    !isCoordinateLikeInput(trimmedAddress);
 
-  const initialMapRegion = hasCoordinates
-    ? regionForCoordinate(latitude, longitude)
-    : DEFAULT_REGION;
+  const initialMapRegion = hasMapPreview
+    ? regionForCoordinate(displayLatitude, displayLongitude)
+    : DEFAULT_MAP_REGION;
 
   useEffect(() => {
-    if (hasCoordinates) {
-      mapRegionRef.current = regionForCoordinate(latitude, longitude);
+    if (hasMapPreview && displayLatitude != null && displayLongitude != null) {
+      mapRegionRef.current = regionForCoordinate(displayLatitude, displayLongitude);
     }
-  }, [hasCoordinates, latitude, longitude]);
+  }, [hasMapPreview, displayLatitude, displayLongitude]);
 
   useEffect(() => {
     return () => {
@@ -128,26 +158,22 @@ export function TournamentLocationField({
     mapRef.current?.animateToRegion(next, 300);
   }, []);
 
-  const adjustZoom = useCallback(async (direction: 1 | -1) => {
-    const camera = await mapRef.current?.getCamera();
-    if (camera?.zoom != null) {
-      await mapRef.current?.animateCamera(
-        { zoom: Math.max(1, camera.zoom + direction) },
-        { duration: 200 },
-      );
-      return;
-    }
-
-    const current = mapRegionRef.current;
-    const factor = direction > 0 ? ZOOM_FACTOR : 1 / ZOOM_FACTOR;
-    const next: Region = {
-      ...current,
-      latitudeDelta: Math.min(Math.max(current.latitudeDelta * factor, 0.0005), 80),
-      longitudeDelta: Math.min(Math.max(current.longitudeDelta * factor, 0.0005), 80),
-    };
-    mapRegionRef.current = next;
-    mapRef.current?.animateToRegion(next, 200);
-  }, []);
+  const showResolvedSuggestion = useCallback(
+    (resolved: { latitude: number; longitude: number; description: string }) => {
+      setPreviewCoords({ latitude: resolved.latitude, longitude: resolved.longitude });
+      setSuggestions([
+        {
+          kind: 'resolved',
+          latitude: resolved.latitude,
+          longitude: resolved.longitude,
+          description: resolved.description,
+        },
+      ]);
+      setShowSuggestions(true);
+      recenterMap(resolved.latitude, resolved.longitude);
+    },
+    [recenterMap],
+  );
 
   const runAutocomplete = useCallback(async (query: string, token: string) => {
     const trimmed = query.trim();
@@ -156,14 +182,17 @@ export function TournamentLocationField({
       setSearchError(null);
       setShowSuggestions(false);
       setSearching(false);
+      setSearchStatus(null);
       return;
     }
 
     setSearching(true);
     setSearchError(null);
+    setSearchStatus('Searching locations…');
     try {
       const results = await placesAutocomplete(trimmed, token);
-      setSuggestions(results);
+      setPreviewCoords(null);
+      setSuggestions(results.map((item) => ({ kind: 'place', ...item })));
       setShowSuggestions(true);
     } catch (err) {
       setSuggestions([]);
@@ -171,14 +200,114 @@ export function TournamentLocationField({
       setSearchError(placesSearchErrorMessage(err));
     } finally {
       setSearching(false);
+      setSearchStatus(null);
     }
   }, []);
+
+  const resolveCoordinateInput = useCallback(
+    async (query: string) => {
+      const trimmed = query.trim();
+      if (!isCoordinateLikeInput(trimmed)) {
+        return false;
+      }
+
+      const coords = parseCoordinatePair(trimmed);
+      if (!coords) {
+        setSuggestions([]);
+        setPreviewCoords(null);
+        setShowSuggestions(true);
+        setSearchError(LOCATION_INPUT_MESSAGES.invalidCoordinates);
+        return true;
+      }
+
+      setSearching(true);
+      setSearchError(null);
+      setSearchStatus(LOCATION_INPUT_MESSAGES.resolvingCoordinates);
+      try {
+        const result = await placesReverse(coords.latitude, coords.longitude);
+        showResolvedSuggestion({
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+          description: result.address,
+        });
+      } catch (err) {
+        setSuggestions([]);
+        setPreviewCoords(null);
+        setShowSuggestions(true);
+        setSearchError(placesSearchErrorMessage(err));
+      } finally {
+        setSearching(false);
+        setSearchStatus(null);
+      }
+      return true;
+    },
+    [showResolvedSuggestion],
+  );
+
+  const resolveMapsLinkInput = useCallback(
+    async (query: string) => {
+      const trimmed = query.trim();
+      if (!looksLikeGoogleMapsUrl(trimmed)) {
+        return false;
+      }
+
+      setSearching(true);
+      setSearchError(null);
+      setSearchStatus(LOCATION_INPUT_MESSAGES.resolvingLink);
+      try {
+        const embeddedCoords = parseGoogleMapsUrlCoordinates(trimmed);
+        if (embeddedCoords) {
+          const result = await placesReverse(embeddedCoords.latitude, embeddedCoords.longitude);
+          showResolvedSuggestion({
+            latitude: embeddedCoords.latitude,
+            longitude: embeddedCoords.longitude,
+            description: result.address,
+          });
+          return true;
+        }
+
+        const normalizedUrl = normalizeMapsUrlInput(trimmed).toString();
+        const result = await placesResolveMapsLink(normalizedUrl);
+        showResolvedSuggestion({
+          latitude: result.latitude,
+          longitude: result.longitude,
+          description: result.address,
+        });
+      } catch (err) {
+        setSuggestions([]);
+        setPreviewCoords(null);
+        setShowSuggestions(true);
+        setSearchError(placesSearchErrorMessage(err));
+      } finally {
+        setSearching(false);
+        setSearchStatus(null);
+      }
+      return true;
+    },
+    [showResolvedSuggestion],
+  );
+
+  const runLocationSearch = useCallback(
+    async (query: string, token: string) => {
+      const trimmed = query.trim();
+      if (await resolveCoordinateInput(trimmed)) {
+        return;
+      }
+      if (await resolveMapsLinkInput(trimmed)) {
+        return;
+      }
+      await runAutocomplete(query, token);
+    },
+    [resolveCoordinateInput, resolveMapsLinkInput, runAutocomplete],
+  );
 
   function onAddressInputChange(text: string): void {
     onAddressChange(text);
     onCoordinatesChange(null, null);
     setSuggestions([]);
+    setPreviewCoords(null);
     setSearchError(null);
+    setSearchStatus(null);
 
     if (skipAutocompleteRef.current) {
       skipAutocompleteRef.current = false;
@@ -189,18 +318,23 @@ export function TournamentLocationField({
       clearTimeout(debounceRef.current);
     }
 
-    if (text.trim().length < 2) {
+    const trimmed = text.trim();
+    if (
+      trimmed.length < 2 &&
+      !looksLikeGoogleMapsUrl(trimmed) &&
+      !isCoordinateLikeInput(trimmed)
+    ) {
       setShowSuggestions(false);
       return;
     }
 
     setShowSuggestions(true);
     debounceRef.current = setTimeout(() => {
-      void runAutocomplete(text, sessionTokenRef.current);
+      void runLocationSearch(text, sessionTokenRef.current);
     }, AUTOCOMPLETE_DEBOUNCE_MS);
   }
 
-  async function onSelectSuggestion(item: PlaceSuggestion): Promise<void> {
+  async function onSelectSuggestion(item: LocationSuggestion): Promise<void> {
     Keyboard.dismiss();
     setShowSuggestions(false);
     setSuggestions([]);
@@ -208,16 +342,28 @@ export function TournamentLocationField({
     setSelecting(true);
 
     try {
+      if (item.kind === 'resolved') {
+        skipAutocompleteRef.current = true;
+        onAddressChange(item.description);
+        onCoordinatesChange(item.latitude, item.longitude);
+        setPreviewCoords(null);
+        recenterMap(item.latitude, item.longitude);
+        return;
+      }
+
       const details = await placesDetails(item.placeId, sessionTokenRef.current);
       skipAutocompleteRef.current = true;
-      onAddressChange(details.address);
+      // Keep the autocomplete line the user tapped — not Places formattedAddress alone.
+      onAddressChange(item.description);
       onCoordinatesChange(details.latitude, details.longitude);
+      setPreviewCoords(null);
       recenterMap(details.latitude, details.longitude);
       sessionTokenRef.current = createPlacesSessionToken();
     } catch (err) {
       skipAutocompleteRef.current = true;
       onAddressChange(item.description);
       onCoordinatesChange(null, null);
+      setPreviewCoords(null);
       setSearchError(placesSearchErrorMessage(err));
       sessionTokenRef.current = createPlacesSessionToken();
     } finally {
@@ -247,21 +393,8 @@ export function TournamentLocationField({
 
   function onMarkerPositionSet(lat: number, lng: number): void {
     onCoordinatesChange(lat, lng);
+    setPreviewCoords(null);
     scheduleReverseGeocode(lat, lng);
-  }
-
-  function onMarkerDragEnd(event: MarkerDragStartEndEvent): void {
-    const { latitude: lat, longitude: lng } = event.nativeEvent.coordinate;
-    onMarkerPositionSet(lat, lng);
-  }
-
-  function onMapPress(event: MapPressEvent): void {
-    const { latitude: lat, longitude: lng } = event.nativeEvent.coordinate;
-    onMarkerPositionSet(lat, lng);
-  }
-
-  function onRegionChangeComplete(region: Region): void {
-    mapRegionRef.current = region;
   }
 
   const inputBusy = searching || selecting || updatingAddress;
@@ -273,11 +406,15 @@ export function TournamentLocationField({
         value={address}
         onChangeText={onAddressInputChange}
         onFocus={() => {
-          if (trimmedAddress.length >= 2) {
+          if (
+            trimmedAddress.length >= 2 ||
+            looksLikeGoogleMapsUrl(trimmedAddress) ||
+            isCoordinateLikeInput(trimmedAddress)
+          ) {
             setShowSuggestions(true);
           }
         }}
-        placeholder="Search venue or city..."
+        placeholder="Venue, city, coordinates, or Google Maps link"
         leadingIcon={<Ionicons name="location-outline" size={20} color={FIELD_ORANGE} />}
         rightAccessory={
           inputBusy ? <ActivityIndicator size="small" color={FIELD_ORANGE} /> : null
@@ -295,7 +432,7 @@ export function TournamentLocationField({
         >
           {suggestions.map((item) => (
             <Pressable
-              key={item.placeId}
+              key={suggestionKey(item)}
               onPress={() => void onSelectSuggestion(item)}
               className="border-b border-border px-4 py-3 active:bg-surface-container"
               accessibilityRole="button"
@@ -307,8 +444,8 @@ export function TournamentLocationField({
         </View>
       ) : null}
 
-      {searching ? (
-        <Text className="font-sans text-sm text-on-surface-variant">Searching locations…</Text>
+      {searchStatus ? (
+        <Text className="font-sans text-sm text-on-surface-variant">{searchStatus}</Text>
       ) : null}
 
       <FormErrorText>{searchError}</FormErrorText>
@@ -319,53 +456,18 @@ export function TournamentLocationField({
         </Text>
       ) : null}
 
-      {hasCoordinates ? (
-        <View className="overflow-hidden rounded-control" style={INPUT_SHADOW_STYLE}>
-          <View className="relative">
-            <MapView
-              ref={mapRef}
-              style={{ height: 192, width: '100%' }}
-              initialRegion={initialMapRegion}
-              scrollEnabled
-              zoomEnabled
-              zoomControlEnabled={Platform.OS === 'android'}
-              rotateEnabled
-              pitchEnabled={false}
-              onPress={onMapPress}
-              onRegionChangeComplete={onRegionChangeComplete}
-            >
-              <Marker
-                coordinate={{ latitude, longitude }}
-                draggable
-                onDragEnd={onMarkerDragEnd}
-              />
-            </MapView>
-
-            <View className="absolute bottom-3 right-3 gap-2">
-              <Pressable
-                onPress={() => void adjustZoom(1)}
-                accessibilityRole="button"
-                accessibilityLabel="Zoom in"
-                className="h-9 w-9 items-center justify-center rounded-full bg-surface active:bg-surface-container"
-                style={INPUT_SHADOW_STYLE}
-              >
-                <Ionicons name="add" size={20} color={FIELD_ORANGE} />
-              </Pressable>
-              <Pressable
-                onPress={() => void adjustZoom(-1)}
-                accessibilityRole="button"
-                accessibilityLabel="Zoom out"
-                className="h-9 w-9 items-center justify-center rounded-full bg-surface active:bg-surface-container"
-                style={INPUT_SHADOW_STYLE}
-              >
-                <Ionicons name="remove" size={20} color={FIELD_ORANGE} />
-              </Pressable>
-            </View>
-          </View>
-          <Text className="mt-1 font-sans text-xs text-on-surface-variant">
-            Pinch to zoom, drag the marker, or tap the map to fine-tune the location.
-          </Text>
-        </View>
+      {hasMapPreview && displayLatitude != null && displayLongitude != null ? (
+        <TournamentLocationMap
+          ref={mapRef}
+          latitude={displayLatitude}
+          longitude={displayLongitude}
+          initialRegion={initialMapRegion}
+          isPreviewOnly={isPreviewOnly}
+          onCoordinateChange={onMarkerPositionSet}
+          onRegionChange={(region) => {
+            mapRegionRef.current = region;
+          }}
+        />
       ) : (
         <View className="h-32 items-center justify-center rounded-control border border-dashed border-primary/30 bg-primary-50/30 px-4">
           <Ionicons name="map-outline" size={28} color={FIELD_ORANGE} />

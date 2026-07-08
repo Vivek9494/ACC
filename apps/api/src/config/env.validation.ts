@@ -63,7 +63,7 @@ export class EnvironmentVariables {
   @IsString()
   TWILIO_FROM_NUMBER?: string;
 
-  /** AWS S3 bucket for profile photos (ca-central-1). When unset, dev stores under uploads/. */
+  /** AWS S3 bucket for all media (ca-central-1). Required for uploads in production. */
   @IsOptional()
   @IsString()
   AWS_S3_BUCKET?: string;
@@ -71,6 +71,11 @@ export class EnvironmentVariables {
   @IsOptional()
   @IsString()
   AWS_REGION?: string;
+
+  /** Optional S3-compatible endpoint (MinIO local dev). */
+  @IsOptional()
+  @IsString()
+  AWS_S3_ENDPOINT?: string;
 
   @IsOptional()
   @IsString()
@@ -80,7 +85,7 @@ export class EnvironmentVariables {
   @IsString()
   AWS_SECRET_ACCESS_KEY?: string;
 
-  /** Public base URL for locally served uploads (dev fallback). */
+  /** Public base URL for locally served uploads when S3 is not configured (dev fallback). */
   @IsOptional()
   @IsString()
   PUBLIC_API_URL?: string;
@@ -89,6 +94,22 @@ export class EnvironmentVariables {
   @IsOptional()
   @IsString()
   GOOGLE_PLACES_KEY?: string;
+
+  // Firebase Cloud Messaging service account (optional). When all three are set
+  // the app delivers real push via FCM; otherwise it logs pushes to the console
+  // (local dev). Reuses the locked FCM stack (§29).
+  @IsOptional()
+  @IsString()
+  FCM_PROJECT_ID?: string;
+
+  @IsOptional()
+  @IsString()
+  FCM_CLIENT_EMAIL?: string;
+
+  /** PEM private key; newlines may be escaped as \n in the env value. */
+  @IsOptional()
+  @IsString()
+  FCM_PRIVATE_KEY?: string;
 }
 
 export function validateEnv(config: Record<string, unknown>): EnvironmentVariables {

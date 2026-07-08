@@ -1,6 +1,6 @@
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import type { BowlerPickerPlayerRow } from '@acc/types';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
 import { PlayerAvatar } from '../tournament/PlayerAvatar';
 import { Card } from '../ui/Card';
@@ -39,24 +39,27 @@ export interface BowlerPickerRowProps {
   row: BowlerPickerPlayerRow;
   selectedBowlerId?: string | null;
   onPress: (userId: string) => void;
+  onEdit?: (row: BowlerPickerPlayerRow) => void;
 }
 
 export function BowlerPickerRow({
   row,
   selectedBowlerId = null,
   onPress,
+  onEdit,
 }: BowlerPickerRowProps): React.ReactElement {
   const disabled = !row.selectable;
   const selected =
     row.userId === selectedBowlerId || (row.selected && row.selectable);
   const highlighted = selected;
+  const showEdit = row.isExternal && onEdit != null;
 
   return (
     <Card
       onPress={disabled ? undefined : () => onPress(row.userId)}
       disabled={disabled}
       className={[
-        'flex-row items-center gap-4 rounded-control',
+        'flex-row items-center gap-3 rounded-control',
         highlighted ? 'border-2 border-primary bg-primary-container' : 'border border-outline-variant',
         disabled ? 'opacity-50' : '',
       ]
@@ -82,7 +85,19 @@ export function BowlerPickerRow({
           </Text>
         ) : null}
       </View>
-      <SelectionIndicator selected={selected} selectable={row.selectable} />
+      <View className="shrink-0 flex-row items-center gap-1">
+        {showEdit ? (
+          <Pressable
+            onPress={() => onEdit(row)}
+            accessibilityRole="button"
+            accessibilityLabel="Edit player name"
+            className="h-10 w-10 items-center justify-center active:opacity-70"
+          >
+            <MaterialIcons name="edit" size={22} color={FIELD_ORANGE} />
+          </Pressable>
+        ) : null}
+        <SelectionIndicator selected={selected} selectable={row.selectable} />
+      </View>
     </Card>
   );
 }

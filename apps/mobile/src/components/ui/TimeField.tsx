@@ -75,8 +75,16 @@ export function TimeField({
   containerClassName,
 }: TimeFieldProps): React.ReactElement {
   const [showPicker, setShowPicker] = useState(false);
+  const defaultPickerDate = useMemo(() => {
+    const date = new Date();
+    date.setHours(12, 0, 0, 0);
+    return date;
+  }, []);
   const parsed = value ? parseTimeValue(value) : null;
-  const pickerValue = useMemo(() => parsed ?? new Date(), [parsed]);
+  const pickerValue = useMemo(
+    () => parseTimeValue(value) ?? defaultPickerDate,
+    [defaultPickerDate, value],
+  );
 
   function onAndroidPickerChange(event: DateTimePickerEvent, selected?: Date): void {
     setShowPicker(false);

@@ -2,6 +2,7 @@ import {
   type AuthUser,
   type CloneSuggestion,
   Permission,
+  type TournamentBrowseEntry,
   type TournamentDashboardEntry,
   type TournamentDetail,
   type TournamentEditFormData,
@@ -19,14 +20,11 @@ import {
   Patch,
   Post,
   Query,
-  UploadedFile,
-  UseGuards,
-  UseInterceptors,
   Req,
+  UseGuards,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
 import type { Request } from 'express';
-import { TOURNAMENT_FORM_MESSAGES, TOURNAMENT_POSTER_MAX_BYTES, type UploadTournamentPosterResponse } from '@acc/types';
+import { type UploadTournamentPosterResponse } from '@acc/types';
 
 import { CurrentUser } from '../auth/current-user.decorator';
 import { AuthService } from '../auth/auth.service';
@@ -34,6 +32,8 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Public } from '../auth/public.decorator';
 import { PermissionGuard } from '../authz/permission.guard';
 import { RequirePermission } from '../authz/require-permission.decorator';
+import { MediaUploadCompleteDto, MediaUploadSessionDto } from '../media/dto/media-upload.dto';
+import { MediaUploadService } from '../media/media-upload.service';
 import { CreateTournamentDto } from './dto/create-tournament.dto';
 import { SelectMatchSchedulingFormatDto } from './dto/select-match-scheduling-format.dto';
 import { TransitionStateDto } from './dto/transition-state.dto';
@@ -46,6 +46,7 @@ export class TournamentsController {
   constructor(
     private readonly tournaments: TournamentsService,
     private readonly auth: AuthService,
+    private readonly mediaUpload: MediaUploadService,
   ) {}
 
   /** Create a tournament (§6.1). Type + RBAC are resolved in the service. */
@@ -57,23 +58,24 @@ export class TournamentsController {
     return this.tournaments.create(user, dto);
   }
 
-  @Post('poster')
-  @UseInterceptors(
-    FileInterceptor('poster', { limits: { fileSize: TOURNAMENT_POSTER_MAX_BYTES } }),
-  )
-  async uploadPoster(
+  @Post('poster/upload-session')
+  createPosterUploadSession(
     @CurrentUser() user: AuthUser,
-    @UploadedFile() file: { buffer: Buffer } | undefined,
+    @Body() dto: MediaUploadSessionDto,
+  ) {
+    return this.mediaUpload.createTournamentPosterUploadSession(user.id, dto);
+  }
+
+  @Post('poster/complete')
+  async completePosterUpload(
+    @CurrentUser() user: AuthUser,
+    @Body() dto: MediaUploadCompleteDto,
   ): Promise<UploadTournamentPosterResponse> {
-    if (!file?.buffer?.length) {
-      throw new BadRequestException({
-        message: TOURNAMENT_FORM_MESSAGES.poster.required,
-        error: 'POSTER_REQUIRED',
-        fields: { poster: TOURNAMENT_FORM_MESSAGES.poster.required },
-      });
-    }
-    const posterUrl = await this.tournaments.uploadPoster(user, file.buffer);
-    return { posterUrl };
+    const result = await this.mediaUpload.completeTournamentPosterUpload(user.id, dto);
+    return {
+      storageKey: result.storageKey,
+      posterUrl: result.displayUrl,
+    };
   }
 
   @Get()
@@ -92,6 +94,12 @@ export class TournamentsController {
   @Get('dashboard-entries')
   listDashboardEntries(@CurrentUser() user: AuthUser): Promise<TournamentDashboardEntry[]> {
     return this.tournaments.listDashboardEntries(user);
+  }
+
+  /** All tournaments for the browse tab — every status, no membership filter. */
+  @Get('browse')
+  listBrowseEntries(@CurrentUser() user: AuthUser): Promise<TournamentBrowseEntry[]> {
+    return this.tournaments.listBrowseEntries(user);
   }
 
   @Get(':tournamentId/edit-form')

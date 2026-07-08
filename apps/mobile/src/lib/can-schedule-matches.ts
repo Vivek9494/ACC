@@ -1,18 +1,35 @@
-import { type AuthUser, UserRole } from '@acc/types';
+import {
+  canManageUpcomingMatchSchedule as canManageUpcomingMatchScheduleFromTypes,
+  canScheduleTournamentMatches as canScheduleTournamentMatchesFromTypes,
+  canScheduleTournamentMatchesAsOrganizer as canScheduleTournamentMatchesAsOrganizerFromTypes,
+  leaderTeamIdsInTournament,
+  type AuthUser,
+  type BallTypeValue,
+} from '@acc/types';
+
+export { leaderTeamIdsInTournament };
+
+/** Admin / Club Manager — edit or delete upcoming match fixtures. */
+export function canManageUpcomingMatchSchedule(
+  user: AuthUser | null | undefined,
+): boolean {
+  return canManageUpcomingMatchScheduleFromTypes(user);
+}
 
 /**
- * Optimistic UI gate for CREATE_MATCH (§11, §27): Admin everywhere; Club Manager and
- * Center Sevak when organizing. Server RBAC still enforces organizer scope per tournament.
+ * Optimistic UI gate for CREATE_MATCH (§11, §27): Admin / Club Manager / Center Sevak;
+ * Captain / Vice-Captain for Leather tournaments only. Server RBAC still enforces scope.
  */
-export function canScheduleTournamentMatches(user: AuthUser | null | undefined): boolean {
-  if (!user) {
-    return false;
-  }
-  if (user.role === UserRole.Admin || user.role === UserRole.ClubManager) {
-    return true;
-  }
-  if (user.role === UserRole.CenterSevak) {
-    return true;
-  }
-  return (user.centerSevakCenterIds?.length ?? 0) > 0;
+export function canScheduleTournamentMatches(
+  user: AuthUser | null | undefined,
+  options?: { ballType?: BallTypeValue | null; tournamentId?: string },
+): boolean {
+  return canScheduleTournamentMatchesFromTypes(user, options);
+}
+
+/** Admin / Club Manager / Center Sevak — unrestricted tournament match scheduling. */
+export function canScheduleTournamentMatchesAsOrganizer(
+  user: AuthUser | null | undefined,
+): boolean {
+  return canScheduleTournamentMatchesAsOrganizerFromTypes(user);
 }
