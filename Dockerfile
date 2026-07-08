@@ -1,5 +1,5 @@
 # ---- Base ----
-    FROM node:20-slim AS base
+    FROM node:22-slim AS base
     # OpenSSL is required by Prisma at runtime/generate
     RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
     # Enable pnpm at the exact version from your root package.json
