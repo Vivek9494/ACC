@@ -13,8 +13,6 @@
     "test:watch": "jest --watch",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "prisma:migrate:deploy": "prisma migrate deploy",
-    "start:prod": "node dist/main.js",
     "prisma:studio": "prisma studio",
     "db:seed": "ts-node prisma/seed.ts",
     "db:seed-scorer-card": "ts-node prisma/seed-scorer-card.ts",
