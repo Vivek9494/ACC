@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { Twilio } from 'twilio';
 
 import { ConsoleSmsProvider } from './console-sms-provider';
+import { NodeEnv } from '../config/env.validation';
 import { SMS_PROVIDER, type SmsProvider } from './sms-provider';
 import { TwilioSmsProvider } from './twilio-sms-provider';
 
@@ -20,9 +21,15 @@ import { TwilioSmsProvider } from './twilio-sms-provider';
         const sid = config.get<string>('TWILIO_ACCOUNT_SID');
         const token = config.get<string>('TWILIO_AUTH_TOKEN');
         const from = config.get<string>('TWILIO_FROM_NUMBER');
+        const nodeEnv = config.get<NodeEnv>('NODE_ENV', NodeEnv.Development);
 
         if (sid && token && from) {
           return new TwilioSmsProvider(new Twilio(sid, token), from);
+        }
+        if (nodeEnv === NodeEnv.Production) {
+          throw new Error(
+            'Twilio credentials (TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER) are required in production.',
+          );
         }
         new Logger('SmsModule').warn(
           'Twilio credentials not set — using console SMS provider (OTPs logged, not sent).',

@@ -22,6 +22,7 @@ import {
 
 import { AuditService } from '../audit/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { activeMatchFirstWhere } from '../matches/match-query';
 import { ScorecardReader } from './scorecard-reader';
 
 interface PlayerProfile {
@@ -50,8 +51,8 @@ export class BatsmanPickerService {
       otherSlotUserId?: string | null;
     } = {},
   ): Promise<BatsmanPickerResponse> {
-    const match = await this.prisma.match.findUnique({
-      where: { id: matchId },
+    const match = await this.prisma.match.findFirst({
+      where: activeMatchFirstWhere(matchId),
       include: {
         squads: {
           include: {
@@ -107,7 +108,7 @@ export class BatsmanPickerService {
       throw new BadRequestException({ message: 'Batsman name is required', error: 'NAME_REQUIRED' });
     }
 
-    const match = await this.prisma.match.findUnique({ where: { id: matchId } });
+    const match = await this.prisma.match.findFirst({ where: activeMatchFirstWhere(matchId) });
     if (!match) {
       throw new NotFoundException({ message: 'Match not found', error: 'MATCH_NOT_FOUND' });
     }
@@ -247,7 +248,12 @@ export class BatsmanPickerService {
     const externalNameMap = new Map(externals.map((row) => [row.id, row.name]));
     const allSquadUserIds = await this.loadOpponentUserIds(matchId, inn);
     const nameProfiles = await this.loadProfiles(
-      (await this.prisma.match.findUniqueOrThrow({ where: { id: matchId }, select: { tournamentId: true } }))
+      (
+        await this.prisma.match.findFirstOrThrow({
+          where: activeMatchFirstWhere(matchId),
+          select: { tournamentId: true },
+        })
+      )
         .tournamentId,
       allSquadUserIds,
     );

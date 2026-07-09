@@ -48,6 +48,12 @@ export const LOGIN_RATE_LIMIT = {
   windowSeconds: 15 * 60,
 } as const;
 
+/** Per-mobile-number signup rate limit — curbs automated registration abuse. */
+export const SIGNUP_RATE_LIMIT = {
+  maxAttempts: 5,
+  windowSeconds: 15 * 60,
+} as const;
+
 /**
  * Stable, machine-readable error codes returned in the api error envelope so
  * the mobile client can branch on them without string-matching messages.
@@ -58,6 +64,8 @@ export const AuthErrorCode = {
   Underage: 'UNDERAGE',
   InvalidCredentials: 'INVALID_CREDENTIALS',
   TooManyAttempts: 'TOO_MANY_LOGIN_ATTEMPTS',
+  /** Too many signup attempts for this mobile number. */
+  TooManySignupAttempts: 'TOO_MANY_SIGNUP_ATTEMPTS',
   /** Access/refresh token's embedded tokenVersion no longer matches the DB. */
   TokenVersionMismatch: 'TOKEN_VERSION_MISMATCH',
   RefreshExpired: 'REFRESH_TOKEN_EXPIRED',

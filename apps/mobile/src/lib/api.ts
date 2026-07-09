@@ -186,8 +186,9 @@ import {
 } from '@acc/types';
 
 import { loadTokens, saveTokens } from './session';
+import { API_BASE_URL } from './api-base-url';
 
-export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3001';
+export { API_BASE_URL } from './api-base-url';
 
 /** Serialize fetch/network errors for logs (Error objects often print as `{}`). */
 export function describeApiError(err: unknown): string {
@@ -392,10 +393,21 @@ async function apiFetchInternal<T>(path: string, options: InternalRequestOptions
     ...rest,
     headers: finalHeaders,
     body: body === undefined ? undefined : JSON.stringify(body),
+  }).catch((err: unknown) => {
+    throw new Error(
+      `Network request failed for ${path}: ${err instanceof Error ? err.message : String(err)}`,
+    );
   });
 
   const text = await response.text();
-  const parsed: unknown = text.length > 0 ? JSON.parse(text) : null;
+  let parsed: unknown = null;
+  if (text.length > 0) {
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      throw new Error(`Invalid JSON response from ${path}`);
+    }
+  }
 
   if (!response.ok) {
     const error: ApiError = isEnvelope(parsed)

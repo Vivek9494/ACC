@@ -13,6 +13,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import { AppSettingsService } from '../settings/app-settings.service';
+import { NodeEnv } from '../config/env.validation';
 
 const PRESIGNED_UPLOAD_EXPIRY_SECONDS = 3600;
 const PRESIGNED_READ_EXPIRY_SECONDS = 3600;
@@ -32,7 +33,10 @@ export class S3StorageService {
   ) {
     this.bucket = this.config.get<string>('AWS_S3_BUCKET');
     this.region = this.config.get<string>('AWS_REGION') ?? 'ca-central-1';
-    this.publicApiUrl = this.config.get<string>('PUBLIC_API_URL') ?? 'http://localhost:3001';
+    const nodeEnv = this.config.get<NodeEnv>('NODE_ENV', NodeEnv.Development);
+    this.publicApiUrl =
+      this.config.get<string>('PUBLIC_API_URL') ??
+      (nodeEnv === NodeEnv.Production ? '' : 'http://localhost:3001');
   }
 
   async isConfigured(): Promise<boolean> {
@@ -89,6 +93,7 @@ export class S3StorageService {
     }
 
     if (!(await this.isConfigured())) {
+      this.assertLocalDevOnly();
       return this.localDevReadUrl(objectKey);
     }
 
@@ -110,6 +115,7 @@ export class S3StorageService {
     validateContentType?: (contentType: string) => boolean;
   }): Promise<number> {
     if (!(await this.isConfigured())) {
+      this.assertLocalDevOnly();
       return this.verifyLocalDevObject(params.storageKey, params.maxBytes);
     }
 
@@ -161,6 +167,7 @@ export class S3StorageService {
 
   /** Dev-only fallback when S3 is not configured — writes under uploads/{storageKey}. */
   async storeLocalDevObject(storageKey: string, buffer: Buffer): Promise<void> {
+    this.assertLocalDevOnly();
     const filePath = join(process.cwd(), 'uploads', storageKey);
     await mkdir(join(filePath, '..'), { recursive: true });
     await writeFile(filePath, buffer);
@@ -234,7 +241,22 @@ export class S3StorageService {
   }
 
   private localDevReadUrl(storageKey: string): string {
+    if (!this.publicApiUrl) {
+      throw new BadRequestException({
+        message: 'Object storage is not configured.',
+        error: 'STORAGE_NOT_CONFIGURED',
+      });
+    }
     return `${this.publicApiUrl.replace(/\/$/, '')}/uploads/${storageKey}`;
+  }
+
+  private assertLocalDevOnly(): void {
+    if (this.config.get<NodeEnv>('NODE_ENV', NodeEnv.Development) === NodeEnv.Production) {
+      throw new BadRequestException({
+        message: 'Object storage is not configured.',
+        error: 'STORAGE_NOT_CONFIGURED',
+      });
+    }
   }
 
   private async resolveClient(): Promise<S3Client | null> {

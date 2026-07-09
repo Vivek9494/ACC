@@ -38,6 +38,11 @@ export function useUserScorerAssignedListener(onAssigned: () => void): void {
       socket.on(UserEvent.ScorerAssigned, () => {
         onAssignedRef.current();
       });
+      socket.on('connect_error', () => {
+        if (__DEV__) {
+          console.warn('[user-socket] connect_error — scorer push channel unavailable');
+        }
+      });
     });
 
     return () => {

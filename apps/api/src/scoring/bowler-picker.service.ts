@@ -23,6 +23,7 @@ import {
 
 import { AuditService } from '../audit/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { activeMatchFirstWhere } from '../matches/match-query';
 import { toScoringEvent } from './delivery-mapper';
 import { isConsecutiveOverViolation } from './engine/validation';
 import type { ScoringEvent } from './engine/types';
@@ -47,8 +48,8 @@ export class BowlerPickerService {
   ) {}
 
   async getPicker(matchId: string, inningsId: string): Promise<BowlerPickerResponse> {
-    const match = await this.prisma.match.findUnique({
-      where: { id: matchId },
+    const match = await this.prisma.match.findFirst({
+      where: activeMatchFirstWhere(matchId),
       include: {
         squads: {
           include: {
@@ -118,7 +119,7 @@ export class BowlerPickerService {
       throw new BadRequestException({ message: 'Bowler name is required', error: 'NAME_REQUIRED' });
     }
 
-    const match = await this.prisma.match.findUnique({ where: { id: matchId } });
+    const match = await this.prisma.match.findFirst({ where: activeMatchFirstWhere(matchId) });
     if (!match) {
       throw new NotFoundException({ message: 'Match not found', error: 'MATCH_NOT_FOUND' });
     }
@@ -186,7 +187,7 @@ export class BowlerPickerService {
       throw new BadRequestException({ message: 'Player name is required', error: 'NAME_REQUIRED' });
     }
 
-    const match = await this.prisma.match.findUnique({ where: { id: matchId } });
+    const match = await this.prisma.match.findFirst({ where: activeMatchFirstWhere(matchId) });
     if (!match) {
       throw new NotFoundException({ message: 'Match not found', error: 'MATCH_NOT_FOUND' });
     }

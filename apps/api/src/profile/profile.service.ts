@@ -168,9 +168,9 @@ export class ProfileService {
     }
 
     const otp = this.generateOtp();
+    await this.sms.sendOtp(normalized, otp);
     await this.redis.setWithTtl(profileMobileOtpPendingKey(userId), normalized, OTP_TTL_SECONDS);
     await this.redis.setWithTtl(profileMobileOtpCodeKey(userId), otp, OTP_TTL_SECONDS);
-    await this.sms.sendOtp(normalized, otp);
   }
 
   async updateProfile(userId: string, dto: UpdateProfileDto): Promise<ProfileDetail> {

@@ -41,7 +41,9 @@
     COPY --from=build /app/apps/api/package.json ./apps/api/package.json
     # Prisma needs the schema + generated client at runtime
     COPY --from=build /app/apps/api/prisma ./apps/api/prisma
+    COPY apps/api/scripts/docker-start.sh ./apps/api/scripts/docker-start.sh
+    RUN chmod +x ./apps/api/scripts/docker-start.sh
     WORKDIR /app/apps/api
     # Railway injects PORT; your app must listen on process.env.PORT
     EXPOSE 3001
-    CMD ["node", "dist/main.js"]
+    CMD ["./scripts/docker-start.sh"]

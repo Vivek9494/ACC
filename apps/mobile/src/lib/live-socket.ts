@@ -57,6 +57,7 @@ export function useLiveScore(
       subscribe();
     });
     socket.on('disconnect', () => setStatus('offline'));
+    socket.on('connect_error', () => setStatus('offline'));
     socket.io.on('reconnect', subscribe);
     socket.on(LiveEvent.State, (frame: LiveStateMessage) => {
       if (frame.matchId === matchId && frame.state) {

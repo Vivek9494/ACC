@@ -8,6 +8,7 @@ import {
 import { ForbiddenException, Injectable } from '@nestjs/common';
 
 import { MatchScorerGrantService } from '../authz/match-scorer.service';
+import { activeMatchFirstWhere } from '../matches/match-query';
 import { PrismaService } from '../prisma/prisma.service';
 import { TournamentScorersService } from './tournament-scorers.service';
 
@@ -26,8 +27,8 @@ export class TennisMatchScoringAuthService {
 
   /** No-op for leather; tennis requires Admin or the assigned match scorer grant. */
   async assertCanEnterScoringSession(actor: AuthUser, matchId: string): Promise<void> {
-    const match = await this.prisma.match.findUnique({
-      where: { id: matchId },
+    const match = await this.prisma.match.findFirst({
+      where: activeMatchFirstWhere(matchId),
       select: {
         tournament: { select: { ballType: true } },
       },
@@ -61,8 +62,8 @@ export class TennisMatchScoringAuthService {
    * assigned match scorer. Leather uses the RECORD_TOSS permission matrix instead.
    */
   async assertCanRecordToss(actor: AuthUser, matchId: string): Promise<void> {
-    const match = await this.prisma.match.findUnique({
-      where: { id: matchId },
+    const match = await this.prisma.match.findFirst({
+      where: activeMatchFirstWhere(matchId),
       select: { tournamentId: true, tournament: { select: { ballType: true } } },
     });
     if (!match || match.tournament.ballType !== BallType.Tennis) {

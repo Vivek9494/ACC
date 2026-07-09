@@ -1,6 +1,5 @@
 import {
   type AuthUser,
-  type CreateLeatherInvitesRequest,
   type CreateLeatherInvitesResponse,
   type LeatherInviteCandidatesResponse,
   type LeatherTournamentInvitesResponse,
@@ -20,6 +19,7 @@ import {
 
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { CreateLeatherInvitesDto } from './dto/create-leather-invites.dto';
 import { LeatherTournamentVisibilityService } from './leather-tournament-visibility.service';
 
 @Controller('tournaments/:tournamentId/leather-invites')
@@ -52,7 +52,7 @@ export class LeatherInvitesController {
   createInvites(
     @CurrentUser() user: AuthUser,
     @Param('tournamentId') tournamentId: string,
-    @Body() body: CreateLeatherInvitesRequest,
+    @Body() body: CreateLeatherInvitesDto,
   ): Promise<CreateLeatherInvitesResponse> {
     this.assertClubManager(user);
     return this.leatherVisibility

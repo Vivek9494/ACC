@@ -8,6 +8,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import type { Delivery, Match } from '@prisma/client';
 
 import { PrismaService } from '../prisma/prisma.service';
+import { activeMatchFirstWhere } from '../matches/match-query';
 import { deriveInnings, deriveMatchResult } from './engine';
 import { selectedParticipantContext } from './innings-participant-mapper';
 import { toScoringEvent } from './delivery-mapper';
@@ -32,7 +33,7 @@ export class ScorecardReader {
 
   /** Loads the match and builds its scorecard, or throws if it is missing. */
   async byMatchId(matchId: string): Promise<ScorecardResponse> {
-    const match = await this.prisma.match.findUnique({ where: { id: matchId } });
+    const match = await this.prisma.match.findFirst({ where: activeMatchFirstWhere(matchId) });
     if (!match) {
       throw new NotFoundException({ message: 'Match not found', error: 'MATCH_NOT_FOUND' });
     }

@@ -21,6 +21,10 @@ export interface RefreshTokenPayload {
 export const loginAttemptsKey = (mobileNumber: string): string =>
   `login:attempts:${mobileNumber}`;
 
+/** Redis key for failed signup attempts for a given mobile number. */
+export const signupAttemptsKey = (mobileNumber: string): string =>
+  `signup:attempts:${mobileNumber}`;
+
 /** Redis key holding the active refresh token id for a user (single device). */
 export const refreshKey = (userId: string): string => `refresh:${userId}`;
 

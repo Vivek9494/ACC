@@ -8,6 +8,7 @@ import {
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '../prisma/prisma.service';
+import { activeMatchFirstWhere } from '../matches/match-query';
 import { ScorecardReader } from './scorecard-reader';
 
 /** Match states for which the scorecard PDF may be exported (§16: completed). */
@@ -39,8 +40,8 @@ export class ScorecardPdfService {
   ) {}
 
   async export(matchId: string, forceHtml = false): Promise<ScorecardDocument> {
-    const match = await this.prisma.match.findUnique({
-      where: { id: matchId },
+    const match = await this.prisma.match.findFirst({
+      where: activeMatchFirstWhere(matchId),
       include: {
         homeTeam: { select: { name: true } },
         awayTeam: { select: { name: true } },

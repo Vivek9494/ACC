@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { cert, getApps, initializeApp } from 'firebase-admin/app';
 
 import { ConsolePushProvider } from './console-push-provider';
+import { NodeEnv } from '../config/env.validation';
 import { FcmPushProvider } from './fcm-push-provider';
 import { NotificationAudienceService } from './notification-audience.service';
 import { NotificationLogService } from './notification-log.service';
@@ -30,6 +31,7 @@ import { PushTokenService } from './push-token.service';
         const projectId = config.get<string>('FCM_PROJECT_ID');
         const clientEmail = config.get<string>('FCM_CLIENT_EMAIL');
         const privateKeyRaw = config.get<string>('FCM_PRIVATE_KEY');
+        const nodeEnv = config.get<NodeEnv>('NODE_ENV', NodeEnv.Development);
 
         if (projectId && clientEmail && privateKeyRaw) {
           // Env values escape newlines as \n; restore them for the PEM parser.
@@ -42,6 +44,12 @@ import { PushTokenService } from './push-token.service';
                   credential: cert({ projectId, clientEmail, privateKey }),
                 });
           return new FcmPushProvider(app);
+        }
+
+        if (nodeEnv === NodeEnv.Production) {
+          throw new Error(
+            'FCM credentials (FCM_PROJECT_ID, FCM_CLIENT_EMAIL, FCM_PRIVATE_KEY) are required in production.',
+          );
         }
 
         new Logger('NotificationsModule').warn(

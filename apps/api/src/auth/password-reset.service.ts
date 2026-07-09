@@ -103,12 +103,12 @@ export class PasswordResetService {
 
     const otp = this.generateOtp();
     const otpHash = await bcrypt.hash(otp, BCRYPT_SALT_ROUNDS);
+    await this.sms.sendOtp(normalized, otp);
     await Promise.all([
       this.redis.setWithTtl(otpCodeKey(normalized), otpHash, OTP_TTL_SECONDS),
       this.redis.del(otpFailedCountKey(normalized)),
       this.redis.setWithTtl(otpResendCooldownKey(normalized), '1', OTP_RESEND_COOLDOWN_SECONDS),
     ]);
-    await this.sms.sendOtp(normalized, otp);
   }
 
   /** Verifies the OTP and issues a short-lived reset token. */

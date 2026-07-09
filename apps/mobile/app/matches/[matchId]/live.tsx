@@ -57,7 +57,7 @@ export default function LiveViewScreen(): React.ReactElement {
     };
   }, [matchId]);
 
-  const { state } = useLiveScore(matchId, seed);
+  const { state, status } = useLiveScore(matchId, seed);
   const { nameOf, teamNameOf, battingTeamLabel } = useScorecardResolvers(state ?? seed, match);
 
   useEffect(() => {
@@ -109,6 +109,12 @@ export default function LiveViewScreen(): React.ReactElement {
         </View>
 
         <MatchTossSummaryLine match={match} />
+
+        {status === 'offline' && isLive ? (
+          <Text className="font-sans text-sm text-on-surface-variant">
+            Live updates disconnected. Showing the last known score.
+          </Text>
+        ) : null}
 
         {error && !state ? (
           <Text className="font-sans text-sm text-on-surface-variant">{error}</Text>

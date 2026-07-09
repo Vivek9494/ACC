@@ -35,6 +35,7 @@ import {
   NotificationTrigger,
 } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { activeMatchFirstWhere } from '../matches/match-query';
 import { isCaptainOrViceCaptain } from '../authz/team-leader.util';
 import { ScorecardReader } from './scorecard-reader';
 
@@ -173,7 +174,7 @@ export class ScorecardConfirmationService {
   // --- Auto-confirm (§13.1, §23) -------------------------------------------
 
   async evaluateAutoConfirm(matchId: string): Promise<void> {
-    const match = await this.prisma.match.findUnique({ where: { id: matchId } });
+    const match = await this.prisma.match.findFirst({ where: activeMatchFirstWhere(matchId) });
     if (match && this.autoConfirmDue(match)) {
       await this.autoConfirm(match);
     }
@@ -185,6 +186,7 @@ export class ScorecardConfirmationService {
       where: {
         state: { in: AWAITING_CONFIRMATION },
         completedAt: { not: null, lte: cutoff },
+        isDeleted: false,
       },
     });
     for (const match of due) {
@@ -204,14 +206,30 @@ export class ScorecardConfirmationService {
   }
 
   private async autoConfirm(match: Match): Promise<void> {
-    const withBothSides = await this.prisma.match.update({
-      where: { id: match.id },
+    const claimed = await this.prisma.match.updateMany({
+      where: {
+        id: match.id,
+        isDeleted: false,
+        state: { in: AWAITING_CONFIRMATION },
+        autoConfirmed: false,
+      },
       data: {
         homeTeamConfirmed: true,
         awayTeamConfirmed: true,
       },
+    });
+    if (claimed.count === 0) {
+      return;
+    }
+
+    const withBothSides = await this.prisma.match.findFirst({
+      where: activeMatchFirstWhere(match.id),
       include: { tournament: { select: { type: true } } },
     });
+    if (!withBothSides) {
+      return;
+    }
+
     const locked = await this.lock(withBothSides, { actorUserId: null, auto: true });
     await this.audit.record({
       action: ScorecardAuditAction.AutoConfirmed,
@@ -605,8 +623,8 @@ export class ScorecardConfirmationService {
   }
 
   private async requireMatch(matchId: string): Promise<MatchWithTournament> {
-    const match = await this.prisma.match.findUnique({
-      where: { id: matchId },
+    const match = await this.prisma.match.findFirst({
+      where: activeMatchFirstWhere(matchId),
       include: { tournament: { select: { type: true } } },
     });
     if (!match) {

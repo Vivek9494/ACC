@@ -33,7 +33,6 @@ import { RedisService } from '../redis/redis.service';
  */
 @WebSocketGateway({
   namespace: LIVE_NAMESPACE,
-  cors: { origin: '*' },
 })
 export class LiveGateway implements OnGatewayConnection, OnGatewayDisconnect {
   private readonly logger = new Logger(LiveGateway.name);

@@ -32,6 +32,7 @@ import type { Delivery, Innings, Match, Prisma } from '@prisma/client';
 import { AuditService } from '../audit/audit.service';
 import { LiveService } from '../live/live.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { activeMatchFirstWhere } from '../matches/match-query';
 import { SuspensionService } from '../suspension/suspension.service';
 import { TennisMatchScoringAuthService } from '../tournaments/tennis-match-scoring-auth.service';
 import { assertKnockoutPostConfirmEditAllowed } from '../knockout-bracket/knockout-bracket-correction.guard';
@@ -1200,7 +1201,9 @@ export class ScoringService {
   }
 
   private async requireMatch(matchId: string): Promise<Match> {
-    const match = await this.prisma.match.findUnique({ where: { id: matchId } });
+    const match = await this.prisma.match.findFirst({
+      where: activeMatchFirstWhere(matchId),
+    });
     if (!match) {
       throw new NotFoundException({ message: 'Match not found', error: 'MATCH_NOT_FOUND' });
     }

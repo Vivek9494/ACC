@@ -32,7 +32,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import type { Match, Prisma } from '@prisma/client';
+import { Prisma, type Match } from '@prisma/client';
 
 import { AuditService } from '../audit/audit.service';
 import { PermissionService } from '../authz/permission.service';
@@ -248,19 +248,39 @@ export class AttendanceService {
     const reportingTime = match.reportingTime!;
     const status = classifyAttendanceStatus(now, reportingTime);
 
-    await this.prisma.matchAttendancePunch.create({
-      data: {
-        matchId,
-        userId: actor.id,
-        teamId: eligibility.teamId,
-        punchTimeUtc: now,
-        source: AttendancePunchSource.Auto,
-        status,
-        verifiedLate: false,
-        setByUserId: null,
-        editedFlag: false,
-      },
-    });
+    try {
+      await this.prisma.matchAttendancePunch.create({
+        data: {
+          matchId,
+          userId: actor.id,
+          teamId: eligibility.teamId,
+          punchTimeUtc: now,
+          source: AttendancePunchSource.Auto,
+          status,
+          verifiedLate: false,
+          setByUserId: null,
+          editedFlag: false,
+        },
+      });
+    } catch (err) {
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === 'P2002'
+      ) {
+        const raced = await this.prisma.matchAttendancePunch.findUnique({
+          where: { matchId_userId: { matchId, userId: actor.id } },
+        });
+        if (raced) {
+          return {
+            matchId,
+            punchTimeUtc: raced.punchTimeUtc.toISOString(),
+            status: raced.status as AttendancePunchStatus,
+            alreadyRecorded: true,
+          };
+        }
+      }
+      throw err;
+    }
 
     await this.audit.record({
       action: 'ATTENDANCE_PUNCH_AUTO',

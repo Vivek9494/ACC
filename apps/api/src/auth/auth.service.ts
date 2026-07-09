@@ -16,6 +16,7 @@ import {
   profileMobileForStorage,
   PASSWORD_POLICY_INVALID_MESSAGE,
   REFRESH_IDLE_DAYS,
+  SIGNUP_RATE_LIMIT,
   SIGNUP_VALIDATION_MESSAGES,
   TEMP_PASSWORD_EXPIRED_MESSAGE,
   UserRole,
@@ -45,6 +46,7 @@ import {
   loginAttemptsKey,
   type RefreshTokenPayload,
   refreshKey,
+  signupAttemptsKey,
 } from './auth.constants';
 import type { LoginDto } from './dto/login.dto';
 import type { SignupDto } from './dto/signup.dto';
@@ -64,11 +66,24 @@ export class AuthService {
   async signup(dto: SignupDto): Promise<AuthResponse> {
     const mobileNumber = profileMobileForStorage(dto.mobileNumber);
     const emergencyContactNumber = profileMobileForStorage(dto.emergencyContactNumber);
+    const attemptsKey = signupAttemptsKey(mobileNumber);
+    const attempts = Number((await this.redis.get(attemptsKey)) ?? 0);
+    if (attempts >= SIGNUP_RATE_LIMIT.maxAttempts) {
+      throw new HttpException(
+        {
+          message: 'Too many signup attempts. Please try again later.',
+          error: AuthErrorCode.TooManySignupAttempts,
+        },
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+
     const existing = await this.prisma.user.findUnique({
       where: { mobileNumber },
       select: { id: true },
     });
     if (existing) {
+      await this.redis.incrementWithTtl(attemptsKey, SIGNUP_RATE_LIMIT.windowSeconds);
       throw new ConflictException({
         message: MOBILE_NUMBER_EXISTS_MESSAGE,
         error: AuthErrorCode.MobileNumberExists,
@@ -77,6 +92,7 @@ export class AuthService {
 
     const dob = new Date(dto.dateOfBirth);
     if (this.ageInYears(dob, new Date()) < MIN_SIGNUP_AGE) {
+      await this.redis.incrementWithTtl(attemptsKey, SIGNUP_RATE_LIMIT.windowSeconds);
       throw new BadRequestException({
         message: SIGNUP_VALIDATION_MESSAGES.dateOfBirth.underage,
         error: AuthErrorCode.Underage,
@@ -88,6 +104,7 @@ export class AuthService {
       select: { id: true, isActive: true },
     });
     if (!center || !center.isActive) {
+      await this.redis.incrementWithTtl(attemptsKey, SIGNUP_RATE_LIMIT.windowSeconds);
       throw new BadRequestException({
         message: 'Invalid or inactive center',
         error: AuthErrorCode.InvalidCenter,
@@ -99,6 +116,7 @@ export class AuthService {
     let postalCode: string | null = null;
     if (postalCodeRaw) {
       if (!isValidCanadianPostalCode(postalCodeRaw)) {
+        await this.redis.incrementWithTtl(attemptsKey, SIGNUP_RATE_LIMIT.windowSeconds);
         throw new BadRequestException({
           message: INVALID_POSTAL_CODE_MESSAGE,
           error: 'INVALID_POSTAL_CODE',
@@ -126,6 +144,8 @@ export class AuthService {
         passwordHash,
       },
     });
+
+    await this.redis.del(attemptsKey);
 
     const tokens = await this.startSession(user);
     return { user: await loadAuthUser(this.prisma, user, this.mediaUrls), tokens };

@@ -15,7 +15,18 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
 
   constructor(configService: ConfigService) {
     const url = configService.getOrThrow<string>('REDIS_URL');
-    this.client = new Redis(url, { lazyConnect: true, maxRetriesPerRequest: 2 });
+    this.client = new Redis(url, {
+      lazyConnect: true,
+      maxRetriesPerRequest: 2,
+      enableReadyCheck: true,
+    });
+
+    this.client.on('error', (err: Error) => {
+      this.logger.error('Redis client error', err.stack);
+    });
+    this.client.on('reconnecting', () => {
+      this.logger.warn('Redis client reconnecting');
+    });
   }
 
   async onModuleInit(): Promise<void> {
@@ -29,6 +40,26 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
 
   async onModuleDestroy(): Promise<void> {
     await this.client.quit();
+  }
+
+  /** Returns true when Redis responds to PING. Used by /health. */
+  async ping(): Promise<boolean> {
+    try {
+      const response = await this.client.ping();
+      return response === 'PONG';
+    } catch (err) {
+      this.logger.warn(`Redis ping failed: ${String(err)}`);
+      return false;
+    }
+  }
+
+  /**
+   * Acquire a short-lived distributed lock (SET NX EX). Returns true when this
+   * instance won the lock. Used to dedupe cron work across horizontal replicas.
+   */
+  async acquireLock(key: string, ttlSeconds: number): Promise<boolean> {
+    const result = await this.client.set(key, '1', 'EX', ttlSeconds, 'NX');
+    return result === 'OK';
   }
 
   /**

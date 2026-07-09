@@ -77,6 +77,7 @@ import {
   NotificationTrigger,
 } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { activeMatchFirstWhere } from './match-query';
 import { selectableUserWhere } from '../users/user-query';
 import { activeTeamWhere } from '../teams/team-query';
 import { StandingsService } from '../standings/standings.service';
@@ -2384,8 +2385,8 @@ export class MatchesService {
     delayMinutes: number;
     tournament: { impactPlayerEnabled: boolean; type: string; ballType: string };
   }> {
-    const match = await this.prisma.match.findUnique({
-      where: { id: matchId },
+    const match = await this.prisma.match.findFirst({
+      where: activeMatchFirstWhere(matchId),
       select: {
         id: true,
         state: true,
@@ -2405,8 +2406,8 @@ export class MatchesService {
   }
 
   private async requireMatchRow(matchId: string): Promise<MatchRow> {
-    const match = await this.prisma.match.findUnique({
-      where: { id: matchId },
+    const match = await this.prisma.match.findFirst({
+      where: activeMatchFirstWhere(matchId),
       include: MATCH_INCLUDE,
     });
     if (!match) {
@@ -2878,8 +2879,8 @@ export class MatchesService {
       };
     }>
   > {
-    const row = await this.prisma.match.findUnique({
-      where: { id: matchId },
+    const row = await this.prisma.match.findFirst({
+      where: activeMatchFirstWhere(matchId),
       select: {
         id: true,
         tournamentId: true,
@@ -2906,7 +2907,7 @@ export class MatchesService {
         isDeleted: true,
       },
     });
-    if (!row || row.isDeleted) {
+    if (!row) {
       throw new NotFoundException({ message: 'Match not found', error: 'NOT_FOUND' });
     }
     return row;

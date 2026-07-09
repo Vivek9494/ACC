@@ -24,7 +24,6 @@ import { PrismaService } from '../prisma/prisma.service';
  */
 @WebSocketGateway({
   namespace: USER_NAMESPACE,
-  cors: { origin: '*' },
 })
 export class UserGateway implements OnGatewayConnection, OnGatewayDisconnect {
   private readonly logger = new Logger(UserGateway.name);

@@ -1,6 +1,7 @@
 import type { AutoAttendancePunchResponse } from '@acc/types';
 
 import { loadAccessToken, loadTokens, saveTokens } from '../lib/session';
+import { API_BASE_URL } from '../lib/api-base-url';
 import { geofenceLog } from './geofence-log';
 
 /** Background-safe auto punch — uses SecureStore tokens (§geofence attendance). */
@@ -10,7 +11,7 @@ export async function backgroundAutoPunch(
   longitude: number,
   geofenceEnter = false,
 ): Promise<AutoAttendancePunchResponse | null> {
-  const baseUrl = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3001';
+  const baseUrl = API_BASE_URL;
   const capturedAt = new Date().toISOString();
   const body = JSON.stringify({ latitude, longitude, capturedAt, geofenceEnter });
 
