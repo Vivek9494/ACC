@@ -132,7 +132,7 @@ type MatchRow = Prisma.MatchGetPayload<{
     homeTeam: { select: { name: true } };
     awayTeam: { select: { name: true } };
     group: { select: { name: true } };
-    tournament: { select: { name: true; impactPlayerEnabled: true; type: true; ballType: true; timezone: true; oversPerInnings: true } };
+    tournament: { select: { name: true; impactPlayerEnabled: true; type: true; ballType: true; timezone: true; oversPerInnings: true; createdByUserId: true } };
     squads: {
       include: {
         team: { select: { name: true } };
@@ -154,7 +154,7 @@ const MATCH_INCLUDE = {
   homeTeam: { select: { name: true } },
   awayTeam: { select: { name: true } },
   group: { select: { name: true } },
-  tournament: { select: { name: true, impactPlayerEnabled: true, type: true, ballType: true, timezone: true, oversPerInnings: true } },
+  tournament: { select: { name: true, impactPlayerEnabled: true, type: true, ballType: true, timezone: true, oversPerInnings: true, createdByUserId: true } },
   squads: {
     include: {
       team: { select: { name: true } },
@@ -2718,6 +2718,7 @@ export class MatchesService {
       id: row.id,
       tournamentId: row.tournamentId,
       tournamentName: row.tournament.name,
+      tournamentCreatedByUserId: row.tournament.createdByUserId,
       ballType: row.tournament.ballType as BallType,
       matchCode: row.matchCode,
       matchType: row.matchType as MatchType,

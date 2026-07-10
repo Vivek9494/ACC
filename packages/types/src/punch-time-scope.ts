@@ -17,11 +17,20 @@ export interface PunchTimeScopeMatch {
   ballType: string;
   state: MatchStateType;
   tournamentId: string;
+  tournamentCreatedByUserId: string;
   homeTeamId: string | null;
   awayTeamId: string | null;
   homeTeamName?: string | null;
   awayTeamName?: string | null;
   externalOpponentName?: string | null;
+}
+
+/** B1 organizer check — tournament creator (`createdByUserId`). */
+export function isTournamentOrganizer(
+  user: AuthUser | null | undefined,
+  tournamentCreatedByUserId: string | null | undefined,
+): boolean {
+  return Boolean(user && tournamentCreatedByUserId && user.id === tournamentCreatedByUserId);
 }
 
 export interface PunchTimeTeamTab {
@@ -60,8 +69,11 @@ export function canViewMatchPlayersPunchTimeButton(
   if (!PLAYERS_PUNCH_TIME_MATCH_STATES.includes(match.state)) {
     return false;
   }
-  if (user.role === UserRole.Admin || user.role === UserRole.ClubManager) {
+  if (user.role === UserRole.Admin) {
     return true;
+  }
+  if (user.role === UserRole.ClubManager) {
+    return isTournamentOrganizer(user, match.tournamentCreatedByUserId);
   }
   return isMatchTeamCaptainOrViceCaptain(user, match);
 }
@@ -83,7 +95,11 @@ export function resolvePunchTimeViewScope(
     return null;
   }
 
-  if (user!.role === UserRole.Admin || user!.role === UserRole.ClubManager) {
+  const isAdmin = user!.role === UserRole.Admin;
+  const isOrganizerCm =
+    user!.role === UserRole.ClubManager &&
+    isTournamentOrganizer(user, match.tournamentCreatedByUserId);
+  if (isAdmin || isOrganizerCm) {
     if (isAccRegisteredOpponent(match)) {
       return {
         teams,

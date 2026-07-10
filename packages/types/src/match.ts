@@ -344,6 +344,8 @@ export interface MatchSummary {
   tournamentId: string;
   /** Tournament display name (from tournament relation). */
   tournamentName: string;
+  /** Tournament organizer user id — drives organizer-scoped Club Manager actions. */
+  tournamentCreatedByUserId: string;
   /** Tournament ball type — drives tennis vs leather scorer flows. */
   ballType: BallType;
   matchCode: string | null;

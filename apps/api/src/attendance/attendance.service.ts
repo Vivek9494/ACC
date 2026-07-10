@@ -58,13 +58,13 @@ const PUNCH_TIME_MATCH_STATES: MatchState[] = [
 type AttendanceMatchRow = Match & {
   homeTeam: { id: string; name: string } | null;
   awayTeam: { id: string; name: string } | null;
-  tournament: { id: string; name: string; ballType: string; timezone: string | null };
+  tournament: { id: string; name: string; ballType: string; timezone: string | null; createdByUserId: string };
 };
 
 const ATTENDANCE_MATCH_INCLUDE = {
   homeTeam: { select: { id: true, name: true } },
   awayTeam: { select: { id: true, name: true } },
-  tournament: { select: { id: true, name: true, ballType: true, timezone: true } },
+  tournament: { select: { id: true, name: true, ballType: true, timezone: true, createdByUserId: true } },
 } as const satisfies Prisma.MatchInclude;
 
 @Injectable()
@@ -878,8 +878,18 @@ export class AttendanceService {
       });
     }
 
-    if (actor.role === UserRole.Admin || actor.role === UserRole.ClubManager) {
+    if (actor.role === UserRole.Admin) {
       return;
+    }
+
+    if (actor.role === UserRole.ClubManager) {
+      if (match.tournament.createdByUserId === actor.id) {
+        return;
+      }
+      throw new ForbiddenException({
+        message: 'You do not have access to punch time for this match',
+        error: 'FORBIDDEN',
+      });
     }
 
     const isLeader = await isCaptainOrViceCaptain(

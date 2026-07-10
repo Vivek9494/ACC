@@ -42,7 +42,7 @@ describe('AttendanceService punch time access', () => {
     tournamentId: 'tournament-1',
     homeTeam: { id: 'team-a', name: 'ACC 3' },
     awayTeam: { id: 'team-b', name: 'ACC 6' },
-    tournament: { id: 'tournament-1', name: 'ACC 2026', ballType: BallType.Leather, timezone: 'America/Toronto' },
+    tournament: { id: 'tournament-1', name: 'ACC 2026', ballType: BallType.Leather, timezone: 'America/Toronto', createdByUserId: 'cm-1' },
   };
 
   beforeEach(async () => {
@@ -92,5 +92,25 @@ describe('AttendanceService punch time access', () => {
     await expect(service.getPunchTimeView(captain, 'match-1', 'team-a')).resolves.toMatchObject({
       teamId: 'team-a',
     });
+  });
+
+  it('allows organizing club manager to fetch punch data for either ACC team', async () => {
+    const clubManager = { id: 'cm-1', role: UserRole.ClubManager } as AuthUser;
+
+    await expect(service.getPunchTimeView(clubManager, 'match-1', 'team-a')).resolves.toMatchObject({
+      teamId: 'team-a',
+    });
+    await expect(service.getPunchTimeView(clubManager, 'match-1', 'team-b')).resolves.toMatchObject({
+      teamId: 'team-b',
+    });
+    expect(isCaptainMock).not.toHaveBeenCalled();
+  });
+
+  it('blocks club manager who does not organize the tournament', async () => {
+    const clubManager = { id: 'other-cm', role: UserRole.ClubManager } as AuthUser;
+
+    await expect(service.getPunchTimeView(clubManager, 'match-1', 'team-a')).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
   });
 });

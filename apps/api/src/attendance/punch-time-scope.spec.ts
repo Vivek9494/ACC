@@ -11,6 +11,7 @@ const baseMatch = {
   ballType: BallType.Leather,
   state: MatchState.Live,
   tournamentId: 'tournament-1',
+  tournamentCreatedByUserId: 'organizer-1',
   homeTeamId: 'team-a',
   awayTeamId: 'team-b',
   homeTeamName: 'ACC 3',
@@ -21,9 +22,10 @@ const baseMatch = {
 function authUser(
   role: UserRole,
   teamLeadAssignments: AuthUser['teamLeadAssignments'] = [],
+  id = 'user-1',
 ): AuthUser {
   return {
-    id: 'user-1',
+    id,
     role,
     teamLeadAssignments,
   } as AuthUser;
@@ -55,6 +57,21 @@ describe('punch time scope', () => {
     ).toBe(false);
   });
 
+  it('allows club managers who organize the tournament and blocks others', () => {
+    expect(
+      canViewMatchPlayersPunchTimeButton(
+        authUser(UserRole.ClubManager, [], 'organizer-1'),
+        baseMatch,
+      ),
+    ).toBe(true);
+    expect(
+      canViewMatchPlayersPunchTimeButton(
+        authUser(UserRole.ClubManager, [], 'other-cm'),
+        baseMatch,
+      ),
+    ).toBe(false);
+  });
+
   it('scopes captain to their own team even in ACC-vs-ACC', () => {
     const scope = resolvePunchTimeViewScope(
       authUser(UserRole.Captain, [
@@ -70,7 +87,10 @@ describe('punch time scope', () => {
   });
 
   it('scopes admin to two tabs for ACC-vs-ACC and one team for external opponents', () => {
-    const accVsAcc = resolvePunchTimeViewScope(authUser(UserRole.ClubManager), baseMatch);
+    const accVsAcc = resolvePunchTimeViewScope(
+      authUser(UserRole.ClubManager, [], 'organizer-1'),
+      baseMatch,
+    );
     expect(accVsAcc?.showTeamTabs).toBe(true);
     expect(accVsAcc?.teams).toHaveLength(2);
 

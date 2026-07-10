@@ -17,7 +17,6 @@ import {
 import { EditPunchTimeDialog } from '../attendance/EditPunchTimeDialog';
 import { PlayerAvatar } from '../tournament/PlayerAvatar';
 import { Card } from '../ui/Card';
-import { ScreenHeader } from '../ui/ScreenHeader';
 import { Text } from '../ui/Text';
 import { UnderlineTabBar } from '../ui/UnderlineTabBar';
 import { FIELD_ORANGE } from '../ui/fieldStyles';
@@ -222,8 +221,6 @@ export function PunchTimeScreen({
 
   return (
     <View className="flex-1 bg-background">
-      <ScreenHeader title="Punch Time" accentTitle />
-
       {teamTabs && teamTabs.length > 1 ? (
         <View className="px-4 pb-2">
           <UnderlineTabBar

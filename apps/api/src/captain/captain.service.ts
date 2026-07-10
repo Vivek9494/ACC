@@ -1,4 +1,5 @@
 import {
+  BallType,
   type AuthUser,
   type CaptainDashboard,
   type CaptainFeaturedMatchSummary,
@@ -11,6 +12,7 @@ import {
   Permission,
   TournamentType,
   UserRole,
+  canViewMatchPlayersPunchTimeButton,
   computeManOfMatchDueAt,
   isAssignScorerButtonVisible,
   isConfirmedListButtonVisible,
@@ -186,6 +188,7 @@ export class CaptainService {
     ]);
 
     const upcomingMatchCard = await this.buildUpcomingMatchCard(
+      actor,
       leadershipTeamIds,
       captainPollCards,
       scorerAssignmentMatch,
@@ -200,6 +203,7 @@ export class CaptainService {
 
   /** Captain / VC unified upcoming leather match card (poll + prep actions). */
   private async buildUpcomingMatchCard(
+    actor: AuthUser,
     leadershipTeamIds: string[],
     pollCards: {
       participationPoll: CaptainDashboard['participationPoll'];
@@ -226,11 +230,14 @@ export class CaptainService {
       where: { id: source.matchId, isDeleted: false },
       select: {
         id: true,
+        tournamentId: true,
+        homeTeamId: true,
+        awayTeamId: true,
         matchDate: true,
         startTime: true,
         reportingTime: true,
         state: true,
-        tournament: { select: { timezone: true } },
+        tournament: { select: { timezone: true, ballType: true, createdByUserId: true } },
       },
     });
     if (!match) {
@@ -259,7 +266,15 @@ export class CaptainService {
 
     const showViewPunchTime =
       match.reportingTime != null &&
-      isViewPunchTimeButtonVisible({ reportingTime: match.reportingTime }, now);
+      isViewPunchTimeButtonVisible({ reportingTime: match.reportingTime }, now) &&
+      canViewMatchPlayersPunchTimeButton(actor, {
+        ballType: match.tournament.ballType as BallType,
+        state: match.state as MatchState,
+        tournamentId: match.tournamentId,
+        tournamentCreatedByUserId: match.tournament.createdByUserId,
+        homeTeamId: match.homeTeamId,
+        awayTeamId: match.awayTeamId,
+      });
 
     return {
       matchId: source.matchId,
