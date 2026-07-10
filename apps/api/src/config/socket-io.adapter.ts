@@ -29,6 +29,8 @@ export class CorsSocketIoAdapter extends IoAdapter {
 
     if (this.redisUrl) {
       const pubClient = new Redis(this.redisUrl, {
+        // Dual-stack DNS lookup for Railway private networking (IPv6).
+        family: 0,
         maxRetriesPerRequest: null,
         enableReadyCheck: true,
       });

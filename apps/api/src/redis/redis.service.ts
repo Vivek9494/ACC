@@ -16,6 +16,9 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   constructor(configService: ConfigService) {
     const url = configService.getOrThrow<string>('REDIS_URL');
     this.client = new Redis(url, {
+      // Dual-stack DNS lookup: Railway private networking resolves
+      // *.railway.internal over IPv6, which ioredis skips by default (IPv4-only).
+      family: 0,
       lazyConnect: true,
       maxRetriesPerRequest: 2,
       enableReadyCheck: true,
