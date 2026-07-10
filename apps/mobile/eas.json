@@ -14,7 +14,7 @@
     "production": {
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://REPLACE_WITH_PRODUCTION_API_URL"
+        "EXPO_PUBLIC_API_URL": "https://acc-api-production.up.railway.app"
       }
     }
   },
