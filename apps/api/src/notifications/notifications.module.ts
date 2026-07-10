@@ -2,6 +2,7 @@ import { Global, Logger, Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { cert, getApps, initializeApp } from 'firebase-admin/app';
 
+import { AuthModule } from '../auth/auth.module';
 import { ConsolePushProvider } from './console-push-provider';
 import {
   NodeEnv,
@@ -26,6 +27,8 @@ import { PushTokenService } from './push-token.service';
  */
 @Global()
 @Module({
+  // AuthModule re-exports JwtModule + JwtAuthGuard, which PushTokenController binds.
+  imports: [AuthModule],
   controllers: [PushTokenController],
   providers: [
     {
