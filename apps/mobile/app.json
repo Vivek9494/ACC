@@ -16,6 +16,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.atmiya.acc",
       "appleTeamId": "YUZ2DTL3T9",
+      "googleServicesFile": "./GoogleService-Info.plist",
       "config": {
         "googleMapsApiKey": "AIzaSyBhBCpky5whHbOUxGC2-kJM8KlBJno7y2I"
       },
