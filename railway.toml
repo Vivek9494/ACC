@@ -1,0 +1,28 @@
+# ACC API — Railway config-as-code (production)
+# https://docs.railway.com/config-as-code
+#
+# Railway project (production): Postgres + Redis + acc-api (this service).
+# Wire DATABASE_URL / REDIS_URL on acc-api via Reference Variables — see
+# apps/api/.env.production.example
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+watchPatterns = [
+  "apps/api/**",
+  "packages/types/**",
+  "Dockerfile",
+  "pnpm-lock.yaml",
+  "pnpm-workspace.yaml",
+  "package.json",
+  "railway.toml",
+]
+
+[deploy]
+# Dockerfile CMD runs apps/api/scripts/docker-start.sh (migrate + node).
+healthcheckPath = "/health"
+healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5
+overlapSeconds = 60
+drainingSeconds = 30
