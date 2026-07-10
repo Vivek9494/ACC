@@ -3,7 +3,11 @@ import { ConfigService } from '@nestjs/config';
 import { cert, getApps, initializeApp } from 'firebase-admin/app';
 
 import { ConsolePushProvider } from './console-push-provider';
-import { NodeEnv } from '../config/env.validation';
+import {
+  NodeEnv,
+  StubbableIntegration,
+  parseStubbedIntegrations,
+} from '../config/env.validation';
 import { FcmPushProvider } from './fcm-push-provider';
 import { NotificationAudienceService } from './notification-audience.service';
 import { NotificationLogService } from './notification-log.service';
@@ -46,14 +50,20 @@ import { PushTokenService } from './push-token.service';
           return new FcmPushProvider(app);
         }
 
-        if (nodeEnv === NodeEnv.Production) {
+        const fcmStubbed = parseStubbedIntegrations(
+          config.get<string>('ALLOW_STUBBED_INTEGRATIONS'),
+        ).has(StubbableIntegration.Fcm);
+
+        if (nodeEnv === NodeEnv.Production && !fcmStubbed) {
           throw new Error(
             'FCM credentials (FCM_PROJECT_ID, FCM_CLIENT_EMAIL, FCM_PRIVATE_KEY) are required in production.',
           );
         }
 
         new Logger('NotificationsModule').warn(
-          'FCM credentials not set — using console push provider (pushes logged, not sent).',
+          nodeEnv === NodeEnv.Production
+            ? 'FCM STUBBED in production (ALLOW_STUBBED_INTEGRATIONS) — pushes logged, not sent.'
+            : 'FCM credentials not set — using console push provider (pushes logged, not sent).',
         );
         return new ConsolePushProvider();
       },

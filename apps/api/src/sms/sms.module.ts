@@ -3,7 +3,11 @@ import { ConfigService } from '@nestjs/config';
 import { Twilio } from 'twilio';
 
 import { ConsoleSmsProvider } from './console-sms-provider';
-import { NodeEnv } from '../config/env.validation';
+import {
+  NodeEnv,
+  StubbableIntegration,
+  parseStubbedIntegrations,
+} from '../config/env.validation';
 import { SMS_PROVIDER, type SmsProvider } from './sms-provider';
 import { TwilioSmsProvider } from './twilio-sms-provider';
 
@@ -26,13 +30,20 @@ import { TwilioSmsProvider } from './twilio-sms-provider';
         if (sid && token && from) {
           return new TwilioSmsProvider(new Twilio(sid, token), from);
         }
-        if (nodeEnv === NodeEnv.Production) {
+
+        const twilioStubbed = parseStubbedIntegrations(
+          config.get<string>('ALLOW_STUBBED_INTEGRATIONS'),
+        ).has(StubbableIntegration.Twilio);
+
+        if (nodeEnv === NodeEnv.Production && !twilioStubbed) {
           throw new Error(
             'Twilio credentials (TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER) are required in production.',
           );
         }
         new Logger('SmsModule').warn(
-          'Twilio credentials not set — using console SMS provider (OTPs logged, not sent).',
+          nodeEnv === NodeEnv.Production
+            ? 'Twilio STUBBED in production (ALLOW_STUBBED_INTEGRATIONS) — OTPs logged, not sent.'
+            : 'Twilio credentials not set — using console SMS provider (OTPs logged, not sent).',
         );
         return new ConsoleSmsProvider();
       },

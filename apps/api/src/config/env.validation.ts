@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { plainToInstance, Type } from 'class-transformer';
 import {
   IsEnum,
@@ -61,6 +62,16 @@ export class EnvironmentVariables {
   @IsOptional()
   @IsString()
   LOG_LEVEL?: string;
+
+  /**
+   * Comma-separated integrations permitted to run with dev-style console stubs
+   * in production during a phased rollout, e.g. `TWILIO,FCM`. Stubbed
+   * integrations log instead of delivering (OTPs / push are NOT sent). AWS S3
+   * and CORS cannot be stubbed. Leave unset to require all integrations.
+   */
+  @IsOptional()
+  @IsString()
+  ALLOW_STUBBED_INTEGRATIONS?: string;
 
   // Twilio (optional in dev). Required in production — otherwise OTPs would be
   // logged to stdout via the console stub.
@@ -138,12 +149,56 @@ const PRODUCTION_REQUIRED_STRINGS = [
   'CORS_ORIGINS',
 ] as const satisfies readonly (keyof EnvironmentVariables)[];
 
+/** Integrations that ship with a console fallback and may be stubbed in prod. */
+export enum StubbableIntegration {
+  Twilio = 'TWILIO',
+  Fcm = 'FCM',
+}
+
+/** Env keys covered by each stubbable integration (excluded from prod checks when stubbed). */
+const STUBBABLE_INTEGRATION_KEYS: Record<
+  StubbableIntegration,
+  readonly (keyof EnvironmentVariables)[]
+> = {
+  [StubbableIntegration.Twilio]: [
+    'TWILIO_ACCOUNT_SID',
+    'TWILIO_AUTH_TOKEN',
+    'TWILIO_FROM_NUMBER',
+  ],
+  [StubbableIntegration.Fcm]: ['FCM_PROJECT_ID', 'FCM_CLIENT_EMAIL', 'FCM_PRIVATE_KEY'],
+};
+
+/** Parse the ALLOW_STUBBED_INTEGRATIONS list into a validated set. */
+export function parseStubbedIntegrations(raw: string | undefined): Set<StubbableIntegration> {
+  const result = new Set<StubbableIntegration>();
+  if (!raw) {
+    return result;
+  }
+  for (const token of raw.split(',').map((part) => part.trim().toUpperCase())) {
+    if (token === StubbableIntegration.Twilio || token === StubbableIntegration.Fcm) {
+      result.add(token);
+    }
+  }
+  return result;
+}
+
 function assertProductionIntegrations(env: EnvironmentVariables): void {
   if (env.NODE_ENV !== NodeEnv.Production) {
     return;
   }
 
+  const stubbed = parseStubbedIntegrations(env.ALLOW_STUBBED_INTEGRATIONS);
+  const excluded = new Set<keyof EnvironmentVariables>();
+  for (const integration of stubbed) {
+    for (const key of STUBBABLE_INTEGRATION_KEYS[integration]) {
+      excluded.add(key);
+    }
+  }
+
   const missing = PRODUCTION_REQUIRED_STRINGS.filter((key) => {
+    if (excluded.has(key)) {
+      return false;
+    }
     const value = env[key];
     return typeof value !== 'string' || value.trim().length === 0;
   });
@@ -151,6 +206,14 @@ function assertProductionIntegrations(env: EnvironmentVariables): void {
   if (missing.length > 0) {
     throw new Error(
       `Production environment requires: ${missing.join(', ')}. Dev-only console fallbacks are disabled in production.`,
+    );
+  }
+
+  if (stubbed.size > 0) {
+    new Logger('EnvValidation').warn(
+      `Running in production with STUBBED integrations: ${[...stubbed].join(', ')}. ` +
+        'These will log instead of delivering (OTPs / push are NOT sent). Set real ' +
+        'credentials and remove ALLOW_STUBBED_INTEGRATIONS before going live.',
     );
   }
 
