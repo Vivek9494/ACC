@@ -12,6 +12,9 @@
     COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
     COPY apps/api/package.json ./apps/api/
     COPY packages/types/package.json ./packages/types/
+    # pnpm 11 requires allowBuilds in pnpm-workspace.yaml (not package.json#pnpm).
+    RUN grep -q "'@firebase/util': true" pnpm-workspace.yaml \
+      && grep -q 'protobufjs: true' pnpm-workspace.yaml
     # Install all workspace deps (frozen = reproducible from the lockfile)
     RUN pnpm install --frozen-lockfile
     
