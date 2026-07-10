@@ -7,12 +7,12 @@
     "dev": "expo start",
     "predev": "pnpm --filter @acc/types build",
     "postinstall": "node ./scripts/patch-datetimepicker-ios.js",
+    "eas-build-post-install": "pnpm --filter @acc/types build",
     "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
-    "typecheck": "tsc --noEmit",
-    "eas": "eas"
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@acc/types": "workspace:*",
