@@ -5,7 +5,7 @@
   "description": "ACC — cricket tournament management app monorepo",
   "packageManager": "pnpm@11.5.2",
   "engines": {
-    "node": ">=20"
+    "node": ">=22.13"
   },
   "scripts": {
     "dev:api": "pnpm --filter @acc/api dev",
