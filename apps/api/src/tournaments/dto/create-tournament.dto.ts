@@ -138,6 +138,10 @@ export class CreateTournamentDto implements CreateTournamentRequest {
   videoRequired!: boolean;
 
   @ValidateIf((dto: CreateTournamentDto) => dto.videoRequired)
+  @IsDateString({}, { message: M.videoUploadStartDate.required })
+  videoUploadStartAt?: string | null;
+
+  @ValidateIf((dto: CreateTournamentDto) => dto.videoRequired)
   @IsDateString({}, { message: M.videoUploadEndDate.required })
   videoUploadEndDate?: string | null;
 

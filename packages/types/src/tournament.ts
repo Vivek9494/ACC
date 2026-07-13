@@ -119,7 +119,9 @@ export interface CreateTournamentRequest {
   format: TournamentFormat;
   impactPlayerEnabled: boolean;
   videoRequired: boolean;
-  /** Required when videoRequired; must be after registration close (§19). */
+  /** Required when videoRequired; upload window start (ISO 8601). */
+  videoUploadStartAt?: string | null;
+  /** Required when videoRequired; must be after start and registration close (§19). */
   videoUploadEndDate?: string | null;
   youtubeUrl?: string | null;
   registrationOpenAt?: string | null;
@@ -158,6 +160,7 @@ export interface UpdateTournamentRequest {
   format?: TournamentFormat;
   impactPlayerEnabled?: boolean;
   videoRequired?: boolean;
+  videoUploadStartAt?: string | null;
   videoUploadEndDate?: string | null;
   youtubeUrl?: string | null;
   registrationOpenAt?: string | null;
@@ -232,6 +235,7 @@ export interface TournamentDetail extends TournamentSummary {
   format: TournamentFormat;
   impactPlayerEnabled: boolean;
   videoRequired: boolean;
+  videoUploadStartAt: string | null;
   videoUploadEndDate: string | null;
   youtubeUrl: string | null;
   registrationOpenAt: string | null;
@@ -285,7 +289,8 @@ export interface TournamentDetail extends TournamentSummary {
   viewerLeaderTeamIds: string[];
   /**
    * Tennis only: verified (confirmed) registrant may upload their own skill video
-   * after Center Sevak verification completes and before videoUploadEndDate (if set).
+   * after Center Sevak verification completes and within the upload window
+   * (videoUploadStartAt–videoUploadEndDate, when set).
    */
   canUploadSkillVideo: boolean;
   /** True when the viewer has already uploaded a skill video for this tournament. */

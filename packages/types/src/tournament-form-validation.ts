@@ -27,6 +27,9 @@ export const TOURNAMENT_FIELD_ORDER: readonly TournamentFormFieldKey[] = [
   'ballType',
   'year',
   'tournamentDates',
+  'tournamentLocation',
+  'leatherFromDate',
+  'leatherEndDate',
   'province',
   'citySelection',
   'centers',
@@ -37,7 +40,10 @@ export const TOURNAMENT_FIELD_ORDER: readonly TournamentFormFieldKey[] = [
   'registrationCloseDate',
   'registrationCloseTime',
   'auctionDate',
+  'videoUploadStartDate',
+  'videoUploadStartTime',
   'videoUploadEndDate',
+  'videoUploadEndTime',
   'knockoutTeamCount',
 ];
 
@@ -67,9 +73,15 @@ export interface CreateTournamentFormInput {
   hasAuctionDate: boolean;
   auctionDate: string;
   videoRequired: boolean;
+  videoUploadStartDate: string;
+  videoUploadStartTime: string;
   videoUploadEndDate: string;
+  videoUploadEndTime: string;
   /** Venue IANA timezone for today comparisons; defaults to Ontario. */
   venueTimezone?: string;
+  locationAddress?: string;
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 function combineLocalDateAndTimeToIso(date: string, time: string): string | null {
@@ -123,6 +135,115 @@ export function validateOptionalPlayersPerTeam(value: string): string | null {
   return null;
 }
 
+function appendTennisTournamentLocationErrors(
+  errors: TournamentFormFieldErrors,
+  values: Pick<
+    CreateTournamentFormInput,
+    'ballType' | 'locationAddress' | 'latitude' | 'longitude'
+  >,
+): void {
+  if (values.ballType !== BallType.Tennis) {
+    return;
+  }
+  const message = validateTennisTournamentLocation(
+    values.locationAddress,
+    values.latitude,
+    values.longitude,
+  );
+  if (message) {
+    errors.tournamentLocation = message;
+  }
+}
+
+function appendVideoUploadWindowErrors(
+  errors: TournamentFormFieldErrors,
+  values: Pick<
+    CreateTournamentFormInput,
+    | 'ballType'
+    | 'videoRequired'
+    | 'videoUploadStartDate'
+    | 'videoUploadStartTime'
+    | 'videoUploadEndDate'
+    | 'videoUploadEndTime'
+    | 'hasRegistrationWindow'
+    | 'registrationCloseDate'
+    | 'registrationCloseTime'
+    | 'venueTimezone'
+  > & {
+    initialVideoUploadStartDate?: string;
+    isEdit?: boolean;
+  },
+): void {
+  if (values.ballType !== BallType.Tennis || !values.videoRequired) {
+    return;
+  }
+
+  const messages = TOURNAMENT_FORM_MESSAGES;
+  const startDate = values.videoUploadStartDate.trim();
+  const startTime = values.videoUploadStartTime.trim();
+  const endDate = values.videoUploadEndDate.trim();
+  const endTime = values.videoUploadEndTime.trim();
+  const timeZone = values.venueTimezone ?? DEFAULT_VENUE_TIMEZONE;
+
+  if (!startDate) {
+    errors.videoUploadStartDate = messages.videoUploadStartDate.required;
+  }
+  if (!startTime) {
+    errors.videoUploadStartTime = messages.videoUploadStartTime.required;
+  }
+  if (!endDate) {
+    errors.videoUploadEndDate = messages.videoUploadEndDate.required;
+  }
+  if (!endTime) {
+    errors.videoUploadEndTime = messages.videoUploadEndTime.required;
+  }
+
+  if (startDate && !values.isEdit && isDateOnlyBeforeTodayInZone(startDate, timeZone)) {
+    errors.videoUploadStartDate = messages.videoUploadStartDate.past;
+  } else if (
+    startDate &&
+    values.isEdit &&
+    startDate !== values.initialVideoUploadStartDate &&
+    isDateOnlyBeforeTodayInZone(startDate, timeZone)
+  ) {
+    errors.videoUploadStartDate = messages.videoUploadStartDate.past;
+  }
+
+  const startIso =
+    startDate && startTime ? combineLocalDateAndTimeToIso(startDate, startTime) : null;
+  const endIso = endDate && endTime ? combineLocalDateAndTimeToIso(endDate, endTime) : null;
+
+  if (startIso && endIso && compareIsoDates(endIso, startIso) <= 0) {
+    errors.videoUploadEndDate = messages.videoUploadEndDate.afterStart;
+  }
+
+  if (values.hasRegistrationWindow && endIso) {
+    const registrationCloseIso = combineLocalDateAndTimeToIso(
+      values.registrationCloseDate,
+      values.registrationCloseTime,
+    );
+    if (registrationCloseIso && compareIsoDates(endIso, registrationCloseIso) <= 0) {
+      errors.videoUploadEndDate = messages.videoUploadEndDate.afterRegistrationClose;
+    }
+  }
+}
+
+/** Returns a user-facing error when Tennis tournament location is incomplete. */
+export function validateTennisTournamentLocation(
+  locationAddress?: string | null,
+  latitude?: number | null,
+  longitude?: number | null,
+): string | null {
+  const address = locationAddress?.trim() ?? '';
+  if (!address) {
+    return TOURNAMENT_FORM_MESSAGES.tournamentLocation.required;
+  }
+  if (latitude == null || longitude == null) {
+    return TOURNAMENT_FORM_MESSAGES.tournamentLocation.coordinates;
+  }
+  return null;
+}
+
 /** Shared Add Tournament validation (mobile submit + API create). */
 export function validateCreateTournamentForm(
   values: CreateTournamentFormInput,
@@ -152,24 +273,9 @@ export function validateCreateTournamentForm(
   const resolvedDates = resolveTournamentFormDates(values);
 
   if (values.ballType === BallType.Leather) {
-    if (!values.leatherFromDate.trim()) {
-      errors.tournamentDates = TOURNAMENT_FORM_MESSAGES.tournamentDates.leatherFromRequired;
-    } else if (!values.leatherEndDate.trim()) {
-      errors.tournamentDates = TOURNAMENT_FORM_MESSAGES.tournamentDates.leatherEndRequired;
-    } else if (compareIsoDateOnly(values.leatherEndDate, values.leatherFromDate) < 0) {
-      errors.tournamentDates = TOURNAMENT_FORM_MESSAGES.tournamentDates.endBeforeFrom;
-    } else if (
-      isDateOnlyBeforeTodayInZone(
-        values.leatherFromDate,
-        values.venueTimezone ?? DEFAULT_VENUE_TIMEZONE,
-      ) ||
-      isDateOnlyBeforeTodayInZone(
-        values.leatherEndDate,
-        values.venueTimezone ?? DEFAULT_VENUE_TIMEZONE,
-      )
-    ) {
-      errors.tournamentDates = TOURNAMENT_FORM_MESSAGES.tournamentDates.past;
-    }
+    appendLeatherSpanDateErrors(errors, values, {
+      timeZone: values.venueTimezone ?? DEFAULT_VENUE_TIMEZONE,
+    });
   } else if (resolvedDates.length === 0) {
     errors.tournamentDates = TOURNAMENT_FORM_MESSAGES.tournamentDates.required;
   }
@@ -235,10 +341,10 @@ export function validateCreateTournamentForm(
       errors.auctionDate = TOURNAMENT_FORM_MESSAGES.auctionDate.required;
     }
 
-    if (values.videoRequired && !values.videoUploadEndDate) {
-      errors.videoUploadEndDate = TOURNAMENT_FORM_MESSAGES.videoUploadEndDate.required;
-    }
+    appendVideoUploadWindowErrors(errors, values);
   }
+
+  appendTennisTournamentLocationErrors(errors, values);
 
   return errors;
 }
@@ -256,6 +362,8 @@ export interface UpdateTournamentFormInput extends CreateTournamentFormInput {
   /** Saved span boundaries — unchanged past dates remain valid on edit. */
   initialLeatherFromDate?: string;
   initialLeatherEndDate?: string;
+  /** Saved upload window start date — unchanged past dates remain valid on edit. */
+  initialVideoUploadStartDate?: string;
 }
 
 function isNewPastLeatherDate(
@@ -272,6 +380,41 @@ function isNewPastLeatherDate(
   return isDateOnlyBeforeTodayInZone(dateOnly, timeZone);
 }
 
+function appendLeatherSpanDateErrors(
+  errors: TournamentFormFieldErrors,
+  values: Pick<CreateTournamentFormInput, 'leatherFromDate' | 'leatherEndDate'>,
+  options: {
+    timeZone: string;
+    initialLeatherFromDate?: string;
+    initialLeatherEndDate?: string;
+  },
+): void {
+  const fromDate = values.leatherFromDate.trim();
+  const endDate = values.leatherEndDate.trim();
+  const { timeZone } = options;
+  const messages = TOURNAMENT_FORM_MESSAGES.tournamentDates;
+
+  if (!fromDate) {
+    errors.leatherFromDate = messages.leatherFromRequired;
+    return;
+  }
+  if (!endDate) {
+    errors.leatherEndDate = messages.leatherEndRequired;
+    return;
+  }
+  if (compareIsoDateOnly(endDate, fromDate) < 0) {
+    errors.leatherEndDate = messages.endBeforeFrom;
+    return;
+  }
+
+  if (isNewPastLeatherDate(fromDate, timeZone, options.initialLeatherFromDate)) {
+    errors.leatherFromDate = messages.past;
+  }
+  if (isNewPastLeatherDate(endDate, timeZone, options.initialLeatherEndDate)) {
+    errors.leatherEndDate = messages.past;
+  }
+}
+
 /** Shared Edit Tournament validation (mobile submit + guards). */
 export function validateUpdateTournamentForm(
   values: UpdateTournamentFormInput,
@@ -282,6 +425,19 @@ export function validateUpdateTournamentForm(
   delete errors.ballType;
   delete errors.citySelection;
   delete errors.centers;
+
+  if (values.ballType === BallType.Tennis && values.videoRequired) {
+    appendVideoUploadWindowErrors(errors, {
+      ...values,
+      isEdit: true,
+      initialVideoUploadStartDate: values.initialVideoUploadStartDate,
+    });
+  } else {
+    delete errors.videoUploadStartDate;
+    delete errors.videoUploadStartTime;
+    delete errors.videoUploadEndDate;
+    delete errors.videoUploadEndTime;
+  }
 
   if (values.numberOfTeams) {
     const num = parsePositiveInt(values.numberOfTeams);
@@ -294,15 +450,21 @@ export function validateUpdateTournamentForm(
 
   if (values.ballType === BallType.Leather) {
     const timeZone = values.venueTimezone ?? DEFAULT_VENUE_TIMEZONE;
+    delete errors.leatherFromDate;
+    delete errors.leatherEndDate;
+    delete errors.tournamentLocation;
+    appendLeatherSpanDateErrors(errors, values, {
+      timeZone,
+      initialLeatherFromDate: values.initialLeatherFromDate,
+      initialLeatherEndDate: values.initialLeatherEndDate,
+    });
+
     if (
-      isNewPastLeatherDate(values.leatherFromDate, timeZone, values.initialLeatherFromDate) ||
-      isNewPastLeatherDate(values.leatherEndDate, timeZone, values.initialLeatherEndDate)
-    ) {
-      errors.tournamentDates = TOURNAMENT_FORM_MESSAGES.tournamentDates.past;
-    } else if (
       values.leatherFromDate.trim() &&
       values.leatherEndDate.trim() &&
-      compareIsoDateOnly(values.leatherEndDate, values.leatherFromDate) >= 0
+      compareIsoDateOnly(values.leatherEndDate, values.leatherFromDate) >= 0 &&
+      !errors.leatherFromDate &&
+      !errors.leatherEndDate
     ) {
       for (const lockedDate of values.datesWithMatches) {
         if (
@@ -387,7 +549,10 @@ export function allTournamentFormMessages(): string[] {
     m.registration.required,
     m.registration.closeBeforeOpen,
     m.auctionDate.required,
+    m.videoUploadStartDate.required,
+    m.videoUploadStartTime.required,
     m.videoUploadEndDate.required,
+    m.videoUploadEndTime.required,
   ];
 }
 

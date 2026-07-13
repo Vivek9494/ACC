@@ -83,6 +83,75 @@ export function isLateArrivalInPenalty(row: PollSuspensionPlayerRow): boolean {
   return row.pollVoteSide === SuspensionPollVoteSide.In;
 }
 
+/**
+ * True when the player is serving a late-arrival suspension at this match (voted IN,
+ * not cancelled, not carried forward to a later match). Rows from
+ * {@link listPendingForMatchTeam} are already scoped to the serving match.
+ */
+export function isServingSuspensionForMatch(row: PollSuspensionPlayerRow): boolean {
+  return isLateArrivalInPenalty(row);
+}
+
+export interface PollConfirmedInPartitionRow {
+  userId: string;
+  firstName: string;
+  lastName: string;
+  profilePhotoUrl: string | null;
+  skillLabel?: string | null;
+}
+
+/** User ids excluded from Confirmed IN — serving suspension and optional penalty-owing IN voters. */
+export function confirmedInExclusionUserIds(args: {
+  pendingSuspensions: readonly PollSuspensionPlayerRow[];
+  penaltyOwingInVoterUserIds?: ReadonlySet<string>;
+}): Set<string> {
+  const ids = new Set(
+    args.pendingSuspensions
+      .filter(isServingSuspensionForMatch)
+      .map((row) => row.userId),
+  );
+  for (const userId of args.penaltyOwingInVoterUserIds ?? []) {
+    ids.add(userId);
+  }
+  return ids;
+}
+
+/**
+ * Split poll IN voters into Confirmed IN vs Late Arrival penalty (mutually exclusive).
+ * Actioned suspensions (cancel / carry-forward) are merged into Confirmed IN.
+ */
+export function partitionPollConfirmedInVoters<T extends PollConfirmedInPartitionRow>(args: {
+  inVoters: readonly T[];
+  pendingSuspensions: readonly PollSuspensionPlayerRow[];
+  actionedSuspensions: readonly PollSuspensionActionedRow[];
+  penaltyOwingInVoterUserIds?: ReadonlySet<string>;
+}): {
+  confirmedIn: T[];
+  servingSuspensionPenalty: PollSuspensionPlayerRow[];
+} {
+  const servingSuspensionPenalty = args.pendingSuspensions.filter(isServingSuspensionForMatch);
+  const excludeIds = confirmedInExclusionUserIds({
+    pendingSuspensions: args.pendingSuspensions,
+    penaltyOwingInVoterUserIds: args.penaltyOwingInVoterUserIds,
+  });
+
+  const byId = new Map(args.inVoters.map((player) => [player.userId, player] as const));
+  for (const row of args.actionedSuspensions) {
+    if (!byId.has(row.userId)) {
+      byId.set(row.userId, {
+        userId: row.userId,
+        firstName: row.firstName,
+        lastName: row.lastName,
+        profilePhotoUrl: row.profilePhotoUrl,
+        skillLabel: null,
+      } as T);
+    }
+  }
+
+  const confirmedIn = [...byId.values()].filter((player) => !excludeIds.has(player.userId));
+  return { confirmedIn, servingSuspensionPenalty };
+}
+
 export function isLateArrivalOutPenalty(row: PollSuspensionPlayerRow): boolean {
   return isPenaltyUnavailableToServe(row.pollVoteSide);
 }

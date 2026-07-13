@@ -76,8 +76,10 @@ import {
 } from '../teams/team-query';
 import {
   assertCreateTournamentFormValid,
+  assertTennisTournamentLocationValid,
   registrationCloseBeforeOpenFields,
   videoDateAfterRegistrationFields,
+  videoDateAfterStartFields,
   videoDateRequiredFields,
 } from './tournament-create-validation';
 import { resolveTournamentTimezone } from './tournament-timezone.utils';
@@ -191,6 +193,7 @@ export class TournamentsService {
           format: dto.format,
           impactPlayerEnabled: dto.impactPlayerEnabled,
           videoRequired: dto.videoRequired,
+          videoUploadStartAt: dto.videoUploadStartAt ? new Date(dto.videoUploadStartAt) : null,
           videoUploadEndDate: dto.videoUploadEndDate ? new Date(dto.videoUploadEndDate) : null,
           youtubeUrl: dto.youtubeUrl ?? null,
           registrationOpenAt: dto.registrationOpenAt ? new Date(dto.registrationOpenAt) : null,
@@ -402,6 +405,7 @@ export class TournamentsService {
       matchSchedulingFormat: row.matchSchedulingFormat ?? null,
       impactPlayerEnabled: row.impactPlayerEnabled,
       videoRequired: row.videoRequired,
+      videoUploadStartAt: row.videoUploadStartAt?.toISOString() ?? null,
       videoUploadEndDate: row.videoUploadEndDate?.toISOString() ?? null,
       youtubeUrl: row.youtubeUrl,
       registrationOpenAt: row.registrationOpenAt?.toISOString() ?? null,
@@ -486,6 +490,7 @@ export class TournamentsService {
       registrationCloseAt: detailBase.registrationCloseAt,
       registrationVerificationComplete,
       videoRequired: detailBase.videoRequired,
+      videoUploadStartAt: detailBase.videoUploadStartAt,
       videoUploadEndDate: detailBase.videoUploadEndDate,
     });
 
@@ -621,6 +626,10 @@ export class TournamentsService {
           : existing.registrationCloseAt?.toISOString() ?? null,
       videoRequired:
         dto.videoRequired !== undefined ? dto.videoRequired : existing.videoRequired,
+      videoUploadStartAt:
+        dto.videoUploadStartAt !== undefined
+          ? dto.videoUploadStartAt
+          : existing.videoUploadStartAt?.toISOString() ?? null,
       videoUploadEndDate:
         dto.videoUploadEndDate !== undefined
           ? dto.videoUploadEndDate
@@ -637,6 +646,14 @@ export class TournamentsService {
           ),
         },
       });
+    }
+
+    if (existing.ballType === BallType.Tennis) {
+      assertTennisTournamentLocationValid(
+        dto.locationAddress !== undefined ? dto.locationAddress : existing.locationAddress,
+        dto.latitude !== undefined ? dto.latitude : existing.latitude,
+        dto.longitude !== undefined ? dto.longitude : existing.longitude,
+      );
     }
 
     let normalizedDates: string[] | undefined;
@@ -734,8 +751,20 @@ export class TournamentsService {
     if (dto.format !== undefined) data.format = dto.format;
     if (dto.impactPlayerEnabled !== undefined) data.impactPlayerEnabled = dto.impactPlayerEnabled;
     if (dto.videoRequired !== undefined) data.videoRequired = dto.videoRequired;
-    if (dto.videoUploadEndDate !== undefined) {
-      data.videoUploadEndDate = dto.videoUploadEndDate ? new Date(dto.videoUploadEndDate) : null;
+    if (dto.videoRequired === false) {
+      data.videoUploadStartAt = null;
+      data.videoUploadEndDate = null;
+    } else {
+      if (dto.videoUploadStartAt !== undefined) {
+        data.videoUploadStartAt = dto.videoUploadStartAt
+          ? new Date(dto.videoUploadStartAt)
+          : null;
+      }
+      if (dto.videoUploadEndDate !== undefined) {
+        data.videoUploadEndDate = dto.videoUploadEndDate
+          ? new Date(dto.videoUploadEndDate)
+          : null;
+      }
     }
     if (dto.youtubeUrl !== undefined) data.youtubeUrl = dto.youtubeUrl;
     if (dto.registrationOpenAt !== undefined) {
@@ -1035,6 +1064,7 @@ export class TournamentsService {
     registrationOpenAt?: string | null;
     registrationCloseAt?: string | null;
     videoRequired?: boolean;
+    videoUploadStartAt?: string | null;
     videoUploadEndDate?: string | null;
   }): void {
     if (new Date(dto.endAt) < new Date(dto.startAt)) {
@@ -1053,11 +1083,27 @@ export class TournamentsService {
       }
     }
     if (dto.videoRequired) {
+      if (!dto.videoUploadStartAt) {
+        throw new BadRequestException({
+          message: TOURNAMENT_FORM_MESSAGES.videoUploadStartDate.required,
+          error: 'VIDEO_WINDOW_REQUIRED',
+          fields: {
+            videoUploadStartDate: TOURNAMENT_FORM_MESSAGES.videoUploadStartDate.required,
+          },
+        });
+      }
       if (!dto.videoUploadEndDate) {
         throw new BadRequestException({
           message: TOURNAMENT_FORM_MESSAGES.videoUploadEndDate.required,
           error: 'VIDEO_DATE_REQUIRED',
           fields: videoDateRequiredFields(),
+        });
+      }
+      if (new Date(dto.videoUploadEndDate) <= new Date(dto.videoUploadStartAt)) {
+        throw new BadRequestException({
+          message: TOURNAMENT_FORM_MESSAGES.videoUploadEndDate.afterStart,
+          error: 'INVALID_VIDEO_WINDOW',
+          fields: videoDateAfterStartFields(),
         });
       }
       if (
@@ -1232,7 +1278,11 @@ export class TournamentsService {
       );
     }
 
-    if (dto.videoRequired !== undefined || dto.videoUploadEndDate !== undefined) {
+    if (
+      dto.videoRequired !== undefined ||
+      dto.videoUploadStartAt !== undefined ||
+      dto.videoUploadEndDate !== undefined
+    ) {
       await this.notifyRegistrants(tournamentId, NotificationTrigger.TournamentVideoPolicyChanged);
     }
   }

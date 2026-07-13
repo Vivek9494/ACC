@@ -15,6 +15,7 @@ import {
   PLAYER_PROFILE_BALL_TYPE_LABELS,
   type PlayerRegistrationRole,
   PLAYER_REGISTRATION_ROLE_LABELS,
+  isMediaStorageKey,
   type ProfileDetail,
   profileMobileForStorage,
   SIGNUP_VALIDATION_MESSAGES,
@@ -219,14 +220,29 @@ export class ProfileService {
     const emergencyContactNumber = profileMobileForStorage(dto.emergencyContactNumber);
     const centerChanging = dto.centerId !== user.centerId;
 
-    const nextPhotoKey =
-      dto.profilePhotoUrl !== undefined ? dto.profilePhotoUrl : user.profilePhotoUrl;
-    if (
-      dto.profilePhotoUrl !== undefined &&
-      user.profilePhotoUrl &&
-      user.profilePhotoUrl !== dto.profilePhotoUrl
-    ) {
-      await this.storage.deleteObject(user.profilePhotoUrl);
+    let nextPhotoKey: string | null | undefined;
+    if (dto.profilePhotoUrl !== undefined) {
+      const raw = dto.profilePhotoUrl;
+      if (raw === null || raw.trim().length === 0) {
+        throw new BadRequestException({
+          message: 'Profile photo is required',
+          error: 'INVALID_PROFILE_PHOTO',
+        });
+      }
+      nextPhotoKey = this.normalizeProfilePhotoForStorage(raw);
+      if (!isMediaStorageKey(nextPhotoKey)) {
+        throw new BadRequestException({
+          message: 'Invalid profile photo reference',
+          error: 'INVALID_PROFILE_PHOTO',
+        });
+      }
+      const previousKey =
+        user.profilePhotoUrl != null
+          ? (this.storage.resolveObjectKey(user.profilePhotoUrl) ?? user.profilePhotoUrl)
+          : null;
+      if (previousKey && previousKey !== nextPhotoKey) {
+        await this.storage.deleteObject(user.profilePhotoUrl);
+      }
     }
 
     const updated = await this.prisma.user.update({
@@ -239,7 +255,7 @@ export class ProfileService {
         dateOfBirth: dob,
         address,
         postalCode,
-        profilePhotoUrl: nextPhotoKey,
+        ...(nextPhotoKey !== undefined ? { profilePhotoUrl: nextPhotoKey } : {}),
         emergencyContactName: dto.emergencyContactName.trim(),
         emergencyContactNumber,
         hasHealthCard: dto.hasHealthCard,
@@ -272,6 +288,10 @@ export class ProfileService {
       where: { id: userId },
       include: { center: { include: { province: true } } },
     });
+  }
+
+  private normalizeProfilePhotoForStorage(profilePhotoUrl: string): string {
+    return this.storage.resolveObjectKey(profilePhotoUrl) ?? profilePhotoUrl;
   }
 
   private async toProfileDetail(user: UserWithCenter): Promise<ProfileDetail> {

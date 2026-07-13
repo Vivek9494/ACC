@@ -59,6 +59,21 @@ export function sortAndLimitDashboardTodayMatchRows<T extends DashboardTodayMatc
   return [...rows].sort(compareDashboardTodayMatchesByTime).slice(0, limit);
 }
 
+/** Most recently scheduled / played first (for guest "recent" card). */
+export function sortDashboardMatchesByTimeDesc<T extends DashboardTodayMatchRow>(
+  rows: readonly T[],
+): T[] {
+  return [...rows].sort((a, b) => compareDashboardTodayMatchesByTime(b, a));
+}
+
+/** True when the match's schedule anchor is strictly after `now`. */
+export function isDashboardMatchScheduledAfter(
+  row: MatchScheduleAnchor,
+  now: Date = new Date(),
+): boolean {
+  return dashboardTodayMatchSortInstant(row) > now.getTime();
+}
+
 /** Keeps dashboard featured cards scheduled for today only (venue-local calendar day). */
 export function filterDashboardFeaturedMatchesToToday<T extends DashboardFeaturedMatchRow>(
   rows: readonly T[],

@@ -457,7 +457,9 @@ model Tournament {
   matchSchedulingFormat MatchSchedulingFormat?
   impactPlayerEnabled Boolean          @default(false)
   videoRequired       Boolean          @default(false)
-  /// Must be after registration close when videos are required (§19).
+  /// Skill-video upload window opens (tennis, when videoRequired).
+  videoUploadStartAt  DateTime?
+  /// Skill-video upload window closes; notification fires ~10 min before (§19).
   videoUploadEndDate  DateTime?
   /// Optional tournament-level stream; per-match URLs live on Match (§22).
   youtubeUrl          String?

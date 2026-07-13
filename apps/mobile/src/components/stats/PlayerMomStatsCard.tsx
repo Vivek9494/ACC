@@ -53,13 +53,8 @@ function RecentFigures({ match }: { match: PlayerMomMatchSummary }): React.React
 export function PlayerMomStatsCard({ summary, onPress }: PlayerMomStatsCardProps): React.ReactElement {
   const hasAwards = summary.count > 0;
 
-  return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={onPress}
-      className="overflow-hidden rounded-xl border border-outline-variant/30 bg-secondary p-4 active:opacity-90"
-      style={INPUT_SHADOW_STYLE}
-    >
+  const content = (
+    <>
       <View className="flex-row items-start justify-between gap-3">
         <View className="min-w-0 flex-1 gap-1">
           <Text className="font-sans-semibold text-xs uppercase tracking-wider text-text-inverse/80">
@@ -80,11 +75,40 @@ export function PlayerMomStatsCard({ summary, onPress }: PlayerMomStatsCardProps
         </View>
         <View className="items-center gap-1">
           <Ionicons name="star" size={28} color={colors.primary} />
-          <Ionicons name="chevron-forward" size={18} color={colors.textInverse} style={{ opacity: 0.7 }} />
+          {hasAwards ? (
+            <Ionicons
+              name="chevron-forward"
+              size={18}
+              color={colors.textInverse}
+              style={{ opacity: 0.7 }}
+            />
+          ) : null}
         </View>
       </View>
 
       {hasAwards && summary.mostRecent ? <RecentFigures match={summary.mostRecent} /> : null}
+    </>
+  );
+
+  const cardClassName =
+    'overflow-hidden rounded-xl border border-outline-variant/30 bg-secondary p-4';
+
+  if (!hasAwards) {
+    return (
+      <View className={cardClassName} style={INPUT_SHADOW_STYLE}>
+        {content}
+      </View>
+    );
+  }
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      className={`${cardClassName} active:opacity-90`}
+      style={INPUT_SHADOW_STYLE}
+    >
+      {content}
     </Pressable>
   );
 }

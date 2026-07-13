@@ -10,6 +10,11 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 
+import {
+  ensureMediaLibraryAccess,
+  MEDIA_LIBRARY_PERMISSION_MESSAGE,
+} from './media-library-permission';
+
 export interface PickedVideoFile {
   uri: string;
   name: string | null;
@@ -62,16 +67,23 @@ export async function resolveVideoFileSize(
 export async function pickVideoFromLibrary(
   limits?: Pick<UploadLimits, 'videoUploadMaxMb'>,
 ): Promise<PickVideoResult> {
-  const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-  if (!permission.granted) {
-    return { ok: false, error: 'Photo library access is required to select a video.' };
+  if (!(await ensureMediaLibraryAccess())) {
+    return { ok: false, error: MEDIA_LIBRARY_PERMISSION_MESSAGE };
   }
 
-  const result = await ImagePicker.launchImageLibraryAsync({
-    mediaTypes: ['videos'],
-    allowsEditing: false,
-    quality: 1,
-  });
+  let result: ImagePicker.ImagePickerResult;
+  try {
+    result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['videos'],
+      allowsEditing: false,
+      quality: 1,
+    });
+  } catch (error) {
+    if (__DEV__) {
+      console.warn('[pickVideoFromLibrary] launchImageLibraryAsync failed', error);
+    }
+    return { ok: false, error: 'Could not open the photo library. Please try again.' };
+  }
 
   if (result.canceled || !result.assets[0]) {
     return { ok: false, error: 'Selection cancelled.' };

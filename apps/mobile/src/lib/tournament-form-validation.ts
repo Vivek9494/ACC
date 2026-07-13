@@ -33,6 +33,7 @@ export interface TournamentFormValues extends Omit<CreateTournamentFormInput, 'h
   venueTimezone?: string;
   initialLeatherFromDate?: string;
   initialLeatherEndDate?: string;
+  initialVideoUploadStartDate?: string;
 }
 
 export function validateTournamentForm(values: TournamentFormValues): TournamentFormFieldErrors {
@@ -58,8 +59,14 @@ export function validateTournamentForm(values: TournamentFormValues): Tournament
     hasAuctionDate: values.hasAuctionDate,
     auctionDate: values.auctionDate,
     videoRequired: values.videoRequired,
+    videoUploadStartDate: values.videoUploadStartDate,
+    videoUploadStartTime: values.videoUploadStartTime,
     videoUploadEndDate: values.videoUploadEndDate,
+    videoUploadEndTime: values.videoUploadEndTime,
     venueTimezone: values.venueTimezone,
+    locationAddress: values.locationAddress,
+    latitude: values.latitude,
+    longitude: values.longitude,
   });
 }
 
@@ -95,10 +102,17 @@ export function validateUpdateTournamentFormValues(
     hasAuctionDate: values.hasAuctionDate,
     auctionDate: values.auctionDate,
     videoRequired: values.videoRequired,
+    videoUploadStartDate: values.videoUploadStartDate,
+    videoUploadStartTime: values.videoUploadStartTime,
     videoUploadEndDate: values.videoUploadEndDate,
+    videoUploadEndTime: values.videoUploadEndTime,
     venueTimezone: values.venueTimezone,
+    locationAddress: values.locationAddress,
+    latitude: values.latitude,
+    longitude: values.longitude,
     initialLeatherFromDate: values.initialLeatherFromDate,
     initialLeatherEndDate: values.initialLeatherEndDate,
+    initialVideoUploadStartDate: values.initialVideoUploadStartDate,
     minTeamCount: values.minTeamCount,
     datesWithMatches: values.datesWithMatches,
     tournamentType: values.tournamentType,

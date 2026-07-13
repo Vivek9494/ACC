@@ -50,6 +50,7 @@ function detailRow(overrides: Record<string, unknown> = {}): Record<string, unkn
     format: 'LEAGUE_SINGLE_ROUND_ROBIN',
     impactPlayerEnabled: false,
     videoRequired: false,
+    videoUploadStartAt: null,
     videoUploadEndDate: null,
     youtubeUrl: null,
     registrationOpenAt: null,

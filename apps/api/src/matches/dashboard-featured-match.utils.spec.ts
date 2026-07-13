@@ -4,7 +4,9 @@ import {
   compareDashboardTodayMatchesByTime,
   DASHBOARD_TODAY_MATCHES_LIMIT,
   filterDashboardFeaturedMatchesToToday,
+  isDashboardMatchScheduledAfter,
   sortAndLimitDashboardTodayMatchRows,
+  sortDashboardMatchesByTimeDesc,
 } from './dashboard-featured-match.utils';
 
 describe('filterDashboardFeaturedMatchesToToday', () => {
@@ -96,5 +98,55 @@ describe('sortAndLimitDashboardTodayMatchRows', () => {
     expect(limited).toHaveLength(DASHBOARD_TODAY_MATCHES_LIMIT);
     expect(limited[0]!.id).toBe('match-00');
     expect(limited[9]!.id).toBe('match-09');
+  });
+});
+
+describe('sortDashboardMatchesByTimeDesc', () => {
+  it('orders by scheduled start time descending (most recent first)', () => {
+    const rows = [
+      {
+        id: 'match-early',
+        matchDate: new Date('2026-07-04T12:00:00.000Z'),
+        startTime: new Date('2026-07-04T14:00:00.000Z'),
+      },
+      {
+        id: 'match-late',
+        matchDate: new Date('2026-07-04T12:00:00.000Z'),
+        startTime: new Date('2026-07-04T20:00:00.000Z'),
+      },
+    ];
+
+    expect(sortDashboardMatchesByTimeDesc(rows).map((row) => row.id)).toEqual([
+      'match-late',
+      'match-early',
+    ]);
+  });
+});
+
+describe('isDashboardMatchScheduledAfter', () => {
+  const now = new Date('2026-07-04T15:00:00.000Z');
+
+  it('is true when start time is in the future', () => {
+    expect(
+      isDashboardMatchScheduledAfter(
+        {
+          matchDate: new Date('2026-07-04T12:00:00.000Z'),
+          startTime: new Date('2026-07-04T18:00:00.000Z'),
+        },
+        now,
+      ),
+    ).toBe(true);
+  });
+
+  it('is false when start time is in the past', () => {
+    expect(
+      isDashboardMatchScheduledAfter(
+        {
+          matchDate: new Date('2026-07-04T12:00:00.000Z'),
+          startTime: new Date('2026-07-04T14:00:00.000Z'),
+        },
+        now,
+      ),
+    ).toBe(false);
   });
 });

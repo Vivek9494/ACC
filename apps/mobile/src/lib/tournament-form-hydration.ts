@@ -52,7 +52,10 @@ export interface HydratedTournamentFormState {
   auctionDate: string;
   impactPlayerEnabled: boolean;
   videoRequired: boolean;
+  videoUploadStartDate: string;
+  videoUploadStartTime: string;
   videoUploadEndDate: string;
+  videoUploadEndTime: string;
   feeFullTime: string;
   feePartTime: string;
   minTeamCount: number;
@@ -131,7 +134,10 @@ export function hydrateTournamentFormFromEditData(
     auctionDate: isoToLocalDate(data.auctionAt),
     impactPlayerEnabled: data.impactPlayerEnabled,
     videoRequired: data.videoRequired,
+    videoUploadStartDate: isoToLocalDate(data.videoUploadStartAt),
+    videoUploadStartTime: isoToLocalTime(data.videoUploadStartAt),
     videoUploadEndDate: isoToLocalDate(data.videoUploadEndDate),
+    videoUploadEndTime: isoToLocalTime(data.videoUploadEndDate),
     feeFullTime: tournamentFeeToInputString(data.feeFullTime),
     feePartTime: tournamentFeeToInputString(data.feePartTime),
     minTeamCount: data.teamCount,

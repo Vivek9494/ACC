@@ -105,6 +105,10 @@ export class UpdateTournamentDto implements UpdateTournamentRequest {
 
   @IsOptional()
   @IsDateString()
+  videoUploadStartAt?: string | null;
+
+  @IsOptional()
+  @IsDateString()
   videoUploadEndDate?: string | null;
 
   @IsOptional()

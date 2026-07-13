@@ -4,8 +4,9 @@ import {
   POLL_RESULTS_SECTION_LABELS,
   LATE_ARRIVAL_SECTION_LABEL,
   SuspensionXiBadge,
-  isLateArrivalInPenalty,
   isLateArrivalOutPenalty,
+  isServingSuspensionForMatch,
+  partitionPollConfirmedInVoters,
   type ParticipationPollTallyView,
   type PlayingXiConfirmFromPollView,
   type PollResultsTab,
@@ -324,7 +325,7 @@ export function PollPlayingXiConfirmScreen({
   const outPoolOpen = Boolean(tally && tally.inCount < PLAYING_XI_SIZE);
 
   const lateArrivalIn = useMemo(
-    () => pendingSuspensions.filter(isLateArrivalInPenalty),
+    () => pendingSuspensions.filter(isServingSuspensionForMatch),
     [pendingSuspensions],
   );
 
@@ -333,32 +334,19 @@ export function PollPlayingXiConfirmScreen({
     [pendingSuspensions],
   );
 
-  const lateArrivalInIds = useMemo(
-    () => new Set(lateArrivalIn.map((row) => row.userId)),
-    [lateArrivalIn],
-  );
+  const inTabPlayers = useMemo((): PollTallyPlayerRow[] => {
+    if (!tally) return [];
+    return partitionPollConfirmedInVoters({
+      inVoters: tally.in,
+      pendingSuspensions,
+      actionedSuspensions,
+    }).confirmedIn;
+  }, [actionedSuspensions, pendingSuspensions, tally]);
 
   const lateArrivalOutIds = useMemo(
     () => new Set(lateArrivalOut.map((row) => row.userId)),
     [lateArrivalOut],
   );
-
-  const inTabPlayers = useMemo((): PollTallyPlayerRow[] => {
-    if (!tally) return [];
-    const byId = new Map(tally.in.map((player) => [player.userId, player] as const));
-    for (const row of actionedSuspensions) {
-      if (!byId.has(row.userId)) {
-        byId.set(row.userId, {
-          userId: row.userId,
-          firstName: row.firstName,
-          lastName: row.lastName,
-          profilePhotoUrl: row.profilePhotoUrl,
-          skillLabel: null,
-        });
-      }
-    }
-    return [...byId.values()].filter((player) => !lateArrivalInIds.has(player.userId));
-  }, [actionedSuspensions, lateArrivalInIds, tally]);
 
   const outTabPlayers = useMemo((): PollTallyPlayerRow[] => {
     if (!tally) return [];

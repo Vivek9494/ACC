@@ -160,6 +160,7 @@ export class PlayerSkillVideosService {
       registrationCloseAt: string | null;
       registrationVerificationComplete: boolean;
       videoRequired: boolean;
+      videoUploadStartAt: string | null;
       videoUploadEndDate: string | null;
     },
   ): Promise<{ canUploadSkillVideo: boolean; hasSkillVideo: boolean }> {
@@ -179,6 +180,7 @@ export class PlayerSkillVideosService {
         ballType: tournament.ballType as never,
         registrationVerificationComplete: tournament.registrationVerificationComplete,
         videoRequired: tournament.videoRequired,
+        videoUploadStartAt: tournament.videoUploadStartAt,
         videoUploadEndDate: tournament.videoUploadEndDate,
       },
       registration?.status ?? null,
@@ -270,6 +272,7 @@ export class PlayerSkillVideosService {
         registrationOpenAt: true,
         registrationCloseAt: true,
         videoRequired: true,
+        videoUploadStartAt: true,
         videoUploadEndDate: true,
       },
     });
@@ -328,15 +331,18 @@ export class PlayerSkillVideosService {
       });
     }
 
-    if (tournament.videoUploadEndDate) {
-      const deadline = new Date(tournament.videoUploadEndDate);
-      deadline.setUTCHours(23, 59, 59, 999);
-      if (new Date() > deadline) {
-        throw new BadRequestException({
-          message: 'The video upload window has closed',
-          error: 'VIDEO_WINDOW_CLOSED',
-        });
-      }
+    if (tournament.videoUploadStartAt && new Date() < new Date(tournament.videoUploadStartAt)) {
+      throw new BadRequestException({
+        message: 'The video upload window has not opened yet',
+        error: 'VIDEO_WINDOW_NOT_OPEN',
+      });
+    }
+
+    if (tournament.videoUploadEndDate && new Date() > new Date(tournament.videoUploadEndDate)) {
+      throw new BadRequestException({
+        message: 'The video upload window has closed',
+        error: 'VIDEO_WINDOW_CLOSED',
+      });
     }
 
     const allowed = await this.permissions.check(Permission.UPLOAD_OWN_VIDEO, actor, {

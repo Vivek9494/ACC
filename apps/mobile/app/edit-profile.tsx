@@ -9,6 +9,7 @@ import {
   formatSignupAddressInput,
   formatSignupMobileInput,
   formatSignupNameInput,
+  isMediaStorageKey,
   normalizeCanadianPostalCode,
   profileMobileDisplay,
 } from '@acc/types';
@@ -45,10 +46,12 @@ import {
   ensureUploadableUri,
   isLocalImageUri,
   pickedToStored,
-  storedImageFromRemoteUrl,
+  resolveImageFileSize,
+  storedImageFromPresignedReadUrl,
   type PickedImageFile,
   type StoredImageFile,
 } from '../src/lib/imagePicker';
+import { resolveMediaDisplayUrl } from '../src/lib/media-url';
 import { useSignupGeography } from '../src/lib/signup-geography';
 
 /** Fallback when @acc/types export is unavailable before a rebuild. */
@@ -61,8 +64,6 @@ export default function EditProfileScreen(): React.ReactElement {
   const [loading, setLoading] = useState(true);
   const [profileReady, setProfileReady] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
-
-  const [savedPhotoUrl, setSavedPhotoUrl] = useState<string | null>(null);
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -151,9 +152,12 @@ export default function EditProfileScreen(): React.ReactElement {
       setPostalCode(profile.postalCode ? formatCanadianPostalCodeDisplay(profile.postalCode) : '');
       setProvinceId(profile.provinceId);
       setCenterId(profile.centerId);
-      setSavedPhotoUrl(profile.profilePhotoUrl);
       setProfilePhoto(
-        profile.profilePhotoUrl ? storedImageFromRemoteUrl(profile.profilePhotoUrl) : null,
+        profile.profilePhotoUrl
+          ? storedImageFromPresignedReadUrl(
+              resolveMediaDisplayUrl(profile.profilePhotoUrl) ?? profile.profilePhotoUrl,
+            )
+          : null,
       );
       setEmergencyContactName(profile.emergencyContactName);
       setEmergencyContactNumber(profileMobileDisplay(profile.emergencyContactNumber));
@@ -220,23 +224,29 @@ export default function EditProfileScreen(): React.ReactElement {
     setFormError(null);
     setSubmitting(true);
     try {
-      let photoStorageKey = savedPhotoUrl;
-      if (profilePhoto) {
-        if (isLocalImageUri(profilePhoto.uri)) {
-          const uploadUri = await ensureUploadableUri(profilePhoto.uri, 'profile-photo');
-          const uploaded = await uploadProfilePhoto(
-            uploadUri,
-            profilePhoto.sizeBytes ?? 0,
-          );
-          photoStorageKey = uploaded.storageKey;
-          setProfilePhoto({
-            ...profilePhoto,
-            uri: uploaded.profilePhotoUrl,
-            remoteUrl: uploaded.storageKey,
-          });
-        } else if (profilePhoto.remoteUrl) {
-          photoStorageKey = profilePhoto.remoteUrl;
+      let photoStorageKey: string | undefined =
+        profilePhoto?.remoteUrl && isMediaStorageKey(profilePhoto.remoteUrl)
+          ? profilePhoto.remoteUrl
+          : undefined;
+
+      if (profilePhoto && !photoStorageKey && isLocalImageUri(profilePhoto.uri)) {
+        const sizeBytes = await resolveImageFileSize(profilePhoto.uri, profilePhoto.sizeBytes);
+        if (sizeBytes == null || sizeBytes <= 0) {
+          setFormError('Could not read the photo size. Please pick the image again.');
+          return;
         }
+        const uploadUri = await ensureUploadableUri(profilePhoto.uri, 'profile-photo');
+        const uploaded = await uploadProfilePhoto(uploadUri, sizeBytes);
+        if (!isMediaStorageKey(uploaded.storageKey)) {
+          setFormError('Photo upload failed. Please try again.');
+          return;
+        }
+        photoStorageKey = uploaded.storageKey;
+        setProfilePhoto({
+          ...profilePhoto,
+          uri: uploaded.profilePhotoUrl,
+          remoteUrl: uploaded.storageKey,
+        });
       }
 
       const trimmedPostal = postalCode.trim();
@@ -252,7 +262,7 @@ export default function EditProfileScreen(): React.ReactElement {
         emergencyContactName: emergencyContactName.trim(),
         emergencyContactNumber: emergencyContactNumber.replace(/\D/g, ''),
         hasHealthCard,
-        profilePhotoUrl: photoStorageKey,
+        ...(photoStorageKey !== undefined ? { profilePhotoUrl: photoStorageKey } : {}),
         email: trimmedEmail,
         ...(address.trim() ? { address: address.trim() } : { address: '' }),
         ...(trimmedPostal
@@ -264,9 +274,12 @@ export default function EditProfileScreen(): React.ReactElement {
       });
 
       applyProfileUpdate(updated);
-      setSavedPhotoUrl(updated.profilePhotoUrl);
       setProfilePhoto(
-        updated.profilePhotoUrl ? storedImageFromRemoteUrl(updated.profilePhotoUrl) : null,
+        updated.profilePhotoUrl
+          ? storedImageFromPresignedReadUrl(
+              resolveMediaDisplayUrl(updated.profilePhotoUrl) ?? updated.profilePhotoUrl,
+            )
+          : null,
       );
       setProvinceId(updated.provinceId);
       setCenterId(updated.centerId);
@@ -315,7 +328,7 @@ export default function EditProfileScreen(): React.ReactElement {
       >
         <View className="mb-6 items-center">
           <EditProfilePhoto
-            uri={profilePhoto?.uri ?? null}
+            uri={resolveMediaDisplayUrl(profilePhoto?.uri ?? null)}
             onChange={(file: PickedImageFile | null) => {
               setProfilePhoto(file ? pickedToStored(file) : null);
               if (file) {

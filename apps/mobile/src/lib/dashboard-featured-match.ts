@@ -47,6 +47,14 @@ export function featuredSummaryToEntry(match: FeaturedMatchSummary): DashboardFe
   };
 }
 
+export function guestFeaturedHref(
+  match: CaptainFeaturedMatchSummary,
+): `/matches/${string}/live` | `/matches/${string}/scorecard` {
+  return match.status === 'LIVE'
+    ? `/matches/${match.matchId}/live`
+    : `/matches/${match.matchId}/scorecard`;
+}
+
 export function captainFeaturedHref(
   match: CaptainFeaturedMatchSummary,
 ): `/matches/${string}` | `/matches/${string}/live` {

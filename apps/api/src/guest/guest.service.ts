@@ -24,24 +24,44 @@ export class GuestService {
   ) {}
 
   async getDashboard(): Promise<GuestDashboard> {
-    const [featuredMatches, tournaments] = await Promise.all([
-      this.dashboardFeaturedMatches.loadTodayMatches(),
-      this.listPublicTournaments(),
+    const liveMatch = await this.dashboardFeaturedMatches.loadGuestLiveMatch();
+    if (liveMatch) {
+      const featuredTournament = await this.loadTournamentById(liveMatch.tournamentId);
+      return {
+        liveMatch,
+        upcomingMatch: null,
+        recentMatch: null,
+        featuredTournament,
+      };
+    }
+
+    const [upcomingMatch, recentMatch] = await Promise.all([
+      this.dashboardFeaturedMatches.loadGuestNextUpcomingMatch(),
+      this.dashboardFeaturedMatches.loadGuestMostRecentCompletedMatch(),
     ]);
-    return { featuredMatches, tournaments };
+    const featuredTournamentId =
+      upcomingMatch?.tournamentId ?? recentMatch?.tournamentId ?? null;
+    const featuredTournament = featuredTournamentId
+      ? await this.loadTournamentById(featuredTournamentId)
+      : null;
+
+    return {
+      liveMatch: null,
+      upcomingMatch,
+      recentMatch,
+      featuredTournament,
+    };
   }
 
-  private async listPublicTournaments(): Promise<TournamentSummary[]> {
-    const rows = await this.prisma.tournament.findMany({
+  private async loadTournamentById(tournamentId: string): Promise<TournamentSummary | null> {
+    const row = await this.prisma.tournament.findFirst({
       where: {
+        id: tournamentId,
         ...activeTournamentWhere,
-        state: { in: ['LIVE', 'TEAMS_FINALIZED', 'REGISTRATION_OPEN', 'REGISTRATION_CLOSED'] },
       },
-      orderBy: [{ startAt: 'desc' }, { createdAt: 'desc' }],
       include: { _count: { select: activeTeamCountSelect } },
     });
-
-    return Promise.all(rows.map((row) => this.toTournamentSummary(row)));
+    return row ? this.toTournamentSummary(row) : null;
   }
 
   private async toTournamentSummary(row: TournamentWithCounts): Promise<TournamentSummary> {

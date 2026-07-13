@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 
 import { useAuth } from '../../lib/auth-context';
+import { resolveMediaDisplayUrl } from '../../lib/media-url';
 import { confirmActionAlert } from '../../lib/confirm-action-alert';
 import { colors } from '@/theme/colors';
 import {
@@ -98,6 +99,8 @@ export function ProfileMenu(): React.ReactElement {
 
   const initial = (user?.firstName ?? 'U').slice(0, 1).toUpperCase();
 
+  const avatarUri = resolveMediaDisplayUrl(user?.profilePhotoUrl);
+
   return (
     <>
       <View ref={anchorRef} collapsable={false}>
@@ -107,9 +110,9 @@ export function ProfileMenu(): React.ReactElement {
           accessibilityLabel="Open profile menu"
           className="active:opacity-90"
         >
-          {user?.profilePhotoUrl ? (
+          {avatarUri ? (
             <Image
-              source={{ uri: user.profilePhotoUrl }}
+              source={{ uri: avatarUri }}
               className={`${HEADER_PROFILE_AVATAR_SIZE_CLASS} rounded-full`}
             />
           ) : (

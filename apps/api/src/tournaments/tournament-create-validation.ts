@@ -3,6 +3,7 @@ import {
   CitySelection,
   TOURNAMENT_FORM_MESSAGES,
   validateCreateTournamentForm,
+  validateTennisTournamentLocation,
   type CreateTournamentFormInput,
   type TournamentFormFieldErrors,
 } from '@acc/types';
@@ -42,7 +43,13 @@ function dtoToFormInput(dto: CreateTournamentDto): CreateTournamentFormInput {
     hasAuctionDate: dto.auctionAt != null,
     auctionDate: dto.auctionAt ? 'set' : '',
     videoRequired: dto.videoRequired,
+    videoUploadStartDate: dto.videoUploadStartAt ? 'set' : '',
+    videoUploadStartTime: dto.videoUploadStartAt ? 'set' : '',
     videoUploadEndDate: dto.videoUploadEndDate ? 'set' : '',
+    videoUploadEndTime: dto.videoUploadEndDate ? 'set' : '',
+    locationAddress: dto.locationAddress ?? '',
+    latitude: dto.latitude ?? null,
+    longitude: dto.longitude ?? null,
   };
 }
 
@@ -66,8 +73,18 @@ export function registrationCloseBeforeOpenFields(): Record<string, string> {
 }
 
 export function videoDateRequiredFields(): Record<string, string> {
+  const m = TOURNAMENT_FORM_MESSAGES;
   return {
-    videoUploadEndDate: TOURNAMENT_FORM_MESSAGES.videoUploadEndDate.required,
+    videoUploadStartDate: m.videoUploadStartDate.required,
+    videoUploadStartTime: m.videoUploadStartTime.required,
+    videoUploadEndDate: m.videoUploadEndDate.required,
+    videoUploadEndTime: m.videoUploadEndTime.required,
+  };
+}
+
+export function videoDateAfterStartFields(): Record<string, string> {
+  return {
+    videoUploadEndDate: TOURNAMENT_FORM_MESSAGES.videoUploadEndDate.afterStart,
   };
 }
 
@@ -75,4 +92,19 @@ export function videoDateAfterRegistrationFields(): Record<string, string> {
   return {
     videoUploadEndDate: TOURNAMENT_FORM_MESSAGES.videoUploadEndDate.afterRegistrationClose,
   };
+}
+
+export function assertTennisTournamentLocationValid(
+  locationAddress?: string | null,
+  latitude?: number | null,
+  longitude?: number | null,
+): void {
+  const message = validateTennisTournamentLocation(locationAddress, latitude, longitude);
+  if (message) {
+    throw new BadRequestException({
+      message: 'Validation failed',
+      error: 'VALIDATION_ERROR',
+      fields: { tournamentLocation: message },
+    });
+  }
 }

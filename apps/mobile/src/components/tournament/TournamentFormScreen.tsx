@@ -154,7 +154,10 @@ export function TournamentFormScreen({
 
   const [impactPlayerEnabled, setImpactPlayerEnabled] = useState(false);
   const [videoRequired, setVideoRequired] = useState(false);
+  const [videoUploadStartDate, setVideoUploadStartDate] = useState('');
+  const [videoUploadStartTime, setVideoUploadStartTime] = useState('');
   const [videoUploadEndDate, setVideoUploadEndDate] = useState('');
+  const [videoUploadEndTime, setVideoUploadEndTime] = useState('');
 
   const [feeFullTime, setFeeFullTime] = useState('');
   const [feePartTime, setFeePartTime] = useState('');
@@ -170,6 +173,7 @@ export function TournamentFormScreen({
   const editFormHydratedForTournamentIdRef = useRef<string | null>(null);
   const initialLeatherFromDateRef = useRef('');
   const initialLeatherEndDateRef = useRef('');
+  const initialVideoUploadStartDateRef = useRef('');
 
   const scrollRef = useRef<ScrollView>(null);
   const fieldOffsets = useRef<Partial<Record<TournamentFormFieldKey, number>>>({});
@@ -182,7 +186,9 @@ export function TournamentFormScreen({
   );
 
   const scrollToField = useCallback((key: TournamentFormFieldKey) => {
-    const y = fieldOffsets.current[key];
+    const scrollKey =
+      key === 'leatherFromDate' || key === 'leatherEndDate' ? 'tournamentDates' : key;
+    const y = fieldOffsets.current[scrollKey];
     if (y !== undefined) {
       scrollRef.current?.scrollTo({ y: Math.max(0, y - 16), animated: true });
     }
@@ -357,7 +363,11 @@ export function TournamentFormScreen({
         setAuctionDate(hydrated.auctionDate);
         setImpactPlayerEnabled(hydrated.impactPlayerEnabled);
         setVideoRequired(hydrated.videoRequired);
+        setVideoUploadStartDate(hydrated.videoUploadStartDate);
+        setVideoUploadStartTime(hydrated.videoUploadStartTime);
         setVideoUploadEndDate(hydrated.videoUploadEndDate);
+        setVideoUploadEndTime(hydrated.videoUploadEndTime);
+        initialVideoUploadStartDateRef.current = hydrated.videoUploadStartDate;
         setFeeFullTime(hydrated.feeFullTime);
         setFeePartTime(hydrated.feePartTime);
         setScopeLabel(hydrated.scopeLabel);
@@ -399,6 +409,7 @@ export function TournamentFormScreen({
     editFormHydratedForTournamentIdRef.current = null;
     initialLeatherFromDateRef.current = '';
     initialLeatherEndDateRef.current = '';
+    initialVideoUploadStartDateRef.current = '';
   }, [tournamentId]);
 
   useEffect(() => {
@@ -457,9 +468,23 @@ export function TournamentFormScreen({
   function onVideoToggle(checked: boolean): void {
     setVideoRequired(checked);
     if (!checked) {
+      setVideoUploadStartDate('');
+      setVideoUploadStartTime('');
       setVideoUploadEndDate('');
-      clearFieldError('videoUploadEndDate');
+      setVideoUploadEndTime('');
+      clearVideoUploadFieldErrors();
     }
+  }
+
+  function clearVideoUploadFieldErrors(): void {
+    setFieldErrors((prev) => {
+      const next = { ...prev };
+      delete next.videoUploadStartDate;
+      delete next.videoUploadStartTime;
+      delete next.videoUploadEndDate;
+      delete next.videoUploadEndTime;
+      return next;
+    });
   }
 
   function clearCenterPicker(): void {
@@ -497,11 +522,21 @@ export function TournamentFormScreen({
       setAuctionDate('');
       setImpactPlayerEnabled(false);
       setVideoRequired(false);
+      setVideoUploadStartDate('');
+      setVideoUploadStartTime('');
       setVideoUploadEndDate('');
+      setVideoUploadEndTime('');
+      setLocationAddress('');
+      setLatitude(null);
+      setLongitude(null);
+      clearFieldError('tournamentLocation');
       setFieldErrors((prev) => {
         const next = { ...prev };
         delete next.auctionDate;
+        delete next.videoUploadStartDate;
+        delete next.videoUploadStartTime;
         delete next.videoUploadEndDate;
+        delete next.videoUploadEndTime;
         return next;
       });
     }
@@ -527,6 +562,7 @@ export function TournamentFormScreen({
   function tennisOptionsForSubmit(): {
     impactPlayerEnabled: boolean;
     videoRequired: boolean;
+    videoUploadStartAt: string | null;
     videoUploadEndDate: string | null;
     auctionAt: string | null;
   } {
@@ -534,15 +570,24 @@ export function TournamentFormScreen({
       return {
         impactPlayerEnabled: false,
         videoRequired: false,
+        videoUploadStartAt: null,
         videoUploadEndDate: null,
         auctionAt: null,
       };
     }
+    const videoUploadStartAt =
+      videoRequired && videoUploadStartDate && videoUploadStartTime
+        ? combineLocalDateAndTimeToIso(videoUploadStartDate, videoUploadStartTime)
+        : null;
+    const videoUploadEndAt =
+      videoRequired && videoUploadEndDate && videoUploadEndTime
+        ? combineLocalDateAndTimeToIso(videoUploadEndDate, videoUploadEndTime)
+        : null;
     return {
       impactPlayerEnabled,
       videoRequired,
-      videoUploadEndDate:
-        videoRequired && videoUploadEndDate ? dateOnlyToUtcIso(videoUploadEndDate) : null,
+      videoUploadStartAt,
+      videoUploadEndDate: videoUploadEndAt,
       auctionAt: hasAuctionDate && auctionDate ? dateOnlyToUtcIso(auctionDate) : null,
     };
   }
@@ -645,10 +690,17 @@ export function TournamentFormScreen({
           hasAuctionDate: isTennisBall && hasAuctionDate,
           auctionDate: isTennisBall ? auctionDate : '',
           videoRequired: isTennisBall && videoRequired,
+          videoUploadStartDate: isTennisBall ? videoUploadStartDate : '',
+          videoUploadStartTime: isTennisBall ? videoUploadStartTime : '',
           videoUploadEndDate: isTennisBall ? videoUploadEndDate : '',
+          videoUploadEndTime: isTennisBall ? videoUploadEndTime : '',
           venueTimezone,
+          locationAddress,
+          latitude,
+          longitude,
           initialLeatherFromDate: initialLeatherFromDateRef.current,
           initialLeatherEndDate: initialLeatherEndDateRef.current,
+          initialVideoUploadStartDate: initialVideoUploadStartDateRef.current,
           minTeamCount,
           datesWithMatches,
           tournamentType: editTournamentType ?? TournamentType.ACC,
@@ -680,8 +732,14 @@ export function TournamentFormScreen({
           hasAuctionDate: isTennisBall && hasAuctionDate,
           auctionDate: isTennisBall ? auctionDate : '',
           videoRequired: isTennisBall && videoRequired,
+          videoUploadStartDate: isTennisBall ? videoUploadStartDate : '',
+          videoUploadStartTime: isTennisBall ? videoUploadStartTime : '',
           videoUploadEndDate: isTennisBall ? videoUploadEndDate : '',
+          videoUploadEndTime: isTennisBall ? videoUploadEndTime : '',
           venueTimezone,
+          locationAddress,
+          latitude,
+          longitude,
         });
 
     setFieldErrors(errors);
@@ -773,13 +831,18 @@ export function TournamentFormScreen({
           numberOfTeams: Number(numberOfTeams),
           playersPerTeam: playersPerTeam.trim() ? Number(playersPerTeam) : undefined,
           substitutesAllowed: DEFAULT_SUBSTITUTES_ALLOWED,
-          locationAddress: locationAddress.trim() || null,
-          latitude,
-          longitude,
+          ...(isTennisBall
+            ? {
+                locationAddress: locationAddress.trim() || null,
+                latitude,
+                longitude,
+              }
+            : {}),
           dates: datesForSubmit(),
           format: DEFAULT_TOURNAMENT_FORMAT,
           impactPlayerEnabled: tennisOptions.impactPlayerEnabled,
           videoRequired: tennisOptions.videoRequired,
+          videoUploadStartAt: tennisOptions.videoUploadStartAt,
           videoUploadEndDate: tennisOptions.videoUploadEndDate,
           registrationOpenAt,
           registrationCloseAt,
@@ -799,6 +862,7 @@ export function TournamentFormScreen({
         const updated = await updateTournament(tournamentId, updatePayload);
         initialLeatherFromDateRef.current = leatherFromDate;
         initialLeatherEndDateRef.current = leatherEndDate;
+        initialVideoUploadStartDateRef.current = videoUploadStartDate;
         savedTournamentIdRef.current = updated.id;
         setSavedTournamentId(updated.id);
         successNavigatedRef.current = false;
@@ -814,14 +878,23 @@ export function TournamentFormScreen({
         numberOfTeams: Number(numberOfTeams),
         playersPerTeam: playersPerTeam.trim() ? Number(playersPerTeam) : undefined,
         substitutesAllowed: DEFAULT_SUBSTITUTES_ALLOWED,
-        locationAddress: locationAddress.trim() || null,
-        latitude,
-        longitude,
+        ...(isTennisBall
+          ? {
+              locationAddress: locationAddress.trim() || null,
+              latitude,
+              longitude,
+            }
+          : {
+              locationAddress: null,
+              latitude: null,
+              longitude: null,
+            }),
         dates: datesForSubmit(),
         ballType,
         format: DEFAULT_TOURNAMENT_FORMAT,
         impactPlayerEnabled: tennisOptions.impactPlayerEnabled,
         videoRequired: tennisOptions.videoRequired,
+        videoUploadStartAt: tennisOptions.videoUploadStartAt,
         videoUploadEndDate: tennisOptions.videoUploadEndDate,
         registrationOpenAt,
         registrationCloseAt,
@@ -1030,13 +1103,19 @@ export function TournamentFormScreen({
                 minimumFromDate={leatherDateMinimum}
                 onFromDateChange={(value) => {
                   setLeatherFromDate(value);
+                  clearFieldError('leatherFromDate');
+                  clearFieldError('leatherEndDate');
                   clearFieldError('tournamentDates');
                 }}
                 onEndDateChange={(value) => {
                   setLeatherEndDate(value);
+                  clearFieldError('leatherFromDate');
+                  clearFieldError('leatherEndDate');
                   clearFieldError('tournamentDates');
                 }}
-                error={fieldErrors.tournamentDates}
+                fromError={fieldErrors.leatherFromDate}
+                endError={fieldErrors.leatherEndDate}
+                spanError={fieldErrors.tournamentDates}
               />
             ) : (
               <TournamentDatesField
@@ -1065,99 +1144,138 @@ export function TournamentFormScreen({
               />
             </View>
 
-            <TournamentLocationField
-              address={locationAddress}
-              latitude={latitude}
-              longitude={longitude}
-              onAddressChange={setLocationAddress}
-              onCoordinatesChange={(lat, lng) => {
-                setLatitude(lat);
-                setLongitude(lng);
-              }}
-            />
-
             {isEditMode && ballType === BallType.Tennis ? (
-              <View className="gap-3">
+              citySelection === CitySelection.Multi ? (
+                <View className="flex-row gap-3">
+                  <View className="min-w-0 flex-1">
+                    <View className="gap-1">
+                      <Text className={labelClassName('brand')}>Tournament For</Text>
+                      <View className="rounded-control border border-outline-variant bg-surface-container-low px-4 py-3">
+                        <Text className="font-sans text-base text-on-surface-variant">
+                          {scopeLabel}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                  <View className="min-w-0 flex-1">
+                    <View className="gap-1">
+                      <Text className={labelClassName('brand')}>Centers</Text>
+                      <View className="rounded-control border border-outline-variant bg-surface-container-low px-4 py-3">
+                        <Text
+                          className="font-sans text-base text-on-surface-variant"
+                          numberOfLines={1}
+                        >
+                          {centerLabels.length === 0
+                            ? '—'
+                            : centerLabels.length === 1
+                              ? centerLabels[0]
+                              : `${centerLabels.length} centers selected`}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                </View>
+              ) : (
                 <View className="gap-1">
                   <Text className={labelClassName('brand')}>Tournament For</Text>
                   <View className="rounded-control border border-outline-variant bg-surface-container-low px-4 py-3">
                     <Text className="font-sans text-base text-on-surface-variant">{scopeLabel}</Text>
                   </View>
                 </View>
-                {centerLabels.length > 0 ? (
-                  <View className="gap-1">
-                    <Text className={labelClassName('brand')}>Centers</Text>
-                    <View className="rounded-control border border-outline-variant bg-surface-container-low px-4 py-3">
-                      <Text className="font-sans text-base text-on-surface-variant">
-                        {centerLabels.join(', ')}
-                      </Text>
-                    </View>
-                  </View>
-                ) : null}
-              </View>
+              )
             ) : null}
 
             {!isEditMode && isTennisBall ? (
-              <View onLayout={layoutField('citySelection')}>
-              <Select
-                label="Tournament For"
-                placeholder="Select scope"
-                value={citySelection}
-                options={scopeOptions}
-                onChange={(value) => onScopeChange(value as CitySelection)}
-                error={fieldErrors.citySelection}
-              />
-              </View>
-            ) : null}
-
-            {!isEditMode && isMultiCenters ? (
-              <View className="gap-4">
-                <View onLayout={layoutField('centers')}>
-                <MultiSelect
-                  label="Centers"
-                  placeholder="Select centers"
-                  values={selectedCenterIds}
-                  options={centerOptions}
-                  onChange={(next) => {
-                    setSelectedCenterIds(next);
-                    clearFieldError('centers');
-                  }}
-                  disabled={!tournamentProvinceId}
-                  loading={Boolean(tournamentProvinceId) && centerField.loading}
-                  error={centersSelectError}
-                  emptyMessage="No centers available in this province."
-                  onRetry={centerField.retry}
-                />
+              isMultiCenters ? (
+                <View className="flex-row gap-3">
+                  <View className="min-w-0 flex-1" onLayout={layoutField('citySelection')}>
+                    <Select
+                      label="Tournament For"
+                      placeholder="Select scope"
+                      value={citySelection}
+                      options={scopeOptions}
+                      onChange={(value) => onScopeChange(value as CitySelection)}
+                      error={fieldErrors.citySelection}
+                    />
+                  </View>
+                  <View className="min-w-0 flex-1" onLayout={layoutField('centers')}>
+                    <MultiSelect
+                      label="Centers"
+                      placeholder="Select centers"
+                      values={selectedCenterIds}
+                      options={centerOptions}
+                      onChange={(next) => {
+                        setSelectedCenterIds(next);
+                        clearFieldError('centers');
+                      }}
+                      disabled={!tournamentProvinceId}
+                      loading={Boolean(tournamentProvinceId) && centerField.loading}
+                      error={centersSelectError}
+                      emptyMessage="No centers available in this province."
+                      onRetry={centerField.retry}
+                    />
+                  </View>
                 </View>
+              ) : (
+                <View onLayout={layoutField('citySelection')}>
+                  <Select
+                    label="Tournament For"
+                    placeholder="Select scope"
+                    value={citySelection}
+                    options={scopeOptions}
+                    onChange={(value) => onScopeChange(value as CitySelection)}
+                    error={fieldErrors.citySelection}
+                  />
+                </View>
+              )
+            ) : null}
+
+            {isTennisBall ? (
+              <View onLayout={layoutField('tournamentLocation')}>
+                <TournamentLocationField
+                  address={locationAddress}
+                  latitude={latitude}
+                  longitude={longitude}
+                  onAddressChange={(value) => {
+                    setLocationAddress(value);
+                    clearFieldError('tournamentLocation');
+                  }}
+                  onCoordinatesChange={(lat, lng) => {
+                    setLatitude(lat);
+                    setLongitude(lng);
+                    clearFieldError('tournamentLocation');
+                  }}
+                  error={fieldErrors.tournamentLocation}
+                />
               </View>
             ) : null}
 
-            <View className="gap-4">
-              <View onLayout={layoutField('numberOfTeams')}>
-              <Select
-                label="Number of Teams"
-                placeholder="Select number of teams"
-                value={numberOfTeams}
-                options={numberOfTeamsOptions}
-                onChange={(value) => {
-                  setNumberOfTeams(value);
-                  clearFieldError('numberOfTeams');
-                }}
-                error={fieldErrors.numberOfTeams}
-              />
+            <View className="flex-row gap-3">
+              <View className="min-w-0 flex-1" onLayout={layoutField('numberOfTeams')}>
+                <Select
+                  label="Number of Teams"
+                  placeholder="Select number of teams"
+                  value={numberOfTeams}
+                  options={numberOfTeamsOptions}
+                  onChange={(value) => {
+                    setNumberOfTeams(value);
+                    clearFieldError('numberOfTeams');
+                  }}
+                  error={fieldErrors.numberOfTeams}
+                />
               </View>
-              <View onLayout={layoutField('playersPerTeam')}>
-              <TextInput
-                label="Players per Team"
-                value={playersPerTeam}
-                onChangeText={(text) => {
-                  setPlayersPerTeam(text.replace(/\D/g, ''));
-                  clearFieldError('playersPerTeam');
-                }}
-                keyboardType="number-pad"
-                placeholder="e.g. 28"
-                error={fieldErrors.playersPerTeam}
-              />
+              <View className="min-w-0 flex-1" onLayout={layoutField('playersPerTeam')}>
+                <TextInput
+                  label="Players per Team"
+                  value={playersPerTeam}
+                  onChangeText={(text) => {
+                    setPlayersPerTeam(text.replace(/\D/g, ''));
+                    clearFieldError('playersPerTeam');
+                  }}
+                  keyboardType="number-pad"
+                  placeholder="e.g. 28"
+                  error={fieldErrors.playersPerTeam}
+                />
               </View>
             </View>
 
@@ -1207,51 +1325,67 @@ export function TournamentFormScreen({
 
             {hasRegistrationWindow ? (
               <View className="gap-4 pl-1">
-                <View onLayout={layoutField('registrationOpenDate')}>
-                <DateField
-                  label="Registration Open Date"
-                  value={registrationOpenDate}
-                  onChange={(value) => {
-                    setRegistrationOpenDate(value);
-                    clearRegistrationFieldErrors();
-                  }}
-                  enforceSignupAgeMax={false}
-                  error={fieldErrors.registrationOpenDate}
-                />
+                <View className="flex-row gap-3">
+                  <View
+                    className="min-w-0 flex-[3]"
+                    onLayout={layoutField('registrationOpenDate')}
+                  >
+                    <DateField
+                      label="Registration Open Date"
+                      value={registrationOpenDate}
+                      onChange={(value) => {
+                        setRegistrationOpenDate(value);
+                        clearRegistrationFieldErrors();
+                      }}
+                      enforceSignupAgeMax={false}
+                      error={fieldErrors.registrationOpenDate}
+                    />
+                  </View>
+                  <View
+                    className="min-w-0 flex-[2]"
+                    onLayout={layoutField('registrationOpenTime')}
+                  >
+                    <TimeField
+                      label="Registration Open Time"
+                      value={registrationOpenTime}
+                      onChange={(value) => {
+                        setRegistrationOpenTime(value);
+                        clearRegistrationFieldErrors();
+                      }}
+                      error={fieldErrors.registrationOpenTime}
+                    />
+                  </View>
                 </View>
-                <View onLayout={layoutField('registrationOpenTime')}>
-                <TimeField
-                  label="Registration Open Time"
-                  value={registrationOpenTime}
-                  onChange={(value) => {
-                    setRegistrationOpenTime(value);
-                    clearRegistrationFieldErrors();
-                  }}
-                  error={fieldErrors.registrationOpenTime}
-                />
-                </View>
-                <View onLayout={layoutField('registrationCloseDate')}>
-                <DateField
-                  label="Registration Close Date"
-                  value={registrationCloseDate}
-                  onChange={(value) => {
-                    setRegistrationCloseDate(value);
-                    clearRegistrationFieldErrors();
-                  }}
-                  enforceSignupAgeMax={false}
-                  error={fieldErrors.registrationCloseDate}
-                />
-                </View>
-                <View onLayout={layoutField('registrationCloseTime')}>
-                <TimeField
-                  label="Registration Close Time"
-                  value={registrationCloseTime}
-                  onChange={(value) => {
-                    setRegistrationCloseTime(value);
-                    clearRegistrationFieldErrors();
-                  }}
-                  error={fieldErrors.registrationCloseTime}
-                />
+                <View className="flex-row gap-3">
+                  <View
+                    className="min-w-0 flex-[3]"
+                    onLayout={layoutField('registrationCloseDate')}
+                  >
+                    <DateField
+                      label="Registration Close Date"
+                      value={registrationCloseDate}
+                      onChange={(value) => {
+                        setRegistrationCloseDate(value);
+                        clearRegistrationFieldErrors();
+                      }}
+                      enforceSignupAgeMax={false}
+                      error={fieldErrors.registrationCloseDate}
+                    />
+                  </View>
+                  <View
+                    className="min-w-0 flex-[2]"
+                    onLayout={layoutField('registrationCloseTime')}
+                  >
+                    <TimeField
+                      label="Registration Close Time"
+                      value={registrationCloseTime}
+                      onChange={(value) => {
+                        setRegistrationCloseTime(value);
+                        clearRegistrationFieldErrors();
+                      }}
+                      error={fieldErrors.registrationCloseTime}
+                    />
+                  </View>
                 </View>
               </View>
             ) : null}
@@ -1330,17 +1464,69 @@ export function TournamentFormScreen({
                 </Checkbox>
 
                 {videoRequired ? (
-                  <View onLayout={layoutField('videoUploadEndDate')}>
-                    <DateField
-                      label="Video Upload End Date"
-                      value={videoUploadEndDate}
-                      onChange={(value) => {
-                        setVideoUploadEndDate(value);
-                        clearFieldError('videoUploadEndDate');
-                      }}
-                      enforceSignupAgeMax={false}
-                      error={fieldErrors.videoUploadEndDate}
-                    />
+                  <View className="gap-4 pl-1">
+                    <View className="flex-row gap-3">
+                      <View
+                        className="min-w-0 flex-[3]"
+                        onLayout={layoutField('videoUploadStartDate')}
+                      >
+                        <DateField
+                          label="Upload Start Date"
+                          value={videoUploadStartDate}
+                          onChange={(value) => {
+                            setVideoUploadStartDate(value);
+                            clearVideoUploadFieldErrors();
+                          }}
+                          enforceSignupAgeMax={false}
+                          error={fieldErrors.videoUploadStartDate}
+                        />
+                      </View>
+                      <View
+                        className="min-w-0 flex-[2]"
+                        onLayout={layoutField('videoUploadStartTime')}
+                      >
+                        <TimeField
+                          label="Upload Start Time"
+                          value={videoUploadStartTime}
+                          onChange={(value) => {
+                            setVideoUploadStartTime(value);
+                            clearVideoUploadFieldErrors();
+                          }}
+                          error={fieldErrors.videoUploadStartTime}
+                        />
+                      </View>
+                    </View>
+                    <View className="flex-row gap-3">
+                      <View
+                        className="min-w-0 flex-[3]"
+                        onLayout={layoutField('videoUploadEndDate')}
+                      >
+                        <DateField
+                          label="Upload End Date"
+                          value={videoUploadEndDate}
+                          onChange={(value) => {
+                            setVideoUploadEndDate(value);
+                            clearVideoUploadFieldErrors();
+                          }}
+                          enforceSignupAgeMax={false}
+                          error={fieldErrors.videoUploadEndDate}
+                        />
+                      </View>
+                      <View
+                        className="min-w-0 flex-[2]"
+                        onLayout={layoutField('videoUploadEndTime')}
+                      >
+                        <TimeField
+                          label="Upload End Time"
+                          value={videoUploadEndTime}
+                          onChange={(value) => {
+                            setVideoUploadEndTime(value);
+                            clearVideoUploadFieldErrors();
+                          }}
+                          error={fieldErrors.videoUploadEndTime}
+                        />
+                      </View>
+                    </View>
                   </View>
                 ) : null}
               </>

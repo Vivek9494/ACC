@@ -87,6 +87,7 @@ export interface TournamentLocationFieldProps {
   onCoordinatesChange: (latitude: number | null, longitude: number | null) => void;
   onLayout?: (event: LayoutChangeEvent) => void;
   label?: string;
+  error?: string | null;
 }
 
 export function TournamentLocationField({
@@ -97,6 +98,7 @@ export function TournamentLocationField({
   onCoordinatesChange,
   onLayout,
   label = 'Tournament Location',
+  error = null,
 }: TournamentLocationFieldProps): React.ReactElement {
   const sessionTokenRef = useRef(createPlacesSessionToken());
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -419,6 +421,7 @@ export function TournamentLocationField({
         rightAccessory={
           inputBusy ? <ActivityIndicator size="small" color={FIELD_ORANGE} /> : null
         }
+        error={error ?? undefined}
       />
 
       {updatingAddress ? (

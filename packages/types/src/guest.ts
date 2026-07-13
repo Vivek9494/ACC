@@ -32,7 +32,12 @@ export interface GuestFeaturedLiveMatch {
 
 /** Guest dashboard payload — public, no auth (spec §2). */
 export interface GuestDashboard {
-  /** App-wide fixtures scheduled today (venue-local), same set for all viewers. */
-  featuredMatches: CaptainFeaturedMatchSummary[];
-  tournaments: TournamentSummary[];
+  /** When set, only the live card is featured on the home screen. */
+  liveMatch: CaptainFeaturedMatchSummary | null;
+  /** Soonest scheduled future fixture when nothing is live. */
+  upcomingMatch: CaptainFeaturedMatchSummary | null;
+  /** Most recently completed fixture when nothing is live. */
+  recentMatch: CaptainFeaturedMatchSummary | null;
+  /** Tournament for the featured match(es) — upcoming, else recent, else live. */
+  featuredTournament: TournamentSummary | null;
 }

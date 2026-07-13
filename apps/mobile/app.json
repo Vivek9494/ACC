@@ -25,6 +25,7 @@
           "location",
           "location"
         ],
+        "NSPhotoLibraryUsageDescription": "Allow ASC to access your photos so you can upload a profile picture, tournament posters, and videos.",
         "NSLocalNetworkUsageDescription": "ASC connects to the development API on your local network.",
         "NSAppTransportSecurity": {
           "NSAllowsLocalNetworking": true
@@ -61,7 +62,9 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Allow ASC to access your photos for your profile picture."
+          "photosPermission": "Allow ASC to access your photos so you can upload a profile picture, tournament posters, and videos.",
+          "cameraPermission": false,
+          "microphonePermission": false
         }
       ],
       [

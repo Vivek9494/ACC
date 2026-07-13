@@ -13,7 +13,10 @@ export interface TournamentLeatherDateRangeFieldProps {
   onEndDateChange: (value: string) => void;
   /** Start-of-today in venue local tz for the native date picker floor. */
   minimumFromDate: Date;
-  error?: string | null;
+  fromError?: string | null;
+  endError?: string | null;
+  /** Span / match-lock errors that apply to the date range as a whole. */
+  spanError?: string | null;
 }
 
 /**
@@ -25,7 +28,9 @@ export function TournamentLeatherDateRangeField({
   onFromDateChange,
   onEndDateChange,
   minimumFromDate,
-  error,
+  fromError,
+  endError,
+  spanError,
 }: TournamentLeatherDateRangeFieldProps): React.ReactElement {
   const endMinimumDate = useMemo(() => {
     if (!fromDate) {
@@ -48,6 +53,7 @@ export function TournamentLeatherDateRangeField({
         onChange={onFromDateChange}
         enforceSignupAgeMax={false}
         minimumDate={minimumFromDate}
+        error={fromError}
       />
       <DateField
         label="End Date"
@@ -55,8 +61,9 @@ export function TournamentLeatherDateRangeField({
         onChange={onEndDateChange}
         enforceSignupAgeMax={false}
         minimumDate={endMinimumDate}
+        error={endError}
       />
-      <FormErrorText inline>{error}</FormErrorText>
+      <FormErrorText inline>{spanError}</FormErrorText>
     </View>
   );
 }

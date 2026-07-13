@@ -29,6 +29,7 @@ import {
   PlayingXiNoShowRecoveryAction,
   type PlayingXiNoShowRecoveryRequest,
   enrichPollSuspensionRows,
+  partitionPollConfirmedInVoters,
   type PlayingXiSwitchRequest,
   UserRole,
   canAssignTeamRoles,
@@ -492,6 +493,12 @@ export class ParticipationPollService {
     const voteByUser = new Map(fullPoll.votes.map((vote) => [vote.userId, vote.isAvailable]));
     const pendingSuspensions = enrichPollSuspensionRows(rawPendingSuspensions, voteByUser);
 
+    const { confirmedIn } = partitionPollConfirmedInVoters({
+      inVoters: tally.in,
+      pendingSuspensions,
+      actionedSuspensions,
+    });
+
     return {
       pollId: fullPoll.id,
       matchId,
@@ -500,7 +507,11 @@ export class ParticipationPollService {
       isFinalized: squad?.isFinalized ?? false,
       savedPlayingXiIds,
       canUsePollConfirm,
-      tally,
+      tally: {
+        ...tally,
+        in: confirmedIn,
+        inCount: confirmedIn.length,
+      },
       pendingSuspensions,
       actionedSuspensions,
     };
@@ -623,6 +634,38 @@ export class ParticipationPollService {
       rosterUserIds.map((row) => row.userId),
     );
 
+    const rawInVoterIds = new Set(inRows.map((row) => row.userId));
+    const penaltyOwingInVoterUserIds = new Set(
+      penaltyOwing.filter((row) => rawInVoterIds.has(row.userId)).map((row) => row.userId),
+    );
+
+    let pendingSuspensions: Awaited<ReturnType<typeof enrichPollSuspensionRows>> = [];
+    let actionedSuspensions: Awaited<
+      ReturnType<SuspensionService['listActionedForMatchTeam']>
+    > = [];
+    let confirmedInWithPunch = inWithPunch;
+
+    if (leatherBall) {
+      const pollVotes = await this.prisma.availabilityPollVote.findMany({
+        where: { pollId: poll.id },
+        select: { userId: true, isAvailable: true },
+      });
+      const voteByUser = new Map(pollVotes.map((vote) => [vote.userId, vote.isAvailable]));
+      const [rawPendingSuspensions, actionedRows] = await Promise.all([
+        this.suspensions.listPendingForMatchTeam(poll.matchId, poll.teamId),
+        this.suspensions.listActionedForMatchTeam(poll.matchId, poll.teamId),
+      ]);
+      pendingSuspensions = enrichPollSuspensionRows(rawPendingSuspensions, voteByUser);
+      actionedSuspensions = actionedRows;
+      const partition = partitionPollConfirmedInVoters({
+        inVoters: inWithPunch,
+        pendingSuspensions,
+        actionedSuspensions,
+        penaltyOwingInVoterUserIds,
+      });
+      confirmedInWithPunch = partition.confirmedIn;
+    }
+
     const isMatchDay = isAttendanceMatchDay(
       {
         matchDate: poll.match.matchDate,
@@ -656,7 +699,7 @@ export class ParticipationPollService {
         : [];
 
     const excludedFromUnselected = new Set([...squadUserIds, ...penaltyServerUserIds]);
-    const preMatchUnselected: PollPlayingXiPlayerRow[] = inWithPunch
+    const preMatchUnselected: PollPlayingXiPlayerRow[] = confirmedInWithPunch
       .filter((row) => !excludedFromUnselected.has(row.userId))
       .map((row) => ({ ...row, squadRole: null }));
 
@@ -695,9 +738,9 @@ export class ParticipationPollService {
       matchId: poll.matchId,
       teamId: poll.teamId,
       teamName: poll.team.name,
-      inCount: inRows.length,
+      inCount: confirmedInWithPunch.length,
       outCount: outRows.length,
-      in: inWithPunch,
+      in: confirmedInWithPunch,
       out: outRows,
       hasSavedSquad: squad != null,
       isMatchDay,
@@ -713,6 +756,8 @@ export class ParticipationPollService {
       switchSubstituteCandidates,
       switchPenaltyServerCandidates,
       switchUnselectedCandidates,
+      pendingSuspensions,
+      actionedSuspensions,
     };
   }
 

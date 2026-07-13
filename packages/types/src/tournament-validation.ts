@@ -22,6 +22,10 @@ export const TOURNAMENT_FORM_MESSAGES = {
     hasScheduledMatch: (date: string) =>
       `Cannot remove ${date} — a match is already scheduled on this date`,
   },
+  tournamentLocation: {
+    required: 'Tournament location is required',
+    coordinates: 'Select a location from the map or search results',
+  },
   ballType: {
     required: 'Please select a ball type',
   },
@@ -50,9 +54,21 @@ export const TOURNAMENT_FORM_MESSAGES = {
   auctionDate: {
     required: 'Auction date is required',
   },
+  videoUploadStartDate: {
+    required: 'Upload start date is required',
+    past: 'Choose today or a future date',
+  },
+  videoUploadStartTime: {
+    required: 'Upload start time is required',
+  },
   videoUploadEndDate: {
-    required: 'Video upload end date is required',
-    afterRegistrationClose: 'Video upload end date must be after registration close',
+    required: 'Upload end date is required',
+    afterStart: 'Upload end must be after upload start',
+    afterRegistrationClose: 'Video upload end must be after registration close',
+  },
+  videoUploadEndTime: {
+    required: 'Upload end time is required',
+    afterStart: 'Upload end must be after upload start',
   },
   knockoutTeamCount: {
     required: 'Select knockout team count',
@@ -71,6 +87,9 @@ export type TournamentFormFieldKey =
   | 'name'
   | 'year'
   | 'tournamentDates'
+  | 'tournamentLocation'
+  | 'leatherFromDate'
+  | 'leatherEndDate'
   | 'ballType'
   | 'citySelection'
   | 'province'
@@ -82,5 +101,8 @@ export type TournamentFormFieldKey =
   | 'registrationCloseDate'
   | 'registrationCloseTime'
   | 'auctionDate'
+  | 'videoUploadStartDate'
+  | 'videoUploadStartTime'
   | 'videoUploadEndDate'
+  | 'videoUploadEndTime'
   | 'knockoutTeamCount';

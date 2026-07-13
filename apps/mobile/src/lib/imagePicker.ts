@@ -10,6 +10,11 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 
+import {
+  ensureMediaLibraryAccess,
+  MEDIA_LIBRARY_PERMISSION_MESSAGE,
+} from './media-library-permission';
+
 /** Normalized image picked from the library — single source for preview, validation, and upload. */
 export interface PickedImageFile {
   uri: string;
@@ -157,20 +162,27 @@ async function validatePickedFile(
 
 /**
  * Launch the photo library, normalize assets[0], and validate type/size.
- * Returns null when the user cancels or denies permission.
+ * Returns null when the user cancels. Permission denial returns `{ ok: false, error }`.
  */
 export async function pickImage(options: PickImageOptions): Promise<PickImageResult | null> {
-  const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-  if (!permission.granted) {
-    return null;
+  if (!(await ensureMediaLibraryAccess())) {
+    return { ok: false, error: MEDIA_LIBRARY_PERMISSION_MESSAGE };
   }
 
-  const result = await ImagePicker.launchImageLibraryAsync({
-    mediaTypes: ['images'],
-    allowsEditing: options.allowsEditing ?? true,
-    aspect: options.aspect,
-    quality: options.quality ?? 0.85,
-  });
+  let result: ImagePicker.ImagePickerResult;
+  try {
+    result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: options.allowsEditing ?? true,
+      aspect: options.aspect,
+      quality: options.quality ?? 0.85,
+    });
+  } catch (error) {
+    if (__DEV__) {
+      console.warn('[pickImage] launchImageLibraryAsync failed', error);
+    }
+    return { ok: false, error: 'Could not open the photo library. Please try again.' };
+  }
 
   if (result.canceled || !result.assets[0]) {
     return null;

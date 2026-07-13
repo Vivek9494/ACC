@@ -2,7 +2,10 @@
 import { DateTime } from 'luxon';
 
 import type { RegistrationPlayerType } from './registration';
-import type { PollSuspensionActionedRow, PollSuspensionPlayerRow } from './suspension';
+import type {
+  PollSuspensionActionedRow,
+  PollSuspensionPlayerRow,
+} from './suspension';
 import type { MatchScheduleAnchor } from './timezone';
 import { getMatchCalendarDayInZone, serverVenueTimezone } from './timezone';
 
@@ -201,6 +204,10 @@ export interface PollPlayingXiSelectionView {
   switchPenaltyServerCandidates: PollPenaltyServingPlayerRow[];
   /** Switch picker — own-squad players outside XI/subs/servers. */
   switchUnselectedCandidates: PollPlayingXiPlayerRow[];
+  /** Pending late-arrival suspensions for this match (excluded from {@link in}). */
+  pendingSuspensions: PollSuspensionPlayerRow[];
+  /** Captain actioned suspensions — merged into {@link in} with eligibility to play. */
+  actionedSuspensions: PollSuspensionActionedRow[];
 }
 
 export interface ConfirmPollPlayingXiRequest {

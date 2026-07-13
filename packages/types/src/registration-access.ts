@@ -146,6 +146,7 @@ export function canUploadPlayerSkillVideo(
     | (RegistrationManagementTournamentContext & {
         registrationVerificationComplete?: boolean;
         videoRequired?: boolean;
+        videoUploadStartAt?: string | null;
         videoUploadEndDate?: string | null;
       })
     | null
@@ -168,12 +169,11 @@ export function canUploadPlayerSkillVideo(
   if (myRegistrationStatus !== RegistrationStatus.Confirmed) {
     return false;
   }
-  if (tournament.videoUploadEndDate) {
-    const deadline = new Date(tournament.videoUploadEndDate);
-    deadline.setUTCHours(23, 59, 59, 999);
-    if (now > deadline) {
-      return false;
-    }
+  if (tournament.videoUploadStartAt && now < new Date(tournament.videoUploadStartAt)) {
+    return false;
+  }
+  if (tournament.videoUploadEndDate && now > new Date(tournament.videoUploadEndDate)) {
+    return false;
   }
   return true;
 }

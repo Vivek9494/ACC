@@ -17,6 +17,7 @@ export type CaptainFeaturedMatchStatus = 'UPCOMING' | 'LIVE' | 'COMPLETED';
 /** Featured match for a captain's team (current or next fixture). */
 export interface CaptainFeaturedMatchSummary {
   matchId: string;
+  tournamentId: string;
   tournamentName: string;
   state: MatchState;
   status: CaptainFeaturedMatchStatus;
