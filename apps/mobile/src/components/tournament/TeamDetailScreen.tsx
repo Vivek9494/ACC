@@ -1,10 +1,12 @@
 import type { TeamDetailView } from '@acc/types';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, ScrollView, View } from 'react-native';
-import { useRouter, useFocusEffect, type Href } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ApiRequestError, getTeamDetail } from '../../lib/api';
+import { useAuth } from '../../lib/auth-context';
+import { tournamentSubpathHref } from '../../lib/tournament-detail-route';
 import { CircularAddButton } from '../ui/CircularAddButton';
 import { ScreenHeader } from '../ui/ScreenHeader';
 import { Text } from '../ui/Text';
@@ -48,6 +50,7 @@ export function TeamDetailScreen({
   teamId,
 }: TeamDetailScreenProps): React.ReactElement {
   const router = useRouter();
+  const { user } = useAuth();
   const insets = useSafeAreaInsets();
   const [detail, setDetail] = useState<TeamDetailView | null>(null);
   const [loading, setLoading] = useState(true);
@@ -74,7 +77,11 @@ export function TeamDetailScreen({
 
   function openPlayerProfile(userId: string, firstName: string, lastName: string): void {
     router.push(
-      `/tournaments/${tournamentId}/players/${userId}?firstName=${encodeURIComponent(firstName)}&lastName=${encodeURIComponent(lastName)}` as Href,
+      tournamentSubpathHref(user, tournamentId, 'players/[userId]', {
+        userId,
+        firstName,
+        lastName,
+      }),
     );
   }
 
@@ -83,7 +90,10 @@ export function TeamDetailScreen({
       return;
     }
     router.push(
-      `/tournaments/${tournamentId}/teams/${teamId}/add-players?teamName=${encodeURIComponent(detail.name)}` as Href,
+      tournamentSubpathHref(user, tournamentId, 'teams/[teamId]/add-players', {
+        teamId,
+        teamName: detail.name,
+      }),
     );
   }
 

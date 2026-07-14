@@ -1,25 +1,11 @@
-import { useLocalSearchParams } from 'expo-router';
+import { RedirectToRoleTournamentSubpage } from '../../../src/components/tournament/RedirectToRoleTournamentSubpage';
 
-import { TournamentRegistrationFormScreen } from '../../../src/components/tournament/TournamentRegistrationFormScreen';
-
-export default function TournamentRegistrationScreen(): React.ReactElement {
-  const params = useLocalSearchParams<{
-    tournamentId: string;
-    onBehalfOfUserId?: string;
-    firstName?: string;
-    lastName?: string;
-    centerId?: string;
-    lateRegister?: string;
-  }>();
-
+/** Root deep-link entry — bounce into the role Tournaments tab stack. */
+export default function Route(): React.ReactElement {
   return (
-    <TournamentRegistrationFormScreen
-      tournamentId={params.tournamentId ?? ''}
-      onBehalfOfUserId={params.onBehalfOfUserId}
-      prefilledFirstName={params.firstName}
-      prefilledLastName={params.lastName}
-      prefilledCenterId={params.centerId}
-      lateRegister={params.lateRegister === '1'}
+    <RedirectToRoleTournamentSubpage
+      subpath="registrations/register"
+      extraParamKeys={['onBehalfOfUserId', 'firstName', 'lastName', 'centerId', 'lateRegister']}
     />
   );
 }

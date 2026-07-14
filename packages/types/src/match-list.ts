@@ -7,6 +7,7 @@ import type { UserRole } from './auth';
 import type { HomeAway } from './match';
 import { MatchState, LIVE_MATCH_STATES, type MatchState as MatchStateType } from './match';
 import { RegistrationStatus, type RegistrationStatus as RegistrationStatusType } from './registration';
+import { InningsType, type InningsScorecard } from './scoring';
 export const MatchCardDisplayState = {
   Completed: 'COMPLETED',
   Live: 'LIVE',
@@ -102,10 +103,18 @@ export function resolveMatchStateBadge(state: string): MatchStateBadgeMeta {
   return { label: humanized || FALLBACK_BADGE_META.label, style: MatchStateBadgeStyle.Muted };
 }
 
+/** Shown under a team name during live 1st innings when that side has not batted yet. */
+export const MATCH_LIST_YET_TO_BAT_LABEL = 'Yet to Bat';
+
 export interface MatchListTeamView {
   id: string | null;
   name: string;
   logoUrl: string | null;
+  /**
+   * Per-team batting line under the name, e.g. `"12/0 (2.0)"` or
+   * {@link MATCH_LIST_YET_TO_BAT_LABEL}. Null when scheduled / no innings yet.
+   */
+  scoreLine: string | null;
 }
 
 /** Populated from the scoring engine / live feed when a match is in progress. */
@@ -115,6 +124,77 @@ export interface MatchLiveScoreSummary {
   wickets: number;
   /** Decimal overs text, e.g. `"15.2"`. */
   oversText: string;
+}
+
+type MatchListScoreInnings = Pick<
+  InningsScorecard,
+  'inningsType' | 'battingTeamId' | 'runs' | 'wickets' | 'oversText' | 'closed'
+>;
+
+/** Formats a team's normal-innings total as `runs/wickets (overs)` for list cards. */
+export function formatMatchListTeamScoreLine(
+  innings: readonly Pick<InningsScorecard, 'runs' | 'wickets' | 'oversText' | 'closed'>[],
+): string | null {
+  if (innings.length === 0) {
+    return null;
+  }
+  const primary = innings[innings.length - 1]!;
+  const runs = innings.reduce((sum, inn) => sum + inn.runs, 0);
+  const wickets = innings.reduce((sum, inn) => sum + inn.wickets, 0);
+  const runsWickets = primary.closed && wickets >= 10 ? `${runs}` : `${runs}/${wickets}`;
+  return `${runsWickets} (${primary.oversText})`;
+}
+
+function matchListInningsBelongToTeam(
+  inn: Pick<InningsScorecard, 'battingTeamId'>,
+  teamId: string | null,
+  side: 'home' | 'away',
+  awayIsExternal: boolean,
+): boolean {
+  if (teamId != null) {
+    return inn.battingTeamId === teamId;
+  }
+  // External opponent owns null battingTeamId (ACC leather / name-only side).
+  return side === 'away' && awayIsExternal && inn.battingTeamId == null;
+}
+
+/**
+ * Maps normal-innings scores onto home/away by {@link InningsScorecard.battingTeamId}
+ * (never by left/right). Super Overs are excluded — main-innings scores only.
+ */
+export function resolveMatchListTeamScoreLines(input: {
+  innings: readonly MatchListScoreInnings[];
+  teamAId: string | null;
+  teamBId: string | null;
+  /** True when Team B is an unregistered external opponent (`awayTeamId` null). */
+  awayIsExternal: boolean;
+  /**
+   * When true (live / rain), a side with no normal innings while the other has
+   * batted shows {@link MATCH_LIST_YET_TO_BAT_LABEL}.
+   */
+  showYetToBat: boolean;
+}): { teamAScoreLine: string | null; teamBScoreLine: string | null } {
+  const normals = input.innings.filter((inn) => inn.inningsType === InningsType.Normal);
+  const teamAInnings = normals.filter((inn) =>
+    matchListInningsBelongToTeam(inn, input.teamAId, 'home', input.awayIsExternal),
+  );
+  const teamBInnings = normals.filter((inn) =>
+    matchListInningsBelongToTeam(inn, input.teamBId, 'away', input.awayIsExternal),
+  );
+
+  let teamAScoreLine = formatMatchListTeamScoreLine(teamAInnings);
+  let teamBScoreLine = formatMatchListTeamScoreLine(teamBInnings);
+
+  if (input.showYetToBat) {
+    if (teamAScoreLine == null && teamBInnings.length > 0) {
+      teamAScoreLine = MATCH_LIST_YET_TO_BAT_LABEL;
+    }
+    if (teamBScoreLine == null && teamAInnings.length > 0) {
+      teamBScoreLine = MATCH_LIST_YET_TO_BAT_LABEL;
+    }
+  }
+
+  return { teamAScoreLine, teamBScoreLine };
 }
 
 /** One row on GET /tournaments/:id/matches. */

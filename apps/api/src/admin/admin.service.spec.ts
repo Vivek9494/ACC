@@ -177,6 +177,7 @@ describe('AdminService user management', () => {
       lastName: 'Patel',
       mobileNumber: '+14165551234',
       platformRole: 'PLAYER',
+      provinceId: 'province-1',
       centerId: 'center-1',
       email: 'ambrish@example.com',
     } as never);

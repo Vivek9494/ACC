@@ -6,6 +6,7 @@ import { View } from 'react-native';
 import { Button } from '../ui/Button';
 import { useAuth } from '../../lib/auth-context';
 import { canScheduleTournamentMatches } from '../../lib/can-schedule-matches';
+import { tournamentSubpathHref } from '../../lib/tournament-detail-route';
 import { TabEmptyState } from '../ui/TabEmptyState';
 import { EditableTournamentGroupSection } from './EditableTournamentGroupSection';
 
@@ -45,7 +46,7 @@ export function TournamentGroupsTab({
   }, []);
 
   function openCreateGroup(): void {
-    router.push(`/tournaments/${tournamentId}/create-group`);
+    router.push(tournamentSubpathHref(user, tournamentId, 'create-group'));
   }
 
   if (groups.length === 0) {

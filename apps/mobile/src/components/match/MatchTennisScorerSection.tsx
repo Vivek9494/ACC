@@ -11,6 +11,8 @@ import { PlayerAvatar } from '../tournament/PlayerAvatar';
 import { Button } from '../ui/Button';
 import { Select } from '../ui/Select';
 import { Text } from '../ui/Text';
+import { useAuth } from '../../lib/auth-context';
+import { tournamentSubpathHref } from '../../lib/tournament-detail-route';
 
 export interface MatchTennisScorerSectionProps {
   matchId: string;
@@ -31,6 +33,7 @@ export function MatchTennisScorerSection({
   onScorerSwapped,
 }: MatchTennisScorerSectionProps): React.ReactElement {
   const router = useRouter();
+  const { user } = useAuth();
   const [changeScorerOpen, setChangeScorerOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(
     tennisScorer.assignedScorer && !tennisScorer.assignedScorer.isStale
@@ -65,7 +68,9 @@ export function MatchTennisScorerSection({
         {canManageTournamentScorers && !tennisScorer.scorersEditLocked ? (
           <Button
             disabled={working}
-            onPress={() => router.push(`/tournaments/${tournamentId}/assign-scorers`)}
+            onPress={() =>
+              router.push(tournamentSubpathHref(user, tournamentId, 'assign-scorers'))
+            }
             className="h-12"
             label="Assign Scorers"
           />

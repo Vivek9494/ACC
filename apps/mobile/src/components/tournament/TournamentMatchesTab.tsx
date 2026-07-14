@@ -26,7 +26,11 @@ import {
   canManageUpcomingMatchSchedule,
   canScheduleTournamentMatchesAsOrganizer,
 } from '../../lib/can-schedule-matches';
-import { shouldShowKnockoutBracketEntry } from './KnockoutBracketManageScreen';
+import {
+  shouldShowKnockoutBracketEntry,
+  shouldShowKnockoutChartEntry,
+} from './KnockoutBracketManageScreen';
+import { tournamentSubpathHref } from '../../lib/tournament-detail-route';
 import { GroupSetupRequiredDialog } from '../ui/GroupSetupRequiredDialog';
 import { ScheduleMatchesNoTeamsDialog } from '../ui/ScheduleMatchesNoTeamsDialog';
 import { SelectFormatModal } from '../ui/SelectFormatModal';
@@ -149,19 +153,68 @@ export function TournamentMatchesTab({
       role: user.role,
       registrationStatus: viewerRegistrationStatus,
     });
+  const showKnockoutChartEntry = shouldShowKnockoutChartEntry(
+    { matchSchedulingFormat, hasKnockoutBracket },
+    user,
+  );
   const showKnockoutBracketEntry = shouldShowKnockoutBracketEntry(
     { matchSchedulingFormat },
     user,
   );
-  const knockoutBracketButtonLabel = hasKnockoutBracket
-    ? 'Knockout Bracket'
+  const knockoutManageButtonLabel = hasKnockoutBracket
+    ? 'Manage Knockout Bracket'
     : 'Generate Knockout Bracket';
 
+  function handleKnockoutChartPress(): void {
+    router.push(
+      tournamentSubpathHref(user, tournamentId, 'knockout-chart', {
+        name: tournamentName,
+      }),
+    );
+  }
+
   function handleKnockoutBracketPress(): void {
-    router.push({
-      pathname: '/tournaments/[id]/knockout-bracket',
-      params: { id: tournamentId, name: tournamentName },
-    });
+    router.push(
+      tournamentSubpathHref(user, tournamentId, 'knockout-bracket', {
+        name: tournamentName,
+      }),
+    );
+  }
+
+  function renderKnockoutAndScheduleActions(): React.ReactNode {
+    if (!showKnockoutChartEntry && !showKnockoutBracketEntry && !canSchedule) {
+      return null;
+    }
+    return (
+      <View className="gap-3">
+        {showKnockoutChartEntry ? (
+          <Button
+            label="Knockout Chart"
+            variant="outline"
+            onPress={handleKnockoutChartPress}
+            className="h-12 w-full"
+          />
+        ) : null}
+
+        {showKnockoutBracketEntry ? (
+          <Button
+            label={knockoutManageButtonLabel}
+            variant="secondary"
+            onPress={handleKnockoutBracketPress}
+            className="h-12 w-full"
+          />
+        ) : null}
+
+        {canSchedule ? (
+          <Button
+            label="Schedule Matches"
+            variant="amber"
+            onPress={handleSchedulePress}
+            className="h-12 w-full"
+          />
+        ) : null}
+      </View>
+    );
   }
 
   const loadMatches = useCallback(async (options?: { silent?: boolean }) => {
@@ -185,8 +238,9 @@ export function TournamentMatchesTab({
       buildMatchMenuActions(match, tournamentId, matchSchedulingFormat, router, {
         canManage: canManageMatches,
         onDeleted: () => void loadMatches(),
+        user,
       }),
-    [canManageMatches, loadMatches, matchSchedulingFormat, router, tournamentId],
+    [canManageMatches, loadMatches, matchSchedulingFormat, router, tournamentId, user],
   );
 
   useEffect(() => {
@@ -228,19 +282,20 @@ export function TournamentMatchesTab({
 
   function handleCreateTeam(): void {
     setNoTeamsDialogVisible(false);
-    router.push(`/tournaments/${tournamentId}/add-team`);
+    router.push(tournamentSubpathHref(user, tournamentId, 'add-team'));
   }
 
   function handleCreateGroup(): void {
     setSetupRequiredVisible(false);
-    router.push(`/tournaments/${tournamentId}/create-group`);
+    router.push(tournamentSubpathHref(user, tournamentId, 'create-group'));
   }
 
   function navigateToSchedulingFlow(format: MatchSchedulingFormatType): void {
-    router.push({
-      pathname: '/tournaments/[id]/match-setup',
-      params: { id: tournamentId, format },
-    });
+    router.push(
+      tournamentSubpathHref(user, tournamentId, 'match-setup', {
+        format,
+      }),
+    );
   }
 
   async function handleFormatSelect(format: MatchSchedulingFormatType): Promise<void> {
@@ -296,23 +351,7 @@ export function TournamentMatchesTab({
     <>
       {hasMatches ? (
         <View className="gap-4">
-          {showKnockoutBracketEntry ? (
-            <Button
-              label={knockoutBracketButtonLabel}
-              variant="secondary"
-              onPress={handleKnockoutBracketPress}
-              className="h-12 w-full"
-            />
-          ) : null}
-
-          {canSchedule ? (
-            <Button
-              label="Schedule Matches"
-              variant="amber"
-              onPress={handleSchedulePress}
-              className="h-12 w-full"
-            />
-          ) : null}
+          {renderKnockoutAndScheduleActions()}
 
           {showTeamFilter ? (
             <Select
@@ -353,10 +392,17 @@ export function TournamentMatchesTab({
           ) : null}
         </View>
       ) : (
-        <TournamentMatchesEmptyState
-          canSchedule={canSchedule}
-          onSchedulePress={handleSchedulePress}
-        />
+        <View className="gap-4">
+          {renderKnockoutAndScheduleActions()}
+          <TournamentMatchesEmptyState
+            canSchedule={false}
+            message={
+              showKnockoutChartEntry || showKnockoutBracketEntry || canSchedule
+                ? null
+                : 'No matches scheduled yet.'
+            }
+          />
+        </View>
       )}
 
       <ScheduleMatchesNoTeamsDialog

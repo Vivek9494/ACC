@@ -91,7 +91,8 @@ function buildService(): {
   notifications: { notify: AnyMock; sendNotification: AnyMock; sendToAudience: AnyMock };
   scoring: { startInnings: AnyMock };
   tennisMatchScoringAuth: { assertCanRecordToss: AnyMock };
-  live: { notifyScorerRevoked: AnyMock; notifyScorerAssigned: AnyMock };
+  live: { notifyScorerRevoked: AnyMock; notifyScorerAssigned: AnyMock; getCached: AnyMock };
+  scorecardReader: { build: AnyMock };
 } {
   const prisma: PrismaMock = {
     tournament: { findUnique: jest.fn() },
@@ -171,6 +172,9 @@ function buildService(): {
     notifyScorerAssigned: jest.fn(),
     getCached: jest.fn().mockResolvedValue(null),
   };
+  const scorecardReader = {
+    build: jest.fn().mockResolvedValue({ innings: [], result: { winningTeamId: null } }),
+  };
 
   const service = new MatchesService(
     prisma as never,
@@ -185,9 +189,10 @@ function buildService(): {
     tournamentScorers as never,
     tennisMatchScoringAuth as never,
     live as never,
+    scorecardReader as never,
     { markRemainingPendingAsServed: jest.fn(), assertPlayingXiExcludesPendingSuspensions: jest.fn(), listPenaltyServingForSquads: jest.fn().mockResolvedValue(new Map()), generateForCompletedMatch: jest.fn() } as never,
   );
-  return { service, prisma, permissions, scorerGrants, notifications, scoring, tennisMatchScoringAuth, live };
+  return { service, prisma, permissions, scorerGrants, notifications, scoring, tennisMatchScoringAuth, live, scorecardReader };
 }
 
 function matchRow(overrides: Record<string, unknown> = {}): Record<string, unknown> {

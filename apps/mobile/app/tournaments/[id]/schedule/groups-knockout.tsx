@@ -1,14 +1,11 @@
-import { MatchSchedulingFormat } from '@acc/types';
-import { Redirect, useLocalSearchParams } from 'expo-router';
+import { RedirectToRoleTournamentSubpage } from '../../../../src/components/tournament/RedirectToRoleTournamentSubpage';
 
-export default function ScheduleGroupsKnockoutScreen(): React.ReactElement {
-  const { id } = useLocalSearchParams<{ id: string }>();
+/** Root deep-link entry — bounce into the role Tournaments tab stack. */
+export default function Route(): React.ReactElement {
   return (
-    <Redirect
-      href={{
-        pathname: '/tournaments/[id]/match-setup',
-        params: { id: id ?? '', format: MatchSchedulingFormat.GroupStageKnockout },
-      }}
+    <RedirectToRoleTournamentSubpage
+      subpath="schedule/groups-knockout"
+      extraParamKeys={[]}
     />
   );
 }

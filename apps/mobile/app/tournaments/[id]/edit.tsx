@@ -1,9 +1,11 @@
-import { useLocalSearchParams } from 'expo-router';
+import { RedirectToRoleTournamentSubpage } from '../../../src/components/tournament/RedirectToRoleTournamentSubpage';
 
-import { TournamentFormScreen } from '../../../src/components/tournament/TournamentFormScreen';
-
-export default function EditTournamentScreen(): React.ReactElement {
-  const { id } = useLocalSearchParams<{ id: string }>();
-
-  return <TournamentFormScreen mode="edit" tournamentId={id} />;
+/** Root deep-link entry — bounce into the role Tournaments tab stack. */
+export default function Route(): React.ReactElement {
+  return (
+    <RedirectToRoleTournamentSubpage
+      subpath="edit"
+      extraParamKeys={[]}
+    />
+  );
 }

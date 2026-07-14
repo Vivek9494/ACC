@@ -10,7 +10,7 @@ import { StatTile } from '../ui/StatTile';
 import { Text } from '../ui/Text';
 import { TournamentDashboardCard } from '../ui/TournamentDashboardCard';
 import { buildTournamentMenuActions } from './buildTournamentMenuActions';
-import { tournamentDetailHref } from '../../lib/tournament-detail-route';
+import { tournamentDetailHref, tournamentNewHref } from '../../lib/tournament-detail-route';
 
 export function buildCenterSevakDashboardSections(
   dashboard: CenterSevakDashboard,
@@ -47,7 +47,7 @@ export function buildCenterSevakDashboardSections(
           <Text className="font-sans-bold text-xl text-on-surface">Tournaments</Text>
           <CircularAddButton
             accessibilityLabel="Add tournament"
-            onPress={() => router.push('/tournaments/new')}
+            onPress={() => router.push(tournamentNewHref(user))}
           />
         </View>
         {dashboard.tournaments.map(({ tournament, permissions }) => (
@@ -63,6 +63,7 @@ export function buildCenterSevakDashboardSections(
               {
                 onDeleted: onTournamentDeleted,
                 includeManageCenterPlayers: tournament.ballType === BallType.Tennis,
+                user,
               },
             )}
           />

@@ -3,6 +3,7 @@ import { View } from 'react-native';
 
 import { BottomTabBar, type BottomTabItem } from '../../../src/components/ui/BottomTabBar';
 import { navigateRoleTabGroup, roleHubActiveTabKey } from '../../../src/lib/role-tab-navigation';
+import { shouldHideRoleTabBarForPath } from '../../../src/lib/tournament-detail-route';
 
 export const ADMIN_TABS: BottomTabItem[] = [
   { key: 'index', label: 'Home', icon: 'home-outline' },
@@ -39,22 +40,25 @@ export default function AdminTabsLayout(): React.ReactElement {
   const pathname = usePathname();
   const router = useRouter();
   const activeKey = adminActiveTabKey(pathname);
+  const hideTabBar = shouldHideRoleTabBarForPath(pathname);
 
   return (
     <View className="flex-1 bg-background">
       <View className="flex-1">
         <Slot />
       </View>
-      <BottomTabBar
-        tabs={ADMIN_TABS}
-        activeKey={activeKey}
-        onTabPress={(key: string) => {
-          const href = TAB_ROUTES[key];
-          if (href) {
-            navigateRoleTabGroup(router, pathname, href, isAdminStackOverlayPath);
-          }
-        }}
-      />
+      {hideTabBar ? null : (
+        <BottomTabBar
+          tabs={ADMIN_TABS}
+          activeKey={activeKey}
+          onTabPress={(key: string) => {
+            const href = TAB_ROUTES[key];
+            if (href) {
+              navigateRoleTabGroup(router, pathname, href, isAdminStackOverlayPath);
+            }
+          }}
+        />
+      )}
     </View>
   );
 }

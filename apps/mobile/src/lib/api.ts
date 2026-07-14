@@ -85,6 +85,7 @@ import {
   type HandoverScorerRequest,
   type SwapMatchScorerRequest,
   type LateRegistrationRequest,
+  type LateRegisterCandidatesView,
   type FinalizeBothPlayingXiRequest,
   type LockPlayingXiRequest,
   type LoginRequest,
@@ -1425,7 +1426,16 @@ export function getAvailabilitySummary(tournamentId: string): Promise<Availabili
   return apiFetch<AvailabilitySummary>(`/tournaments/${tournamentId}/registrations/availability`);
 }
 
-/** §7.6: late-register a missed player (Organizer / Center Sevak). */
+/** §7.6: players eligible for late registration (picker). */
+export function listLateRegisterCandidates(
+  tournamentId: string,
+): Promise<LateRegisterCandidatesView> {
+  return apiFetch<LateRegisterCandidatesView>(
+    `/tournaments/${tournamentId}/registrations/late-candidates`,
+  );
+}
+
+/** §7.6: late-register a missed player (Admin / Club Manager / Center Sevak). */
 export function lateRegisterPlayer(
   tournamentId: string,
   body: LateRegistrationRequest,

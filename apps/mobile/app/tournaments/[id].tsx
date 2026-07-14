@@ -65,6 +65,7 @@ import {
   resolveRoleTabBarRoot,
   roleTournamentsListHref,
   tournamentDetailHref,
+  tournamentSubpathHref,
 } from '../../src/lib/tournament-detail-route';
 
 function TournamentRegistrationFeeRows({
@@ -261,7 +262,7 @@ export default function TournamentDetailScreen(): React.ReactElement {
               ? 'Replace Video'
               : 'Upload Video'
           }
-          onPress={() => router.push(`/tournaments/${tournament.id}/upload-video`)}
+          onPress={() => router.push(tournamentSubpathHref(user, tournament.id, 'upload-video'))}
         />,
       );
     }
@@ -274,7 +275,9 @@ export default function TournamentDetailScreen(): React.ReactElement {
           className={gridButtonClass}
           textClassName={gridLabelClass}
           label={`Verify Players (${verifyActionCount})`}
-          onPress={() => router.push(`/registrations/${tournament.id}/queue`)}
+          onPress={() =>
+            router.push(tournamentSubpathHref(user, tournament.id, 'registrations/queue'))
+          }
         />,
       );
     }
@@ -284,7 +287,7 @@ export default function TournamentDetailScreen(): React.ReactElement {
         <Button
           key="fees-tracker"
           className={`${gridButtonClass} bg-secondary-container`}
-          onPress={() => router.push(`/tournaments/${tournament.id}/fees`)}
+          onPress={() => router.push(tournamentSubpathHref(user, tournament.id, 'fees'))}
         >
           <View className="flex-row items-center justify-center gap-1.5">
             <Ionicons name="cash-outline" size={18} color={colors.secondary} />
@@ -306,7 +309,9 @@ export default function TournamentDetailScreen(): React.ReactElement {
           className={gridButtonClass}
           textClassName={gridLabelClass}
           label="New Invite"
-          onPress={() => router.push(`/tournaments/${tournament.id}/leather-invites`)}
+          onPress={() =>
+            router.push(tournamentSubpathHref(user, tournament.id, 'leather-invites'))
+          }
         />,
       );
     }
@@ -321,7 +326,9 @@ export default function TournamentDetailScreen(): React.ReactElement {
             label={
               tournament.tournamentScorerCount > 0 ? 'Manage Scorers' : 'Assign Scorers'
             }
-            onPress={() => router.push(`/tournaments/${tournament.id}/assign-scorers`)}
+            onPress={() =>
+              router.push(tournamentSubpathHref(user, tournament.id, 'assign-scorers'))
+            }
           />
           {tournament.tournamentScorerCount > 0 ? (
             <Text className="text-center font-sans text-xs text-on-surface-variant">
@@ -337,7 +344,9 @@ export default function TournamentDetailScreen(): React.ReactElement {
         <Button
           key="registered-players"
           className={`${gridButtonClass} bg-secondary-container`}
-          onPress={() => router.push(`/tournaments/${tournament.id}/registered-players`)}
+          onPress={() =>
+            router.push(tournamentSubpathHref(user, tournament.id, 'registered-players'))
+          }
         >
           <Text
             className={`font-sans-semibold text-on-secondary-container ${gridLabelClass}`}
@@ -358,7 +367,9 @@ export default function TournamentDetailScreen(): React.ReactElement {
           className={`${gridButtonClass} border-primary`}
           textClassName={`font-sans-semibold text-primary ${gridLabelClass}`}
           label="Favourite Players"
-          onPress={() => router.push(`/tournaments/${tournament.id}/favourite-players`)}
+          onPress={() =>
+            router.push(tournamentSubpathHref(user, tournament.id, 'favourite-players'))
+          }
         />,
       );
     }
@@ -369,6 +380,7 @@ export default function TournamentDetailScreen(): React.ReactElement {
     showFeesTracker,
     showVerifyPlayers,
     tournament,
+    user,
     verifyActionCount,
     verifyQueueChecked,
   ]);
@@ -440,7 +452,7 @@ export default function TournamentDetailScreen(): React.ReactElement {
               </Text>
               {tournament.canEdit ? (
                 <Pressable
-                  onPress={() => router.push(`/tournaments/${tournament.id}/edit`)}
+                  onPress={() => router.push(tournamentSubpathHref(user, tournament.id, 'edit'))}
                   hitSlop={8}
                   accessibilityRole="button"
                   accessibilityLabel="Edit tournament"
@@ -557,7 +569,9 @@ export default function TournamentDetailScreen(): React.ReactElement {
 
                 {registrationCta.kind === 'active' ? (
                   <Button
-                    onPress={() => router.push(`/registrations/${tournament.id}/register`)}
+                    onPress={() =>
+                      router.push(tournamentSubpathHref(user, tournament.id, 'registrations/register'))
+                    }
                     className="mt-2 h-14 w-full"
                     label={registrationCta.label}
                   />

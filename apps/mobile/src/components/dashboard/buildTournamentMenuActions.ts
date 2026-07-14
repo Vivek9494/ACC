@@ -1,9 +1,10 @@
-import type { TournamentDashboardPermissions } from '@acc/types';
+import type { AuthUser, TournamentDashboardPermissions } from '@acc/types';
 import type { Router } from 'expo-router';
 import { Alert } from 'react-native';
 
 import { ApiRequestError, deleteTournament } from '../../lib/api';
 import { confirmDestructiveDeleteAlert } from '../../lib/confirm-destructive-delete';
+import { tournamentSubpathHref } from '../../lib/tournament-detail-route';
 import type { OverflowMenuAction } from '../ui/OverflowMenu';
 
 export function buildTournamentMenuActions(
@@ -14,22 +15,26 @@ export function buildTournamentMenuActions(
   options?: {
     onDeleted?: () => void;
     includeManageCenterPlayers?: boolean;
+    user?: AuthUser | null;
   },
 ): OverflowMenuAction[] {
   const actions: OverflowMenuAction[] = [];
+  const user = options?.user ?? null;
 
   if (options?.includeManageCenterPlayers && permissions.canManageCenterPlayers) {
     actions.push({
       key: 'manage-center-players',
       label: 'Manage center players',
       icon: 'people-outline',
-      onPress: () => router.push(`/registrations/${tournamentId}/players`),
+      onPress: () =>
+        router.push(tournamentSubpathHref(user, tournamentId, 'registrations/players')),
     });
     actions.push({
       key: 'verify-players',
       label: 'Verify players',
       icon: 'checkmark-done-outline',
-      onPress: () => router.push(`/registrations/${tournamentId}/queue`),
+      onPress: () =>
+        router.push(tournamentSubpathHref(user, tournamentId, 'registrations/queue')),
     });
   }
 
@@ -38,8 +43,7 @@ export function buildTournamentMenuActions(
       key: 'edit-tournament',
       label: 'Edit tournament',
       icon: 'create-outline',
-      secondary: true,
-      onPress: () => router.push(`/tournaments/${tournamentId}/edit`),
+      onPress: () => router.push(tournamentSubpathHref(user, tournamentId, 'edit')),
     });
   }
 

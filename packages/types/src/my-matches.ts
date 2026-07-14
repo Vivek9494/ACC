@@ -6,6 +6,7 @@ import {
 } from './timezone';
 import { resolveEffectiveStartTime } from './match-delay';
 import {
+  formatMatchListTeamScoreLine,
   MatchCardDisplayState,
   parseMatchSortInstant,
   type MatchCardDisplayState as MatchCardDisplayStateType,
@@ -67,14 +68,7 @@ export interface MyMatchesResponse {
 export function formatMyMatchTeamScoreLine(
   innings: readonly Pick<InningsScorecard, 'runs' | 'wickets' | 'oversText' | 'closed'>[],
 ): string | null {
-  if (innings.length === 0) {
-    return null;
-  }
-  const primary = innings[innings.length - 1]!;
-  const runs = innings.reduce((sum, inn) => sum + inn.runs, 0);
-  const wickets = innings.reduce((sum, inn) => sum + inn.wickets, 0);
-  const runsWickets = primary.closed && wickets >= 10 ? `${runs}` : `${runs}/${wickets}`;
-  return `${runsWickets} (${primary.oversText})`;
+  return formatMatchListTeamScoreLine(innings);
 }
 
 const MY_MATCHES_DISPLAY_BUCKET: Record<MatchCardDisplayStateType, number> = {

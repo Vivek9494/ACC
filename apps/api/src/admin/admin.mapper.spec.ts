@@ -24,6 +24,7 @@ describe('admin.mapper', () => {
       expect(summary.maskedMobileNumber).toBe('+1 (***) ***-0007');
       expect(summary.mobileNumber).toBeUndefined();
       expect(summary.roles).toEqual([UserRole.Captain]);
+      expect(summary.playedBallTypes).toEqual([]);
     });
 
     it('includes full mobile when includeFullMobile is true', () => {

@@ -30,6 +30,7 @@ import {
 } from '../../lib/api';
 import { useAuth } from '../../lib/auth-context';
 import { confirmActionAlert } from '../../lib/confirm-action-alert';
+import { tournamentSubpathHref } from '../../lib/tournament-detail-route';
 import { Button } from '../ui/Button';
 import { KeyboardAwareFormScrollView } from '../ui/KeyboardAwareFormScrollView';
 import { ScreenHeader } from '../ui/ScreenHeader';
@@ -452,7 +453,9 @@ export function KnockoutBracketManageScreen({
 
   function handleOpenChart(): void {
     router.push(
-      `/tournaments/${tournamentId}/knockout-chart?name=${encodeURIComponent(tournamentName)}`,
+      tournamentSubpathHref(user, tournamentId, 'knockout-chart', {
+        name: tournamentName,
+      }),
     );
   }
 
@@ -576,7 +579,19 @@ export function KnockoutBracketManageScreen({
   );
 }
 
-/** Gating helper for Matches tab entry button (Admin / Club Manager, APL group+knockout). */
+/** Matches tab — open the read-only Knockout Chart (any signed-in user). */
+export function shouldShowKnockoutChartEntry(
+  tournament: Pick<TournamentDetail, 'hasKnockoutBracket' | 'matchSchedulingFormat'>,
+  user: ReturnType<typeof useAuth>['user'],
+): boolean {
+  return (
+    user != null &&
+    tournament.hasKnockoutBracket === true &&
+    tournament.matchSchedulingFormat === MatchSchedulingFormat.GroupStageKnockout
+  );
+}
+
+/** Matches tab — Admin / Club Manager generate & manage knockout (separate from chart view). */
 export function shouldShowKnockoutBracketEntry(
   tournament: Pick<TournamentDetail, 'matchSchedulingFormat'>,
   user: ReturnType<typeof useAuth>['user'],

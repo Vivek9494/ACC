@@ -1,21 +1,11 @@
-import { useLocalSearchParams } from 'expo-router';
+import { RedirectToRoleTournamentSubpage } from '../../../../../src/components/tournament/RedirectToRoleTournamentSubpage';
 
-import { TeamAddPlayersScreen } from '../../../../../src/components/tournament/TeamAddPlayersScreen';
-
-export default function TeamAddPlayersRoute(): React.ReactElement | null {
-  const { id, teamId, teamName } = useLocalSearchParams<{
-    id: string;
-    teamId: string;
-    teamName?: string;
-  }>();
-  if (!id || !teamId) {
-    return null;
-  }
+/** Root deep-link entry — bounce into the role Tournaments tab stack. */
+export default function Route(): React.ReactElement {
   return (
-    <TeamAddPlayersScreen
-      tournamentId={id}
-      teamId={teamId}
-      teamName={teamName?.trim() || 'Team'}
+    <RedirectToRoleTournamentSubpage
+      subpath="teams/[teamId]/add-players"
+      extraParamKeys={['teamId', 'teamName']}
     />
   );
 }

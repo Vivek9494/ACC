@@ -1,8 +1,12 @@
-import { useLocalSearchParams } from 'expo-router';
+import { RedirectToRoleTournamentSubpage } from '../../../src/components/tournament/RedirectToRoleTournamentSubpage';
 
-import { VerifyPlayersScreen } from '../../../src/components/tournament/verify-players/VerifyPlayersScreen';
-
-export default function VerifyPlayersRoute(): React.ReactElement {
-  const { tournamentId } = useLocalSearchParams<{ tournamentId: string }>();
-  return <VerifyPlayersScreen tournamentId={tournamentId ?? ''} />;
+/** Root deep-link entry — bounce into the role Tournaments tab stack. */
+export default function Route(): React.ReactElement {
+  return (
+    <RedirectToRoleTournamentSubpage
+      subpath="registrations/queue"
+      extraParamKeys={[]}
+    />
+  );
 }
+

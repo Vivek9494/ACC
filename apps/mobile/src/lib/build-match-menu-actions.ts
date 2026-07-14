@@ -1,6 +1,7 @@
 import {
   MatchCardDisplayState,
   MatchSchedulingFormat,
+  type AuthUser,
   type MatchListItem,
 } from '@acc/types';
 import type { Router } from 'expo-router';
@@ -8,6 +9,7 @@ import { Alert } from 'react-native';
 
 import { ApiRequestError, deleteMatch } from './api';
 import { confirmDestructiveDeleteAlert } from './confirm-destructive-delete';
+import { tournamentSubpathHref } from './tournament-detail-route';
 import type { OverflowMenuAction } from '../components/ui/OverflowMenu';
 
 export function buildMatchMenuActions(
@@ -18,6 +20,7 @@ export function buildMatchMenuActions(
   options?: {
     onDeleted?: () => void;
     canManage?: boolean;
+    user?: AuthUser | null;
   },
 ): OverflowMenuAction[] {
   if (!options?.canManage || match.isDeleted) {
@@ -35,14 +38,12 @@ export function buildMatchMenuActions(
       label: 'Edit',
       icon: 'create-outline',
       onPress: () => {
-        router.push({
-          pathname: '/tournaments/[id]/match-setup',
-          params: {
-            id: tournamentId,
+        router.push(
+          tournamentSubpathHref(options.user ?? null, tournamentId, 'match-setup', {
             format: tournamentSchedulingFormat ?? MatchSchedulingFormat.Manual,
             matchId: match.id,
-          },
-        });
+          }),
+        );
       },
     });
   }

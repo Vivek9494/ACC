@@ -486,7 +486,10 @@ export interface RegistrationVerificationQueue {
   registeredCount: number;
   /** Ratings edit + approve/decline allowed (post-window only). */
   canManage: boolean;
-  /** §7.6: Center Sevak may late-register after tournament Registration Closed. */
+  /**
+   * §7.6: Actor may late-register a missed player (Admin / Club Manager / eligible
+   * Center Sevak). Independent of the registration window.
+   */
   canLateRegister: boolean;
 }
 
@@ -510,12 +513,21 @@ export interface VerifiedRegisteredPlayersView {
   players: VerifiedRegisteredPlayerRow[];
   canFavourite: boolean;
   favouriteTeamId: string | null;
+  /** §7.6 late-add escape hatch on the Registered Players list. */
+  canLateRegister: boolean;
 }
 
 /** Leather ACC registrants — Admin / Club Manager squad-building list. */
 export interface LeatherRegisteredPlayersView {
   players: RegistrationSummary[];
   totalCount: number;
+  /** §7.6 late-add escape hatch on the Registered Players list. */
+  canLateRegister: boolean;
+}
+
+/** Players eligible for §7.6 late registration (picker). */
+export interface LateRegisterCandidatesView {
+  players: CenterPlayerRosterEntry[];
 }
 
 export interface ListLeatherRegisteredPlayersQuery {
@@ -575,6 +587,67 @@ export function matchesVerifiedPlayerSkillFilter(
     return player.fieldingPosition === 'Wicketkeeper';
   }
   return player.playerRole === filter;
+}
+
+function registrationDisplayName(
+  player: Pick<RegistrationSummary, 'firstName' | 'lastName'>,
+): string {
+  return `${player.firstName} ${player.lastName}`.trim();
+}
+
+/**
+ * Compare by a stored skill rating (DESC). Null/unset ratings sort last; equal
+ * ratings tie-break alphabetically by name.
+ */
+export function compareByRegistrationSkillRatingDesc(
+  a: Pick<RegistrationSummary, 'firstName' | 'lastName'> & {
+    rating: number | null;
+  },
+  b: Pick<RegistrationSummary, 'firstName' | 'lastName'> & {
+    rating: number | null;
+  },
+): number {
+  const byName = registrationDisplayName(a).localeCompare(registrationDisplayName(b));
+  if (a.rating === null && b.rating === null) {
+    return byName;
+  }
+  if (a.rating === null) {
+    return 1;
+  }
+  if (b.rating === null) {
+    return -1;
+  }
+  return b.rating - a.rating || byName;
+}
+
+/**
+ * Ordering for the verified Registered Players list after a skill chip is applied.
+ * Batsman → battingRating DESC; Bowler → bowlingRating DESC; other chips → name.
+ */
+export function compareVerifiedPlayersForSkillFilter(
+  a: Pick<
+    RegistrationSummary,
+    'firstName' | 'lastName' | 'battingRating' | 'bowlingRating'
+  >,
+  b: Pick<
+    RegistrationSummary,
+    'firstName' | 'lastName' | 'battingRating' | 'bowlingRating'
+  >,
+  filter: VerifiedPlayerSkillFilter,
+): number {
+  if (filter === VerifiedPlayerSkillFilter.Batsman) {
+    return compareByRegistrationSkillRatingDesc(
+      { ...a, rating: a.battingRating },
+      { ...b, rating: b.battingRating },
+    );
+  }
+  if (filter === VerifiedPlayerSkillFilter.Bowler) {
+    return compareByRegistrationSkillRatingDesc(
+      { ...a, rating: a.bowlingRating },
+      { ...b, rating: b.bowlingRating },
+    );
+  }
+  return registrationDisplayName(a).localeCompare(registrationDisplayName(b));
 }
 
 /** Sort keys for the registered-players list (§7.5). */

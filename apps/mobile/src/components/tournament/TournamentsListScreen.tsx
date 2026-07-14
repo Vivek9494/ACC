@@ -20,7 +20,7 @@ import { FIELD_ORANGE } from '../ui/fieldStyles';
 import { ApiRequestError, listTournamentBrowseEntries } from '../../lib/api';
 import { useAuth } from '../../lib/auth-context';
 import { canCreateTournament } from '../../lib/can-create-tournament';
-import { tournamentDetailHref } from '../../lib/tournament-detail-route';
+import { tournamentDetailHref, tournamentNewHref } from '../../lib/tournament-detail-route';
 
 function filterTournamentBrowseEntries(
   entries: readonly TournamentBrowseEntry[],
@@ -98,7 +98,7 @@ export function TournamentsListScreen(): React.ReactElement {
           {canCreateTournament(user) ? (
             <CircularAddButton
               accessibilityLabel="Add tournament"
-              onPress={() => router.push('/tournaments/new')}
+              onPress={() => router.push(tournamentNewHref(user))}
             />
           ) : null}
         </View>
@@ -135,7 +135,7 @@ export function TournamentsListScreen(): React.ReactElement {
                   tournament.id,
                   tournament.name,
                   router,
-                  { onDeleted: load },
+                  { onDeleted: load, user },
                 );
                 return (
                   <TournamentDashboardCard

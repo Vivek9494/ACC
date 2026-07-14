@@ -38,6 +38,9 @@ import {
   listRegistrationFields,
   submitRegistration,
 } from '../../lib/api';
+import { useAuth } from '../../lib/auth-context';
+import { tournamentDetailHref, tournamentSubpathHref } from '../../lib/tournament-detail-route';
+import { TOURNAMENT_DETAIL_TAB } from '../../lib/tournament-detail-tabs';
 import { Button } from '../ui/Button';
 import { KeyboardAwareFormScrollView } from '../ui/KeyboardAwareFormScrollView';
 import { ScreenHeader } from '../ui/ScreenHeader';
@@ -95,6 +98,7 @@ export function TournamentRegistrationFormScreen({
   lateRegister = false,
 }: TournamentRegistrationFormScreenProps): React.ReactElement {
   const router = useRouter();
+  const { user } = useAuth();
   const isLateOnBehalf = lateRegister && Boolean(onBehalfOfUserId);
 
   const [tournament, setTournament] = useState<TournamentDetail | null>(null);
@@ -264,10 +268,10 @@ export function TournamentRegistrationFormScreen({
       };
       if (isLateOnBehalf && onBehalfOfUserId) {
         await lateRegisterPlayer(tournamentId, { ...payload, userId: onBehalfOfUserId });
-        router.replace(`/registrations/${tournamentId}/queue`);
+        router.replace(tournamentSubpathHref(user, tournamentId, 'registrations/queue'));
       } else {
         await submitRegistration(tournamentId, payload);
-        router.replace(`/tournaments/${tournamentId}?tab=Details`);
+        router.replace(tournamentDetailHref(user, tournamentId, TOURNAMENT_DETAIL_TAB.Details));
       }
     } catch (err) {
       setError(err instanceof ApiRequestError ? err.message : 'Could not submit registration.');

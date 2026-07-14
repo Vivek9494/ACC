@@ -160,6 +160,8 @@ export default function AdminUserCreateScreen(): React.ReactElement {
       mobileNumber,
       email,
       dateOfBirth,
+      provinceId,
+      centerId,
     });
 
     setFieldErrors(errors);
@@ -176,17 +178,13 @@ export default function AdminUserCreateScreen(): React.ReactElement {
       lastName: lastName.trim(),
       mobileNumber: loginMobileForApi(mobileNumber),
       platformRole: platformRole as CreateAdminUserRequest['platformRole'],
+      provinceId: provinceId!,
+      centerId: centerId!,
     };
 
     const trimmedEmail = email.trim();
     if (trimmedEmail) {
       body.email = trimmedEmail;
-    }
-    if (provinceId) {
-      body.provinceId = provinceId;
-    }
-    if (centerId) {
-      body.centerId = centerId;
     }
     if (dateOfBirth) {
       body.dateOfBirth = dateOfBirth;

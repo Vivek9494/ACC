@@ -4,6 +4,7 @@ import {
   type AdminUserDetail,
   type AdminUserRoleAssignment,
   type AdminUserSummary,
+  type BallType,
   type UserRole,
 } from '@acc/types';
 import type { Prisma, UserRole as PrismaUserRole, JerseySize as PrismaJerseySize } from '@prisma/client';
@@ -57,7 +58,7 @@ function collectRoles(user: {
 
 export function toAdminUserSummary(
   user: UserListRow,
-  options?: { includeFullMobile?: boolean },
+  options?: { includeFullMobile?: boolean; playedBallTypes?: BallType[] },
 ): AdminUserSummary {
   const summary: AdminUserSummary = {
     id: user.id,
@@ -68,6 +69,7 @@ export function toAdminUserSummary(
     isActive: user.isActive,
     roles: collectRoles(user),
     createdAt: user.createdAt.toISOString(),
+    playedBallTypes: options?.playedBallTypes ?? [],
   };
 
   if (options?.includeFullMobile) {

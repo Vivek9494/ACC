@@ -1,14 +1,11 @@
-import { useLocalSearchParams } from 'expo-router';
+import { RedirectToRoleTournamentSubpage } from '../../../src/components/tournament/RedirectToRoleTournamentSubpage';
 
-import { KnockoutBracketManageScreen } from '../../../src/components/tournament/KnockoutBracketManageScreen';
-
-export default function KnockoutBracketRoute(): React.ReactElement {
-  const { id, name } = useLocalSearchParams<{ id: string; name?: string }>();
-
+/** Root deep-link entry — bounce into the role Tournaments tab stack. */
+export default function Route(): React.ReactElement {
   return (
-    <KnockoutBracketManageScreen
-      tournamentId={id ?? ''}
-      tournamentName={typeof name === 'string' ? name : 'Tournament'}
+    <RedirectToRoleTournamentSubpage
+      subpath="knockout-bracket"
+      extraParamKeys={['name']}
     />
   );
 }

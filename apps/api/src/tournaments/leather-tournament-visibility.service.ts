@@ -1,6 +1,7 @@
 import {
   type AuthUser,
   BallType,
+  type CenterPlayerRosterEntry,
   clubManagerCanSelfRegisterForLeather,
   type LeatherInviteCandidate,
   type LeatherTournamentInvite,
@@ -418,6 +419,61 @@ export class LeatherTournamentVisibilityService {
         error: 'INVITE_WINDOW_CLOSED',
       });
     }
+  }
+
+  /**
+   * §7.6 leather late-add picker: existing leather players + this tournament's invitees,
+   * minus anyone already registered.
+   */
+  async listLateRegisterCandidates(tournamentId: string): Promise<CenterPlayerRosterEntry[]> {
+    await this.requireLeatherTournament(tournamentId);
+
+    const [existingLeatherUserIds, invited, alreadyRegistered] = await Promise.all([
+      this.findExistingLeatherPlayerUserIds(),
+      this.prisma.tournamentLeatherInvite.findMany({
+        where: { tournamentId },
+        select: { userId: true },
+      }),
+      this.prisma.registration.findMany({
+        where: { tournamentId },
+        select: { userId: true },
+      }),
+    ]);
+
+    const registeredIds = new Set(alreadyRegistered.map((row) => row.userId));
+    const eligibleIds = [
+      ...new Set([...existingLeatherUserIds, ...invited.map((row) => row.userId)]),
+    ].filter((userId) => !registeredIds.has(userId));
+
+    if (eligibleIds.length === 0) {
+      return [];
+    }
+
+    const users = await this.prisma.user.findMany({
+      where: {
+        id: { in: eligibleIds },
+        ...selectableUserWhere,
+        role: UserRole.Player,
+      },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        mobileNumber: true,
+        profilePhotoUrl: true,
+        centerId: true,
+      },
+      orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
+    });
+
+    return users.map((user) => ({
+      userId: user.id,
+      centerId: user.centerId,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      mobileNumber: user.mobileNumber,
+      profilePhotoUrl: user.profilePhotoUrl,
+    }));
   }
 
   /** Bulk inverse of {@link isExistingLeatherPlayer} for the invite candidate list. */

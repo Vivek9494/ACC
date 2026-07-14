@@ -9,6 +9,7 @@ import {
   type RegistrationVerificationQueue,
   type VerifiedRegisteredPlayersView,
   type LeatherRegisteredPlayersView,
+  type LateRegisterCandidatesView,
 } from '@acc/types';
 import {
   Body,
@@ -116,7 +117,7 @@ export class RegistrationsController {
     return this.registrations.availabilitySummary(tournamentId);
   }
 
-  /** §7.6: late registration of a missed player (Organizer / Center Sevak). */
+  /** §7.6: late registration of a missed player (Admin / Club Manager / Center Sevak). */
   @Post('late')
   lateRegister(
     @CurrentUser() user: AuthUser,
@@ -124,6 +125,15 @@ export class RegistrationsController {
     @Body() dto: LateRegistrationDto,
   ): Promise<RegistrationDetail> {
     return this.registrations.lateRegister(user, tournamentId, dto);
+  }
+
+  /** §7.6: players eligible for late registration (picker). */
+  @Get('late-candidates')
+  listLateCandidates(
+    @CurrentUser() user: AuthUser,
+    @Param('tournamentId') tournamentId: string,
+  ): Promise<LateRegisterCandidatesView> {
+    return this.registrations.listLateRegisterCandidates(user, tournamentId);
   }
 
   // --- Custom forms (§7.2, §21) --------------------------------------------

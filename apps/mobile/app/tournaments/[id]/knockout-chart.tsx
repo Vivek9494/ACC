@@ -1,14 +1,11 @@
-import { useLocalSearchParams } from 'expo-router';
+import { RedirectToRoleTournamentSubpage } from '../../../src/components/tournament/RedirectToRoleTournamentSubpage';
 
-import { KnockoutChartScreen } from '../../../src/components/tournament/KnockoutChartScreen';
-
-export default function KnockoutChartRoute(): React.ReactElement {
-  const { id, name } = useLocalSearchParams<{ id: string; name?: string }>();
-
+/** Root deep-link entry — bounce into the role Tournaments tab stack. */
+export default function Route(): React.ReactElement {
   return (
-    <KnockoutChartScreen
-      tournamentId={id ?? ''}
-      tournamentName={typeof name === 'string' ? name : 'Tournament'}
+    <RedirectToRoleTournamentSubpage
+      subpath="knockout-chart"
+      extraParamKeys={['name']}
     />
   );
 }

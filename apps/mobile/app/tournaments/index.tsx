@@ -11,6 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusPill } from '../../src/components/ui/StatusPill';
 import { ApiRequestError, listTournaments } from '../../src/lib/api';
 import { useAuth } from '../../src/lib/auth-context';
+import { tournamentNewHref } from '../../src/lib/tournament-detail-route';
 import { canCreateTournament } from '../../src/lib/can-create-tournament';
 import { resolveMediaDisplayUrl } from '../../src/lib/media-url';
 import { tournamentStatusPill } from '../../src/lib/tournament-display';
@@ -69,7 +70,7 @@ export default function TournamentsScreen(): React.ReactElement {
         {canCreate ? (
           <CircularAddButton
             accessibilityLabel="Add tournament"
-            onPress={() => router.push('/tournaments/new')}
+            onPress={() => router.push(tournamentNewHref(user))}
           />
         ) : null}
       </View>

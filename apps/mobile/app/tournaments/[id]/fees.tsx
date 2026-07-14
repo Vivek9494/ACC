@@ -1,8 +1,11 @@
-import { useLocalSearchParams } from 'expo-router';
+import { RedirectToRoleTournamentSubpage } from '../../../src/components/tournament/RedirectToRoleTournamentSubpage';
 
-import { AccFeesTrackerScreen } from '../../../src/components/tournament/fees/AccFeesTrackerScreen';
-
-export default function TournamentFeesTrackerRoute(): React.ReactElement {
-  const { id } = useLocalSearchParams<{ id: string }>();
-  return <AccFeesTrackerScreen tournamentId={id ?? ''} />;
+/** Root deep-link entry — bounce into the role Tournaments tab stack. */
+export default function Route(): React.ReactElement {
+  return (
+    <RedirectToRoleTournamentSubpage
+      subpath="fees"
+      extraParamKeys={[]}
+    />
+  );
 }

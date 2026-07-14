@@ -15,7 +15,7 @@ import { getAdminOverview, listTournamentDashboardEntries } from '../../../src/l
 import { prependBroadcastSection } from '../../../src/lib/dashboard-broadcast';
 import { dashboardFetchError, logFetchError } from '../../../src/lib/fetch-error';
 import { useAuth } from '../../../src/lib/auth-context';
-import { tournamentDetailHref } from '../../../src/lib/tournament-detail-route';
+import { tournamentDetailHref, tournamentNewHref } from '../../../src/lib/tournament-detail-route';
 import { useActiveBroadcast } from '../../../src/hooks/useActiveBroadcast';
 
 function OverviewMetric({
@@ -109,7 +109,7 @@ export default function AdminDashboardScreen(): React.ReactElement {
             <Text className="font-sans-bold text-xl text-on-surface">Tournaments</Text>
             <CircularAddButton
               accessibilityLabel="Add tournament"
-              onPress={() => router.push('/tournaments/new')}
+              onPress={() => router.push(tournamentNewHref(user))}
             />
           </View>
           {tournaments.map(({ tournament, permissions }) => (
@@ -122,7 +122,7 @@ export default function AdminDashboardScreen(): React.ReactElement {
                 tournament.id,
                 tournament.name,
                 router,
-                { onDeleted: load },
+                { onDeleted: load, user },
               )}
             />
           ))}

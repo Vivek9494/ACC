@@ -13,12 +13,15 @@ import { StatTile } from '../../../src/components/ui/StatTile';
 import { Text } from '../../../src/components/ui/Text';
 import { TournamentDashboardCard } from '../../../src/components/ui/TournamentDashboardCard';
 import { getClubManagerDashboard } from '../../../src/lib/api';
+import { useAuth } from '../../../src/lib/auth-context';
 import { prependBroadcastSection } from '../../../src/lib/dashboard-broadcast';
 import { dashboardFetchError, logFetchError } from '../../../src/lib/fetch-error';
+import { tournamentNewHref } from '../../../src/lib/tournament-detail-route';
 import { useActiveBroadcast } from '../../../src/hooks/useActiveBroadcast';
 
 export default function ClubManagerDashboardScreen(): React.ReactElement {
   const router = useRouter();
+  const { user } = useAuth();
   const [dashboard, setDashboard] = useState<ClubManagerDashboard | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -88,7 +91,7 @@ export default function ClubManagerDashboardScreen(): React.ReactElement {
             <Text className="font-sans-bold text-xl text-on-surface">Tournaments</Text>
             <CircularAddButton
               accessibilityLabel="Add tournament"
-              onPress={() => router.push('/tournaments/new')}
+              onPress={() => router.push(tournamentNewHref(user))}
             />
           </View>
           {dashboard.tournaments.map(({ tournament, permissions }) => (
@@ -101,14 +104,14 @@ export default function ClubManagerDashboardScreen(): React.ReactElement {
                 tournament.id,
                 tournament.name,
                 router,
-                { onDeleted: load },
+                { onDeleted: load, user },
               )}
             />
           ))}
         </View>
       ) : null,
     ].filter((section) => section !== null);
-  }, [dashboard, load, router]);
+  }, [dashboard, load, router, user]);
 
   const sectionsWithBroadcast = useMemo(
     () => prependBroadcastSection(sections, broadcast),

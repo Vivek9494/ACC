@@ -102,15 +102,6 @@ export function formatMatchListContextLabel(
   return formatMatchListScheduleLabel(match);
 }
 
-export function formatMatchLiveScoreLine(
-  liveScore: NonNullable<MatchListItem['liveScore']>,
-): { score: string; overs: string } {
-  return {
-    score: `${liveScore.runs}/${liveScore.wickets}`,
-    overs: `(${liveScore.oversText} Overs)`,
-  };
-}
-
 function formatDeletedAtLabel(iso: string): string {
   return new Date(iso).toLocaleDateString('en-US', {
     month: 'short',

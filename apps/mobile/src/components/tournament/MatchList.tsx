@@ -9,7 +9,6 @@ import { Pressable, View } from 'react-native';
 import {
   formatMatchListContextLabel,
   formatMatchListDeletedAttribution,
-  formatMatchLiveScoreLine,
 } from '../../lib/match-display';
 import { Button } from '../ui/Button';
 import { FIELD_ORANGE, INPUT_SHADOW_STYLE } from '../ui/fieldStyles';
@@ -23,16 +22,26 @@ import { MatchDeletedBadge } from './MatchDeletedBadge';
 function TeamColumn({
   name,
   logoUrl,
+  scoreLine,
 }: {
   name: string;
   logoUrl: string | null;
+  scoreLine: string | null;
 }): React.ReactElement {
   return (
-    <View className="flex-1 items-center gap-3">
+    <View className="min-w-0 flex-1 items-center gap-2">
       <TeamAvatar name={name} logoUrl={logoUrl} size="md" />
       <Text className="text-center font-sans-bold text-sm text-on-surface" numberOfLines={2}>
         {name}
       </Text>
+      {scoreLine ? (
+        <Text
+          className="text-center font-sans-semibold text-xs text-on-surface-variant"
+          numberOfLines={1}
+        >
+          {scoreLine}
+        </Text>
+      ) : null}
     </View>
   );
 }
@@ -71,12 +80,12 @@ function MatchListCard({
   const isCancelled = !isDeleted && match.displayState === MatchCardDisplayState.Cancelled;
   const isCompletedTerminal =
     !isDeleted && match.displayState === MatchCardDisplayState.Completed;
-  const liveScoreLine = match.liveScore ? formatMatchLiveScoreLine(match.liveScore) : null;
   const venue = match.groundLocation?.trim();
-  const showLiveScore = isLive && liveScoreLine;
-  const bodyGap = showLiveScore || (match.displayState === MatchCardDisplayState.Scheduled && venue)
-    ? 'gap-6'
-    : 'gap-4';
+  const hasTeamScores = Boolean(match.teamA.scoreLine || match.teamB.scoreLine);
+  const bodyGap =
+    hasTeamScores || (match.displayState === MatchCardDisplayState.Scheduled && venue)
+      ? 'gap-6'
+      : 'gap-4';
 
   return (
     <View
@@ -125,9 +134,17 @@ function MatchListCard({
         className={`${bodyGap} active:opacity-90`}
       >
         <View className="flex-row items-center justify-between gap-2">
-          <TeamColumn name={match.teamA.name} logoUrl={match.teamA.logoUrl} />
+          <TeamColumn
+            name={match.teamA.name}
+            logoUrl={match.teamA.logoUrl}
+            scoreLine={match.teamA.scoreLine}
+          />
           <Text className="px-2 font-sans-bold text-xl italic text-primary">VS</Text>
-          <TeamColumn name={match.teamB.name} logoUrl={match.teamB.logoUrl} />
+          <TeamColumn
+            name={match.teamB.name}
+            logoUrl={match.teamB.logoUrl}
+            scoreLine={match.teamB.scoreLine}
+          />
         </View>
 
         {isDeleted ? (
@@ -140,13 +157,6 @@ function MatchListCard({
           <Text className="text-center font-sans-bold text-base text-primary">
             {match.resultSummary}
           </Text>
-        ) : null}
-
-        {showLiveScore ? (
-          <View className="items-center gap-1">
-            <Text className="font-sans-bold text-2xl text-on-surface">{liveScoreLine!.score}</Text>
-            <Text className="font-sans text-sm text-on-surface-variant">{liveScoreLine!.overs}</Text>
-          </View>
         ) : null}
 
         {!isDeleted && match.displayState === MatchCardDisplayState.Scheduled && venue ? (

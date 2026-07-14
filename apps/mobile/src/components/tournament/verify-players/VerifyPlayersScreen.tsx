@@ -20,6 +20,8 @@ import {
   getRegistrationVerificationQueue,
   getTournament,
 } from '../../../lib/api';
+import { useAuth } from '../../../lib/auth-context';
+import { tournamentSubpathHref } from '../../../lib/tournament-detail-route';
 import { ScreenHeader } from '../../ui/ScreenHeader';
 import { SuccessDialog } from '../../ui/SuccessDialog';
 import { FIELD_ORANGE } from '../../ui/fieldStyles';
@@ -34,6 +36,7 @@ export interface VerifyPlayersScreenProps {
 
 export function VerifyPlayersScreen({ tournamentId }: VerifyPlayersScreenProps): React.ReactElement {
   const router = useRouter();
+  const { user } = useAuth();
 
   const [tournament, setTournament] = useState<TournamentDetail | null>(null);
   const [queue, setQueue] = useState<RegistrationVerificationQueue | null>(null);
@@ -109,7 +112,7 @@ export function VerifyPlayersScreen({ tournamentId }: VerifyPlayersScreenProps):
   }
 
   function onLateRegisterPress(): void {
-    router.push(`/registrations/${tournamentId}/late-register`);
+    router.push(tournamentSubpathHref(user, tournamentId, 'registrations/late-register'));
   }
 
   function onRatingsSaved(updated: RegistrationDetail): void {
@@ -211,7 +214,7 @@ export function VerifyPlayersScreen({ tournamentId }: VerifyPlayersScreenProps):
             elevation: 8,
           }}
         >
-          <Ionicons name="person-add" size={28} color={colors.textInverse} />
+          <Ionicons name="add" size={32} color={colors.textInverse} />
         </Pressable>
       ) : null}
 

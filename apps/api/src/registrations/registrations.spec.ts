@@ -126,6 +126,7 @@ describe('RegistrationsService', () => {
     };
     customFormRequest: { create: jest.Mock; findMany: jest.Mock };
     roleAssignment: { findMany: jest.Mock; findFirst: jest.Mock };
+    tournamentCenter: { findMany: jest.Mock; findFirst: jest.Mock };
     teamRegistrationFavourite: {
       findMany: jest.Mock;
       upsert: jest.Mock;
@@ -187,6 +188,10 @@ describe('RegistrationsService', () => {
         findMany: jest.fn().mockResolvedValue([]),
         findFirst: jest.fn().mockResolvedValue(null),
       },
+      tournamentCenter: {
+        findMany: jest.fn().mockResolvedValue([{ centerId: 'center-A' }]),
+        findFirst: jest.fn().mockResolvedValue({ centerId: 'center-A' }),
+      },
       teamRegistrationFavourite: {
         findMany: jest.fn().mockResolvedValue([]),
         upsert: jest.fn().mockResolvedValue({}),
@@ -202,6 +207,7 @@ describe('RegistrationsService', () => {
     audit = { record: jest.fn().mockResolvedValue(undefined) };
     const leatherVisibility = {
       assertCanRegisterForLeather: jest.fn().mockResolvedValue(undefined),
+      listLateRegisterCandidates: jest.fn().mockResolvedValue([]),
     };
     const mediaUrls = {
       resolveReadUrl: jest.fn(async (value: string | null) => value),
@@ -497,7 +503,7 @@ describe('RegistrationsService', () => {
       expect(result.registeredCount).toBe(2);
       expect(result.notRegistered).toHaveLength(1);
       expect(result.canManage).toBe(false);
-      expect(result.canLateRegister).toBe(false);
+      expect(result.canLateRegister).toBe(true);
     });
 
     it('returns pending count after the registration window closes', async () => {
@@ -582,6 +588,34 @@ describe('RegistrationsService', () => {
         'reg-verified',
         'reg-declined',
       ]);
+    });
+
+    it('allows late registration when permission is granted (any window state)', async () => {
+      prisma.tournament.findUnique.mockResolvedValue({
+        id: 'tour-1',
+        state: 'REGISTRATION_OPEN',
+        type: 'APL',
+        ballType: 'TENNIS',
+        isDeleted: false,
+        ...openRegistrationWindow,
+      });
+      prisma.roleAssignment.findMany.mockResolvedValue([{ centerId: 'center-A' }]);
+      prisma.registration.findMany.mockResolvedValue([]);
+      prisma.user.findMany.mockResolvedValue([
+        {
+          id: 'player-2',
+          centerId: 'center-A',
+          firstName: 'Ravi',
+          lastName: 'Patel',
+          mobileNumber: '+15555559999',
+          profilePhotoUrl: null,
+        },
+      ]);
+      permissions.check.mockResolvedValue(true);
+
+      const result = await service.getVerificationQueue(sevak, 'tour-1');
+
+      expect(result.canLateRegister).toBe(true);
     });
 
     it('allows late registration when the window is closed and permission granted', async () => {
@@ -707,6 +741,7 @@ describe('RegistrationsService', () => {
       expect(result.players).toHaveLength(1);
       expect(result.canFavourite).toBe(true);
       expect(result.favouriteTeamId).toBe('team-1');
+      expect(result.canLateRegister).toBe(true);
       expect(result.players[0]?.isFavourited).toBe(false);
       expect(result.players[0]?.hasSkillVideo).toBe(false);
       expect(result.players[0]?.skillVideoId).toBeNull();
@@ -845,6 +880,7 @@ describe('RegistrationsService', () => {
 
       expect(result.players).toHaveLength(1);
       expect(result.totalCount).toBe(1);
+      expect(result.canLateRegister).toBe(true);
       expect(permissions.check).toHaveBeenCalledWith(
         Permission.VIEW_LEATHER_REGISTERED_PLAYERS,
         clubManager,
@@ -976,10 +1012,27 @@ describe('RegistrationsService', () => {
   });
 
   describe('late registration (§7.6)', () => {
-    it('is blocked while the registration window is still open', async () => {
-      await expect(
-        service.lateRegister(admin, 'tour-1', { ...submitPayload, userId: 'player-1' }),
-      ).rejects.toBeInstanceOf(BadRequestException);
+    it('allows late registration while the registration window is still open', async () => {
+      prisma.registration.findUnique.mockResolvedValue(null);
+      prisma.user.findUnique.mockResolvedValue({
+        id: 'player-1',
+        centerId: testCenterId,
+        center: { provinceId: 'prov-1' },
+      });
+      permissions.check.mockResolvedValue(true);
+      prisma.registration.create = jest.fn().mockResolvedValue(
+        row({
+          status: RegistrationStatus.Confirmed,
+          userId: 'player-1',
+        }),
+      );
+
+      const result = await service.lateRegister(admin, 'tour-1', {
+        ...submitPayload,
+        userId: 'player-1',
+      });
+
+      expect(result.status).toBe(RegistrationStatus.Confirmed);
     });
 
     it('creates a confirmed registration after the window closes', async () => {
@@ -1035,7 +1088,7 @@ describe('RegistrationsService', () => {
           after: expect.objectContaining({
             status: RegistrationStatus.Confirmed,
             battingRating: 4,
-            source: 'CENTER_SEVAK_LATE',
+            source: 'LATE_REGISTER',
           }),
         }),
       );
@@ -1043,6 +1096,29 @@ describe('RegistrationsService', () => {
         NotificationTrigger.RegistrationConfirmed,
         expect.objectContaining({ recipientUserIds: ['player-1'] }),
       );
+    });
+
+    it('rejects late registration when the player center is not in the tournament', async () => {
+      prisma.tournament.findUnique.mockResolvedValue({
+        id: 'tour-1',
+        state: 'REGISTRATION_OPEN',
+        type: 'CENTER',
+        ballType: 'TENNIS',
+        isDeleted: false,
+        ...closedRegistrationWindow,
+      });
+      prisma.registration.findUnique.mockResolvedValue(null);
+      prisma.user.findUnique.mockResolvedValue({
+        id: 'player-1',
+        centerId: testCenterId,
+        center: { provinceId: 'prov-1' },
+      });
+      permissions.check.mockResolvedValue(true);
+      prisma.tournamentCenter.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.lateRegister(admin, 'tour-1', { ...submitPayload, userId: 'player-1' }),
+      ).rejects.toBeInstanceOf(ForbiddenException);
     });
 
     it('blocks Center Sevak late registration on leather ACC', async () => {

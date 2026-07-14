@@ -20,6 +20,7 @@ import {
   RegistrationVerificationPhase,
   type TournamentFavouritePlayersView,
   type LeatherRegisteredPlayersView,
+  type LateRegisterCandidatesView,
   type VerifiedRegisteredPlayersView,
   type VerifiedRegisteredPlayerRow,
   type SetRegistrationFavouriteResponse,
@@ -197,15 +198,15 @@ export class RegistrationsService {
     }
   }
 
-  /** Late registration of a missed player by Organizer / Center Sevak (?7.6). */
+  /** Late registration of a missed player by Admin / Club Manager / Center Sevak (§7.6). */
   async lateRegister(
     actor: AuthUser,
     tournamentId: string,
     dto: LateRegistrationDto,
   ): Promise<RegistrationDetail> {
     const tournament = await this.requireTournament(tournamentId);
-    this.assertCenterSevakTennisOnly(actor, tournament.ballType as BallType);
-    this.assertRegistrationWindowClosed(tournament);
+    const ballType = tournament.ballType as BallType;
+    this.assertCenterSevakTennisOnly(actor, ballType);
 
     const player = await this.prisma.user.findUnique({
       where: { id: dto.userId },
@@ -246,11 +247,12 @@ export class RegistrationsService {
     }
 
     await this.assertSevakOwnCenter(actor, player.centerId);
+    await this.assertCenterParticipatesInTournament(tournamentId, ballType, player.centerId);
 
     await this.validateCustomFields(tournamentId, dto.customFields ?? null);
     const centerId = await this.resolveRegistrationCenterForUser(player.id, dto.centerId);
     await this.syncPlayerProfile(player.id, dto.firstName, dto.lastName, centerId);
-    const playerType = this.resolvePlayerTypeForWrite(tournament.ballType as BallType, dto.playerType);
+    const playerType = this.resolvePlayerTypeForWrite(ballType, dto.playerType);
 
     const detail = await this.createConfirmedLateRegistration(
       tournamentId,
@@ -276,7 +278,7 @@ export class RegistrationsService {
         bowlingRating: detail.bowlingRating,
         fieldingRating: detail.fieldingRating,
         reviewedByUserId: actor.id,
-        source: 'CENTER_SEVAK_LATE',
+        source: 'LATE_REGISTER',
       },
     });
 
@@ -629,6 +631,7 @@ export class RegistrationsService {
       players: await this.resolveSummaryPhotos(players),
       canFavourite: favouriteTeamId != null,
       favouriteTeamId,
+      canLateRegister: await this.resolveCanLateRegister(actor, tournamentId),
     };
   }
 
@@ -709,6 +712,7 @@ export class RegistrationsService {
     return {
       players: await this.resolveSummaryPhotos(rows.map((row) => this.toSummary(row))),
       totalCount,
+      canLateRegister: await this.resolveCanLateRegister(actor, tournamentId),
     };
   }
 
@@ -912,13 +916,7 @@ export class RegistrationsService {
     const actionCount = windowClosed ? pendingCount : registered.length;
     const canManage = windowClosed;
 
-    const canLateRegister =
-      canManage &&
-      notRegistered.length > 0 &&
-      (await this.permissions.check(Permission.REGISTER_LATE_PLAYER, actor, {
-        tournamentId,
-        targetCenterId: centerIds[0],
-      }));
+    const canLateRegister = await this.resolveCanLateRegister(actor, tournamentId);
 
     return {
       phase,
@@ -929,6 +927,69 @@ export class RegistrationsService {
       canManage,
       canLateRegister,
     };
+  }
+
+  /**
+   * §7.6 picker: players who may be late-registered (tennis: tournament centers;
+   * leather: existing / invited ACC players). Permission-gated.
+   */
+  async listLateRegisterCandidates(
+    actor: AuthUser,
+    tournamentId: string,
+  ): Promise<LateRegisterCandidatesView> {
+    const tournament = await this.requireTournament(tournamentId);
+    const ballType = tournament.ballType as BallType;
+    this.assertCenterSevakTennisOnly(actor, ballType);
+
+    const allowed = await this.resolveCanLateRegister(actor, tournamentId);
+    if (!allowed) {
+      throw new ForbiddenException({
+        message: 'You cannot register a late player here',
+        error: 'FORBIDDEN',
+      });
+    }
+
+    if (ballType === BallType.Leather) {
+      const players = await this.leatherVisibility.listLateRegisterCandidates(tournamentId);
+      return { players: await this.resolveProfilePhotoUrls(players) };
+    }
+
+    const centerIds = await this.resolveLateRegisterCenterIds(actor, tournamentId);
+    const registered = await this.prisma.registration.findMany({
+      where: { tournamentId, centerId: { in: centerIds } },
+      select: { userId: true },
+    });
+    const registeredUserIds = new Set(registered.map((row) => row.userId));
+
+    const centerUsers = await this.prisma.user.findMany({
+      where: {
+        centerId: { in: centerIds },
+        ...selectableUserWhere,
+        role: UserRole.Player,
+      },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        mobileNumber: true,
+        profilePhotoUrl: true,
+        centerId: true,
+      },
+      orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
+    });
+
+    const players: CenterPlayerRosterEntry[] = centerUsers
+      .filter((user) => !registeredUserIds.has(user.id))
+      .map((user) => ({
+        userId: user.id,
+        centerId: user.centerId,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        mobileNumber: user.mobileNumber,
+        profilePhotoUrl: user.profilePhotoUrl,
+      }));
+
+    return { players: await this.resolveProfilePhotoUrls(players) };
   }
 
   async getMine(actor: AuthUser, tournamentId: string): Promise<RegistrationDetail | null> {
@@ -1084,6 +1145,73 @@ export class RegistrationsService {
       });
     }
     return this.requireCenterSevakCenterIds(actor);
+  }
+
+  /** Centers a late-registering actor may pull candidates from (tennis). */
+  private async resolveLateRegisterCenterIds(
+    actor: AuthUser,
+    tournamentId: string,
+  ): Promise<string[]> {
+    const links = await this.prisma.tournamentCenter.findMany({
+      where: { tournamentId },
+      select: { centerId: true },
+    });
+    const tournamentCenterIds = links.map((link) => link.centerId);
+    if (tournamentCenterIds.length === 0) {
+      return [];
+    }
+
+    if (actor.role === UserRole.Admin || actor.role === UserRole.ClubManager) {
+      return tournamentCenterIds;
+    }
+
+    const sevakCenterIds = await this.findCenterSevakCenterIds(actor);
+    const scoped = tournamentCenterIds.filter((id) => sevakCenterIds.includes(id));
+    if (scoped.length === 0) {
+      throw new ForbiddenException({
+        message: 'Your center is not part of this tournament',
+        error: 'FORBIDDEN',
+      });
+    }
+    return scoped;
+  }
+
+  private async findCenterSevakCenterIds(actor: AuthUser): Promise<string[]> {
+    if ((actor.centerSevakCenterIds?.length ?? 0) > 0) {
+      return actor.centerSevakCenterIds ?? [];
+    }
+    const sevakAssignments = await this.prisma.roleAssignment.findMany({
+      where: { userId: actor.id, role: UserRole.CenterSevak, centerId: { not: null } },
+      select: { centerId: true },
+    });
+    return sevakAssignments
+      .map((assignment) => assignment.centerId)
+      .filter((id): id is string => id !== null);
+  }
+
+  private async resolveCanLateRegister(actor: AuthUser, tournamentId: string): Promise<boolean> {
+    return this.permissions.check(Permission.REGISTER_LATE_PLAYER, actor, { tournamentId });
+  }
+
+  /** Tennis: player center must be one of the tournament's selected centers. */
+  private async assertCenterParticipatesInTournament(
+    tournamentId: string,
+    ballType: BallType,
+    centerId: string,
+  ): Promise<void> {
+    if (ballType === BallType.Leather) {
+      return;
+    }
+    const link = await this.prisma.tournamentCenter.findFirst({
+      where: { tournamentId, centerId },
+      select: { centerId: true },
+    });
+    if (!link) {
+      throw new ForbiddenException({
+        message: 'Player center is not part of this tournament',
+        error: 'FORBIDDEN',
+      });
+    }
   }
 
   /** When the actor is a Center Sevak, the target must belong to one of their centers. */

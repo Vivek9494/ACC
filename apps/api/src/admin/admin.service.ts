@@ -46,6 +46,10 @@ import {
   toAdminUserDetail,
   toAdminUserSummary,
 } from './admin.mapper';
+import {
+  foldPlayedBallTypesByUser,
+  type DeliveryBallTypeRow,
+} from './admin-played-ball-types';
 import type { ListAdminUsersDto } from './dto/list-admin-users.dto';
 import type { CreateAdminUserDto } from './dto/create-admin-user.dto';
 import type { UpdateAdminUserDto } from './dto/update-admin-user.dto';
@@ -95,13 +99,70 @@ export class AdminService {
 
     const hasMore = users.length > limit;
     const page = hasMore ? users.slice(0, limit) : users;
+    const playedBallTypesByUser = await this.loadPlayedBallTypesByUser(page.map((user) => user.id));
 
     return {
       items: await this.mediaUrls.resolveProfilePhotoUrls(
-        page.map((user) => toAdminUserSummary(user, { includeFullMobile })),
+        page.map((user) =>
+          toAdminUserSummary(user, {
+            includeFullMobile,
+            playedBallTypes: playedBallTypesByUser.get(user.id) ?? [],
+          }),
+        ),
       ),
       nextCursor: hasMore ? page[page.length - 1]!.id : null,
     };
+  }
+
+  /**
+   * Batched §Users-list enrichment: ball types each page user has actually played
+   * (non-voided delivery participation on non-deleted matches/tournaments).
+   */
+  private async loadPlayedBallTypesByUser(
+    userIds: string[],
+  ): Promise<Map<string, BallType[]>> {
+    if (userIds.length === 0) {
+      return new Map();
+    }
+
+    const rows = await this.prisma.delivery.findMany({
+      where: {
+        isVoided: false,
+        OR: [
+          { strikerUserId: { in: userIds } },
+          { nonStrikerUserId: { in: userIds } },
+          { bowlerUserId: { in: userIds } },
+          { fielderUserId: { in: userIds } },
+          { fielder2UserId: { in: userIds } },
+          { dismissedUserId: { in: userIds } },
+        ],
+        innings: {
+          match: {
+            isDeleted: false,
+            tournament: { isDeleted: false },
+          },
+        },
+      },
+      select: {
+        strikerUserId: true,
+        nonStrikerUserId: true,
+        bowlerUserId: true,
+        fielderUserId: true,
+        fielder2UserId: true,
+        dismissedUserId: true,
+        innings: {
+          select: {
+            match: {
+              select: {
+                tournament: { select: { ballType: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return foldPlayedBallTypesByUser(rows as DeliveryBallTypeRow[], userIds);
   }
 
   /** Users with birthdays in the present UTC month or later — excludes past calendar months. */
@@ -506,7 +567,7 @@ export class AdminService {
         platformRole: dto.platformRole,
         jerseyNumber: dto.jerseyNumber ?? 0,
         jerseyName: dto.jerseyName?.trim() || null,
-        centerAssignedByDefault: dto.centerId == null,
+        centerAssignedByDefault: false,
       },
       ...(skillDetails ? { details: skillDetails } : {}),
     });
@@ -686,39 +747,19 @@ export class AdminService {
     });
   }
 
-  private async resolveCreateCenterId(
-    centerId: string | undefined,
-    provinceId: string | undefined,
-  ): Promise<string> {
-    if (centerId) {
-      if (provinceId) {
-        await this.assertCenterInProvince(centerId, provinceId);
-      }
-      const center = await this.prisma.center.findUnique({
-        where: { id: centerId },
-        select: { id: true, isActive: true },
-      });
-      if (!center || !center.isActive) {
-        throw new BadRequestException({
-          message: 'Invalid or inactive center',
-          error: AuthErrorCode.InvalidCenter,
-        });
-      }
-      return centerId;
-    }
-
-    const fallback = await this.prisma.center.findFirst({
-      where: { isActive: true },
-      orderBy: { name: 'asc' },
-      select: { id: true },
+  private async resolveCreateCenterId(centerId: string, provinceId: string): Promise<string> {
+    await this.assertCenterInProvince(centerId, provinceId);
+    const center = await this.prisma.center.findUnique({
+      where: { id: centerId },
+      select: { id: true, isActive: true },
     });
-    if (!fallback) {
+    if (!center || !center.isActive) {
       throw new BadRequestException({
-        message: 'No active center is available. Add a center or select one for this user.',
+        message: 'Invalid or inactive center',
         error: AuthErrorCode.InvalidCenter,
       });
     }
-    return fallback.id;
+    return centerId;
   }
 
   private async assertCenterInProvince(centerId: string, provinceId: string): Promise<void> {

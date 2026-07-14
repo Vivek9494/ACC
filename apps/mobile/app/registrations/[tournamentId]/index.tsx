@@ -1,10 +1,11 @@
-import { Redirect, useLocalSearchParams } from 'expo-router';
+import { RedirectToRoleTournamentSubpage } from '../../../src/components/tournament/RedirectToRoleTournamentSubpage';
 
-/** Legacy route — canonical registration screen lives at `/register`. */
-export default function RegistrationIndexRedirect(): React.ReactElement {
-  const { tournamentId } = useLocalSearchParams<{ tournamentId: string }>();
-  if (!tournamentId) {
-    return <Redirect href="/" />;
-  }
-  return <Redirect href={`/registrations/${tournamentId}/register`} />;
+/** Root deep-link entry — bounce into the role Tournaments tab stack. */
+export default function Route(): React.ReactElement {
+  return (
+    <RedirectToRoleTournamentSubpage
+      subpath="registrations"
+      extraParamKeys={[]}
+    />
+  );
 }

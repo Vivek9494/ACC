@@ -8,6 +8,7 @@ import { canCreateTournamentTeam } from '../../lib/can-create-team';
 import { canManageTournamentTeam } from '../../lib/can-manage-tournament-team';
 import { confirmDestructiveDeleteAlert } from '../../lib/confirm-destructive-delete';
 import { ApiRequestError, deleteTeam } from '../../lib/api';
+import { tournamentSubpathHref } from '../../lib/tournament-detail-route';
 import { Text } from '../ui/Text';
 import { AddNewTeamButton } from './AddNewTeamButton';
 import { TeamListItem } from './TeamListItem';
@@ -45,10 +46,13 @@ function TeamRow({
   onTeamsChanged?: () => void;
 }): React.ReactElement {
   const router = useRouter();
+  const { user } = useAuth();
 
   const openEdit = useCallback(() => {
-    router.push(`/tournaments/${tournamentId}/teams/${team.id}/edit`);
-  }, [router, team.id, tournamentId]);
+    router.push(
+      tournamentSubpathHref(user, tournamentId, 'teams/[teamId]/edit', { teamId: team.id }),
+    );
+  }, [router, team.id, tournamentId, user]);
 
   const requestDelete = useCallback(() => {
     if (team.hasMatches) {
@@ -108,11 +112,13 @@ export function TournamentTeamsTab({
   }, [myTeamId, teams]);
 
   function openAddTeam(): void {
-    router.push(`/tournaments/${tournamentId}/add-team`);
+    router.push(tournamentSubpathHref(user, tournamentId, 'add-team'));
   }
 
   function openTeamDetail(teamId: string): void {
-    router.push(`/tournaments/${tournamentId}/teams/${teamId}`);
+    router.push(
+      tournamentSubpathHref(user, tournamentId, 'teams/[teamId]', { teamId }),
+    );
   }
 
   if (teams.length === 0) {

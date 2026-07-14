@@ -59,6 +59,11 @@ export interface AdminUserSummary {
   roles: UserRole[];
   /** Account created (UTC ISO 8601). */
   createdAt: string;
+  /**
+   * Ball formats this user has actually played (non-voided delivery participation),
+   * for Admin / Club Manager Users list icons. Empty when neither.
+   */
+  playedBallTypes: BallType[];
 }
 
 /** Scoped role grant with human-readable context for the detail screen. */
@@ -201,8 +206,8 @@ export interface CreateAdminUserRequest {
   /** Platform `User.role`; defaults to Player when omitted. */
   platformRole: UserRole;
   email?: string;
-  provinceId?: string;
-  centerId?: string;
+  provinceId: string;
+  centerId: string;
   /** ISO date YYYY-MM-DD. */
   dateOfBirth?: string;
   jerseyNumber?: number;

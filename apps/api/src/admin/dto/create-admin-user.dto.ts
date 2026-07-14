@@ -57,13 +57,13 @@ export class CreateAdminUserDto implements CreateAdminUserRequest {
   @IsEmail({}, { message: SIGNUP_VALIDATION_MESSAGES.email.invalid })
   email?: string;
 
-  @IsOptional()
   @IsString()
-  provinceId?: string;
+  @IsNotEmpty({ message: SIGNUP_VALIDATION_MESSAGES.province.required })
+  provinceId!: string;
 
-  @IsOptional()
   @IsString()
-  centerId?: string;
+  @IsNotEmpty({ message: SIGNUP_VALIDATION_MESSAGES.center.required })
+  centerId!: string;
 
   @IsOptional()
   @IsDateString({}, { message: SIGNUP_VALIDATION_MESSAGES.dateOfBirth.required })

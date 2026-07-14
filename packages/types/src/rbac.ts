@@ -325,7 +325,7 @@ export const PERMISSION_MATRIX: Record<Permission, PermissionRule> = {
   [Permission.REGISTER_LATE_PLAYER]: {
     grants: [
       { subject: R.Admin },
-      { subject: R.ClubManager, scope: PermissionScope.Organizer },
+      { subject: R.ClubManager },
       { subject: R.CenterSevak, scope: PermissionScope.OwnCenter, tournamentTypes: TENNIS_TYPES },
     ],
   },

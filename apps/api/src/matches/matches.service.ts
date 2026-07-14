@@ -19,7 +19,9 @@ import {
   Permission,
   prepareMatchListForDisplay,
   type RecordTossRequest,
+  resolveMatchListTeamScoreLines,
   type ScorerGrantView,
+  type ScorecardResponse,
   type SquadCandidate,
   type SquadView,
   MatchSide,
@@ -81,6 +83,7 @@ import { activeMatchFirstWhere } from './match-query';
 import { selectableUserWhere } from '../users/user-query';
 import { activeTeamWhere } from '../teams/team-query';
 import { StandingsService } from '../standings/standings.service';
+import { ScorecardReader } from '../scoring/scorecard-reader';
 import { ScoringService } from '../scoring/scoring.service';
 import { MediaUrlResolver } from '../storage/media-url.resolver';
 import { LiveService } from '../live/live.service';
@@ -184,6 +187,16 @@ const LIST_COMPLETED_STATES: MatchState[] = [
   MatchState.NoResult,
 ];
 
+/** Match states that may carry innings scores on the tournament Matches list. */
+const LIST_SCORECARD_STATES: MatchState[] = [
+  MatchState.Live,
+  MatchState.RainInterrupted,
+  MatchState.Completed,
+  MatchState.ScorecardLocked,
+  MatchState.NoResult,
+  MatchState.Cancelled,
+];
+
 type NameMap = Map<string, { firstName: string; lastName: string }>;
 
 /**
@@ -234,6 +247,7 @@ export class MatchesService {
     private readonly tournamentScorers: TournamentScorersService,
     private readonly tennisMatchScoringAuth: TennisMatchScoringAuthService,
     private readonly live: LiveService,
+    private readonly scorecardReader: ScorecardReader,
     private readonly suspensions: SuspensionService,
   ) {}
 
@@ -723,16 +737,6 @@ export class MatchesService {
     return this.attachMatchListPermissions(items, viewer);
   }
 
-  private formatListUserName(
-    user: { firstName: string; lastName: string } | null | undefined,
-  ): string | null {
-    if (!user) {
-      return null;
-    }
-    const name = `${user.firstName} ${user.lastName}`.trim();
-    return name.length > 0 ? name : null;
-  }
-
   private async toListItem(
     row: MatchListRow,
     deletedBy: { firstName: string; lastName: string } | null = null,
@@ -743,6 +747,8 @@ export class MatchesService {
       row.homeTeam?.logoUrl ?? null,
       row.awayTeam?.logoUrl ?? null,
     ]);
+
+    const { liveScore, teamAScoreLine, teamBScoreLine } = await this.resolveListScores(row);
 
     return {
       id: row.id,
@@ -756,16 +762,18 @@ export class MatchesService {
         id: row.homeTeamId,
         name: homeName,
         logoUrl: homeLogo ?? null,
+        scoreLine: teamAScoreLine,
       },
       teamB: {
         id: row.awayTeamId,
         name: awayName,
         logoUrl: awayLogo ?? null,
+        scoreLine: teamBScoreLine,
       },
       groundLocation: row.groundLocation,
       homeAway: (row.homeAway as HomeAway | null) ?? null,
       resultSummary: this.buildListResultSummary(row, homeName, awayName),
-      liveScore: await this.resolveListLiveScore(row.id, row.state as MatchState),
+      liveScore,
       completedAt: row.completedAt?.toISOString() ?? null,
       isDeleted: row.isDeleted,
       deletedAt: row.deletedAt?.toISOString() ?? null,
@@ -775,29 +783,78 @@ export class MatchesService {
     };
   }
 
-  /** Partial/live score line for in-progress or cancelled fixtures with cached scoring. */
-  private async resolveListLiveScore(
-    matchId: string,
-    state: MatchState,
-  ): Promise<MatchLiveScoreSummary | null> {
-    if (
-      state !== MatchState.Live &&
-      state !== MatchState.RainInterrupted &&
-      state !== MatchState.Cancelled
-    ) {
+  /**
+   * Per-team score lines (by battingTeamId) plus legacy liveScore for the
+   * "LIVE • INNINGS N" context label. Scheduled fixtures keep null scores.
+   */
+  private async resolveListScores(row: MatchListRow): Promise<{
+    liveScore: MatchLiveScoreSummary | null;
+    teamAScoreLine: string | null;
+    teamBScoreLine: string | null;
+  }> {
+    const state = row.state as MatchState;
+    if (!LIST_SCORECARD_STATES.includes(state)) {
+      return { liveScore: null, teamAScoreLine: null, teamBScoreLine: null };
+    }
+
+    const card = await this.loadListScorecard(row);
+    if (!card || card.innings.length === 0) {
+      return { liveScore: null, teamAScoreLine: null, teamBScoreLine: null };
+    }
+
+    const showYetToBat =
+      state === MatchState.Live || state === MatchState.RainInterrupted;
+    const { teamAScoreLine, teamBScoreLine } = resolveMatchListTeamScoreLines({
+      innings: card.innings,
+      teamAId: row.homeTeamId,
+      teamBId: row.awayTeamId,
+      awayIsExternal: isExternalOpponentMatch({
+        awayTeamId: row.awayTeamId,
+        externalOpponentName: row.externalOpponentName,
+      }),
+      showYetToBat,
+    });
+
+    const last = card.innings[card.innings.length - 1]!;
+    const liveScore: MatchLiveScoreSummary | null =
+      state === MatchState.Live ||
+      state === MatchState.RainInterrupted ||
+      state === MatchState.Cancelled
+        ? {
+            inningsNumber: last.sequence,
+            runs: last.runs,
+            wickets: last.wickets,
+            oversText: last.oversText,
+          }
+        : null;
+
+    return { liveScore, teamAScoreLine, teamBScoreLine };
+  }
+
+  /** Prefer Redis live cache for in-progress matches; otherwise rebuild from DB. */
+  private async loadListScorecard(row: MatchListRow): Promise<ScorecardResponse | null> {
+    const state = row.state as MatchState;
+    if (state === MatchState.Live || state === MatchState.RainInterrupted) {
+      const cached = await this.live.getCached(row.id);
+      if (cached) {
+        return cached;
+      }
+    }
+    try {
+      return await this.scorecardReader.build(row);
+    } catch {
       return null;
     }
-    const cached = await this.live.getCached(matchId);
-    if (!cached || cached.innings.length === 0) {
+  }
+
+  private formatListUserName(
+    user: { firstName: string; lastName: string } | null | undefined,
+  ): string | null {
+    if (!user) {
       return null;
     }
-    const innings = cached.innings[cached.innings.length - 1]!;
-    return {
-      inningsNumber: innings.sequence,
-      runs: innings.runs,
-      wickets: innings.wickets,
-      oversText: innings.oversText,
-    };
+    const name = `${user.firstName} ${user.lastName}`.trim();
+    return name.length > 0 ? name : null;
   }
 
   private async attachMatchListPermissions(

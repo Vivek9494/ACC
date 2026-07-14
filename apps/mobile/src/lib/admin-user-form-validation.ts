@@ -54,11 +54,11 @@ export interface AdminUserCreateFormValues {
   mobileNumber: string;
   email: string;
   dateOfBirth: string;
+  provinceId: string | null;
+  centerId: string | null;
 }
 
 export interface AdminUserEditFormValues extends AdminUserCreateFormValues {
-  provinceId: string | null;
-  centerId: string | null;
   jerseyNumber: string;
   jerseyName: string;
 }
@@ -94,6 +94,14 @@ export function validateAdminUserCreateForm(
     errors.email = emailError;
   }
 
+  if (!values.provinceId) {
+    errors.province = SIGNUP_VALIDATION_MESSAGES.province.required;
+  }
+
+  if (!values.centerId) {
+    errors.center = SIGNUP_VALIDATION_MESSAGES.center.required;
+  }
+
   if (values.dateOfBirth.trim()) {
     const dobError = validateSignupDateOfBirth(values.dateOfBirth);
     if (dobError) {
@@ -108,14 +116,6 @@ export function validateAdminUserEditForm(
   values: AdminUserEditFormValues,
 ): AdminUserFieldErrors {
   const errors = validateAdminUserCreateForm(values);
-
-  if (!values.provinceId) {
-    errors.province = SIGNUP_VALIDATION_MESSAGES.province.required;
-  }
-
-  if (!values.centerId) {
-    errors.center = SIGNUP_VALIDATION_MESSAGES.center.required;
-  }
 
   if (!values.dateOfBirth.trim()) {
     errors.dateOfBirth = SIGNUP_VALIDATION_MESSAGES.dateOfBirth.required;
