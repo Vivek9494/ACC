@@ -21,8 +21,8 @@ import { KnockoutBracketService } from '../knockout-bracket/knockout-bracket.ser
 import { PlayerSkillVideosService } from '../player-videos/player-skill-videos.service';
 
 interface TxMock {
-  tournament: { create: jest.Mock };
-  tournamentDate: { createMany: jest.Mock };
+  tournament: { create: jest.Mock; update: jest.Mock };
+  tournamentDate: { createMany: jest.Mock; deleteMany: jest.Mock };
   center: { findMany: jest.Mock };
   tournamentCenter: { createMany: jest.Mock };
   team: { findMany: jest.Mock; create: jest.Mock };
@@ -38,8 +38,8 @@ function detailRow(overrides: Record<string, unknown> = {}): Record<string, unkn
     state: 'NEW',
     ballType: 'LEATHER',
     posterUrl: null,
-    startAt: new Date('2026-05-01T00:00:00.000Z'),
-    endAt: new Date('2026-09-30T00:00:00.000Z'),
+    startAt: new Date('2027-05-01T00:00:00.000Z'),
+    endAt: new Date('2027-09-30T00:00:00.000Z'),
     oversPerInnings: 25,
     maxOversPerBowler: 5,
     numberOfTeams: 4,
@@ -61,9 +61,10 @@ function detailRow(overrides: Record<string, unknown> = {}): Record<string, unkn
     deletedAt: null,
     deletedById: null,
     teams: [],
+    groups: [],
     scheduledDates: [
-      { date: new Date('2026-06-15T00:00:00.000Z') },
-      { date: new Date('2026-09-30T00:00:00.000Z') },
+      { date: new Date('2027-06-15T00:00:00.000Z') },
+      { date: new Date('2027-09-30T00:00:00.000Z') },
     ],
     _count: { teams: 0, groups: 0 },
     ...overrides,
@@ -101,8 +102,10 @@ describe('TournamentsService', () => {
   let prisma: {
     $transaction: jest.Mock;
     tournament: { findUnique: jest.Mock; findFirst: jest.Mock; update: jest.Mock; delete: jest.Mock };
+    match: { findMany: jest.Mock };
     roleAssignment: { findFirst: jest.Mock; findMany: jest.Mock; count: jest.Mock };
     tournamentCenter: { findFirst: jest.Mock };
+    teamMembership: { findUnique: jest.Mock };
     registration: { findMany: jest.Mock };
     province: { findUnique: jest.Mock };
     center: { findMany: jest.Mock };
@@ -115,8 +118,14 @@ describe('TournamentsService', () => {
 
   beforeEach(async () => {
     tx = {
-      tournament: { create: jest.fn().mockResolvedValue({ id: 'tid' }) },
-      tournamentDate: { createMany: jest.fn().mockResolvedValue({ count: 0 }) },
+      tournament: {
+        create: jest.fn().mockResolvedValue({ id: 'tid' }),
+        update: jest.fn().mockResolvedValue({}),
+      },
+      tournamentDate: {
+        createMany: jest.fn().mockResolvedValue({ count: 0 }),
+        deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
+      },
       center: { findMany: jest.fn().mockResolvedValue([]) },
       tournamentCenter: { createMany: jest.fn().mockResolvedValue({ count: 0 }) },
       team: {
@@ -145,6 +154,8 @@ describe('TournamentsService', () => {
         count: jest.fn(),
       },
       tournamentCenter: { findFirst: jest.fn().mockResolvedValue(null) },
+      teamMembership: { findUnique: jest.fn().mockResolvedValue(null) },
+      match: { findMany: jest.fn().mockResolvedValue([]) },
       registration: { findMany: jest.fn().mockResolvedValue([]) },
       province: {
         findUnique: jest.fn().mockResolvedValue({ id: 'prov-1', isActive: true }),
@@ -179,13 +190,14 @@ describe('TournamentsService', () => {
         { provide: MediaUrlResolver, useValue: mediaUrls },
         {
           provide: PlayerSkillVideosService,
-          useValue: { resolveViewerUploadFlags: jest.fn().mockResolvedValue({}) },
+          useValue: { viewerUploadFlags: jest.fn().mockResolvedValue({}) },
         },
         {
           provide: LeatherTournamentVisibilityService,
           useValue: {
             getVisibleLeatherTournamentIds: jest.fn().mockResolvedValue([]),
             assertCanViewLeatherTournament: jest.fn().mockResolvedValue(undefined),
+            canRegisterForLeatherTournament: jest.fn().mockResolvedValue(false),
           },
         },
         {
@@ -217,7 +229,7 @@ describe('TournamentsService', () => {
       numberOfTeams: 4,
       playersPerTeam: 15,
       substitutesAllowed: 2,
-      dates: ['2026-06-15', '2026-07-01', '2026-09-30'],
+      dates: ['2027-06-15', '2027-07-01', '2027-09-30'],
       ballType: 'LEATHER',
       citySelection: 'SINGLE',
       provinceId: 'prov-1',
@@ -226,6 +238,15 @@ describe('TournamentsService', () => {
       videoRequired: false,
       ...overrides,
     }) as CreateTournamentDto;
+
+  const tennisDto = (overrides: Partial<CreateTournamentDto> = {}): CreateTournamentDto =>
+    baseDto({
+      ballType: 'TENNIS',
+      locationAddress: '123 Main St, Toronto, ON',
+      latitude: 43.6532,
+      longitude: -79.3832,
+      ...overrides,
+    });
 
   describe('type resolution drives the create permission', () => {
     it('resolves a Leather tournament to ACC and checks CREATE_ACC_TOURNAMENT', async () => {
@@ -240,7 +261,7 @@ describe('TournamentsService', () => {
     it('resolves Tennis + Club Manager + ALL cities to APL and checks CREATE_APL_TOURNAMENT', async () => {
       await service.create(
         actor,
-        baseDto({ ballType: 'TENNIS', citySelection: 'ALL', provinceId: 'prov-1' }),
+        tennisDto({ citySelection: 'ALL', provinceId: 'prov-1' }),
       );
       expect(permissions.check).toHaveBeenCalledWith(
         Permission.CREATE_APL_TOURNAMENT,
@@ -253,8 +274,7 @@ describe('TournamentsService', () => {
       tx.center.findMany.mockResolvedValue([{ id: 'center-A' }, { id: 'center-B' }]);
       await service.create(
         actor,
-        baseDto({
-          ballType: 'TENNIS',
+        tennisDto({
           citySelection: 'MULTI',
           provinceId: 'prov-1',
           centerIds: ['center-A'],
@@ -302,21 +322,21 @@ describe('TournamentsService', () => {
     it('stores tournament dates and derives start/end window', async () => {
       await service.create(
         actor,
-        baseDto({ dates: ['2026-06-20', '2026-06-15', '2026-07-10'] }),
+        baseDto({ dates: ['2027-06-20', '2027-06-15', '2027-07-10'] }),
       );
       expect(tx.tournament.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
-            startAt: new Date('2026-06-15T00:00:00.000Z'),
-            endAt: new Date('2026-07-10T00:00:00.000Z'),
+            startAt: new Date('2027-06-15T00:00:00.000Z'),
+            endAt: new Date('2027-07-10T00:00:00.000Z'),
           }),
         }),
       );
       expect(tx.tournamentDate.createMany).toHaveBeenCalledWith({
         data: [
-          { tournamentId: 'tid', date: new Date('2026-06-15T00:00:00.000Z') },
-          { tournamentId: 'tid', date: new Date('2026-06-20T00:00:00.000Z') },
-          { tournamentId: 'tid', date: new Date('2026-07-10T00:00:00.000Z') },
+          { tournamentId: 'tid', date: new Date('2027-06-15T00:00:00.000Z') },
+          { tournamentId: 'tid', date: new Date('2027-06-20T00:00:00.000Z') },
+          { tournamentId: 'tid', date: new Date('2027-07-10T00:00:00.000Z') },
         ],
       });
     });
@@ -388,7 +408,8 @@ describe('TournamentsService', () => {
 
   describe('mid-tournament edit notifies registrants when registration is open (§6.4)', () => {
     it('notifies registrants for an open tournament', async () => {
-      prisma.tournament.findUnique.mockResolvedValueOnce(detailRow({ state: 'REGISTRATION_OPEN' }));
+      const row = detailRow({ state: 'REGISTRATION_OPEN' });
+      prisma.tournament.findUnique.mockResolvedValue(row);
       prisma.registration.findMany.mockResolvedValue([{ userId: 'p1' }, { userId: 'p2' }]);
 
       await service.update(actor, 'tid', { locationAddress: 'New Ground' });
@@ -400,7 +421,7 @@ describe('TournamentsService', () => {
     });
 
     it('does not notify when the tournament is not in registration', async () => {
-      prisma.tournament.findUnique.mockResolvedValueOnce(detailRow({ state: 'LIVE' }));
+      prisma.tournament.findUnique.mockResolvedValue(detailRow({ state: 'LIVE' }));
       await service.update(actor, 'tid', { locationAddress: 'New Ground' });
       expect(notifications.notify).not.toHaveBeenCalled();
     });
@@ -408,40 +429,40 @@ describe('TournamentsService', () => {
 
   describe('numberOfTeams on edit', () => {
     it('allows setting numberOfTeams to the active team count (soft-deleted teams excluded)', async () => {
-      prisma.tournament.findUnique.mockResolvedValueOnce(
+      prisma.tournament.findUnique.mockResolvedValue(
         detailRow({ numberOfTeams: 28, _count: { teams: 8, groups: 0 } }),
       );
 
       await service.update(actor, 'tid', { numberOfTeams: 8 });
 
-      expect(prisma.tournament.update).toHaveBeenCalled();
+      expect(tx.tournament.update).toHaveBeenCalled();
     });
 
     it('rejects numberOfTeams below the active team count', async () => {
-      prisma.tournament.findUnique.mockResolvedValueOnce(
+      prisma.tournament.findUnique.mockResolvedValue(
         detailRow({ numberOfTeams: 28, _count: { teams: 8, groups: 0 } }),
       );
 
       await expect(service.update(actor, 'tid', { numberOfTeams: 7 })).rejects.toBeInstanceOf(
         BadRequestException,
       );
-      expect(prisma.tournament.update).not.toHaveBeenCalled();
+      expect(tx.tournament.update).not.toHaveBeenCalled();
     });
   });
 
   describe('Center Sevak tournament ownership (§7.4)', () => {
     it('allows a Center Sevak to update a tournament they created', async () => {
-      prisma.tournament.findUnique.mockResolvedValueOnce(
+      prisma.tournament.findUnique.mockResolvedValue(
         detailRow({ createdByUserId: 'sevak-1' }),
       );
 
       await service.update(sevak, 'tid', { locationAddress: 'New Ground' });
 
-      expect(prisma.tournament.update).toHaveBeenCalled();
+      expect(tx.tournament.update).toHaveBeenCalled();
     });
 
     it('allows a Center Sevak to update a tournament linked to their center', async () => {
-      prisma.tournament.findUnique.mockResolvedValueOnce(
+      prisma.tournament.findUnique.mockResolvedValue(
         detailRow({ createdByUserId: 'cm-1' }),
       );
       prisma.roleAssignment.findMany.mockResolvedValueOnce([{ centerId: 'center-A' }]);
@@ -449,7 +470,7 @@ describe('TournamentsService', () => {
 
       await service.update(sevak, 'tid', { locationAddress: 'New Ground' });
 
-      expect(prisma.tournament.update).toHaveBeenCalled();
+      expect(tx.tournament.update).toHaveBeenCalled();
     });
 
     it('denies a Center Sevak updating a tournament from another center they did not create', async () => {

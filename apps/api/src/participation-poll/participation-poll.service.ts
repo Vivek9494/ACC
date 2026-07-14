@@ -646,7 +646,7 @@ export class ParticipationPollService {
     let confirmedInWithPunch = inWithPunch;
 
     if (leatherBall) {
-      const pollVotes = await this.prisma.availabilityPollVote.findMany({
+      const pollVotes = await this.prisma.pollVote.findMany({
         where: { pollId: poll.id },
         select: { userId: true, isAvailable: true },
       });

@@ -11,6 +11,7 @@ import type { User } from '@prisma/client';
 
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
+import { MediaUrlResolver } from '../storage/media-url.resolver';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import type { SignupDto } from './dto/signup.dto';
@@ -104,6 +105,13 @@ describe('AuthService', () => {
         {
           provide: ConfigService,
           useValue: { getOrThrow: () => 'a-very-long-test-secret', get: () => '15m' },
+        },
+        {
+          provide: MediaUrlResolver,
+          useValue: {
+            resolveReadUrl: jest.fn(async (value: string | null) => value),
+            resolveProfilePhotoUrls: jest.fn(async (items: unknown[]) => items),
+          },
         },
       ],
     }).compile();

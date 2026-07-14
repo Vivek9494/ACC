@@ -42,39 +42,62 @@ function makeDb() {
   let counter = 0;
   const newId = (p: string): string => `${p}-${++counter}`;
 
+  const loadMatch = async ({
+    where,
+    include,
+    select,
+  }: {
+    where: { id: string };
+    include?: { homeTeam?: unknown; awayTeam?: unknown };
+    select?: unknown;
+  }) => {
+    const m = matches.get(where.id);
+    if (!m) return null;
+    if (select) {
+      return {
+        id: m.id,
+        homeTeamId: m.homeTeamId ?? 'home',
+        awayTeamId: m.awayTeamId ?? 'away',
+        externalOpponentName: m.externalOpponentName ?? null,
+        homeTeam: { id: m.homeTeamId ?? 'home', name: 'Home', logoUrl: null },
+        awayTeam: { id: m.awayTeamId ?? 'away', name: 'Away', logoUrl: null },
+        squads: [],
+        externalPlayers: [],
+      };
+    }
+    if (include?.homeTeam || include?.awayTeam) {
+      return {
+        ...m,
+        homeTeam: { id: m.homeTeamId ?? 'home', name: 'Home' },
+        awayTeam: { id: m.awayTeamId ?? 'away', name: 'Away' },
+      };
+    }
+    return { ...m };
+  };
+
   const prisma = {
     match: {
-      findUnique: async ({
+      findUnique: loadMatch,
+      findFirst: async ({
         where,
         include,
         select,
       }: {
-        where: { id: string };
+        where: { id?: string; isDeleted?: boolean };
         include?: { homeTeam?: unknown; awayTeam?: unknown };
         select?: unknown;
       }) => {
-        const m = matches.get(where.id);
-        if (!m) return null;
-        if (select) {
-          return {
-            id: m.id,
-            homeTeamId: m.homeTeamId ?? 'home',
-            awayTeamId: m.awayTeamId ?? 'away',
-            externalOpponentName: m.externalOpponentName ?? null,
-            homeTeam: { id: m.homeTeamId ?? 'home', name: 'Home', logoUrl: null },
-            awayTeam: { id: m.awayTeamId ?? 'away', name: 'Away', logoUrl: null },
-            squads: [],
-            externalPlayers: [],
-          };
+        if (!where.id) {
+          return null;
         }
-        if (include?.homeTeam || include?.awayTeam) {
-          return {
-            ...m,
-            homeTeam: { id: m.homeTeamId ?? 'home', name: 'Home' },
-            awayTeam: { id: m.awayTeamId ?? 'away', name: 'Away' },
-          };
+        const row = await loadMatch({ where: { id: where.id }, include, select });
+        if (!row) {
+          return null;
         }
-        return { ...m };
+        if (where.isDeleted === false && (row as Row).isDeleted === true) {
+          return null;
+        }
+        return row;
       },
       update: async ({ where, data }: { where: { id: string }; data: Row }) => {
         const m = matches.get(where.id) as Row;

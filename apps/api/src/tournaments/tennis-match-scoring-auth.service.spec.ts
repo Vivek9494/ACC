@@ -14,7 +14,7 @@ import { TennisMatchScoringAuthService } from './tennis-match-scoring-auth.servi
 
 describe('TennisMatchScoringAuthService', () => {
   const prisma = {
-    match: { findUnique: jest.fn() },
+    match: { findUnique: jest.fn(), findFirst: jest.fn() },
   };
   const scorerGrants = {
     getActiveGrant: jest.fn(),
@@ -46,6 +46,9 @@ describe('TennisMatchScoringAuthService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    prisma.match.findFirst.mockImplementation((...args: unknown[]) =>
+      prisma.match.findUnique(...(args as [])),
+    );
     prisma.match.findUnique.mockResolvedValue({
       tournament: { ballType: BallType.Tennis },
     });

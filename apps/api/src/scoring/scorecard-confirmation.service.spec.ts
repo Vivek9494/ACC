@@ -136,6 +136,29 @@ function makeHarness(
         const m = matches.get(where.id);
         return m ? { ...m } : null;
       },
+      findFirst: async ({
+        where,
+        include,
+      }: {
+        where: { id?: string; isDeleted?: boolean };
+        include?: { tournament?: { select: { type: true } } };
+      }) => {
+        if (!where.id) {
+          return null;
+        }
+        const m = matches.get(where.id);
+        if (!m) {
+          return null;
+        }
+        if (where.isDeleted === false && m.isDeleted === true) {
+          return null;
+        }
+        const row = { ...m };
+        if (include?.tournament) {
+          return { ...row, tournament: { type: 'ACC' } };
+        }
+        return row;
+      },
       findMany: async ({
         where,
       }: {
@@ -179,6 +202,37 @@ function makeHarness(
         const m = matches.get(where.id) as Row;
         Object.assign(m, data);
         return { ...m };
+      },
+      updateMany: async ({
+        where,
+        data,
+      }: {
+        where: {
+          id?: string;
+          isDeleted?: boolean;
+          state?: { in: string[] };
+          autoConfirmed?: boolean;
+        };
+        data: Row;
+      }) => {
+        let count = 0;
+        for (const [matchId, match] of matches.entries()) {
+          if (where.id != null && matchId !== where.id) {
+            continue;
+          }
+          if (where.isDeleted === false && match.isDeleted === true) {
+            continue;
+          }
+          if (where.state?.in && !where.state.in.includes(match.state as string)) {
+            continue;
+          }
+          if (where.autoConfirmed === false && match.autoConfirmed === true) {
+            continue;
+          }
+          Object.assign(match, data);
+          count += 1;
+        }
+        return { count };
       },
     },
     matchScorerGrant: {

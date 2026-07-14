@@ -23,6 +23,7 @@ interface PrismaMock {
   tournament: { findUnique: AnyMock };
   match: {
     findUnique: AnyMock;
+    findFirst: AnyMock;
     create: AnyMock;
     update: AnyMock;
     findMany: AnyMock;
@@ -96,6 +97,7 @@ function buildService(): {
     tournament: { findUnique: jest.fn() },
     match: {
       findUnique: jest.fn(),
+      findFirst: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
       findMany: jest.fn(),
@@ -123,6 +125,9 @@ function buildService(): {
   };
 
   prisma.$transaction.mockImplementation(async (cb: (tx: unknown) => unknown) => cb(prisma));
+  prisma.match.findFirst.mockImplementation((...args: unknown[]) =>
+    prisma.match.findUnique(...(args as [])),
+  );
 
   const permissions = { check: jest.fn().mockResolvedValue(true) };
   const scorerGrants = {
