@@ -21,7 +21,10 @@ export class LeaderboardController {
 
   @Get('tournaments/:tournamentId/stats')
   @Public()
-  getTournamentStats(@Param('tournamentId') tournamentId: string): Promise<TournamentStatsView> {
-    return this.leaderboard.getTournamentStats(tournamentId);
+  getTournamentStats(
+    @Param('tournamentId') tournamentId: string,
+    @Query('teamId') teamId?: string,
+  ): Promise<TournamentStatsView> {
+    return this.leaderboard.getTournamentStats(tournamentId, teamId?.trim() || null);
   }
 }

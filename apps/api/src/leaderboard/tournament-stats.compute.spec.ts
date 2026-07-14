@@ -144,6 +144,71 @@ describe('tournament-stats.compute', () => {
     expect(tournamentStatsHasScoring(acc)).toBe(true);
   });
 
+  it('scopes batting stats to battingTeamId and wickets/fifers to bowlingTeamId', () => {
+    const battingAcc = createTournamentStatsAccumulators();
+    const bowlingAcc = createTournamentStatsAccumulators();
+    const membership = new Set(['p1', 'p2', 'p3']);
+    const card = minimalScorecard(
+      [
+        {
+          playerId: 'p1',
+          runs: 105,
+          balls: 60,
+          ones: 0,
+          twos: 0,
+          threes: 0,
+          fours: 8,
+          sixes: 4,
+          strikeRate: 175,
+          isOut: false,
+          dismissalType: null,
+          bowlerId: null,
+          fielderId: null,
+          fielder2Id: null,
+          retiredHurt: false,
+          isMankad: false,
+        },
+      ],
+      [
+        {
+          playerId: 'p3',
+          legalBalls: 24,
+          oversText: '4.0',
+          runsConceded: 30,
+          wickets: 5,
+          maidens: 0,
+          dotBalls: 0,
+          wides: 0,
+          noBalls: 0,
+          fours: 0,
+          sixes: 0,
+          economy: 7.5,
+        },
+      ],
+      180,
+      4,
+    );
+
+    // t1 batting — runs/boundaries/milestones, not wickets taken
+    foldScorecardIntoTournamentStats(battingAcc, card, membership, 't1');
+    expect(battingAcc.totalRuns).toBe(180);
+    expect(battingAcc.totalWickets).toBe(0);
+    expect(battingAcc.sixes).toBe(4);
+    expect(battingAcc.fours).toBe(8);
+    expect(battingAcc.hundreds).toBe(1);
+    expect(battingAcc.fifers).toBe(0);
+    expect(battingAcc.playerSixes.get('p1')).toBe(4);
+
+    // t2 bowling — wickets taken + fifers, not batting totals
+    foldScorecardIntoTournamentStats(bowlingAcc, card, membership, 't2');
+    expect(bowlingAcc.totalRuns).toBe(0);
+    expect(bowlingAcc.totalWickets).toBe(4);
+    expect(bowlingAcc.sixes).toBe(0);
+    expect(bowlingAcc.fours).toBe(0);
+    expect(bowlingAcc.fifers).toBe(1);
+    expect(bowlingAcc.playerSixes.size).toBe(0);
+  });
+
   it('ranks boundary leaders with tie-break by name', () => {
     const entries = buildBoundaryLeaderboardEntries([
       {

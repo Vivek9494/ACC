@@ -6,6 +6,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { MediaUrlResolver } from '../storage/media-url.resolver';
 import { ScorecardReader } from '../scoring/scorecard-reader';
 import { assertTournamentActive } from '../tournaments/tournament-query';
+import { activeTeamWhere } from '../teams/team-query';
 import {
   applyBatterInnings,
   applyBowlerInnings,
@@ -34,6 +35,16 @@ const TOURNAMENT_STATS_MATCH_STATES: MatchState[] = [
   MatchState.Completed,
   MatchState.ScorecardLocked,
 ];
+
+const EMPTY_STATS_AGGREGATES = {
+  totalRuns: 0,
+  totalWickets: 0,
+  sixes: 0,
+  fours: 0,
+  fifties: 0,
+  hundreds: 0,
+  fifers: 0,
+};
 
 const EMPTY_LEADERBOARD = {
   batting: { entries: [] },
@@ -199,10 +210,18 @@ export class LeaderboardService {
     };
   }
 
-  async getTournamentStats(tournamentId: string): Promise<TournamentStatsView> {
+  async getTournamentStats(
+    tournamentId: string,
+    teamId?: string | null,
+  ): Promise<TournamentStatsView> {
     const tournament = await this.prisma.tournament.findUnique({
       where: { id: tournamentId },
       include: {
+        teams: {
+          where: activeTeamWhere,
+          select: { id: true, name: true, logoUrl: true },
+          orderBy: { name: 'asc' },
+        },
         matches: {
           where: {
             isDeleted: false,
@@ -214,8 +233,29 @@ export class LeaderboardService {
     });
     assertTournamentActive(tournament);
 
+    const teams = tournament.teams.map((team) => ({
+      id: team.id,
+      name: team.name,
+      logoUrl: team.logoUrl,
+    }));
+
+    if (teamId && !tournament.teams.some((team) => team.id === teamId)) {
+      return {
+        tournamentId,
+        hasRecords: false,
+        teams,
+        aggregates: EMPTY_STATS_AGGREGATES,
+        mostSixes: [],
+        mostFours: [],
+      };
+    }
+
     const memberships = await this.prisma.teamMembership.findMany({
-      where: { tournamentId },
+      where: {
+        tournamentId,
+        ...(teamId ? { teamId } : {}),
+        team: activeTeamWhere,
+      },
       include: {
         user: {
           select: {
@@ -239,7 +279,7 @@ export class LeaderboardService {
 
     for (const match of tournament.matches) {
       const scorecard = await this.resolveStatsScorecard(match);
-      foldScorecardIntoTournamentStats(acc, scorecard, membershipUserIds);
+      foldScorecardIntoTournamentStats(acc, scorecard, membershipUserIds, teamId);
     }
 
     const boundaryPlayers = memberships.map((membership) => ({
@@ -270,6 +310,7 @@ export class LeaderboardService {
     return {
       tournamentId,
       hasRecords: tournamentStatsHasScoring(acc),
+      teams,
       aggregates: {
         totalRuns: acc.totalRuns,
         totalWickets: acc.totalWickets,

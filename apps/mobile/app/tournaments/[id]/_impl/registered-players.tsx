@@ -202,6 +202,18 @@ export default function VerifiedRegisteredPlayersScreen(): React.ReactElement {
       <ScreenHeader
         title={screenTitle}
         onBack={() => router.back()}
+        titleTrailing={
+          canLateRegister ? (
+            <Pressable
+              onPress={openLateRegister}
+              accessibilityRole="button"
+              accessibilityLabel="Add player"
+              className="h-9 w-9 items-center justify-center rounded-full bg-primary active:opacity-90"
+            >
+              <Ionicons name="add" size={22} color={colors.textInverse} />
+            </Pressable>
+          ) : null
+        }
       />
 
       {loading ? (
@@ -307,24 +319,6 @@ export default function VerifiedRegisteredPlayersScreen(): React.ReactElement {
         player={detailsPlayer}
         onClose={closeRegistrationDetails}
       />
-
-      {canLateRegister ? (
-        <Pressable
-          onPress={openLateRegister}
-          accessibilityRole="button"
-          accessibilityLabel="Add player"
-          className="absolute bottom-6 right-6 h-14 w-14 items-center justify-center rounded-full bg-primary shadow-lg active:scale-95"
-          style={{
-            shadowColor: colors.primary,
-            shadowOpacity: 0.25,
-            shadowRadius: 12,
-            shadowOffset: { width: 0, height: 4 },
-            elevation: 8,
-          }}
-        >
-          <Ionicons name="add" size={32} color={colors.textInverse} />
-        </Pressable>
-      ) : null}
     </SafeAreaView>
   );
 }

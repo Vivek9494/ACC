@@ -13,6 +13,8 @@ export interface ScreenHeaderProps {
   onBack?: () => void;
   /** Optional title below the icon row (e.g. screen name). */
   title?: string;
+  /** Optional action on the title row, right-aligned (e.g. add button). */
+  titleTrailing?: ReactNode;
   /** Optional helper line under the title. */
   subtitle?: string;
   /** When true, title uses brand orange (e.g. Poll Results). */
@@ -33,6 +35,7 @@ const iconButtonClass = (compact: boolean): string =>
 export function ScreenHeader({
   onBack,
   title,
+  titleTrailing,
   subtitle,
   accentTitle = false,
   showBack = true,
@@ -78,13 +81,20 @@ export function ScreenHeader({
           ) : null}
         </View>
       </View>
-      {title ? (
-        <Text
-          numberOfLines={3}
-          className={`font-sans-bold text-xl ${accentTitle ? 'text-primary' : 'text-on-surface'}`}
-        >
-          {title}
-        </Text>
+      {title || titleTrailing ? (
+        <View className="flex-row items-center gap-3">
+          {title ? (
+            <Text
+              numberOfLines={3}
+              className={`min-w-0 flex-1 font-sans-bold text-xl ${accentTitle ? 'text-primary' : 'text-on-surface'}`}
+            >
+              {title}
+            </Text>
+          ) : (
+            <View className="min-w-0 flex-1" />
+          )}
+          {titleTrailing ? <View className="shrink-0">{titleTrailing}</View> : null}
+        </View>
       ) : null}
       {subtitle ? (
         <Text className="font-sans text-sm text-on-surface-variant">{subtitle}</Text>

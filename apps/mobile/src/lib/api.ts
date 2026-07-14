@@ -1153,8 +1153,12 @@ export function getTournamentLeaderboard(
   return apiFetchPublic<TournamentLeaderboard>(`/tournaments/${tournamentId}/leaderboard${query}`);
 }
 
-export function getTournamentStats(tournamentId: string): Promise<TournamentStatsView> {
-  return apiFetchPublic<TournamentStatsView>(`/tournaments/${tournamentId}/stats`);
+export function getTournamentStats(
+  tournamentId: string,
+  teamId?: string | null,
+): Promise<TournamentStatsView> {
+  const query = teamId ? `?teamId=${encodeURIComponent(teamId)}` : '';
+  return apiFetchPublic<TournamentStatsView>(`/tournaments/${tournamentId}/stats${query}`);
 }
 
 export function createGroup(tournamentId: string, body: CreateGroupRequest): Promise<GroupSummary> {

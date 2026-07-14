@@ -27,6 +27,12 @@ export const INPUT_TEXT_STYLE = { fontSize: 16 } as const;
 export const DEFAULT_INPUT_CLASS =
   'bg-surface rounded-control border border-border px-5 py-4 text-text font-sans';
 
+/**
+ * Shared min height for picker-style controls (DateField / TimeField) so side-by-side
+ * date+time rows stay vertically aligned when the value/placeholder text differs.
+ */
+export const FIELD_CONTROL_MIN_HEIGHT_CLASS = 'min-h-14';
+
 /** Display text for Select/DateField values (same typography rules as TextInput). */
 export const FIELD_VALUE_TEXT_CLASS = 'font-sans';
 

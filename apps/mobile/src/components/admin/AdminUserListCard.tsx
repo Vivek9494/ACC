@@ -4,7 +4,6 @@ import { View } from 'react-native';
 import { colors } from '@/theme/colors';
 
 import { PlayerAvatar } from '../tournament/PlayerAvatar';
-import { BallTypeIcon } from '../ui/BallTypeIcon';
 import { Card } from '../ui/Card';
 import { OverflowMenu, type OverflowMenuAction } from '../ui/OverflowMenu';
 import { Text } from '../ui/Text';
@@ -44,8 +43,6 @@ export function AdminUserListCard({
     },
   ];
 
-  const playedBallTypes = user.playedBallTypes ?? [];
-
   return (
     <Card onPress={onPress}>
       <View className="flex-row items-center gap-3">
@@ -55,18 +52,9 @@ export function AdminUserListCard({
           size="sm"
         />
         <View className="min-w-0 flex-1 gap-1">
-          <View className="flex-row items-center gap-2">
-            <Text className="min-w-0 flex-1 font-sans-bold text-base text-text" numberOfLines={2}>
-              {user.firstName} {user.lastName}
-            </Text>
-            {playedBallTypes.length > 0 ? (
-              <View className="flex-row items-center gap-1">
-                {playedBallTypes.map((ballType) => (
-                  <BallTypeIcon key={ballType} ballType={ballType} size={18} />
-                ))}
-              </View>
-            ) : null}
-          </View>
+          <Text className="font-sans-bold text-base text-text" numberOfLines={2}>
+            {user.firstName} {user.lastName}
+          </Text>
           <View className="flex-row flex-wrap items-center gap-x-2 gap-y-1">
             <AdminUserMobileContact
               mobileNumber={user.mobileNumber}

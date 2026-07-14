@@ -59,11 +59,6 @@ export interface AdminUserSummary {
   roles: UserRole[];
   /** Account created (UTC ISO 8601). */
   createdAt: string;
-  /**
-   * Ball formats this user has actually played (non-voided delivery participation),
-   * for Admin / Club Manager Users list icons. Empty when neither.
-   */
-  playedBallTypes: BallType[];
 }
 
 /** Scoped role grant with human-readable context for the detail screen. */

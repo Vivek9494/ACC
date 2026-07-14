@@ -1,5 +1,7 @@
 /** Tournament-wide aggregate stats derived from scored matches (incl. live). */
 
+import type { LeaderboardTeamOption } from './leaderboard';
+
 export interface TournamentAggregateStats {
   totalRuns: number;
   totalWickets: number;
@@ -24,8 +26,10 @@ export interface TournamentBoundaryLeaderboardEntry {
 
 export interface TournamentStatsView {
   tournamentId: string;
-  /** True when at least one included match has scoring data. */
+  /** True when at least one included match has scoring data (for the selected scope). */
   hasRecords: boolean;
+  /** Non-deleted teams for the Stats tab filter (same shape as Leaderboard). */
+  teams: LeaderboardTeamOption[];
   aggregates: TournamentAggregateStats;
   mostSixes: TournamentBoundaryLeaderboardEntry[];
   mostFours: TournamentBoundaryLeaderboardEntry[];

@@ -46,10 +46,6 @@ import {
   toAdminUserDetail,
   toAdminUserSummary,
 } from './admin.mapper';
-import {
-  foldPlayedBallTypesByUser,
-  type DeliveryBallTypeRow,
-} from './admin-played-ball-types';
 import type { ListAdminUsersDto } from './dto/list-admin-users.dto';
 import type { CreateAdminUserDto } from './dto/create-admin-user.dto';
 import type { UpdateAdminUserDto } from './dto/update-admin-user.dto';
@@ -99,70 +95,13 @@ export class AdminService {
 
     const hasMore = users.length > limit;
     const page = hasMore ? users.slice(0, limit) : users;
-    const playedBallTypesByUser = await this.loadPlayedBallTypesByUser(page.map((user) => user.id));
 
     return {
       items: await this.mediaUrls.resolveProfilePhotoUrls(
-        page.map((user) =>
-          toAdminUserSummary(user, {
-            includeFullMobile,
-            playedBallTypes: playedBallTypesByUser.get(user.id) ?? [],
-          }),
-        ),
+        page.map((user) => toAdminUserSummary(user, { includeFullMobile })),
       ),
       nextCursor: hasMore ? page[page.length - 1]!.id : null,
     };
-  }
-
-  /**
-   * Batched §Users-list enrichment: ball types each page user has actually played
-   * (non-voided delivery participation on non-deleted matches/tournaments).
-   */
-  private async loadPlayedBallTypesByUser(
-    userIds: string[],
-  ): Promise<Map<string, BallType[]>> {
-    if (userIds.length === 0) {
-      return new Map();
-    }
-
-    const rows = await this.prisma.delivery.findMany({
-      where: {
-        isVoided: false,
-        OR: [
-          { strikerUserId: { in: userIds } },
-          { nonStrikerUserId: { in: userIds } },
-          { bowlerUserId: { in: userIds } },
-          { fielderUserId: { in: userIds } },
-          { fielder2UserId: { in: userIds } },
-          { dismissedUserId: { in: userIds } },
-        ],
-        innings: {
-          match: {
-            isDeleted: false,
-            tournament: { isDeleted: false },
-          },
-        },
-      },
-      select: {
-        strikerUserId: true,
-        nonStrikerUserId: true,
-        bowlerUserId: true,
-        fielderUserId: true,
-        fielder2UserId: true,
-        dismissedUserId: true,
-        innings: {
-          select: {
-            match: {
-              select: {
-                tournament: { select: { ballType: true } },
-              },
-            },
-          },
-        },
-      },
-    });
-
-    return foldPlayedBallTypesByUser(rows as DeliveryBallTypeRow[], userIds);
   }
 
   /** Users with birthdays in the present UTC month or later — excludes past calendar months. */

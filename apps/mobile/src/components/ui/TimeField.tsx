@@ -7,6 +7,7 @@ import { Platform, Pressable, View } from 'react-native';
 
 import { DateTimePickerSheet } from './DateTimePickerSheet';
 import {
+  FIELD_CONTROL_MIN_HEIGHT_CLASS,
   FIELD_ORANGE,
   FIELD_VALUE_TEXT_CLASS,
   INPUT_SHADOW_STYLE,
@@ -104,7 +105,7 @@ export function TimeField({
       {label ? <Text className={labelClassName(labelVariant)}>{label}</Text> : null}
       <Pressable
         onPress={() => setShowPicker(true)}
-        className={`relative ${fieldClassName}`}
+        className={`relative ${FIELD_CONTROL_MIN_HEIGHT_CLASS} ${fieldClassName}`}
         style={INPUT_SHADOW_STYLE}
       >
         <View className="absolute inset-y-0 left-5 justify-center">
@@ -113,6 +114,7 @@ export function TimeField({
         <Text
           className={`${FIELD_VALUE_TEXT_CLASS} ${parsed ? 'text-text' : 'text-text-muted'}`}
           style={INPUT_TEXT_STYLE}
+          numberOfLines={1}
         >
           {parsed ? formatDisplayTime(value) : placeholder}
         </Text>

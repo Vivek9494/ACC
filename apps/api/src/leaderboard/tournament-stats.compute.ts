@@ -27,43 +27,59 @@ export function createTournamentStatsAccumulators(): TournamentStatsAccumulators
   };
 }
 
-/** Fold one match scorecard into running tournament totals. */
+/**
+ * Fold one match scorecard into running tournament totals.
+ * When `teamId` is set: runs/boundaries/milestones from batting innings for that team;
+ * wickets/fifers from bowling innings for that team.
+ */
 export function foldScorecardIntoTournamentStats(
   acc: TournamentStatsAccumulators,
   scorecard: ScorecardResponse,
   membershipUserIds: ReadonlySet<string>,
+  teamId?: string | null,
 ): void {
   for (const innings of scorecard.innings) {
-    acc.totalRuns += innings.runs;
-    acc.totalWickets += innings.wickets;
+    const isBattingTeam = teamId == null || innings.battingTeamId === teamId;
+    const isBowlingTeam = teamId == null || innings.bowlingTeamId === teamId;
 
-    for (const batter of innings.batters) {
-      acc.fours += batter.fours;
-      acc.sixes += batter.sixes;
-
-      if (batter.runs >= 100) {
-        acc.hundreds += 1;
-      } else if (batter.runs >= 50) {
-        acc.fifties += 1;
-      }
-
-      if (!membershipUserIds.has(batter.playerId)) {
-        continue;
-      }
-
-      acc.playerFours.set(
-        batter.playerId,
-        (acc.playerFours.get(batter.playerId) ?? 0) + batter.fours,
-      );
-      acc.playerSixes.set(
-        batter.playerId,
-        (acc.playerSixes.get(batter.playerId) ?? 0) + batter.sixes,
-      );
+    if (isBattingTeam) {
+      acc.totalRuns += innings.runs;
+    }
+    if (isBowlingTeam) {
+      acc.totalWickets += innings.wickets;
     }
 
-    for (const bowler of innings.bowlers) {
-      if (bowler.wickets >= 5) {
-        acc.fifers += 1;
+    if (isBattingTeam) {
+      for (const batter of innings.batters) {
+        acc.fours += batter.fours;
+        acc.sixes += batter.sixes;
+
+        if (batter.runs >= 100) {
+          acc.hundreds += 1;
+        } else if (batter.runs >= 50) {
+          acc.fifties += 1;
+        }
+
+        if (!membershipUserIds.has(batter.playerId)) {
+          continue;
+        }
+
+        acc.playerFours.set(
+          batter.playerId,
+          (acc.playerFours.get(batter.playerId) ?? 0) + batter.fours,
+        );
+        acc.playerSixes.set(
+          batter.playerId,
+          (acc.playerSixes.get(batter.playerId) ?? 0) + batter.sixes,
+        );
+      }
+    }
+
+    if (isBowlingTeam) {
+      for (const bowler of innings.bowlers) {
+        if (bowler.wickets >= 5) {
+          acc.fifers += 1;
+        }
       }
     }
   }

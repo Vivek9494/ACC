@@ -1346,7 +1346,7 @@ export function TournamentFormScreen({
                     onLayout={layoutField('registrationOpenTime')}
                   >
                     <TimeField
-                      label="Registration Open Time"
+                      label="Open Time"
                       value={registrationOpenTime}
                       onChange={(value) => {
                         setRegistrationOpenTime(value);
@@ -1377,7 +1377,7 @@ export function TournamentFormScreen({
                     onLayout={layoutField('registrationCloseTime')}
                   >
                     <TimeField
-                      label="Registration Close Time"
+                      label="Close Time"
                       value={registrationCloseTime}
                       onChange={(value) => {
                         setRegistrationCloseTime(value);
