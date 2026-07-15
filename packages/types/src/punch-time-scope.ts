@@ -97,8 +97,13 @@ function canViewPunchTimeForStates(
   if (user.role === UserRole.Admin) {
     return true;
   }
+  // Club Manager: tournament organizer OR Captain/VC of a side in this match
+  // (primary role CM must not mask a lead assignment).
   if (user.role === UserRole.ClubManager) {
-    return isTournamentOrganizer(user, match.tournamentCreatedByUserId);
+    return (
+      isTournamentOrganizer(user, match.tournamentCreatedByUserId) ||
+      isMatchTeamCaptainOrViceCaptain(user, match)
+    );
   }
   return isMatchTeamCaptainOrViceCaptain(user, match);
 }

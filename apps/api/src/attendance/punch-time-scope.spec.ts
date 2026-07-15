@@ -104,6 +104,25 @@ describe('punch time scope', () => {
     ).toBe(false);
   });
 
+  it('allows a Club Manager who is Captain/VC of a match team even if not the organizer', () => {
+    expect(
+      canViewMatchPlayersPunchTimeButton(
+        authUser(
+          UserRole.ClubManager,
+          [{ tournamentId: 'tournament-1', teamId: 'team-a', role: UserRole.Captain }],
+          'cm-captain-1',
+        ),
+        baseMatch,
+      ),
+    ).toBe(true);
+    expect(
+      canViewMatchPlayersPunchTimeButton(
+        authUser(UserRole.ClubManager, [], 'cm-captain-1'),
+        baseMatch,
+      ),
+    ).toBe(false);
+  });
+
   it('scopes captain to their own team even in ACC-vs-ACC', () => {
     const scope = resolvePunchTimeViewScope(
       authUser(UserRole.Captain, [
