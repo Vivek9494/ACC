@@ -1,4 +1,5 @@
 import type { TimelineEntry } from '@acc/types';
+import { Fragment } from 'react';
 import { View } from 'react-native';
 
 import { recentBallChipStyle } from './liveScoringKeypadTokens';
@@ -11,6 +12,24 @@ export interface RecentBallsStripProps {
   compact?: boolean;
   /** When false, omit the "Recent balls" caption (score header uses chips only). */
   showLabel?: boolean;
+}
+
+/** True when adjacent deliveries belong to different overs (legal-over boundary). */
+function isOverBoundary(previous: TimelineEntry, next: TimelineEntry): boolean {
+  return (
+    previous.overNumber !== null &&
+    next.overNumber !== null &&
+    previous.overNumber !== next.overNumber
+  );
+}
+
+function OverBoundaryDivider({ compact }: { compact: boolean }): React.ReactElement {
+  const height = compact ? 'h-8' : 'h-10';
+  return (
+    <View className={`${height} items-center justify-center px-0.5`}>
+      <Text className="font-sans text-sm leading-none text-on-surface-variant/60">|</Text>
+    </View>
+  );
 }
 
 function RecentBallChip({
@@ -53,10 +72,18 @@ export function RecentBallsStrip({
           Recent balls
         </Text>
       ) : null}
-      <View className="flex-row flex-wrap gap-1.5">
-        {recent.map((entry) => (
-          <RecentBallChip key={entry.sequence} entry={entry} compact={compact} />
-        ))}
+      <View className="flex-row flex-wrap items-center gap-1.5">
+        {recent.map((entry, index) => {
+          const previous = index > 0 ? recent[index - 1] : undefined;
+          const showDivider = previous !== undefined && isOverBoundary(previous, entry);
+
+          return (
+            <Fragment key={entry.sequence}>
+              {showDivider ? <OverBoundaryDivider compact={compact} /> : null}
+              <RecentBallChip entry={entry} compact={compact} />
+            </Fragment>
+          );
+        })}
       </View>
     </View>
   );

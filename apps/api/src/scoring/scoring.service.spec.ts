@@ -475,6 +475,60 @@ describe('ScoringService — append-only persistence & derivation', () => {
     expect(card.innings[0]!.legalBalls).toBe(0);
   });
 
+  it('undoes an incoming batsman selection before voiding the wicket delivery', async () => {
+    const { prisma, matches, innings } = makeDb();
+    seedMatch(matches);
+    const service = makeService(prisma);
+    await service.startInnings(scorer, 'match-1', { expectedVersion: 0 });
+    const inningsId = (await prisma.innings.findMany({ where: { matchId: 'match-1' } }))[0]!.id as string;
+    const version = (): number => matches.get('match-1')!.scorecardVersion as number;
+
+    await service.setInningsParticipants(scorer, 'match-1', inningsId, {
+      strikerId: 'A',
+      nonStrikerId: 'B',
+      bowlerId: 'X',
+      expectedVersion: version(),
+    });
+    await service.recordDelivery(scorer, 'match-1', inningsId, {
+      type: DeliveryType.Legal,
+      strikerId: 'A',
+      nonStrikerId: 'B',
+      bowlerId: 'X',
+      runsBat: 0,
+      dismissal: { type: DismissalType.Bowled, dismissedId: 'A' },
+      expectedVersion: version(),
+    });
+
+    const afterWicket = await service.getScorecard('match-1');
+    expect(afterWicket.innings[0]!.wickets).toBe(1);
+    expect(afterWicket.innings[0]!.currentStrikerId).toBeNull();
+    expect(afterWicket.innings[0]!.currentNonStrikerId).toBe('B');
+
+    const afterSelect = await service.setInningsParticipants(scorer, 'match-1', inningsId, {
+      strikerId: 'C',
+      expectedVersion: version(),
+    });
+    expect(afterSelect.innings[0]!.currentStrikerId).toBe('C');
+    expect(afterSelect.innings[0]!.currentNonStrikerId).toBe('B');
+
+    const afterUndoSelection = await service.undoLastDelivery(scorer, 'match-1', inningsId, {
+      expectedVersion: version(),
+    });
+    expect(afterUndoSelection.innings[0]!.wickets).toBe(1);
+    expect(afterUndoSelection.innings[0]!.currentStrikerId).toBeNull();
+    expect(afterUndoSelection.innings[0]!.currentNonStrikerId).toBe('B');
+    const innRow = innings.get(inningsId)!;
+    expect(innRow.selectedStrikerUserId).toBeNull();
+    expect(innRow.selectedNonStrikerUserId).toBeNull();
+
+    const afterReselect = await service.setInningsParticipants(scorer, 'match-1', inningsId, {
+      strikerId: 'C',
+      expectedVersion: version(),
+    });
+    expect(afterReselect.innings[0]!.currentStrikerId).toBe('C');
+    expect(afterReselect.innings[0]!.currentNonStrikerId).toBe('B');
+  });
+
   it('rejects a non-run-out dismissal on a free hit', async () => {
     const { prisma, matches } = makeDb();
     seedMatch(matches);

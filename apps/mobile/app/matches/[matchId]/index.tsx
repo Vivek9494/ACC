@@ -262,7 +262,7 @@ export default function MatchDetailScreen(): React.ReactElement {
             onPress={() => router.push(`/matches/${match.id}/punch-time`)}
             variant="secondary"
             className="h-12"
-            label="Players Punch Time"
+            label="View Punch Time"
           />
         ) : null}
 

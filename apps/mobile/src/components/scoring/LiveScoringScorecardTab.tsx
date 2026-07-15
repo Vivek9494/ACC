@@ -129,7 +129,7 @@ function PartnershipCard({
           <Text className={LIVE_SCORECARD_TYPE.partnershipMeta}>
             ({partnership.balls} balls)
             <Text className="text-on-surface-variant"> • </Text>
-            <Text className="font-sans-semibold text-secondary">RR {rr.toFixed(1)}</Text>
+            <Text className="font-sans-semibold text-secondary">RR {rr.toFixed(2)}</Text>
           </Text>
         </View>
         <View className="shrink-0 gap-1">

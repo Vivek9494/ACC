@@ -12,13 +12,14 @@ import {
   Permission,
   TournamentType,
   UserRole,
-  canViewMatchPlayersPunchTimeButton,
+  canViewCaptainDashboardPunchTimeButton,
   computeManOfMatchDueAt,
   isAssignScorerButtonVisible,
   isCaptainUpcomingMatchCardVisible,
   isConfirmedListButtonVisible,
   isManOfMatchOverdue,
   isViewPunchTimeButtonVisible,
+  replaceGenericHomeAwayInResultNote,
   serverVenueTimezone,
 } from '@acc/types';
 import { Injectable } from '@nestjs/common';
@@ -272,7 +273,7 @@ export class CaptainService {
     const showViewPunchTime =
       match.reportingTime != null &&
       isViewPunchTimeButtonVisible({ reportingTime: match.reportingTime }, now) &&
-      canViewMatchPlayersPunchTimeButton(actor, {
+      canViewCaptainDashboardPunchTimeButton(actor, {
         ballType: match.tournament.ballType as BallType,
         state: match.state as MatchState,
         tournamentId: match.tournamentId,
@@ -436,10 +437,14 @@ export class CaptainService {
       if (!(await this.isWinningTeamLeader(userId, match, winningTeamId))) {
         continue;
       }
+      const homeName = match.homeTeam?.name ?? 'Home';
+      const awayName = match.awayTeam?.name ?? match.externalOpponentName ?? 'Away';
       const teamName =
         winningTeamId === match.homeTeamId
-          ? (match.homeTeam?.name ?? 'Home')
-          : (match.awayTeam?.name ?? 'Away');
+          ? homeName
+          : match.awayTeamId != null && winningTeamId === match.awayTeamId
+            ? awayName
+            : homeName;
       const dueAt = computeManOfMatchDueAt(
         match.matchDate?.toISOString() ?? null,
         match.completedAt?.toISOString() ?? null,
@@ -447,7 +452,9 @@ export class CaptainService {
       return {
         matchId: match.id,
         teamName,
-        resultLine: match.resultNote,
+        resultLine: match.resultNote
+          ? replaceGenericHomeAwayInResultNote(match.resultNote, homeName, awayName)
+          : match.resultNote,
         required: true,
         dueAt,
         overdue: isManOfMatchOverdue(dueAt, null),

@@ -204,8 +204,12 @@ export class BatsmanPickerService {
 
     const profiles = await this.loadProfiles(match.tournamentId, rosterIds);
     const allSquadUserIds = match.squads.flatMap((s) => s.players.map((p) => p.userId));
-    const nameProfiles = await this.loadProfiles(match.tournamentId, allSquadUserIds);
-    const nameOf = this.buildNameResolver(nameProfiles, new Map());
+    const [nameProfiles, externalNameMap] = await Promise.all([
+      this.loadProfiles(match.tournamentId, allSquadUserIds),
+      this.loadExternalNameMap(match.id),
+    ]);
+    // Include external bowler/fielder names so dismissals resolve (e.g. ACC vs Gujarat Stars).
+    const nameOf = this.buildNameResolver(nameProfiles, externalNameMap);
 
     const batterById = new Map(inn.batters.map((b) => [b.playerId, b]));
     const players = rosterIds.map((userId) =>
@@ -285,6 +289,14 @@ export class BatsmanPickerService {
       players,
       availableSubstitutes: [],
     };
+  }
+
+  private async loadExternalNameMap(matchId: string): Promise<Map<string, string>> {
+    const externals = await this.prisma.externalPlayer.findMany({
+      where: { matchId },
+      select: { id: true, name: true },
+    });
+    return new Map(externals.map((row) => [row.id, row.name]));
   }
 
   private async loadOpponentUserIds(matchId: string, inn: InningsScorecard): Promise<string[]> {

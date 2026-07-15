@@ -3,6 +3,8 @@ import {
   deriveChaseEquation,
   formatChaseNeedsLine,
   formatMatchResultNote,
+  replaceGenericHomeAwayInResultNote,
+  resolveMatchWinnerDisplayName,
   formatMyMatchScheduledFooterLine,
   formatMyMatchTeamScoreLine,
   InningsType,
@@ -254,17 +256,28 @@ export class MyMatchesService {
     homeName: string,
     awayName: string,
   ): string | null {
-    const persisted = this.persistedResultLine(row, homeName, awayName);
-    if (persisted) {
-      return persisted;
+    if (row.isNoResult) {
+      return 'No Result';
+    }
+    const winnerName = resolveMatchWinnerDisplayName(
+      {
+        homeTeamId: row.homeTeamId,
+        awayTeamId: row.awayTeamId,
+        homeTeamName: homeName,
+        awayTeamName: row.awayTeam?.name ?? null,
+        externalOpponentName: row.externalOpponentName,
+      },
+      card.result,
+      card.innings,
+    );
+    const rebuilt = formatMatchResultNote(winnerName, card.result);
+    if (rebuilt) {
+      return rebuilt;
     }
     if (card.result.note) {
       return card.result.note;
     }
-    const winnerId = card.result.winningTeamId;
-    const winnerName =
-      winnerId === row.homeTeamId ? homeName : winnerId === row.awayTeamId ? awayName : 'Winner';
-    return formatMatchResultNote(winnerName, card.result);
+    return this.persistedResultLine(row, homeName, awayName);
   }
 
   private persistedResultLine(row: MatchRow, homeName: string, awayName: string): string | null {
@@ -273,13 +286,13 @@ export class MyMatchesService {
     }
     const note = row.resultNote?.trim();
     if (note) {
-      return note;
+      return replaceGenericHomeAwayInResultNote(note, homeName, awayName);
     }
-    if (row.winningTeamId) {
+    if (row.winningTeamId != null) {
       const winnerName =
         row.winningTeamId === row.homeTeamId
           ? homeName
-          : row.winningTeamId === row.awayTeamId
+          : row.awayTeamId != null && row.winningTeamId === row.awayTeamId
             ? awayName
             : null;
       if (winnerName) {

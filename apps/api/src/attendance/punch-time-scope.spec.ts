@@ -2,7 +2,9 @@ import {
   BallType,
   MatchState,
   UserRole,
+  canViewCaptainDashboardPunchTimeButton,
   canViewMatchPlayersPunchTimeButton,
+  isPunchTimeReadOnly,
   resolvePunchTimeViewScope,
   type AuthUser,
 } from '@acc/types';
@@ -55,6 +57,36 @@ describe('punch time scope', () => {
         state: MatchState.Cancelled,
       }),
     ).toBe(false);
+  });
+
+  it('shows Match Detail punch-time button for Scheduled and Completed (view always)', () => {
+    const captain = authUser(UserRole.Captain, [
+      { tournamentId: 'tournament-1', teamId: 'team-a', role: UserRole.Captain },
+    ]);
+    expect(
+      canViewMatchPlayersPunchTimeButton(captain, {
+        ...baseMatch,
+        state: MatchState.Scheduled,
+      }),
+    ).toBe(true);
+    expect(canViewCaptainDashboardPunchTimeButton(captain, {
+      ...baseMatch,
+      state: MatchState.Scheduled,
+    })).toBe(true);
+    expect(
+      canViewMatchPlayersPunchTimeButton(captain, {
+        ...baseMatch,
+        state: MatchState.Completed,
+      }),
+    ).toBe(true);
+  });
+
+  it('marks completed / no-result / scorecard-locked as read-only for overrides', () => {
+    expect(isPunchTimeReadOnly(MatchState.Completed)).toBe(true);
+    expect(isPunchTimeReadOnly(MatchState.NoResult)).toBe(true);
+    expect(isPunchTimeReadOnly(MatchState.ScorecardLocked)).toBe(true);
+    expect(isPunchTimeReadOnly(MatchState.Live)).toBe(false);
+    expect(isPunchTimeReadOnly(MatchState.Scheduled)).toBe(false);
   });
 
   it('allows club managers who organize the tournament and blocks others', () => {

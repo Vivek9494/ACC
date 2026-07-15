@@ -15,7 +15,8 @@ import {
   MatchSquadRole,
   MatchState,
   Permission,
-  PLAYERS_PUNCH_TIME_MATCH_STATES,
+  PUNCH_TIME_PAGE_MATCH_STATES,
+  isPunchTimeReadOnly,
   serverVenueTimezone,
   UserRole,
   type AttendanceMonitoringTarget,
@@ -855,7 +856,7 @@ export class AttendanceService {
   }
 
   private assertPunchTimeViewMatchState(match: AttendanceMatchRow): void {
-    if (!PLAYERS_PUNCH_TIME_MATCH_STATES.includes(match.state as MatchState)) {
+    if (!PUNCH_TIME_PAGE_MATCH_STATES.includes(match.state as MatchState)) {
       throw new BadRequestException({
         message: 'Punch time is not available for this match state',
         error: 'INVALID_MATCH_STATE',
@@ -912,6 +913,12 @@ export class AttendanceService {
     teamId: string,
   ): Promise<void> {
     await this.assertPunchTimeViewAccess(actor, match, teamId);
+    if (isPunchTimeReadOnly(match.state as MatchState)) {
+      throw new BadRequestException({
+        message: 'Punch time cannot be edited after the match is finished',
+        error: 'PUNCH_TIME_READ_ONLY',
+      });
+    }
     const allowed = await this.permissions.check(Permission.OVERRIDE_ARRIVAL_TIME, actor, {
       matchId: match.id,
       teamId,

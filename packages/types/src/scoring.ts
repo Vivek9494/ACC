@@ -242,14 +242,14 @@ export interface BatterCard {
   isMankad: boolean;
 }
 
-/** Live scoring batter row — SR from engine figures; "-" when no balls faced. */
+/** Live / scorecard batter row — SR from engine figures (2 dp); 0.00 when no balls faced. */
 export function formatBatterStrikeRateDisplay(
   card: Pick<BatterCard, 'strikeRate' | 'balls'> | undefined,
 ): string {
   if (!card || card.balls <= 0) {
-    return '-';
+    return '0.00';
   }
-  return card.strikeRate.toFixed(1);
+  return card.strikeRate.toFixed(2);
 }
 
 export interface BowlerCard {
@@ -267,14 +267,14 @@ export interface BowlerCard {
   economy: number;
 }
 
-/** Live bowling row — economy from engine figures; "-" when no legal balls bowled. */
+/** Live / scorecard bowling row — economy from engine figures (2 dp); 0.00 when no legal balls. */
 export function formatBowlerEconomyDisplay(
   card: Pick<BowlerCard, 'economy' | 'legalBalls'> | undefined,
 ): string {
   if (!card || card.legalBalls <= 0) {
-    return '-';
+    return '0.00';
   }
-  return Number.isInteger(card.economy) ? card.economy.toFixed(1) : card.economy.toFixed(2);
+  return card.economy.toFixed(2);
 }
 
 export interface FallOfWicket {
@@ -725,6 +725,107 @@ export function formatBowlerOmRw(
   card: Pick<BowlerCard, 'oversText' | 'maidens' | 'runsConceded' | 'wickets'>,
 ): string {
   return `${card.oversText}-${card.maidens}-${card.runsConceded}-${card.wickets}`;
+}
+
+/** Match sides needed to label a winner (registered teams + optional external name). */
+export interface MatchWinnerNameContext {
+  homeTeamId: string | null;
+  awayTeamId: string | null;
+  homeTeamName?: string | null;
+  awayTeamName?: string | null;
+  externalOpponentName?: string | null;
+}
+
+type WinnerLabelInnings = Pick<InningsScorecard, 'battingTeamId' | 'battingIsExternal' | 'runs'>;
+
+/**
+ * Resolves the display name for the winning side.
+ * Uses non-null id equality only — `null === null` must not map to "Away"
+ * (ACC Leather vs external opponents use null battingTeamId / winningTeamId).
+ */
+export function resolveMatchWinnerDisplayName(
+  match: MatchWinnerNameContext,
+  result: Pick<MatchResultView, 'winningTeamId'>,
+  innings: WinnerLabelInnings[] = [],
+): string {
+  const winnerId = result.winningTeamId;
+  const homeName = match.homeTeamName?.trim() || 'Home';
+  const awayName =
+    match.awayTeamName?.trim() || match.externalOpponentName?.trim() || 'Away';
+  const externalName = match.externalOpponentName?.trim() || null;
+
+  if (winnerId != null && winnerId === match.homeTeamId) {
+    return homeName;
+  }
+  if (winnerId != null && match.awayTeamId != null && winnerId === match.awayTeamId) {
+    return awayName;
+  }
+
+  // Null winner id (external Leather): pick the batting side that took the deciding contest.
+  const pair = decisiveNonTiedInningsPair(innings);
+  if (winnerId == null && pair) {
+    const [first, second] = pair;
+    if (second.runs > first.runs) {
+      return labelForBattingSide(match, second, homeName, awayName, externalName);
+    }
+    if (first.runs > second.runs) {
+      return labelForBattingSide(match, first, homeName, awayName, externalName);
+    }
+  }
+
+  return externalName ?? awayName;
+}
+
+/** Last non-tied innings pair (regulation or Super Over), oldest-pair index order. */
+function decisiveNonTiedInningsPair(
+  innings: WinnerLabelInnings[],
+): [WinnerLabelInnings, WinnerLabelInnings] | null {
+  for (let start = innings.length - 2; start >= 0; start -= 2) {
+    const first = innings[start];
+    const second = innings[start + 1];
+    if (first && second && first.runs !== second.runs) {
+      return [first, second];
+    }
+  }
+  return null;
+}
+
+function labelForBattingSide(
+  match: MatchWinnerNameContext,
+  inn: WinnerLabelInnings,
+  homeName: string,
+  awayName: string,
+  externalName: string | null,
+): string {
+  if (inn.battingIsExternal || (inn.battingTeamId == null && externalName)) {
+    return externalName ?? awayName;
+  }
+  if (inn.battingTeamId != null && inn.battingTeamId === match.homeTeamId) {
+    return homeName;
+  }
+  if (inn.battingTeamId != null && match.awayTeamId != null && inn.battingTeamId === match.awayTeamId) {
+    return awayName;
+  }
+  return homeName;
+}
+
+/**
+ * Rewrites persisted result lines that used generic Home/Away labels
+ * (legacy bug when external winner had a null winningTeamId).
+ */
+export function replaceGenericHomeAwayInResultNote(
+  resultNote: string,
+  homeName: string,
+  awayName: string,
+): string {
+  const note = resultNote.trim();
+  if (note.startsWith('Away ')) {
+    return `${awayName}${note.slice('Away'.length)}`;
+  }
+  if (note.startsWith('Home ')) {
+    return `${homeName}${note.slice('Home'.length)}`;
+  }
+  return note;
 }
 
 /** Human-readable result line for match lists and completion banners. */

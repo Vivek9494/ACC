@@ -1,5 +1,5 @@
 import { BallType, MatchState, UserRole, type AuthUser } from '@acc/types';
-import { ForbiddenException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { AuditService } from '../audit/audit.service';
@@ -22,7 +22,7 @@ describe('AttendanceService punch time access', () => {
     match: { findFirst: jest.fn() },
     matchSquad: { findUnique: jest.fn() },
     matchSquadPlayer: { findMany: jest.fn() },
-    matchAttendancePunch: { findMany: jest.fn() },
+    matchAttendancePunch: { findMany: jest.fn(), findUnique: jest.fn() },
     roleAssignment: { findFirst: jest.fn() },
   };
   const penalties = {
@@ -42,7 +42,13 @@ describe('AttendanceService punch time access', () => {
     tournamentId: 'tournament-1',
     homeTeam: { id: 'team-a', name: 'ACC 3' },
     awayTeam: { id: 'team-b', name: 'ACC 6' },
-    tournament: { id: 'tournament-1', name: 'ACC 2026', ballType: BallType.Leather, timezone: 'America/Toronto', createdByUserId: 'cm-1' },
+    tournament: {
+      id: 'tournament-1',
+      name: 'ACC 2026',
+      ballType: BallType.Leather,
+      timezone: 'America/Toronto',
+      createdByUserId: 'cm-1',
+    },
   };
 
   beforeEach(async () => {
@@ -74,6 +80,33 @@ describe('AttendanceService punch time access', () => {
       teamId: 'team-b',
     });
     expect(isCaptainMock).not.toHaveBeenCalled();
+  });
+
+  it('allows reading punch data for a completed match', async () => {
+    prismaMock.match.findFirst.mockResolvedValue({
+      ...liveMatch,
+      state: MatchState.Completed,
+    });
+    const captain = { id: 'captain-1', role: UserRole.Captain } as AuthUser;
+    isCaptainMock.mockResolvedValue(true);
+
+    await expect(service.getPunchTimeView(captain, 'match-1', 'team-a')).resolves.toMatchObject({
+      teamId: 'team-a',
+    });
+  });
+
+  it('blocks punch overrides on a completed match', async () => {
+    prismaMock.match.findFirst.mockResolvedValue({
+      ...liveMatch,
+      state: MatchState.Completed,
+    });
+    const captain = { id: 'captain-1', role: UserRole.Captain } as AuthUser;
+    isCaptainMock.mockResolvedValue(true);
+
+    await expect(
+      service.setPunchTime(captain, 'match-1', 'team-a', 'player-1', '2026-06-01T12:50:00Z'),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(permissions.check).not.toHaveBeenCalled();
   });
 
   it('blocks captain from fetching the other team punch data', async () => {

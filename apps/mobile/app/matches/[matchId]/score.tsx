@@ -1,5 +1,8 @@
 import {
   formatMatchResultNote,
+  replaceGenericHomeAwayInResultNote,
+  resolveMatchWinnerDisplayName,
+  MatchState,
   InningsType,
   BatsmanPickerRole,
   DeliveryType,
@@ -178,26 +181,46 @@ interface BattingSlots {
   batsman2Id: string | null;
 }
 
-/** Keep UI row slots stable; only clear a slot when that player leaves the crease. */
+/**
+ * Keep UI row slots stable across strike rotations: clear leavers, then place any
+ * at-crease player who is not already shown into a vacant slot (parity with reload).
+ */
 function syncBattingSlots(
   live: { currentStrikerId: string | null; currentNonStrikerId: string | null },
   match: MatchDetail | null,
   prev: BattingSlots,
 ): BattingSlots {
-  const atCrease = new Set(
-    [live.currentStrikerId, live.currentNonStrikerId].filter((id): id is string => Boolean(id)),
+  const atCreaseIds = [live.currentStrikerId, live.currentNonStrikerId].filter(
+    (id): id is string => Boolean(id),
   );
+  const atCrease = new Set(atCreaseIds);
 
   let batsman1Id = prev.batsman1Id;
   let batsman2Id = prev.batsman2Id;
 
+  if (batsman1Id && !atCrease.has(batsman1Id)) batsman1Id = null;
+  if (batsman2Id && !atCrease.has(batsman2Id)) batsman2Id = null;
+
   if (!batsman1Id && !batsman2Id) {
     batsman1Id = match?.openingStrikerUserId ?? live.currentStrikerId;
     batsman2Id = match?.openingNonStrikerUserId ?? live.currentNonStrikerId;
+    if (batsman1Id && !atCrease.has(batsman1Id)) batsman1Id = null;
+    if (batsman2Id && !atCrease.has(batsman2Id)) batsman2Id = null;
   }
 
-  if (batsman1Id && !atCrease.has(batsman1Id)) batsman1Id = null;
-  if (batsman2Id && !atCrease.has(batsman2Id)) batsman2Id = null;
+  const placed = new Set(
+    [batsman1Id, batsman2Id].filter((id): id is string => Boolean(id)),
+  );
+  for (const id of atCreaseIds) {
+    if (placed.has(id)) continue;
+    if (!batsman1Id) {
+      batsman1Id = id;
+      placed.add(id);
+    } else if (!batsman2Id) {
+      batsman2Id = id;
+      placed.add(id);
+    }
+  }
 
   return { batsman1Id, batsman2Id };
 }
@@ -769,17 +792,40 @@ export default function LiveScoringScreen(): React.ReactElement {
   }, [inningsTransitionPending, showEndInningsConfirm, working]);
 
   const completedResultLine = useMemo(() => {
-    if (match?.state === 'COMPLETED' && match.resultNote) {
-      return match.resultNote;
+    if (!card?.result.decided || !match) {
+      if (match?.state === 'COMPLETED' && match.resultNote) {
+        return replaceGenericHomeAwayInResultNote(
+          match.resultNote,
+          match.homeTeamName ?? 'Home',
+          match.awayTeamName ?? match.externalOpponentName ?? 'Away',
+        );
+      }
+      return null;
     }
-    if (!card?.result.decided || !match) return null;
-    const winnerId = card.result.winningTeamId;
     const winnerName =
-      match.squads.find((s) => s.teamId === winnerId)?.teamName ??
-      (winnerId === match.homeTeamId ? match.homeTeamName : match.awayTeamName) ??
-      'Winner';
-    return formatMatchResultNote(winnerName, card.result);
-  }, [card?.result, match]);
+      match.squads.find((s) => s.teamId === card.result.winningTeamId)?.teamName ??
+      resolveMatchWinnerDisplayName(
+        {
+          homeTeamId: match.homeTeamId,
+          awayTeamId: match.awayTeamId,
+          homeTeamName: match.homeTeamName,
+          awayTeamName: match.awayTeamName,
+          externalOpponentName: match.externalOpponentName,
+        },
+        card.result,
+        card.innings,
+      );
+    return (
+      formatMatchResultNote(winnerName, card.result) ??
+      (match.resultNote
+        ? replaceGenericHomeAwayInResultNote(
+            match.resultNote,
+            match.homeTeamName ?? 'Home',
+            match.awayTeamName ?? match.externalOpponentName ?? 'Away',
+          )
+        : null)
+    );
+  }, [card?.result, card?.innings, match]);
 
   async function confirmEndInnings(): Promise<void> {
     const inningsId = inn?.inningsId;
@@ -790,8 +836,15 @@ export default function LiveScoringScreen(): React.ReactElement {
     setError(null);
     try {
       const updated = await endInnings(matchId, inningsId, { expectedVersion: card.version });
-      syncFromCard(updated, { promptBowlers: false });
       const refreshedMatch = await getMatch(matchId);
+
+      // Final contest decided → leave live scoring; first innings / super-over stay put.
+      if (refreshedMatch.state === MatchState.Completed) {
+        router.replace(`/matches/${matchId}/scorecard`);
+        return;
+      }
+
+      syncFromCard(updated, { promptBowlers: false });
       setMatch(refreshedMatch);
 
       const live = updated.innings.at(-1);

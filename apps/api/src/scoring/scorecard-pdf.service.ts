@@ -173,7 +173,7 @@ ${inningsBlocks}
         (b) => `<tr><td>${this.escape(name(b.playerId))}${b.isOut ? '' : ' *'}</td>
         <td class="num">${b.runs}</td><td class="num">${b.balls}</td>
         <td class="num">${b.fours}</td><td class="num">${b.sixes}</td>
-        <td class="num">${b.strikeRate.toFixed(1)}</td></tr>`,
+        <td class="num">${b.strikeRate.toFixed(2)}</td></tr>`,
       )
       .join('');
     const bowlers = inn.bowlers

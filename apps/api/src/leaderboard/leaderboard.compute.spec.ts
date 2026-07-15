@@ -142,16 +142,17 @@ describe('leaderboard stat helpers', () => {
 
   it('computes strike rate from runs and balls faced', () => {
     expect(computeStrikeRate(135, 100)).toBe(135);
-    expect(computeStrikeRate(1, 3)).toBeCloseTo(33.3, 1);
+    expect(computeStrikeRate(1, 3)).toBeCloseTo(33.33, 2);
     expect(computeStrikeRate(10, 0)).toBeNull();
-    expect(formatLeaderboardStrikeRate(112)).toBe('112');
-    expect(formatLeaderboardStrikeRate(112.4)).toBe('112.4');
+    expect(formatLeaderboardStrikeRate(112)).toBe('112.00');
+    expect(formatLeaderboardStrikeRate(112.4)).toBe('112.40');
   });
 
   it('computes economy from runs conceded and legal balls', () => {
-    expect(computeEconomyRate(28, 28)).toBeCloseTo(6, 1);
-    expect(computeEconomyRate(11, 28)).toBeCloseTo(2.4, 1);
+    expect(computeEconomyRate(28, 28)).toBeCloseTo(6, 2);
+    expect(computeEconomyRate(11, 28)).toBeCloseTo(2.36, 2);
     expect(computeEconomyRate(10, 0)).toBeNull();
-    expect(formatLeaderboardEconomy(3.82)).toBe('3.8');
+    expect(formatLeaderboardEconomy(3.82)).toBe('3.82');
+    expect(formatLeaderboardEconomy(4)).toBe('4.00');
   });
 });

@@ -9,7 +9,10 @@ describe('formatDismissalShort', () => {
   const nameOf = (id: string | null): string => {
     if (id === 'bowler-1') return 'Wood';
     if (id === 'fielder-1') return 'Butler';
-    return '—';
+    if (id === 'ext-bowler') return 'Patel';
+    if (id === 'ext-fielder') return 'Shah';
+    // Mirrors batsman-picker buildNameResolver miss → used to surface as "Player"
+    return 'Player';
   };
 
   it('formats caught dismissals', () => {
@@ -23,6 +26,19 @@ describe('formatDismissalShort', () => {
         nameOf,
       ),
     ).toBe('c Butler b Wood');
+  });
+
+  it('formats caught dismissals with external bowling-side names', () => {
+    expect(
+      formatDismissalShort(
+        {
+          dismissalType: DismissalType.Caught,
+          bowlerId: 'ext-bowler',
+          fielderId: 'ext-fielder',
+        },
+        nameOf,
+      ),
+    ).toBe('c Shah b Patel');
   });
 
   it('formats caught and bowled dismissals', () => {

@@ -373,7 +373,7 @@ function PartnershipCard({
         <Text className="font-sans-medium text-sm text-on-surface">
           ({balls} balls)
           <Text className="font-sans-medium text-on-surface-variant"> • </Text>
-          <Text className="font-sans-semibold text-secondary">RR {rr.toFixed(1)}</Text>
+          <Text className="font-sans-semibold text-secondary">RR {rr.toFixed(2)}</Text>
         </Text>
       </View>
       <View className="shrink-0 gap-1">

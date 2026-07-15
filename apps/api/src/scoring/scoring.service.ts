@@ -9,6 +9,7 @@ import {
   minimumOversAllotmentFromLegalBalls,
   SUPER_OVER_OVERS,
   formatMatchResultNote,
+  resolveMatchWinnerDisplayName,
   isScorecardLocked,
   type RecordDeliveryRequest,
   ScorecardAuditAction,
@@ -262,7 +263,12 @@ export class ScoringService {
     return this.publishAndReturn(updated);
   }
 
-  /** Undo the last appended delivery by voiding it; all figures re-derive (§12.1). */
+  /**
+   * Undo the last scorer action for this innings (§12.1):
+   * 1. If an incoming / crease batter selection is persisted, clear it first
+   *    (selection is not a delivery, but is an undoable step before the next ball).
+   * 2. Otherwise void the last live delivery; all figures re-derive from the log.
+   */
   async undoLastDelivery(
     user: AuthUser,
     matchId: string,
@@ -273,7 +279,29 @@ export class ScoringService {
     this.assertVersion(match, req.expectedVersion);
     this.assertEditable(match, {});
 
-    await this.requireInnings(matchId, inningsId);
+    const innings = await this.requireInnings(matchId, inningsId);
+    const hasBatterSelection =
+      innings.selectedStrikerUserId != null ||
+      innings.selectedStrikerExternalId != null ||
+      innings.selectedNonStrikerUserId != null ||
+      innings.selectedNonStrikerExternalId != null;
+
+    if (hasBatterSelection) {
+      const updated = await this.prisma.$transaction(async (tx) => {
+        await tx.innings.update({
+          where: { id: innings.id },
+          data: {
+            selectedStrikerUserId: null,
+            selectedStrikerExternalId: null,
+            selectedNonStrikerUserId: null,
+            selectedNonStrikerExternalId: null,
+          },
+        });
+        return this.bumpVersion(tx, matchId);
+      });
+      return this.publishAndReturn(updated);
+    }
+
     const live = await this.liveDeliveries(inningsId);
     if (live.length === 0) {
       throw new BadRequestException({
@@ -703,7 +731,17 @@ export class ScoringService {
       });
     }
 
-    const winnerName = this.resolveWinnerDisplayName(matchRow, card);
+    const winnerName = resolveMatchWinnerDisplayName(
+      {
+        homeTeamId: matchRow.homeTeamId,
+        awayTeamId: matchRow.awayTeamId,
+        homeTeamName: matchRow.homeTeam?.name ?? null,
+        awayTeamName: matchRow.awayTeam?.name ?? null,
+        externalOpponentName: matchRow.externalOpponentName,
+      },
+      result,
+      card.innings,
+    );
     const resultNote = formatMatchResultNote(winnerName, result);
 
     const updated = await this.prisma.$transaction(async (tx) => {
@@ -863,37 +901,6 @@ export class ScoringService {
       },
     });
     return this.publishAndReturn(updated);
-  }
-
-  private resolveWinnerDisplayName(
-    match: Match & {
-      homeTeam: { id: string; name: string } | null;
-      awayTeam: { id: string; name: string } | null;
-    },
-    card: ScorecardResponse,
-  ): string {
-    const winnerId = card.result.winningTeamId;
-    if (winnerId === match.homeTeamId) {
-      return match.homeTeam?.name ?? 'Home';
-    }
-    if (winnerId === match.awayTeamId) {
-      return match.awayTeam?.name ?? 'Away';
-    }
-    const first = card.innings[0];
-    const second = card.innings[1];
-    if (
-      !winnerId &&
-      match.externalOpponentName &&
-      first &&
-      second &&
-      second.runs > first.runs
-    ) {
-      return match.externalOpponentName;
-    }
-    if (winnerId === match.homeTeamId || (!winnerId && first && second && first.runs > second.runs)) {
-      return match.homeTeam?.name ?? 'Home';
-    }
-    return match.externalOpponentName ?? match.awayTeam?.name ?? match.homeTeam?.name ?? 'Team';
   }
 
   /** Persist at-crease batters and/or the current-over bowler before the next delivery. */

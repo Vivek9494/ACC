@@ -112,6 +112,8 @@ export interface PunchTimeScreenProps {
   teamId: string;
   /** Admin/CM on ACC-vs-ACC — one tab per ACC team. */
   teamTabs?: readonly PunchTimeTeamTab[];
+  /** Post-match historical view — hide enter/edit/verify actions. */
+  readOnly?: boolean;
 }
 
 /** Captain Punch Time attendance view (Phase 1 + designated penalty servers). */
@@ -119,6 +121,7 @@ export function PunchTimeScreen({
   matchId,
   teamId,
   teamTabs,
+  readOnly = false,
 }: PunchTimeScreenProps): React.ReactElement {
   const insets = useSafeAreaInsets();
   const [selectedTeamId, setSelectedTeamId] = useState(teamId);
@@ -206,18 +209,27 @@ export function PunchTimeScreen({
     }
   }
 
-  const pencilButton = (player: PunchTimePlayerRow, title: string, canRevoke: boolean): React.ReactElement => (
-    <Pressable
-      onPress={() =>
-        openEdit(player, title, view?.reportingTime ?? new Date().toISOString(), canRevoke)
-      }
-      accessibilityRole="button"
-      accessibilityLabel="Edit arrival time"
-      className="h-10 w-10 items-center justify-center active:opacity-70"
-    >
-      <MaterialIcons name="edit" size={22} color={FIELD_ORANGE} />
-    </Pressable>
-  );
+  const pencilButton = (
+    player: PunchTimePlayerRow,
+    title: string,
+    canRevoke: boolean,
+  ): React.ReactElement | null => {
+    if (readOnly) {
+      return null;
+    }
+    return (
+      <Pressable
+        onPress={() =>
+          openEdit(player, title, view?.reportingTime ?? new Date().toISOString(), canRevoke)
+        }
+        accessibilityRole="button"
+        accessibilityLabel="Edit arrival time"
+        className="h-10 w-10 items-center justify-center active:opacity-70"
+      >
+        <MaterialIcons name="edit" size={22} color={FIELD_ORANGE} />
+      </Pressable>
+    );
+  };
 
   return (
     <View className="flex-1 bg-background">
@@ -289,22 +301,28 @@ export function PunchTimeScreen({
                 subtitle={`Arrived at ${player.arrivedAtLabel ?? '—'} · Late${playerRoleSuffix(player)}`}
                 subtitleClassName="text-primary"
                 trailing={
-                  <View className="flex-row items-center">
-                    {pencilButton(player, 'Edit arrival time', true)}
-                    <Pressable
-                      onPress={() => void handleVerify(player)}
-                      disabled={working || player.verifiedLate}
-                      accessibilityRole="button"
-                      accessibilityLabel="Verify late arrival"
-                      className="h-10 w-10 items-center justify-center active:opacity-70"
-                    >
-                      <MaterialIcons
-                        name={player.verifiedLate ? 'check-circle' : 'radio-button-unchecked'}
-                        size={24}
-                        color={player.verifiedLate ? colors.primary : FIELD_ORANGE}
-                      />
-                    </Pressable>
-                  </View>
+                  readOnly ? (
+                    player.verifiedLate ? (
+                      <MaterialIcons name="check-circle" size={24} color={colors.primary} />
+                    ) : null
+                  ) : (
+                    <View className="flex-row items-center">
+                      {pencilButton(player, 'Edit arrival time', true)}
+                      <Pressable
+                        onPress={() => void handleVerify(player)}
+                        disabled={working || player.verifiedLate}
+                        accessibilityRole="button"
+                        accessibilityLabel="Verify late arrival"
+                        className="h-10 w-10 items-center justify-center active:opacity-70"
+                      >
+                        <MaterialIcons
+                          name={player.verifiedLate ? 'check-circle' : 'radio-button-unchecked'}
+                          size={24}
+                          color={player.verifiedLate ? colors.primary : FIELD_ORANGE}
+                        />
+                      </Pressable>
+                    </View>
+                  )
                 }
               />
             )}

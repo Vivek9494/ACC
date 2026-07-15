@@ -59,6 +59,7 @@ import {
   type ExternalPlayerView,
   type FinalizeBothPlayingXiRequest,
   type RoundRobinMatchSetupContext,
+  replaceGenericHomeAwayInResultNote,
 } from '@acc/types';
 import {
   BadRequestException,
@@ -2818,13 +2819,13 @@ export class MatchesService {
     }
     const note = row.resultNote?.trim();
     if (note) {
-      return note;
+      return replaceGenericHomeAwayInResultNote(note, homeName, awayName);
     }
-    if (row.winningTeamId) {
+    if (row.winningTeamId != null) {
       const winnerName =
         row.winningTeamId === row.homeTeamId
           ? homeName
-          : row.winningTeamId === row.awayTeamId
+          : row.awayTeamId != null && row.winningTeamId === row.awayTeamId
             ? awayName
             : null;
       if (winnerName) {

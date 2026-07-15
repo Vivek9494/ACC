@@ -1,5 +1,7 @@
 import {
   formatMatchResultNote,
+  replaceGenericHomeAwayInResultNote,
+  resolveMatchWinnerDisplayName,
   formatAutoConfirmCountdown,
   type ManOfMatchEligibilityView,
   type MatchDetail,
@@ -112,14 +114,25 @@ export default function ScorecardResultScreen(): React.ReactElement {
   const momUserId = match?.manOfTheMatchUserId ?? confirmation?.manOfTheMatchUserId ?? null;
 
   const winningTeamName = useMemo(() => {
-    const winnerId = card?.result.winningTeamId;
-    if (!winnerId || !match) return 'Winning team';
+    if (!match || !card) return 'Winning team';
+    const fromSquad = card.result.winningTeamId
+      ? match.squads.find((s) => s.teamId === card.result.winningTeamId)?.teamName
+      : undefined;
     return (
-      match.squads.find((s) => s.teamId === winnerId)?.teamName ??
-      (winnerId === match.homeTeamId ? match.homeTeamName : match.awayTeamName) ??
-      'Winning team'
+      fromSquad ??
+      resolveMatchWinnerDisplayName(
+        {
+          homeTeamId: match.homeTeamId,
+          awayTeamId: match.awayTeamId,
+          homeTeamName: match.homeTeamName,
+          awayTeamName: match.awayTeamName,
+          externalOpponentName: match.externalOpponentName,
+        },
+        card.result,
+        card.innings,
+      )
     );
-  }, [card?.result.winningTeamId, match]);
+  }, [card, match]);
 
   const resultLine = useMemo(() => {
     if (!match || !card || isMatchLive) return null;
@@ -134,10 +147,18 @@ export default function ScorecardResultScreen(): React.ReactElement {
     ) {
       return null;
     }
-    if (match.resultNote) {
-      return match.resultNote;
+    const rebuilt = formatMatchResultNote(winningTeamName, card.result);
+    if (rebuilt) {
+      return rebuilt;
     }
-    return formatMatchResultNote(winningTeamName, card.result);
+    if (match.resultNote) {
+      return replaceGenericHomeAwayInResultNote(
+        match.resultNote,
+        match.homeTeamName ?? 'Home',
+        match.awayTeamName ?? match.externalOpponentName ?? 'Away',
+      );
+    }
+    return null;
   }, [card, isMatchLive, match, winningTeamName]);
 
   const showResultBanner = Boolean(resultLine);

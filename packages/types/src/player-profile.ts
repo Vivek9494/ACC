@@ -117,10 +117,7 @@ export function formatPlayerProfileAverage(value: number | null): string {
 }
 
 export function formatPlayerProfileStrikeRate(value: number | null): string {
-  if (value == null) {
-    return '–';
-  }
-  return Number.isInteger(value) ? String(value) : value.toFixed(1);
+  return value == null ? '–' : value.toFixed(2);
 }
 
 export function formatPlayerProfileCareerSpanYears(years: number | null): string | null {

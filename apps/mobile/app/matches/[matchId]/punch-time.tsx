@@ -1,4 +1,8 @@
-import { resolvePunchTimeViewScope, type MatchDetail } from '@acc/types';
+import {
+  isPunchTimeReadOnly,
+  resolvePunchTimeViewScope,
+  type MatchDetail,
+} from '@acc/types';
 import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, View } from 'react-native';
@@ -85,7 +89,7 @@ export default function PunchTimeRoute(): React.ReactElement {
   if (error || !scope || !initialTeamId) {
     const message =
       error ??
-      'You do not have access to punch time for this match. Punch time is available for leather matches once play has started.';
+      'You do not have access to punch time for this match. Punch time is available for leather ACC matches you organize or captain.';
 
     return (
       <PunchTimeRouteShell>
@@ -109,6 +113,7 @@ export default function PunchTimeRoute(): React.ReactElement {
         matchId={matchId}
         teamId={initialTeamId}
         teamTabs={scope.showTeamTabs ? scope.teams : undefined}
+        readOnly={match != null && isPunchTimeReadOnly(match.state)}
       />
     </PunchTimeRouteShell>
   );

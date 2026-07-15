@@ -83,7 +83,7 @@ export function computeBattingAverage(runs: number, dismissals: number): number 
   if (dismissals <= 0) {
     return null;
   }
-  return Math.round((runs / dismissals) * 10) / 10;
+  return Math.round((runs / dismissals) * 100) / 100;
 }
 
 /** Strike rate = (runs ÷ balls) × 100; null when no balls faced. */
@@ -91,18 +91,15 @@ export function computeStrikeRate(runs: number, balls: number): number | null {
   if (balls <= 0) {
     return null;
   }
-  return Math.round(((runs / balls) * 100) * 10) / 10;
+  return Math.round(((runs / balls) * 100) * 100) / 100;
 }
 
 export function formatLeaderboardAverage(average: number | null): string {
-  return average == null ? '–' : average.toFixed(1);
+  return average == null ? '–' : average.toFixed(2);
 }
 
 export function formatLeaderboardStrikeRate(strikeRate: number | null): string {
-  if (strikeRate == null) {
-    return '–';
-  }
-  return Number.isInteger(strikeRate) ? String(strikeRate) : strikeRate.toFixed(1);
+  return strikeRate == null ? '–' : strikeRate.toFixed(2);
 }
 
 /** Economy = runs conceded ÷ (legal balls ÷ 6); null when no balls bowled. */
@@ -111,9 +108,9 @@ export function computeEconomyRate(runsConceded: number, legalBalls: number): nu
     return null;
   }
   const overs = legalBalls / 6;
-  return Math.round((runsConceded / overs) * 10) / 10;
+  return Math.round((runsConceded / overs) * 100) / 100;
 }
 
 export function formatLeaderboardEconomy(economy: number | null): string {
-  return economy == null ? '–' : economy.toFixed(1);
+  return economy == null ? '–' : economy.toFixed(2);
 }
