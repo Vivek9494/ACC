@@ -104,6 +104,11 @@ export interface PollConfirmedInPartitionRow {
 export function confirmedInExclusionUserIds(args: {
   pendingSuspensions: readonly PollSuspensionPlayerRow[];
   penaltyOwingInVoterUserIds?: ReadonlySet<string>;
+  /**
+   * Players whose suspension was carry-forwarded or cancelled for this match.
+   * They must join Confirmed IN even if a LateArrivalPenalty is still OWED.
+   */
+  actionedSuspensionUserIds?: ReadonlySet<string>;
 }): Set<string> {
   const ids = new Set(
     args.pendingSuspensions
@@ -111,6 +116,9 @@ export function confirmedInExclusionUserIds(args: {
       .map((row) => row.userId),
   );
   for (const userId of args.penaltyOwingInVoterUserIds ?? []) {
+    if (args.actionedSuspensionUserIds?.has(userId)) {
+      continue;
+    }
     ids.add(userId);
   }
   return ids;
@@ -130,9 +138,11 @@ export function partitionPollConfirmedInVoters<T extends PollConfirmedInPartitio
   servingSuspensionPenalty: PollSuspensionPlayerRow[];
 } {
   const servingSuspensionPenalty = args.pendingSuspensions.filter(isServingSuspensionForMatch);
+  const actionedSuspensionUserIds = new Set(args.actionedSuspensions.map((row) => row.userId));
   const excludeIds = confirmedInExclusionUserIds({
     pendingSuspensions: args.pendingSuspensions,
     penaltyOwingInVoterUserIds: args.penaltyOwingInVoterUserIds,
+    actionedSuspensionUserIds,
   });
 
   const byId = new Map(args.inVoters.map((player) => [player.userId, player] as const));

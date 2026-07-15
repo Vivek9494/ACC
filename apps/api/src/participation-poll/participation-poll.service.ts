@@ -647,15 +647,13 @@ export class ParticipationPollService {
     );
 
     const rawInVoterIds = new Set(inRows.map((row) => row.userId));
-    const penaltyOwingInVoterUserIds = new Set(
-      penaltyOwing.filter((row) => rawInVoterIds.has(row.userId)).map((row) => row.userId),
-    );
 
     let pendingSuspensions: Awaited<ReturnType<typeof enrichPollSuspensionRows>> = [];
     let actionedSuspensions: Awaited<
       ReturnType<SuspensionService['listActionedForMatchTeam']>
     > = [];
     let confirmedInWithPunch = inWithPunch;
+    let penaltyOwingForSelection = penaltyOwing;
 
     if (leatherBall) {
       const pollVotes = await this.prisma.pollVote.findMany({
@@ -669,6 +667,19 @@ export class ParticipationPollService {
       ]);
       pendingSuspensions = enrichPollSuspensionRows(rawPendingSuspensions, voteByUser);
       actionedSuspensions = actionedRows;
+
+      // Carry-forward / cancel → play this match: leave the designate-to-serve pool and
+      // Confirmed-IN owing exclusion so they render as Confirmed cards, not checkboxes.
+      const actionedSuspensionUserIds = new Set(actionedRows.map((row) => row.userId));
+      penaltyOwingForSelection = penaltyOwing.filter(
+        (row) => !actionedSuspensionUserIds.has(row.userId),
+      );
+      const penaltyOwingInVoterUserIds = new Set(
+        penaltyOwingForSelection
+          .filter((row) => rawInVoterIds.has(row.userId))
+          .map((row) => row.userId),
+      );
+
       const partition = partitionPollConfirmedInVoters({
         inVoters: inWithPunch,
         pendingSuspensions,
@@ -759,7 +770,7 @@ export class ParticipationPollService {
       playingXi,
       substitutes,
       penaltyServing,
-      penaltyOwing,
+      penaltyOwing: penaltyOwingForSelection,
       onGroundSwapCandidates,
       recoveryActionsEnabled,
       recoveryEligiblePlayingXi,

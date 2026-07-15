@@ -100,4 +100,33 @@ describe('suspension vote routing', () => {
     expect(confirmedIn.map((row) => row.userId)).toEqual(['player-3']);
     expect(servingSuspensionPenalty).toEqual([]);
   });
+
+  it('keeps actioned players in Confirmed IN even when they still owe a late-arrival penalty', () => {
+    const { confirmedIn, servingSuspensionPenalty } =
+      partitionPollConfirmedInVoters<PollConfirmedInPartitionRow>({
+        inVoters: [
+          {
+            userId: 'player-3',
+            firstName: 'C',
+            lastName: 'Three',
+            profilePhotoUrl: null,
+            skillLabel: null,
+          },
+        ],
+        pendingSuspensions: [],
+        actionedSuspensions: [
+          {
+            userId: 'player-3',
+            firstName: 'C',
+            lastName: 'Three',
+            profilePhotoUrl: null,
+            badge: SuspensionXiBadge.CarryForward,
+          },
+        ],
+        penaltyOwingInVoterUserIds: new Set(['player-3']),
+      });
+
+    expect(confirmedIn.map((row) => row.userId)).toEqual(['player-3']);
+    expect(servingSuspensionPenalty).toEqual([]);
+  });
 });
