@@ -1051,7 +1051,7 @@ describe('MatchesService — scorer assignment (§11.1)', () => {
     expect(scorerGrants.replaceActiveGrant).toHaveBeenCalledWith('match-1', 'scorer-new', admin.id);
     expect(live.notifyScorerRevoked).toHaveBeenCalledWith('match-1', 'scorer-old', 'swap');
     expect(live.notifyScorerAssigned).toHaveBeenCalledWith('scorer-new', 'match-1');
-    expect(notifications.notify).toHaveBeenCalled();
+    expect(notifications.sendToAudience).toHaveBeenCalled();
   });
 
   it('rejects mid-match swap for non-admin roles', async () => {

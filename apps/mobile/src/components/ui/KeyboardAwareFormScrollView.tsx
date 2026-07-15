@@ -14,6 +14,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  TouchableWithoutFeedback,
   View,
   type ScrollViewProps,
 } from 'react-native';
@@ -233,8 +234,19 @@ export const KeyboardAwareFormScrollView = forwardRef<
     [scrollFieldIntoView],
   );
 
+  // On iOS, KeyboardAvoidingView already shrinks by the keyboard height — only
+  // add a small scroll cushion so the last controls clear the keyboard top.
+  // Android relies on bottom inset because KAV behavior is undefined there.
   const bottomInset =
-    keyboardHeight > 0 ? keyboardHeight + extraBottomPadding : extraBottomPadding;
+    keyboardHeight > 0
+      ? Platform.OS === 'ios'
+        ? extraBottomPadding + KEYBOARD_TOP_MARGIN
+        : keyboardHeight + extraBottomPadding
+      : extraBottomPadding;
+
+  const dismissKeyboard = useCallback(() => {
+    Keyboard.dismiss();
+  }, []);
 
   const scrollBody = (
     <View ref={viewportRef} collapsable={false} className={compact ? undefined : 'flex-1'}>
@@ -242,9 +254,9 @@ export const KeyboardAwareFormScrollView = forwardRef<
         ref={setScrollRef}
         className={compact ? undefined : 'flex-1'}
         keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag"
+        keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
         contentContainerClassName={contentContainerClassName}
-        contentContainerStyle={[{ paddingBottom: bottomInset }, contentContainerStyle]}
+        contentContainerStyle={[{ flexGrow: 1, paddingBottom: bottomInset }, contentContainerStyle]}
         onScroll={(event) => {
           scrollYRef.current = event.nativeEvent.contentOffset.y;
           onScroll?.(event);
@@ -252,7 +264,15 @@ export const KeyboardAwareFormScrollView = forwardRef<
         scrollEventThrottle={16}
         {...scrollProps}
       >
-        <View collapsable={false}>{children}</View>
+        {/*
+          Tap empty / non-control areas to dismiss. Nested Buttons / TextInputs
+          still receive their own presses (keyboardShouldPersistTaps="handled").
+        */}
+        <TouchableWithoutFeedback accessible={false} onPress={dismissKeyboard}>
+          <View collapsable={false} style={{ flexGrow: 1 }}>
+            {children}
+          </View>
+        </TouchableWithoutFeedback>
       </ScrollView>
     </View>
   );

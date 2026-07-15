@@ -8,6 +8,7 @@ import {
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { AuditService } from '../audit/audit.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { SuspensionService } from './suspension.service';
 
@@ -26,6 +27,7 @@ describe('SuspensionService', () => {
     },
   };
   const audit = { record: jest.fn().mockResolvedValue(undefined) };
+  const notifications = { sendToAudience: jest.fn().mockResolvedValue({ sent: true }) };
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -36,6 +38,7 @@ describe('SuspensionService', () => {
         SuspensionService,
         { provide: PrismaService, useValue: prismaMock },
         { provide: AuditService, useValue: audit },
+        { provide: NotificationsService, useValue: notifications },
       ],
     }).compile();
     service = module.get(SuspensionService);

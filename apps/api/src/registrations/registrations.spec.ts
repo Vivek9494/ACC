@@ -279,9 +279,11 @@ describe('RegistrationsService', () => {
       };
       expect(args.create.status).toBe(RegistrationStatus.Confirmed);
       expect(result.status).toBe(RegistrationStatus.Confirmed);
-      expect(notifications.notify).toHaveBeenCalledWith(
-        NotificationTrigger.RegistrationConfirmed,
-        expect.objectContaining({ recipientUserIds: ['sevak-1'] }),
+      expect(notifications.sendToAudience).toHaveBeenCalledWith(
+        ['sevak-1'],
+        expect.objectContaining({
+          triggerKey: NotificationTrigger.RegistrationConfirmed,
+        }),
       );
     });
 
@@ -347,6 +349,7 @@ describe('RegistrationsService', () => {
     it('confirms and notifies the player on approve', async () => {
       prisma.tournament.findUnique.mockResolvedValue({
         id: 'tour-1',
+        name: 'APL 2026',
         state: 'REGISTRATION_OPEN',
         type: 'APL',
         ballType: 'TENNIS',
@@ -364,9 +367,11 @@ describe('RegistrationsService', () => {
       const result = await service.approve(admin, 'reg-1');
 
       expect(result.status).toBe(RegistrationStatus.Confirmed);
-      expect(notifications.notify).toHaveBeenCalledWith(
-        NotificationTrigger.RegistrationConfirmed,
-        expect.objectContaining({ recipientUserIds: ['player-1'] }),
+      expect(notifications.sendToAudience).toHaveBeenCalledWith(
+        ['player-1'],
+        expect.objectContaining({
+          triggerKey: NotificationTrigger.RegistrationConfirmed,
+        }),
       );
     });
 
@@ -409,6 +414,7 @@ describe('RegistrationsService', () => {
     it('declines and notifies the player; the spec decline text is exported', async () => {
       prisma.tournament.findUnique.mockResolvedValue({
         id: 'tour-1',
+        name: 'APL 2026',
         state: 'REGISTRATION_OPEN',
         type: 'APL',
         ballType: 'TENNIS',
@@ -426,9 +432,12 @@ describe('RegistrationsService', () => {
       const result = await service.decline(admin, 'reg-1');
 
       expect(result.status).toBe(RegistrationStatus.Declined);
-      expect(notifications.notify).toHaveBeenCalledWith(
-        NotificationTrigger.RegistrationDeclined,
-        expect.objectContaining({ recipientUserIds: ['player-1'] }),
+      expect(notifications.sendToAudience).toHaveBeenCalledWith(
+        ['player-1'],
+        expect.objectContaining({
+          triggerKey: NotificationTrigger.RegistrationDeclined,
+          body: REGISTRATION_DECLINED_MESSAGE,
+        }),
       );
       expect(REGISTRATION_DECLINED_MESSAGE).toBe('Declined. Contact Center Sevak');
     });
@@ -1038,6 +1047,7 @@ describe('RegistrationsService', () => {
     it('creates a confirmed registration after the window closes', async () => {
       prisma.tournament.findUnique.mockResolvedValue({
         id: 'tour-1',
+        name: 'APL 2026',
         state: 'REGISTRATION_OPEN',
         type: 'APL',
         ballType: 'TENNIS',
@@ -1092,9 +1102,11 @@ describe('RegistrationsService', () => {
           }),
         }),
       );
-      expect(notifications.notify).toHaveBeenCalledWith(
-        NotificationTrigger.RegistrationConfirmed,
-        expect.objectContaining({ recipientUserIds: ['player-1'] }),
+      expect(notifications.sendToAudience).toHaveBeenCalledWith(
+        ['player-1'],
+        expect.objectContaining({
+          triggerKey: NotificationTrigger.RegistrationConfirmed,
+        }),
       );
     });
 

@@ -111,7 +111,7 @@ describe('TournamentsService', () => {
     center: { findMany: jest.Mock };
   };
   let permissions: { check: jest.Mock };
-  let notifications: { notify: jest.Mock };
+  let notifications: { notify: jest.Mock; sendToAudience: jest.Mock };
   let storage: { deleteObject: jest.Mock; resolveObjectKey: jest.Mock };
   let mediaUrls: { resolveReadUrl: jest.Mock; resolveReadUrls: jest.Mock };
   let tx: TxMock;
@@ -165,7 +165,10 @@ describe('TournamentsService', () => {
       },
     };
     permissions = { check: jest.fn().mockResolvedValue(true) };
-    notifications = { notify: jest.fn().mockResolvedValue(undefined) };
+    notifications = {
+      notify: jest.fn().mockResolvedValue(undefined),
+      sendToAudience: jest.fn().mockResolvedValue({ sent: true }),
+    };
     storage = {
       deleteObject: jest.fn().mockResolvedValue(undefined),
       resolveObjectKey: jest.fn((value: string | null | undefined) => value ?? null),
@@ -184,7 +187,10 @@ describe('TournamentsService', () => {
         { provide: NotificationsService, useValue: notifications },
         {
           provide: NotificationAudienceService,
-          useValue: { resolveTournamentAudience: jest.fn().mockResolvedValue([]) },
+          useValue: {
+            resolveTournamentAudience: jest.fn().mockResolvedValue([]),
+            resolveTournamentRegisteredPlayers: jest.fn().mockResolvedValue(['p1', 'p2']),
+          },
         },
         { provide: S3StorageService, useValue: storage },
         { provide: MediaUrlResolver, useValue: mediaUrls },
@@ -410,19 +416,22 @@ describe('TournamentsService', () => {
     it('notifies registrants for an open tournament', async () => {
       const row = detailRow({ state: 'REGISTRATION_OPEN' });
       prisma.tournament.findUnique.mockResolvedValue(row);
-      prisma.registration.findMany.mockResolvedValue([{ userId: 'p1' }, { userId: 'p2' }]);
+      prisma.tournament.findFirst.mockResolvedValue({ id: 'tid', name: 'ACC 2026', isDeleted: false });
 
       await service.update(actor, 'tid', { locationAddress: 'New Ground' });
 
-      expect(notifications.notify).toHaveBeenCalledWith(
-        'TOURNAMENT_EDITED_MID_REGISTRATION',
-        expect.objectContaining({ recipientUserIds: ['p1', 'p2'] }),
+      expect(notifications.sendToAudience).toHaveBeenCalledWith(
+        ['p1', 'p2'],
+        expect.objectContaining({
+          triggerKey: 'TOURNAMENT_EDITED_MID_REGISTRATION',
+        }),
       );
     });
 
     it('does not notify when the tournament is not in registration', async () => {
       prisma.tournament.findUnique.mockResolvedValue(detailRow({ state: 'LIVE' }));
       await service.update(actor, 'tid', { locationAddress: 'New Ground' });
+      expect(notifications.sendToAudience).not.toHaveBeenCalled();
       expect(notifications.notify).not.toHaveBeenCalled();
     });
   });

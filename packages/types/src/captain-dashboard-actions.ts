@@ -60,6 +60,19 @@ export function isConfirmedListButtonVisible(
   if (!pollClosed) {
     return false;
   }
+  return isCaptainUpcomingMatchCardVisible(match, timeZone, now);
+}
+
+/**
+ * Captain/CM Home upcoming match card (poll or Playing 11 prep).
+ * Visible through end of the venue-local match calendar day, even if the match
+ * is still in a prep state (Scheduled / Delayed / XI locked / Toss completed).
+ */
+export function isCaptainUpcomingMatchCardVisible(
+  match: MatchScheduleAnchor,
+  timeZone: string,
+  now: Date = new Date(),
+): boolean {
   return now <= matchDayEndUtc(match, timeZone);
 }
 

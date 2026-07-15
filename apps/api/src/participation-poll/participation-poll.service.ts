@@ -33,6 +33,7 @@ import {
   type PlayingXiSwitchRequest,
   UserRole,
   canAssignTeamRoles,
+  isCaptainUpcomingMatchCardVisible,
 } from '@acc/types';
 import {
   BadRequestException,
@@ -157,6 +158,17 @@ export class ParticipationPollService {
       }
 
       const scheduleZone = serverVenueTimezone(match.tournament.timezone);
+      // Home card disappears after venue-local match day, even if still in prep states.
+      if (
+        !isCaptainUpcomingMatchCardVisible(
+          { matchDate: match.matchDate, startTime: match.startTime },
+          scheduleZone,
+          now,
+        )
+      ) {
+        continue;
+      }
+
       const opensAt = computeParticipationPollOpensAt(match, scheduleZone);
       if (now < opensAt) {
         continue;

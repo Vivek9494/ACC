@@ -15,6 +15,7 @@ import {
   canViewMatchPlayersPunchTimeButton,
   computeManOfMatchDueAt,
   isAssignScorerButtonVisible,
+  isCaptainUpcomingMatchCardVisible,
   isConfirmedListButtonVisible,
   isManOfMatchOverdue,
   isViewPunchTimeButtonVisible,
@@ -246,11 +247,15 @@ export class CaptainService {
 
     const now = new Date();
     const scheduleZone = serverVenueTimezone(match.tournament.timezone);
-    const pollClosed = poll != null ? !poll.isOpen : xi != null;
     const matchAnchor = {
       matchDate: match.matchDate,
       startTime: match.startTime,
     };
+    if (!isCaptainUpcomingMatchCardVisible(matchAnchor, scheduleZone, now)) {
+      return null;
+    }
+
+    const pollClosed = poll != null ? !poll.isOpen : xi != null;
 
     const showConfirmedList =
       xi != null &&

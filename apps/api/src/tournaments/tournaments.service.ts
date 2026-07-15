@@ -1431,17 +1431,38 @@ export class TournamentsService {
     tournamentId: string,
     trigger: NotificationTrigger,
   ): Promise<void> {
-    const registrations = await this.prisma.registration.findMany({
-      where: { tournamentId },
-      select: { userId: true },
-    });
-    if (registrations.length === 0) {
-      return;
+    try {
+      const tournament = await this.prisma.tournament.findFirst({
+        where: { id: tournamentId, isDeleted: false },
+        select: { id: true, name: true },
+      });
+      if (!tournament) {
+        return;
+      }
+
+      const userIds = await this.notificationAudience.resolveTournamentRegisteredPlayers(
+        tournamentId,
+      );
+      if (userIds.length === 0) {
+        return;
+      }
+
+      const copy = midTournamentNotifyCopy(trigger, tournament.name);
+      await this.notifications.sendToAudience(userIds, {
+        triggerKey: trigger,
+        // Each edit should notify again — include a time slice for uniqueness.
+        dedupeKey: `${trigger}:${tournamentId}:${Date.now()}`,
+        title: copy.title,
+        body: copy.body,
+        data: { tournamentId, screen: 'tournament' },
+        audienceSummary: `Registered players of tournament ${tournamentId}`,
+      });
+    } catch (err) {
+      this.logger.error(
+        `Failed to notify registrants for ${trigger} on tournament ${tournamentId}`,
+        err as Error,
+      );
     }
-    await this.notifications.notify(trigger, {
-      recipientUserIds: registrations.map((r) => r.userId),
-      data: { tournamentId },
-    });
   }
 
   private normalizePosterUrlForStorage(posterUrl: string): string {
@@ -1488,5 +1509,44 @@ export class TournamentsService {
       ...(await this.toSummaryFields(row)),
       scopeDisplay,
     };
+  }
+}
+
+function midTournamentNotifyCopy(
+  trigger: NotificationTrigger,
+  tournamentName: string,
+): { title: string; body: string } {
+  switch (trigger) {
+    case NotificationTrigger.TournamentDeletedMidRegistration:
+      return {
+        title: 'Tournament cancelled',
+        body: `${tournamentName} was deleted. Open the app for details.`,
+      };
+    case NotificationTrigger.TournamentDatesChanged:
+      return {
+        title: 'Tournament dates changed',
+        body: `The schedule for ${tournamentName} was updated.`,
+      };
+    case NotificationTrigger.TournamentLocationChanged:
+      return {
+        title: 'Tournament location changed',
+        body: `The venue for ${tournamentName} was updated.`,
+      };
+    case NotificationTrigger.TournamentRegistrationWindowChanged:
+      return {
+        title: 'Registration window changed',
+        body: `Registration dates for ${tournamentName} were updated.`,
+      };
+    case NotificationTrigger.TournamentVideoPolicyChanged:
+      return {
+        title: 'Video upload policy changed',
+        body: `Skill-video requirements for ${tournamentName} were updated.`,
+      };
+    case NotificationTrigger.TournamentEditedMidRegistration:
+    default:
+      return {
+        title: 'Tournament updated',
+        body: `${tournamentName} was updated. Open the app for details.`,
+      };
   }
 }

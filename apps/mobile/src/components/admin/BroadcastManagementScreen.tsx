@@ -19,7 +19,8 @@ export function BroadcastManagementScreen(): React.ReactElement {
       <KeyboardAwareFormScrollView
         className="flex-1"
         contentContainerClassName="flex-grow"
-        extraBottomPadding={40}
+        extraBottomPadding={48}
+        keyboardVerticalOffset={0}
       >
         <View className="border-b border-outline-variant/60 px-4 pb-4 pt-2">
           <AdminBroadcastSection onPosted={() => setHistoryRefreshKey((key) => key + 1)} />

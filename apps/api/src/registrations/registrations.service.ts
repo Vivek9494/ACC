@@ -14,6 +14,7 @@ import {
   RegistrationPlayerType,
   RegistrationSortKey,
   RegistrationStatus,
+  REGISTRATION_DECLINED_MESSAGE,
   type RegistrationSummary,
   type RegistrationVerificationQueue,
   type CenterPlayerRosterEntry,
@@ -147,10 +148,12 @@ export class RegistrationsService {
     );
 
     if (ballType === BallType.Leather) {
-      await this.notifications.notify(NotificationTrigger.RegistrationConfirmed, {
-        recipientUserIds: [actor.id],
-        data: { tournamentId },
-      });
+      await this.notifyRegistrationDecision(
+        actor.id,
+        tournament,
+        RegistrationStatus.Confirmed,
+        detail.id,
+      );
     }
 
     await this.notifyVideoUploadDeadline(actor.id, tournament);
@@ -193,6 +196,36 @@ export class RegistrationsService {
     } catch (err) {
       this.logger.error(
         `Video-upload-deadline notification failed for tournament ${tournament.id}`,
+        err as Error,
+      );
+    }
+  }
+
+  /** §7.3: push confirm/decline to the registrant. Best-effort. */
+  private async notifyRegistrationDecision(
+    userId: string,
+    tournament: { id: string; name: string },
+    status: typeof RegistrationStatus.Confirmed | typeof RegistrationStatus.Declined,
+    registrationId: string,
+  ): Promise<void> {
+    const confirmed = status === RegistrationStatus.Confirmed;
+    const triggerKey = confirmed
+      ? NotificationTrigger.RegistrationConfirmed
+      : NotificationTrigger.RegistrationDeclined;
+    try {
+      await this.notifications.sendToAudience([userId], {
+        triggerKey,
+        dedupeKey: `${triggerKey}:${registrationId}`,
+        title: confirmed ? 'Registration confirmed' : 'Registration declined',
+        body: confirmed
+          ? `You're confirmed for ${tournament.name}.`
+          : REGISTRATION_DECLINED_MESSAGE,
+        data: { tournamentId: tournament.id, screen: 'tournament' },
+        audienceSummary: `Registrant ${userId} of tournament ${tournament.id}`,
+      });
+    } catch (err) {
+      this.logger.error(
+        `Registration ${confirmed ? 'confirmed' : 'declined'} notification failed for ${registrationId}`,
         err as Error,
       );
     }
@@ -282,10 +315,13 @@ export class RegistrationsService {
       },
     });
 
-    await this.notifications.notify(NotificationTrigger.RegistrationConfirmed, {
-      recipientUserIds: [player.id],
-      data: { tournamentId },
-    });
+    await this.notifyRegistrationDecision(
+      player.id,
+      tournament,
+      RegistrationStatus.Confirmed,
+      detail.id,
+    );
+    await this.notifyVideoUploadDeadline(player.id, tournament);
 
     return detail;
   }
@@ -435,11 +471,11 @@ export class RegistrationsService {
       after: { status },
     });
     // ?7.3: notify the player on confirm/decline.
-    await this.notifications.notify(
-      status === RegistrationStatus.Confirmed
-        ? NotificationTrigger.RegistrationConfirmed
-        : NotificationTrigger.RegistrationDeclined,
-      { recipientUserIds: [existing.userId], data: { tournamentId: existing.tournamentId } },
+    await this.notifyRegistrationDecision(
+      existing.userId,
+      tournament,
+      status,
+      registrationId,
     );
     return this.resolveSummaryPhoto(this.toDetail(row));
   }

@@ -2155,10 +2155,7 @@ export class MatchesService {
       targetEntityType: 'match',
       targetEntityId: matchId,
     });
-    await this.notifications.notify(NotificationTrigger.ScorerAssigned, {
-      recipientUserIds: [dto.userId],
-      data: { matchId },
-    });
+    await this.notifyScorerAssigned(matchId, dto.userId);
     return this.getDetail(matchId, actor);
   }
 
@@ -2232,10 +2229,7 @@ export class MatchesService {
     }
     this.live.notifyScorerAssigned(dto.userId, matchId);
 
-    await this.notifications.notify(NotificationTrigger.ScorerAssigned, {
-      recipientUserIds: [dto.userId],
-      data: { matchId },
-    });
+    await this.notifyScorerAssigned(matchId, dto.userId);
     return this.getDetail(matchId, actor);
   }
 
@@ -2278,11 +2272,29 @@ export class MatchesService {
       before: dto.fromUserId ? { fromUserId: dto.fromUserId } : undefined,
       after: { toUserId: dto.toUserId },
     });
-    await this.notifications.notify(NotificationTrigger.ScorerAssigned, {
-      recipientUserIds: [dto.toUserId],
-      data: { matchId },
-    });
+    await this.notifyScorerAssigned(matchId, dto.toUserId);
     return this.getDetail(matchId, actor);
+  }
+
+  /**
+   * §11.1 / §17: notify the player granted per-match Scorer access. Best-effort.
+   */
+  private async notifyScorerAssigned(matchId: string, scorerUserId: string): Promise<void> {
+    try {
+      await this.notifications.sendToAudience([scorerUserId], {
+        triggerKey: NotificationTrigger.ScorerAssigned,
+        dedupeKey: `${NotificationTrigger.ScorerAssigned}:${matchId}:${scorerUserId}`,
+        title: 'Scorer assigned',
+        body: 'You have been assigned as scorer for a match. Open the app to start scoring.',
+        data: { matchId, screen: 'match' },
+        audienceSummary: `Scorer ${scorerUserId} for match ${matchId}`,
+      });
+    } catch (err) {
+      this.logger.error(
+        `Failed to send scorer-assigned notification for match ${matchId}`,
+        err as Error,
+      );
+    }
   }
 
   async revokeScorer(actor: AuthUser, matchId: string, userId: string): Promise<MatchDetail> {

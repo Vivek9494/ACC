@@ -6,6 +6,7 @@ import {
   SuspensionStatus,
   SuspensionPollVoteSide,
   SuspensionXiBadge,
+  UserRole,
   isPenaltyUnavailableToServe,
   type AuthUser,
   type PenaltyServingPlayerView,
@@ -17,13 +18,19 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 
 import { AuditService } from '../audit/audit.service';
 import { isCaptainOrViceCaptain } from '../authz/team-leader.util';
+import {
+  NotificationTrigger,
+  NotificationsService,
+} from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { selectableUserWhere } from '../users/user-query';
 
 const ACTIVE_MATCH_WHERE = { isDeleted: false } as const satisfies Prisma.MatchWhereInput;
 
@@ -67,9 +74,12 @@ type AttendancePunchRow = {
 
 @Injectable()
 export class SuspensionService {
+  private readonly logger = new Logger(SuspensionService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   /**
@@ -347,6 +357,13 @@ export class SuspensionService {
         kind: 'captain',
       },
     });
+
+    await this.notifyClubManagersOfCaptainAction(
+      NotificationTrigger.SuspensionCarriedForward,
+      row,
+      'Suspension carried forward',
+      'A captain carried a late-arrival suspension forward to the next match.',
+    );
   }
 
   async cancel(actor: AuthUser, suspensionId: string): Promise<void> {
@@ -371,6 +388,60 @@ export class SuspensionService {
       targetEntityId: row.id,
       after: { userId: row.userId, servingMatchId: row.servingMatchId },
     });
+
+    await this.notifyClubManagersOfCaptainAction(
+      NotificationTrigger.SuspensionCancelled,
+      row,
+      'Suspension cancelled',
+      'A captain cancelled a late-arrival suspension.',
+    );
+  }
+
+  /** §17: captain penalty actions notify Club Managers. Best-effort. */
+  private async notifyClubManagersOfCaptainAction(
+    triggerKey:
+      | typeof NotificationTrigger.SuspensionCarriedForward
+      | typeof NotificationTrigger.SuspensionCancelled,
+    suspension: { id: string; userId: string; tournamentId: string },
+    title: string,
+    body: string,
+  ): Promise<void> {
+    try {
+      const clubManagers = await this.prisma.user.findMany({
+        where: { ...selectableUserWhere, role: UserRole.ClubManager },
+        select: { id: true },
+      });
+      const userIds = clubManagers.map((user) => user.id);
+      if (userIds.length === 0) {
+        return;
+      }
+
+      const player = await this.prisma.user.findUnique({
+        where: { id: suspension.userId },
+        select: { firstName: true, lastName: true },
+      });
+      const playerName = player
+        ? `${player.firstName} ${player.lastName}`.trim()
+        : 'A player';
+
+      await this.notifications.sendToAudience(userIds, {
+        triggerKey,
+        dedupeKey: `${triggerKey}:${suspension.id}`,
+        title,
+        body: `${body} Player: ${playerName}.`,
+        data: {
+          tournamentId: suspension.tournamentId,
+          suspensionId: suspension.id,
+          screen: 'tournament',
+        },
+        audienceSummary: `Club Managers — suspension ${suspension.id}`,
+      });
+    } catch (err) {
+      this.logger.error(
+        `Failed to notify Club Managers for ${triggerKey} on suspension ${suspension.id}`,
+        err as Error,
+      );
+    }
   }
 
   /** On Playing XI confirm: explicit IN vote → served; OUT or no vote → auto-carry (DP2). */

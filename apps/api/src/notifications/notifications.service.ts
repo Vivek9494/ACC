@@ -58,6 +58,10 @@ export const NotificationTrigger = {
   VideoUploadDeadline: 'VIDEO_UPLOAD_DEADLINE',
   /** ?17: at 10 AM EDT on a user's birthday, to all active users (Phase C). */
   Birthday: 'BIRTHDAY',
+  /** ?17: Captain carried a pending suspension forward — notify Club Managers. */
+  SuspensionCarriedForward: 'SUSPENSION_CARRIED_FORWARD',
+  /** ?17: Captain cancelled a pending suspension — notify Club Managers. */
+  SuspensionCancelled: 'SUSPENSION_CANCELLED',
 } as const;
 
 export type NotificationTrigger =

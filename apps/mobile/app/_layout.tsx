@@ -21,6 +21,8 @@ import { GlobalAttendanceMonitor } from '../src/components/attendance/GlobalAtte
 import { homeRouteForUser } from '../src/lib/home-route';
 // Geofence attendance: registers the background task at startup (see match-geofence-task.ts).
 import '../src/geofence/match-geofence-task';
+// Show FCM / remote pushes as banners while the app is foregrounded.
+import '../src/lib/push-notifications';
 
 void SplashScreen.preventAutoHideAsync();
 
