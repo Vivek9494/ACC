@@ -883,16 +883,15 @@ export class AttendanceService {
       return;
     }
 
-    if (actor.role === UserRole.ClubManager) {
-      if (match.tournament.createdByUserId === actor.id) {
-        return;
-      }
-      throw new ForbiddenException({
-        message: 'You do not have access to punch time for this match',
-        error: 'FORBIDDEN',
-      });
+    if (
+      actor.role === UserRole.ClubManager &&
+      match.tournament.createdByUserId === actor.id
+    ) {
+      return;
     }
 
+    // Captain/VC of this team — including Club Managers whose primary role is CM
+    // but who also hold a Captain/VC RoleAssignment for the match side.
     const isLeader = await isCaptainOrViceCaptain(
       this.prisma,
       actor.id,
@@ -901,7 +900,10 @@ export class AttendanceService {
     );
     if (!isLeader) {
       throw new ForbiddenException({
-        message: 'You may only view punch time for your own team',
+        message:
+          actor.role === UserRole.ClubManager
+            ? 'You do not have access to punch time for this match'
+            : 'You may only view punch time for your own team',
         error: 'FORBIDDEN',
       });
     }

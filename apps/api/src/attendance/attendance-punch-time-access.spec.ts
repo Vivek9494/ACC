@@ -139,11 +139,27 @@ describe('AttendanceService punch time access', () => {
     expect(isCaptainMock).not.toHaveBeenCalled();
   });
 
-  it('blocks club manager who does not organize the tournament', async () => {
+  it('blocks club manager who does not organize the tournament and is not a match captain', async () => {
+    isCaptainMock.mockResolvedValue(false);
     const clubManager = { id: 'other-cm', role: UserRole.ClubManager } as AuthUser;
 
     await expect(service.getPunchTimeView(clubManager, 'match-1', 'team-a')).rejects.toBeInstanceOf(
       ForbiddenException,
+    );
+  });
+
+  it('allows a Club Manager who is Captain/VC of the match team', async () => {
+    isCaptainMock.mockResolvedValue(true);
+    const clubManager = { id: 'cm-captain-1', role: UserRole.ClubManager } as AuthUser;
+
+    await expect(service.getPunchTimeView(clubManager, 'match-1', 'team-a')).resolves.toMatchObject({
+      teamId: 'team-a',
+    });
+    expect(isCaptainMock).toHaveBeenCalledWith(
+      expect.anything(),
+      'cm-captain-1',
+      'tournament-1',
+      'team-a',
     );
   });
 });

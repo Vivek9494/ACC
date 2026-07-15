@@ -105,22 +105,26 @@ describe('punch time scope', () => {
   });
 
   it('allows a Club Manager who is Captain/VC of a match team even if not the organizer', () => {
-    expect(
-      canViewMatchPlayersPunchTimeButton(
-        authUser(
-          UserRole.ClubManager,
-          [{ tournamentId: 'tournament-1', teamId: 'team-a', role: UserRole.Captain }],
-          'cm-captain-1',
-        ),
-        baseMatch,
-      ),
-    ).toBe(true);
+    const cmCaptain = authUser(
+      UserRole.ClubManager,
+      [{ tournamentId: 'tournament-1', teamId: 'team-a', role: UserRole.Captain }],
+      'cm-captain-1',
+    );
+    expect(canViewMatchPlayersPunchTimeButton(cmCaptain, baseMatch)).toBe(true);
+    expect(resolvePunchTimeViewScope(cmCaptain, baseMatch)).toEqual({
+      teams: [{ id: 'team-a', name: 'ACC 3' }],
+      showTeamTabs: false,
+      defaultTeamId: 'team-a',
+    });
     expect(
       canViewMatchPlayersPunchTimeButton(
         authUser(UserRole.ClubManager, [], 'cm-captain-1'),
         baseMatch,
       ),
     ).toBe(false);
+    expect(
+      resolvePunchTimeViewScope(authUser(UserRole.ClubManager, [], 'cm-captain-1'), baseMatch),
+    ).toBeNull();
   });
 
   it('scopes captain to their own team even in ACC-vs-ACC', () => {
