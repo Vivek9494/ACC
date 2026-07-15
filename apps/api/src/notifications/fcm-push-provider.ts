@@ -54,8 +54,14 @@ export class FcmPushProvider implements PushProvider {
           if (res.success) {
             result.successTokens.push(token);
           } else if (res.error && INVALID_TOKEN_CODES.has(res.error.code)) {
+            this.logger.warn(
+              `FCM rejected token as invalid (${res.error.code}): ${res.error.message}`,
+            );
             result.invalidTokens.push(token);
           } else {
+            this.logger.warn(
+              `FCM send failed (${res.error?.code ?? 'unknown'}): ${res.error?.message ?? 'no message'}`,
+            );
             result.failedTokens.push(token);
           }
         });

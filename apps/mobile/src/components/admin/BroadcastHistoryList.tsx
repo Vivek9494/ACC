@@ -4,7 +4,7 @@ import {
   type BroadcastHistoryEntry,
 } from '@acc/types';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 
 import { BroadcastImage } from '../dashboard/BroadcastImage';
 import { Card } from '../ui/Card';
@@ -58,7 +58,10 @@ export interface BroadcastHistoryListProps {
   refreshKey?: number;
 }
 
-/** View-only broadcast history — newest first, below the post form. */
+/**
+ * View-only broadcast history — newest first, below the post form.
+ * Renders as a column (not FlatList) so it can sit inside KeyboardAwareFormScrollView.
+ */
 export function BroadcastHistoryList({ refreshKey = 0 }: BroadcastHistoryListProps): React.ReactElement {
   const [entries, setEntries] = useState<BroadcastHistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -83,7 +86,7 @@ export function BroadcastHistoryList({ refreshKey = 0 }: BroadcastHistoryListPro
 
   if (loading) {
     return (
-      <View className="flex-1 items-center justify-center py-8">
+      <View className="items-center justify-center px-4 py-8">
         <ActivityIndicator color={FIELD_ORANGE} />
       </View>
     );
@@ -98,24 +101,17 @@ export function BroadcastHistoryList({ refreshKey = 0 }: BroadcastHistoryListPro
   }
 
   return (
-    <FlatList
-      className="flex-1"
-      contentContainerClassName="gap-3 px-4 pb-8 pt-4"
-      data={entries}
-      keyExtractor={(item) => item.id}
-      keyboardDismissMode="on-drag"
-      keyboardShouldPersistTaps="handled"
-      ListHeaderComponent={
-        <Text className="font-sans-bold text-xs uppercase tracking-wider text-on-surface-variant">
-          Past broadcasts
-        </Text>
-      }
-      ListEmptyComponent={
+    <View className="gap-3 px-4 pb-8 pt-4">
+      <Text className="font-sans-bold text-xs uppercase tracking-wider text-on-surface-variant">
+        Past broadcasts
+      </Text>
+      {entries.length === 0 ? (
         <Text className="py-8 font-sans text-sm text-on-surface-variant">
           No broadcasts posted yet.
         </Text>
-      }
-      renderItem={({ item }) => <BroadcastHistoryCard entry={item} />}
-    />
+      ) : (
+        entries.map((entry) => <BroadcastHistoryCard key={entry.id} entry={entry} />)
+      )}
+    </View>
   );
 }

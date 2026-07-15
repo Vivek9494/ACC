@@ -133,6 +133,23 @@ export class EnvironmentVariables {
   @IsOptional()
   @IsString()
   FCM_PRIVATE_KEY?: string;
+
+  /**
+   * iOS bundle id used when converting APNs device tokens → FCM registration
+   * tokens (must match Firebase iOS app / Expo ios.bundleIdentifier).
+   */
+  @IsOptional()
+  @IsString()
+  IOS_BUNDLE_ID?: string;
+
+  /**
+   * When "true", APNs→FCM import uses the sandbox APNs environment (dev builds).
+   * TestFlight / App Store need production (false). Defaults to true outside
+   * production NODE_ENV.
+   */
+  @IsOptional()
+  @IsString()
+  FCM_APNS_SANDBOX?: string;
 }
 
 const PRODUCTION_REQUIRED_STRINGS = [

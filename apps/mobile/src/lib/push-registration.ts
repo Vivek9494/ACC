@@ -4,9 +4,13 @@
  * can target the user. Never throws into the auth flow — a simulator, denied
  * permission, or missing native Firebase config simply results in no token.
  *
- * NATIVE SETUP: real tokens require a dev/production build with Firebase
- * configured (google-services.json for Android, GoogleService-Info.plist + APNs
- * for iOS). In Expo Go / the simulator this no-ops.
+ * iOS returns an APNs device token from getDevicePushTokenAsync; the API
+ * converts it to an FCM registration token before storage/send. Android already
+ * returns an FCM token.
+ *
+ * NATIVE SETUP: real tokens require a physical device + production/dev build
+ * (GoogleService-Info.plist on iOS; google-services.json on Android when used).
+ * Expo Go / the simulator no-op.
  */
 import { PushPlatform, type RegisterPushTokenRequest } from '@acc/types';
 import * as Device from 'expo-device';
@@ -50,7 +54,7 @@ async function resolveDeviceToken(): Promise<string | null> {
 
 /**
  * Register this device for push after a successful sign-in. Safe to call on
- * every login; the server upserts by token.
+ * every login; the server upserts by token (and converts iOS APNs → FCM).
  */
 export async function registerDeviceForPush(): Promise<void> {
   try {

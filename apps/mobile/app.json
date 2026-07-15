@@ -23,7 +23,7 @@
       "infoPlist": {
         "UIBackgroundModes": [
           "location",
-          "location"
+          "remote-notification"
         ],
         "NSPhotoLibraryUsageDescription": "Allow ASC to access your photos so you can upload a profile picture, tournament posters, and videos.",
         "NSLocalNetworkUsageDescription": "ASC connects to the development API on your local network.",
@@ -31,6 +31,9 @@
           "NSAllowsLocalNetworking": true
         },
         "ITSAppUsesNonExemptEncryption": false
+      },
+      "entitlements": {
+        "aps-environment": "production"
       }
     },
     "android": {
@@ -59,6 +62,12 @@
       "./plugins/withDateTimePickerNewArchFix.js",
       "expo-router",
       "expo-secure-store",
+      [
+        "expo-notifications",
+        {
+          "enableBackgroundRemoteNotifications": true
+        }
+      ],
       [
         "expo-image-picker",
         {

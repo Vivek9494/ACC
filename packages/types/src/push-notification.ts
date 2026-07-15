@@ -23,7 +23,10 @@ export const PUSH_PLATFORM_VALUES: readonly PushPlatform[] = [
 
 /** Request body for POST /notifications/device-tokens (register/refresh a token). */
 export interface RegisterPushTokenRequest {
-  /** FCM registration token from the device. */
+  /**
+   * Device push token from the client. Android: FCM registration token.
+   * iOS: APNs device token (the API converts it to an FCM registration token).
+   */
   token: string;
   platform: PushPlatform;
 }

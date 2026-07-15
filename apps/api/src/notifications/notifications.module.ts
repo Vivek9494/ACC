@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { cert, getApps, initializeApp } from 'firebase-admin/app';
 
 import { AuthModule } from '../auth/auth.module';
+import { ApnsFcmTokenConverter } from './apns-fcm-token.converter';
 import { ConsolePushProvider } from './console-push-provider';
 import {
   NodeEnv,
@@ -71,6 +72,7 @@ import { PushTokenService } from './push-token.service';
         return new ConsolePushProvider();
       },
     },
+    ApnsFcmTokenConverter,
     PushTokenService,
     NotificationLogService,
     NotificationAudienceService,
