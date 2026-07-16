@@ -34,6 +34,13 @@ export function CaptainUpcomingMatchCard({
   const hasVisibleActions =
     actions.showConfirmedList || actions.showAssignScorer || actions.showViewPunchTime;
 
+  const viewPollId =
+    card.participationPoll?.pollId ?? card.playingXiEntry?.pollId ?? null;
+  const showViewPoll =
+    viewPollId != null &&
+    ((pollOpen && card.participationPoll != null) ||
+      (!pollOpen && card.playingXiEntry != null));
+
   return (
     <Card accent className="gap-4 rounded-control">
       <View className="gap-1">
@@ -60,21 +67,8 @@ export function CaptainUpcomingMatchCard({
         <ParticipationPollSection
           poll={card.participationPoll}
           onPollUpdated={() => onPollUpdated?.()}
+          showViewPollLink={false}
         />
-      ) : null}
-
-      {!pollOpen && card.playingXiEntry ? (
-        <Pressable
-          onPress={() =>
-            router.push(
-              `/participation-polls/${card.playingXiEntry!.pollId}/results` as Href,
-            )
-          }
-          accessibilityRole="button"
-          className="items-center py-1 active:opacity-80"
-        >
-          <Text className="font-sans-semibold text-sm text-primary">View Poll</Text>
-        </Pressable>
       ) : null}
 
       {hasVisibleActions ? (
@@ -114,6 +108,18 @@ export function CaptainUpcomingMatchCard({
             />
           ) : null}
         </View>
+      ) : null}
+
+      {showViewPoll && viewPollId ? (
+        <Pressable
+          onPress={() =>
+            router.push(`/participation-polls/${viewPollId}/results` as Href)
+          }
+          accessibilityRole="button"
+          className="items-center py-1 active:opacity-80"
+        >
+          <Text className="font-sans-semibold text-sm text-primary">View Poll</Text>
+        </Pressable>
       ) : null}
     </Card>
   );

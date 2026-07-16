@@ -54,12 +54,15 @@ function ChoiceOption({
 export interface ParticipationPollSectionProps {
   poll: ParticipationPollCardView;
   onPollUpdated: () => void;
+  /** When false, omit the View Poll link (parent places it below other actions). Default true. */
+  showViewPollLink?: boolean;
 }
 
 /** Inline poll voting UI — embedded in the captain upcoming match card. */
 export function ParticipationPollSection({
   poll: initialPoll,
   onPollUpdated,
+  showViewPollLink = true,
 }: ParticipationPollSectionProps): React.ReactElement {
   const [poll, setPoll] = useState(initialPoll);
   const [selected, setSelected] = useState<PollVoteChoiceType | null>(initialPoll.userVote);
@@ -165,13 +168,15 @@ export function ParticipationPollSection({
         />
       ) : null}
 
-      <Pressable
-        onPress={() => router.push(`/participation-polls/${poll.pollId}/results` as Href)}
-        accessibilityRole="button"
-        className="items-center py-1 active:opacity-80"
-      >
-        <Text className="font-sans-semibold text-sm text-primary">View Poll</Text>
-      </Pressable>
+      {showViewPollLink ? (
+        <Pressable
+          onPress={() => router.push(`/participation-polls/${poll.pollId}/results` as Href)}
+          accessibilityRole="button"
+          className="items-center py-1 active:opacity-80"
+        >
+          <Text className="font-sans-semibold text-sm text-primary">View Poll</Text>
+        </Pressable>
+      ) : null}
     </View>
   );
 }
