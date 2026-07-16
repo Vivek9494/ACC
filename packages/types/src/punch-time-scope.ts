@@ -1,4 +1,5 @@
 import { type AuthUser, UserRole } from './auth';
+import { isViewPunchTimeButtonVisible } from './captain-dashboard-actions';
 import { BallType } from './rbac';
 import { MatchState, type MatchState as MatchStateType } from './match';
 import { isAccRegisteredOpponent } from './playing-xi-finalize';
@@ -48,6 +49,8 @@ export interface PunchTimeScopeMatch {
   homeTeamName?: string | null;
   awayTeamName?: string | null;
   externalOpponentName?: string | null;
+  /** UTC instant; View Punch Time opens at/after this time. */
+  reportingTime?: Date | string | null;
 }
 
 /** B1 organizer check — tournament creator (`createdByUserId`). */
@@ -84,6 +87,7 @@ function canViewPunchTimeForStates(
   user: AuthUser | null | undefined,
   match: PunchTimeScopeMatch,
   allowedStates: readonly MatchStateType[],
+  now: Date = new Date(),
 ): boolean {
   if (!user) {
     return false;
@@ -92,6 +96,9 @@ function canViewPunchTimeForStates(
     return false;
   }
   if (!allowedStates.includes(match.state)) {
+    return false;
+  }
+  if (!isViewPunchTimeButtonVisible({ reportingTime: match.reportingTime ?? null }, now)) {
     return false;
   }
   if (user.role === UserRole.Admin) {
@@ -113,22 +120,24 @@ export function isPunchTimeReadOnly(state: MatchStateType): boolean {
   return PUNCH_TIME_READ_ONLY_MATCH_STATES.includes(state);
 }
 
-/** Match Detail "View Punch Time" / "Players Punch Time" button visibility. */
+/** Match Detail "View Punch Time" button visibility (role + leather + state + reporting time). */
 export function canViewMatchPlayersPunchTimeButton(
   user: AuthUser | null | undefined,
   match: PunchTimeScopeMatch,
+  now: Date = new Date(),
 ): boolean {
-  return canViewPunchTimeForStates(user, match, PUNCH_TIME_VIEWABLE_MATCH_STATES);
+  return canViewPunchTimeForStates(user, match, PUNCH_TIME_VIEWABLE_MATCH_STATES, now);
 }
 
 /**
- * Captain Home upcoming-card "View Punch Time" — same role/leather/state rules as Match Detail.
+ * Captain Home upcoming-card "View Punch Time" — same gates as Match Detail.
  */
 export function canViewCaptainDashboardPunchTimeButton(
   user: AuthUser | null | undefined,
   match: PunchTimeScopeMatch,
+  now: Date = new Date(),
 ): boolean {
-  return canViewPunchTimeForStates(user, match, PUNCH_TIME_VIEWABLE_MATCH_STATES);
+  return canViewPunchTimeForStates(user, match, PUNCH_TIME_VIEWABLE_MATCH_STATES, now);
 }
 
 /**
@@ -138,8 +147,9 @@ export function canViewCaptainDashboardPunchTimeButton(
 export function resolvePunchTimeViewScope(
   user: AuthUser | null | undefined,
   match: PunchTimeScopeMatch,
+  now: Date = new Date(),
 ): PunchTimeViewScope | null {
-  if (!canViewPunchTimeForStates(user, match, PUNCH_TIME_PAGE_MATCH_STATES)) {
+  if (!canViewPunchTimeForStates(user, match, PUNCH_TIME_PAGE_MATCH_STATES, now)) {
     return null;
   }
 

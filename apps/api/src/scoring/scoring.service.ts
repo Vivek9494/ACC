@@ -185,6 +185,7 @@ export class ScoringService {
     }
 
     await this.requireInnings(matchId, inningsId);
+    await this.assertInningsIsActiveForScoring(matchId, inningsId);
     const live = await this.liveDeliveries(inningsId);
     const events = live.map((d) => toScoringEvent(d));
 
@@ -475,7 +476,8 @@ export class ScoringService {
     const events = live.map((d) => toScoringEvent(d));
     const derived = deriveInnings(events);
 
-    if (!inningsAcceptsDelivery(events)) {
+    // Natural close (overs/all-out/target) or official END_INNINGS — overs are fixed.
+    if (derived.closed) {
       throw new BadRequestException({
         message: 'Cannot revise overs for a closed innings',
         error: 'INNINGS_CLOSED',
@@ -983,6 +985,24 @@ export class ScoringService {
       userCol: (id) => (id != null && !isExternal(id) ? id : null),
       extCol: (id) => (id != null && isExternal(id) ? id : null),
     };
+  }
+
+  /** Reject scoring against a prior innings after chase / next innings has been created. */
+  private async assertInningsIsActiveForScoring(
+    matchId: string,
+    inningsId: string,
+  ): Promise<void> {
+    const latest = await this.prisma.innings.findFirst({
+      where: { matchId },
+      orderBy: { sequence: 'desc' },
+      select: { id: true },
+    });
+    if (!latest || latest.id !== inningsId) {
+      throw new BadRequestException({
+        message: 'The innings is closed; no further deliveries may be recorded',
+        error: 'INNINGS_CLOSED',
+      });
+    }
   }
 
   private assertCanAppendDelivery(events: ScoringEvent[], req: RecordDeliveryRequest): void {

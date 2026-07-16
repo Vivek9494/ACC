@@ -1,6 +1,5 @@
-import { DismissalType } from '@acc/types';
+import { DeliveryType, DismissalType } from '@acc/types';
 
-import { deriveInnings } from './fold';
 import { nextBallPosition } from './position';
 import type { ScoringEvent } from './types';
 
@@ -34,9 +33,24 @@ export function isConsecutiveOverViolation(
   return previousOverBowler === bowlerId;
 }
 
-/** Fold the live stream and expose whether another ball may be appended. */
+/**
+ * True once the scorer has officially ended the innings (END_INNINGS event).
+ * Natural close conditions (overs complete / all out / target) leave the innings
+ * editable until that confirmation — Cancel on the End Innings dialog must not
+ * lock scoring.
+ */
+export function inningsOfficiallyEnded(events: ScoringEvent[]): boolean {
+  return events.some((e) => e.type === DeliveryType.EndInnings);
+}
+
+/**
+ * Whether another ball may be appended to this innings' delivery log.
+ * Natural end conditions alone do not block scoring; only an official END_INNINGS
+ * event does. Callers must also ensure this innings is still the match's active
+ * (latest) innings after a chase / completion transition.
+ */
 export function inningsAcceptsDelivery(events: ScoringEvent[]): boolean {
-  return !deriveInnings(events).closed;
+  return !inningsOfficiallyEnded(events);
 }
 
 /** Undo is equivalent to dropping the last event — state re-derives identically. */

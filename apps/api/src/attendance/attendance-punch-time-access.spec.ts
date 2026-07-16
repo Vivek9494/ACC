@@ -109,6 +109,19 @@ describe('AttendanceService punch time access', () => {
     expect(permissions.check).not.toHaveBeenCalled();
   });
 
+  it('blocks punch-time view before reporting time', async () => {
+    prismaMock.match.findFirst.mockResolvedValue({
+      ...liveMatch,
+      state: MatchState.Scheduled,
+      reportingTime: new Date('2099-01-01T12:00:00.000Z'),
+    });
+    const admin = { id: 'admin-1', role: UserRole.Admin } as AuthUser;
+
+    await expect(service.getPunchTimeView(admin, 'match-1', 'team-a')).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+  });
+
   it('blocks captain from fetching the other team punch data', async () => {
     isCaptainMock.mockResolvedValue(false);
     const captain = { id: 'captain-1', role: UserRole.Captain } as AuthUser;

@@ -780,6 +780,15 @@ export default function LiveScoringScreen(): React.ReactElement {
     [match, card],
   );
 
+  // After Cancel, keep dialog dismissed while the end condition still holds.
+  // If the scorer undoes out of the end condition, clear the dismiss so the
+  // dialog can auto-prompt again when the innings next becomes closable.
+  useEffect(() => {
+    if (!inningsTransitionPending) {
+      endInningsPromptDismissedRef.current = false;
+    }
+  }, [inningsTransitionPending]);
+
   useEffect(() => {
     if (
       inningsTransitionPending &&
@@ -1053,7 +1062,8 @@ export default function LiveScoringScreen(): React.ReactElement {
   const batsman1Card = inn?.batters.find((b) => b.playerId === battingSlots.batsman1Id);
   const batsman2Card = inn?.batters.find((b) => b.playerId === battingSlots.batsman2Id);
   const bowlerCard = inn?.bowlers.find((b) => b.playerId === bowlerId);
-  const keypadDisabled = working || !openersReady || Boolean(inn?.closed);
+  const keypadDisabled =
+    working || !openersReady || (Boolean(inn?.closed) && !inningsTransitionPending);
 
   const scoringViewToggle =
     inn != null ? (

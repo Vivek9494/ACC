@@ -25,7 +25,7 @@ export interface MatchSummaryCardProps {
   status: MatchSummaryCardStatus;
   /** Toss / pre-match status line (blue). Shown for LIVE (and UPCOMING when set). */
   infoLine?: string | null;
-  /** Completed-match result line (blue). Shown for COMPLETED only. */
+  /** Completed-match result line (orange). Shown for COMPLETED only. */
   resultLine?: string | null;
   /** ACC ground-setup responsibility; omitted when unset. */
   homeAway?: HomeAway | null;
@@ -109,7 +109,13 @@ export function MatchSummaryCard({
       <TeamRow team={teamB} showScore={showScore} />
 
       {footerLine ? (
-        <Text className="font-sans-semibold text-sm text-tertiary">{footerLine}</Text>
+        <Text
+          className={`font-sans-semibold text-sm ${
+            status === 'COMPLETED' ? 'text-[#FF6B00]' : 'text-tertiary'
+          }`}
+        >
+          {footerLine}
+        </Text>
       ) : null}
     </Card>
   );

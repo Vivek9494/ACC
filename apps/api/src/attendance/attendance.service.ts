@@ -17,6 +17,7 @@ import {
   Permission,
   PUNCH_TIME_PAGE_MATCH_STATES,
   isPunchTimeReadOnly,
+  isViewPunchTimeButtonVisible,
   serverVenueTimezone,
   UserRole,
   type AttendanceMonitoringTarget,
@@ -860,6 +861,12 @@ export class AttendanceService {
       throw new BadRequestException({
         message: 'Punch time is not available for this match state',
         error: 'INVALID_MATCH_STATE',
+      });
+    }
+    if (!isViewPunchTimeButtonVisible({ reportingTime: match.reportingTime })) {
+      throw new BadRequestException({
+        message: 'Punch time is available from reporting time onward',
+        error: 'BEFORE_REPORTING_TIME',
       });
     }
   }

@@ -13,8 +13,8 @@ import {
   Keyboard,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   ScrollView,
-  TouchableWithoutFeedback,
   View,
   type ScrollViewProps,
 } from 'react-native';
@@ -265,14 +265,16 @@ export const KeyboardAwareFormScrollView = forwardRef<
         {...scrollProps}
       >
         {/*
-          Tap empty / non-control areas to dismiss. Nested Buttons / TextInputs
-          still receive their own presses (keyboardShouldPersistTaps="handled").
+          Tap empty / non-control areas to dismiss. Use Pressable + box-none so
+          nested Buttons/Pressables claim the full control hit target — wrapping
+          with TouchableWithoutFeedback was stealing edge taps (only the label
+          responded on full-width orange buttons).
         */}
-        <TouchableWithoutFeedback accessible={false} onPress={dismissKeyboard}>
-          <View collapsable={false} style={{ flexGrow: 1 }}>
+        <Pressable accessible={false} onPress={dismissKeyboard} style={{ flexGrow: 1 }}>
+          <View collapsable={false} pointerEvents="box-none" style={{ flexGrow: 1 }}>
             {children}
           </View>
-        </TouchableWithoutFeedback>
+        </Pressable>
       </ScrollView>
     </View>
   );

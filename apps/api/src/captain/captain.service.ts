@@ -18,7 +18,6 @@ import {
   isCaptainUpcomingMatchCardVisible,
   isConfirmedListButtonVisible,
   isManOfMatchOverdue,
-  isViewPunchTimeButtonVisible,
   replaceGenericHomeAwayInResultNote,
   serverVenueTimezone,
 } from '@acc/types';
@@ -270,17 +269,19 @@ export class CaptainService {
       scorerForMatch != null &&
       isAssignScorerButtonVisible(matchAnchor, scheduleZone, now);
 
-    const showViewPunchTime =
-      match.reportingTime != null &&
-      isViewPunchTimeButtonVisible({ reportingTime: match.reportingTime }, now) &&
-      canViewCaptainDashboardPunchTimeButton(actor, {
+    const showViewPunchTime = canViewCaptainDashboardPunchTimeButton(
+      actor,
+      {
         ballType: match.tournament.ballType as BallType,
         state: match.state as MatchState,
         tournamentId: match.tournamentId,
         tournamentCreatedByUserId: match.tournament.createdByUserId,
         homeTeamId: match.homeTeamId,
         awayTeamId: match.awayTeamId,
-      });
+        reportingTime: match.reportingTime,
+      },
+      now,
+    );
 
     return {
       matchId: source.matchId,

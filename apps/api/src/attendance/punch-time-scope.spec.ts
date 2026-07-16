@@ -9,6 +9,9 @@ import {
   type AuthUser,
 } from '@acc/types';
 
+const pastReporting = new Date('2020-01-01T12:00:00.000Z');
+const futureReporting = new Date('2099-01-01T12:00:00.000Z');
+
 const baseMatch = {
   ballType: BallType.Leather,
   state: MatchState.Live,
@@ -19,6 +22,7 @@ const baseMatch = {
   homeTeamName: 'ACC 3',
   awayTeamName: 'ACC 6',
   externalOpponentName: null,
+  reportingTime: pastReporting,
 };
 
 function authUser(
@@ -59,7 +63,7 @@ describe('punch time scope', () => {
     ).toBe(false);
   });
 
-  it('shows Match Detail punch-time button for Scheduled and Completed (view always)', () => {
+  it('shows Match Detail punch-time for Scheduled/Completed after reporting time', () => {
     const captain = authUser(UserRole.Captain, [
       { tournamentId: 'tournament-1', teamId: 'team-a', role: UserRole.Captain },
     ]);
@@ -69,15 +73,42 @@ describe('punch time scope', () => {
         state: MatchState.Scheduled,
       }),
     ).toBe(true);
-    expect(canViewCaptainDashboardPunchTimeButton(captain, {
-      ...baseMatch,
-      state: MatchState.Scheduled,
-    })).toBe(true);
+    expect(
+      canViewCaptainDashboardPunchTimeButton(captain, {
+        ...baseMatch,
+        state: MatchState.Scheduled,
+      }),
+    ).toBe(true);
     expect(
       canViewMatchPlayersPunchTimeButton(captain, {
         ...baseMatch,
         state: MatchState.Completed,
       }),
+    ).toBe(true);
+  });
+
+  it('hides View Punch Time before reporting time', () => {
+    const captain = authUser(UserRole.Captain, [
+      { tournamentId: 'tournament-1', teamId: 'team-a', role: UserRole.Captain },
+    ]);
+    const futureMatch = {
+      ...baseMatch,
+      state: MatchState.Scheduled,
+      reportingTime: futureReporting,
+    };
+    expect(canViewMatchPlayersPunchTimeButton(captain, futureMatch)).toBe(false);
+    expect(canViewCaptainDashboardPunchTimeButton(captain, futureMatch)).toBe(false);
+    expect(resolvePunchTimeViewScope(captain, futureMatch)).toBeNull();
+  });
+
+  it('shows View Punch Time at exactly reporting time', () => {
+    const reportingTime = new Date('2026-07-17T23:00:00.000Z');
+    expect(
+      canViewMatchPlayersPunchTimeButton(
+        authUser(UserRole.Admin),
+        { ...baseMatch, state: MatchState.Scheduled, reportingTime },
+        reportingTime,
+      ),
     ).toBe(true);
   });
 

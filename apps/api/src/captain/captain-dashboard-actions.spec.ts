@@ -3,7 +3,6 @@ import {
   isCaptainUpcomingMatchCardVisible,
   isConfirmedListButtonVisible,
   isViewPunchTimeButtonVisible,
-  PUNCH_TIME_VIEW_LEAD_MS,
 } from '@acc/types';
 
 describe('captain dashboard action timing', () => {
@@ -14,11 +13,13 @@ describe('captain dashboard action timing', () => {
   };
   const reportingTime = new Date('2025-06-14T13:00:00.000Z');
 
-  it('shows View Punch Time from 1 hour before reporting time', () => {
-    const oneHourBefore = new Date(reportingTime.getTime() - PUNCH_TIME_VIEW_LEAD_MS);
-    const tooEarly = new Date(oneHourBefore.getTime() - 60_000);
-    expect(isViewPunchTimeButtonVisible({ reportingTime }, tooEarly)).toBe(false);
-    expect(isViewPunchTimeButtonVisible({ reportingTime }, oneHourBefore)).toBe(true);
+  it('shows View Punch Time from reporting time onward (not before)', () => {
+    const oneMinuteBefore = new Date(reportingTime.getTime() - 60_000);
+    expect(isViewPunchTimeButtonVisible({ reportingTime }, oneMinuteBefore)).toBe(false);
+    expect(isViewPunchTimeButtonVisible({ reportingTime }, reportingTime)).toBe(true);
+    expect(
+      isViewPunchTimeButtonVisible({ reportingTime }, new Date(reportingTime.getTime() + 60_000)),
+    ).toBe(true);
   });
 
   it('shows Assign Scorer only on match day in venue tz', () => {

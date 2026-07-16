@@ -119,12 +119,15 @@ function makeDb() {
         take,
         include,
       }: {
-        where: { matchId: string };
+        where: { matchId: string; inningsType?: string };
         orderBy?: { sequence: 'asc' | 'desc' };
         take?: number;
         include?: { deliveries: unknown };
       }) => {
         let rows = [...innings.values()].filter((i) => i.matchId === where.matchId);
+        if (where.inningsType) {
+          rows = rows.filter((i) => i.inningsType === where.inningsType);
+        }
         rows.sort((a, b) =>
           orderBy?.sequence === 'desc'
             ? (b.sequence as number) - (a.sequence as number)
@@ -140,6 +143,29 @@ function makeDb() {
           }));
         }
         return rows;
+      },
+      findFirst: async ({
+        where,
+        orderBy,
+        select,
+      }: {
+        where: { matchId: string };
+        orderBy?: { sequence: 'asc' | 'desc' };
+        select?: { id?: boolean };
+      }) => {
+        const rows = [...innings.values()]
+          .filter((i) => i.matchId === where.matchId)
+          .sort((a, b) =>
+            orderBy?.sequence === 'desc'
+              ? (b.sequence as number) - (a.sequence as number)
+              : (a.sequence as number) - (b.sequence as number),
+          );
+        const row = rows[0] ?? null;
+        if (!row) return null;
+        if (select?.id) {
+          return { id: row.id };
+        }
+        return row;
       },
       findUnique: async ({ where }: { where: { id: string } }) => innings.get(where.id) ?? null,
       create: async ({ data }: { data: Row }) => {

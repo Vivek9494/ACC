@@ -3,9 +3,6 @@ import { DateTime } from 'luxon';
 import type { MatchScheduleAnchor } from './timezone';
 import { getMatchCalendarDayInZone, isMatchDayTodayInZone } from './timezone';
 
-/** Show "View Punch Time" from this many ms before reporting time. */
-export const PUNCH_TIME_VIEW_LEAD_MS = 60 * 60 * 1000;
-
 export type CaptainMatchScheduleAnchor = MatchScheduleAnchor & {
   reportingTime: Date | string | null;
 };
@@ -25,7 +22,11 @@ function matchDayEndUtc(match: MatchScheduleAnchor, timeZone: string): Date {
     .toJSDate();
 }
 
-/** True from 1 hour before reporting time onward (UTC instant comparison). */
+/**
+ * True from match reporting time onward (UTC instant comparison).
+ * Reporting time is stored as a UTC instant derived from venue-local wall clock
+ * (default America/Toronto); comparing instants is timezone-correct.
+ */
 export function isViewPunchTimeButtonVisible(
   match: Pick<CaptainMatchScheduleAnchor, 'reportingTime'>,
   now: Date = new Date(),
@@ -34,8 +35,7 @@ export function isViewPunchTimeButtonVisible(
   if (!reporting) {
     return false;
   }
-  const opensAt = new Date(reporting.getTime() - PUNCH_TIME_VIEW_LEAD_MS);
-  return now >= opensAt;
+  return now >= reporting;
 }
 
 /** Assign/Switch Scorer button: venue-local match calendar day only. */

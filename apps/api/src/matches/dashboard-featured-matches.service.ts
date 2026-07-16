@@ -3,11 +3,14 @@ import {
   type CaptainFeaturedMatchSummary,
   deriveChaseEquation,
   formatChaseNeedsLine,
+  formatMatchResultNote,
   formatUtcIsoDate,
   HomeAway,
   InningsType,
   MatchState,
   type MatchSummaryTeamView,
+  replaceGenericHomeAwayInResultNote,
+  resolveMatchWinnerDisplayName,
   resolveOversAllotment,
   type ScorecardResponse,
   TossDecision,
@@ -179,8 +182,26 @@ export class DashboardFeaturedMatchesService {
           isWinner: awayWinner,
         };
 
-        if (status === 'COMPLETED' && card.result.note) {
-          resultLine = card.result.note;
+        if (status === 'COMPLETED' && !card.result.isNoResult) {
+          const winnerName = resolveMatchWinnerDisplayName(
+            {
+              homeTeamId: match.homeTeamId,
+              awayTeamId: match.awayTeamId,
+              homeTeamName: homeName,
+              awayTeamName: match.awayTeam?.name,
+              externalOpponentName: match.externalOpponentName,
+            },
+            card.result,
+            card.innings,
+          );
+          resultLine = formatMatchResultNote(winnerName, card.result);
+          if (!resultLine && match.resultNote) {
+            resultLine = replaceGenericHomeAwayInResultNote(
+              match.resultNote,
+              homeName,
+              awayName,
+            );
+          }
         }
       } catch {
         // Scorecard not yet available — keep rows without scores.

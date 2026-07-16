@@ -137,7 +137,7 @@ export default function OpponentPlayersScreen(): React.ReactElement {
               label={atCapacity ? `${PLAYING_XI_SIZE}/${PLAYING_XI_SIZE} added` : 'Add'}
               onPress={() => void handleAdd()}
               disabled={atCapacity || adding}
-              className="h-12"
+              className="h-12 w-full"
             />
           </View>
 
