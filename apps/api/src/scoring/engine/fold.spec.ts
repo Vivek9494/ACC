@@ -2,7 +2,7 @@ import 'reflect-metadata';
 
 import { DeliveryType, DismissalType, InningsCloseReason } from '@acc/types';
 
-import { deriveInnings, resolveLiveParticipants } from './fold';
+import { deriveInnings, deliveryVacatedCrease, resolveLiveParticipants } from './fold';
 import { currentOverNumber, editWindowAllows, nextBallPosition, currentEventPosition } from './position';
 import { occupiesBallSlot } from './fold';
 import { isConsecutiveOverViolation } from './validation';
@@ -827,6 +827,21 @@ describe('Scoring engine — penalty runs (§12.1)', () => {
 });
 
 describe('Scoring engine — undo via event removal', () => {
+  it('deliveryVacatedCrease covers wickets and retired hurt', () => {
+    expect(
+      deliveryVacatedCrease({
+        type: DeliveryType.Legal,
+        dismissalType: DismissalType.Caught,
+      } as never),
+    ).toBe(true);
+    expect(
+      deliveryVacatedCrease({ type: DeliveryType.RetiredHurt, dismissalType: null } as never),
+    ).toBe(true);
+    expect(
+      deliveryVacatedCrease({ type: DeliveryType.Legal, dismissalType: null } as never),
+    ).toBe(false);
+  });
+
   it('restores the exact prior derived state when the last delivery is removed', () => {
     const events = innings([
       { type: DeliveryType.Legal, runsBat: 4, isBoundary: true },

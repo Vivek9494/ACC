@@ -82,6 +82,60 @@ export class LateArrivalPenaltyService {
     await this.createOwed(actor.id, playerId, teamId, match.tournamentId, matchId);
   }
 
+  /**
+   * Captain reverses a late-arrival verification on Punch Time.
+   * Only undoes an OWED penalty created by verifying late at this match.
+   * Blocks when the penalty has already been designated to serve.
+   */
+  async onCaptainUnverifyLate(
+    actor: AuthUser,
+    matchId: string,
+    teamId: string,
+    playerId: string,
+  ): Promise<void> {
+    const match = await this.requireLeatherMatch(matchId);
+    await this.assertTeamLeader(actor, match.tournamentId, teamId);
+
+    const active = await this.findActivePenalty(playerId);
+    if (active == null) {
+      return;
+    }
+
+    if (active.state === LateArrivalPenaltyState.Assigned) {
+      throw new BadRequestException({
+        message:
+          'This player is already designated to serve a late-arrival penalty. Remove the serve designation first before unverifying.',
+        error: 'PENALTY_ALREADY_ASSIGNED',
+      });
+    }
+
+    if (
+      active.state !== LateArrivalPenaltyState.Owed ||
+      active.originMatchId !== matchId ||
+      active.teamId !== teamId
+    ) {
+      throw new BadRequestException({
+        message:
+          'This late verification cannot be undone because it updated an existing penalty rather than creating a new one.',
+        error: 'PENALTY_NOT_REVERSIBLE',
+      });
+    }
+
+    const now = new Date();
+    await this.transition(
+      active,
+      LateArrivalPenaltyState.Cancelled,
+      actor.id,
+      {
+        cancelledBy: { connect: { id: actor.id } },
+        cancelledAt: now,
+      },
+      'LATE_ARRIVAL_PENALTY_CANCELLED',
+      matchId,
+      'Captain unverified late arrival on Punch Time',
+    );
+  }
+
   /** Captain verified an on-time punch — discharge penalty at the serving match. */
   async onCaptainVerifyServeCompletion(
     actor: AuthUser,

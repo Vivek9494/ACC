@@ -1,8 +1,10 @@
 import type { TeamDetailPlayerRow } from '@acc/types';
+import { formatCanadianMobileForDisplay } from '@acc/types';
 import { MaterialIcons } from '@expo/vector-icons';
-import { View } from 'react-native';
+import { Linking, Pressable, View } from 'react-native';
 import { colors } from '@/theme/colors';
 
+import { copyTextToClipboard } from '../../lib/copy-text';
 import { PlayerAvatar } from '../tournament/PlayerAvatar';
 import { Button } from '../ui/Button';
 import { Text } from '../ui/Text';
@@ -19,6 +21,24 @@ function RoleBadge({ label }: { label: string }): React.ReactElement {
       <MaterialIcons name="verified" size={14} color={colors.secondary} />
       <Text className="font-sans-semibold text-xs text-on-surface-variant">{label}</Text>
     </View>
+  );
+}
+
+function MobileNumberLink({ mobileNumber }: { mobileNumber: string }): React.ReactElement {
+  const display = formatCanadianMobileForDisplay(mobileNumber);
+  return (
+    <Pressable
+      onPress={() => void Linking.openURL(`tel:${mobileNumber}`)}
+      onLongPress={() => void copyTextToClipboard(mobileNumber)}
+      accessibilityRole="link"
+      accessibilityLabel={`Call ${display}`}
+      accessibilityHint="Long press to copy number"
+      hitSlop={4}
+    >
+      <Text className="font-sans text-sm text-primary" numberOfLines={1}>
+        {display}
+      </Text>
+    </Pressable>
   );
 }
 
@@ -55,12 +75,7 @@ export function TeamPlayerCard({
                 {player.isViceCaptain ? <RoleBadge label="Vice-Captain" /> : null}
                 {player.isManager ? <RoleBadge label="Manager" /> : null}
                 {player.mobileNumber ? (
-                  <Text
-                    className="font-sans text-sm text-on-surface-variant"
-                    numberOfLines={1}
-                  >
-                    {player.mobileNumber}
-                  </Text>
+                  <MobileNumberLink mobileNumber={player.mobileNumber} />
                 ) : null}
               </View>
 

@@ -1,4 +1,7 @@
 import {
+  composePunchTimeOnMatchDayUtc,
+  seedPunchPickerDate,
+  serverVenueTimezone,
   type PunchTimeAttendanceView,
   type PunchTimePlayerRow,
 } from '@acc/types';
@@ -12,6 +15,7 @@ import {
   getPunchTimeAttendance,
   revokeAttendancePunch,
   setAttendancePunch,
+  unverifyLateAttendancePunch,
   verifyLateAttendancePunch,
 } from '../../lib/api';
 import { EditPunchTimeDialog } from '../attendance/EditPunchTimeDialog';
@@ -31,6 +35,16 @@ interface EditTarget {
   title: string;
   initialValue: Date;
   canRevoke: boolean;
+}
+
+function matchScheduleAnchor(view: PunchTimeAttendanceView): {
+  matchDate: string | null;
+  startTime: string | null;
+} {
+  return {
+    matchDate: view.matchDate,
+    startTime: view.startTime ?? view.reportingTime,
+  };
 }
 
 function SectionHeader({ label }: { label: string }): React.ReactElement {
@@ -151,25 +165,35 @@ export function PunchTimeScreen({
     void load();
   }, [load]);
 
-  function openEdit(
-    player: PunchTimePlayerRow,
-    title: string,
-    fallbackIso: string,
-    canRevoke: boolean,
-  ): void {
-    const initial = player.punchTimeUtc ? new Date(player.punchTimeUtc) : new Date(fallbackIso);
+  function openEdit(player: PunchTimePlayerRow, title: string, canRevoke: boolean): void {
+    if (!view) {
+      return;
+    }
+    const timeZone = serverVenueTimezone(view.timezone);
+    const initial = seedPunchPickerDate({
+      match: matchScheduleAnchor(view),
+      timeZone,
+      reportingTime: view.reportingTime,
+      existingPunchUtc: player.punchTimeUtc,
+    });
     setEditTarget({ player, title, initialValue: initial, canRevoke });
   }
 
   async function handleSave(punchTimeUtc: string): Promise<void> {
-    if (!editTarget) {
+    if (!editTarget || !view) {
       return;
     }
     setWorking(true);
     try {
+      const timeZone = serverVenueTimezone(view.timezone);
+      const normalizedUtc = composePunchTimeOnMatchDayUtc(
+        matchScheduleAnchor(view),
+        timeZone,
+        new Date(punchTimeUtc),
+      );
       setView(
         await setAttendancePunch(matchId, editTarget.player.userId, selectedTeamId, {
-          punchTimeUtc,
+          punchTimeUtc: normalizedUtc,
         }),
       );
       setEditTarget(null);
@@ -197,13 +221,23 @@ export function PunchTimeScreen({
     }
   }
 
-  async function handleVerify(player: PunchTimePlayerRow): Promise<void> {
+  async function handleToggleLateVerify(player: PunchTimePlayerRow): Promise<void> {
     setWorking(true);
     try {
-      setView(await verifyLateAttendancePunch(matchId, player.userId, selectedTeamId));
+      setView(
+        player.verifiedLate
+          ? await unverifyLateAttendancePunch(matchId, player.userId, selectedTeamId)
+          : await verifyLateAttendancePunch(matchId, player.userId, selectedTeamId),
+      );
       setError(null);
     } catch (err) {
-      setError(err instanceof ApiRequestError ? err.message : 'Could not verify late arrival.');
+      setError(
+        err instanceof ApiRequestError
+          ? err.message
+          : player.verifiedLate
+            ? 'Could not unverify late arrival.'
+            : 'Could not verify late arrival.',
+      );
     } finally {
       setWorking(false);
     }
@@ -219,9 +253,7 @@ export function PunchTimeScreen({
     }
     return (
       <Pressable
-        onPress={() =>
-          openEdit(player, title, view?.reportingTime ?? new Date().toISOString(), canRevoke)
-        }
+        onPress={() => openEdit(player, title, canRevoke)}
         accessibilityRole="button"
         accessibilityLabel="Edit arrival time"
         className="h-10 w-10 items-center justify-center active:opacity-70"
@@ -309,10 +341,15 @@ export function PunchTimeScreen({
                     <View className="flex-row items-center">
                       {pencilButton(player, 'Edit arrival time', true)}
                       <Pressable
-                        onPress={() => void handleVerify(player)}
-                        disabled={working || player.verifiedLate}
-                        accessibilityRole="button"
-                        accessibilityLabel="Verify late arrival"
+                        onPress={() => void handleToggleLateVerify(player)}
+                        disabled={working}
+                        accessibilityRole="checkbox"
+                        accessibilityState={{ checked: player.verifiedLate }}
+                        accessibilityLabel={
+                          player.verifiedLate
+                            ? 'Unverify late arrival'
+                            : 'Verify late arrival'
+                        }
                         className="h-10 w-10 items-center justify-center active:opacity-70"
                       >
                         <MaterialIcons

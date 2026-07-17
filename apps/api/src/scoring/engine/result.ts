@@ -16,8 +16,12 @@ interface PairOutcome {
 
 /**
  * Outcome of one batting contest (a normal match's two innings, or one Super
- * Over's two innings). The chasing side wins the moment it passes the target;
- * the defending side wins if the chase closes short; an equal closed chase ties.
+ * Over's two innings). Uses the chase innings' target (runs to win) — including
+ * a revised/DLS target — not a raw comparison of innings totals.
+ *
+ * - Chase wins when score >= target (by wickets remaining).
+ * - Closed at exactly target - 1 → tie (Super Over).
+ * - Closed further short → defending side wins by (target - 1 - chase) runs.
  */
 function evaluatePair(
   first?: InningsScorecard,
@@ -34,7 +38,9 @@ function evaluatePair(
   if (!first || !second) {
     return none;
   }
-  if (second.runs > first.runs) {
+  // Prefer the folded chase target (revised/DLS or first+1); fall back for tests.
+  const target = second.target ?? first.runs + 1;
+  if (second.runs >= target) {
     const marginWickets = Math.max(0, maxWickets - second.wickets);
     return {
       decided: true,
@@ -47,20 +53,20 @@ function evaluatePair(
   if (!second.closed) {
     return none;
   }
-  if (second.runs < first.runs) {
+  if (second.runs === target - 1) {
     return {
       decided: true,
-      tie: false,
-      winnerTeamId: first.battingTeamId,
-      marginRuns: first.runs - second.runs,
+      tie: true,
+      winnerTeamId: null,
+      marginRuns: null,
       marginWickets: null,
     };
   }
   return {
     decided: true,
-    tie: true,
-    winnerTeamId: null,
-    marginRuns: null,
+    tie: false,
+    winnerTeamId: first.battingTeamId,
+    marginRuns: target - 1 - second.runs,
     marginWickets: null,
   };
 }

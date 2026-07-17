@@ -7,6 +7,7 @@ import {
   InningsType,
   MatchState,
   minimumOversAllotmentFromLegalBalls,
+  isOversRevisionAllowed,
   SUPER_OVER_OVERS,
   formatMatchResultNote,
   resolveMatchWinnerDisplayName,
@@ -41,6 +42,7 @@ import { toScoringEvent } from './delivery-mapper';
 import {
   currentEventPosition,
   currentOverNumber,
+  deliveryVacatedCrease,
   deriveInnings,
   editWindowAllows,
   inningsAcceptsDelivery,
@@ -266,8 +268,9 @@ export class ScoringService {
 
   /**
    * Undo the last scorer action for this innings (§12.1):
-   * 1. If an incoming / crease batter selection is persisted, clear it first
-   *    (selection is not a delivery, but is an undoable step before the next ball).
+   * 1. If an incoming / crease batter selection is persisted, clear it. When that
+   *    selection filled a crease opened by the last delivery (wicket / retired hurt),
+   *    also void that delivery so the dismissed batter is restored in one undo.
    * 2. Otherwise void the last live delivery; all figures re-derive from the log.
    */
   async undoLastDelivery(
@@ -288,16 +291,41 @@ export class ScoringService {
       innings.selectedNonStrikerExternalId != null;
 
     if (hasBatterSelection) {
+      const live = await this.liveDeliveries(inningsId);
+      const lastDelivery = live.at(-1);
+      const lastEvent = lastDelivery != null ? toScoringEvent(lastDelivery) : null;
+      const voidLastCreaseEvent =
+        lastEvent != null && deliveryVacatedCrease(lastEvent);
+
+      const participantClear: Prisma.InningsUpdateInput = {
+        selectedStrikerUserId: null,
+        selectedStrikerExternalId: null,
+        selectedNonStrikerUserId: null,
+        selectedNonStrikerExternalId: null,
+      };
+
+      let participantData: Prisma.InningsUpdateInput = participantClear;
+      if (voidLastCreaseEvent && lastEvent) {
+        const { userCol, extCol } = await this.participantColumns(matchId);
+        participantData = {
+          selectedStrikerUserId: userCol(lastEvent.strikerId),
+          selectedStrikerExternalId: extCol(lastEvent.strikerId),
+          selectedNonStrikerUserId: userCol(lastEvent.nonStrikerId),
+          selectedNonStrikerExternalId: extCol(lastEvent.nonStrikerId),
+        };
+      }
+
       const updated = await this.prisma.$transaction(async (tx) => {
         await tx.innings.update({
           where: { id: innings.id },
-          data: {
-            selectedStrikerUserId: null,
-            selectedStrikerExternalId: null,
-            selectedNonStrikerUserId: null,
-            selectedNonStrikerExternalId: null,
-          },
+          data: participantData,
         });
+        if (voidLastCreaseEvent && lastDelivery) {
+          await tx.delivery.update({
+            where: { id: lastDelivery.id },
+            data: { isVoided: true },
+          });
+        }
         return this.bumpVersion(tx, matchId);
       });
       return this.publishAndReturn(updated);
@@ -485,7 +513,9 @@ export class ScoringService {
     }
 
     const minOvers = minimumOversAllotmentFromLegalBalls(derived.legalBalls);
-    if (req.oversAllotted < minOvers) {
+    if (
+      !isOversRevisionAllowed(derived.legalBalls, req.oversAllotted)
+    ) {
       throw new BadRequestException({
         message: `Total overs cannot be less than overs already bowled (${minOvers}).`,
         error: 'OVERS_BELOW_BOWLED',

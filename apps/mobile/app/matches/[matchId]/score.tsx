@@ -16,7 +16,6 @@ import {
   type RecordDeliveryRequest,
   type InningsScorecard,
   resolveOversAllotment,
-  minimumOversAllotmentFromLegalBalls,
   type ScorecardResponse,
   type ScorerRevokedReason,
   type SetInningsParticipantsRequest,
@@ -1134,6 +1133,10 @@ export default function LiveScoringScreen(): React.ReactElement {
                     match?.oversPerInnings,
                   )
                 }
+                originalTarget={
+                  card?.originalTarget ??
+                  (card?.innings[0] != null ? card.innings[0].runs + 1 : null)
+                }
                 showRunStats={openersReady}
               />
 
@@ -1407,7 +1410,7 @@ export default function LiveScoringScreen(): React.ReactElement {
           card?.innings[0]?.oversAllotted,
           match?.oversPerInnings,
         )}
-        minOversBowled={minimumOversAllotmentFromLegalBalls(inn?.legalBalls ?? 0)}
+        legalBalls={inn?.legalBalls ?? 0}
         onBack={backToMoreOptions}
         onConfirm={(oversAllotted) => {
           const inningsId = inn?.inningsId;

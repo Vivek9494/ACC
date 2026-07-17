@@ -1,8 +1,10 @@
 import {
   APP_ORG_NAME,
   APP_SHORT_NAME,
+  formatInningsTotalScore,
   type InningsScorecard,
   MatchState,
+  originalFirstInningsRunsForChaseTotal,
   type ScorecardResponse,
 } from '@acc/types';
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
@@ -131,7 +133,7 @@ export class ScorecardPdfService {
     names: Map<string, string>,
   ): string {
     const name = (id: string | null): string => (id ? (names.get(id) ?? id) : '—');
-    const inningsBlocks = card.innings.map((inn) => this.renderInnings(inn, name)).join('\n');
+    const inningsBlocks = card.innings.map((inn) => this.renderInnings(card, inn, name)).join('\n');
     const resultLine = this.escape(card.result.note ?? 'Result pending');
     return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8" />
@@ -166,8 +168,17 @@ ${inningsBlocks}
 </body></html>`;
   }
 
-  private renderInnings(inn: InningsScorecard, name: (id: string | null) => string): string {
+  private renderInnings(
+    card: ScorecardResponse,
+    inn: InningsScorecard,
+    name: (id: string | null) => string,
+  ): string {
     const heading = `Innings ${inn.sequence}${inn.inningsType === 'SUPER_OVER' ? ' (Super Over)' : ''}`;
+    const totalScore = formatInningsTotalScore(
+      inn.runs,
+      inn.wickets,
+      originalFirstInningsRunsForChaseTotal(card, inn),
+    );
     const batters = inn.batters
       .map(
         (b) => `<tr><td>${this.escape(name(b.playerId))}${b.isOut ? '' : ' *'}</td>
@@ -190,12 +201,12 @@ ${inningsBlocks}
     const timeline = inn.timeline
       .map((t) => `<span class="tl">${this.escape(t.label ? `${t.label} ` : '')}${this.escape(t.code)}</span>`)
       .join(' ');
-    return `<h2>${this.escape(heading)} — ${inn.runs}/${inn.wickets} (${this.escape(inn.oversText)} ov)</h2>
+    return `<h2>${this.escape(heading)} — ${this.escape(totalScore)} (${this.escape(inn.oversText)} ov)</h2>
 <table>
   <thead><tr><th>Batter</th><th class="num">R</th><th class="num">B</th><th class="num">4s</th><th class="num">6s</th><th class="num">SR</th></tr></thead>
   <tbody>${batters}</tbody>
   <tfoot><tr class="totals"><td>Extras</td><td class="num" colspan="5">${inn.extras.total} (wd ${inn.extras.wides}, nb ${inn.extras.noBalls}, b ${inn.extras.byes}, lb ${inn.extras.legByes}, p ${inn.extras.penalties})</td></tr>
-  <tr class="totals"><td>Total</td><td class="num" colspan="5">${inn.runs}/${inn.wickets} (${this.escape(inn.oversText)} ov)</td></tr></tfoot>
+  <tr class="totals"><td>Total</td><td class="num" colspan="5">${this.escape(totalScore)} (${this.escape(inn.oversText)} ov)</td></tr></tfoot>
 </table>
 <table>
   <thead><tr><th>Bowler</th><th class="num">O</th><th class="num">M</th><th class="num">R</th><th class="num">W</th><th class="num">Econ</th></tr></thead>

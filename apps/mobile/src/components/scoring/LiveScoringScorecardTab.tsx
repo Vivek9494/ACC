@@ -2,13 +2,14 @@ import {
   formatBatterStatus,
   formatFallOfWicketDetail,
   formatFallOfWicketHeadline,
+  formatInningsTotalScore,
+  originalFirstInningsRunsForChaseTotal,
   partnershipRunRate,
   type AuthUser,
   type CompletedPartnership,
   type InningsScorecard,
   type MatchDetail,
   type ScorecardResponse,
-  type TimelineEntry,
 } from '@acc/types';
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { View } from 'react-native';
@@ -21,6 +22,7 @@ import {
   showLiveScorecardInningsTabs,
 } from '../../lib/scorecardInningsTabs';
 import { DroppedCatchCardSection } from './DroppedCatchCardSection';
+import { BallByBallCollapsibleSection } from './BallByBallCollapsibleSection';
 import { InningsTabs } from '../InningsTabs';
 import { BowlerFiguresScrollTable } from './BowlerFiguresScrollTable';
 import { DetailedBattingScrollTable } from './DetailedBattingScrollTable';
@@ -30,7 +32,6 @@ import {
   SCORECARD_WICKET_EVENT_DETAIL,
   SCORECARD_WICKET_EVENT_HEADLINE,
 } from './liveScoringScorecardTypography';
-import { recentBallChipStyle } from './liveScoringKeypadTokens';
 import { Text } from '../ui/Text';
 import { INPUT_SHADOW_STYLE } from '../ui/fieldStyles';
 
@@ -86,14 +87,24 @@ function ExtrasBreakdownCard({
   );
 }
 
-function InningsTotalCard({ innings }: { innings: InningsScorecard }): React.ReactElement {
+function InningsTotalCard({
+  card,
+  innings,
+}: {
+  card: ScorecardResponse;
+  innings: InningsScorecard;
+}): React.ReactElement {
   return (
     <ScorecardSection>
       <View className="flex-row items-center justify-between gap-3">
         <Text className={LIVE_SCORECARD_TYPE.bodyBold}>TOTAL</Text>
         <View className="shrink-0 flex-row items-baseline gap-2">
           <Text className={`${LIVE_SCORECARD_TYPE.statBold} text-on-surface`}>
-            {innings.runs}/{innings.wickets}
+            {formatInningsTotalScore(
+              innings.runs,
+              innings.wickets,
+              originalFirstInningsRunsForChaseTotal(card, innings),
+            )}
           </Text>
           <Text className={LIVE_SCORECARD_TYPE.bodyMuted}>({innings.oversText})</Text>
         </View>
@@ -319,59 +330,6 @@ function FallOfWicketsList({
   );
 }
 
-function BallChip({ entry }: { entry: TimelineEntry }): React.ReactElement {
-  const chip = recentBallChipStyle(entry.code, entry.isWicket);
-  const textSize =
-    chip.label.length > 3 ? 'text-xs' : chip.label.length > 2 ? 'text-sm' : 'text-sm';
-
-  return (
-    <View className={`h-9 min-w-9 items-center justify-center rounded-full px-1.5 ${chip.bgClass}`}>
-      <Text className={`font-sans-bold ${textSize} ${chip.textClass}`}>{chip.label}</Text>
-    </View>
-  );
-}
-
-function groupTimelineEntriesByOver(
-  timeline: TimelineEntry[],
-): { overNumber: number; entries: TimelineEntry[] }[] {
-  const map = new Map<number, TimelineEntry[]>();
-  for (const entry of timeline) {
-    if (entry.overNumber === null) {
-      continue;
-    }
-    const list = map.get(entry.overNumber) ?? [];
-    list.push(entry);
-    map.set(entry.overNumber, list);
-  }
-  return [...map.entries()]
-    .sort(([a], [b]) => a - b)
-    .map(([overNumber, entries]) => ({ overNumber, entries }));
-}
-
-function BallByBallByOver({ timeline }: { timeline: TimelineEntry[] }): React.ReactElement | null {
-  const overs = useMemo(() => groupTimelineEntriesByOver(timeline), [timeline]);
-  if (overs.length === 0) {
-    return null;
-  }
-
-  return (
-    <ScorecardSection title="Ball-by-ball">
-      <View className="gap-3">
-        {overs.map((over) => (
-          <View key={over.overNumber} className="gap-1.5">
-            <Text className={LIVE_SCORECARD_TYPE.overHeader}>Over {over.overNumber}</Text>
-            <View className="flex-row flex-wrap gap-1.5">
-              {over.entries.map((entry) => (
-                <BallChip key={entry.sequence} entry={entry} />
-              ))}
-            </View>
-          </View>
-        ))}
-      </View>
-    </ScorecardSection>
-  );
-}
-
 interface InningsScorecardBodyProps {
   card: ScorecardResponse;
   match: MatchDetail | null;
@@ -430,7 +388,7 @@ const InningsScorecardBody = memo(function InningsScorecardBody({
       </ScorecardSection>
 
       <ExtrasBreakdownCard extras={innings.extras} />
-      <InningsTotalCard innings={innings} />
+      <InningsTotalCard card={card} innings={innings} />
 
       {isLiveInnings && innings.partnership ? (
         <PartnershipCard innings={innings} nameOf={nameOf} title="Current partnership" />
@@ -452,7 +410,7 @@ const InningsScorecardBody = memo(function InningsScorecardBody({
 
       <FallOfWicketsList innings={innings} nameOf={nameOf} />
       <PartnershipsList innings={innings} nameOf={nameOf} />
-      <BallByBallByOver timeline={innings.timeline} />
+      <BallByBallCollapsibleSection timeline={innings.timeline} variant="live" />
     </View>
   );
 });

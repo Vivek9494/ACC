@@ -4,6 +4,7 @@ import {
   BallType,
   classifyAttendanceStatus,
   computeAttendanceCaptureWindow,
+  composePunchTimeOnMatchDayUtc,
   formatPunchTimeLabel,
   formatVenueDateTime,
   GEOFENCE_MONITOR_RADIUS_METERS,
@@ -378,6 +379,8 @@ export class AttendanceService {
         includeTime: true,
         includeZoneAbbrev: true,
       }),
+      matchDate: match.matchDate?.toISOString() ?? null,
+      startTime: match.startTime?.toISOString() ?? null,
       playersPresentCount: punchedCount,
       aggregateStatusLabel: this.aggregateStatusLabel(onTime.length, late.length, notArrived.length),
       onTime,
@@ -455,10 +458,23 @@ export class AttendanceService {
     await this.assertPunchTimeOverrideAccess(actor, match, teamId);
     await this.requireAttendanceTargetOnTeam(userId, matchId, teamId);
 
-    const punchInstant = new Date(punchTimeUtc);
-    if (Number.isNaN(punchInstant.getTime())) {
+    const punchInstantRaw = new Date(punchTimeUtc);
+    if (Number.isNaN(punchInstantRaw.getTime())) {
       throw new BadRequestException({ message: 'Invalid punch time', error: 'INVALID_PUNCH_TIME' });
     }
+
+    // Arrival is always on the match calendar day (venue TZ); re-anchor picker time.
+    const scheduleZone = serverVenueTimezone(match.tournament.timezone);
+    const punchInstant = new Date(
+      composePunchTimeOnMatchDayUtc(
+        {
+          matchDate: match.matchDate,
+          startTime: match.startTime ?? match.reportingTime,
+        },
+        scheduleZone,
+        punchInstantRaw,
+      ),
+    );
 
     const reportingTime = match.reportingTime!;
     const status = classifyAttendanceStatus(punchInstant, reportingTime);
@@ -611,6 +627,54 @@ export class AttendanceService {
       targetEntityType: 'match',
       targetEntityId: matchId,
       after: { verifiedLate: true },
+    });
+
+    return this.getPunchTimeView(actor, matchId, teamId);
+  }
+
+  /** Captain reverses a late-arrival verification (toggle off on Punch Time). */
+  async unverifyLatePunch(
+    actor: AuthUser,
+    matchId: string,
+    teamId: string,
+    userId: string,
+  ): Promise<PunchTimeAttendanceView> {
+    const match = await this.requireAttendanceMatch(matchId);
+    await this.assertPunchTimeOverrideAccess(actor, match, teamId);
+
+    const existing = await this.prisma.matchAttendancePunch.findUnique({
+      where: { matchId_userId: { matchId, userId } },
+    });
+    if (!existing || existing.teamId !== teamId) {
+      throw new NotFoundException({ message: 'Punch not found', error: 'NOT_FOUND' });
+    }
+
+    if (existing.status !== AttendancePunchStatus.Late) {
+      throw new BadRequestException({
+        message: 'Only a verified late arrival can be unverified',
+        error: 'NOT_UNVERIFIABLE',
+      });
+    }
+
+    if (!existing.verifiedLate) {
+      return this.getPunchTimeView(actor, matchId, teamId);
+    }
+
+    // Reverse the penalty first — may throw if already designated to serve.
+    await this.penalties.onCaptainUnverifyLate(actor, matchId, teamId, userId);
+
+    await this.prisma.matchAttendancePunch.update({
+      where: { id: existing.id },
+      data: { verifiedLate: false },
+    });
+
+    await this.audit.record({
+      action: 'ATTENDANCE_LATE_UNVERIFIED',
+      actorUserId: actor.id,
+      targetUserId: userId,
+      targetEntityType: 'match',
+      targetEntityId: matchId,
+      after: { verifiedLate: false },
     });
 
     return this.getPunchTimeView(actor, matchId, teamId);

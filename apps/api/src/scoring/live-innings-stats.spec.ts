@@ -2,7 +2,10 @@ import {
   deriveChaseEquation,
   deriveLiveInningsRunStats,
   formatChaseNeedsLine,
+  formatLiveTargetLabel,
   formatRunRate,
+  isOversRevisionAllowed,
+  isOversRevisionPastNewLimit,
   LIVE_STATS_MIN_LEGAL_BALLS,
   minimumOversAllotmentFromLegalBalls,
   oversFromLegalBalls,
@@ -20,6 +23,22 @@ describe('deriveChaseEquation', () => {
     expect(formatChaseNeedsLine(eq.runsNeeded, eq.ballsRemaining)).toBe(
       'needs 69 runs from 38 balls',
     );
+  });
+});
+
+describe('isOversRevisionAllowed', () => {
+  it('allows reducing below whole overs bowled when already past the new limit', () => {
+    expect(isOversRevisionAllowed(92, 15)).toBe(true);
+    expect(isOversRevisionPastNewLimit(92, 15)).toBe(true);
+  });
+
+  it('allows a standard reduction above whole overs bowled', () => {
+    expect(isOversRevisionAllowed(18, 15)).toBe(true);
+    expect(isOversRevisionPastNewLimit(18, 15)).toBe(false);
+  });
+
+  it('rejects non-positive overs', () => {
+    expect(isOversRevisionAllowed(18, 0)).toBe(false);
   });
 });
 
@@ -123,5 +142,24 @@ describe('deriveLiveInningsRunStats', () => {
     expect(stats?.ratesReady).toBe(false);
     expect(stats?.crrText).toBe('-');
     expect(stats?.chaseNeedsLine).toBe('needs 150 runs from 120 balls');
+  });
+});
+
+describe('formatLiveTargetLabel', () => {
+  it('shows only the current target when not revised', () => {
+    expect(formatLiveTargetLabel(180, 180)).toBe('180');
+    expect(formatLiveTargetLabel(180, null)).toBe('180');
+  });
+
+  it('appends the original target after a revision', () => {
+    expect(formatLiveTargetLabel(175, 180)).toBe('175 (was 180)');
+  });
+
+  it('keeps citing the original after multiple revisions', () => {
+    expect(formatLiveTargetLabel(170, 180)).toBe('170 (was 180)');
+  });
+
+  it('returns null when there is no current target', () => {
+    expect(formatLiveTargetLabel(null, 180)).toBeNull();
   });
 });

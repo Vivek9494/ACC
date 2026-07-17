@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { isOversRevisionAllowed, minimumOversAllotmentFromLegalBalls } from '@acc/types';
 import { useEffect, useState } from 'react';
 import { Modal, Pressable, View } from 'react-native';
 
@@ -154,30 +155,40 @@ export function ChangeTargetDialog({
           style={INPUT_SHADOW_STYLE}
           onPress={(event) => event.stopPropagation()}
         >
-          <View className="flex-row items-center justify-between border-b border-outline-variant px-4 py-3">
-            <Text className="font-sans-bold text-lg text-on-surface">Change Target</Text>
-            <Pressable onPress={onCancel} className="h-9 w-9 items-center justify-center rounded-full active:bg-black/5">
-              <Ionicons name="close" size={22} color={FIELD_ORANGE} />
+          <View className="flex-row items-center gap-2 border-b border-outline-variant px-4 py-3">
+            <Pressable
+              onPress={onCancel}
+              className="h-9 w-9 items-center justify-center rounded-full active:bg-black/5"
+              accessibilityRole="button"
+              accessibilityLabel="Back to More Options"
+            >
+              <Ionicons name="arrow-back" size={22} color={FIELD_ORANGE} />
             </Pressable>
+            <Text className="min-w-0 flex-1 font-sans-bold text-lg text-on-surface">
+              Change Target
+            </Text>
           </View>
-          <KeyboardAwareFormScrollView compact contentContainerClassName="gap-3 p-4" keyboardVerticalOffset={64}>
-            <TextInput
-              label="Revised target (runs to win)"
-              value={value}
-              onChangeText={setValue}
-              keyboardType="number-pad"
-              placeholder={currentTarget != null ? String(currentTarget) : 'e.g. 145'}
-            />
-            <View className="flex-row gap-2">
-              <Button label="Cancel" variant="outline" onPress={onCancel} className="h-11 flex-1" />
-              <Button
-                label="Save"
-                disabled={!valid}
-                onPress={() => {
-                  if (valid) onConfirm(parsed);
-                }}
-                className="h-11 flex-1"
+          <KeyboardAwareFormScrollView compact contentContainerClassName="p-4" keyboardVerticalOffset={64}>
+            <View className="gap-3">
+              <TextInput
+                label="Revised target (runs to win)"
+                labelVariant="brand"
+                value={value}
+                onChangeText={setValue}
+                keyboardType="number-pad"
+                placeholder={currentTarget != null ? String(currentTarget) : 'e.g. 145'}
               />
+              <View className="gap-2">
+                <Button
+                  label="Confirm"
+                  disabled={!valid}
+                  onPress={() => {
+                    if (valid) onConfirm(parsed);
+                  }}
+                  className="h-11"
+                />
+                <Button label="Cancel" variant="outline" onPress={onCancel} className="h-11" />
+              </View>
             </View>
           </KeyboardAwareFormScrollView>
         </Pressable>
@@ -189,7 +200,7 @@ export function ChangeTargetDialog({
 export interface ChangeOversDialogProps {
   visible: boolean;
   currentOvers: number | null;
-  minOversBowled: number;
+  legalBalls: number;
   onBack: () => void;
   onConfirm: (overs: number) => void;
 }
@@ -197,7 +208,7 @@ export interface ChangeOversDialogProps {
 export function ChangeOversDialog({
   visible,
   currentOvers,
-  minOversBowled,
+  legalBalls,
   onBack,
   onConfirm,
 }: ChangeOversDialogProps): React.ReactElement {
@@ -211,11 +222,13 @@ export function ChangeOversDialog({
 
   const parsed = Number.parseInt(value, 10);
   const isPositiveInt = Number.isFinite(parsed) && parsed >= 1;
-  const belowBowled = isPositiveInt && parsed < minOversBowled;
-  const valid = isPositiveInt && !belowBowled;
-  const oversError = belowBowled
-    ? `Total overs cannot be less than overs already bowled (${minOversBowled}).`
-    : undefined;
+  const revisionAllowed = isPositiveInt && isOversRevisionAllowed(legalBalls, parsed);
+  const valid = revisionAllowed;
+  const minWholeOvers = minimumOversAllotmentFromLegalBalls(legalBalls);
+  const oversError =
+    isPositiveInt && !revisionAllowed
+      ? `Total overs cannot be less than overs already bowled (${minWholeOvers}).`
+      : undefined;
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onBack}>
@@ -236,26 +249,28 @@ export function ChangeOversDialog({
             </Pressable>
             <Text className="min-w-0 flex-1 font-sans-bold text-lg text-on-surface">Change Overs</Text>
           </View>
-          <KeyboardAwareFormScrollView compact contentContainerClassName="gap-3 p-4" keyboardVerticalOffset={64}>
-            <TextInput
-              label="Enter Overs"
-              labelVariant="brand"
-              value={value}
-              onChangeText={setValue}
-              keyboardType="number-pad"
-              placeholder="e.g. 20"
-              error={oversError}
-            />
-            <View className="gap-2">
-              <Button
-                label="Confirm"
-                disabled={!valid}
-                onPress={() => {
-                  if (valid) onConfirm(parsed);
-                }}
-                className="h-11"
+          <KeyboardAwareFormScrollView compact contentContainerClassName="p-4" keyboardVerticalOffset={64}>
+            <View className="gap-3">
+              <TextInput
+                label="Enter Overs"
+                labelVariant="brand"
+                value={value}
+                onChangeText={setValue}
+                keyboardType="number-pad"
+                placeholder="e.g. 20"
+                error={oversError}
               />
-              <Button label="Cancel" variant="outline" onPress={onBack} className="h-11" />
+              <View className="gap-2">
+                <Button
+                  label="Confirm"
+                  disabled={!valid}
+                  onPress={() => {
+                    if (valid) onConfirm(parsed);
+                  }}
+                  className="h-11"
+                />
+                <Button label="Cancel" variant="outline" onPress={onBack} className="h-11" />
+              </View>
             </View>
           </KeyboardAwareFormScrollView>
         </Pressable>

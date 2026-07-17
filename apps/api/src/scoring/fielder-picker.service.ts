@@ -1,4 +1,8 @@
-import { type FielderPickerResponse, type FielderPickerPlayerRow } from '@acc/types';
+import {
+  type FielderPickerResponse,
+  type FielderPickerPlayerRow,
+  PLAYING_XI_SIZE,
+} from '@acc/types';
 import { Injectable } from '@nestjs/common';
 
 import { BowlerPickerService } from './bowler-picker.service';
@@ -15,6 +19,9 @@ export class FielderPickerService {
   ): Promise<FielderPickerResponse> {
     const bowlerPicker = await this.bowlerPicker.getPicker(matchId, inningsId);
     const currentBowlerId = bowlerPicker.players.find((row) => row.selected)?.userId ?? null;
+    const externalPlayingXiConfirmed =
+      bowlerPicker.bowlingSideIsExternal &&
+      bowlerPicker.players.length >= PLAYING_XI_SIZE;
 
     let players: FielderPickerPlayerRow[] = bowlerPicker.players.map((row) => ({
       userId: row.userId,
@@ -35,6 +42,7 @@ export class FielderPickerService {
       bowlingTeamId: bowlerPicker.bowlingTeamId,
       bowlingTeamName: bowlerPicker.bowlingTeamName,
       bowlingSideIsExternal: bowlerPicker.bowlingSideIsExternal,
+      externalPlayingXiConfirmed,
       currentBowlerId,
       players,
     };

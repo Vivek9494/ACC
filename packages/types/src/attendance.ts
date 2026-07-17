@@ -1,6 +1,10 @@
 import { DateTime } from 'luxon';
 
-import { isMatchDayTodayInZone, type MatchScheduleAnchor } from './timezone';
+import {
+  getMatchCalendarDayInZone,
+  isMatchDayTodayInZone,
+  type MatchScheduleAnchor,
+} from './timezone';
 
 /** Punch verification radius — player must be within this distance to record (§geofence attendance). */
 export const GEOFENCE_RADIUS_METERS = 50;
@@ -127,6 +131,93 @@ function toDate(value: Date | string | null | undefined): Date | null {
   return value instanceof Date ? value : new Date(value);
 }
 
+/**
+ * Arrival is always on the match calendar day (venue TZ). Takes the picker's
+ * instant, reads its venue-local hour/minute, and anchors them to that day.
+ * Safe on both device (picker Date) and server (client-submitted ISO).
+ */
+export function composePunchTimeOnMatchDayUtc(
+  match: MatchScheduleAnchor,
+  timeZone: string,
+  picked: Date,
+): string {
+  const day = getMatchCalendarDayInZone(match, timeZone);
+  const wall = DateTime.fromJSDate(picked, { zone: 'utc' }).setZone(timeZone);
+  const instant = DateTime.fromObject(
+    {
+      year: day.year,
+      month: day.month,
+      day: day.day,
+      hour: wall.hour,
+      minute: wall.minute,
+      second: 0,
+      millisecond: 0,
+    },
+    { zone: timeZone },
+  );
+  if (!instant.isValid) {
+    throw new Error('Invalid punch time on match day');
+  }
+  return instant.toUTC().toISO()!;
+}
+
+/**
+ * Seed value for the Edit Arrival Time picker.
+ * Existing punch → that instant (re-anchored to match day if the stored day is wrong).
+ * No punch → reporting time when present; else match-day noon in the venue zone.
+ */
+export function seedPunchPickerDate(params: {
+  match: MatchScheduleAnchor;
+  timeZone: string;
+  reportingTime: Date | string | null;
+  existingPunchUtc: Date | string | null;
+}): Date {
+  const { match, timeZone, reportingTime, existingPunchUtc } = params;
+  const day = getMatchCalendarDayInZone(match, timeZone);
+  const existing = toDate(existingPunchUtc);
+  if (existing && !Number.isNaN(existing.getTime())) {
+    const existingLocal = DateTime.fromJSDate(existing, { zone: 'utc' }).setZone(timeZone);
+    if (
+      existingLocal.year === day.year &&
+      existingLocal.month === day.month &&
+      existingLocal.day === day.day
+    ) {
+      return existing;
+    }
+    // Wrong calendar day (e.g. epoch clamp) — keep time-of-day, force match day.
+    return DateTime.fromObject(
+      {
+        year: day.year,
+        month: day.month,
+        day: day.day,
+        hour: existingLocal.hour,
+        minute: existingLocal.minute,
+        second: 0,
+        millisecond: 0,
+      },
+      { zone: timeZone },
+    ).toJSDate();
+  }
+
+  const reporting = toDate(reportingTime);
+  if (reporting && !Number.isNaN(reporting.getTime())) {
+    return reporting;
+  }
+
+  return DateTime.fromObject(
+    {
+      year: day.year,
+      month: day.month,
+      day: day.day,
+      hour: 12,
+      minute: 0,
+      second: 0,
+      millisecond: 0,
+    },
+    { zone: timeZone },
+  ).toJSDate();
+}
+
 // --- API projections --------------------------------------------------------
 
 export interface PunchTimePlayerRow {
@@ -161,6 +252,10 @@ export interface PunchTimeAttendanceView {
   awayTeamName: string;
   reportingTime: string;
   reportingTimeLabel: string;
+  /** Match calendar date (UTC midnight ISO) for arrival-day anchoring. */
+  matchDate: string | null;
+  /** Match start instant (UTC ISO); preferred over matchDate for local calendar day. */
+  startTime: string | null;
   /** Players who punched (XI + subs). */
   playersPresentCount: number;
   /** Aggregate pill label, e.g. "On Time" when all arrived are on time. */

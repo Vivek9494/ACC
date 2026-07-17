@@ -168,6 +168,8 @@ export function RunOutDetailsDialog({
   }, [fielderOptions, fielderId]);
 
   const isExternalSide = data?.bowlingSideIsExternal === true;
+  const showAddFielderByName =
+    isExternalSide && data?.externalPlayingXiConfirmed !== true;
   const canConfirm = dismissedId !== null && fielderId !== null;
 
   function handleConfirm(): void {
@@ -312,7 +314,7 @@ export function RunOutDetailsDialog({
                 </View>
               </ScrollView>
 
-              {isExternalSide ? (
+              {showAddFielderByName ? (
                 <View className="border-t border-outline-variant px-4 py-3">
                   <Button
                     variant="outline"

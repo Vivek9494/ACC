@@ -3,7 +3,6 @@ import {
   replaceGenericHomeAwayInResultNote,
   resolveMatchWinnerDisplayName,
   formatAutoConfirmCountdown,
-  type ManOfMatchEligibilityView,
   type MatchDetail,
   ScorecardConfirmSide,
   type ScorecardConfirmEligibilityView,
@@ -22,12 +21,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { TabbedInningsScorecard } from '../../../src/components/TabbedInningsScorecard';
 import { ManOfMatchCard } from '../../../src/components/ManOfMatchCard';
 import { MatchTossSummaryLine } from '../../../src/components/match/MatchTossSummaryLine';
-import { MatchManOfMatchBlock } from '../../../src/components/match/MatchManOfMatchBlock';
 import { MatchResultBanner } from '../../../src/components/scoring/MatchResultBanner';
 import {
   ApiRequestError,
   confirmScorecard,
-  getManOfMatchEligibility,
   getMatch,
   getScorecard,
   getScorecardConfirmEligibility,
@@ -44,8 +41,9 @@ import {
 /**
  * Match result & scorecard confirmation screen (spec §13, §16). Mirrors the
  * `full_scorecard_detailed_view_with_stats` mockup: the full derived scorecard,
- * a Captain/VC confirmation banner with the 5-hour auto-confirm countdown, the
- * Man of the Match picker, and a guest-accessible PDF export.
+ * a Captain/VC confirmation banner with the 5-hour auto-confirm countdown,
+ * awarded Man of the Match on the winning-team tab, and a guest-accessible PDF export.
+ * Select/change MoM lives on Match Details only.
  */
 export default function ScorecardResultScreen(): React.ReactElement {
   const { matchId } = useLocalSearchParams<{ matchId: string }>();
@@ -60,23 +58,15 @@ export default function ScorecardResultScreen(): React.ReactElement {
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [momEligibility, setMomEligibility] = useState<ManOfMatchEligibilityView | null>(null);
   const [inningsIndex, setInningsIndex] = useState(0);
 
   const load = useCallback(async () => {
     if (!matchId) return;
     try {
-      const [m, c, conf, eligibility, confirmGate] = await Promise.all([
+      const [m, c, conf, confirmGate] = await Promise.all([
         getMatch(matchId),
         getScorecard(matchId),
         getScorecardConfirmation(matchId),
-        getManOfMatchEligibility(matchId).catch(() => ({
-          offered: false,
-          canSelect: false,
-          required: false,
-          dueAt: null,
-          overdue: false,
-        })),
         getScorecardConfirmEligibility(matchId).catch(() => ({
           awaitingConfirmation: false,
           canConfirm: false,
@@ -90,7 +80,6 @@ export default function ScorecardResultScreen(): React.ReactElement {
       setMatch(m);
       setCard(c);
       setConfirmation(conf);
-      setMomEligibility(eligibility);
       setConfirmEligibility(confirmGate);
       setInningsIndex(defaultInningsTabIndex(c));
       setError(null);
@@ -278,19 +267,6 @@ export default function ScorecardResultScreen(): React.ReactElement {
 
         {showResultBanner && resultLine ? (
           <MatchResultBanner resultLine={resultLine} />
-        ) : null}
-
-        {match && card ? (
-          <MatchManOfMatchBlock
-            matchId={matchId}
-            match={match}
-            card={card}
-            momEligibility={momEligibility}
-            confirmation={confirmation}
-            resultLine={resultLine}
-            working={working}
-            showAwardedCard={false}
-          />
         ) : null}
 
         {card && card.innings.length === 0 ? (

@@ -62,6 +62,8 @@ export function CaughtFielderPicker({
   }, [visible, selectedFielderId, load]);
 
   const isExternalSide = data?.bowlingSideIsExternal === true;
+  const showAddFielderByName =
+    isExternalSide && data?.externalPlayingXiConfirmed !== true;
 
   function handleConfirm(): void {
     if (!pendingId) return;
@@ -129,7 +131,7 @@ export function CaughtFielderPicker({
                 )}
               </ScrollView>
 
-              {isExternalSide ? (
+              {showAddFielderByName ? (
                 <View className="border-t border-outline-variant px-4 py-3">
                   <Button
                     variant="outline"

@@ -53,6 +53,24 @@ const ROLE_LABELS: Record<MatchSquadRole, string> = {
   IMPACT_CANDIDATE: 'Impact',
 };
 
+/** Squad display order: Playing 11 first, Impact next, Substitutes last. */
+const ROLE_DISPLAY_ORDER: Record<MatchSquadRole, number> = {
+  PLAYING_XI: 0,
+  IMPACT_CANDIDATE: 1,
+  SUBSTITUTE: 2,
+};
+
+/** Playing 11 before substitutes, preserving original order within a role. */
+function orderSquadPlayers(players: SquadPlayerView[]): SquadPlayerView[] {
+  return players
+    .map((player, index) => ({ player, index }))
+    .sort((a, b) => {
+      const roleDelta = ROLE_DISPLAY_ORDER[a.player.role] - ROLE_DISPLAY_ORDER[b.player.role];
+      return roleDelta !== 0 ? roleDelta : a.index - b.index;
+    })
+    .map(({ player }) => player);
+}
+
 export default function MatchDetailScreen(): React.ReactElement {
   const { matchId } = useLocalSearchParams<{ matchId: string }>();
   const router = useRouter();
@@ -239,6 +257,15 @@ export default function MatchDetailScreen(): React.ReactElement {
           </View>
         ) : null}
 
+        {canViewMatchPlayersPunchTimeButton(user, match) ? (
+          <Button
+            onPress={() => router.push(`/matches/${match.id}/punch-time`)}
+            variant="secondary"
+            className="h-12"
+            label="View Punch Time"
+          />
+        ) : null}
+
         {/* Live scoring (§28) or post-match scorecard (§13, §16) */}
         {scoreViewAction ? (
           <Button
@@ -254,15 +281,7 @@ export default function MatchDetailScreen(): React.ReactElement {
             matchId={match.id}
             match={match}
             actionStyle="inline"
-          />
-        ) : null}
-
-        {canViewMatchPlayersPunchTimeButton(user, match) ? (
-          <Button
-            onPress={() => router.push(`/matches/${match.id}/punch-time`)}
-            variant="secondary"
-            className="h-12"
-            label="View Punch Time"
+            showAwardedCard={false}
           />
         ) : null}
 
@@ -318,29 +337,14 @@ export default function MatchDetailScreen(): React.ReactElement {
           </View>
         ) : null}
 
-        {externalOpponent && match.externalPlayers.length > 0 ? (
-          <View className="gap-2 rounded-xl border border-outline-variant bg-surface-container-lowest p-4">
-            <Text className="font-sans-bold text-lg text-primary">
-              {match.externalOpponentName ?? 'Opponent'} XI
-            </Text>
-            {[...match.externalPlayers]
-              .sort((a, b) => a.slot - b.slot)
-              .map((player) => (
-                <Text key={player.id} className="font-sans text-sm text-on-surface">
-                  {player.name}
-                </Text>
-              ))}
-          </View>
-        ) : null}
-
-        {/* Locked squads */}
+        {/* Locked squads — ACC / registered teams first (§9.7) */}
         {match.squads.map((squad) => (
           <View
             key={squad.teamId}
             className="gap-2 rounded-xl border border-outline-variant bg-surface-container-lowest p-4"
           >
             <Text className="font-sans-bold text-lg text-primary">{squad.teamName} XI</Text>
-            {squad.players.map((p) => (
+            {orderSquadPlayers(squad.players).map((p) => (
               <View key={p.userId} className="flex-row items-center justify-between">
                 <Text className="font-sans text-sm text-on-surface">
                   {p.firstName} {p.lastName}
@@ -363,6 +367,22 @@ export default function MatchDetailScreen(): React.ReactElement {
             ))}
           </View>
         ))}
+
+        {/* External opponent XI — shown after the ACC / registered squad */}
+        {externalOpponent && match.externalPlayers.length > 0 ? (
+          <View className="gap-2 rounded-xl border border-outline-variant bg-surface-container-lowest p-4">
+            <Text className="font-sans-bold text-lg text-primary">
+              {match.externalOpponentName ?? 'Opponent'} XI
+            </Text>
+            {[...match.externalPlayers]
+              .sort((a, b) => a.slot - b.slot)
+              .map((player) => (
+                <Text key={player.id} className="font-sans text-sm text-on-surface">
+                  {player.name}
+                </Text>
+              ))}
+          </View>
+        ) : null}
 
         {/* Toss (§11.2) — tennis: assigned match scorer + organizers; leather: existing rule */}
         {canShowRecordToss(user, match) ? (

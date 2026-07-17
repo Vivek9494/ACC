@@ -80,6 +80,24 @@ export function canViewTournamentPlayerProfiles(
   return hasTeamLeadershipInTournament(user, tournamentId);
 }
 
+/**
+ * True when the viewer may receive teammates' mobile numbers on a team roster.
+ * Admin / Club Manager: all teams. Everyone else: only when they are a member of that team
+ * (`isMemberOfTeam` from TeamMembership — server must resolve this; never trust the client alone).
+ */
+export function canViewTeamRosterMobileNumbers(
+  user: AuthUser | null | undefined,
+  isMemberOfTeam: boolean,
+): boolean {
+  if (!user) {
+    return false;
+  }
+  if (user.role === UserRole.Admin || user.role === UserRole.ClubManager) {
+    return true;
+  }
+  return isMemberOfTeam;
+}
+
 /** Admin or Club Manager may designate Captain, Vice-Captain, and Manager on teams they manage. */
 export function canAssignTeamRoles(user: AuthUser | null | undefined): boolean {
   if (!user) {

@@ -6,7 +6,9 @@ import {
   formatFallOfWicketDetail,
   formatFallOfWicketHeadline,
   formatDismissalShort,
+  formatInningsTotalScore,
   extrasBreakdownParts,
+  originalFirstInningsRunsForChaseTotal,
   type BatterCard,
   type CompletedPartnership,
   type InningsScorecard,
@@ -24,6 +26,7 @@ import {
   scorecardStatWidth,
 } from './scorecardTableWidths';
 import { BowlerFiguresScrollTable } from './scoring/BowlerFiguresScrollTable';
+import { BallByBallCollapsibleSection } from './scoring/BallByBallCollapsibleSection';
 import {
   INNINGS_SCORECARD_TABLE_TYPE,
   SCORECARD_WICKET_EVENT_CARD,
@@ -244,7 +247,8 @@ function ScoreHeader({
   showLiveBadge?: boolean;
   showLiveContext?: boolean;
 }): React.ReactElement {
-  const stats = deriveLiveInningsRunStats(innings, totalOvers ?? innings.oversAllotted);
+  // Innings allotment first — reflects a Change Overs reduction; match value can be stale.
+  const stats = deriveLiveInningsRunStats(innings, innings.oversAllotted ?? totalOvers);
   const striker = innings.batters.find((b) => b.playerId === innings.currentStrikerId);
   const nonStriker = innings.batters.find((b) => b.playerId === innings.currentNonStrikerId);
   const crease: { card: BatterCard; onStrike: boolean }[] = [];
@@ -435,10 +439,12 @@ function LastWicketCard({
 }
 
 function BattingTable({
+  card,
   innings,
   nameOf,
   teamName,
 }: {
+  card: ScorecardResponse;
   innings: InningsScorecard;
   nameOf: NameResolver;
   teamName: string;
@@ -507,7 +513,11 @@ function BattingTable({
           <Text className="font-sans-bold text-sm text-on-surface">TOTAL</Text>
           <BattingSummaryValues>
             <Text className="text-right font-sans-bold text-base text-on-surface">
-              {innings.runs}/{innings.wickets}
+              {formatInningsTotalScore(
+                innings.runs,
+                innings.wickets,
+                originalFirstInningsRunsForChaseTotal(card, innings),
+              )}
             </Text>
             <Text className="text-right font-sans text-sm text-on-surface-variant">
               ({innings.oversText})
@@ -709,12 +719,13 @@ export function InningsScorecardView({
 
   return (
     <View className="gap-4">
-      <BattingTable innings={innings} nameOf={nameOf} teamName={battingTeamName} />
+      <BattingTable card={card} innings={innings} nameOf={nameOf} teamName={battingTeamName} />
       {manOfMatchSlot}
       <BowlingTable innings={innings} nameOf={nameOf} />
       {droppedCatchSlot}
       <FallOfWicketsSection innings={innings} nameOf={nameOf} />
       <PartnershipsSection innings={innings} nameOf={nameOf} />
+      <BallByBallCollapsibleSection timeline={innings.timeline} variant="scorecard" />
     </View>
   );
 }

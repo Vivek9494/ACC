@@ -501,7 +501,7 @@ describe('ScoringService — append-only persistence & derivation', () => {
     expect(card.innings[0]!.legalBalls).toBe(0);
   });
 
-  it('undoes an incoming batsman selection before voiding the wicket delivery', async () => {
+  it('undoes wicket and incoming batsman selection together in one undo', async () => {
     const { prisma, matches, innings } = makeDb();
     seedMatch(matches);
     const service = makeService(prisma);
@@ -537,22 +537,40 @@ describe('ScoringService — append-only persistence & derivation', () => {
     expect(afterSelect.innings[0]!.currentStrikerId).toBe('C');
     expect(afterSelect.innings[0]!.currentNonStrikerId).toBe('B');
 
-    const afterUndoSelection = await service.undoLastDelivery(scorer, 'match-1', inningsId, {
+    const afterUndo = await service.undoLastDelivery(scorer, 'match-1', inningsId, {
       expectedVersion: version(),
     });
-    expect(afterUndoSelection.innings[0]!.wickets).toBe(1);
-    expect(afterUndoSelection.innings[0]!.currentStrikerId).toBeNull();
-    expect(afterUndoSelection.innings[0]!.currentNonStrikerId).toBe('B');
+    expect(afterUndo.innings[0]!.wickets).toBe(0);
+    expect(afterUndo.innings[0]!.currentStrikerId).toBe('A');
+    expect(afterUndo.innings[0]!.currentNonStrikerId).toBe('B');
+    expect(afterUndo.innings[0]!.batters.find((b) => b.playerId === 'A')?.isOut ?? false).toBe(false);
     const innRow = innings.get(inningsId)!;
-    expect(innRow.selectedStrikerUserId).toBeNull();
-    expect(innRow.selectedNonStrikerUserId).toBeNull();
+    expect(innRow.selectedStrikerUserId).toBe('A');
+    expect(innRow.selectedNonStrikerUserId).toBe('B');
+  });
 
-    const afterReselect = await service.setInningsParticipants(scorer, 'match-1', inningsId, {
-      strikerId: 'C',
+  it('undoes a pre-ball batter selection without voiding a delivery', async () => {
+    const { prisma, matches } = makeDb();
+    seedMatch(matches);
+    const service = makeService(prisma);
+    await service.startInnings(scorer, 'match-1', { expectedVersion: 0 });
+    const inningsId = (await prisma.innings.findMany({ where: { matchId: 'match-1' } }))[0]!.id as string;
+    const version = (): number => matches.get('match-1')!.scorecardVersion as number;
+
+    await service.setInningsParticipants(scorer, 'match-1', inningsId, {
+      strikerId: 'A',
+      nonStrikerId: 'B',
+      bowlerId: 'X',
       expectedVersion: version(),
     });
-    expect(afterReselect.innings[0]!.currentStrikerId).toBe('C');
-    expect(afterReselect.innings[0]!.currentNonStrikerId).toBe('B');
+
+    const afterUndo = await service.undoLastDelivery(scorer, 'match-1', inningsId, {
+      expectedVersion: version(),
+    });
+    expect(afterUndo.innings[0]!.legalBalls).toBe(0);
+    expect(afterUndo.innings[0]!.wickets).toBe(0);
+    expect(afterUndo.innings[0]!.currentStrikerId).toBeNull();
+    expect(afterUndo.innings[0]!.currentNonStrikerId).toBeNull();
   });
 
   it('rejects a non-run-out dismissal on a free hit', async () => {
@@ -1044,15 +1062,16 @@ describe('ScoringService — overs revision (§12.2)', () => {
     return { service, prisma, matches, inningsId, version };
   }
 
-  it('rejects overs below what has already been bowled', async () => {
+  it('closes the innings when overs are reduced below whole overs already bowled', async () => {
     const { service, inningsId, version } = await setupActiveInnings(18);
-    await expect(
-      service.setOversAllotted(scorer, 'match-1', {
-        inningsId,
-        oversAllotted: 2,
-        expectedVersion: version(),
-      }),
-    ).rejects.toThrow(BadRequestException);
+    const card = await service.setOversAllotted(scorer, 'match-1', {
+      inningsId,
+      oversAllotted: 2,
+      expectedVersion: version(),
+    });
+    expect(card.innings[0]!.oversAllotted).toBe(2);
+    expect(card.innings[0]!.closed).toBe(true);
+    expect(card.innings[0]!.closeReason).toBe('OVERS_COMPLETE');
   });
 
   it('revises overs for the active innings and re-derives the scorecard', async () => {
@@ -1105,6 +1124,50 @@ describe('ScoringService — overs revision (§12.2)', () => {
     });
     expect(card.innings[0]!.oversAllotted).toBe(20);
     expect(card.innings[1]!.oversAllotted).toBe(12);
+  });
+
+  it('closes the chase when overs are reduced below balls already bowled (15.2 -> 15)', async () => {
+    const { service, inningsId, version } = await setupActiveInnings(5);
+    await service.recordDelivery(scorer, 'match-1', inningsId, {
+      type: DeliveryType.Legal,
+      strikerId: 'A',
+      nonStrikerId: 'B',
+      bowlerId: bowlerForLegalBall(5),
+      runsBat: 50,
+      expectedVersion: version(),
+    });
+    await service.endInnings(scorer, 'match-1', inningsId, { expectedVersion: version() });
+    const cardBefore = await service.getScorecard('match-1');
+    const chaseId = cardBefore.innings[1]!.inningsId!;
+    await service.setInningsParticipants(scorer, 'match-1', chaseId, {
+      strikerId: 'A',
+      nonStrikerId: 'B',
+      bowlerId: 'X',
+      expectedVersion: version(),
+    });
+    for (let i = 0; i < 92; i += 1) {
+      await service.recordDelivery(scorer, 'match-1', chaseId, {
+        type: DeliveryType.Legal,
+        strikerId: 'A',
+        nonStrikerId: 'B',
+        bowlerId: bowlerForLegalBall(i),
+        runsBat: 0,
+        expectedVersion: version(),
+      });
+    }
+    const card = await service.setOversAllotted(scorer, 'match-1', {
+      inningsId: chaseId,
+      oversAllotted: 15,
+      expectedVersion: version(),
+    });
+    const chase = card.innings[1]!;
+    expect(chase.oversAllotted).toBe(15);
+    expect(chase.legalBalls).toBe(92);
+    expect(chase.closed).toBe(true);
+    expect(chase.closeReason).toBe('OVERS_COMPLETE');
+    expect(card.result.decided).toBe(true);
+    expect(card.result.winningTeamId).toBe('home');
+    expect(card.result.marginRuns).toBe(50);
   });
 });
 

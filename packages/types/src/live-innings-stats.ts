@@ -51,6 +51,35 @@ export function oversFromLegalBalls(legalBalls: number): number {
 }
 
 /**
+ * True when legal balls already equal or exceed the revised over allotment
+ * (the innings should fold as overs complete).
+ */
+export function isOversRevisionPastNewLimit(
+  legalBalls: number,
+  oversAllotted: number,
+): boolean {
+  return legalBalls >= oversAllotted * BALLS_PER_OVER;
+}
+
+/**
+ * Whether a mid-innings overs revision is allowed. Any whole over count ≥ 1 is
+ * valid; a value below whole overs already bowled is allowed only when the
+ * innings is already at or past the new limit (rain reduction ends the innings).
+ */
+export function isOversRevisionAllowed(
+  legalBalls: number,
+  oversAllotted: number,
+): boolean {
+  if (!Number.isInteger(oversAllotted) || oversAllotted < 1) {
+    return false;
+  }
+  return (
+    oversAllotted >= minimumOversAllotmentFromLegalBalls(legalBalls) ||
+    isOversRevisionPastNewLimit(legalBalls, oversAllotted)
+  );
+}
+
+/**
  * Minimum total overs allowed after a rain revision — cannot set allotment below what has
  * already been bowled (partial overs count as the next whole over).
  */
@@ -102,6 +131,23 @@ export function formatChaseNeedsLine(runsNeeded: number, ballsRemaining: number)
   const runWord = runsNeeded === 1 ? 'run' : 'runs';
   const ballWord = ballsRemaining === 1 ? 'ball' : 'balls';
   return `needs ${runsNeeded} ${runWord} from ${ballsRemaining} ${ballWord}`;
+}
+
+/**
+ * Live header target text. When revised, always cites the ORIGINAL target
+ * (first-innings total + 1), not the previous revision — e.g. "170 (was 180)".
+ */
+export function formatLiveTargetLabel(
+  currentTarget: number | null | undefined,
+  originalTarget: number | null | undefined,
+): string | null {
+  if (currentTarget == null) {
+    return null;
+  }
+  if (originalTarget != null && originalTarget !== currentTarget) {
+    return `${currentTarget} (was ${originalTarget})`;
+  }
+  return String(currentTarget);
 }
 
 /**

@@ -78,7 +78,7 @@ export function TabbedInningsScorecard({
           innings={pinnedLiveInnings}
           nameOf={nameOf}
           teamNameOf={teamNameOf}
-          totalOvers={matchOversPerInnings ?? pinnedLiveInnings.oversAllotted}
+          totalOvers={pinnedLiveInnings.oversAllotted ?? matchOversPerInnings}
           showLiveBadge={false}
         />
       ) : null}

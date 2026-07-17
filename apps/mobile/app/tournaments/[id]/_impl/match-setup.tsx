@@ -468,6 +468,19 @@ export default function MatchSetupScreen(): React.ReactElement {
     });
   }
 
+  function handleOversChange(value: string): void {
+    const parsed = Number(value);
+    const nextOvers = Number.isFinite(parsed) ? parsed : null;
+    setOversPerInnings(nextOvers);
+    setMaxOversPerBowler(null);
+    setPowerplayOvers((current) => clampPowerplaySelection(current, nextOvers));
+    setBattingPowerplayOvers((current) => clampPowerplaySelection(current, nextOvers));
+    clearField('oversPerInnings');
+    clearField('maxOversPerBowler');
+    clearField('powerplayOvers');
+    clearField('battingPowerplayOvers');
+  }
+
   async function handleSubmit(): Promise<void> {
     if (!tournamentId || !tournament) {
       setSubmitError('Tournament not found.');
@@ -843,27 +856,45 @@ export default function MatchSetupScreen(): React.ReactElement {
             </View>
           ) : null}
 
-          <Select
-            label="Overs"
-            placeholder="Select overs"
-            value={oversPerInnings != null ? String(oversPerInnings) : null}
-            options={oversOptions}
-            onChange={(value) => {
-              const parsed = Number(value);
-              const nextOvers = Number.isFinite(parsed) ? parsed : null;
-              setOversPerInnings(nextOvers);
-              setMaxOversPerBowler(null);
-              setPowerplayOvers((current) => clampPowerplaySelection(current, nextOvers));
-              setBattingPowerplayOvers((current) =>
-                clampPowerplaySelection(current, nextOvers),
-              );
-              clearField('oversPerInnings');
-              clearField('maxOversPerBowler');
-              clearField('powerplayOvers');
-              clearField('battingPowerplayOvers');
-            }}
-            error={fieldErrors.oversPerInnings}
-          />
+          {isLeatherBall || isTennisBall ? (
+            <View className="flex-row items-start gap-3">
+              <View className="min-w-0 flex-1">
+                <Select
+                  label="Overs"
+                  placeholder="Select overs"
+                  value={oversPerInnings != null ? String(oversPerInnings) : null}
+                  options={oversOptions}
+                  onChange={handleOversChange}
+                  error={fieldErrors.oversPerInnings}
+                />
+              </View>
+              <View className="min-w-0 flex-1">
+                <Select
+                  label="Powerplay Overs"
+                  placeholder={
+                    oversPerInnings != null ? 'Select powerplay overs' : 'Select overs first'
+                  }
+                  value={powerplayOvers != null ? String(powerplayOvers) : null}
+                  options={powerplayOptions}
+                  onChange={(value) => {
+                    const parsed = Number(value);
+                    setPowerplayOvers(Number.isFinite(parsed) ? parsed : null);
+                    clearField('powerplayOvers');
+                  }}
+                  error={fieldErrors.powerplayOvers}
+                />
+              </View>
+            </View>
+          ) : (
+            <Select
+              label="Overs"
+              placeholder="Select overs"
+              value={oversPerInnings != null ? String(oversPerInnings) : null}
+              options={oversOptions}
+              onChange={handleOversChange}
+              error={fieldErrors.oversPerInnings}
+            />
+          )}
 
           <Select
             label="Overs per Bowler"
@@ -877,21 +908,6 @@ export default function MatchSetupScreen(): React.ReactElement {
             }}
             error={fieldErrors.maxOversPerBowler}
           />
-
-          {isLeatherBall || isTennisBall ? (
-            <Select
-              label="Powerplay Overs"
-              placeholder={oversPerInnings != null ? 'Select powerplay overs' : 'Select overs first'}
-              value={powerplayOvers != null ? String(powerplayOvers) : null}
-              options={powerplayOptions}
-              onChange={(value) => {
-                const parsed = Number(value);
-                setPowerplayOvers(Number.isFinite(parsed) ? parsed : null);
-                clearField('powerplayOvers');
-              }}
-              error={fieldErrors.powerplayOvers}
-            />
-          ) : null}
 
           {isTennisBall ? (
             <Select
@@ -910,42 +926,47 @@ export default function MatchSetupScreen(): React.ReactElement {
             />
           ) : null}
 
-          {isLeatherBall ? (
-            <DateField
-              label="Match Date"
-              value={matchDate ?? ''}
-              onChange={(value) => {
-                setMatchDate(value);
-                clearField('matchDate');
-              }}
-              enforceSignupAgeMax={false}
-              minimumDate={matchDateMinimum}
-              maximumDate={leatherSpanMaxDate}
-              error={fieldErrors.matchDate}
-            />
-          ) : (
-            <Select
-              label="Match Date"
-              placeholder="Select match day"
-              value={matchDate}
-              options={matchDateOptions}
-              onChange={(value) => {
-                setMatchDate(value);
-                clearField('matchDate');
-              }}
-              error={fieldErrors.matchDate}
-            />
-          )}
-
-          <TimeField
-            label="Match Time"
-            value={matchTime}
-            onChange={(value) => {
-              setMatchTime(value);
-              clearField('matchTime');
-            }}
-            error={fieldErrors.matchTime}
-          />
+          <View className="flex-row items-start gap-3">
+            <View className="min-w-0 flex-1">
+              {isLeatherBall ? (
+                <DateField
+                  label="Match Date"
+                  value={matchDate ?? ''}
+                  onChange={(value) => {
+                    setMatchDate(value);
+                    clearField('matchDate');
+                  }}
+                  enforceSignupAgeMax={false}
+                  minimumDate={matchDateMinimum}
+                  maximumDate={leatherSpanMaxDate}
+                  error={fieldErrors.matchDate}
+                />
+              ) : (
+                <Select
+                  label="Match Date"
+                  placeholder="Select match day"
+                  value={matchDate}
+                  options={matchDateOptions}
+                  onChange={(value) => {
+                    setMatchDate(value);
+                    clearField('matchDate');
+                  }}
+                  error={fieldErrors.matchDate}
+                />
+              )}
+            </View>
+            <View className="min-w-0 flex-1">
+              <TimeField
+                label="Match Time"
+                value={matchTime}
+                onChange={(value) => {
+                  setMatchTime(value);
+                  clearField('matchTime');
+                }}
+                error={fieldErrors.matchTime}
+              />
+            </View>
+          </View>
 
           {showReportingTime ? (
             <TimeField

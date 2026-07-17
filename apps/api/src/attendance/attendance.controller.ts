@@ -87,4 +87,14 @@ export class AttendanceController {
   ): Promise<PunchTimeAttendanceView> {
     return this.attendance.verifyLatePunch(user, matchId, teamId, userId);
   }
+
+  @Delete('matches/:matchId/attendance/:userId/verify')
+  unverifyLate(
+    @CurrentUser() user: AuthUser,
+    @Param('matchId') matchId: string,
+    @Param('userId') userId: string,
+    @Query('teamId') teamId: string,
+  ): Promise<PunchTimeAttendanceView> {
+    return this.attendance.unverifyLatePunch(user, matchId, teamId, userId);
+  }
 }

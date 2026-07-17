@@ -18,6 +18,7 @@ import {
   teamCapError,
   UserRole,
   canViewTournamentPlayerProfiles,
+  canViewTeamRosterMobileNumbers,
   PLAYER_PROFILE_BALL_TYPE_LABELS,
   type AssignTeamRolesRequest,
   type AddTeamPlayersResponse,
@@ -137,7 +138,7 @@ export class TeamsService {
     });
 
     const userIds = memberships.map((row) => row.userId);
-    const [registrations, leaderAssignments] = await Promise.all([
+    const [registrations, leaderAssignments, viewerMembership] = await Promise.all([
       userIds.length === 0
         ? Promise.resolve([])
         : this.prisma.registration.findMany({
@@ -158,6 +159,12 @@ export class TeamsService {
         },
         select: { userId: true, role: true },
       }),
+      viewer == null
+        ? Promise.resolve(null)
+        : this.prisma.teamMembership.findFirst({
+            where: { tournamentId, teamId, userId: viewer.id },
+            select: { id: true },
+          }),
     ]);
 
     const registrationByUser = new Map(registrations.map((row) => [row.userId, row]));
@@ -169,6 +176,7 @@ export class TeamsService {
       leaderAssignments.find((row) => row.role === UserRole.Manager)?.userId ?? null;
     const showPlayerCategorySplit = team.tournament.ballType === BallType.Leather;
     const canViewPlayerProfiles = canViewTournamentPlayerProfiles(viewer, tournamentId);
+    const canViewMobileNumbers = canViewTeamRosterMobileNumbers(viewer, viewerMembership != null);
 
     let fulltimePlayerCount = 0;
     let parttimePlayerCount = 0;
@@ -194,7 +202,7 @@ export class TeamsService {
         isViceCaptain: membership.userId === viceCaptainUserId,
         isManager: membership.userId === managerUserId,
         playerCategory,
-        mobileNumber: canViewPlayerProfiles ? membership.user.mobileNumber : null,
+        mobileNumber: canViewMobileNumbers ? membership.user.mobileNumber : null,
         battingRating: registration?.battingRating ?? null,
         bowlingRating: registration?.bowlingRating ?? null,
         fieldingRating: registration?.fieldingRating ?? null,

@@ -5,6 +5,7 @@ import {
   BallType,
   Permission,
   UserRole,
+  canViewTeamRosterMobileNumbers,
   canViewTournamentPlayerProfiles,
 } from '@acc/types';
 import { ForbiddenException, BadRequestException, NotFoundException } from '@nestjs/common';
@@ -12,6 +13,40 @@ import { ForbiddenException, BadRequestException, NotFoundException } from '@nes
 import { PermissionService } from '../authz/permission.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { TeamsService } from './teams.service';
+
+describe('canViewTeamRosterMobileNumbers', () => {
+  const member: AuthUser = {
+    id: 'player-1',
+    firstName: 'Pat',
+    lastName: 'El',
+    mobileNumber: '+15555550099',
+    email: 'p@acc.local',
+    centerId: 'center-A',
+    jerseyNumber: 7,
+    profilePhotoUrl: null,
+    role: UserRole.Player,
+    isActive: true,
+    teamLeadAssignments: [],
+  };
+
+  it('allows Admin and Club Manager for any team', () => {
+    expect(
+      canViewTeamRosterMobileNumbers({ ...member, role: UserRole.Admin }, false),
+    ).toBe(true);
+    expect(
+      canViewTeamRosterMobileNumbers({ ...member, role: UserRole.ClubManager }, false),
+    ).toBe(true);
+  });
+
+  it('allows roster members of the viewed team only', () => {
+    expect(canViewTeamRosterMobileNumbers(member, true)).toBe(true);
+    expect(canViewTeamRosterMobileNumbers(member, false)).toBe(false);
+  });
+
+  it('denies guests', () => {
+    expect(canViewTeamRosterMobileNumbers(null, true)).toBe(false);
+  });
+});
 
 const emptyCareerStats = {
   matches: 0,

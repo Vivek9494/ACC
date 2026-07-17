@@ -716,6 +716,11 @@ export interface FielderPickerResponse {
   bowlingTeamId: string | null;
   bowlingTeamName: string;
   bowlingSideIsExternal: boolean;
+  /**
+   * External opponent only: true once ≥ {@link PLAYING_XI_SIZE} named opponents exist
+   * (Playing 11 confirmed). When true, "Add Fielder by Name" should be hidden.
+   */
+  externalPlayingXiConfirmed: boolean;
   currentBowlerId: string | null;
   players: FielderPickerPlayerRow[];
 }
@@ -859,6 +864,39 @@ export function formatMatchResultNote(
     return `${winnerName} won (Super Over)`;
   }
   return `${winnerName} won`;
+}
+
+/**
+ * Original first-innings score for a chase TOTAL bracket (e.g. "180/8 (205)").
+ * Only for the second normal innings; Super Overs return null.
+ */
+export function originalFirstInningsRunsForChaseTotal(
+  card: Pick<ScorecardResponse, 'innings'>,
+  innings: Pick<InningsScorecard, 'inningsId' | 'inningsType' | 'sequence'>,
+): number | null {
+  if (innings.inningsType !== InningsType.Normal || innings.sequence <= 1) {
+    return null;
+  }
+  const first = card.innings.find(
+    (row) => row.inningsType === InningsType.Normal && row.sequence === 1,
+  );
+  if (!first || first.inningsId === innings.inningsId) {
+    return null;
+  }
+  return first.runs;
+}
+
+/** Runs/wickets line; optional first-innings score in brackets, e.g. "180/8 (205)". */
+export function formatInningsTotalScore(
+  runs: number,
+  wickets: number,
+  originalFirstInningsRuns?: number | null,
+): string {
+  const base = `${runs}/${wickets}`;
+  if (originalFirstInningsRuns == null) {
+    return base;
+  }
+  return `${base} (${originalFirstInningsRuns})`;
 }
 
 /** Leather: only drops by ACC (registered) fielders — exclude external bowling side. */

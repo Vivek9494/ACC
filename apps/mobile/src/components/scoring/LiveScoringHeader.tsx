@@ -1,5 +1,6 @@
 import {
   deriveLiveInningsRunStats,
+  formatLiveTargetLabel,
   PROJECTED_SCORE_REFERENCE_RPO,
   type InningsScorecard,
   type LiveInningsRunStats,
@@ -25,6 +26,11 @@ export interface LiveScoringHeaderProps {
   innings: InningsScorecard | null;
   /** Resolved match allotment (`oversPerInnings` / innings `oversAllotted`). */
   totalOvers: number | null;
+  /**
+   * Original chase target (first-innings total + 1). When the live target differs,
+   * shown as "Target: 170 (was 180)".
+   */
+  originalTarget?: number | null;
   /** When false, hide all rate / chase / projection stats (openers not set). */
   showRunStats?: boolean;
   compact?: boolean;
@@ -32,9 +38,11 @@ export interface LiveScoringHeaderProps {
 
 function StatsLine({
   stats,
+  originalTarget,
   compact,
 }: {
   stats: LiveInningsRunStats;
+  originalTarget?: number | null;
   compact: boolean;
 }): React.ReactElement | null {
   if (!stats.isChase && !stats.ratesReady) {
@@ -44,12 +52,13 @@ function StatsLine({
   const textClass = compact
     ? 'font-sans text-sm text-on-surface-variant'
     : 'font-sans text-base text-on-surface-variant';
+  const targetLabel = formatLiveTargetLabel(stats.target, originalTarget);
 
   if (stats.isChase && !stats.ratesReady) {
     return (
       <Text className={textClass}>
         Target:{' '}
-        <Text className="font-sans-semibold text-on-surface">{stats.target}</Text>
+        <Text className="font-sans-semibold text-on-surface">{targetLabel}</Text>
       </Text>
     );
   }
@@ -61,7 +70,7 @@ function StatsLine({
         <Text className="font-sans-semibold text-on-surface">{stats.crrText}</Text>
         {' • '}
         Target:{' '}
-        <Text className="font-sans-semibold text-on-surface">{stats.target}</Text>
+        <Text className="font-sans-semibold text-on-surface">{targetLabel}</Text>
         {stats.rrrText != null ? (
           <>
             {' • '}
@@ -213,9 +222,11 @@ function showBottomBox(stats: LiveInningsRunStats): boolean {
 
 function StatsPanel({
   stats,
+  originalTarget,
   compact,
 }: {
   stats: LiveInningsRunStats;
+  originalTarget?: number | null;
   compact: boolean;
 }): React.ReactElement | null {
   const lineVisible = showStatsLine(stats);
@@ -227,7 +238,9 @@ function StatsPanel({
 
   return (
     <>
-      {lineVisible ? <StatsLine stats={stats} compact={compact} /> : null}
+      {lineVisible ? (
+        <StatsLine stats={stats} originalTarget={originalTarget} compact={compact} />
+      ) : null}
       {boxVisible ? (
         stats.isChase ? (
           <ChaseInfoBox stats={stats} compact={compact} />
@@ -266,6 +279,7 @@ export function LiveScoringHeader({
   matchState,
   innings,
   totalOvers,
+  originalTarget = null,
   showRunStats = false,
   compact = false,
 }: LiveScoringHeaderProps): React.ReactElement {
@@ -273,7 +287,7 @@ export function LiveScoringHeader({
   const oversLine = innings ? innings.oversText : '0.0';
   const stats =
     showRunStats && innings
-      ? deriveLiveInningsRunStats(innings, totalOvers ?? innings.oversAllotted)
+      ? deriveLiveInningsRunStats(innings, innings.oversAllotted ?? totalOvers)
       : null;
 
   if (compact) {
@@ -306,7 +320,7 @@ export function LiveScoringHeader({
             ) : null}
             {stats ? (
               <View className="mt-1 gap-2">
-                <StatsPanel stats={stats} compact />
+                <StatsPanel stats={stats} originalTarget={originalTarget} compact />
               </View>
             ) : null}
           </View>
@@ -347,7 +361,9 @@ export function LiveScoringHeader({
 
       {resultLine ? <MatchResultLine resultLine={resultLine} compact={false} /> : null}
 
-      {stats ? <StatsPanel stats={stats} compact={false} /> : null}
+      {stats ? (
+        <StatsPanel stats={stats} originalTarget={originalTarget} compact={false} />
+      ) : null}
 
       {innings?.freeHitNext ? (
         <Text className="font-sans-semibold text-sm uppercase tracking-wide text-primary">

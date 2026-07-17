@@ -819,6 +819,17 @@ export function verifyLateAttendancePunch(
   );
 }
 
+export function unverifyLateAttendancePunch(
+  matchId: string,
+  userId: string,
+  teamId: string,
+): Promise<PunchTimeAttendanceView> {
+  return apiFetch<PunchTimeAttendanceView>(
+    `/matches/${matchId}/attendance/${userId}/verify?teamId=${encodeURIComponent(teamId)}`,
+    { method: 'DELETE' },
+  );
+}
+
 export function getGuestDashboard(): Promise<GuestDashboard> {
   return apiFetchPublic<GuestDashboard>('/guest/dashboard');
 }

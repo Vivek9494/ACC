@@ -1,5 +1,3 @@
-import 'reflect-metadata';
-
 import { type InningsScorecard, InningsType } from '@acc/types';
 
 import { deriveMatchResult } from './result';
@@ -10,6 +8,7 @@ function inn(
   battingTeamId: string,
   runs: number,
   closed: boolean,
+  target: number | null = null,
 ): InningsScorecard {
   return {
     inningsId: `i${sequence}`,
@@ -36,7 +35,7 @@ function inn(
     freeHitNext: false,
     closed,
     closeReason: null,
-    target: null,
+    target,
     droppedCatches: [],
     droppedCatchEvents: [],
   };
@@ -58,8 +57,8 @@ describe('Scoring engine — match result & Super Over (§14)', () => {
     });
   });
 
-  it('declares the chasing side the winner the moment it passes the target', () => {
-    const chase = inn(2, N, 'away', 151, false);
+  it('declares the chasing side the winner the moment it reaches the target', () => {
+    const chase = inn(2, N, 'away', 151, false, 151);
     chase.wickets = 3;
     const result = deriveMatchResult([inn(1, N, 'home', 150, true), chase]);
     expect(result).toMatchObject({
@@ -76,7 +75,7 @@ describe('Scoring engine — match result & Super Over (§14)', () => {
     expect(result.superOverRequired).toBe(false);
   });
 
-  it('requires a Super Over when the scores are level (§14)', () => {
+  it('requires a Super Over when the chase finishes one short of the target (§14)', () => {
     const result = deriveMatchResult([inn(1, N, 'home', 150, true), inn(2, N, 'away', 150, true)]);
     expect(result).toMatchObject({ decided: false, superOverRequired: true });
   });
@@ -111,5 +110,39 @@ describe('Scoring engine — match result & Super Over (§14)', () => {
       inn(6, SO, 'away', 21, false),
     ]);
     expect(result).toMatchObject({ decided: true, winningTeamId: 'away' });
+  });
+
+  it('uses a revised chase target, not the original first-innings total', () => {
+    const chase = inn(2, N, 'away', 180, true, 180);
+    chase.wickets = 4;
+    const result = deriveMatchResult([inn(1, N, 'home', 205, true), chase]);
+    expect(result).toMatchObject({
+      decided: true,
+      isTie: false,
+      winningTeamId: 'away',
+      marginWickets: 6,
+      marginRuns: null,
+    });
+  });
+
+  it('bases a short-chase run margin on the revised target', () => {
+    const result = deriveMatchResult([
+      inn(1, N, 'home', 205, true),
+      inn(2, N, 'away', 170, true, 180),
+    ]);
+    expect(result).toMatchObject({
+      decided: true,
+      winningTeamId: 'home',
+      marginRuns: 9,
+      marginWickets: null,
+    });
+  });
+
+  it('ties when the chase finishes exactly one short of a revised target', () => {
+    const result = deriveMatchResult([
+      inn(1, N, 'home', 205, true),
+      inn(2, N, 'away', 179, true, 180),
+    ]);
+    expect(result).toMatchObject({ decided: false, superOverRequired: true });
   });
 });

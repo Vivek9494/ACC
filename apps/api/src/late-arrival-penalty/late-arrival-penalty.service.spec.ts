@@ -134,6 +134,52 @@ describe('LateArrivalPenaltyService', () => {
     );
   });
 
+  it('cancels OWED when captain unverifies late at the origin match', async () => {
+    prisma.lateArrivalPenalty.findFirst.mockResolvedValue({
+      id: 'penalty-1',
+      playerId: 'player-1',
+      teamId: 'team-1',
+      tournamentId: 'tour-1',
+      originMatchId: 'match-a',
+      state: LateArrivalPenaltyState.Owed,
+      assignedServeMatchId: null,
+    });
+    prisma.lateArrivalPenalty.update.mockResolvedValue({
+      id: 'penalty-1',
+      playerId: 'player-1',
+      teamId: 'team-1',
+      state: LateArrivalPenaltyState.Cancelled,
+      assignedServeMatchId: null,
+      originMatchId: 'match-a',
+    });
+
+    await service.onCaptainUnverifyLate(captain, 'match-a', 'team-1', 'player-1');
+
+    expect(prisma.lateArrivalPenalty.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ state: LateArrivalPenaltyState.Cancelled }),
+      }),
+    );
+    expect(audit.record).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'LATE_ARRIVAL_PENALTY_CANCELLED' }),
+    );
+  });
+
+  it('blocks unverify when the penalty is already designated to serve', async () => {
+    prisma.lateArrivalPenalty.findFirst.mockResolvedValue({
+      id: 'penalty-1',
+      playerId: 'player-1',
+      teamId: 'team-1',
+      originMatchId: 'match-a',
+      state: LateArrivalPenaltyState.Assigned,
+      assignedServeMatchId: 'match-c',
+    });
+
+    await expect(
+      service.onCaptainUnverifyLate(captain, 'match-a', 'team-1', 'player-1'),
+    ).rejects.toMatchObject({ response: { error: 'PENALTY_ALREADY_ASSIGNED' } });
+  });
+
   it('does not create a second penalty when player already owes one', async () => {
     prisma.lateArrivalPenalty.findFirst.mockResolvedValue({
       id: 'penalty-existing',

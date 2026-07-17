@@ -7,6 +7,18 @@ import { Modal, Platform, Pressable, View } from 'react-native';
 import { Button } from '../ui/Button';
 import { Text } from '../ui/Text';
 
+/** UIDatePicker spinner needs explicit height or it may not lay out / receive events. */
+const IOS_SPINNER_HEIGHT = 216;
+
+// Always pass explicit, wide bounds. The native module defaults an unset
+// minimum/maximumDate to 0 (1970). Under the New Architecture a recycled
+// UIDatePicker keeps the *previous* picker's bounds, so when a date picker
+// (with a real maximumDate) is recycled into this dialog (no maximumDate),
+// the prop diff fires and clamps maximumDate to 1970 — pinning the value to
+// epoch (Wed Dec 31 locally). Wide defaults prevent the clamp.
+const WIDE_MIN_DATE = new Date(1900, 0, 1);
+const WIDE_MAX_DATE = new Date(2200, 0, 1);
+
 export interface EditPunchTimeDialogProps {
   visible: boolean;
   title: string;
@@ -61,6 +73,9 @@ export function EditPunchTimeDialog({
               value={selected}
               mode="datetime"
               display="spinner"
+              minimumDate={WIDE_MIN_DATE}
+              maximumDate={WIDE_MAX_DATE}
+              style={{ height: IOS_SPINNER_HEIGHT }}
               onChange={onPickerChange}
             />
           ) : (
@@ -83,6 +98,8 @@ export function EditPunchTimeDialog({
                 <DateTimePicker
                   value={selected}
                   mode="datetime"
+                  minimumDate={WIDE_MIN_DATE}
+                  maximumDate={WIDE_MAX_DATE}
                   onChange={onPickerChange}
                 />
               ) : null}

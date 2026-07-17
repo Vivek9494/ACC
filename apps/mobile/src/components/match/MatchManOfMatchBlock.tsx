@@ -128,22 +128,30 @@ export function MatchManOfMatchBlock({
     return null;
   }
 
+  const awardedCard =
+    showAwardedCard && card && momUserId ? (
+      <ManOfMatchCard match={match} card={card} momUserId={momUserId} nameOf={nameOf} />
+    ) : null;
+
+  const actionCard = canSelectMom ? (
+    <ManOfMatchActionCard
+      winningTeamName={winningTeamName}
+      momEligibility={momEligibility}
+      momPending={momPending}
+      working={workingProp}
+      inline={actionStyle === 'inline'}
+      onPress={openSelectionPage}
+    />
+  ) : null;
+
+  if (!awardedCard && !actionCard) {
+    return null;
+  }
+
   return (
     <View className="gap-4">
-      {showAwardedCard && card && momUserId ? (
-        <ManOfMatchCard match={match} card={card} momUserId={momUserId} nameOf={nameOf} />
-      ) : null}
-
-      {canSelectMom ? (
-        <ManOfMatchActionCard
-          winningTeamName={winningTeamName}
-          momEligibility={momEligibility}
-          momPending={momPending}
-          working={workingProp}
-          inline={actionStyle === 'inline'}
-          onPress={openSelectionPage}
-        />
-      ) : null}
+      {awardedCard}
+      {actionCard}
     </View>
   );
 }

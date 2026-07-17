@@ -97,6 +97,11 @@ function isWicketEvent(e: ScoringEvent): boolean {
   return e.dismissalType !== null || e.type === DeliveryType.RetiredOut;
 }
 
+/** True when this delivery left a crease vacant and the scorer names an incoming batter. */
+export function deliveryVacatedCrease(e: ScoringEvent): boolean {
+  return isWicketEvent(e) || e.type === DeliveryType.RetiredHurt;
+}
+
 function bowlerCredited(e: ScoringEvent): boolean {
   return e.dismissalType !== null && BOWLER_CREDITED_DISMISSALS.includes(e.dismissalType);
 }
