@@ -72,35 +72,61 @@ function dataClass(column: (typeof STANDINGS_STAT_COLUMNS)[number] | 'PTS' | 'NR
   return 'text-on-surface-variant';
 }
 
+/**
+ * Column sizing:
+ * - With NRR (tennis): fixed pixel widths inside a horizontal ScrollView.
+ * - Without NRR (Leather): five columns flex evenly to fill the row — no dead gap.
+ */
+function statColumnStyle(stretch: boolean): { flex: number } | { width: number } {
+  return stretch ? { flex: 1 } : { width: STANDINGS_STAT_COL_WIDTH };
+}
+
+function ptsColumnStyle(stretch: boolean): { flex: number } | { width: number } {
+  return stretch ? { flex: 1 } : { width: STANDINGS_PTS_COL_WIDTH };
+}
+
 function StandingsStatsHeaderCells({
   showNetRunRate,
 }: {
   showNetRunRate: boolean;
 }): React.ReactElement {
+  const stretch = !showNetRunRate;
   return (
     <View
       className="flex-row items-center pr-3"
-      style={{ minWidth: standingsStatsMinWidth(showNetRunRate) }}
+      style={stretch ? undefined : { minWidth: standingsStatsMinWidth(showNetRunRate) }}
     >
       {STANDINGS_STAT_COLUMNS.map((column) => (
         <Text
           key={column}
           className={`text-center font-sans-medium text-[9px] uppercase tracking-wider ${headerClass(column)}`}
-          style={{ width: STANDINGS_STAT_COL_WIDTH }}
+          style={statColumnStyle(stretch)}
         >
           {column}
         </Text>
       ))}
-      <View
-        className={`bg-primary-container px-1 py-1 ${showNetRunRate ? 'rounded-l-control' : 'rounded-control'}`}
-        style={{ width: STANDINGS_PTS_COL_WIDTH }}
-      >
-        <Text
-          className={`text-center text-[9px] uppercase tracking-wider ${headerClass('PTS')}`}
+      {stretch ? (
+        <View className="items-center" style={ptsColumnStyle(stretch)}>
+          <View className="rounded-control bg-primary-container px-2 py-1">
+            <Text
+              className={`text-center text-[9px] uppercase tracking-wider ${headerClass('PTS')}`}
+            >
+              PTS
+            </Text>
+          </View>
+        </View>
+      ) : (
+        <View
+          className="rounded-l-control bg-primary-container px-1 py-1"
+          style={ptsColumnStyle(stretch)}
         >
-          PTS
-        </Text>
-      </View>
+          <Text
+            className={`text-center text-[9px] uppercase tracking-wider ${headerClass('PTS')}`}
+          >
+            PTS
+          </Text>
+        </View>
+      )}
       {showNetRunRate ? (
         <Text
           className={`text-right font-sans-medium text-[9px] uppercase tracking-wider ${headerClass('NRR')}`}
@@ -212,25 +238,42 @@ export function StandingsPinnedSplitTableBody({
         ))}
       </View>
 
-      <ScrollView
-        horizontal
-        bounces={false}
-        showsHorizontalScrollIndicator={false}
-        className="flex-1"
-      >
-        <View>
-          <StandingsStatsHeaderRow showNetRunRate={showNetRunRate} />
+      {showNetRunRate ? (
+        <ScrollView
+          horizontal
+          bounces={false}
+          showsHorizontalScrollIndicator={false}
+          className="flex-1"
+        >
+          <View>
+            <StandingsStatsHeaderRow showNetRunRate />
+            {teams.map((row, index) => (
+              <StandingsStatsDataRow
+                key={row.teamId}
+                row={row}
+                showBottomDivider={index < lastIndex}
+                height={rowHeight}
+                showNetRunRate
+              />
+            ))}
+          </View>
+        </ScrollView>
+      ) : (
+        // Without NRR everything fits on-screen: flex the stat columns evenly
+        // across the remaining width instead of horizontal scrolling.
+        <View className="flex-1">
+          <StandingsStatsHeaderRow showNetRunRate={false} />
           {teams.map((row, index) => (
             <StandingsStatsDataRow
               key={row.teamId}
               row={row}
               showBottomDivider={index < lastIndex}
               height={rowHeight}
-              showNetRunRate={showNetRunRate}
+              showNetRunRate={false}
             />
           ))}
         </View>
-      </ScrollView>
+      )}
     </View>
   );
 }
@@ -247,11 +290,12 @@ export function StandingsStatsDataRow({
   height?: number;
   showNetRunRate?: boolean;
 }): React.ReactElement {
+  const stretch = !showNetRunRate;
   return (
     <View
       className={`flex-row items-center pr-3 ${showBottomDivider ? 'border-b border-separator' : ''}`}
       style={{
-        minWidth: standingsStatsMinWidth(showNetRunRate),
+        ...(stretch ? {} : { minWidth: standingsStatsMinWidth(showNetRunRate) }),
         ...(height != null ? { height } : {}),
       }}
     >
@@ -259,17 +303,28 @@ export function StandingsStatsDataRow({
         <Text
           key={column}
           className={`text-center font-sans text-xs ${dataClass(column)}`}
-          style={{ width: STANDINGS_STAT_COL_WIDTH }}
+          style={statColumnStyle(stretch)}
         >
           {statValue(row, column)}
         </Text>
       ))}
-      <View
-        className={`justify-center bg-primary-container px-1 py-1.5 ${showNetRunRate ? 'rounded-l-control' : 'rounded-control'}`}
-        style={{ width: STANDINGS_PTS_COL_WIDTH }}
-      >
-        <Text className={`text-center text-xs ${dataClass('PTS')}`}>{row.points}</Text>
-      </View>
+      {stretch ? (
+        <View className="items-center" style={ptsColumnStyle(stretch)}>
+          <View
+            className="justify-center rounded-control bg-primary-container px-2 py-1.5"
+            style={{ minWidth: STANDINGS_PTS_COL_WIDTH }}
+          >
+            <Text className={`text-center text-xs ${dataClass('PTS')}`}>{row.points}</Text>
+          </View>
+        </View>
+      ) : (
+        <View
+          className="justify-center rounded-l-control bg-primary-container px-1 py-1.5"
+          style={ptsColumnStyle(stretch)}
+        >
+          <Text className={`text-center text-xs ${dataClass('PTS')}`}>{row.points}</Text>
+        </View>
+      )}
       {showNetRunRate ? (
         <Text
           className={`text-right font-sans text-xs ${dataClass('NRR')}`}

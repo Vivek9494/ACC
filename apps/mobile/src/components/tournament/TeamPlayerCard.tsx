@@ -72,7 +72,7 @@ export function TeamPlayerCard({
             {player.firstName} {player.lastName}
           </Text>
 
-          {hasMeta || showViewProfile ? (
+          {hasMeta || showViewProfile || onRemove ? (
             <View className="mt-1 flex-row items-center gap-2">
               <View className="min-w-0 flex-1 gap-1">
                 {player.isCaptain ? <RoleBadge label="Captain" /> : null}
@@ -94,25 +94,26 @@ export function TeamPlayerCard({
                   />
                 </View>
               ) : null}
+
+              {onRemove ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Remove ${player.firstName} ${player.lastName} from team`}
+                  disabled={removing}
+                  hitSlop={8}
+                  onPress={onRemove}
+                  className="h-9 w-9 shrink-0 items-center justify-center rounded-full"
+                >
+                  {removing ? (
+                    <ActivityIndicator size="small" color={colors.textMuted} />
+                  ) : (
+                    <MaterialIcons name="delete-outline" size={22} color={colors.textMuted} />
+                  )}
+                </Pressable>
+              ) : null}
             </View>
           ) : null}
         </View>
-        {onRemove ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`Remove ${player.firstName} ${player.lastName} from team`}
-            disabled={removing}
-            hitSlop={8}
-            onPress={onRemove}
-            className="h-9 w-9 items-center justify-center rounded-full"
-          >
-            {removing ? (
-              <ActivityIndicator size="small" color="#BA1A1A" />
-            ) : (
-              <MaterialIcons name="delete-outline" size={22} color="#BA1A1A" />
-            )}
-          </Pressable>
-        ) : null}
       </View>
     </View>
   );

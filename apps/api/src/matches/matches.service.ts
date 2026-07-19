@@ -59,7 +59,9 @@ import {
   type ExternalPlayerView,
   type FinalizeBothPlayingXiRequest,
   type RoundRobinMatchSetupContext,
+  formatMatchResultNote,
   replaceGenericHomeAwayInResultNote,
+  resolveMatchWinnerDisplayName,
 } from '@acc/types';
 import {
   BadRequestException,
@@ -750,7 +752,8 @@ export class MatchesService {
       row.awayTeam?.logoUrl ?? null,
     ]);
 
-    const { liveScore, teamAScoreLine, teamBScoreLine } = await this.resolveListScores(row);
+    const { liveScore, teamAScoreLine, teamBScoreLine, card } =
+      await this.resolveListScores(row);
 
     return {
       id: row.id,
@@ -774,7 +777,7 @@ export class MatchesService {
       },
       groundLocation: row.groundLocation,
       homeAway: (row.homeAway as HomeAway | null) ?? null,
-      resultSummary: this.buildListResultSummary(row, homeName, awayName),
+      resultSummary: this.buildListResultSummary(row, homeName, awayName, card),
       liveScore,
       completedAt: row.completedAt?.toISOString() ?? null,
       isDeleted: row.isDeleted,
@@ -793,15 +796,16 @@ export class MatchesService {
     liveScore: MatchLiveScoreSummary | null;
     teamAScoreLine: string | null;
     teamBScoreLine: string | null;
+    card: ScorecardResponse | null;
   }> {
     const state = row.state as MatchState;
     if (!LIST_SCORECARD_STATES.includes(state)) {
-      return { liveScore: null, teamAScoreLine: null, teamBScoreLine: null };
+      return { liveScore: null, teamAScoreLine: null, teamBScoreLine: null, card: null };
     }
 
     const card = await this.loadListScorecard(row);
     if (!card || card.innings.length === 0) {
-      return { liveScore: null, teamAScoreLine: null, teamBScoreLine: null };
+      return { liveScore: null, teamAScoreLine: null, teamBScoreLine: null, card };
     }
 
     const showYetToBat =
@@ -830,7 +834,7 @@ export class MatchesService {
           }
         : null;
 
-    return { liveScore, teamAScoreLine, teamBScoreLine };
+    return { liveScore, teamAScoreLine, teamBScoreLine, card };
   }
 
   /** Prefer Redis live cache for in-progress matches; otherwise rebuild from DB. */
@@ -2825,18 +2829,45 @@ export class MatchesService {
     };
   }
 
+  /**
+   * Completed-match result line for the tournament Matches tab.
+   * Prefer a live scorecard rebuild (same as dashboard / My Matches) so revised-
+   * target / external-chase labels stay correct; fall back to persisted note.
+   * When the rebuild disagrees with Match.resultNote, repair the stored row.
+   */
   private buildListResultSummary(
     row: MatchListRow,
     homeName: string,
     awayName: string,
+    card?: ScorecardResponse | null,
   ): string | null {
     const state = row.state as MatchState;
     if (!LIST_COMPLETED_STATES.includes(state)) {
       return null;
     }
-    if (row.isNoResult) {
+    if (row.isNoResult || card?.result.isNoResult) {
       return 'No Result';
     }
+
+    if (card && card.result.decided && !card.result.superOverRequired) {
+      const winnerName = resolveMatchWinnerDisplayName(
+        {
+          homeTeamId: row.homeTeamId,
+          awayTeamId: row.awayTeamId,
+          homeTeamName: homeName,
+          awayTeamName: row.awayTeam?.name ?? null,
+          externalOpponentName: row.externalOpponentName,
+        },
+        card.result,
+        card.innings,
+      );
+      const rebuilt = formatMatchResultNote(winnerName, card.result);
+      if (rebuilt) {
+        this.maybeRepairPersistedResultNote(row, rebuilt, card.result.winningTeamId);
+        return rebuilt;
+      }
+    }
+
     const note = row.resultNote?.trim();
     if (note) {
       return replaceGenericHomeAwayInResultNote(note, homeName, awayName);
@@ -2853,6 +2884,30 @@ export class MatchesService {
       }
     }
     return null;
+  }
+
+  /** Best-effort fix for stale resultNote written before revised-target naming fixes. */
+  private maybeRepairPersistedResultNote(
+    row: MatchListRow,
+    rebuiltNote: string,
+    winningTeamId: string | null,
+  ): void {
+    const currentNote = row.resultNote?.trim() ?? null;
+    if (currentNote === rebuiltNote && row.winningTeamId === winningTeamId) {
+      return;
+    }
+    void this.prisma.match
+      .update({
+        where: { id: row.id },
+        data: { resultNote: rebuiltNote, winningTeamId },
+      })
+      .catch((err: unknown) => {
+        this.logger.warn(
+          `Failed to repair resultNote for match ${row.id}: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        );
+      });
   }
 
   private toDetail(row: MatchRow, scorerNames: NameMap): MatchDetail {

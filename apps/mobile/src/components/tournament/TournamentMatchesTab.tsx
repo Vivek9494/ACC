@@ -36,6 +36,7 @@ import { ScheduleMatchesNoTeamsDialog } from '../ui/ScheduleMatchesNoTeamsDialog
 import { SelectFormatModal } from '../ui/SelectFormatModal';
 import { Button } from '../ui/Button';
 import { FIELD_ORANGE } from '../ui/fieldStyles';
+import { PillTabBar } from '../ui/PillTabBar';
 import { Select } from '../ui/Select';
 import { Text } from '../ui/Text';
 import { MatchList } from './MatchList';
@@ -97,9 +98,9 @@ export function TournamentMatchesTab({
     });
   const [groupFilter, setGroupFilter] = useState<string>(MATCH_LIST_GROUP_FILTER.All);
 
-  const teamFilterOptions = useMemo(
+  const teamCapsuleOptions = useMemo(
     () => [
-      { value: 'all', label: 'All Teams' },
+      { value: 'all', label: 'All' },
       ...teams.map((team) => ({ value: team.id, label: team.name })),
     ],
     [teams],
@@ -354,12 +355,11 @@ export function TournamentMatchesTab({
           {renderKnockoutAndScheduleActions()}
 
           {showTeamFilter ? (
-            <Select
-              label="Teams"
-              labelVariant="brand"
-              placeholder="All Teams"
+            <PillTabBar
+              accessibilityLabel="Filter matches by team"
+              layout="scroll"
               value={teamFilter ?? 'all'}
-              options={teamFilterOptions}
+              options={teamCapsuleOptions}
               onChange={handleTeamFilterChange}
             />
           ) : null}

@@ -42,7 +42,7 @@ import {
  * Match result & scorecard confirmation screen (spec §13, §16). Mirrors the
  * `full_scorecard_detailed_view_with_stats` mockup: the full derived scorecard,
  * a Captain/VC confirmation banner with the 5-hour auto-confirm countdown,
- * awarded Man of the Match on the winning-team tab, and a guest-accessible PDF export.
+ * awarded Man of the Match on the winning-team tab, and a signed-in-only PDF export.
  * Select/change MoM lives on Match Details only.
  */
 export default function ScorecardResultScreen(): React.ReactElement {
@@ -304,14 +304,16 @@ export default function ScorecardResultScreen(): React.ReactElement {
           />
         ) : null}
 
-        {/* §16: PDF export (guest-accessible) */}
-        <Button
-          onPress={() => void Linking.openURL(scorecardPdfUrl(matchId))}
-          variant="outline"
-          className="h-12 border-primary"
-          textClassName="text-primary"
-          label="Export scorecard PDF"
-        />
+        {/* §16: PDF export — signed-in users only (hidden for Guest) */}
+        {user ? (
+          <Button
+            onPress={() => void Linking.openURL(scorecardPdfUrl(matchId))}
+            variant="outline"
+            className="h-12 border-primary"
+            textClassName="text-primary"
+            label="Export scorecard PDF"
+          />
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );

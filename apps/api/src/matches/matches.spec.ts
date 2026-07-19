@@ -294,6 +294,76 @@ describe('MatchesService — tournament match list', () => {
     expect(items[0]?.deletedByName).toBe('Ada Min');
     expect(items[0]?.deletedAt).toBe('2026-07-01T12:00:00.000Z');
   });
+
+  it('rebuilds resultSummary from the scorecard for a revised-target external chase win', async () => {
+    const { service, prisma, scorecardReader } = buildService();
+    prisma.match.findMany.mockResolvedValue([
+      listRow({
+        state: MatchState.Completed,
+        awayTeamId: null,
+        externalOpponentName: 'Brampton Sauga',
+        awayTeam: null,
+        homeTeam: { name: 'ACC 3', logoUrl: null },
+        // Stale note from the pre-fix totals-based labeler.
+        resultNote: 'ACC 3 won by 6 wickets',
+        winningTeamId: null,
+        completedAt: new Date('2026-07-18T22:00:00.000Z'),
+        delayMinutes: 0,
+        group: null,
+        groupId: null,
+      }),
+    ]);
+    scorecardReader.build.mockResolvedValue({
+      matchId: 'match-1',
+      version: 1,
+      originalTarget: 134,
+      dlsTarget: 129,
+      effectiveTarget: 129,
+      innings: [
+        {
+          sequence: 1,
+          battingTeamId: 'team-H',
+          battingIsExternal: false,
+          runs: 133,
+          wickets: 4,
+          oversText: '20.0',
+        },
+        {
+          sequence: 2,
+          battingTeamId: null,
+          battingIsExternal: true,
+          runs: 129,
+          wickets: 4,
+          oversText: '14.5',
+          target: 129,
+        },
+      ],
+      result: {
+        decided: true,
+        isTie: false,
+        isNoResult: false,
+        winningTeamId: null,
+        marginRuns: null,
+        marginWickets: 6,
+        superOverRequired: false,
+        note: null,
+      },
+    });
+    prisma.match.update.mockResolvedValue({});
+
+    const items = await service.list('tour-1', undefined, actor);
+
+    expect(items[0]?.resultSummary).toBe('Brampton Sauga won by 6 wickets');
+    expect(prisma.match.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'match-1' },
+        data: {
+          resultNote: 'Brampton Sauga won by 6 wickets',
+          winningTeamId: null,
+        },
+      }),
+    );
+  });
 });
 
 describe('formatMatchDelayMinutes', () => {
