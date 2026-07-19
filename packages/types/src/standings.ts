@@ -38,6 +38,8 @@ export interface TournamentStandings {
   tables: StandingsTableSection[];
   /** Matches skipped because the stored outcome could not be scored (e.g. tie without Super Over). */
   dataErrors: StandingsDataError[];
+  /** False for Leather — NRR is not shown for ACC vs external fixtures. */
+  showNetRunRate: boolean;
 }
 
 /** Per-innings inputs for NRR — derived from completed match scorecards. */
@@ -58,6 +60,11 @@ export interface StandingsMatchInput {
   awayTeamId: string | null;
   isNoResult: boolean;
   winningTeamId: string | null;
+  /**
+   * True when scoring produced a finished result (win or external win).
+   * Needed for Leather: an external opponent win stores `winningTeamId = null`.
+   */
+  isDecided?: boolean;
   /** True when regulation scores are level and a Super Over is still required (§14). */
   requiresSuperOver?: boolean;
   /** Normal innings only — Super Overs excluded from NRR. */

@@ -2,6 +2,7 @@ import type { CaptainFeaturedMatchSummary, CaptainUpcomingMatchCardView } from '
 import type { HomeAway, MatchState } from './match';
 import type { TournamentDashboardEntry } from './center-sevak';
 import type { ParticipationPollCardView } from './poll';
+import { BallType, type BallType as BallTypeValue } from './rbac';
 import type { TournamentSummary } from './tournament';
 import {
   DEFAULT_VENUE_TIMEZONE,
@@ -132,11 +133,49 @@ export function groupFeaturedMatchSummariesByScheduledDay(
   return groups;
 }
 
-/** Aggregated player stats for a manager who is also a registered player. */
+/** High-level Matches / Runs / Wickets for one ball type (dashboard “Your Performance”). */
 export interface ManagerPlayerStats {
   matches: number;
   runs: number;
   wickets: number;
+}
+
+export const EMPTY_MANAGER_PLAYER_STATS: ManagerPlayerStats = {
+  matches: 0,
+  runs: 0,
+  wickets: 0,
+};
+
+/** Per-format high-level performance for role dashboards. */
+export interface DashboardPlayerPerformance {
+  leather: ManagerPlayerStats;
+  tennis: ManagerPlayerStats;
+}
+
+export const EMPTY_DASHBOARD_PLAYER_PERFORMANCE: DashboardPlayerPerformance = {
+  leather: EMPTY_MANAGER_PLAYER_STATS,
+  tennis: EMPTY_MANAGER_PLAYER_STATS,
+};
+
+/** Formats the user has played (≥1 career match), Leather first. */
+export function dashboardPlayedBallTypes(
+  performance: DashboardPlayerPerformance,
+): BallTypeValue[] {
+  const types: BallTypeValue[] = [];
+  if (performance.leather.matches >= 1) {
+    types.push(BallType.Leather);
+  }
+  if (performance.tennis.matches >= 1) {
+    types.push(BallType.Tennis);
+  }
+  return types;
+}
+
+export function statsForDashboardBallType(
+  performance: DashboardPlayerPerformance,
+  ballType: BallTypeValue,
+): ManagerPlayerStats {
+  return ballType === BallType.Leather ? performance.leather : performance.tennis;
 }
 
 /** Club Manager dashboard payload (GET /club-manager/dashboard). */
@@ -152,6 +191,6 @@ export interface ClubManagerDashboard {
    */
   participationPoll: ParticipationPollCardView | null;
   /** Null when the manager has no tournament registration (not a player); zeros allowed. */
-  playerStats: ManagerPlayerStats | null;
+  playerStats: DashboardPlayerPerformance | null;
   tournaments: TournamentDashboardEntry[];
 }

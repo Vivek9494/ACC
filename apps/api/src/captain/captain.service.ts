@@ -6,7 +6,6 @@ import {
   type CaptainPendingManOfMatch,
   type CaptainScorerAssignmentMatch,
   type CaptainUpcomingMatchCardView,
-  type ManagerPlayerStats,
   type ParticipationPollCardView,
   MatchState,
   Permission,
@@ -29,9 +28,8 @@ import { isCaptainOrViceCaptain } from '../authz/team-leader.util';
 import { ScorerDashboardMatchService } from '../matches/scorer-dashboard-match.service';
 import { DashboardFeaturedMatchesService } from '../matches/dashboard-featured-matches.service';
 import { ParticipationPollService } from '../participation-poll/participation-poll.service';
+import { PlayerStatsService } from '../player-stats/player-stats.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { LeatherTournamentVisibilityService } from '../tournaments/leather-tournament-visibility.service';
-import { TennisTournamentVisibilityService } from '../tournaments/tennis-tournament-visibility.service';
 import { TournamentsService } from '../tournaments/tournaments.service';
 import { activeTournamentRelationWhere } from '../tournaments/tournament-query';
 import { canShowScorerAssignmentCard } from '../matches/scorer-assignment.utils';
@@ -52,13 +50,6 @@ const UPCOMING_STATES: MatchState[] = [
 
 const LIVE_STATES: MatchState[] = [MatchState.Live, MatchState.RainInterrupted];
 
-const PLAYED_STATES: MatchState[] = [
-  MatchState.Live,
-  MatchState.Completed,
-  MatchState.ScorecardLocked,
-  MatchState.NoResult,
-];
-
 const XI_BUTTON_MATCH_STATES: MatchState[] = [
   MatchState.Scheduled,
   MatchState.Delayed,
@@ -73,8 +64,7 @@ export class CaptainService {
     private readonly scorecardReader: ScorecardReader,
     private readonly permissions: PermissionService,
     private readonly participationPolls: ParticipationPollService,
-    private readonly leatherVisibility: LeatherTournamentVisibilityService,
-    private readonly tennisVisibility: TennisTournamentVisibilityService,
+    private readonly playerStatsService: PlayerStatsService,
     private readonly scorerDashboardMatch: ScorerDashboardMatchService,
     private readonly scorecardConfirmation: ScorecardConfirmationService,
     private readonly dashboardFeaturedMatches: DashboardFeaturedMatchesService,
@@ -98,27 +88,6 @@ export class CaptainService {
     const teamIds = [
       ...new Set(leadership.map((row) => row.teamId).filter((id): id is string => Boolean(id))),
     ];
-    const tournamentIds = [
-      ...new Set(
-        leadership.map((row) => row.tournamentId).filter((id): id is string => Boolean(id)),
-      ),
-    ];
-
-    const [visibleLeatherIds, centerTennisIds] = await Promise.all([
-      this.leatherVisibility.getVisibleLeatherTournamentIds(userId),
-      this.tennisVisibility.getCenterParticipatingTournamentIds(actor.centerId),
-    ]);
-    const mergedTournamentIds = [
-      ...new Set([...tournamentIds, ...visibleLeatherIds, ...centerTennisIds]),
-    ];
-
-    const leadershipTeamIds = [
-      ...new Set(
-        leadership
-          .map((row) => row.teamId)
-          .filter((id): id is string => Boolean(id)),
-      ),
-    ];
 
     const [featuredMatchesRaw, teamLeadMatchCards, squadParticipationPoll, pendingManOfMatch, pendingScorecardConfirmations, scorerMatch, playerStats, tournaments] =
       await Promise.all([
@@ -128,7 +97,7 @@ export class CaptainService {
       this.loadPendingManOfMatch(userId, teamIds),
       this.scorecardConfirmation.listPendingDashboardConfirmations(actor),
       this.scorerDashboardMatch.loadStartableMatch(userId),
-      this.loadPlayerStats(userId, mergedTournamentIds),
+      this.playerStatsService.buildDashboardHighLevelStats(userId),
       this.tournaments.listDashboardSummaries(actor),
     ]);
 
@@ -511,51 +480,5 @@ export class CaptainService {
       return isClubManager !== null;
     }
     return false;
-  }
-
-  private async loadPlayerStats(
-    userId: string,
-    tournamentIds: string[],
-  ): Promise<ManagerPlayerStats> {
-    if (tournamentIds.length === 0) {
-      return { matches: 0, runs: 0, wickets: 0 };
-    }
-
-    const squadRows = await this.prisma.matchSquadPlayer.findMany({
-      where: {
-        userId,
-        squad: {
-          match: {
-            tournamentId: { in: tournamentIds },
-            state: { in: PLAYED_STATES },
-          },
-        },
-      },
-      select: { squad: { select: { matchId: true } } },
-    });
-
-    const matchIds = [...new Set(squadRows.map((row) => row.squad.matchId))];
-    if (matchIds.length === 0) {
-      return { matches: 0, runs: 0, wickets: 0 };
-    }
-
-    let runs = 0;
-    let wickets = 0;
-
-    for (const matchId of matchIds) {
-      const card = await this.scorecardReader.byMatchId(matchId);
-      for (const inn of card.innings) {
-        const batter = inn.batters.find((b) => b.playerId === userId);
-        if (batter) {
-          runs += batter.runs;
-        }
-        const bowler = inn.bowlers.find((b) => b.playerId === userId);
-        if (bowler) {
-          wickets += bowler.wickets;
-        }
-      }
-    }
-
-    return { matches: matchIds.length, runs, wickets };
   }
 }

@@ -2,6 +2,7 @@ import {
   enrichPollSuspensionRows,
   isLateArrivalInPenalty,
   isLateArrivalOutPenalty,
+  SuspensionStatus,
   isPenaltyUnavailableToServe,
   isServingSuspensionForMatch,
   partitionPollConfirmedInVoters,
@@ -18,6 +19,8 @@ describe('suspension vote routing', () => {
     lastName: 'B',
     profilePhotoUrl: null,
     triggeredByMatchId: 'match-1',
+    suspensionStatus: SuspensionStatus.Pending,
+    isCarriedForward: false,
   };
 
   it('routes voted-IN penalty players to IN-side late arrival with actions', () => {
@@ -39,7 +42,7 @@ describe('suspension vote routing', () => {
     expect(out[0]?.actionsEnabled).toBe(pending[0]?.actionsEnabled);
   });
 
-  it('partitions IN voters so serving suspensions are mutually exclusive with Confirmed IN', () => {
+  it('keeps eligible suspensions in Confirmed IN until the captain selects service', () => {
     const inVoters = [
       {
         userId: 'player-1',
@@ -77,7 +80,7 @@ describe('suspension vote routing', () => {
     });
 
     expect(isServingSuspensionForMatch(pending[0]!)).toBe(true);
-    expect(confirmedIn.map((row) => row.userId)).toEqual(['player-1']);
+    expect(confirmedIn.map((row) => row.userId)).toEqual(['player-1', 'player-2']);
     expect(servingSuspensionPenalty.map((row) => row.userId)).toEqual(['player-2']);
   });
 

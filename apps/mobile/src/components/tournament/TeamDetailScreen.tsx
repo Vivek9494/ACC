@@ -1,11 +1,12 @@
 import type { TeamDetailView } from '@acc/types';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, ScrollView, View } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, View } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ApiRequestError, getTeamDetail } from '../../lib/api';
+import { ApiRequestError, getTeamDetail, removePlayerFromTeam } from '../../lib/api';
 import { useAuth } from '../../lib/auth-context';
+import { confirmDestructiveDeleteAlert } from '../../lib/confirm-destructive-delete';
 import { tournamentSubpathHref } from '../../lib/tournament-detail-route';
 import { CircularAddButton } from '../ui/CircularAddButton';
 import { ScreenHeader } from '../ui/ScreenHeader';
@@ -55,6 +56,7 @@ export function TeamDetailScreen({
   const [detail, setDetail] = useState<TeamDetailView | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [removingUserId, setRemovingUserId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -95,6 +97,54 @@ export function TeamDetailScreen({
         teamName: detail.name,
       }),
     );
+  }
+
+  function confirmRemovePlayer(
+    userId: string,
+    firstName: string,
+    lastName: string,
+  ): void {
+    confirmDestructiveDeleteAlert({
+      title: 'Remove player from team?',
+      message: `${firstName} ${lastName} will be removed from this team. Their tournament registration and completed-match history will remain.`,
+      onConfirm: async () => {
+        setRemovingUserId(userId);
+        try {
+          await removePlayerFromTeam(tournamentId, teamId, userId);
+          setDetail((current) => {
+            if (!current) {
+              return current;
+            }
+            const removed = current.players.find((player) => player.userId === userId);
+            if (!removed) {
+              return current;
+            }
+            return {
+              ...current,
+              activePlayerCount: Math.max(0, current.activePlayerCount - 1),
+              fulltimePlayerCount:
+                removed.playerCategory === 'FULLTIME'
+                  ? Math.max(0, current.fulltimePlayerCount - 1)
+                  : current.fulltimePlayerCount,
+              parttimePlayerCount:
+                removed.playerCategory === 'PARTTIME'
+                  ? Math.max(0, current.parttimePlayerCount - 1)
+                  : current.parttimePlayerCount,
+              rosterSlotsRemaining:
+                current.rosterSlotsRemaining == null ? null : current.rosterSlotsRemaining + 1,
+              players: current.players.filter((player) => player.userId !== userId),
+            };
+          });
+        } catch (err) {
+          Alert.alert(
+            'Could not remove player',
+            err instanceof ApiRequestError ? err.message : 'Please try again.',
+          );
+        } finally {
+          setRemovingUserId(null);
+        }
+      },
+    });
   }
 
   return (
@@ -152,6 +202,17 @@ export function TeamDetailScreen({
                   onViewProfile={() =>
                     openPlayerProfile(player.userId, player.firstName, player.lastName)
                   }
+                  onRemove={
+                    detail.canRemovePlayers
+                      ? () =>
+                          confirmRemovePlayer(
+                            player.userId,
+                            player.firstName,
+                            player.lastName,
+                          )
+                      : undefined
+                  }
+                  removing={removingUserId === player.userId}
                 />
               ))
             )}

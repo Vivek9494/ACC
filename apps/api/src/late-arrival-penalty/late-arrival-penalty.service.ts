@@ -36,6 +36,7 @@ import {
   NotificationTrigger,
 } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { activeTeamMembershipWhere } from '../teams/team-membership-query';
 
 const PENALTY_INCLUDE = {
   player: { select: { id: true, firstName: true, lastName: true, profilePhotoUrl: true } },
@@ -446,7 +447,7 @@ export class LateArrivalPenaltyService {
 
     const uniqueIds = [...new Set(penaltyServerUserIds)];
     const roster = await this.prisma.teamMembership.findMany({
-      where: { teamId, tournamentId: team.tournamentId },
+      where: { teamId, tournamentId: team.tournamentId, ...activeTeamMembershipWhere },
       select: { userId: true },
     });
     const rosterIds = new Set(roster.map((row) => row.userId));

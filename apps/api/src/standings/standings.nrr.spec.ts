@@ -427,4 +427,88 @@ describe('standings NRR', () => {
       tables[0]?.teams[1]?.points ?? 0,
     );
   });
+
+  it('counts Leather fixtures vs an external opponent toward the system team only', () => {
+    const { tables, dataErrors } = computeStandings({
+      tournamentId: 'leather',
+      matchSchedulingFormat: null,
+      groupCount: 0,
+      includeNetRunRate: false,
+      teams: [
+        { teamId: 'acc-3', teamName: 'ACC 3', logoUrl: null, groupId: null },
+        { teamId: 'acc-6', teamName: 'ACC 6', logoUrl: null, groupId: null },
+      ],
+      groups: [],
+      matches: [
+        {
+          matchId: 'ext-win',
+          groupId: null,
+          homeTeamId: 'acc-3',
+          awayTeamId: null,
+          isNoResult: false,
+          winningTeamId: 'acc-3',
+          isDecided: true,
+          innings: [],
+        },
+        {
+          matchId: 'ext-loss',
+          groupId: null,
+          homeTeamId: 'acc-3',
+          awayTeamId: null,
+          isNoResult: false,
+          winningTeamId: null,
+          isDecided: true,
+          innings: [],
+        },
+        {
+          matchId: 'ext-nr',
+          groupId: null,
+          homeTeamId: 'acc-3',
+          awayTeamId: null,
+          isNoResult: true,
+          winningTeamId: null,
+          isDecided: false,
+          innings: [],
+        },
+      ],
+    });
+
+    expect(dataErrors).toHaveLength(0);
+
+    const acc3 = tables[0]?.teams.find((row: TeamStandingRow) => row.teamId === 'acc-3');
+    const acc6 = tables[0]?.teams.find((row: TeamStandingRow) => row.teamId === 'acc-6');
+    expect(acc3?.matches).toBe(3);
+    expect(acc3?.wins).toBe(1);
+    expect(acc3?.losses).toBe(1);
+    expect(acc3?.noResults).toBe(1);
+    expect(acc3?.points).toBe(3);
+    expect(acc3?.netRunRate).toBe(0);
+    expect(acc6?.matches).toBe(0);
+    expect(acc6?.points).toBe(0);
+  });
+
+  it('does not flag decided external-opponent matches as Super Over errors', () => {
+    const { dataErrors } = computeStandings({
+      tournamentId: 'leather',
+      matchSchedulingFormat: null,
+      groupCount: 0,
+      includeNetRunRate: false,
+      teams: [{ teamId: 'acc-3', teamName: 'ACC 3', logoUrl: null, groupId: null }],
+      groups: [],
+      matches: [
+        {
+          matchId: 'ext-decided',
+          groupId: null,
+          homeTeamId: 'acc-3',
+          awayTeamId: null,
+          isNoResult: false,
+          winningTeamId: null,
+          isDecided: true,
+          innings: [],
+        },
+      ],
+    });
+
+    expect(dataErrors).toHaveLength(0);
+  });
 });

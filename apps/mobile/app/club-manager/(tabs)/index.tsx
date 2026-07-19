@@ -7,9 +7,9 @@ import { buildCaptainFeaturedMatchSections } from '../../../src/components/dashb
 import { buildTeamLeadPollSections } from '../../../src/components/dashboard/buildTeamLeadPollSections';
 import { buildTournamentMenuActions } from '../../../src/components/dashboard/buildTournamentMenuActions';
 import { DashboardScaffold } from '../../../src/components/dashboard/DashboardScaffold';
+import { YourPerformanceSection } from '../../../src/components/dashboard/YourPerformanceSection';
 import { AssignScorerDialog } from '../../../src/components/scoring/AssignScorerDialog';
 import { CircularAddButton } from '../../../src/components/ui/CircularAddButton';
-import { StatTile } from '../../../src/components/ui/StatTile';
 import { Text } from '../../../src/components/ui/Text';
 import { TournamentDashboardCard } from '../../../src/components/ui/TournamentDashboardCard';
 import { getClubManagerDashboard } from '../../../src/lib/api';
@@ -59,18 +59,6 @@ export default function ClubManagerDashboardScreen(): React.ReactElement {
       return [];
     }
 
-    const performanceItems =
-      dashboard.playerStats != null
-        ? [
-            { label: 'Matches', value: dashboard.playerStats.matches },
-            { label: 'Runs', value: dashboard.playerStats.runs, highlight: true },
-            {
-              label: 'Wickets',
-              value: String(dashboard.playerStats.wickets).padStart(2, '0'),
-            },
-          ]
-        : [];
-
     return [
       ...buildCaptainFeaturedMatchSections(dashboard.featuredMatches, router),
       ...buildTeamLeadPollSections(
@@ -80,10 +68,7 @@ export default function ClubManagerDashboardScreen(): React.ReactElement {
         load,
       ),
       dashboard.playerStats != null ? (
-        <View key="performance" className="gap-3">
-          <Text className="font-sans-bold text-xl text-on-surface">Your Performance</Text>
-          <StatTile items={performanceItems} />
-        </View>
+        <YourPerformanceSection key="performance" performance={dashboard.playerStats} />
       ) : null,
       dashboard.tournaments.length > 0 ? (
         <View key="tournaments" className="gap-3">

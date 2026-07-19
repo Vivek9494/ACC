@@ -8,12 +8,14 @@ import { StandingsPinnedSplitTableBody } from './StandingsTableStats';
 export interface StandingsGroupTableProps {
   section: StandingsTableSection;
   showGroupHeader: boolean;
+  showNetRunRate?: boolean;
 }
 
-/** Group-stage points table — one card per group with M/W/L/NR/PTS/NRR stat columns. */
+/** Group-stage points table — one card per group with M/W/L/NR/PTS/(NRR) stat columns. */
 export function StandingsGroupTable({
   section,
   showGroupHeader,
+  showNetRunRate = true,
 }: StandingsGroupTableProps): React.ReactElement {
   return (
     <View
@@ -27,7 +29,7 @@ export function StandingsGroupTable({
         />
       ) : null}
 
-      <StandingsPinnedSplitTableBody teams={section.teams} />
+      <StandingsPinnedSplitTableBody teams={section.teams} showNetRunRate={showNetRunRate} />
     </View>
   );
 }

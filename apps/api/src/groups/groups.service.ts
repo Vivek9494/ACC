@@ -21,6 +21,7 @@ import { Prisma } from '@prisma/client';
 import { PermissionService } from '../authz/permission.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { activeTeamWhere } from '../teams/team-query';
+import { activeTeamMembershipCountSelect } from '../teams/team-membership-query';
 import { assertTournamentActive } from '../tournaments/tournament-query';
 import { TournamentsService } from '../tournaments/tournaments.service';
 import type { CreateGroupDto } from './dto/create-group.dto';
@@ -49,7 +50,7 @@ export class GroupsService {
         teams: {
           where: activeTeamWhere,
           orderBy: { name: 'asc' },
-          include: { _count: { select: { memberships: true } } },
+          include: { _count: { select: { memberships: activeTeamMembershipCountSelect } } },
         },
       },
     });
@@ -122,7 +123,9 @@ export class GroupsService {
             teams: {
               where: activeTeamWhere,
               orderBy: { name: 'asc' },
-              include: { _count: { select: { memberships: true } } },
+              include: {
+                _count: { select: { memberships: activeTeamMembershipCountSelect } },
+              },
             },
           },
         });
@@ -253,7 +256,7 @@ export class GroupsService {
         teams: {
           where: activeTeamWhere,
           orderBy: { name: 'asc' },
-          include: { _count: { select: { memberships: true } } },
+          include: { _count: { select: { memberships: activeTeamMembershipCountSelect } } },
         },
       },
     });

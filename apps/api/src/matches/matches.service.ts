@@ -83,6 +83,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { activeMatchFirstWhere } from './match-query';
 import { selectableUserWhere } from '../users/user-query';
 import { activeTeamWhere } from '../teams/team-query';
+import { activeTeamMembershipWhere } from '../teams/team-membership-query';
 import { StandingsService } from '../standings/standings.service';
 import { ScorecardReader } from '../scoring/scorecard-reader';
 import { ScoringService } from '../scoring/scoring.service';
@@ -985,7 +986,12 @@ export class MatchesService {
     this.assertTeamInMatch(match, teamId);
 
     const members = await this.prisma.teamMembership.findMany({
-      where: { tournamentId: match.tournamentId, teamId, user: selectableUserWhere },
+      where: {
+        tournamentId: match.tournamentId,
+        teamId,
+        user: selectableUserWhere,
+        ...activeTeamMembershipWhere,
+      },
       include: {
         user: { select: { id: true, firstName: true, lastName: true } },
       },
@@ -1375,7 +1381,12 @@ export class MatchesService {
     this.assertTeamInMatch(match, teamId);
 
     const membership = await this.prisma.teamMembership.findFirst({
-      where: { teamId, tournamentId: match.tournamentId, userId: replacementUserId },
+      where: {
+        teamId,
+        tournamentId: match.tournamentId,
+        userId: replacementUserId,
+        ...activeTeamMembershipWhere,
+      },
       select: { id: true },
     });
     if (!membership) {
@@ -1464,6 +1475,7 @@ export class MatchesService {
     playingXi: string[],
     substitutes: string[],
     inVoterIds: ReadonlySet<string>,
+    penaltyServerUserIds: readonly string[] = [],
   ): Promise<void> {
     if (playingXi.length !== PLAYING_XI_SIZE) {
       throw new BadRequestException({
@@ -1502,7 +1514,12 @@ export class MatchesService {
       });
     }
     this.assertTeamInMatch(match, teamId);
-    await this.suspensions.assertPlayingXiExcludesPendingSuspensions(matchId, teamId, playingXi);
+    await this.suspensions.assertPlayingXiExcludesPendingSuspensions(
+      matchId,
+      teamId,
+      all,
+      penaltyServerUserIds,
+    );
     await this.validateSquad(match, dto);
 
     const players: { userId: string; role: MatchSquadRole; isActiveImpact: boolean }[] = [
@@ -1572,8 +1589,6 @@ export class MatchesService {
         });
       }
     });
-
-    await this.suspensions.markRemainingPendingAsServed(matchId, teamId);
 
     await this.audit.record({
       action: 'MATCH_XI_LOCKED',
@@ -2740,7 +2755,12 @@ export class MatchesService {
 
     // Every selected player must be a member of the team.
     const members = await this.prisma.teamMembership.findMany({
-      where: { tournamentId: match.tournamentId, teamId: dto.teamId, userId: { in: all } },
+      where: {
+        tournamentId: match.tournamentId,
+        teamId: dto.teamId,
+        userId: { in: all },
+        ...activeTeamMembershipWhere,
+      },
       select: { userId: true },
     });
     const memberSet = new Set(members.map((m) => m.userId));

@@ -74,6 +74,7 @@ import {
   activeTeamWhere,
   resolveTeamHasMatches,
 } from '../teams/team-query';
+import { activeTeamMembershipCountSelect } from '../teams/team-membership-query';
 import {
   assertCreateTournamentFormValid,
   assertTennisTournamentLocationValid,
@@ -300,7 +301,9 @@ export class TournamentsService {
             teams: {
               where: activeTeamWhere,
               orderBy: { name: 'asc' },
-              include: { _count: { select: { memberships: true } } },
+              include: {
+                _count: { select: { memberships: activeTeamMembershipCountSelect } },
+              },
             },
           },
         },
@@ -312,7 +315,7 @@ export class TournamentsService {
             logoUrl: true,
             groupId: true,
             group: { select: { name: true } },
-            _count: { select: { memberships: true } },
+            _count: { select: { memberships: activeTeamMembershipCountSelect } },
           },
           orderBy: { name: 'asc' },
         },
@@ -359,9 +362,9 @@ export class TournamentsService {
         where: {
           tournamentId_userId: { tournamentId: id, userId: viewer.id },
         },
-        select: { teamId: true },
+        select: { teamId: true, isDeleted: true },
       });
-      myTeamId = membership?.teamId ?? null;
+      myTeamId = membership?.isDeleted === false ? membership.teamId : null;
       if (myTeamId && !row.teams.some((team) => team.id === myTeamId)) {
         myTeamId = null;
       }

@@ -21,6 +21,7 @@ import { Body } from '@nestjs/common';
 
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { Public } from '../auth/public.decorator';
 import { PermissionGuard } from '../authz/permission.guard';
 import { RequirePermission } from '../authz/require-permission.decorator';
 import { ConfirmScorecardDto, SelectManOfMatchDto } from './dto/scorecard.dto';
@@ -41,6 +42,7 @@ export class ScorecardController {
 
   /** Public confirmation status (drives the lazy auto-confirm safety-net). */
   @Get('confirmation')
+  @Public()
   status(@Param('matchId') matchId: string): Promise<ScorecardConfirmationView> {
     return this.confirmation.status(matchId);
   }
@@ -92,6 +94,7 @@ export class ScorecardController {
 
   /** §16: public, guest-accessible scorecard export for a completed match. */
   @Get('scorecard.pdf')
+  @Public()
   @Header('Cache-Control', 'no-store')
   async exportPdf(
     @Param('matchId') matchId: string,

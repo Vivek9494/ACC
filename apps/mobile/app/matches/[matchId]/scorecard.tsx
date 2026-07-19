@@ -64,7 +64,7 @@ export default function ScorecardResultScreen(): React.ReactElement {
     if (!matchId) return;
     try {
       const [m, c, conf, confirmGate] = await Promise.all([
-        getMatch(matchId),
+        getMatch(matchId).catch(() => null),
         getScorecard(matchId),
         getScorecardConfirmation(matchId),
         getScorecardConfirmEligibility(matchId).catch(() => ({

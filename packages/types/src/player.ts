@@ -1,5 +1,5 @@
 import type { CaptainFeaturedMatchSummary } from './captain';
-import type { ManagerPlayerStats, MatchSummaryTeamView } from './club-manager';
+import type { DashboardPlayerPerformance, MatchSummaryTeamView } from './club-manager';
 import type { MatchState } from './match';
 import type { ParticipationPollCardView } from './poll';
 import type { TournamentSummary } from './tournament';
@@ -59,6 +59,6 @@ export interface PlayerDashboard {
   /** Active scorer grant for a startable match today; null otherwise. */
   scorerMatch: ScorerStartableMatch | null;
   /** Players always have this card — zeros allowed. */
-  playerStats: ManagerPlayerStats;
+  playerStats: DashboardPlayerPerformance;
   tournaments: TournamentSummary[];
 }

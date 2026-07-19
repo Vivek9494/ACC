@@ -10,7 +10,7 @@ import { View } from 'react-native';
 import { buildCaptainFeaturedMatchSections } from './buildDashboardFeaturedMatchSections';
 import { ParticipationPollCard } from './ParticipationPollCard';
 import { ScorerStartMatchCard } from './ScorerStartMatchCard';
-import { StatTile } from '../ui/StatTile';
+import { YourPerformanceSection } from './YourPerformanceSection';
 import { Text } from '../ui/Text';
 import { TournamentDashboardCard } from '../ui/TournamentDashboardCard';
 import {
@@ -26,15 +26,6 @@ export function buildPlayerDashboardSections(
   onOpenMatchSetup?: (match: ScorerStartableMatch) => void,
   onParticipationPollUpdated?: () => void,
 ): ReactNode[] {
-  const performanceItems = [
-    { label: 'Matches', value: dashboard.playerStats.matches },
-    { label: 'Runs', value: dashboard.playerStats.runs, highlight: true },
-    {
-      label: 'Wickets',
-      value: String(dashboard.playerStats.wickets).padStart(2, '0'),
-    },
-  ];
-
   return [
     dashboard.scorerMatch ? (
       <ScorerStartMatchCard
@@ -58,10 +49,7 @@ export function buildPlayerDashboardSections(
         onPollUpdated={() => onParticipationPollUpdated?.()}
       />
     ) : null,
-    <View key="performance" className="gap-3">
-      <Text className="font-sans-bold text-xl text-on-surface">Your Performance</Text>
-      <StatTile items={performanceItems} />
-    </View>,
+    <YourPerformanceSection key="performance" performance={dashboard.playerStats} />,
     dashboard.tournaments.length > 0 ? (
       <View key="tournaments" className="gap-3">
         <Text className="font-sans-bold text-xl text-on-surface">Tournaments</Text>

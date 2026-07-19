@@ -630,11 +630,18 @@ model TeamMembership {
   /// ACC only (§9.2); null for APL / Center-level.
   playerCategory PlayerCategory?
 
+  /// Soft-delete — preserves historical roster attribution and permits later reactivation.
+  isDeleted       Boolean  @default(false)
+  deletedAt       DateTime?
+  deletedByUserId String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@unique([tournamentId, userId])
   @@index([teamId])
+  @@index([teamId, isDeleted])
+  @@index([tournamentId, isDeleted])
 }
 
 /// A player's registration into a tournament with the §7.3 status lifecycle.

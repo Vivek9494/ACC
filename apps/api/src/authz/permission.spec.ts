@@ -461,7 +461,7 @@ describe('PermissionService', () => {
   describe('Manager does not exist in ACC (§2, D1)', () => {
     it('returns false for a Manager permission in an ACC tournament', () => {
       const result = service.evaluate(
-        Permission.ADD_PLAYER_TO_TEAM,
+        Permission.FAVOURITE_PLAYERS,
         ctx({ subjects: [UserRole.Manager], tournamentType: TournamentType.ACC, sameTeam: true }),
       );
       expect(result).toBe(false);
@@ -469,7 +469,7 @@ describe('PermissionService', () => {
 
     it('grants the same Manager permission in an APL tournament', () => {
       const result = service.evaluate(
-        Permission.ADD_PLAYER_TO_TEAM,
+        Permission.FAVOURITE_PLAYERS,
         ctx({ subjects: [UserRole.Manager], tournamentType: TournamentType.APL, sameTeam: true }),
       );
       expect(result).toBe(true);

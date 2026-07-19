@@ -27,7 +27,7 @@ import { TournamentPosterBanner } from '../../src/components/ui/TournamentPoster
 import { StatusPill } from '../../src/components/ui/StatusPill';
 import { TournamentVenueCardContent } from '../../src/components/ui/TournamentVenueCard';
 import { FIELD_ORANGE } from '../../src/components/ui/fieldStyles';
-import { ApiRequestError, getMyRegistration, getRegistrationVerificationQueue, getTournament } from '../../src/lib/api';
+import { ApiRequestError, getMyRegistration, getRegistrationVerificationQueue, getTournament, isSessionExpiredError } from '../../src/lib/api';
 import { useAuth } from '../../src/lib/auth-context';
 import {
   formatRegistrationOpensLabel,
@@ -128,12 +128,38 @@ export default function TournamentDetailScreen(): React.ReactElement {
       return;
     }
 
+    // Wait for SecureStore → in-memory token hydration so Leather detail does not
+    // briefly look like a guest ("Sign in to view this tournament").
+    if (status === 'loading') {
+      if (!options?.silent) {
+        setLoading(true);
+      }
+      return;
+    }
+
     if (!options?.silent) {
       setLoading(true);
     }
     setError(null);
     try {
-      const detail = await getTournament(id);
+      let detail: TournamentDetail;
+      try {
+        detail = await getTournament(id);
+      } catch (firstErr) {
+        // One automatic retry for transient network / not-yet-ready races.
+        const isAuthSignInPrompt =
+          firstErr instanceof ApiRequestError &&
+          firstErr.message === 'Sign in to view this tournament' &&
+          status === 'authenticated';
+        const isTransient =
+          !(firstErr instanceof ApiRequestError) ||
+          firstErr.status >= 500 ||
+          isAuthSignInPrompt;
+        if (!isTransient) {
+          throw firstErr;
+        }
+        detail = await getTournament(id);
+      }
       setTournament(detail);
 
       const playerRegistrationPromise =
@@ -161,7 +187,11 @@ export default function TournamentDetailScreen(): React.ReactElement {
       setTournament(null);
       setMyRegistration(null);
       setVerifyActionCount(0);
-      setError(err instanceof ApiRequestError ? err.message : 'Could not load tournament.');
+      if (isSessionExpiredError(err)) {
+        setError(null);
+      } else {
+        setError(err instanceof ApiRequestError ? err.message : 'Could not load tournament.');
+      }
     } finally {
       if (!options?.silent) {
         setLoading(false);
@@ -186,8 +216,11 @@ export default function TournamentDetailScreen(): React.ReactElement {
   );
 
   useEffect(() => {
+    if (status === 'loading') {
+      return;
+    }
     void load();
-  }, [load]);
+  }, [load, status]);
 
   useEffect(() => {
     const raw = Array.isArray(tabParam) ? tabParam[0] : tabParam;
@@ -204,23 +237,26 @@ export default function TournamentDetailScreen(): React.ReactElement {
 
   useFocusEffect(
     useCallback(() => {
-      if (id) {
-        void load(tournament ? { silent: true } : undefined);
+      if (!id || status === 'loading') {
+        return;
       }
-    }, [id, load, tournament]),
+      void load(tournament ? { silent: true } : undefined);
+    }, [id, load, status, tournament]),
   );
 
   useEffect(() => {
     if (
-      (tab === TOURNAMENT_DETAIL_TAB.TournamentMatches ||
-        tab === TOURNAMENT_DETAIL_TAB.Teams ||
-        tab === TOURNAMENT_DETAIL_TAB.Groups) &&
-      id &&
-      tournament
+      status === 'loading' ||
+      (tab !== TOURNAMENT_DETAIL_TAB.TournamentMatches &&
+        tab !== TOURNAMENT_DETAIL_TAB.Teams &&
+        tab !== TOURNAMENT_DETAIL_TAB.Groups) ||
+      !id ||
+      !tournament
     ) {
-      void load({ silent: true });
+      return;
     }
-  }, [tab, id, load, tournament]);
+    void load({ silent: true });
+  }, [tab, id, load, status, tournament]);
 
   function selectTab(nextTab: TournamentDetailTab): void {
     setTab(nextTab);

@@ -1,13 +1,13 @@
 import {
   AttendancePunchStatus,
   BallType,
+  LateArrivalPenaltyState,
   MatchState,
   SuspensionReason,
   SuspensionStatus,
   SuspensionPollVoteSide,
   SuspensionXiBadge,
   UserRole,
-  isPenaltyUnavailableToServe,
   type AuthUser,
   type PenaltyServingPlayerView,
   type PendingSuspensionRow,
@@ -255,6 +255,10 @@ export class SuspensionService {
       lastName: row.user.lastName,
       profilePhotoUrl: row.user.profilePhotoUrl,
       triggeredByMatchId: row.triggeredByMatchId ?? '',
+      suspensionStatus: row.status as
+        | typeof SuspensionStatus.Pending
+        | typeof SuspensionStatus.CarriedForward,
+      isCarriedForward: row.status === SuspensionStatus.CarriedForward,
     }));
   }
 
@@ -344,6 +348,7 @@ export class SuspensionService {
         carryForwardCount: { increment: 1 },
       },
     });
+    await this.unassignParallelLateArrivalPenalty(row, currentServingMatchId);
 
     await this.audit.record({
       action: 'SUSPENSION_CARRIED_FORWARD',
@@ -380,6 +385,7 @@ export class SuspensionService {
         cancelledAt: new Date(),
       },
     });
+    await this.cancelParallelLateArrivalPenalty(row, actor.id);
 
     await this.audit.record({
       action: 'SUSPENSION_CANCELLED',
@@ -444,31 +450,84 @@ export class SuspensionService {
     }
   }
 
-  /** On Playing XI confirm: explicit IN vote → served; OUT or no vote → auto-carry (DP2). */
-  async resolvePendingSuspensionsOnPlayingXiConfirm(
+  /**
+   * Captain's manual suspension decisions on Playing XI confirm.
+   * Checked IN voters serve this match; every other active row is carried to
+   * the next team fixture. Voting IN only makes a row selectable — it never
+   * auto-selects service.
+   */
+  async resolveManualSuspensionsOnPlayingXiConfirm(
     matchId: string,
     teamId: string,
+    selectedServerUserIds: readonly string[],
+    squadUserIds: readonly string[],
   ): Promise<void> {
     await this.syncPendingSuspensionsForServingMatch(matchId, teamId);
 
-    const pending = await this.prisma.suspension.findMany({
+    const active = await this.prisma.suspension.findMany({
       where: {
         servingMatchId: matchId,
         teamId,
-        status: SuspensionStatus.Pending,
+        status: { in: [...PENALTY_TAB_STATUSES] },
         reason: SuspensionReason.LateLastMatch,
       },
     });
 
-    if (pending.length === 0) {
+    if (active.length === 0) {
+      if (selectedServerUserIds.length > 0) {
+        throw new BadRequestException({
+          message: 'Selected penalty servers are not eligible for this match',
+          error: 'INVALID_PENALTY_SERVER',
+        });
+      }
       return;
     }
 
     const voteSideByUser = await this.loadPollVoteSideByUser(matchId, teamId);
+    const selected = new Set(selectedServerUserIds);
+    const activeByUser = new Map(active.map((row) => [row.userId, row]));
+    const squad = new Set(squadUserIds);
 
-    for (const row of pending) {
+    for (const userId of selected) {
+      const row = activeByUser.get(userId);
+      if (
+        !row ||
+        this.resolvePollVoteSide(voteSideByUser, userId) !== SuspensionPollVoteSide.In
+      ) {
+        throw new BadRequestException({
+          message: 'Only eligible suspended players who voted IN may serve this match',
+          error: 'INVALID_PENALTY_SERVER',
+        });
+      }
+      if (squad.has(userId)) {
+        throw new BadRequestException({
+          message: 'Penalty servers cannot be in the Playing 11 or substitutes',
+          error: 'PENALTY_SERVER_IN_SQUAD',
+        });
+      }
+    }
+
+    const serveMatch = await this.requireServingMatch(matchId);
+    const nextMatchId =
+      active.some((row) => !selected.has(row.userId))
+        ? await this.findNextTeamMatch(
+            teamId,
+            active[0]!.tournamentId,
+            serveMatch.startTime ?? serveMatch.matchDate ?? new Date(),
+            matchId,
+          )
+        : null;
+    if (active.some((row) => !selected.has(row.userId)) && !nextMatchId) {
+      throw new BadRequestException({
+        message:
+          'Unchecked suspensions need a future team match for carry-forward. Schedule the next match, select the player to serve, or cancel the suspension.',
+        error: 'NEXT_MATCH_REQUIRED',
+      });
+    }
+
+    for (const row of active) {
       const voteSide = this.resolvePollVoteSide(voteSideByUser, row.userId);
-      if (voteSide === SuspensionPollVoteSide.In) {
+      if (selected.has(row.userId) && voteSide === SuspensionPollVoteSide.In) {
         await this.prisma.suspension.update({
           where: { id: row.id },
           data: { status: SuspensionStatus.Served },
@@ -479,46 +538,264 @@ export class SuspensionService {
           targetEntityId: row.id,
           after: { userId: row.userId, servingMatchId: matchId },
         });
-      } else if (isPenaltyUnavailableToServe(voteSide)) {
-        await this.autoCarryForwardOutVote(row);
+        await this.assignParallelLateArrivalPenalty(row, matchId);
+      } else {
+        await this.prisma.suspension.update({
+          where: { id: row.id },
+          data: {
+            status: SuspensionStatus.CarriedForward,
+            servingMatchId: nextMatchId,
+            actionedAtMatchId: matchId,
+            carryForwardCount: { increment: 1 },
+          },
+        });
+        await this.audit.record({
+          action: 'SUSPENSION_AUTO_CARRIED_FORWARD',
+          targetEntityType: 'suspension',
+          targetEntityId: row.id,
+          after: {
+            userId: row.userId,
+            fromMatchId: matchId,
+            servingMatchId: nextMatchId,
+            reason:
+              voteSide === SuspensionPollVoteSide.In
+                ? 'Captain left suspension unchecked'
+                : 'Player unavailable to serve',
+          },
+        });
+        await this.unassignParallelLateArrivalPenalty(row, matchId);
       }
     }
   }
 
-  /** Remaining pending suspensions for this match → served (sit out) or auto-carried by vote. */
+  /**
+   * Preflight manual decisions before the squad lock is written, avoiding a
+   * finalized squad when a server is invalid or carry-forward is impossible.
+   */
+  async assertManualSuspensionSelection(
+    matchId: string,
+    teamId: string,
+    selectedServerUserIds: readonly string[],
+    squadUserIds: readonly string[],
+  ): Promise<void> {
+    await this.syncPendingSuspensionsForServingMatch(matchId, teamId);
+    const active = await this.prisma.suspension.findMany({
+      where: {
+        servingMatchId: matchId,
+        teamId,
+        status: { in: [...PENALTY_TAB_STATUSES] },
+        reason: SuspensionReason.LateLastMatch,
+      },
+    });
+    const selected = new Set(selectedServerUserIds);
+    const activeByUser = new Map(active.map((row) => [row.userId, row]));
+    const squad = new Set(squadUserIds);
+    const voteSideByUser = await this.loadPollVoteSideByUser(matchId, teamId);
+
+    for (const userId of selected) {
+      if (
+        !activeByUser.has(userId) ||
+        this.resolvePollVoteSide(voteSideByUser, userId) !== SuspensionPollVoteSide.In
+      ) {
+        throw new BadRequestException({
+          message: 'Only eligible suspended players who voted IN may serve this match',
+          error: 'INVALID_PENALTY_SERVER',
+        });
+      }
+      if (squad.has(userId)) {
+        throw new BadRequestException({
+          message: 'Penalty servers cannot be in the Playing 11 or substitutes',
+          error: 'PENALTY_SERVER_IN_SQUAD',
+        });
+      }
+    }
+
+    if (active.some((row) => !selected.has(row.userId))) {
+      const serveMatch = await this.requireServingMatch(matchId);
+      const nextMatchId = await this.findNextTeamMatch(
+        teamId,
+        active[0]!.tournamentId,
+        serveMatch.startTime ?? serveMatch.matchDate ?? new Date(),
+        matchId,
+      );
+      if (!nextMatchId) {
+        throw new BadRequestException({
+          message:
+            'Unchecked suspensions need a future team match for carry-forward. Schedule the next match, select the player to serve, or cancel the suspension.',
+          error: 'NEXT_MATCH_REQUIRED',
+        });
+      }
+    }
+  }
+
+  /** Non-poll squad confirmation has no manual server choices, so all obligations carry. */
   async markRemainingPendingAsServed(matchId: string, teamId: string): Promise<void> {
-    await this.resolvePendingSuspensionsOnPlayingXiConfirm(matchId, teamId);
+    await this.resolveManualSuspensionsOnPlayingXiConfirm(matchId, teamId, [], []);
   }
 
   async assertPlayingXiExcludesPendingSuspensions(
     matchId: string,
     teamId: string,
     playingXi: string[],
+    selectedServerUserIds: readonly string[] = [],
   ): Promise<void> {
     await this.syncPendingSuspensionsForServingMatch(matchId, teamId);
-    if (playingXi.length === 0) {
+    if (playingXi.length === 0 || selectedServerUserIds.length === 0) {
       return;
     }
-    const voteSideByUser = await this.loadPollVoteSideByUser(matchId, teamId);
-    const pending = await this.prisma.suspension.findMany({
-      where: {
-        servingMatchId: matchId,
-        teamId,
-        status: SuspensionStatus.Pending,
-        userId: { in: playingXi },
-      },
-      select: { userId: true },
-    });
-    const servingInXi = pending.filter(
-      (row) =>
-        this.resolvePollVoteSide(voteSideByUser, row.userId) === SuspensionPollVoteSide.In,
-    );
-    if (servingInXi.length > 0) {
+    const selected = new Set(selectedServerUserIds);
+    if (playingXi.some((userId) => selected.has(userId))) {
       throw new BadRequestException({
-        message: 'A suspended player must sit out this match or be actioned from the Penalty tab',
-        error: 'SUSPENDED_MUST_SIT_OUT',
+        message: 'Penalty servers cannot be in the Playing 11 or substitutes',
+        error: 'PENALTY_SERVER_IN_SQUAD',
       });
     }
+  }
+
+  /**
+   * Keep the attendance penalty record aligned while Suspension remains the
+   * authoritative Playing XI decision model.
+   */
+  private async assignParallelLateArrivalPenalty(
+    suspension: {
+      userId: string;
+      teamId: string | null;
+      tournamentId: string;
+      triggeredByMatchId: string | null;
+    },
+    serveMatchId: string,
+  ): Promise<void> {
+    if (!suspension.teamId || !suspension.triggeredByMatchId) {
+      return;
+    }
+    const active = await this.prisma.lateArrivalPenalty.findFirst({
+      where: {
+        playerId: suspension.userId,
+        state: { in: [LateArrivalPenaltyState.Owed, LateArrivalPenaltyState.Assigned] },
+      },
+    });
+    if (
+      active?.state === LateArrivalPenaltyState.Assigned &&
+      active.assignedServeMatchId !== serveMatchId
+    ) {
+      throw new BadRequestException({
+        message: 'Player is already designated to serve a penalty at another match',
+        error: 'ASSIGNED_ELSEWHERE',
+      });
+    }
+    if (active?.state === LateArrivalPenaltyState.Assigned) {
+      return;
+    }
+
+    if (active) {
+      await this.prisma.lateArrivalPenalty.update({
+        where: { id: active.id },
+        data: {
+          state: LateArrivalPenaltyState.Assigned,
+          assignedServeMatchId: serveMatchId,
+        },
+      });
+      await this.prisma.lateArrivalPenaltyTransition.create({
+        data: {
+          penaltyId: active.id,
+          fromState: LateArrivalPenaltyState.Owed,
+          toState: LateArrivalPenaltyState.Assigned,
+          actorUserId: null,
+          contextMatchId: serveMatchId,
+          reason: 'Captain selected suspension service on Playing 11 confirm',
+        },
+      });
+      return;
+    }
+
+    const created = await this.prisma.lateArrivalPenalty.create({
+      data: {
+        playerId: suspension.userId,
+        teamId: suspension.teamId,
+        tournamentId: suspension.tournamentId,
+        originMatchId: suspension.triggeredByMatchId,
+        state: LateArrivalPenaltyState.Assigned,
+        assignedServeMatchId: serveMatchId,
+      },
+    });
+    await this.prisma.lateArrivalPenaltyTransition.create({
+      data: {
+        penaltyId: created.id,
+        fromState: null,
+        toState: LateArrivalPenaltyState.Assigned,
+        actorUserId: null,
+        contextMatchId: serveMatchId,
+        reason: 'Captain selected suspension service on Playing 11 confirm',
+      },
+    });
+  }
+
+  private async unassignParallelLateArrivalPenalty(
+    suspension: { userId: string },
+    currentMatchId: string,
+  ): Promise<void> {
+    const active = await this.prisma.lateArrivalPenalty.findFirst({
+      where: {
+        playerId: suspension.userId,
+        state: LateArrivalPenaltyState.Assigned,
+        assignedServeMatchId: currentMatchId,
+      },
+    });
+    if (!active) {
+      return;
+    }
+    await this.prisma.lateArrivalPenalty.update({
+      where: { id: active.id },
+      data: {
+        state: LateArrivalPenaltyState.Owed,
+        assignedServeMatchId: null,
+      },
+    });
+    await this.prisma.lateArrivalPenaltyTransition.create({
+      data: {
+        penaltyId: active.id,
+        fromState: LateArrivalPenaltyState.Assigned,
+        toState: LateArrivalPenaltyState.Owed,
+        actorUserId: null,
+        contextMatchId: currentMatchId,
+        reason: 'Suspension carried forward from Playing 11 selection',
+      },
+    });
+  }
+
+  private async cancelParallelLateArrivalPenalty(
+    suspension: { userId: string; triggeredByMatchId: string | null },
+    actorUserId: string,
+  ): Promise<void> {
+    const active = await this.prisma.lateArrivalPenalty.findFirst({
+      where: {
+        playerId: suspension.userId,
+        originMatchId: suspension.triggeredByMatchId ?? undefined,
+        state: { in: [LateArrivalPenaltyState.Owed, LateArrivalPenaltyState.Assigned] },
+      },
+    });
+    if (!active) {
+      return;
+    }
+    await this.prisma.lateArrivalPenalty.update({
+      where: { id: active.id },
+      data: {
+        state: LateArrivalPenaltyState.Cancelled,
+        assignedServeMatchId: null,
+        cancelledByUserId: actorUserId,
+        cancelledAt: new Date(),
+      },
+    });
+    await this.prisma.lateArrivalPenaltyTransition.create({
+      data: {
+        penaltyId: active.id,
+        fromState: active.state,
+        toState: LateArrivalPenaltyState.Cancelled,
+        actorUserId,
+        contextMatchId: suspension.triggeredByMatchId,
+        reason: 'Captain cancelled suspension from Playing 11 selection',
+      },
+    });
   }
 
   /**

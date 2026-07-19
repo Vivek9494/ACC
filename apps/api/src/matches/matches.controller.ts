@@ -28,6 +28,7 @@ import type { Request } from 'express';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { AuthService } from '../auth/auth.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { Public } from '../auth/public.decorator';
 import { PermissionGuard } from '../authz/permission.guard';
 import { RequirePermission } from '../authz/require-permission.decorator';
 import { AddOpponentPlayerDto } from './dto/add-opponent-player.dto';
@@ -100,6 +101,7 @@ export class MatchesController {
   }
 
   @Get('matches/:matchId')
+  @Public()
   async detail(@Param('matchId') matchId: string, @Req() req: Request): Promise<MatchDetail> {
     const viewer = await this.auth.resolveOptionalUser(req);
     return this.matches.getDetail(matchId, viewer);

@@ -1,5 +1,5 @@
 import type { CaptainFeaturedMatchSummary } from './captain';
-import type { ManagerPlayerStats } from './club-manager';
+import type { DashboardPlayerPerformance } from './club-manager';
 import type { ParticipationPollCardView } from './poll';
 import type { TournamentSummary } from './tournament';
 
@@ -22,6 +22,6 @@ export interface CenterSevakDashboard {
   /** Leather-ball participation poll for the sevak's next open fixture on their roster, if any. */
   participationPoll: ParticipationPollCardView | null;
   /** Center Sevaks are always players — zeros when no match data yet. */
-  playerStats: ManagerPlayerStats;
+  playerStats: DashboardPlayerPerformance;
   tournaments: TournamentDashboardEntry[];
 }

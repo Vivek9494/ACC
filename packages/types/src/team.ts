@@ -61,8 +61,9 @@ export interface TeamDetailView {
   canViewPlayerProfiles: boolean;
   /** Admin / Club Manager may assign Captain / Vice-Captain / Manager. */
   canAssignTeamRoles: boolean;
-  /** Admin / Club Manager may add registered players to the roster. */
+  /** Admin / Club Manager, or eligible multi-center Center Sevak, may manage the roster. */
   canAddPlayers: boolean;
+  canRemovePlayers: boolean;
   /** Null when the tournament has no roster cap (Players per Team unset). */
   playersPerTeamCap: number | null;
   /** Null when unlimited; otherwise slots left before hitting the cap. */

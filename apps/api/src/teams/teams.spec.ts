@@ -4,6 +4,7 @@ import {
   type AuthUser,
   BallType,
   Permission,
+  TournamentType,
   UserRole,
   canViewTeamRosterMobileNumbers,
   canViewTournamentPlayerProfiles,
@@ -226,6 +227,100 @@ describe('TeamsService player profile access', () => {
     await expect(service.getPlayerProfile(captain, 'tour-1', 'missing')).rejects.toBeInstanceOf(
       NotFoundException,
     );
+  });
+});
+
+describe('TeamsService removePlayerFromTeam', () => {
+  const centerSevak: AuthUser = {
+    ...player,
+    id: 'sevak-1',
+    role: UserRole.CenterSevak,
+  };
+
+  function buildFixture(options: { blockingSquad?: boolean } = {}) {
+    const prisma = {
+      tournament: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'tour-1',
+          name: 'Center Cup',
+          isDeleted: false,
+          type: TournamentType.Center,
+        }),
+      },
+      tournamentCenter: {
+        count: jest.fn().mockResolvedValue(2),
+        findFirst: jest.fn().mockResolvedValue({ centerId: 'center-A' }),
+      },
+      team: {
+        findFirst: jest.fn().mockResolvedValue({ id: 'team-1', name: 'Atmiya XI' }),
+      },
+      teamMembership: {
+        findFirst: jest.fn().mockResolvedValue({ id: 'membership-1' }),
+        update: jest.fn().mockResolvedValue({ id: 'membership-1' }),
+      },
+      matchSquadPlayer: {
+        findFirst: jest
+          .fn()
+          .mockResolvedValue(options.blockingSquad ? { id: 'squad-player-1' } : null),
+      },
+      roleAssignment: {
+        deleteMany: jest.fn().mockResolvedValue({ count: 1 }),
+      },
+      $transaction: jest.fn().mockResolvedValue([]),
+    };
+    const permissions = { check: jest.fn().mockResolvedValue(false) };
+    const tournaments = {
+      resolveCenterSevakCenterIds: jest.fn().mockResolvedValue(['center-A']),
+    };
+    const audit = { record: jest.fn().mockResolvedValue(undefined) };
+    const notifications = { sendNotification: jest.fn().mockResolvedValue(undefined) };
+    const service = new TeamsService(
+      prisma as never,
+      permissions as never,
+      { deleteObject: jest.fn() } as never,
+      { resolveReadUrl: jest.fn(), resolveReadUrls: jest.fn() } as never,
+      tournaments as never,
+      { buildCareerStats: jest.fn() } as never,
+      audit as never,
+      notifications as never,
+    );
+    return { service, prisma, audit, notifications };
+  }
+
+  it('allows an involved Center Sevak for a multi-center Center tournament', async () => {
+    const { service, prisma, audit, notifications } = buildFixture();
+
+    await service.removePlayerFromTeam(centerSevak, 'tour-1', 'team-1', 'player-2');
+
+    expect(prisma.teamMembership.update).toHaveBeenCalledWith({
+      where: { id: 'membership-1' },
+      data: { isDeleted: true, deletedAt: expect.any(Date), deletedByUserId: 'sevak-1' },
+    });
+    expect(prisma.roleAssignment.deleteMany).toHaveBeenCalledWith({
+      where: {
+        userId: 'player-2',
+        tournamentId: 'tour-1',
+        teamId: 'team-1',
+        role: { in: [UserRole.Captain, UserRole.ViceCaptain, UserRole.Manager] },
+      },
+    });
+    expect(audit.record).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'TEAM_PLAYER_REMOVED' }),
+    );
+    expect(notifications.sendNotification).toHaveBeenCalledWith(
+      expect.objectContaining({ triggerKey: 'PLAYER_REMOVED_FROM_TEAM' }),
+    );
+  });
+
+  it('blocks removal when the player is in an upcoming or live match squad', async () => {
+    const { service, prisma } = buildFixture({ blockingSquad: true });
+
+    await expect(
+      service.removePlayerFromTeam(centerSevak, 'tour-1', 'team-1', 'player-2'),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({ error: 'PLAYER_IN_ACTIVE_MATCH_SQUAD' }),
+    });
+    expect(prisma.teamMembership.update).not.toHaveBeenCalled();
   });
 });
 

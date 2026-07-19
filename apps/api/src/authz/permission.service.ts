@@ -14,6 +14,7 @@ import { Injectable } from '@nestjs/common';
 
 import { PrismaService } from '../prisma/prisma.service';
 import { activeTournamentRelationWhere } from '../tournaments/tournament-query';
+import { activeTeamMembershipWhere } from '../teams/team-membership-query';
 import { MatchScorerGrantService } from './match-scorer.service';
 
 /**
@@ -226,6 +227,7 @@ export class PermissionService {
           userId: actor.id,
           tournamentId,
           teamId: { in: contextTeamIds },
+          ...activeTeamMembershipWhere,
         },
         select: { id: true },
       });

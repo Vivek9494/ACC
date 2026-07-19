@@ -17,6 +17,7 @@ import { Prisma } from '@prisma/client';
 
 import { PrismaService } from '../prisma/prisma.service';
 import { selectableUserWhere } from '../users/user-query';
+import { activeTeamMembershipWhere } from '../teams/team-membership-query';
 import { activeTournamentWhere } from './tournament-query';
 
 export interface LeatherTournamentViewOptions {
@@ -46,6 +47,7 @@ function leatherLockedXiWhere(userId?: string): Prisma.MatchSquadPlayerWhereInpu
 function activeLeatherRosterWhere(userId?: string): Prisma.TeamMembershipWhereInput {
   return {
     ...(userId ? { userId } : {}),
+    ...activeTeamMembershipWhere,
     tournament: {
       ballType: BallType.Leather,
       ...activeTournamentWhere,

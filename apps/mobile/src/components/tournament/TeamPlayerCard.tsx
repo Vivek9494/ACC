@@ -1,7 +1,7 @@
 import type { TeamDetailPlayerRow } from '@acc/types';
 import { formatCanadianMobileForDisplay } from '@acc/types';
 import { MaterialIcons } from '@expo/vector-icons';
-import { Linking, Pressable, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, View } from 'react-native';
 import { colors } from '@/theme/colors';
 
 import { copyTextToClipboard } from '../../lib/copy-text';
@@ -13,6 +13,8 @@ export interface TeamPlayerCardProps {
   player: TeamDetailPlayerRow;
   showViewProfile: boolean;
   onViewProfile: () => void;
+  onRemove?: () => void;
+  removing?: boolean;
 }
 
 function RoleBadge({ label }: { label: string }): React.ReactElement {
@@ -47,6 +49,8 @@ export function TeamPlayerCard({
   player,
   showViewProfile,
   onViewProfile,
+  onRemove,
+  removing = false,
 }: TeamPlayerCardProps): React.ReactElement {
   const hasMeta =
     player.isCaptain ||
@@ -93,6 +97,22 @@ export function TeamPlayerCard({
             </View>
           ) : null}
         </View>
+        {onRemove ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Remove ${player.firstName} ${player.lastName} from team`}
+            disabled={removing}
+            hitSlop={8}
+            onPress={onRemove}
+            className="h-9 w-9 items-center justify-center rounded-full"
+          >
+            {removing ? (
+              <ActivityIndicator size="small" color="#BA1A1A" />
+            ) : (
+              <MaterialIcons name="delete-outline" size={22} color="#BA1A1A" />
+            )}
+          </Pressable>
+        ) : null}
       </View>
     </View>
   );

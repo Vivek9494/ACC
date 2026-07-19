@@ -1,4 +1,14 @@
-import { BallType, MatchState, MatchSquadRole, type PlayerProfileCareerStats, type PlayerProfilePeriodStats, type PlayerProfileTournamentSummary, type PlayerProfileYearSummary } from '@acc/types';
+import {
+  BallType,
+  MatchState,
+  MatchSquadRole,
+  type DashboardPlayerPerformance,
+  type ManagerPlayerStats,
+  type PlayerProfileCareerStats,
+  type PlayerProfilePeriodStats,
+  type PlayerProfileTournamentSummary,
+  type PlayerProfileYearSummary,
+} from '@acc/types';
 import { Injectable } from '@nestjs/common';
 
 import { PrismaService } from '../prisma/prisma.service';
@@ -45,6 +55,18 @@ export class PlayerStatsService {
     private readonly prisma: PrismaService,
     private readonly scorecards: ScorecardReader,
   ) {}
+
+  /** Dashboard “Your Performance” — Matches / Runs / Wickets per ball type. */
+  async buildDashboardHighLevelStats(userId: string): Promise<DashboardPlayerPerformance> {
+    const [leather, tennis] = await Promise.all([
+      this.buildCareerStats(userId, BallType.Leather),
+      this.buildCareerStats(userId, BallType.Tennis),
+    ]);
+    return {
+      leather: toManagerPlayerStats(leather.career),
+      tennis: toManagerPlayerStats(tennis.career),
+    };
+  }
 
   async buildCareerStats(userId: string, ballType: BallType): Promise<PlayerCareerStatsBundle> {
     const appearances = await this.prisma.matchSquadPlayer.findMany({
@@ -161,6 +183,14 @@ export class PlayerStatsService {
       byTournament: tournamentSummaries,
     };
   }
+}
+
+function toManagerPlayerStats(career: PlayerProfileCareerStats): ManagerPlayerStats {
+  return {
+    matches: career.matches,
+    runs: career.runs,
+    wickets: career.wickets,
+  };
 }
 
 function resolveMatchYear(matchDate: Date | null): number {

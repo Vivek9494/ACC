@@ -9,10 +9,17 @@ export const STANDINGS_STAT_COLUMNS = ['M', 'W', 'L', 'NR'] as const;
 export const STANDINGS_STAT_COL_WIDTH = 26;
 export const STANDINGS_PTS_COL_WIDTH = 34;
 export const STANDINGS_NRR_COL_WIDTH = 56;
-export const STANDINGS_STATS_MIN_WIDTH =
-  STANDINGS_STAT_COLUMNS.length * STANDINGS_STAT_COL_WIDTH +
-  STANDINGS_PTS_COL_WIDTH +
-  STANDINGS_NRR_COL_WIDTH;
+
+export function standingsStatsMinWidth(showNetRunRate: boolean): number {
+  return (
+    STANDINGS_STAT_COLUMNS.length * STANDINGS_STAT_COL_WIDTH +
+    STANDINGS_PTS_COL_WIDTH +
+    (showNetRunRate ? STANDINGS_NRR_COL_WIDTH : 0)
+  );
+}
+
+/** @deprecated Prefer {@link standingsStatsMinWidth} — kept for callers that always show NRR. */
+export const STANDINGS_STATS_MIN_WIDTH = standingsStatsMinWidth(true);
 
 /** Fixed width for the pinned team column (Points Table split layout). */
 export const STANDINGS_PINNED_TEAM_COL_WIDTH = 152;
@@ -65,11 +72,15 @@ function dataClass(column: (typeof STANDINGS_STAT_COLUMNS)[number] | 'PTS' | 'NR
   return 'text-on-surface-variant';
 }
 
-function StandingsStatsHeaderCells(): React.ReactElement {
+function StandingsStatsHeaderCells({
+  showNetRunRate,
+}: {
+  showNetRunRate: boolean;
+}): React.ReactElement {
   return (
     <View
       className="flex-row items-center pr-3"
-      style={{ minWidth: STANDINGS_STATS_MIN_WIDTH }}
+      style={{ minWidth: standingsStatsMinWidth(showNetRunRate) }}
     >
       {STANDINGS_STAT_COLUMNS.map((column) => (
         <Text
@@ -81,7 +92,7 @@ function StandingsStatsHeaderCells(): React.ReactElement {
         </Text>
       ))}
       <View
-        className="rounded-l-control bg-primary-container px-1 py-1"
+        className={`bg-primary-container px-1 py-1 ${showNetRunRate ? 'rounded-l-control' : 'rounded-control'}`}
         style={{ width: STANDINGS_PTS_COL_WIDTH }}
       >
         <Text
@@ -90,27 +101,31 @@ function StandingsStatsHeaderCells(): React.ReactElement {
           PTS
         </Text>
       </View>
-      <Text
-        className={`text-right font-sans-medium text-[9px] uppercase tracking-wider ${headerClass('NRR')}`}
-        style={{ width: STANDINGS_NRR_COL_WIDTH }}
-      >
-        NRR
-      </Text>
+      {showNetRunRate ? (
+        <Text
+          className={`text-right font-sans-medium text-[9px] uppercase tracking-wider ${headerClass('NRR')}`}
+          style={{ width: STANDINGS_NRR_COL_WIDTH }}
+        >
+          NRR
+        </Text>
+      ) : null}
     </View>
   );
 }
 
 export function StandingsStatsHeaderRow({
   height = PT_HEADER_HEIGHT,
+  showNetRunRate = true,
 }: {
   height?: number;
+  showNetRunRate?: boolean;
 }): React.ReactElement {
   return (
     <View
       className="justify-center border-b border-separator bg-surface-container-low"
       style={{ height }}
     >
-      <StandingsStatsHeaderCells />
+      <StandingsStatsHeaderCells showNetRunRate={showNetRunRate} />
     </View>
   );
 }
@@ -171,9 +186,12 @@ export const PT_ROW_HEIGHT_WITH_GROUP_LABEL = 56;
 export function StandingsPinnedSplitTableBody({
   teams,
   groupLabelByTeamId,
+  showNetRunRate = true,
 }: {
   teams: TeamStandingRow[];
   groupLabelByTeamId?: Record<string, string>;
+  /** Leather points tables omit NRR. */
+  showNetRunRate?: boolean;
 }): React.ReactElement {
   const lastIndex = teams.length - 1;
   const rowHeight = groupLabelByTeamId ? PT_ROW_HEIGHT_WITH_GROUP_LABEL : PT_ROW_HEIGHT;
@@ -201,13 +219,14 @@ export function StandingsPinnedSplitTableBody({
         className="flex-1"
       >
         <View>
-          <StandingsStatsHeaderRow />
+          <StandingsStatsHeaderRow showNetRunRate={showNetRunRate} />
           {teams.map((row, index) => (
             <StandingsStatsDataRow
               key={row.teamId}
               row={row}
               showBottomDivider={index < lastIndex}
               height={rowHeight}
+              showNetRunRate={showNetRunRate}
             />
           ))}
         </View>
@@ -220,17 +239,19 @@ export function StandingsStatsDataRow({
   row,
   showBottomDivider = true,
   height,
+  showNetRunRate = true,
 }: {
   row: TeamStandingRow;
   showBottomDivider?: boolean;
   /** When set, row uses this exact height (Points Table split layout). */
   height?: number;
+  showNetRunRate?: boolean;
 }): React.ReactElement {
   return (
     <View
       className={`flex-row items-center pr-3 ${showBottomDivider ? 'border-b border-separator' : ''}`}
       style={{
-        minWidth: STANDINGS_STATS_MIN_WIDTH,
+        minWidth: standingsStatsMinWidth(showNetRunRate),
         ...(height != null ? { height } : {}),
       }}
     >
@@ -244,17 +265,19 @@ export function StandingsStatsDataRow({
         </Text>
       ))}
       <View
-        className="justify-center rounded-l-control bg-primary-container px-1 py-1.5"
+        className={`justify-center bg-primary-container px-1 py-1.5 ${showNetRunRate ? 'rounded-l-control' : 'rounded-control'}`}
         style={{ width: STANDINGS_PTS_COL_WIDTH }}
       >
         <Text className={`text-center text-xs ${dataClass('PTS')}`}>{row.points}</Text>
       </View>
-      <Text
-        className={`text-right font-sans text-xs ${dataClass('NRR')}`}
-        style={{ width: STANDINGS_NRR_COL_WIDTH }}
-      >
-        {formatSignedNetRunRate(row.netRunRate)}
-      </Text>
+      {showNetRunRate ? (
+        <Text
+          className={`text-right font-sans text-xs ${dataClass('NRR')}`}
+          style={{ width: STANDINGS_NRR_COL_WIDTH }}
+        >
+          {formatSignedNetRunRate(row.netRunRate)}
+        </Text>
+      ) : null}
     </View>
   );
 }

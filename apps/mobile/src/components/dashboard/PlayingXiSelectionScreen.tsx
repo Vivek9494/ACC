@@ -5,8 +5,7 @@ import {
   POLL_RESULTS_SECTION_LABELS,
   PlayingXiNoShowRecoveryAction,
   REGISTRATION_PLAYER_TYPE_LABELS,
-  isServingSuspensionForMatch,
-  type PollPenaltyOwingPlayerRow,
+  isEligibleSuspensionForManualDecision,
   type PollPlayingXiPlayerRow,
   type PollPlayingXiSelectionView,
   type PollSuspensionPlayerRow,
@@ -14,7 +13,7 @@ import {
 } from '@acc/types';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, View } from 'react-native';
+import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
@@ -22,9 +21,7 @@ import {
   cancelSuspension,
   carryForwardSuspension,
   confirmPollPlayingXi,
-  designatePenaltyServe,
   getPollPlayingXiSelection,
-  undesignatePenaltyServe,
   ApiRequestError,
 } from '../../lib/api';
 import { PlayerAvatar } from '../tournament/PlayerAvatar';
@@ -220,68 +217,37 @@ function SummarySection({
   );
 }
 
-function PenaltyServerCheckboxRow({
+function SuspensionSelectionCard({
   player,
   checked,
-  disabled,
   working,
   onToggle,
-}: {
-  player: PollPenaltyOwingPlayerRow;
-  checked: boolean;
-  disabled: boolean;
-  working: boolean;
-  onToggle: (next: boolean) => void;
-}): React.ReactElement {
-  const playerTypeLabel = leatherPlayerTypeLabel(player);
-
-  return (
-    <Pressable
-      onPress={() => !disabled && !working && onToggle(!checked)}
-      disabled={disabled || working}
-      className="flex-row items-center gap-3 border-b border-outline-variant/60 py-3 active:opacity-80"
-    >
-      <MaterialIcons
-        name={checked ? 'check-box' : 'check-box-outline-blank'}
-        size={24}
-        color={disabled ? colors.textMuted : checked ? colors.primary : colors.textMuted}
-      />
-      <PlayerAvatar
-        firstName={player.firstName}
-        profilePhotoUrl={player.profilePhotoUrl}
-        size="sm"
-        shape="square"
-      />
-      <View className="min-w-0 flex-1">
-        <Text className="font-sans-bold text-base text-on-surface">
-          {player.firstName} {player.lastName}
-        </Text>
-        {playerTypeLabel ? (
-          <Text className="font-sans text-sm text-on-surface-variant">{playerTypeLabel}</Text>
-        ) : null}
-        {!player.canDesignateForThisMatch ? (
-          <Text className="font-sans text-xs text-on-surface-variant">
-            Serving at another match
-          </Text>
-        ) : null}
-      </View>
-    </Pressable>
-  );
-}
-
-function SuspensionPenaltyRow({
-  player,
-  working,
   onCarryForward,
   onCancel,
 }: {
   player: PollSuspensionPlayerRow;
+  checked: boolean;
   working: boolean;
+  onToggle: (next: boolean) => void;
   onCarryForward: () => void;
   onCancel: () => void;
 }): React.ReactElement {
   return (
     <Card className={SQUAD_PLAYER_ROW_CLASS}>
+      <Pressable
+        onPress={() => !working && onToggle(!checked)}
+        disabled={working}
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked, disabled: working }}
+        accessibilityLabel={`${checked ? 'Remove' : 'Select'} ${player.firstName} ${player.lastName} to serve suspension`}
+        className="h-10 w-10 items-center justify-center active:opacity-70"
+      >
+        <MaterialIcons
+          name={checked ? 'check-box' : 'check-box-outline-blank'}
+          size={24}
+          color={checked ? colors.primary : colors.textMuted}
+        />
+      </Pressable>
       <PlayerAvatar
         firstName={player.firstName}
         profilePhotoUrl={player.profilePhotoUrl}
@@ -292,36 +258,78 @@ function SuspensionPenaltyRow({
         <Text className="font-sans-bold text-base text-on-surface">
           {player.firstName} {player.lastName}
         </Text>
-        <Text className="font-sans text-sm text-on-surface-variant">Serving suspension</Text>
-        {!player.actionsEnabled ? (
+        <Text className="font-sans text-sm text-on-surface-variant">
+          {player.isCarriedForward
+            ? 'Carried forward from previous match.'
+            : 'Late arrival suspension'}
+        </Text>
+        {checked ? (
           <Text className="font-sans-medium text-xs text-primary">
-            Voted OUT or did not vote — suspension auto-carries to a later match
+            Selected to serve this match
           </Text>
         ) : null}
       </View>
-      {player.actionsEnabled ? (
-        <>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`Carry forward suspension for ${player.firstName} ${player.lastName}`}
-            disabled={working}
-            onPress={onCarryForward}
-            className="h-9 w-9 items-center justify-center rounded-full border border-outline-variant bg-surface-container-lowest active:opacity-70"
-          >
-            <MaterialIcons name="redo" size={18} color={FIELD_ORANGE} />
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`Cancel suspension for ${player.firstName} ${player.lastName}`}
-            disabled={working}
-            onPress={onCancel}
-            className="h-9 w-9 items-center justify-center rounded-full border border-outline-variant bg-surface-container-lowest active:opacity-70"
-          >
-            <MaterialIcons name="delete-outline" size={18} color={colors.textMuted} />
-          </Pressable>
-        </>
-      ) : null}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`Carry forward suspension for ${player.firstName} ${player.lastName}`}
+        disabled={working}
+        onPress={onCarryForward}
+        className="h-9 w-9 items-center justify-center rounded-full border border-outline-variant bg-surface-container-lowest active:opacity-70"
+      >
+        <MaterialIcons name="redo" size={18} color={FIELD_ORANGE} />
+      </Pressable>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`Cancel suspension for ${player.firstName} ${player.lastName}`}
+        disabled={working}
+        onPress={onCancel}
+        className="h-9 w-9 items-center justify-center rounded-full border border-outline-variant bg-surface-container-lowest active:opacity-70"
+      >
+        <MaterialIcons name="delete-outline" size={18} color={colors.textMuted} />
+      </Pressable>
     </Card>
+  );
+}
+
+function PenaltyInfoModal({
+  visible,
+  onClose,
+}: {
+  visible: boolean;
+  onClose: () => void;
+}): React.ReactElement {
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable className="flex-1 items-center justify-center bg-black/40 px-4" onPress={onClose}>
+        <Pressable
+          className="w-full max-w-sm gap-4 rounded-control bg-surface-container-lowest p-4"
+          onPress={(event) => event.stopPropagation()}
+        >
+          <View className="flex-row items-center justify-between gap-3">
+            <Text className="min-w-0 flex-1 font-sans-bold text-lg text-on-surface">
+              Late Arrival Penalty Players
+            </Text>
+            <Pressable
+              onPress={onClose}
+              accessibilityRole="button"
+              accessibilityLabel="Close penalty information"
+              className="h-9 w-9 items-center justify-center"
+            >
+              <MaterialIcons name="close" size={22} color={colors.textMuted} />
+            </Pressable>
+          </View>
+          <Text className="font-sans text-sm text-on-surface-variant">
+            Serving suspension — sitting out this match. Carry forward or cancel to add them to the
+            Playing 11 pool.
+          </Text>
+          <Text className="font-sans text-sm text-on-surface-variant">
+            Designate players to serve their penalty at this match. They are separate from the
+            Playing 11 and substitutes.
+          </Text>
+          <Button label="Close" variant="outline" onPress={onClose} className="h-11" />
+        </Pressable>
+      </Pressable>
+    </Modal>
   );
 }
 
@@ -428,6 +436,7 @@ export function PlayingXiSelectionScreen({
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
   const [penaltyWorking, setPenaltyWorking] = useState(false);
+  const [penaltyInfoVisible, setPenaltyInfoVisible] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -441,13 +450,8 @@ export function PlayingXiSelectionScreen({
         initial[player.userId] = player.squadRole;
       }
       setPicks(initial);
-      setDesignatedServerUserIds(
-        new Set(
-          data.penaltyOwing
-            .filter((row) => row.designatedForThisMatch)
-            .map((row) => row.userId),
-        ),
-      );
+      // Manual choice: no suspension is selected merely because it is eligible.
+      setDesignatedServerUserIds(new Set());
       setEditing(!data.hasSavedSquad);
       setActiveTab(data.hasSavedSquad ? 'summary' : 'in');
     } catch {
@@ -481,34 +485,25 @@ export function PlayingXiSelectionScreen({
       return [];
     }
     return selection.in.filter((player) => {
+      if (designatedServerUserIds.has(player.userId)) {
+        return false;
+      }
       const pick = picks[player.userId] ?? null;
       if (squadBucket === 'PLAYING_XI') {
         return pick !== 'SUBSTITUTE';
       }
       return pick !== 'PLAYING_XI';
     });
-  }, [picks, selection, squadBucket]);
+  }, [designatedServerUserIds, picks, selection, squadBucket]);
 
   const pendingSuspensions = selection?.pendingSuspensions ?? [];
 
-  const servingSuspensionPenalty = useMemo(
-    () => pendingSuspensions.filter(isServingSuspensionForMatch),
+  const eligibleSuspensions = useMemo(
+    () => pendingSuspensions.filter(isEligibleSuspensionForManualDecision),
     [pendingSuspensions],
   );
 
-  const servingSuspensionUserIds = useMemo(
-    () => new Set(servingSuspensionPenalty.map((row) => row.userId)),
-    [servingSuspensionPenalty],
-  );
-
-  const penaltyOwingForSection = useMemo(
-    () =>
-      selection?.penaltyOwing.filter((row) => !servingSuspensionUserIds.has(row.userId)) ?? [],
-    [selection?.penaltyOwing, servingSuspensionUserIds],
-  );
-
-  const showPenaltySection =
-    servingSuspensionPenalty.length > 0 || penaltyOwingForSection.length > 0;
+  const showPenaltySection = eligibleSuspensions.length > 0;
 
   function confirmCarryForward(player: PollSuspensionPlayerRow): void {
     Alert.alert(
@@ -588,38 +583,18 @@ export function PlayingXiSelectionScreen({
     setPicks((current) => ({ ...current, [userId]: next }));
   }
 
-  async function togglePenaltyServer(
-    player: PollPenaltyOwingPlayerRow,
-    checked: boolean,
-  ): Promise<void> {
-    if (!selection) {
+  function togglePenaltyServer(player: PollSuspensionPlayerRow, checked: boolean): void {
+    setError(null);
+    if (checked) {
+      setPicks((current) => ({ ...current, [player.userId]: null }));
+      setDesignatedServerUserIds((current) => new Set([...current, player.userId]));
       return;
     }
-    setWorking(true);
-    setError(null);
-    try {
-      if (checked) {
-        await designatePenaltyServe(selection.teamId, player.penaltyId, {
-          serveMatchId: selection.matchId,
-        });
-        setDesignatedServerUserIds((current) => new Set([...current, player.userId]));
-      } else {
-        await undesignatePenaltyServe(selection.teamId, player.penaltyId);
-        setDesignatedServerUserIds((current) => {
-          const next = new Set(current);
-          next.delete(player.userId);
-          return next;
-        });
-      }
-      const data = await getPollPlayingXiSelection(pollId);
-      setSelection(data);
-    } catch (err) {
-      setError(
-        err instanceof ApiRequestError ? err.message : 'Could not update penalty server designation.',
-      );
-    } finally {
-      setWorking(false);
-    }
+    setDesignatedServerUserIds((current) => {
+      const next = new Set(current);
+      next.delete(player.userId);
+      return next;
+    });
   }
 
   async function handleRecovery(
@@ -641,13 +616,7 @@ export function PlayingXiSelectionScreen({
         nextPicks[player.userId] = player.squadRole;
       }
       setPicks(nextPicks);
-      setDesignatedServerUserIds(
-        new Set(
-          updated.penaltyOwing
-            .filter((row) => row.designatedForThisMatch)
-            .map((row) => row.userId),
-        ),
-      );
+      setDesignatedServerUserIds(new Set());
     } catch (err) {
       setError(err instanceof ApiRequestError ? err.message : 'Could not apply no-show recovery.');
     } finally {
@@ -674,13 +643,7 @@ export function PlayingXiSelectionScreen({
         nextPicks[player.userId] = player.squadRole;
       }
       setPicks(nextPicks);
-      setDesignatedServerUserIds(
-        new Set(
-          updated.penaltyOwing
-            .filter((row) => row.designatedForThisMatch)
-            .map((row) => row.userId),
-        ),
-      );
+      setDesignatedServerUserIds(new Set());
       setEditing(false);
       setActiveTab('summary');
       onConfirmed?.();
@@ -830,38 +793,28 @@ export function PlayingXiSelectionScreen({
                 ))}
                 {showPenaltySection ? (
                   <View className="mt-2 gap-3 border-t border-outline-variant pt-4">
-                    <Text className="font-sans-bold text-xs uppercase tracking-wider text-on-surface-variant">
-                      Late arrival penalty players
-                    </Text>
-                    {servingSuspensionPenalty.length > 0 ? (
-                      <Text className="font-sans text-sm text-on-surface-variant">
-                        Serving suspension — sitting out this match. Carry forward or cancel to add
-                        them to the Playing 11 pool.
+                    <View className="flex-row items-center gap-2">
+                      <Text className="font-sans-bold text-xs uppercase tracking-wider text-on-surface-variant">
+                        Late arrival penalty players
                       </Text>
-                    ) : null}
-                    {penaltyOwingForSection.length > 0 ? (
-                      <Text className="font-sans text-sm text-on-surface-variant">
-                        Designate players to serve their penalty at this match. They are separate
-                        from the Playing 11 and substitutes.
-                      </Text>
-                    ) : null}
-                    {servingSuspensionPenalty.map((player) => (
-                      <SuspensionPenaltyRow
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel="About late arrival penalty selection"
+                        onPress={() => setPenaltyInfoVisible(true)}
+                        className="h-8 w-8 items-center justify-center active:opacity-70"
+                      >
+                        <MaterialIcons name="info-outline" size={20} color={FIELD_ORANGE} />
+                      </Pressable>
+                    </View>
+                    {eligibleSuspensions.map((player) => (
+                      <SuspensionSelectionCard
                         key={player.suspensionId}
                         player={player}
-                        working={penaltyWorking}
+                        checked={designatedServerUserIds.has(player.userId)}
+                        working={working || penaltyWorking}
+                        onToggle={(next) => togglePenaltyServer(player, next)}
                         onCarryForward={() => confirmCarryForward(player)}
                         onCancel={() => confirmCancelPenalty(player)}
-                      />
-                    ))}
-                    {penaltyOwingForSection.map((player) => (
-                      <PenaltyServerCheckboxRow
-                        key={player.penaltyId}
-                        player={player}
-                        checked={designatedServerUserIds.has(player.userId)}
-                        disabled={!player.canDesignateForThisMatch}
-                        working={working || penaltyWorking}
-                        onToggle={(next) => void togglePenaltyServer(player, next)}
                       />
                     ))}
                   </View>
@@ -898,6 +851,10 @@ export function PlayingXiSelectionScreen({
           <Text className="font-sans text-sm text-primary">{error}</Text>
         </View>
       ) : null}
+      <PenaltyInfoModal
+        visible={penaltyInfoVisible}
+        onClose={() => setPenaltyInfoVisible(false)}
+      />
     </View>
   );
 }

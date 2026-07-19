@@ -66,6 +66,7 @@ export function TournamentPointsTableTab({
 
   const tables = standings?.tables ?? [];
   const dataErrors = standings?.dataErrors ?? [];
+  const showNetRunRate = standings?.showNetRunRate ?? true;
   const showListViewToggle = shouldShowStandingsListViewToggle(
     matchSchedulingFormat,
     groupCount,
@@ -124,7 +125,10 @@ export function TournamentPointsTableTab({
         <View className="rounded-control bg-primary-50 px-4 py-3">
           <Text className="font-sans text-sm text-primary">
             {dataErrors.length} match{dataErrors.length === 1 ? '' : 'es'} could not be scored
-            (missing Super Over winner). Points for those matches are excluded until corrected.
+            {dataErrors.some((error) => /super over/i.test(error.message))
+              ? ' (missing Super Over winner)'
+              : ''}
+            . Points for those matches are excluded until corrected.
           </Text>
         </View>
       ) : null}
@@ -135,6 +139,7 @@ export function TournamentPointsTableTab({
               key={section.groupId ?? section.groupName}
               section={section}
               showGroupHeader
+              showNetRunRate={showNetRunRate}
             />
           ))
         : mergedListView ? (
@@ -145,6 +150,7 @@ export function TournamentPointsTableTab({
                 teams: mergedListView.teams,
               }}
               groupLabelByTeamId={mergedListView.groupLabelByTeamId}
+              showNetRunRate={showNetRunRate}
             />
           ) : null}
     </View>

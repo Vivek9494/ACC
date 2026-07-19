@@ -50,6 +50,7 @@ import { LateArrivalPenaltyService } from '../late-arrival-penalty/late-arrival-
 import { MatchesService } from '../matches/matches.service';
 import { SuspensionService } from '../suspension/suspension.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { activeTeamMembershipWhere } from '../teams/team-membership-query';
 import { activeTournamentWhere } from '../tournaments/tournament-query';
 
 const HIDDEN_MATCH_STATES: MatchState[] = [
@@ -341,7 +342,11 @@ export class ParticipationPollService {
     canViewPending: boolean,
   ): Promise<ParticipationPollTallyView> {
     const roster = await this.prisma.teamMembership.findMany({
-      where: { teamId: poll.teamId, tournamentId: poll.match.tournamentId },
+      where: {
+        teamId: poll.teamId,
+        tournamentId: poll.match.tournamentId,
+        ...activeTeamMembershipWhere,
+      },
       include: {
         user: { select: { id: true, firstName: true, lastName: true, profilePhotoUrl: true } },
       },
@@ -624,7 +629,11 @@ export class ParticipationPollService {
     }
 
     const rosterUserIds = await this.prisma.teamMembership.findMany({
-      where: { teamId: poll.teamId, tournamentId: poll.match.tournamentId },
+      where: {
+        teamId: poll.teamId,
+        tournamentId: poll.match.tournamentId,
+        ...activeTeamMembershipWhere,
+      },
       select: { userId: true },
     });
 
@@ -646,8 +655,6 @@ export class ParticipationPollService {
       rosterUserIds.map((row) => row.userId),
     );
 
-    const rawInVoterIds = new Set(inRows.map((row) => row.userId));
-
     let pendingSuspensions: Awaited<ReturnType<typeof enrichPollSuspensionRows>> = [];
     let actionedSuspensions: Awaited<
       ReturnType<SuspensionService['listActionedForMatchTeam']>
@@ -668,23 +675,17 @@ export class ParticipationPollService {
       pendingSuspensions = enrichPollSuspensionRows(rawPendingSuspensions, voteByUser);
       actionedSuspensions = actionedRows;
 
-      // Carry-forward / cancel → play this match: leave the designate-to-serve pool and
-      // Confirmed-IN owing exclusion so they render as Confirmed cards, not checkboxes.
+      // Actioned suspensions return to the pool. Active suspension rows also
+      // remain in IN until the captain explicitly checks them to serve.
       const actionedSuspensionUserIds = new Set(actionedRows.map((row) => row.userId));
       penaltyOwingForSelection = penaltyOwing.filter(
         (row) => !actionedSuspensionUserIds.has(row.userId),
-      );
-      const penaltyOwingInVoterUserIds = new Set(
-        penaltyOwingForSelection
-          .filter((row) => rawInVoterIds.has(row.userId))
-          .map((row) => row.userId),
       );
 
       const partition = partitionPollConfirmedInVoters({
         inVoters: inWithPunch,
         pendingSuspensions,
         actionedSuspensions,
-        penaltyOwingInVoterUserIds,
       });
       confirmedInWithPunch = partition.confirmedIn;
     }
@@ -872,6 +873,13 @@ export class ParticipationPollService {
       });
     }
 
+    await this.suspensions.assertManualSuspensionSelection(
+      poll.matchId,
+      poll.teamId,
+      penaltyServerUserIds,
+      [...body.playingXi, ...body.substitutes],
+    );
+
     await this.matches.lockPlayingXiFromPoll(
       actor,
       poll.matchId,
@@ -879,13 +887,14 @@ export class ParticipationPollService {
       body.playingXi,
       body.substitutes,
       inVoterIds,
+      penaltyServerUserIds,
     );
 
-    await this.penalties.syncServeDesignations(
-      actor,
-      poll.teamId,
+    await this.suspensions.resolveManualSuspensionsOnPlayingXiConfirm(
       poll.matchId,
+      poll.teamId,
       penaltyServerUserIds,
+      [...body.playingXi, ...body.substitutes],
     );
 
     return this.getPlayingXiSelection(actor, pollId);
@@ -1337,7 +1346,11 @@ export class ParticipationPollService {
     }
 
     const roster = await this.prisma.teamMembership.findMany({
-      where: { teamId: poll.teamId, tournamentId: poll.match.tournamentId },
+      where: {
+        teamId: poll.teamId,
+        tournamentId: poll.match.tournamentId,
+        ...activeTeamMembershipWhere,
+      },
       include: {
         user: { select: { id: true, firstName: true, lastName: true, profilePhotoUrl: true } },
       },
@@ -1471,6 +1484,7 @@ export class ParticipationPollService {
         where: {
           userId,
           tournament: { ...activeTournamentWhere, ballType: BallType.Leather },
+          ...activeTeamMembershipWhere,
         },
         select: MEMBERSHIP_ROW_SELECT,
       }),
@@ -1509,7 +1523,7 @@ export class ParticipationPollService {
     tournamentId: string,
   ): Promise<MembershipRow | null> {
     const rosterRow = await this.prisma.teamMembership.findFirst({
-      where: { userId, teamId, tournamentId },
+      where: { userId, teamId, tournamentId, ...activeTeamMembershipWhere },
       select: MEMBERSHIP_ROW_SELECT,
     });
     if (rosterRow) {

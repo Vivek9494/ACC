@@ -25,6 +25,7 @@ import { FeeStatus as PrismaFeeStatus, type Prisma } from '@prisma/client';
 import { AuditService } from '../audit/audit.service';
 import { decimalToNumberOrNull } from '../common/decimal.util';
 import { PrismaService } from '../prisma/prisma.service';
+import { activeTeamMembershipWhere } from '../teams/team-membership-query';
 import { buildTournamentScopeDisplay } from '../tournaments/tournament-scope-display';
 
 const FEE_INCLUDE = {
@@ -351,7 +352,7 @@ export class FeesService {
 
   private async syncFeesForTeams(tournamentId: string, teamIds: string[]): Promise<void> {
     const memberships = await this.prisma.teamMembership.findMany({
-      where: { tournamentId, teamId: { in: teamIds } },
+      where: { tournamentId, teamId: { in: teamIds }, ...activeTeamMembershipWhere },
       select: { userId: true },
     });
     const userIds = memberships.map((membership) => membership.userId);
@@ -402,6 +403,7 @@ export class FeesService {
       where: {
         tournamentId,
         userId: { in: registrations.map((registration) => registration.userId) },
+        ...activeTeamMembershipWhere,
       },
       select: { userId: true, teamId: true },
     });

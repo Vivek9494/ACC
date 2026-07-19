@@ -7,6 +7,7 @@ import { MediaUrlResolver } from '../storage/media-url.resolver';
 import { ScorecardReader } from '../scoring/scorecard-reader';
 import { assertTournamentActive } from '../tournaments/tournament-query';
 import { activeTeamWhere } from '../teams/team-query';
+import { activeTeamMembershipWhere } from '../teams/team-membership-query';
 import {
   applyBatterInnings,
   applyBowlerInnings,
@@ -101,6 +102,7 @@ export class LeaderboardService {
       where: {
         tournamentId,
         ...(teamId ? { teamId } : {}),
+        ...activeTeamMembershipWhere,
       },
       include: {
         user: {
@@ -255,6 +257,7 @@ export class LeaderboardService {
         tournamentId,
         ...(teamId ? { teamId } : {}),
         team: activeTeamWhere,
+        ...activeTeamMembershipWhere,
       },
       include: {
         user: {

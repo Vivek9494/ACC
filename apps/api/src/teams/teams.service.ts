@@ -27,6 +27,7 @@ import {
   validateTeamRoleAssignments,
   teamRosterCapExceededMessage,
   teamRosterSlotsRemaining,
+  TournamentType,
 } from '@acc/types';
 import {
   BadRequestException,
@@ -50,6 +51,7 @@ import { NotificationsService, NotificationTrigger } from '../notifications/noti
 import type { CreateTeamDto } from './dto/create-team.dto';
 import type { AddTeamPlayersDto } from './dto/add-team-players.dto';
 import type { UpdateTeamDto } from './dto/update-team.dto';
+import { activeTeamMembershipWhere, activeTeamMembershipCountSelect } from './team-membership-query';
 import { activeTeamWhere, resolveTeamHasMatches } from './team-query';
 
 const TEAM_LEADER_ROLES = [UserRole.Captain, UserRole.ViceCaptain] as const;
@@ -60,6 +62,14 @@ const TEAM_ASSIGNABLE_ROLES = [
 ] as const;
 
 const TEAM_NAME_TAKEN = TEAM_FORM_MESSAGES.name.duplicate;
+const REMOVAL_BLOCKING_MATCH_STATES = [
+  'SCHEDULED',
+  'DELAYED',
+  'PLAYING_XI_LOCKED',
+  'TOSS_COMPLETED',
+  'LIVE',
+  'RAIN_INTERRUPTED',
+] as const;
 
 @Injectable()
 export class TeamsService {
@@ -83,7 +93,7 @@ export class TeamsService {
       orderBy: { name: 'asc' },
       include: {
         group: { select: { id: true, name: true } },
-        _count: { select: { memberships: true } },
+        _count: { select: { memberships: activeTeamMembershipCountSelect } },
       },
     });
     const hasMatchesByTeamId = await resolveTeamHasMatches(
@@ -122,7 +132,7 @@ export class TeamsService {
     }
 
     const memberships = await this.prisma.teamMembership.findMany({
-      where: { teamId, tournamentId },
+      where: { teamId, tournamentId, ...activeTeamMembershipWhere },
       include: {
         user: {
           select: {
@@ -162,7 +172,7 @@ export class TeamsService {
       viewer == null
         ? Promise.resolve(null)
         : this.prisma.teamMembership.findFirst({
-            where: { tournamentId, teamId, userId: viewer.id },
+            where: { tournamentId, teamId, userId: viewer.id, ...activeTeamMembershipWhere },
             select: { id: true },
           }),
     ]);
@@ -233,9 +243,7 @@ export class TeamsService {
       return a.firstName.localeCompare(b.firstName);
     });
 
-    const canManageRoster = viewer
-      ? await this.canAdminOrClubManagerManageTeams(viewer, tournamentId)
-      : false;
+    const canManageRoster = viewer ? await this.canManageTeamRoster(viewer, tournamentId) : false;
     const playersPerTeamCap = team.tournament.playersPerTeam;
     const rosterSlotsRemaining = teamRosterSlotsRemaining(playersPerTeamCap, players.length);
 
@@ -257,6 +265,7 @@ export class TeamsService {
           })
         : false,
       canAddPlayers: canManageRoster,
+      canRemovePlayers: canManageRoster,
       playersPerTeamCap,
       rosterSlotsRemaining,
       players: await this.mediaUrls.resolveProfilePhotoUrls(players),
@@ -268,12 +277,12 @@ export class TeamsService {
     tournamentId: string,
     teamId: string,
   ): Promise<TeamAddPlayersPickerView> {
-    await this.assertAdminOrClubManagerCanManageTeams(actor, tournamentId);
+    await this.assertCanManageTeamRoster(actor, tournamentId);
     await this.findActiveTeam(tournamentId, teamId);
 
     const tournament = await this.requireTournament(tournamentId);
     const currentRosterSize = await this.prisma.teamMembership.count({
-      where: { teamId, tournamentId },
+      where: { teamId, tournamentId, ...activeTeamMembershipWhere },
     });
     const playersPerTeamCap = tournament.playersPerTeam;
     const rosterSlotsRemaining = teamRosterSlotsRemaining(playersPerTeamCap, currentRosterSize);
@@ -307,7 +316,7 @@ export class TeamsService {
     teamId: string,
     dto: AddTeamPlayersDto,
   ): Promise<AddTeamPlayersResponse> {
-    await this.assertAdminOrClubManagerCanManageTeams(actor, tournamentId);
+    await this.assertCanManageTeamRoster(actor, tournamentId);
     const tournament = await this.requireTournament(tournamentId);
     const team = await this.findActiveTeam(tournamentId, teamId);
 
@@ -320,7 +329,7 @@ export class TeamsService {
     }
 
     const currentRosterSize = await this.prisma.teamMembership.count({
-      where: { teamId, tournamentId },
+      where: { teamId, tournamentId, ...activeTeamMembershipWhere },
     });
     const cap = tournament.playersPerTeam;
     if (cap != null && currentRosterSize + userIds.length > cap) {
@@ -345,15 +354,19 @@ export class TeamsService {
     await this.prisma.$transaction(async (tx) => {
       for (const userId of userIds) {
         const registration = registrationByUser.get(userId);
-        await tx.teamMembership.create({
-          data: {
-            tournamentId,
+        const playerCategory = this.registrationToPlayerCategory(
+          registration?.playerType ?? null,
+          tournament.ballType as BallType,
+        );
+        await tx.teamMembership.upsert({
+          where: { tournamentId_userId: { tournamentId, userId } },
+          create: { tournamentId, teamId, userId, playerCategory },
+          update: {
             teamId,
-            userId,
-            playerCategory: this.registrationToPlayerCategory(
-              registration?.playerType ?? null,
-              tournament.ballType as BallType,
-            ),
+            playerCategory,
+            isDeleted: false,
+            deletedAt: null,
+            deletedByUserId: null,
           },
         });
       }
@@ -371,6 +384,84 @@ export class TeamsService {
     await this.notifyPlayersAddedToTeam(tournamentId, teamId, team.name, tournament.name, userIds);
 
     return { addedCount: userIds.length };
+  }
+
+  async removePlayerFromTeam(
+    actor: AuthUser,
+    tournamentId: string,
+    teamId: string,
+    userId: string,
+  ): Promise<void> {
+    await this.assertCanManageTeamRoster(actor, tournamentId);
+    const [tournament, team, membership] = await Promise.all([
+      this.requireTournament(tournamentId),
+      this.findActiveTeam(tournamentId, teamId),
+      this.prisma.teamMembership.findFirst({
+        where: { tournamentId, teamId, userId, ...activeTeamMembershipWhere },
+        select: { id: true },
+      }),
+    ]);
+    if (!membership) {
+      throw new NotFoundException({
+        message: 'Player is not an active member of this team',
+        error: 'TEAM_MEMBERSHIP_NOT_FOUND',
+      });
+    }
+
+    const blockingSquad = await this.prisma.matchSquadPlayer.findFirst({
+      where: {
+        userId,
+        squad: {
+          teamId,
+          match: {
+            tournamentId,
+            isDeleted: false,
+            state: { in: [...REMOVAL_BLOCKING_MATCH_STATES] },
+          },
+        },
+      },
+      select: { id: true },
+    });
+    if (blockingSquad) {
+      throw new BadRequestException({
+        message:
+          'This player cannot be removed because they are in a confirmed Playing 11 or an upcoming/live match squad for this team.',
+        error: 'PLAYER_IN_ACTIVE_MATCH_SQUAD',
+      });
+    }
+
+    const removedAt = new Date();
+    await this.prisma.$transaction([
+      this.prisma.teamMembership.update({
+        where: { id: membership.id },
+        data: { isDeleted: true, deletedAt: removedAt, deletedByUserId: actor.id },
+      }),
+      this.prisma.roleAssignment.deleteMany({
+        where: {
+          userId,
+          tournamentId,
+          teamId,
+          role: { in: [...TEAM_ASSIGNABLE_ROLES] },
+        },
+      }),
+    ]);
+
+    await this.audit.record({
+      action: 'TEAM_PLAYER_REMOVED',
+      actorUserId: actor.id,
+      targetEntityType: 'team_membership',
+      targetEntityId: membership.id,
+      after: { tournamentId, teamId, userId, deletedAt: removedAt.toISOString() },
+    });
+    await this.notifyPlayerRemovedFromTeam(
+      tournamentId,
+      teamId,
+      team.name,
+      tournament.name,
+      userId,
+      membership.id,
+      removedAt,
+    );
   }
 
   /**
@@ -404,6 +495,33 @@ export class TeamsService {
     }
   }
 
+  private async notifyPlayerRemovedFromTeam(
+    tournamentId: string,
+    teamId: string,
+    teamName: string,
+    tournamentName: string,
+    userId: string,
+    membershipId: string,
+    removedAt: Date,
+  ): Promise<void> {
+    try {
+      await this.notifications.sendNotification({
+        userIds: [userId],
+        triggerKey: NotificationTrigger.PlayerRemovedFromTeam,
+        dedupeKey: `${NotificationTrigger.PlayerRemovedFromTeam}:${membershipId}:${removedAt.toISOString()}`,
+        title: 'Removed from a team',
+        body: `You've been removed from ${teamName} in ${tournamentName}.`,
+        data: { tournamentId, teamId, screen: 'tournament' },
+        audienceSummary: `Player ${userId} removed from team ${teamId}`,
+      });
+    } catch (err) {
+      this.logger.error(
+        `Failed to send player-removed notification for ${userId} on team ${teamId}`,
+        err as Error,
+      );
+    }
+  }
+
   /** Captain / Club Manager views another player's tournament profile (Team Detail → View Profile). */
   async getPlayerProfile(
     actor: AuthUser,
@@ -424,7 +542,7 @@ export class TeamsService {
     const ballType = tournament.ballType;
 
     const membership = await this.prisma.teamMembership.findFirst({
-      where: { tournamentId, userId },
+      where: { tournamentId, userId, ...activeTeamMembershipWhere },
       include: {
         team: { select: { id: true, name: true } },
         user: {
@@ -601,7 +719,7 @@ export class TeamsService {
             nameNormalized,
             logoUrl: dto.logoUrl ?? null,
           },
-          include: { _count: { select: { memberships: true } } },
+          include: { _count: { select: { memberships: activeTeamMembershipCountSelect } } },
         });
 
         if (roleAssignees.userIds.length > 0) {
@@ -714,7 +832,7 @@ export class TeamsService {
         },
         include: {
           group: { select: { id: true, name: true } },
-          _count: { select: { memberships: true } },
+          _count: { select: { memberships: activeTeamMembershipCountSelect } },
         },
       });
       const hasMatches = await this.teamHasMatches(tournamentId, teamId);
@@ -854,7 +972,12 @@ export class TeamsService {
     );
     if (assigneeIds.length > 0) {
       const memberships = await this.prisma.teamMembership.findMany({
-        where: { teamId, tournamentId, userId: { in: assigneeIds } },
+        where: {
+          teamId,
+          tournamentId,
+          userId: { in: assigneeIds },
+          ...activeTeamMembershipWhere,
+        },
         select: { userId: true },
       });
       const memberIds = new Set(memberships.map((row) => row.userId));
@@ -965,6 +1088,49 @@ export class TeamsService {
     return false;
   }
 
+  /**
+   * Roster add/remove authorization:
+   * Admin/Club Manager globally; Center Sevak only for a multi-center
+   * Center-level tournament linked to one of their assigned centers.
+   */
+  private async canManageTeamRoster(actor: AuthUser, tournamentId: string): Promise<boolean> {
+    if (await this.canAdminOrClubManagerManageTeams(actor, tournamentId)) {
+      return true;
+    }
+    if (actor.role !== UserRole.CenterSevak) {
+      return false;
+    }
+
+    const tournament = await this.requireTournament(tournamentId);
+    if (tournament.type !== TournamentType.Center) {
+      return false;
+    }
+    const [centerIds, involvedCenterCount] = await Promise.all([
+      this.tournaments.resolveCenterSevakCenterIds(actor.id),
+      this.prisma.tournamentCenter.count({ where: { tournamentId } }),
+    ]);
+    if (centerIds.length === 0 || involvedCenterCount < 2) {
+      return false;
+    }
+    const involvedCenter = await this.prisma.tournamentCenter.findFirst({
+      where: { tournamentId, centerId: { in: centerIds } },
+      select: { centerId: true },
+    });
+    return involvedCenter !== null;
+  }
+
+  private async assertCanManageTeamRoster(
+    actor: AuthUser,
+    tournamentId: string,
+  ): Promise<void> {
+    if (!(await this.canManageTeamRoster(actor, tournamentId))) {
+      throw new ForbiddenException({
+        message: 'You do not have permission to manage this team roster',
+        error: 'FORBIDDEN',
+      });
+    }
+  }
+
   private async assertAdminOrClubManagerCanManageTeams(
     actor: AuthUser,
     tournamentId: string,
@@ -1041,7 +1207,7 @@ export class TeamsService {
     tournamentId: string,
   ): Promise<TeamRoleCandidatesView> {
     const rosteredRows = await this.prisma.teamMembership.findMany({
-      where: { tournamentId, team: activeTeamWhere },
+      where: { tournamentId, team: activeTeamWhere, ...activeTeamMembershipWhere },
       select: { userId: true },
     });
     const rosteredUserIds = [...new Set(rosteredRows.map((row) => row.userId))];
@@ -1071,7 +1237,7 @@ export class TeamsService {
 
   private async loadUnrosteredRegistrationRows(tournamentId: string) {
     const rosteredRows = await this.prisma.teamMembership.findMany({
-      where: { tournamentId, team: activeTeamWhere },
+      where: { tournamentId, team: activeTeamWhere, ...activeTeamMembershipWhere },
       select: { userId: true },
     });
     const rosteredUserIds = [...new Set(rosteredRows.map((row) => row.userId))];
@@ -1133,7 +1299,12 @@ export class TeamsService {
         select: { userId: true },
       }),
       this.prisma.teamMembership.findMany({
-        where: { tournamentId, userId: { in: userIds }, team: activeTeamWhere },
+        where: {
+          tournamentId,
+          userId: { in: userIds },
+          team: activeTeamWhere,
+          ...activeTeamMembershipWhere,
+        },
         select: { userId: true },
       }),
       this.prisma.user.findMany({

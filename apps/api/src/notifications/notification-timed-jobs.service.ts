@@ -11,6 +11,7 @@ import {
 import { Injectable, Logger } from '@nestjs/common';
 
 import { PrismaService } from '../prisma/prisma.service';
+import { activeTeamMembershipWhere } from '../teams/team-membership-query';
 import { selectableUserWhere } from '../users/user-query';
 import { NotificationAudienceService } from './notification-audience.service';
 import { NotificationsService, NotificationTrigger } from './notifications.service';
@@ -83,6 +84,7 @@ export class NotificationTimedJobsService {
             teamId: poll.teamId,
             tournamentId: poll.match.tournamentId,
             user: { is: selectableUserWhere },
+            ...activeTeamMembershipWhere,
           },
           select: { userId: true },
         });

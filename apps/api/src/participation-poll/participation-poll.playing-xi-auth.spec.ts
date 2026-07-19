@@ -43,6 +43,10 @@ function buildPollService(): {
   matches: { lockPlayingXiFromPoll: jest.Mock };
   permissions: { check: jest.Mock };
   penalties: { syncServeDesignations: jest.Mock };
+  suspensions: {
+    assertManualSuspensionSelection: jest.Mock;
+    resolveManualSuspensionsOnPlayingXiConfirm: jest.Mock;
+  };
 } {
   const prisma = {
     availabilityPoll: { findUnique: jest.fn() },
@@ -54,17 +58,22 @@ function buildPollService(): {
   const matches = { lockPlayingXiFromPoll: jest.fn().mockResolvedValue(undefined) };
   const permissions = { check: jest.fn().mockResolvedValue(false) };
   const penalties = { syncServeDesignations: jest.fn().mockResolvedValue(undefined) };
+  const suspensions = {
+    syncPendingForMatchTeam: jest.fn(),
+    assertManualSuspensionSelection: jest.fn().mockResolvedValue(undefined),
+    resolveManualSuspensionsOnPlayingXiConfirm: jest.fn().mockResolvedValue(undefined),
+  };
 
   const service = new ParticipationPollService(
     prisma as never,
     permissions as never,
     matches as never,
     penalties as never,
-    { syncPendingForMatchTeam: jest.fn() } as never,
+    suspensions as never,
     { record: jest.fn() } as never,
   );
 
-  return { service, prisma, matches, permissions, penalties };
+  return { service, prisma, matches, permissions, penalties, suspensions };
 }
 
 function pollFixture(playingXi: string[]) {
@@ -140,6 +149,7 @@ describe('ParticipationPollService — Confirm Playing 11 auth', () => {
       playingXi,
       [],
       expect.any(Set),
+      [],
     );
   });
 

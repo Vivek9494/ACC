@@ -747,10 +747,15 @@ type WinnerLabelInnings = Pick<InningsScorecard, 'battingTeamId' | 'battingIsExt
  * Resolves the display name for the winning side.
  * Uses non-null id equality only — `null === null` must not map to "Away"
  * (ACC Leather vs external opponents use null battingTeamId / winningTeamId).
+ *
+ * When the winner is external (`winningTeamId` null), use the result margin —
+ * wickets ⇒ chasing side, runs ⇒ defending side — never raw innings totals.
+ * (DLS/rain revised targets often leave the chase with fewer runs than the first
+ * innings while still winning.)
  */
 export function resolveMatchWinnerDisplayName(
   match: MatchWinnerNameContext,
-  result: Pick<MatchResultView, 'winningTeamId'>,
+  result: Pick<MatchResultView, 'winningTeamId' | 'marginWickets' | 'marginRuns'>,
   innings: WinnerLabelInnings[] = [],
 ): string {
   const winnerId = result.winningTeamId;
@@ -766,10 +771,17 @@ export function resolveMatchWinnerDisplayName(
     return awayName;
   }
 
-  // Null winner id (external Leather): pick the batting side that took the deciding contest.
-  const pair = decisiveNonTiedInningsPair(innings);
+  // Null winner id (external Leather): label by result margin, not score totals.
+  const pair = decisiveInningsPair(innings);
   if (winnerId == null && pair) {
     const [first, second] = pair;
+    if (result.marginWickets != null) {
+      return labelForBattingSide(match, second, homeName, awayName, externalName);
+    }
+    if (result.marginRuns != null) {
+      return labelForBattingSide(match, first, homeName, awayName, externalName);
+    }
+    // Legacy fallback when margins are absent (should not happen for decided results).
     if (second.runs > first.runs) {
       return labelForBattingSide(match, second, homeName, awayName, externalName);
     }
@@ -781,14 +793,14 @@ export function resolveMatchWinnerDisplayName(
   return externalName ?? awayName;
 }
 
-/** Last non-tied innings pair (regulation or Super Over), oldest-pair index order. */
-function decisiveNonTiedInningsPair(
+/** Last complete innings pair (regulation or Super Over). */
+function decisiveInningsPair(
   innings: WinnerLabelInnings[],
 ): [WinnerLabelInnings, WinnerLabelInnings] | null {
   for (let start = innings.length - 2; start >= 0; start -= 2) {
     const first = innings[start];
     const second = innings[start + 1];
-    if (first && second && first.runs !== second.runs) {
+    if (first && second) {
       return [first, second];
     }
   }

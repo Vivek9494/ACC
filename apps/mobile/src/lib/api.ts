@@ -302,6 +302,13 @@ interface InternalRequestOptions extends RequestOptions {
   skipAuthRetry?: boolean;
   /** When true, omits Authorization even if a token is in memory (public guest reads). */
   skipAuthHeader?: boolean;
+  /**
+   * Public route that still forwards Bearer when logged in. Hydrates the token from
+   * SecureStore when missing, and on a guest-style auth miss (401 / Leather "Sign in"
+   * 403) silently refreshes once when a refresh token exists — without treating a
+   * true guest (no stored session) as signed-out.
+   */
+  optionalAuth?: boolean;
   /** Internal guard — each request is retried at most once after refresh. */
   _authRetried?: boolean;
 }
@@ -330,6 +337,18 @@ function shouldAttemptAccessTokenRefresh(path: string, status: number, error: Ap
   return !AUTH_NO_RETRY_PREFIXES.some((prefix) => path.startsWith(prefix));
 }
 
+/** Leather public detail treats a missing/invalid viewer as this 403 — not a real guest. */
+function isOptionalAuthViewerMiss(status: number, error: ApiError): boolean {
+  if (status === 401) {
+    return true;
+  }
+  if (status !== 403) {
+    return false;
+  }
+  const message = Array.isArray(error.message) ? error.message.join(', ') : error.message;
+  return message === 'Sign in to view this tournament';
+}
+
 function isRefreshTerminalFailure(status: number, error: ApiError): boolean {
   return (
     status === 401 &&
@@ -339,6 +358,25 @@ function isRefreshTerminalFailure(status: number, error: ApiError): boolean {
 }
 
 let refreshInFlight: Promise<boolean> | null = null;
+let hydrateInFlight: Promise<void> | null = null;
+
+/** Load access token from SecureStore into memory when the in-memory copy is empty. */
+async function hydrateAuthTokenFromStorage(): Promise<void> {
+  if (authToken) {
+    return;
+  }
+  if (!hydrateInFlight) {
+    hydrateInFlight = (async () => {
+      const stored = await loadTokens();
+      if (stored?.accessToken && !authToken) {
+        setAuthToken(stored.accessToken);
+      }
+    })().finally(() => {
+      hydrateInFlight = null;
+    });
+  }
+  await hydrateInFlight;
+}
 
 async function refreshAccessTokenOnce(): Promise<boolean> {
   const stored = await loadTokens();
@@ -377,8 +415,49 @@ async function forceSessionLogout(): Promise<never> {
   throw new SessionExpiredError();
 }
 
+/**
+ * Optional-auth miss with a stored session: refresh once and retry.
+ * True guests (no refresh token) keep the original error — no logout.
+ */
+async function retryOptionalAuthAfterViewerMiss<T>(
+  path: string,
+  options: InternalRequestOptions,
+): Promise<T | null> {
+  const stored = await loadTokens();
+  if (!stored?.refreshToken) {
+    return null;
+  }
+  try {
+    const refreshed = await ensureFreshAccessToken();
+    if (!refreshed) {
+      return forceSessionLogout();
+    }
+  } catch (err) {
+    // Transient refresh failure — surface as a retryable error, not "sign in".
+    if (err instanceof SessionExpiredError) {
+      throw err;
+    }
+    throw new Error(
+      err instanceof Error ? err.message : 'Could not refresh session. Please try again.',
+    );
+  }
+  return apiFetchInternal<T>(path, { ...options, _authRetried: true });
+}
+
 async function apiFetchInternal<T>(path: string, options: InternalRequestOptions = {}): Promise<T> {
-  const { body, headers, skipAuthRetry, skipAuthHeader, _authRetried, ...rest } = options;
+  const {
+    body,
+    headers,
+    skipAuthRetry,
+    skipAuthHeader,
+    optionalAuth,
+    _authRetried,
+    ...rest
+  } = options;
+
+  if (optionalAuth && !skipAuthHeader) {
+    await hydrateAuthTokenFromStorage();
+  }
 
   const finalHeaders: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -415,16 +494,23 @@ async function apiFetchInternal<T>(path: string, options: InternalRequestOptions
       ? (parsed.error ?? { code: 'UNKNOWN', message: response.statusText })
       : { code: 'UNKNOWN', message: response.statusText };
 
-    if (!skipAuthRetry && !_authRetried) {
-      if (error.code === AuthErrorCode.TokenVersionMismatch) {
-        return forceSessionLogout();
-      }
-      if (shouldAttemptAccessTokenRefresh(path, response.status, error)) {
-        const refreshed = await ensureFreshAccessToken();
-        if (!refreshed) {
+    if (!_authRetried) {
+      if (optionalAuth && isOptionalAuthViewerMiss(response.status, error)) {
+        const retried = await retryOptionalAuthAfterViewerMiss<T>(path, options);
+        if (retried !== null) {
+          return retried;
+        }
+      } else if (!skipAuthRetry) {
+        if (error.code === AuthErrorCode.TokenVersionMismatch) {
           return forceSessionLogout();
         }
-        return apiFetchInternal<T>(path, { ...options, _authRetried: true });
+        if (shouldAttemptAccessTokenRefresh(path, response.status, error)) {
+          const refreshed = await ensureFreshAccessToken();
+          if (!refreshed) {
+            return forceSessionLogout();
+          }
+          return apiFetchInternal<T>(path, { ...options, _authRetried: true });
+        }
       }
     }
 
@@ -457,10 +543,12 @@ export async function apiFetchPublic<T>(path: string, options: RequestOptions = 
 
 /**
  * Public route that forwards Bearer when logged in so the server can resolve the
- * optional viewer (e.g. canEdit, myTeamId). Does not refresh or force logout on 401.
+ * optional viewer (e.g. canEdit, myTeamId). Hydrates the token from storage when
+ * missing; on an expired/missing-viewer response, silently refreshes once when a
+ * session exists (true guests are unchanged).
  */
 export async function apiFetchOptionalAuth<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  return apiFetchInternal<T>(path, { ...options, skipAuthRetry: true });
+  return apiFetchInternal<T>(path, { ...options, optionalAuth: true, skipAuthRetry: true });
 }
 
 export interface HealthStatus {
@@ -1099,6 +1187,16 @@ export function addPlayersToTeam(
   });
 }
 
+export function removePlayerFromTeam(
+  tournamentId: string,
+  teamId: string,
+  userId: string,
+): Promise<void> {
+  return apiFetch<void>(`/tournaments/${tournamentId}/teams/${teamId}/players/${userId}`, {
+    method: 'DELETE',
+  });
+}
+
 /** Admin or Club Manager assigns Captain, Vice-Captain, and Manager for a team. */
 export function assignTeamRoles(
   tournamentId: string,
@@ -1492,7 +1590,7 @@ export function getRoundRobinMatchSetupContext(
 }
 
 export function getMatch(matchId: string): Promise<MatchDetail> {
-  return apiFetch<MatchDetail>(`/matches/${matchId}`);
+  return apiFetchOptionalAuth<MatchDetail>(`/matches/${matchId}`);
 }
 
 export function createMatch(
@@ -1795,7 +1893,7 @@ export function setInningsParticipants(
 
 /** §13.1: confirmation status (also triggers the lazy auto-confirm safety-net). */
 export function getScorecardConfirmation(matchId: string): Promise<ScorecardConfirmationView> {
-  return apiFetch<ScorecardConfirmationView>(`/matches/${matchId}/confirmation`);
+  return apiFetchPublic<ScorecardConfirmationView>(`/matches/${matchId}/confirmation`);
 }
 
 /** Whether the current user may confirm this scorecard (§13.1). */

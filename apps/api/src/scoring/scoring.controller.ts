@@ -3,6 +3,7 @@ import { Body, Controller, Get, Param, Patch, Post, Put, Query, UseGuards } from
 
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { Public } from '../auth/public.decorator';
 import { PermissionGuard } from '../authz/permission.guard';
 import { RequirePermission } from '../authz/require-permission.decorator';
 import { EditDeliveryDto, RecordDeliveryDto } from './dto/record-delivery.dto';
@@ -32,6 +33,7 @@ export class ScoringController {
 
   /** Public, guest-readable live scorecard snapshot (spec §2, §28). */
   @Get('scorecard')
+  @Public()
   scorecard(@Param('matchId') matchId: string): Promise<ScorecardResponse> {
     return this.scoring.getScorecard(matchId);
   }

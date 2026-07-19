@@ -137,6 +137,17 @@ export class TeamsController {
     return this.teams.addPlayersToTeam(user, tournamentId, teamId, dto);
   }
 
+  @Delete('tournaments/:tournamentId/teams/:teamId/players/:userId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  removePlayer(
+    @CurrentUser() user: AuthUser,
+    @Param('tournamentId') tournamentId: string,
+    @Param('teamId') teamId: string,
+    @Param('userId') userId: string,
+  ): Promise<void> {
+    return this.teams.removePlayerFromTeam(user, tournamentId, teamId, userId);
+  }
+
   @Patch('tournaments/:tournamentId/teams/:teamId/roles')
   @RequirePermission(Permission.ASSIGN_TEAM_ROLES)
   @UseGuards(PermissionGuard)

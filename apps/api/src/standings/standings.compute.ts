@@ -36,9 +36,13 @@ interface MutableStanding {
   points: number;
 }
 
+/**
+ * Decided outcomes may omit winner/loser when one side is an external opponent
+ * (Leather ACC fixtures). `winnerId` null + decided ⇒ system team lost.
+ */
 type MatchOutcome =
   | { kind: 'no_result' }
-  | { kind: 'decided'; winnerId: string; loserId: string };
+  | { kind: 'decided'; winnerId: string | null; loserId: string | null };
 
 const UNDECIDED_MATCH_MESSAGE =
   'Match has no winner — level scores must be resolved by a Super Over (§14).';
@@ -49,7 +53,7 @@ type ClassifyResult =
 
 function classifyOutcome(match: StandingsMatchInput): ClassifyResult {
   const { homeTeamId, awayTeamId, matchId } = match;
-  if (!homeTeamId || !awayTeamId) {
+  if (!homeTeamId && !awayTeamId) {
     return { ok: false, error: { matchId, message: 'Match is missing a system team.' } };
   }
 
@@ -60,8 +64,20 @@ function classifyOutcome(match: StandingsMatchInput): ClassifyResult {
 
   if (match.winningTeamId) {
     const winnerId = match.winningTeamId;
-    const loserId = winnerId === homeTeamId ? awayTeamId : homeTeamId;
+    const loserId =
+      winnerId === homeTeamId ? awayTeamId : winnerId === awayTeamId ? homeTeamId : null;
     return { ok: true, outcome: { kind: 'decided', winnerId, loserId } };
+  }
+
+  // Leather: external opponent won — scorecard is decided but winningTeamId is null
+  // because the external side has no system team id.
+  const isExternalFixture = Boolean(homeTeamId) !== Boolean(awayTeamId);
+  if (match.isDecided && isExternalFixture) {
+    const systemTeamId = homeTeamId ?? awayTeamId;
+    return {
+      ok: true,
+      outcome: { kind: 'decided', winnerId: null, loserId: systemTeamId },
+    };
   }
 
   const message = match.requiresSuperOver
@@ -100,19 +116,23 @@ function initStanding(seed: TeamSeed): MutableStanding {
   };
 }
 
-function sortRows(rows: TeamStandingRow[]): TeamStandingRow[] {
+function sortRows(rows: TeamStandingRow[], includeNrr: boolean): TeamStandingRow[] {
   return [...rows].sort((a, b) => {
     if (b.points !== a.points) {
       return b.points - a.points;
     }
-    if (b.netRunRate !== a.netRunRate) {
+    if (includeNrr && b.netRunRate !== a.netRunRate) {
       return b.netRunRate - a.netRunRate;
     }
     return a.teamName.localeCompare(b.teamName);
   });
 }
 
-function toRow(standing: MutableStanding, nrrTotals: TeamNrrTotals | undefined): TeamStandingRow {
+function toRow(
+  standing: MutableStanding,
+  nrrTotals: TeamNrrTotals | undefined,
+  includeNrr: boolean,
+): TeamStandingRow {
   const totals = nrrTotals ?? emptyNrrTotals();
   return {
     teamId: standing.teamId,
@@ -123,7 +143,7 @@ function toRow(standing: MutableStanding, nrrTotals: TeamNrrTotals | undefined):
     losses: standing.losses,
     noResults: standing.noResults,
     points: standing.points,
-    netRunRate: roundNetRunRate(computeNetRunRate(totals)),
+    netRunRate: includeNrr ? roundNetRunRate(computeNetRunRate(totals)) : 0,
   };
 }
 
@@ -134,6 +154,8 @@ export interface ComputeStandingsInput {
   teams: TeamSeed[];
   groups: { id: string; name: string; teamIds: string[] }[];
   matches: StandingsMatchInput[];
+  /** When false (Leather), skip NRR accumulation and sort without NRR. */
+  includeNetRunRate?: boolean;
 }
 
 export interface ComputeStandingsResult {
@@ -146,6 +168,7 @@ function processMatch(
   standings: Map<string, MutableStanding>,
   nrrByTeam: Map<string, TeamNrrTotals>,
   dataErrors: StandingsDataError[],
+  includeNetRunRate: boolean,
   teamFilter?: Set<string>,
 ): void {
   const classified = classifyOutcome(match);
@@ -154,25 +177,35 @@ function processMatch(
     return;
   }
 
-  const { homeTeamId, awayTeamId } = match;
-  if (!homeTeamId || !awayTeamId) {
-    return;
-  }
-  if (teamFilter && (!teamFilter.has(homeTeamId) || !teamFilter.has(awayTeamId))) {
+  const systemTeamIds = [match.homeTeamId, match.awayTeamId].filter(
+    (id): id is string => id != null,
+  );
+  if (systemTeamIds.length === 0) {
     return;
   }
 
-  const homeRow = standings.get(homeTeamId);
-  const awayRow = standings.get(awayTeamId);
-  if (!homeRow || !awayRow) {
-    return;
+  // Group tables: only apply when at least one participating system team is in the group.
+  if (teamFilter) {
+    const inGroup = systemTeamIds.filter((id) => teamFilter.has(id));
+    if (inGroup.length === 0) {
+      return;
+    }
   }
 
   const { outcome } = classified;
-  applyOutcome(homeRow, outcome, homeTeamId);
-  applyOutcome(awayRow, outcome, awayTeamId);
+  for (const teamId of systemTeamIds) {
+    if (teamFilter && !teamFilter.has(teamId)) {
+      continue;
+    }
+    const row = standings.get(teamId);
+    if (!row) {
+      continue;
+    }
+    applyOutcome(row, outcome, teamId);
+  }
 
-  if (outcome.kind !== 'no_result') {
+  if (includeNetRunRate && outcome.kind !== 'no_result' && systemTeamIds.length === 2) {
+    // NRR only for system-vs-system (both batting sides have team ids).
     accumulateInningsNrr(nrrByTeam, match.innings);
   }
 }
@@ -183,6 +216,7 @@ export function computeStandings(input: ComputeStandingsInput): ComputeStandings
     input.matchSchedulingFormat,
     input.groupCount,
   );
+  const includeNetRunRate = input.includeNetRunRate !== false;
   const teamById = new Map(input.teams.map((team) => [team.teamId, team]));
   const dataErrors: StandingsDataError[] = [];
 
@@ -203,16 +237,23 @@ export function computeStandings(input: ComputeStandingsInput): ComputeStandings
         if (match.groupId !== group.id) {
           continue;
         }
-        processMatch(match, standings, nrrByTeam, dataErrors, groupTeamIds);
+        processMatch(
+          match,
+          standings,
+          nrrByTeam,
+          dataErrors,
+          includeNetRunRate,
+          groupTeamIds,
+        );
       }
 
       const rows = [...standings.values()].map((standing) =>
-        toRow(standing, nrrByTeam.get(standing.teamId)),
+        toRow(standing, nrrByTeam.get(standing.teamId), includeNetRunRate),
       );
       return {
         groupId: group.id,
         groupName: group.name,
-        teams: sortRows(rows),
+        teams: sortRows(rows, includeNetRunRate),
       };
     });
 
@@ -226,11 +267,11 @@ export function computeStandings(input: ComputeStandingsInput): ComputeStandings
   const nrrByTeam = new Map<string, TeamNrrTotals>();
 
   for (const match of input.matches) {
-    processMatch(match, standings, nrrByTeam, dataErrors);
+    processMatch(match, standings, nrrByTeam, dataErrors, includeNetRunRate);
   }
 
   const rows = [...standings.values()].map((standing) =>
-    toRow(standing, nrrByTeam.get(standing.teamId)),
+    toRow(standing, nrrByTeam.get(standing.teamId), includeNetRunRate),
   );
 
   return {
@@ -238,7 +279,7 @@ export function computeStandings(input: ComputeStandingsInput): ComputeStandings
       {
         groupId: null,
         groupName: 'Standings',
-        teams: sortRows(rows),
+        teams: sortRows(rows, includeNetRunRate),
       },
     ],
     dataErrors,

@@ -43,8 +43,12 @@ export interface PollSuspensionPlayerRow {
   lastName: string;
   profilePhotoUrl: string | null;
   triggeredByMatchId: string;
+  /** Current persisted lifecycle state for this match. */
+  suspensionStatus: typeof SuspensionStatus.Pending | typeof SuspensionStatus.CarriedForward;
+  /** True when this offense was moved here from an earlier serving match. */
+  isCarriedForward: boolean;
   pollVoteSide: SuspensionPollVoteSide;
-  /** Captain carry-forward / cancel — only when {@link pollVoteSide} is IN. */
+  /** Manual serve/carry/cancel actions are available only to IN voters. */
   actionsEnabled: boolean;
 }
 
@@ -83,14 +87,15 @@ export function isLateArrivalInPenalty(row: PollSuspensionPlayerRow): boolean {
   return row.pollVoteSide === SuspensionPollVoteSide.In;
 }
 
-/**
- * True when the player is serving a late-arrival suspension at this match (voted IN,
- * not cancelled, not carried forward to a later match). Rows from
- * {@link listPendingForMatchTeam} are already scoped to the serving match.
- */
-export function isServingSuspensionForMatch(row: PollSuspensionPlayerRow): boolean {
+/** True when the captain may manually choose this player to serve at this match. */
+export function isEligibleSuspensionForManualDecision(
+  row: PollSuspensionPlayerRow,
+): boolean {
   return isLateArrivalInPenalty(row);
 }
+
+/** @deprecated Use isEligibleSuspensionForManualDecision. */
+export const isServingSuspensionForMatch = isEligibleSuspensionForManualDecision;
 
 export interface PollConfirmedInPartitionRow {
   userId: string;
@@ -100,7 +105,10 @@ export interface PollConfirmedInPartitionRow {
   skillLabel?: string | null;
 }
 
-/** User ids excluded from Confirmed IN — serving suspension and optional penalty-owing IN voters. */
+/**
+ * Manual suspension selection never excludes an eligible player from Confirmed
+ * IN by itself. Exclusion happens only after the captain checks the player.
+ */
 export function confirmedInExclusionUserIds(args: {
   pendingSuspensions: readonly PollSuspensionPlayerRow[];
   penaltyOwingInVoterUserIds?: ReadonlySet<string>;
@@ -110,23 +118,14 @@ export function confirmedInExclusionUserIds(args: {
    */
   actionedSuspensionUserIds?: ReadonlySet<string>;
 }): Set<string> {
-  const ids = new Set(
-    args.pendingSuspensions
-      .filter(isServingSuspensionForMatch)
-      .map((row) => row.userId),
-  );
-  for (const userId of args.penaltyOwingInVoterUserIds ?? []) {
-    if (args.actionedSuspensionUserIds?.has(userId)) {
-      continue;
-    }
-    ids.add(userId);
-  }
-  return ids;
+  void args;
+  return new Set();
 }
 
 /**
- * Split poll IN voters into Confirmed IN vs Late Arrival penalty (mutually exclusive).
- * Actioned suspensions (cancel / carry-forward) are merged into Confirmed IN.
+ * Return IN voters plus actioned rows while separately surfacing manually
+ * selectable suspension candidates. The two collections may overlap until the
+ * captain checks a candidate.
  */
 export function partitionPollConfirmedInVoters<T extends PollConfirmedInPartitionRow>(args: {
   inVoters: readonly T[];

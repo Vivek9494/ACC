@@ -7,8 +7,8 @@ import { buildCaptainFeaturedMatchSections } from './buildDashboardFeaturedMatch
 import { buildTeamLeadPollSections } from './buildTeamLeadPollSections';
 import { ConfirmScorecardDashboardCard } from './ConfirmScorecardDashboardCard';
 import { ScorerStartMatchCard } from './ScorerStartMatchCard';
+import { YourPerformanceSection } from './YourPerformanceSection';
 import { Button } from '../ui/Button';
-import { StatTile } from '../ui/StatTile';
 import { Text } from '../ui/Text';
 import { TournamentDashboardCard } from '../ui/TournamentDashboardCard';
 import {
@@ -25,15 +25,6 @@ export function buildCaptainDashboardSections(
   onParticipationPollUpdated?: () => void,
   onOpenMatchSetup?: (match: ScorerStartableMatch) => void,
 ): ReactNode[] {
-  const performanceItems = [
-    { label: 'Matches', value: dashboard.playerStats.matches },
-    { label: 'Runs', value: dashboard.playerStats.runs, highlight: true },
-    {
-      label: 'Wickets',
-      value: String(dashboard.playerStats.wickets).padStart(2, '0'),
-    },
-  ];
-
   const mom = dashboard.pendingManOfMatch;
 
   return [
@@ -97,10 +88,7 @@ export function buildCaptainDashboardSections(
         />
       </View>
     ) : null,
-    <View key="performance" className="gap-3">
-      <Text className="font-sans-bold text-xl text-on-surface">Your Performance</Text>
-      <StatTile items={performanceItems} />
-    </View>,
+    <YourPerformanceSection key="performance" performance={dashboard.playerStats} />,
     dashboard.tournaments.length > 0 ? (
       <View key="tournaments" className="gap-3">
         <Text className="font-sans-bold text-xl text-on-surface">Tournaments</Text>

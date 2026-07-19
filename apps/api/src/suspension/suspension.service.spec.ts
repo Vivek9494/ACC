@@ -25,6 +25,12 @@ describe('SuspensionService', () => {
       updateMany: jest.fn(),
       deleteMany: jest.fn(),
     },
+    lateArrivalPenalty: {
+      findFirst: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+    },
+    lateArrivalPenaltyTransition: { create: jest.fn() },
   };
   const audit = { record: jest.fn().mockResolvedValue(undefined) };
   const notifications = { sendToAudience: jest.fn().mockResolvedValue({ sent: true }) };
@@ -33,6 +39,8 @@ describe('SuspensionService', () => {
     jest.clearAllMocks();
     prismaMock.match.findFirst.mockResolvedValue(null);
     prismaMock.availabilityPoll.findUnique.mockResolvedValue(null);
+    prismaMock.lateArrivalPenalty.findFirst.mockResolvedValue(null);
+    prismaMock.lateArrivalPenalty.create.mockResolvedValue({ id: 'penalty-1' });
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         SuspensionService,
@@ -172,7 +180,7 @@ describe('SuspensionService', () => {
     expect(prismaMock.suspension.create).not.toHaveBeenCalled();
   });
 
-  it('marks voted-IN pending suspensions as served on XI confirm', async () => {
+  it('marks only manually selected voted-IN suspensions as served on XI confirm', async () => {
     prismaMock.match.findUnique.mockResolvedValue({
       id: 'match-2',
       tournamentId: 'tournament-1',
@@ -191,20 +199,33 @@ describe('SuspensionService', () => {
         teamId: 'team-a',
         tournamentId: 'tournament-1',
         servingMatchId: 'match-2',
+        triggeredByMatchId: 'match-1',
         carryForwardCount: 0,
       },
     ]);
     prismaMock.suspension.update.mockResolvedValue({});
 
-    await service.markRemainingPendingAsServed('match-2', 'team-a');
+    await service.resolveManualSuspensionsOnPlayingXiConfirm(
+      'match-2',
+      'team-a',
+      ['player-1'],
+      [],
+    );
 
     expect(prismaMock.suspension.update).toHaveBeenCalledWith({
       where: { id: 'susp-1' },
       data: { status: SuspensionStatus.Served },
     });
+    expect(prismaMock.lateArrivalPenalty.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        playerId: 'player-1',
+        state: 'ASSIGNED',
+        assignedServeMatchId: 'match-2',
+      }),
+    });
   });
 
-  it('auto-carries voted-OUT pending suspensions on XI confirm', async () => {
+  it('auto-carries an unchecked voted-IN suspension on XI confirm', async () => {
     const servingMatch = {
       id: 'match-2',
       tournamentId: 'tournament-1',
@@ -225,7 +246,7 @@ describe('SuspensionService', () => {
     });
     prismaMock.match.findFirst.mockResolvedValue({ id: 'match-3' });
     prismaMock.availabilityPoll.findUnique.mockResolvedValue({
-      votes: [{ userId: 'player-2', isAvailable: false }],
+      votes: [{ userId: 'player-2', isAvailable: true }],
     });
     prismaMock.suspension.findMany.mockResolvedValue([
       {
@@ -239,13 +260,14 @@ describe('SuspensionService', () => {
     ]);
     prismaMock.suspension.update.mockResolvedValue({});
 
-    await service.markRemainingPendingAsServed('match-2', 'team-a');
+    await service.resolveManualSuspensionsOnPlayingXiConfirm('match-2', 'team-a', [], []);
 
     expect(prismaMock.suspension.update).toHaveBeenCalledWith({
       where: { id: 'susp-2' },
       data: {
-        status: SuspensionStatus.Pending,
+        status: SuspensionStatus.CarriedForward,
         servingMatchId: 'match-3',
+        actionedAtMatchId: 'match-2',
         carryForwardCount: { increment: 1 },
       },
     });
@@ -288,11 +310,11 @@ describe('SuspensionService', () => {
 
     expect(prismaMock.suspension.update).toHaveBeenCalledWith({
       where: { id: 'susp-3' },
-      data: {
-        status: SuspensionStatus.Pending,
+      data: expect.objectContaining({
+        status: SuspensionStatus.CarriedForward,
         servingMatchId: 'match-3',
-        carryForwardCount: { increment: 1 },
-      },
+        actionedAtMatchId: 'match-2',
+      }),
     });
   });
 

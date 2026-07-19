@@ -4,6 +4,7 @@ import { Prisma } from '@prisma/client';
 
 import { PrismaService } from '../prisma/prisma.service';
 import { selectableUserWhere } from '../users/user-query';
+import { activeTeamMembershipWhere } from '../teams/team-membership-query';
 
 /** Squad roles that count as "played" for the leather-history audience (option C: XI + subs). */
 const LEATHER_PARTICIPATION_ROLES = [MatchSquadRole.PlayingXi, MatchSquadRole.Substitute];
@@ -104,6 +105,7 @@ export class NotificationAudienceService {
         teamId,
         tournamentId: team.tournamentId,
         user: { is: selectableUserWhere },
+        ...activeTeamMembershipWhere,
       },
       select: { userId: true },
     });

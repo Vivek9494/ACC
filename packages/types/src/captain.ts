@@ -1,7 +1,7 @@
 import type { CaptainUpcomingMatchActions } from './captain-dashboard-actions';
 import type { HomeAway, MatchState } from './match';
 import type { CaptainPunchTimeCardView } from './attendance';
-import type { ManagerPlayerStats, MatchSummaryTeamView } from './club-manager';
+import type { DashboardPlayerPerformance, MatchSummaryTeamView } from './club-manager';
 import type { CaptainPlayingXiCardView, ParticipationPollCardView } from './poll';
 import type { ScorerStartableMatch } from './player';
 import type { PendingScorecardConfirmationCardView } from './scorecard';
@@ -197,6 +197,6 @@ export interface CaptainDashboard {
   /** Active per-match scorer grant — Start/Continue Scoring card (§11.1). */
   scorerMatch: ScorerStartableMatch | null;
   /** Captains and VCs are always players — zeros allowed. */
-  playerStats: ManagerPlayerStats;
+  playerStats: DashboardPlayerPerformance;
   tournaments: TournamentSummary[];
 }

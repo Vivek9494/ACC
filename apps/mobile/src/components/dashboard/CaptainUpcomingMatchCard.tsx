@@ -76,7 +76,11 @@ export function CaptainUpcomingMatchCard({
           {actions.showConfirmedList && card.playingXiEntry ? (
             <Button
               variant="tertiary"
-              label="Confirmed List of Players"
+              label={
+                card.playingXiEntry.hasSavedSquad
+                  ? 'Confirmed Playing 11 Players'
+                  : 'Confirm Players'
+              }
               onPress={() => {
                 const entry = card.playingXiEntry!;
                 const path = entry.hasSavedSquad

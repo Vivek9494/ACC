@@ -20,7 +20,10 @@ import type { Match } from '@prisma/client';
 
 import { PrismaService } from '../prisma/prisma.service';
 import { ScorecardReader } from '../scoring/scorecard-reader';
-import { activeTournamentRelationWhere } from '../tournaments/tournament-query';
+import {
+  activeTournamentRelationWhere,
+  guestVisibleTournamentRelationWhere,
+} from '../tournaments/tournament-query';
 import { filterDashboardFeaturedMatchesToToday, isDashboardMatchScheduledAfter, sortAndLimitDashboardTodayMatchRows, sortDashboardMatchesByTimeDesc } from './dashboard-featured-match.utils';
 import { withDashboardMatchVisibility } from './match-visibility.utils';
 
@@ -82,12 +85,12 @@ export class DashboardFeaturedMatchesService {
     return Promise.all(topTodayRows.map((row) => this.buildFeaturedMatch(row)));
   }
 
-  /** First in-progress fixture app-wide (guest home live card). */
+  /** First in-progress Tennis fixture (guest home live card; Leather excluded). */
   async loadGuestLiveMatch(): Promise<CaptainFeaturedMatchSummary | null> {
     const row = await this.prisma.match.findFirst({
       where: withDashboardMatchVisibility({
         state: { in: LIVE_STATES },
-        ...activeTournamentRelationWhere,
+        ...guestVisibleTournamentRelationWhere,
       }),
       include: FEATURED_MATCH_INCLUDE,
       orderBy: [{ startTime: 'asc' }, { id: 'asc' }],
@@ -95,14 +98,14 @@ export class DashboardFeaturedMatchesService {
     return row ? this.buildFeaturedMatch(row) : null;
   }
 
-  /** Soonest future scheduled fixture app-wide (guest home upcoming card). */
+  /** Soonest future Tennis fixture (guest home upcoming card; Leather excluded). */
   async loadGuestNextUpcomingMatch(
     now: Date = new Date(),
   ): Promise<CaptainFeaturedMatchSummary | null> {
     const rows = await this.prisma.match.findMany({
       where: withDashboardMatchVisibility({
         state: { in: UPCOMING_STATES },
-        ...activeTournamentRelationWhere,
+        ...guestVisibleTournamentRelationWhere,
       }),
       include: FEATURED_MATCH_INCLUDE,
     });
@@ -111,12 +114,12 @@ export class DashboardFeaturedMatchesService {
     return next ? this.buildFeaturedMatch(next) : null;
   }
 
-  /** Most recently completed fixture app-wide (guest home recent card). */
+  /** Most recently completed Tennis fixture (guest home recent card; Leather excluded). */
   async loadGuestMostRecentCompletedMatch(): Promise<CaptainFeaturedMatchSummary | null> {
     const rows = await this.prisma.match.findMany({
       where: withDashboardMatchVisibility({
         state: { in: COMPLETED_STATES },
-        ...activeTournamentRelationWhere,
+        ...guestVisibleTournamentRelationWhere,
       }),
       include: FEATURED_MATCH_INCLUDE,
     });

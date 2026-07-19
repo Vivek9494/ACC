@@ -7,12 +7,14 @@ import { StandingsPinnedSplitTableBody } from './StandingsTableStats';
 export interface StandingsCombinedTableProps {
   section: StandingsTableSection;
   groupLabelByTeamId?: Record<string, string>;
+  showNetRunRate?: boolean;
 }
 
 /** Round-robin points table — one combined standings card for the whole tournament. */
 export function StandingsCombinedTable({
   section,
   groupLabelByTeamId,
+  showNetRunRate = true,
 }: StandingsCombinedTableProps): React.ReactElement {
   return (
     <View
@@ -22,6 +24,7 @@ export function StandingsCombinedTable({
       <StandingsPinnedSplitTableBody
         teams={section.teams}
         groupLabelByTeamId={groupLabelByTeamId}
+        showNetRunRate={showNetRunRate}
       />
     </View>
   );

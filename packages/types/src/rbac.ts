@@ -205,6 +205,7 @@ function captainAndDeputy(scope: PermissionScope = PermissionScope.OwnTeam): Rol
 
 const ACC_ONLY: TournamentType[] = [TournamentType.ACC];
 const TENNIS_TYPES: TournamentType[] = [TournamentType.APL, TournamentType.Center];
+const CENTER_ONLY: TournamentType[] = [TournamentType.Center];
 
 /**
  * The RBAC matrix as data (companion doc). Admin is encoded per-cell rather than
@@ -386,21 +387,22 @@ export const PERMISSION_MATRIX: Record<Permission, PermissionRule> = {
     grants: [
       { subject: R.Admin },
       { subject: R.ClubManager, scope: PermissionScope.Organizer },
-      { subject: R.CenterSevak, scope: PermissionScope.Organizer, tournamentTypes: TENNIS_TYPES },
-      { subject: R.Captain, scope: PermissionScope.OwnTeam },
-      { subject: R.ViceCaptain, scope: PermissionScope.OwnTeam },
-      // D1: Manager only in APL / Center.
-      { subject: R.Manager, scope: PermissionScope.OwnTeam, tournamentTypes: TENNIS_TYPES },
+      {
+        subject: R.CenterSevak,
+        scope: PermissionScope.OwnCenter,
+        tournamentTypes: CENTER_ONLY,
+      },
     ],
   },
   [Permission.REMOVE_PLAYER_FROM_TEAM]: {
     grants: [
       { subject: R.Admin },
       { subject: R.ClubManager, scope: PermissionScope.Organizer },
-      { subject: R.CenterSevak, scope: PermissionScope.Organizer, tournamentTypes: TENNIS_TYPES },
-      { subject: R.Captain, scope: PermissionScope.OwnTeam },
-      { subject: R.ViceCaptain, scope: PermissionScope.OwnTeam },
-      { subject: R.Manager, scope: PermissionScope.OwnTeam, tournamentTypes: TENNIS_TYPES },
+      {
+        subject: R.CenterSevak,
+        scope: PermissionScope.OwnCenter,
+        tournamentTypes: CENTER_ONLY,
+      },
     ],
   },
   [Permission.RESHUFFLE_ACC_TEAMS]: {

@@ -1,4 +1,5 @@
 import {
+  BallType,
   InningsType,
   MatchState,
   resolveStandingsSplitPointOutcome,
@@ -11,6 +12,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ScorecardReader } from '../scoring/scorecard-reader';
 import { MediaUrlResolver } from '../storage/media-url.resolver';
+import { activeTeamWhere } from '../teams/team-query';
 import { assertTournamentActive } from '../tournaments/tournament-query';
 import { computeStandings } from './standings.compute';
 import { wasInningsAllOut } from './standings.nrr';
@@ -39,12 +41,14 @@ export class StandingsService {
           orderBy: { name: 'asc' },
           include: {
             teams: {
+              where: activeTeamWhere,
               select: { id: true },
               orderBy: { name: 'asc' },
             },
           },
         },
         teams: {
+          where: activeTeamWhere,
           select: {
             id: true,
             name: true,
@@ -64,6 +68,9 @@ export class StandingsService {
     });
     assertTournamentActive(tournament);
 
+    const isLeather = tournament.ballType === BallType.Leather;
+    const showNetRunRate = !isLeather;
+
     const matchInputs: StandingsMatchInput[] = [];
     for (const match of tournament.matches) {
       const scorecard = await this.scorecards.build(match);
@@ -78,19 +85,22 @@ export class StandingsService {
           oversAllotted: inn.oversAllotted,
         }));
 
+      const isNoResult = resolveStandingsSplitPointOutcome({
+        state: match.state as MatchState,
+        isNoResult: match.isNoResult,
+        scorecardIsNoResult: scorecard.result.isNoResult,
+      });
+
       matchInputs.push({
         matchId: match.id,
         groupId: match.groupId,
         homeTeamId: match.homeTeamId,
         awayTeamId: match.awayTeamId,
-        isNoResult: resolveStandingsSplitPointOutcome({
-          state: match.state as MatchState,
-          isNoResult: match.isNoResult,
-          scorecardIsNoResult: scorecard.result.isNoResult,
-        }),
+        isNoResult,
         winningTeamId:
           match.winningTeamId ??
           (scorecard.result.decided ? scorecard.result.winningTeamId : null),
+        isDecided: scorecard.result.decided && !isNoResult,
         requiresSuperOver: scorecard.result.superOverRequired,
         innings: normalInnings,
       });
@@ -112,6 +122,7 @@ export class StandingsService {
         teamIds: group.teams.map((team) => team.id),
       })),
       matches: matchInputs,
+      includeNetRunRate: showNetRunRate,
     });
 
     const resolvedTables = await Promise.all(
@@ -126,6 +137,6 @@ export class StandingsService {
       })),
     );
 
-    return { tournamentId, tables: resolvedTables, dataErrors };
+    return { tournamentId, tables: resolvedTables, dataErrors, showNetRunRate };
   }
 }
