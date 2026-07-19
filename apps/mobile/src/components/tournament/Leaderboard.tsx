@@ -1,15 +1,21 @@
 import type { LeaderboardTeamOption, TournamentLeaderboard } from '@acc/types';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 
 import { ApiRequestError, getTournamentLeaderboard } from '../../lib/api';
 import { FIELD_ORANGE } from '../ui/fieldStyles';
+import { PillTabBar } from '../ui/PillTabBar';
 import { Select } from '../ui/Select';
 import { Text } from '../ui/Text';
 import { BattingLeaderboardList } from './BattingLeaderboardList';
 import { BowlingLeaderboardList } from './BowlingLeaderboardList';
 
 export type LeaderboardSubTab = 'bat' | 'bowl';
+
+const LEADERBOARD_SUB_TABS = [
+  { value: 'bat' as const, label: 'Bat' },
+  { value: 'bowl' as const, label: 'Bowl' },
+];
 
 export interface LeaderboardProps {
   tournamentId: string;
@@ -69,18 +75,12 @@ export function Leaderboard({ tournamentId, initialData }: LeaderboardProps): Re
 
   return (
     <View className="gap-4">
-      <View className="flex-row border-b border-outline-variant">
-        <LeaderboardSubTabButton
-          label="Bat"
-          active={subTab === 'bat'}
-          onPress={() => setSubTab('bat')}
-        />
-        <LeaderboardSubTabButton
-          label="Bowl"
-          active={subTab === 'bowl'}
-          onPress={() => setSubTab('bowl')}
-        />
-      </View>
+      <PillTabBar
+        accessibilityLabel="Leaderboard category"
+        options={LEADERBOARD_SUB_TABS}
+        value={subTab}
+        onChange={setSubTab}
+      />
 
       <Select
         label="Filter by Team"
@@ -117,32 +117,5 @@ export function Leaderboard({ tournamentId, initialData }: LeaderboardProps): Re
         )
       ) : null}
     </View>
-  );
-}
-
-function LeaderboardSubTabButton({
-  label,
-  active,
-  onPress,
-}: {
-  label: string;
-  active: boolean;
-  onPress: () => void;
-}): React.ReactElement {
-  return (
-    <Pressable
-      onPress={onPress}
-      className={`flex-1 items-center py-3 -mb-px ${active ? 'border-b-2 border-primary' : ''}`}
-      accessibilityRole="tab"
-      accessibilityState={{ selected: active }}
-    >
-      <Text
-        className={`font-sans-semibold text-sm ${
-          active ? 'text-primary' : 'text-on-surface-variant'
-        }`}
-      >
-        {label}
-      </Text>
-    </Pressable>
   );
 }
