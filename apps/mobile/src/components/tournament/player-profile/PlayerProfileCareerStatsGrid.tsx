@@ -51,6 +51,13 @@ export function PlayerProfileCareerStatsGrid({
     <View className="flex-row flex-wrap gap-3">
       <View className="w-[48%]">
         <StatCard
+          label="Total Matches"
+          value={formatPlayerProfileInteger(career.matches)}
+          valueClassName="text-primary"
+        />
+      </View>
+      <View className="w-[48%]">
+        <StatCard
           label="Total Runs"
           value={formatPlayerProfileInteger(career.runs)}
           valueClassName="text-primary"
