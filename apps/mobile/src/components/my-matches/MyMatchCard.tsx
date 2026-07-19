@@ -123,9 +123,13 @@ export function MyMatchCard({
   const isScheduled = match.displayState === MatchCardDisplayState.Scheduled;
   const showFooterLine = Boolean(match.footerLine && !isCancelled && !isScheduled);
 
+  const cardPress = isLive ? onWatchLivePress : isCancelled ? onScorecardPress : onPress;
+
   return (
-    <View
-      className={`gap-3 rounded-control border border-outline-variant bg-surface p-4 ${
+    <Pressable
+      accessibilityRole="button"
+      onPress={cardPress}
+      className={`gap-3 rounded-control border border-outline-variant bg-surface p-4 active:opacity-90 ${
         isLive ? 'border-primary/30' : isCancelled ? 'border-error/20' : ''
       }`}
       style={INPUT_SHADOW_STYLE}
@@ -147,11 +151,7 @@ export function MyMatchCard({
         </Text>
       </View>
 
-      <Pressable
-        accessibilityRole="button"
-        onPress={isLive ? onWatchLivePress : isCancelled ? onScorecardPress : onPress}
-        className={`active:opacity-90${showFooterLine ? ' gap-3' : ''}`}
-      >
+      <View className={showFooterLine ? 'gap-3' : undefined}>
         <View className="flex-row items-center gap-2">
           <TeamSide team={match.teamA} align="left" />
           <Text className="shrink-0 px-1 font-sans-bold text-xs uppercase tracking-widest text-on-surface-variant">
@@ -169,7 +169,7 @@ export function MyMatchCard({
             {match.footerLine}
           </Text>
         ) : null}
-      </Pressable>
+      </View>
 
       {isLive ? (
         <Button
@@ -196,6 +196,6 @@ export function MyMatchCard({
           />
         </View>
       ) : null}
-    </View>
+    </Pressable>
   );
 }

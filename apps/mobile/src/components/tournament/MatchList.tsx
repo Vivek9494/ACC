@@ -88,8 +88,18 @@ function MatchListCard({
       : 'gap-4';
 
   return (
-    <View
-      className={`gap-4 rounded-control border border-outline-variant bg-surface p-4 ${
+    <Pressable
+      accessibilityRole="button"
+      onPress={
+        isDeleted
+          ? onPress
+          : isLive
+            ? onWatchLivePress
+            : isCancelled || isCompletedTerminal
+              ? onScorecardPress
+              : onPress
+      }
+      className={`gap-4 rounded-control border border-outline-variant bg-surface p-4 active:opacity-90 ${
         isDeleted
           ? 'border-primary bg-surface-container-low opacity-75'
           : isLive
@@ -120,19 +130,7 @@ function MatchListCard({
         </View>
       </View>
 
-      <Pressable
-        accessibilityRole="button"
-        onPress={
-          isDeleted
-            ? onPress
-            : isLive
-              ? onWatchLivePress
-              : isCancelled || isCompletedTerminal
-                ? onScorecardPress
-                : onPress
-        }
-        className={`${bodyGap} active:opacity-90`}
-      >
+      <View className={bodyGap}>
         <View className="flex-row items-center justify-between gap-2">
           <TeamColumn
             name={match.teamA.name}
@@ -162,7 +160,7 @@ function MatchListCard({
         {!isDeleted && match.displayState === MatchCardDisplayState.Scheduled && venue ? (
           <VenueRow venue={venue} />
         ) : null}
-      </Pressable>
+      </View>
 
       {isDeleted ? (
         <View className="flex-row gap-2">
@@ -249,7 +247,7 @@ function MatchListCard({
           />
         </View>
       ) : null}
-    </View>
+    </Pressable>
   );
 }
 
