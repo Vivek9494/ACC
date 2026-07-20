@@ -38,6 +38,7 @@ import { randomUUID } from 'node:crypto';
 import type { Request } from 'express';
 
 import { PrismaService } from '../prisma/prisma.service';
+import { resolveOrHealCenterSevakCenterIds } from '../authz/center-sevak-assignment';
 import { MediaUrlResolver } from '../storage/media-url.resolver';
 import { RedisService } from '../redis/redis.service';
 import {
@@ -461,7 +462,7 @@ export async function loadAuthUser(
   user: User,
   mediaUrls?: MediaUrlResolver,
 ): Promise<AuthUser> {
-  const [leadAssignments, sevakAssignments] = await Promise.all([
+  const [leadAssignments, centerSevakCenterIds] = await Promise.all([
     prisma.roleAssignment.findMany({
       where: {
         userId: user.id,
@@ -469,10 +470,7 @@ export async function loadAuthUser(
       },
       select: { role: true, tournamentId: true, teamId: true },
     }),
-    prisma.roleAssignment.findMany({
-      where: { userId: user.id, role: UserRole.CenterSevak },
-      select: { centerId: true },
-    }),
+    resolveOrHealCenterSevakCenterIds(prisma, user.id),
   ]);
 
   const teamLeadAssignments: TeamLeadAssignment[] = leadAssignments.flatMap((row) => {
@@ -494,10 +492,6 @@ export async function loadAuthUser(
       },
     ];
   });
-
-  const centerSevakCenterIds = sevakAssignments
-    .map((row) => row.centerId)
-    .filter((id): id is string => id !== null);
 
   const authUser = toAuthUser(user, teamLeadAssignments, centerSevakCenterIds);
   if (mediaUrls) {

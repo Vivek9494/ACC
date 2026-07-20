@@ -1,5 +1,5 @@
 import { type AuthUser, type CenterSevakDashboard } from '@acc/types';
-import { ForbiddenException, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
 import { DashboardFeaturedMatchesService } from '../matches/dashboard-featured-matches.service';
 import { ParticipationPollService } from '../participation-poll/participation-poll.service';
@@ -16,7 +16,8 @@ export class CenterSevakService {
   ) {}
 
   async getDashboard(userId: string, actor: AuthUser): Promise<CenterSevakDashboard> {
-    await this.resolveSevakCenterIds(userId);
+    // Heal missing Sevak RoleAssignment when possible; never block Home.
+    await this.tournaments.resolveCenterSevakCenterIds(userId);
 
     const [featuredMatches, participationPoll, playerStats, tournaments] = await Promise.all([
       this.dashboardFeaturedMatches.loadTodayMatches(actor),
@@ -26,16 +27,5 @@ export class CenterSevakService {
     ]);
 
     return { featuredMatches, participationPoll, playerStats, tournaments };
-  }
-
-  private async resolveSevakCenterIds(userId: string): Promise<string[]> {
-    const centerIds = await this.tournaments.resolveCenterSevakCenterIds(userId);
-    if (centerIds.length === 0) {
-      throw new ForbiddenException({
-        message: 'Center Sevak access required',
-        error: 'FORBIDDEN',
-      });
-    }
-    return centerIds;
   }
 }

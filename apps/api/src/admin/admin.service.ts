@@ -46,6 +46,7 @@ import {
   toAdminUserDetail,
   toAdminUserSummary,
 } from './admin.mapper';
+import { syncCenterSevakRoleAssignment } from '../authz/center-sevak-assignment';
 import type { ListAdminUsersDto } from './dto/list-admin-users.dto';
 import type { CreateAdminUserDto } from './dto/create-admin-user.dto';
 import type { UpdateAdminUserDto } from './dto/update-admin-user.dto';
@@ -332,6 +333,7 @@ export class AdminService {
 
     const dateOfBirth = new Date(dto.dateOfBirth);
     const mobileChanged = normalizedMobile !== existing.mobileNumber;
+    const roleChanged = dto.platformRole !== existing.role;
     const email = dto.email?.trim() ?? '';
 
     await this.prisma.$transaction(async (tx) => {
@@ -347,7 +349,7 @@ export class AdminService {
           jerseyNumber: dto.jerseyNumber,
           jerseyName: dto.jerseyName ?? null,
           role: dto.platformRole,
-          ...(mobileChanged ? { tokenVersion: { increment: 1 } } : {}),
+          ...(mobileChanged || roleChanged ? { tokenVersion: { increment: 1 } } : {}),
         },
       });
 
@@ -371,6 +373,8 @@ export class AdminService {
           },
         });
       }
+
+      await syncCenterSevakRoleAssignment(tx, userId, dto.platformRole, dto.centerId);
     });
 
     if (mobileChanged) {
@@ -479,6 +483,13 @@ export class AdminService {
         tempPasswordExpiresAt: expiresAt,
       },
     });
+
+    await syncCenterSevakRoleAssignment(
+      this.prisma,
+      user.id,
+      dto.platformRole,
+      resolvedCenterId,
+    );
 
     const skillDetails = isAdminPlayingRole(dto.platformRole)
       ? {

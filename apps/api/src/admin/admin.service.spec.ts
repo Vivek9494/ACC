@@ -18,6 +18,10 @@ describe('AdminService user management', () => {
     center: {
       findUnique: jest.Mock;
     };
+    roleAssignment: {
+      deleteMany: jest.Mock;
+      create: jest.Mock;
+    };
   };
   let audit: { record: jest.Mock };
   let playerStats: { buildCareerStats: jest.Mock };
@@ -36,6 +40,10 @@ describe('AdminService user management', () => {
       },
       center: {
         findUnique: jest.fn(),
+      },
+      roleAssignment: {
+        deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
+        create: jest.fn().mockResolvedValue({ id: 'ra-1' }),
       },
     };
     audit = { record: jest.fn().mockResolvedValue(undefined) };
@@ -195,6 +203,8 @@ describe('AdminService user management', () => {
         }),
       }),
     );
+    expect(prisma.roleAssignment.deleteMany).toHaveBeenCalled();
+    expect(prisma.roleAssignment.create).not.toHaveBeenCalled();
     expect(audit.record).toHaveBeenCalledWith(
       expect.objectContaining({
         action: 'USER_CREATED',
@@ -210,6 +220,45 @@ describe('AdminService user management', () => {
         details: expect.objectContaining({ issuedOnCreate: true }),
       }),
     );
+
+    getUserSpy.mockRestore();
+  });
+
+  it('creates a Center Sevak RoleAssignment when creating a Sevak user', async () => {
+    prisma.user.findUnique.mockResolvedValue(null);
+    prisma.user.findFirst.mockResolvedValue(null);
+    prisma.center.findUnique.mockResolvedValue({
+      id: 'center-1',
+      isActive: true,
+      provinceId: 'province-1',
+    });
+    prisma.user.create.mockResolvedValue({
+      id: 'sevak-new',
+      firstName: 'Nikhil',
+      lastName: 'Sevak',
+    });
+
+    const getUserSpy = jest.spyOn(service, 'getUser').mockResolvedValue({
+      id: 'sevak-new',
+    } as never);
+
+    await service.createUser(actor, {
+      firstName: 'Nikhil',
+      lastName: 'Sevak',
+      mobileNumber: '+14165559999',
+      platformRole: 'CENTER_SEVAK',
+      provinceId: 'province-1',
+      centerId: 'center-1',
+      email: 'nikhil@example.com',
+    } as never);
+
+    expect(prisma.roleAssignment.create).toHaveBeenCalledWith({
+      data: {
+        userId: 'sevak-new',
+        role: 'CENTER_SEVAK',
+        centerId: 'center-1',
+      },
+    });
 
     getUserSpy.mockRestore();
   });

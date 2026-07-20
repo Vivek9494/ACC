@@ -46,6 +46,7 @@ import {
 import type { Prisma, Tournament } from '@prisma/client';
 
 import { PermissionService } from '../authz/permission.service';
+import { resolveOrHealCenterSevakCenterIds } from '../authz/center-sevak-assignment';
 import {
   assertCanScheduleTournamentMatches,
   canActorScheduleTournamentMatches,
@@ -1005,11 +1006,7 @@ export class TournamentsService {
   }
 
   async resolveCenterSevakCenterIds(userId: string): Promise<string[]> {
-    const rows = await this.prisma.roleAssignment.findMany({
-      where: { userId, role: UserRole.CenterSevak, centerId: { not: null } },
-      select: { centerId: true },
-    });
-    return rows.map((row) => row.centerId).filter((id): id is string => id !== null);
+    return resolveOrHealCenterSevakCenterIds(this.prisma, userId);
   }
 
   /** Resolves tournament card permissions for role dashboards. */
