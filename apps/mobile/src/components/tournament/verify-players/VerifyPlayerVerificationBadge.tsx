@@ -14,7 +14,7 @@ export function VerifyPlayerVerificationBadge({
   if (status === RegistrationStatus.Confirmed) {
     return (
       <View
-        className="mt-1.5 flex-row items-center gap-1 self-start rounded-full bg-primary-100 px-2.5 py-1"
+        className="flex-row items-center gap-1 self-start rounded-full bg-primary-100 px-2.5 py-1"
         accessibilityRole="text"
         accessibilityLabel="Verified"
       >
@@ -27,7 +27,7 @@ export function VerifyPlayerVerificationBadge({
   if (status === RegistrationStatus.InWaitlist) {
     return (
       <View
-        className="mt-1.5 flex-row items-center gap-1 self-start rounded-full bg-primary-300/25 px-2.5 py-1"
+        className="flex-row items-center gap-1 self-start rounded-full bg-primary-300/25 px-2.5 py-1"
         accessibilityRole="text"
         accessibilityLabel="Pending verification"
       >

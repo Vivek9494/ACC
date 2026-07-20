@@ -1,5 +1,4 @@
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '@/theme/colors';
 import {
   BallType,
   RegistrationVerificationPhase,
@@ -139,6 +138,17 @@ export function VerifyPlayersScreen({ tournamentId }: VerifyPlayersScreenProps):
 
   const isViewOnly = queue?.phase === RegistrationVerificationPhase.ViewOnly;
   const registeredCount = queue?.registeredCount ?? 0;
+  const lateRegisterTrailing =
+    queue?.canLateRegister === true ? (
+      <Pressable
+        onPress={onLateRegisterPress}
+        accessibilityRole="button"
+        accessibilityLabel="Late register a player"
+        className="h-10 w-10 shrink-0 items-center justify-center rounded-full active:bg-black/5"
+      >
+        <Ionicons name="add" size={24} color={FIELD_ORANGE} />
+      </Pressable>
+    ) : undefined;
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
@@ -146,6 +156,7 @@ export function VerifyPlayersScreen({ tournamentId }: VerifyPlayersScreenProps):
         title={tournament?.name ?? 'Verify Players'}
         subtitle={`Total Registered Players - ${registeredCount}`}
         onBack={() => router.back()}
+        trailing={lateRegisterTrailing}
       />
 
       <View className="px-4 pb-2">
@@ -157,7 +168,7 @@ export function VerifyPlayersScreen({ tournamentId }: VerifyPlayersScreenProps):
         ) : null}
       </View>
 
-      <ScrollView contentContainerClassName="gap-3 px-4 pb-28 pt-3" showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerClassName="gap-3 px-4 pb-8 pt-3" showsVerticalScrollIndicator={false}>
         {loading ? (
           <View className="items-center py-16">
             <ActivityIndicator color={FIELD_ORANGE} />
@@ -199,24 +210,6 @@ export function VerifyPlayersScreen({ tournamentId }: VerifyPlayersScreenProps):
           </>
         ) : null}
       </ScrollView>
-
-      {queue?.canLateRegister ? (
-        <Pressable
-          onPress={onLateRegisterPress}
-          accessibilityRole="button"
-          accessibilityLabel="Late register a player"
-          className="absolute bottom-6 right-6 h-14 w-14 items-center justify-center rounded-full bg-primary shadow-lg active:scale-95"
-          style={{
-            shadowColor: colors.primary,
-            shadowOpacity: 0.25,
-            shadowRadius: 12,
-            shadowOffset: { width: 0, height: 4 },
-            elevation: 8,
-          }}
-        >
-          <Ionicons name="add" size={32} color={colors.textInverse} />
-        </Pressable>
-      ) : null}
 
       <VerifyPlayerRatingSheet
         visible={editingRow !== null}

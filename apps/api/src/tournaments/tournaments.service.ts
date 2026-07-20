@@ -1260,44 +1260,29 @@ export class TournamentsService {
   }
 
   private async notifyOnTournamentEdit(
-    existing: Tournament,
+    existing: Tournament & { scheduledDates: { date: Date }[] },
     dto: UpdateTournamentDto,
     normalizedDates: string[] | undefined,
   ): Promise<void> {
     const tournamentId = existing.id;
-    const registrationOpen = existing.state === TournamentState.RegistrationOpen;
+    const existingDates = existing.scheduledDates.map((entry) => formatUtcIsoDate(entry.date));
 
-    if (registrationOpen) {
-      await this.notifyRegistrants(
-        tournamentId,
-        NotificationTrigger.TournamentEditedMidRegistration,
-      );
-    }
-
-    if (normalizedDates !== undefined) {
+    if (normalizedDates !== undefined && !sameSortedDateList(existingDates, normalizedDates)) {
       await this.notifyRegistrants(tournamentId, NotificationTrigger.TournamentDatesChanged);
     }
 
-    if (
-      dto.locationAddress !== undefined ||
-      dto.latitude !== undefined ||
-      dto.longitude !== undefined
-    ) {
+    if (dtoHasLocationChange(existing, dto)) {
       await this.notifyRegistrants(tournamentId, NotificationTrigger.TournamentLocationChanged);
     }
 
-    if (dto.registrationOpenAt !== undefined || dto.registrationCloseAt !== undefined) {
+    if (dtoHasRegistrationWindowChange(existing, dto)) {
       await this.notifyRegistrants(
         tournamentId,
         NotificationTrigger.TournamentRegistrationWindowChanged,
       );
     }
 
-    if (
-      dto.videoRequired !== undefined ||
-      dto.videoUploadStartAt !== undefined ||
-      dto.videoUploadEndDate !== undefined
-    ) {
+    if (dtoHasVideoPolicyChange(existing, dto)) {
       await this.notifyRegistrants(tournamentId, NotificationTrigger.TournamentVideoPolicyChanged);
     }
   }
@@ -1593,4 +1578,112 @@ function midTournamentNotifyCopy(
         body: `${tournamentName} was updated. Open the app for details.`,
       };
   }
+}
+
+function sameSortedDateList(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) {
+    return false;
+  }
+  return a.every((date, index) => date === b[index]);
+}
+
+function sameNullableInstant(
+  next: string | null | undefined,
+  previous: Date | null | undefined,
+): boolean {
+  const nextMs = next == null || next === '' ? null : Date.parse(next);
+  const previousMs = previous == null ? null : previous.getTime();
+  if (nextMs === null && previousMs === null) {
+    return true;
+  }
+  if (nextMs === null || previousMs === null || Number.isNaN(nextMs)) {
+    return false;
+  }
+  return nextMs === previousMs;
+}
+
+function sameNullableNumber(
+  next: number | null | undefined,
+  previous: number | null | undefined,
+): boolean {
+  if (next == null && previous == null) {
+    return true;
+  }
+  if (next == null || previous == null) {
+    return false;
+  }
+  return next === previous;
+}
+
+function dtoHasLocationChange(
+  existing: Pick<Tournament, 'locationAddress' | 'latitude' | 'longitude'>,
+  dto: UpdateTournamentDto,
+): boolean {
+  if (
+    dto.locationAddress === undefined &&
+    dto.latitude === undefined &&
+    dto.longitude === undefined
+  ) {
+    return false;
+  }
+  const nextAddress =
+    dto.locationAddress !== undefined ? dto.locationAddress : existing.locationAddress;
+  const nextLat = dto.latitude !== undefined ? dto.latitude : existing.latitude;
+  const nextLng = dto.longitude !== undefined ? dto.longitude : existing.longitude;
+  return (
+    (nextAddress ?? null) !== (existing.locationAddress ?? null) ||
+    !sameNullableNumber(nextLat, existing.latitude) ||
+    !sameNullableNumber(nextLng, existing.longitude)
+  );
+}
+
+function dtoHasRegistrationWindowChange(
+  existing: Pick<Tournament, 'registrationOpenAt' | 'registrationCloseAt'>,
+  dto: UpdateTournamentDto,
+): boolean {
+  if (dto.registrationOpenAt === undefined && dto.registrationCloseAt === undefined) {
+    return false;
+  }
+  if (
+    dto.registrationOpenAt !== undefined &&
+    !sameNullableInstant(dto.registrationOpenAt, existing.registrationOpenAt)
+  ) {
+    return true;
+  }
+  if (
+    dto.registrationCloseAt !== undefined &&
+    !sameNullableInstant(dto.registrationCloseAt, existing.registrationCloseAt)
+  ) {
+    return true;
+  }
+  return false;
+}
+
+function dtoHasVideoPolicyChange(
+  existing: Pick<Tournament, 'videoRequired' | 'videoUploadStartAt' | 'videoUploadEndDate'>,
+  dto: UpdateTournamentDto,
+): boolean {
+  if (
+    dto.videoRequired === undefined &&
+    dto.videoUploadStartAt === undefined &&
+    dto.videoUploadEndDate === undefined
+  ) {
+    return false;
+  }
+  if (dto.videoRequired !== undefined && dto.videoRequired !== existing.videoRequired) {
+    return true;
+  }
+  if (
+    dto.videoUploadStartAt !== undefined &&
+    !sameNullableInstant(dto.videoUploadStartAt, existing.videoUploadStartAt)
+  ) {
+    return true;
+  }
+  if (
+    dto.videoUploadEndDate !== undefined &&
+    !sameNullableInstant(dto.videoUploadEndDate, existing.videoUploadEndDate)
+  ) {
+    return true;
+  }
+  return false;
 }

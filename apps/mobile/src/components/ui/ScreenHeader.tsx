@@ -69,13 +69,15 @@ export function ScreenHeader({
           <View className={`${iconButtonClass(compact)} shrink-0`} />
         )}
         <View className="min-w-0 flex-1 flex-row items-center justify-end gap-2">
-          {trailing ? <View className="max-w-full shrink">{trailing}</View> : null}
           {showProfileMenu ? (
             <>
               <BirthdayHeaderButton compact={compact} />
               <BroadcastMessageHeaderButton compact={compact} />
-              <ProfileMenu />
             </>
+          ) : null}
+          {trailing ? <View className="max-w-full shrink">{trailing}</View> : null}
+          {showProfileMenu ? (
+            <ProfileMenu />
           ) : !trailing ? (
             <View className={compact ? 'h-9 w-9' : 'h-10 w-10'} />
           ) : null}

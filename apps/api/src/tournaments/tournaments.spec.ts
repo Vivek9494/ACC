@@ -107,7 +107,7 @@ describe('TournamentsService', () => {
     roleAssignment: { findFirst: jest.Mock; findMany: jest.Mock; count: jest.Mock };
     tournamentCenter: { findFirst: jest.Mock };
     teamMembership: { findUnique: jest.Mock };
-    registration: { findMany: jest.Mock };
+    registration: { findMany: jest.Mock; count: jest.Mock };
     province: { findUnique: jest.Mock };
     center: { findMany: jest.Mock };
   };
@@ -161,7 +161,10 @@ describe('TournamentsService', () => {
       tournamentCenter: { findFirst: jest.fn().mockResolvedValue(null) },
       teamMembership: { findUnique: jest.fn().mockResolvedValue(null) },
       match: { findMany: jest.fn().mockResolvedValue([]) },
-      registration: { findMany: jest.fn().mockResolvedValue([]) },
+      registration: {
+        findMany: jest.fn().mockResolvedValue([]),
+        count: jest.fn().mockResolvedValue(0),
+      },
       province: {
         findUnique: jest.fn().mockResolvedValue({ id: 'prov-1', isActive: true }),
       },
@@ -524,27 +527,153 @@ describe('TournamentsService', () => {
     });
   });
 
-  describe('mid-tournament edit notifies registrants when registration is open (§6.4)', () => {
-    it('notifies registrants for an open tournament', async () => {
-      const row = detailRow({ state: 'REGISTRATION_OPEN' });
-      prisma.tournament.findUnique.mockResolvedValue(row);
-      prisma.tournament.findFirst.mockResolvedValue({ id: 'tid', name: 'ACC 2026', isDeleted: false });
+  describe('mid-tournament edit notifies only for fields that actually changed', () => {
+    function mockNotifyLookups(): void {
+      prisma.tournament.findFirst.mockResolvedValue({
+        id: 'tid',
+        name: 'ACC 2026',
+        isDeleted: false,
+      });
+    }
 
-      await service.update(actor, 'tid', { locationAddress: 'New Ground' });
+    it('sends only registration-window notification when only that window changes', async () => {
+      mockNotifyLookups();
+      prisma.tournament.findUnique.mockResolvedValue(
+        detailRow({
+          state: 'REGISTRATION_OPEN',
+          registrationOpenAt: new Date('2027-05-01T12:00:00.000Z'),
+          registrationCloseAt: new Date('2027-05-15T12:00:00.000Z'),
+          locationAddress: 'Old Ground',
+          latitude: 43.65,
+          longitude: -79.38,
+          videoRequired: true,
+          videoUploadStartAt: new Date('2027-05-16T12:00:00.000Z'),
+          videoUploadEndDate: new Date('2027-05-30T12:00:00.000Z'),
+        }),
+      );
 
+      await service.update(actor, 'tid', {
+        // Full-form style payload: unchanged fields re-sent with same values
+        locationAddress: 'Old Ground',
+        latitude: 43.65,
+        longitude: -79.38,
+        dates: ['2027-06-15', '2027-09-30'],
+        videoRequired: true,
+        videoUploadStartAt: '2027-05-16T12:00:00.000Z',
+        videoUploadEndDate: '2027-05-30T12:00:00.000Z',
+        registrationOpenAt: '2027-05-02T12:00:00.000Z',
+        registrationCloseAt: '2027-05-15T12:00:00.000Z',
+      });
+
+      expect(notifications.sendToAudience).toHaveBeenCalledTimes(1);
       expect(notifications.sendToAudience).toHaveBeenCalledWith(
         ['p1', 'p2'],
         expect.objectContaining({
-          triggerKey: 'TOURNAMENT_EDITED_MID_REGISTRATION',
+          triggerKey: 'TOURNAMENT_REGISTRATION_WINDOW_CHANGED',
         }),
       );
     });
 
-    it('does not notify when the tournament is not in registration', async () => {
-      prisma.tournament.findUnique.mockResolvedValue(detailRow({ state: 'LIVE' }));
-      await service.update(actor, 'tid', { locationAddress: 'New Ground' });
+    it('sends only location notification when only the venue changes', async () => {
+      mockNotifyLookups();
+      prisma.tournament.findUnique.mockResolvedValue(
+        detailRow({
+          locationAddress: 'Old Ground',
+          latitude: 43.65,
+          longitude: -79.38,
+        }),
+      );
+
+      await service.update(actor, 'tid', {
+        locationAddress: 'New Ground',
+        latitude: 43.65,
+        longitude: -79.38,
+        dates: ['2027-06-15', '2027-09-30'],
+      });
+
+      expect(notifications.sendToAudience).toHaveBeenCalledTimes(1);
+      expect(notifications.sendToAudience).toHaveBeenCalledWith(
+        ['p1', 'p2'],
+        expect.objectContaining({
+          triggerKey: 'TOURNAMENT_LOCATION_CHANGED',
+        }),
+      );
+    });
+
+    it('sends only dates notification when only tournament dates change', async () => {
+      mockNotifyLookups();
+      prisma.tournament.findUnique.mockResolvedValue(detailRow());
+
+      await service.update(actor, 'tid', {
+        dates: ['2027-06-15', '2027-07-01', '2027-09-30'],
+      });
+
+      expect(notifications.sendToAudience).toHaveBeenCalledTimes(1);
+      expect(notifications.sendToAudience).toHaveBeenCalledWith(
+        ['p1', 'p2'],
+        expect.objectContaining({
+          triggerKey: 'TOURNAMENT_DATES_CHANGED',
+        }),
+      );
+    });
+
+    it('sends one notification per genuinely changed field', async () => {
+      mockNotifyLookups();
+      prisma.tournament.findUnique.mockResolvedValue(
+        detailRow({
+          locationAddress: 'Old Ground',
+          latitude: 43.65,
+          longitude: -79.38,
+          registrationOpenAt: new Date('2027-05-01T12:00:00.000Z'),
+          registrationCloseAt: new Date('2027-05-15T12:00:00.000Z'),
+        }),
+      );
+
+      await service.update(actor, 'tid', {
+        locationAddress: 'New Ground',
+        latitude: 43.65,
+        longitude: -79.38,
+        registrationOpenAt: '2027-05-03T12:00:00.000Z',
+        registrationCloseAt: '2027-05-15T12:00:00.000Z',
+        dates: ['2027-06-15', '2027-09-30'],
+      });
+
+      const triggers = notifications.sendToAudience.mock.calls.map(
+        (call: unknown[]) => (call[1] as { triggerKey: string }).triggerKey,
+      );
+      expect(triggers.sort()).toEqual(
+        ['TOURNAMENT_LOCATION_CHANGED', 'TOURNAMENT_REGISTRATION_WINDOW_CHANGED'].sort(),
+      );
+    });
+
+    it('sends no notification when a full payload re-submits unchanged mapped fields', async () => {
+      mockNotifyLookups();
+      prisma.tournament.findUnique.mockResolvedValue(
+        detailRow({
+          state: 'REGISTRATION_OPEN',
+          locationAddress: 'Same Ground',
+          latitude: 43.65,
+          longitude: -79.38,
+          registrationOpenAt: new Date('2027-05-01T12:00:00.000Z'),
+          registrationCloseAt: new Date('2027-05-15T12:00:00.000Z'),
+          videoRequired: false,
+        }),
+      );
+
+      await service.update(actor, 'tid', {
+        name: 'ACC 2026 Renamed',
+        locationAddress: 'Same Ground',
+        latitude: 43.65,
+        longitude: -79.38,
+        dates: ['2027-06-15', '2027-09-30'],
+        registrationOpenAt: '2027-05-01T12:00:00.000Z',
+        registrationCloseAt: '2027-05-15T12:00:00.000Z',
+        videoRequired: false,
+        videoUploadStartAt: null,
+        videoUploadEndDate: null,
+      });
+
       expect(notifications.sendToAudience).not.toHaveBeenCalled();
-      expect(notifications.notify).not.toHaveBeenCalled();
     });
   });
 

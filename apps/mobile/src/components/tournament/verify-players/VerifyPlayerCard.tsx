@@ -31,35 +31,44 @@ export function VerifyPlayerCard({
   const canApprove = canManage && isPending;
   const canDecline = canManage && isPending;
   const showVerificationBadge = canManage && !isDeclined;
+  const showActions = canManage && !isDeclined;
 
   return (
     <View
-      className={`flex-row items-center justify-between rounded-lg border px-4 py-3 ${
+      className={`rounded-lg border px-4 py-3 ${
         isDeclined
           ? 'border-secondary-700/30 bg-surface-container-high opacity-90'
           : 'border-outline-variant bg-surface'
       }`}
       style={INPUT_SHADOW_STYLE}
     >
-      <View className="min-w-0 flex-1 flex-row items-center gap-3">
+      <View className="flex-row items-start gap-3">
         <PlayerAvatarWithStatus
           firstName={row.firstName}
           profilePhotoUrl={row.profilePhotoUrl}
           status={canManage ? null : row.status}
         />
-        <View className="min-w-0 flex-1">
-          <Text
-            className={`font-sans-bold text-base ${isDeclined ? 'text-on-surface-variant' : 'text-on-surface'}`}
-            numberOfLines={1}
-          >
-            {row.firstName} {row.lastName}
-          </Text>
+        <View className="min-w-0 flex-1 gap-1">
+          <View className="flex-row items-center gap-2">
+            <Text
+              className={`min-w-0 flex-1 font-sans-bold text-base ${
+                isDeclined ? 'text-on-surface-variant' : 'text-on-surface'
+              }`}
+              numberOfLines={1}
+            >
+              {row.firstName} {row.lastName}
+            </Text>
+            {showVerificationBadge ? (
+              <View className="shrink-0">
+                <VerifyPlayerVerificationBadge status={row.status} />
+              </View>
+            ) : null}
+          </View>
           <Text className="font-sans text-sm text-on-surface-variant" numberOfLines={1}>
             {row.mobileNumber}
           </Text>
-          {showVerificationBadge ? <VerifyPlayerVerificationBadge status={row.status} /> : null}
           {isDeclined ? (
-            <Text className="mt-1 font-sans-medium text-xs text-secondary-900">Declined</Text>
+            <Text className="font-sans-medium text-xs text-secondary-900">Declined</Text>
           ) : null}
           <VerifyPlayerRatingsRow
             batting={row.battingRating}
@@ -69,33 +78,33 @@ export function VerifyPlayerCard({
         </View>
       </View>
 
-      {canManage && !isDeclined ? (
-        <View className="ml-2 flex-row items-center gap-1.5">
+      {showActions ? (
+        <View className="mt-3 flex-row items-center justify-end gap-2 border-t border-outline-variant/60 pt-3">
           {canApprove ? (
-            <>
-              <Pressable
-                onPress={onApprove}
-                disabled={busy}
-                accessibilityRole="button"
-                accessibilityLabel="Approve player"
-                className="h-10 w-10 items-center justify-center rounded-full bg-primary-container shadow-md active:scale-90"
-              >
-                {busy ? (
-                  <ActivityIndicator color={colors.textInverse} size="small" />
-                ) : (
-                  <Ionicons name="checkmark" size={22} color={colors.textInverse} />
-                )}
-              </Pressable>
-              <Pressable
-                onPress={onDecline}
-                disabled={busy}
-                accessibilityRole="button"
-                accessibilityLabel="Decline player"
-                className="h-10 w-10 items-center justify-center rounded-full border border-secondary-700/40 bg-surface-container-high active:scale-90"
-              >
-                <Ionicons name="close" size={22} color={colors.secondaryDark} />
-              </Pressable>
-            </>
+            <Pressable
+              onPress={onApprove}
+              disabled={busy}
+              accessibilityRole="button"
+              accessibilityLabel="Approve player"
+              className="h-10 w-10 items-center justify-center rounded-full bg-primary-container shadow-md active:scale-90"
+            >
+              {busy ? (
+                <ActivityIndicator color={colors.textInverse} size="small" />
+              ) : (
+                <Ionicons name="checkmark" size={22} color={colors.textInverse} />
+              )}
+            </Pressable>
+          ) : null}
+          {canDecline ? (
+            <Pressable
+              onPress={onDecline}
+              disabled={busy}
+              accessibilityRole="button"
+              accessibilityLabel="Decline player"
+              className="h-10 w-10 items-center justify-center rounded-full border border-secondary-700/40 bg-surface-container-high active:scale-90"
+            >
+              <Ionicons name="close" size={22} color={colors.secondaryDark} />
+            </Pressable>
           ) : null}
           <Pressable
             onPress={onEdit}
