@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 
 import { AuthModule } from '../auth/auth.module';
 import { LiveModule } from '../live/live.module';
@@ -8,7 +8,12 @@ import { LeaderboardController } from './leaderboard.controller';
 import { LeaderboardService } from './leaderboard.service';
 
 @Module({
-  imports: [AuthModule, LiveModule, ScoringModule, TournamentsModule],
+  imports: [
+    AuthModule,
+    LiveModule,
+    ScoringModule,
+    forwardRef(() => TournamentsModule),
+  ],
   controllers: [LeaderboardController],
   providers: [LeaderboardService],
   exports: [LeaderboardService],

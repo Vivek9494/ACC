@@ -7,7 +7,12 @@ import { StandingsController } from './standings.controller';
 import { StandingsService } from './standings.service';
 
 @Module({
-  imports: [AuthModule, TournamentsModule, forwardRef(() => ScoringModule)],
+  imports: [
+    AuthModule,
+    // TournamentsModule → Knockout* → StandingsModule — break the cycle.
+    forwardRef(() => TournamentsModule),
+    forwardRef(() => ScoringModule),
+  ],
   controllers: [StandingsController],
   providers: [StandingsService],
   exports: [StandingsService],
