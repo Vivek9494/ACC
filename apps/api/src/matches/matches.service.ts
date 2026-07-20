@@ -376,20 +376,7 @@ export class MatchesService {
       });
     }
 
-    if (!dto.groundLocation?.trim()) {
-      throw new BadRequestException({
-        message: 'Ground location is required',
-        error: 'GROUND_REQUIRED',
-        fields: { groundLocation: 'Ground location is required' },
-      });
-    }
-    if (dto.geofenceLat == null || dto.geofenceLng == null) {
-      throw new BadRequestException({
-        message: 'Ground coordinates are required for geofencing',
-        error: 'GEOFENCE_REQUIRED',
-        fields: { groundLocation: 'Select a location from search or the map' },
-      });
-    }
+    const ground = this.resolveMatchGround(tournament, dto);
 
     if (dto.oversPerInnings == null) {
       throw new BadRequestException({
@@ -497,9 +484,9 @@ export class MatchesService {
           startTime: new Date(dto.startTime),
           reportingTime:
             !isRoundRobin && dto.reportingTime ? new Date(dto.reportingTime) : null,
-          groundLocation: dto.groundLocation.trim(),
-          geofenceLat: dto.geofenceLat,
-          geofenceLng: dto.geofenceLng,
+          groundLocation: ground.groundLocation,
+          geofenceLat: ground.geofenceLat,
+          geofenceLng: ground.geofenceLng,
           oversPerInnings: dto.oversPerInnings,
           maxOversPerBowler: dto.maxOversPerBowler,
           powerplayOvers: dto.powerplayOvers ?? null,
@@ -2361,6 +2348,9 @@ export class MatchesService {
     type: TournamentType;
     ballType: BallType;
     matchSchedulingFormat: MatchSchedulingFormat | null;
+    locationAddress: string | null;
+    latitude: number | null;
+    longitude: number | null;
   }> {
     const tournament = await this.prisma.tournament.findUnique({
       where: { id: tournamentId },
@@ -2369,6 +2359,9 @@ export class MatchesService {
         type: true,
         ballType: true,
         matchSchedulingFormat: true,
+        locationAddress: true,
+        latitude: true,
+        longitude: true,
         isDeleted: true,
       },
     });
@@ -2378,6 +2371,73 @@ export class MatchesService {
       type: tournament.type as TournamentType,
       ballType: tournament.ballType as BallType,
       matchSchedulingFormat: tournament.matchSchedulingFormat as MatchSchedulingFormat | null,
+      locationAddress: tournament.locationAddress,
+      latitude: tournament.latitude,
+      longitude: tournament.longitude,
+    };
+  }
+
+  /**
+   * Leather fixtures require per-match ground input. Tennis fixtures inherit the
+   * tournament venue (Tournament Location) when match ground is omitted.
+   */
+  private resolveMatchGround(
+    tournament: {
+      ballType: BallType;
+      locationAddress: string | null;
+      latitude: number | null;
+      longitude: number | null;
+    },
+    dto: Pick<CreateMatchDto, 'groundLocation' | 'geofenceLat' | 'geofenceLng'>,
+  ): { groundLocation: string; geofenceLat: number; geofenceLng: number } {
+    const fromDto =
+      dto.groundLocation?.trim() && dto.geofenceLat != null && dto.geofenceLng != null
+        ? {
+            groundLocation: dto.groundLocation.trim(),
+            geofenceLat: dto.geofenceLat,
+            geofenceLng: dto.geofenceLng,
+          }
+        : null;
+
+    if (tournament.ballType === BallType.Tennis) {
+      if (fromDto) {
+        return fromDto;
+      }
+      const tournamentAddress = tournament.locationAddress?.trim() ?? '';
+      if (!tournamentAddress || tournament.latitude == null || tournament.longitude == null) {
+        throw new BadRequestException({
+          message: 'Tournament location is required before scheduling tennis matches',
+          error: 'TOURNAMENT_LOCATION_REQUIRED',
+          fields: {
+            groundLocation: 'Set Tournament Location on the tournament before scheduling matches',
+          },
+        });
+      }
+      return {
+        groundLocation: tournamentAddress,
+        geofenceLat: tournament.latitude,
+        geofenceLng: tournament.longitude,
+      };
+    }
+
+    if (!dto.groundLocation?.trim()) {
+      throw new BadRequestException({
+        message: 'Ground location is required',
+        error: 'GROUND_REQUIRED',
+        fields: { groundLocation: 'Ground location is required' },
+      });
+    }
+    if (dto.geofenceLat == null || dto.geofenceLng == null) {
+      throw new BadRequestException({
+        message: 'Ground coordinates are required for geofencing',
+        error: 'GEOFENCE_REQUIRED',
+        fields: { groundLocation: 'Select a location from search or the map' },
+      });
+    }
+    return {
+      groundLocation: dto.groundLocation.trim(),
+      geofenceLat: dto.geofenceLat,
+      geofenceLng: dto.geofenceLng,
     };
   }
 
@@ -3127,6 +3187,9 @@ export class MatchesService {
       id: string;
       ballType: BallType;
       matchSchedulingFormat: MatchSchedulingFormat | null;
+      locationAddress: string | null;
+      latitude: number | null;
+      longitude: number | null;
     },
     dto: CreateMatchDto,
     options: {
@@ -3279,20 +3342,7 @@ export class MatchesService {
       });
     }
 
-    if (!dto.groundLocation?.trim()) {
-      throw new BadRequestException({
-        message: 'Ground location is required',
-        error: 'GROUND_REQUIRED',
-        fields: { groundLocation: 'Ground location is required' },
-      });
-    }
-    if (dto.geofenceLat == null || dto.geofenceLng == null) {
-      throw new BadRequestException({
-        message: 'Ground coordinates are required for geofencing',
-        error: 'GEOFENCE_REQUIRED',
-        fields: { groundLocation: 'Select a location from search or the map' },
-      });
-    }
+    const ground = this.resolveMatchGround(tournament, dto);
 
     if (dto.oversPerInnings == null) {
       throw new BadRequestException({
@@ -3398,9 +3448,9 @@ export class MatchesService {
       startTime: dto.startTime,
       reportingTime:
         !isRoundRobin && dto.reportingTime ? dto.reportingTime : null,
-      groundLocation: dto.groundLocation.trim(),
-      geofenceLat: dto.geofenceLat,
-      geofenceLng: dto.geofenceLng,
+      groundLocation: ground.groundLocation,
+      geofenceLat: ground.geofenceLat,
+      geofenceLng: ground.geofenceLng,
       oversPerInnings: dto.oversPerInnings,
       maxOversPerBowler: dto.maxOversPerBowler,
       powerplayOvers: dto.powerplayOvers ?? null,

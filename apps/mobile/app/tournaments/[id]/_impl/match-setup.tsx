@@ -528,11 +528,13 @@ export default function MatchSetupScreen(): React.ReactElement {
         errors.teamBId = MATCH_SETUP_FORM_MESSAGES.duplicatePairing.duplicate;
       }
     }
-    if (!groundAddress.trim()) {
-      errors.groundLocation = MATCH_SETUP_FORM_MESSAGES.ground.required;
-    }
-    if (groundLat == null || groundLng == null) {
-      errors.groundLocation = MATCH_SETUP_FORM_MESSAGES.coordinates.required;
+    if (isLeatherBall) {
+      if (!groundAddress.trim()) {
+        errors.groundLocation = MATCH_SETUP_FORM_MESSAGES.ground.required;
+      }
+      if (groundLat == null || groundLng == null) {
+        errors.groundLocation = MATCH_SETUP_FORM_MESSAGES.coordinates.required;
+      }
     }
     if (oversPerInnings == null) {
       errors.oversPerInnings = MATCH_SETUP_FORM_MESSAGES.overs.required;
@@ -582,9 +584,13 @@ export default function MatchSetupScreen(): React.ReactElement {
           showLeatherOpponentFields && !opponentIsAccTeam ? teamBExternalName.trim() : null,
         groupId: requiresGroup ? groupId : null,
         matchType: matchType as MatchType,
-        groundLocation: groundAddress.trim(),
-        geofenceLat: groundLat,
-        geofenceLng: groundLng,
+        ...(isLeatherBall
+          ? {
+              groundLocation: groundAddress.trim(),
+              geofenceLat: groundLat,
+              geofenceLng: groundLng,
+            }
+          : {}),
         oversPerInnings,
         maxOversPerBowler,
         ...(powerplayOvers != null ? { powerplayOvers } : {}),
@@ -819,23 +825,29 @@ export default function MatchSetupScreen(): React.ReactElement {
             />
           )}
 
-          <TournamentLocationField
-            label="Ground Location"
-            address={groundAddress}
-            latitude={groundLat}
-            longitude={groundLng}
-            onAddressChange={(value) => {
-              setGroundAddress(value);
-              clearField('groundLocation');
-            }}
-            onCoordinatesChange={(lat, lng) => {
-              setGroundLat(lat);
-              setGroundLng(lng);
-              clearField('groundLocation');
-            }}
-          />
-          {fieldErrors.groundLocation ? (
-            <Text className="-mt-3 font-sans text-sm text-primary">{fieldErrors.groundLocation}</Text>
+          {isLeatherBall ? (
+            <>
+              <TournamentLocationField
+                label="Ground Location"
+                address={groundAddress}
+                latitude={groundLat}
+                longitude={groundLng}
+                onAddressChange={(value) => {
+                  setGroundAddress(value);
+                  clearField('groundLocation');
+                }}
+                onCoordinatesChange={(lat, lng) => {
+                  setGroundLat(lat);
+                  setGroundLng(lng);
+                  clearField('groundLocation');
+                }}
+              />
+              {fieldErrors.groundLocation ? (
+                <Text className="-mt-3 font-sans text-sm text-primary">
+                  {fieldErrors.groundLocation}
+                </Text>
+              ) : null}
+            </>
           ) : null}
 
           {showReportingTime ? (

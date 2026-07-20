@@ -8,8 +8,8 @@ import {
   type RegistrationVerificationQueue,
   type TournamentDetail,
 } from '@acc/types';
-import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -66,9 +66,11 @@ export function VerifyPlayersScreen({ tournamentId }: VerifyPlayersScreenProps):
     }
   }, [tournamentId]);
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+  useFocusEffect(
+    useCallback(() => {
+      void load();
+    }, [load]),
+  );
 
   async function approve(id: string): Promise<void> {
     if (!tournamentId || queue?.canManage !== true) {

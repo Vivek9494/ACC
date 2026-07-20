@@ -268,7 +268,13 @@ export function TournamentRegistrationFormScreen({
       };
       if (isLateOnBehalf && onBehalfOfUserId) {
         await lateRegisterPlayer(tournamentId, { ...payload, userId: onBehalfOfUserId });
-        router.replace(tournamentSubpathHref(user, tournamentId, 'registrations/queue'));
+        // Drop Register form + Add player picker so Back from Verify Players /
+        // Registered Players does not walk through each late-register visit.
+        if (router.canDismiss()) {
+          router.dismiss(2);
+        } else {
+          router.replace(tournamentSubpathHref(user, tournamentId, 'registrations/queue'));
+        }
       } else {
         await submitRegistration(tournamentId, payload);
         router.replace(tournamentDetailHref(user, tournamentId, TOURNAMENT_DETAIL_TAB.Details));
