@@ -51,8 +51,12 @@ export class TeamsController {
 
   @Get('tournaments/:tournamentId/teams')
   @Public()
-  list(@Param('tournamentId') tournamentId: string): Promise<TeamSummary[]> {
-    return this.teams.list(tournamentId);
+  async list(
+    @Param('tournamentId') tournamentId: string,
+    @Req() req: Request,
+  ): Promise<TeamSummary[]> {
+    const viewer = await this.auth.resolveOptionalUser(req);
+    return this.teams.list(tournamentId, viewer);
   }
 
   @Get('tournaments/:tournamentId/teams/role-candidates')

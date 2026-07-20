@@ -1,6 +1,7 @@
 import {
   BallType,
   dashboardPlayedBallTypes,
+  MY_MATCHES_BALL_TYPE_LABEL,
   statsForDashboardBallType,
   type BallType as BallTypeValue,
   type DashboardPlayerPerformance,
@@ -9,9 +10,11 @@ import {
 import { useEffect, useMemo, useState } from 'react';
 import { View } from 'react-native';
 
-import { MyMatchesBallTypeTabs } from '../my-matches/MyMatchesBallTypeTabs';
+import { SegmentedControl } from '../ui/SegmentedControl';
 import { StatTile } from '../ui/StatTile';
 import { Text } from '../ui/Text';
+
+const BALL_TYPE_ORDER: BallTypeValue[] = [BallType.Leather, BallType.Tennis];
 
 function performanceItems(stats: ManagerPlayerStats) {
   return [
@@ -60,17 +63,35 @@ export function YourPerformanceSection({
     ? selectedBallType
     : (playedBallTypes[0] ?? BallType.Leather);
   const stats = statsForDashboardBallType(performance, activeBallType);
+  const switchOptions = useMemo(
+    () =>
+      BALL_TYPE_ORDER.filter((ballType) => playedBallTypes.includes(ballType)).map(
+        (ballType) => ({
+          value: ballType,
+          label: MY_MATCHES_BALL_TYPE_LABEL[ballType],
+        }),
+      ),
+    [playedBallTypes],
+  );
 
   return (
     <View className="gap-3">
-      <Text className="font-sans-bold text-xl text-on-surface">Your Performance</Text>
-      {showSwitch ? (
-        <MyMatchesBallTypeTabs
-          ballTypes={playedBallTypes}
-          selected={selectedBallType}
-          onSelect={setSelectedBallType}
-        />
-      ) : null}
+      <View className="flex-row flex-wrap items-center justify-between gap-x-3 gap-y-2">
+        <Text className="min-w-0 shrink font-sans-bold text-xl text-on-surface">
+          Your Performance
+        </Text>
+        {showSwitch ? (
+          <View className="shrink-0">
+            <SegmentedControl
+              size="sm"
+              options={switchOptions}
+              value={selectedBallType}
+              onChange={setSelectedBallType}
+              accessibilityLabel="Ball type"
+            />
+          </View>
+        ) : null}
+      </View>
       <StatTile items={performanceItems(stats)} />
     </View>
   );

@@ -19,7 +19,7 @@ export class CenterSevakService {
     await this.resolveSevakCenterIds(userId);
 
     const [featuredMatches, participationPoll, playerStats, tournaments] = await Promise.all([
-      this.dashboardFeaturedMatches.loadTodayMatches(),
+      this.dashboardFeaturedMatches.loadTodayMatches(actor),
       this.participationPolls.loadDashboardPoll(userId),
       this.playerStatsService.buildDashboardHighLevelStats(userId),
       this.tournaments.listDashboardEntries(actor),

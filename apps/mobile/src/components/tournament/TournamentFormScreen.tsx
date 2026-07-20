@@ -19,6 +19,7 @@ import {
   deferredMaxOversPerBowler,
   type TournamentDetail,
   type UpdateTournamentRequest,
+  UserRole,
 } from '@acc/types';
 import { useFocusEffect, useRouter, type Href } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -37,7 +38,7 @@ import { KeyboardAwareFormScrollView } from '../ui/KeyboardAwareFormScrollView';
 import { Checkbox } from '../ui/Checkbox';
 import { DateField } from '../ui/DateField';
 import { FIELD_ORANGE, labelClassName } from '../ui/fieldStyles';
-import { MultiSelect } from '../ui/MultiSelect';
+import { MultiSelect, MultiSelectChips } from '../ui/MultiSelect';
 import { ScreenHeader } from '../ui/ScreenHeader';
 import { RadioGroup } from '../ui/RadioGroup';
 import { Select, type SelectOption } from '../ui/Select';
@@ -740,6 +741,8 @@ export function TournamentFormScreen({
           locationAddress,
           latitude,
           longitude,
+          centerSevakCenterIds:
+            user?.role === UserRole.CenterSevak ? (user.centerSevakCenterIds ?? []) : undefined,
         });
 
     setFieldErrors(errors);
@@ -1187,34 +1190,45 @@ export function TournamentFormScreen({
 
             {!isEditMode && isTennisBall ? (
               isMultiCenters ? (
-                <View className="flex-row gap-3">
-                  <View className="min-w-0 flex-1" onLayout={layoutField('citySelection')}>
-                    <Select
-                      label="Tournament For"
-                      placeholder="Select scope"
-                      value={citySelection}
-                      options={scopeOptions}
-                      onChange={(value) => onScopeChange(value as CitySelection)}
-                      error={fieldErrors.citySelection}
-                    />
+                <View className="gap-2">
+                  <View className="flex-row gap-3">
+                    <View className="min-w-0 flex-1" onLayout={layoutField('citySelection')}>
+                      <Select
+                        label="Tournament For"
+                        placeholder="Select scope"
+                        value={citySelection}
+                        options={scopeOptions}
+                        onChange={(value) => onScopeChange(value as CitySelection)}
+                        error={fieldErrors.citySelection}
+                      />
+                    </View>
+                    <View className="min-w-0 flex-1" onLayout={layoutField('centers')}>
+                      <MultiSelect
+                        label="Centers"
+                        placeholder="Select centers"
+                        values={selectedCenterIds}
+                        options={centerOptions}
+                        onChange={(next) => {
+                          setSelectedCenterIds(next);
+                          clearFieldError('centers');
+                        }}
+                        disabled={!tournamentProvinceId}
+                        loading={Boolean(tournamentProvinceId) && centerField.loading}
+                        error={centersSelectError}
+                        emptyMessage="No centers available in this province."
+                        onRetry={centerField.retry}
+                        showChips={false}
+                      />
+                    </View>
                   </View>
-                  <View className="min-w-0 flex-1" onLayout={layoutField('centers')}>
-                    <MultiSelect
-                      label="Centers"
-                      placeholder="Select centers"
-                      values={selectedCenterIds}
-                      options={centerOptions}
-                      onChange={(next) => {
-                        setSelectedCenterIds(next);
-                        clearFieldError('centers');
-                      }}
-                      disabled={!tournamentProvinceId}
-                      loading={Boolean(tournamentProvinceId) && centerField.loading}
-                      error={centersSelectError}
-                      emptyMessage="No centers available in this province."
-                      onRetry={centerField.retry}
-                    />
-                  </View>
+                  <MultiSelectChips
+                    values={selectedCenterIds}
+                    options={centerOptions}
+                    onChange={(next) => {
+                      setSelectedCenterIds(next);
+                      clearFieldError('centers');
+                    }}
+                  />
                 </View>
               ) : (
                 <View onLayout={layoutField('citySelection')}>

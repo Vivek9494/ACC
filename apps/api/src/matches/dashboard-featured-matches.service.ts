@@ -1,4 +1,5 @@
 import {
+  type AuthUser,
   type CaptainFeaturedMatchStatus,
   type CaptainFeaturedMatchSummary,
   deriveChaseEquation,
@@ -24,6 +25,7 @@ import {
   activeTournamentRelationWhere,
   guestVisibleTournamentRelationWhere,
 } from '../tournaments/tournament-query';
+import { TennisTournamentVisibilityService } from '../tournaments/tennis-tournament-visibility.service';
 import { filterDashboardFeaturedMatchesToToday, isDashboardMatchScheduledAfter, sortAndLimitDashboardTodayMatchRows, sortDashboardMatchesByTimeDesc } from './dashboard-featured-match.utils';
 import { withDashboardMatchVisibility } from './match-visibility.utils';
 
@@ -62,16 +64,19 @@ const FEATURED_MATCH_INCLUDE = {
 } as const;
 
 /**
- * App-wide today's fixtures for role home dashboards — all tournaments/teams, no per-user filter.
+ * App-wide today's fixtures for role home dashboards.
+ * CENTER tournament matches are filtered to the viewer's participating centers
+ * (Admin / Club Manager see all).
  */
 @Injectable()
 export class DashboardFeaturedMatchesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly scorecardReader: ScorecardReader,
+    private readonly tennisVisibility: TennisTournamentVisibilityService,
   ) {}
 
-  async loadTodayMatches(): Promise<CaptainFeaturedMatchSummary[]> {
+  async loadTodayMatches(viewer?: AuthUser | null): Promise<CaptainFeaturedMatchSummary[]> {
     const rows = await this.prisma.match.findMany({
       where: withDashboardMatchVisibility({
         state: { in: [...LIVE_STATES, ...UPCOMING_STATES, ...PLAYED_STATES] },
@@ -80,7 +85,13 @@ export class DashboardFeaturedMatchesService {
       include: FEATURED_MATCH_INCLUDE,
     });
 
-    const todayRows = filterDashboardFeaturedMatchesToToday(rows);
+    const visibleTournamentIds = await this.tennisVisibility.filterTournamentIdsVisibleToViewer(
+      viewer ?? null,
+      rows.map((row) => row.tournamentId),
+    );
+    const scopedRows = rows.filter((row) => visibleTournamentIds.has(row.tournamentId));
+
+    const todayRows = filterDashboardFeaturedMatchesToToday(scopedRows);
     const topTodayRows = sortAndLimitDashboardTodayMatchRows(todayRows);
     return Promise.all(topTodayRows.map((row) => this.buildFeaturedMatch(row)));
   }

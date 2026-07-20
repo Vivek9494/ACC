@@ -25,7 +25,7 @@ export class ClubManagerService {
     const [tournaments, featuredMatches, playerStats, teamLeadMatchCards, squadParticipationPoll] =
       await Promise.all([
         this.tournaments.listDashboardEntries(actor),
-        this.dashboardFeaturedMatches.loadTodayMatches(),
+        this.dashboardFeaturedMatches.loadTodayMatches(actor),
         this.loadPlayerStats(actor.id),
         this.captain.loadTeamLeadMatchCards(actor),
         this.captain.loadSquadParticipationPoll(actor.id),

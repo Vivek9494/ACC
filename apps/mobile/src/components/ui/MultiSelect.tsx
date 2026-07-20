@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, Modal, Pressable, View } from 'react-native';
+import { ActivityIndicator, FlatList, Keyboard, Modal, Pressable, View } from 'react-native';
 import { colors } from '@/theme/colors';
 
 import {
@@ -31,6 +31,56 @@ export interface MultiSelectProps {
   emptyMessage?: string;
   onRetry?: () => void;
   containerClassName?: string;
+  /**
+   * When false, selected chips are omitted under the field so the caller can
+   * render {@link MultiSelectChips} at full row width (e.g. side-by-side layout).
+   */
+  showChips?: boolean;
+}
+
+export interface MultiSelectChipsProps {
+  values: string[];
+  options?: SelectOption[];
+  onChange: (values: string[]) => void;
+  containerClassName?: string;
+}
+
+/** Removable selection pills — horizontal wrap across the container width. */
+export function MultiSelectChips({
+  values,
+  options = [],
+  onChange,
+  containerClassName = 'mt-2 flex-row flex-wrap gap-2',
+}: MultiSelectChipsProps): React.ReactElement | null {
+  if (values.length === 0) {
+    return null;
+  }
+
+  const optionByValue = new Map(options.map((option) => [option.value, option]));
+
+  return (
+    <View className={containerClassName}>
+      {values.map((value) => {
+        const chipLabel = optionByValue.get(value)?.label ?? value;
+        return (
+          <View
+            key={value}
+            className="flex-row items-center gap-1 rounded-full border border-primary/30 bg-primary-50 px-3 py-1"
+          >
+            <Text className="font-sans text-sm text-on-surface">{chipLabel}</Text>
+            <Pressable
+              onPress={() => onChange(values.filter((id) => id !== value))}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel={`Remove ${chipLabel}`}
+            >
+              <Ionicons name="close-circle" size={16} color={FIELD_ORANGE} />
+            </Pressable>
+          </View>
+        );
+      })}
+    </View>
+  );
 }
 
 /**
@@ -49,6 +99,7 @@ export function MultiSelect({
   emptyMessage = 'No options available.',
   onRetry,
   containerClassName,
+  showChips = true,
 }: MultiSelectProps): React.ReactElement {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<string[]>(values);
@@ -84,6 +135,7 @@ export function MultiSelect({
         : placeholder;
 
   function openSheet(): void {
+    Keyboard.dismiss();
     setDraft(values);
     setOpen(true);
   }
@@ -97,10 +149,6 @@ export function MultiSelect({
   function applyDraft(): void {
     onChange(draft);
     setOpen(false);
-  }
-
-  function removeChip(value: string): void {
-    onChange(values.filter((id) => id !== value));
   }
 
   return (
@@ -130,28 +178,8 @@ export function MultiSelect({
         </View>
       </Pressable>
 
-      {values.length > 0 ? (
-        <View className="mt-2 flex-row flex-wrap gap-2">
-          {values.map((value) => {
-            const chipLabel = optionByValue.get(value)?.label ?? value;
-            return (
-              <View
-                key={value}
-                className="flex-row items-center gap-1 rounded-full border border-primary/30 bg-primary-50 px-3 py-1"
-              >
-                <Text className="font-sans text-sm text-on-surface">{chipLabel}</Text>
-                <Pressable
-                  onPress={() => removeChip(value)}
-                  hitSlop={8}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Remove ${chipLabel}`}
-                >
-                  <Ionicons name="close-circle" size={16} color={FIELD_ORANGE} />
-                </Pressable>
-              </View>
-            );
-          })}
-        </View>
+      {showChips ? (
+        <MultiSelectChips values={values} options={safeOptions} onChange={onChange} />
       ) : null}
 
       {error ? (
@@ -165,7 +193,15 @@ export function MultiSelect({
         </View>
       ) : null}
 
-      <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
+      <Modal
+        visible={open}
+        transparent
+        animationType="slide"
+        // Keep the underlying form ScrollView mounted/offset (iOS Modal default
+        // can reset KeyboardAwareFormScrollView to the top).
+        presentationStyle="overFullScreen"
+        onRequestClose={() => setOpen(false)}
+      >
         <Pressable className="flex-1 justify-end bg-black/40" onPress={() => setOpen(false)}>
           <Pressable className="max-h-[70%] rounded-t-xl bg-surface px-4 pb-8 pt-4" onPress={() => {}}>
             <View className="mb-3 h-1 w-10 self-center rounded-full bg-stone-200" />

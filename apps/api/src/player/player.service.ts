@@ -27,7 +27,7 @@ export class PlayerService {
 
     const [featuredMatchesRaw, participationPoll, scorerMatch, playerStats, tournaments] =
       await Promise.all([
-        this.dashboardFeaturedMatches.loadTodayMatches(),
+        this.dashboardFeaturedMatches.loadTodayMatches(actor),
         this.participationPolls.loadDashboardPoll(userId),
         this.scorerDashboardMatch.loadStartableMatch(userId),
         this.playerStats.buildDashboardHighLevelStats(userId),

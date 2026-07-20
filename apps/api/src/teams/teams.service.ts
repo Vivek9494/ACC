@@ -47,6 +47,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { selectableUserWhere } from '../users/user-query';
 import { assertTournamentActive } from '../tournaments/tournament-query';
 import { TournamentsService } from '../tournaments/tournaments.service';
+import { TennisTournamentVisibilityService } from '../tournaments/tennis-tournament-visibility.service';
 import { NotificationsService, NotificationTrigger } from '../notifications/notifications.service';
 import type { CreateTeamDto } from './dto/create-team.dto';
 import type { AddTeamPlayersDto } from './dto/add-team-players.dto';
@@ -81,13 +82,20 @@ export class TeamsService {
     private readonly storage: S3StorageService,
     private readonly mediaUrls: MediaUrlResolver,
     private readonly tournaments: TournamentsService,
+    private readonly tennisVisibility: TennisTournamentVisibilityService,
     private readonly playerStats: PlayerStatsService,
     private readonly audit: AuditService,
     private readonly notifications: NotificationsService,
   ) {}
 
-  async list(tournamentId: string): Promise<TeamSummary[]> {
-    await this.requireTournament(tournamentId);
+  async list(
+    tournamentId: string,
+    viewer: AuthUser | null = null,
+  ): Promise<TeamSummary[]> {
+    const tournament = await this.requireTournament(tournamentId);
+    await this.tennisVisibility.assertCanViewCenterLevelTournament(viewer, tournament, {
+      allowUnauthenticated: true,
+    });
     const rows = await this.prisma.team.findMany({
       where: { tournamentId, ...activeTeamWhere },
       orderBy: { name: 'asc' },
@@ -113,7 +121,10 @@ export class TeamsService {
     teamId: string,
     viewer: AuthUser | null = null,
   ): Promise<TeamDetailView> {
-    await this.requireTournament(tournamentId);
+    const tournament = await this.requireTournament(tournamentId);
+    await this.tennisVisibility.assertCanViewCenterLevelTournament(viewer, tournament, {
+      allowUnauthenticated: true,
+    });
     const team = await this.prisma.team.findFirst({
       where: { id: teamId, tournamentId, ...activeTeamWhere },
       select: {

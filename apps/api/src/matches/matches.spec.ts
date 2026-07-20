@@ -95,7 +95,13 @@ function buildService(): {
   scorecardReader: { build: AnyMock };
 } {
   const prisma: PrismaMock = {
-    tournament: { findUnique: jest.fn() },
+    tournament: {
+      findUnique: jest.fn().mockResolvedValue({
+        id: 'tour-1',
+        type: TournamentType.ACC,
+        isDeleted: false,
+      }),
+    },
     match: {
       findUnique: jest.fn(),
       findFirst: jest.fn(),
@@ -188,6 +194,12 @@ function buildService(): {
     mediaUrls as never,
     tournamentScorers as never,
     tennisMatchScoringAuth as never,
+    {
+      assertCanViewCenterLevelTournament: jest.fn().mockResolvedValue(undefined),
+      filterTournamentIdsVisibleToViewer: jest
+        .fn()
+        .mockImplementation(async (_v: unknown, ids: string[]) => new Set(ids)),
+    } as never,
     live as never,
     scorecardReader as never,
     { markRemainingPendingAsServed: jest.fn(), assertPlayingXiExcludesPendingSuspensions: jest.fn(), listPenaltyServingForSquads: jest.fn().mockResolvedValue(new Map()), generateForCompletedMatch: jest.fn() } as never,

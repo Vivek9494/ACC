@@ -85,6 +85,7 @@ import {
 } from './tournament-create-validation';
 import { resolveTournamentTimezone } from './tournament-timezone.utils';
 import { LeatherTournamentVisibilityService } from './leather-tournament-visibility.service';
+import { TennisTournamentVisibilityService } from './tennis-tournament-visibility.service';
 import { TournamentScorersService } from './tournament-scorers.service';
 import {
   buildTournamentScopeDisplay,
@@ -130,6 +131,7 @@ export class TournamentsService {
     private readonly mediaUrls: MediaUrlResolver,
     private readonly playerSkillVideos: PlayerSkillVideosService,
     private readonly leatherVisibility: LeatherTournamentVisibilityService,
+    private readonly tennisVisibility: TennisTournamentVisibilityService,
     private readonly tournamentScorers: TournamentScorersService,
     private readonly knockoutBracket: KnockoutBracketService,
   ) {}
@@ -163,6 +165,7 @@ export class TournamentsService {
 
     this.validateDates(dtoWithWindow);
     this.validateCenterParticipation(dto, type);
+    await this.assertCenterSevakMultiCenterIncludesOwn(actor, dto);
 
     const playersPerTeam = dto.playersPerTeam ?? null;
     const fees = this.resolveTournamentFees(dto.ballType, dto.feeFullTime, dto.feePartTime);
@@ -263,8 +266,11 @@ export class TournamentsService {
 
   /** Lists tournaments newest-first for the dashboard list. */
   async list(viewer: AuthUser | null = null): Promise<TournamentSummary[]> {
+    const centerScope = this.tennisVisibility.centerTournamentListWhere(viewer);
     const rows = await this.prisma.tournament.findMany({
-      where: activeTournamentWhere,
+      where: centerScope
+        ? { AND: [activeTournamentWhere, centerScope] }
+        : activeTournamentWhere,
       include: { _count: { select: activeTeamCountSelect } },
       orderBy: [{ year: 'desc' }, { createdAt: 'desc' }],
     });
@@ -325,6 +331,10 @@ export class TournamentsService {
     if (!row) {
       throw new NotFoundException({ message: 'Tournament not found', error: 'NOT_FOUND' });
     }
+    await this.tennisVisibility.assertCanViewCenterLevelTournament(viewer, {
+      id: row.id,
+      type: row.type,
+    });
     const isCancelled = row.isDeleted;
     if (isCancelled && !viewer) {
       throw new NotFoundException({ message: 'Tournament not found', error: 'NOT_FOUND' });
@@ -864,11 +874,13 @@ export class TournamentsService {
   }
 
   /**
-   * Browse tab — all tournaments for every authenticated user (no leather/membership filter).
-   * Includes soft-deleted rows as cancelled entries.
+   * Browse tab — CENTER tournaments scoped to the viewer's participating centers;
+   * Admin / Club Manager see all. Includes soft-deleted rows as cancelled entries.
    */
   async listBrowseEntries(actor: AuthUser): Promise<TournamentBrowseEntry[]> {
+    const centerScope = this.tennisVisibility.centerTournamentListWhere(actor);
     const rows = await this.prisma.tournament.findMany({
+      ...(centerScope ? { where: centerScope } : {}),
       include: { _count: { select: activeTeamCountSelect } },
       orderBy: [{ year: 'desc' }, { createdAt: 'desc' }],
     });
@@ -1316,6 +1328,35 @@ export class TournamentsService {
           fields: { centers: TOURNAMENT_FORM_MESSAGES.centers.required },
         });
       }
+    }
+  }
+
+  /**
+   * Center Sevak Multi-center create: at least one of their assigned centers
+   * must be among the selected centers. Admin / Club Manager are unaffected.
+   */
+  private async assertCenterSevakMultiCenterIncludesOwn(
+    actor: AuthUser,
+    dto: CreateTournamentDto,
+  ): Promise<void> {
+    if (actor.role !== UserRole.CenterSevak) {
+      return;
+    }
+    if (dto.ballType !== BallType.Tennis || dto.citySelection !== CitySelection.Multi) {
+      return;
+    }
+    const selected = dto.centerIds ?? [];
+    if (selected.length === 0) {
+      return;
+    }
+    const sevakCenterIds = await this.resolveCenterSevakCenterIds(actor.id);
+    const includesOwn = selected.some((id) => sevakCenterIds.includes(id));
+    if (!includesOwn) {
+      throw new BadRequestException({
+        message: TOURNAMENT_FORM_MESSAGES.centers.ownCenterRequired,
+        error: 'OWN_CENTER_REQUIRED',
+        fields: { centers: TOURNAMENT_FORM_MESSAGES.centers.ownCenterRequired },
+      });
     }
   }
 

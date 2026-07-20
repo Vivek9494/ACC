@@ -49,6 +49,38 @@ describe('NotificationAudienceService', () => {
       expect(result).toEqual(['u1', 'u2']);
     });
 
+    it('MULTI-CENTER: notifies only participating centers (e.g. North York + Etobicoke), not all centers', async () => {
+      const northYork = 'center-north-york';
+      const etobicoke = 'center-etobicoke';
+      const brampton = 'center-brampton';
+
+      prisma.tournament.findFirst.mockResolvedValue({ id: 'ny-etob-multi', ballType: 'TENNIS' });
+      prisma.tournamentCenter.findMany.mockResolvedValue([
+        { centerId: northYork },
+        { centerId: etobicoke },
+      ]);
+      prisma.user.findMany.mockResolvedValue([{ id: 'ny-user' }, { id: 'etob-user' }]);
+
+      const result = await service.resolveTournamentAudience('ny-etob-multi');
+
+      expect(prisma.tournamentCenter.findMany).toHaveBeenCalledWith({
+        where: { tournamentId: 'ny-etob-multi' },
+        select: { centerId: true },
+      });
+      expect(prisma.user.findMany).toHaveBeenCalledWith({
+        where: {
+          deletedAt: null,
+          isActive: true,
+          centerId: { in: [northYork, etobicoke] },
+        },
+        select: { id: true },
+      });
+      const centerFilter = prisma.user.findMany.mock.calls[0][0].where.centerId.in as string[];
+      expect(centerFilter).not.toContain(brampton);
+      expect(result).toEqual(['ny-user', 'etob-user']);
+      expect(result).not.toContain('brampton-user');
+    });
+
     it('APL/CENTER: returns empty when no centers are linked', async () => {
       prisma.tournament.findFirst.mockResolvedValue({ id: 't1', ballType: 'TENNIS' });
       prisma.tournamentCenter.findMany.mockResolvedValue([]);

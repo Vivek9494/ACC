@@ -82,6 +82,11 @@ export interface CreateTournamentFormInput {
   locationAddress?: string;
   latitude?: number | null;
   longitude?: number | null;
+  /**
+   * When set (Center Sevak create), Multi-center selection must include at least
+   * one of these assigned center ids. Admin/CM omit this.
+   */
+  centerSevakCenterIds?: string[];
 }
 
 function combineLocalDateAndTimeToIso(date: string, time: string): string | null {
@@ -294,6 +299,13 @@ export function validateCreateTournamentForm(
   if (isMultiCenters) {
     if (values.selectedCenterIds.length === 0) {
       errors.centers = TOURNAMENT_FORM_MESSAGES.centers.required;
+    } else if ((values.centerSevakCenterIds?.length ?? 0) > 0) {
+      const includesOwn = values.selectedCenterIds.some((id) =>
+        values.centerSevakCenterIds!.includes(id),
+      );
+      if (!includesOwn) {
+        errors.centers = TOURNAMENT_FORM_MESSAGES.centers.ownCenterRequired;
+      }
     }
   }
 
@@ -542,6 +554,7 @@ export function allTournamentFormMessages(): string[] {
     m.citySelection.required,
     m.province.required,
     m.centers.required,
+    m.centers.ownCenterRequired,
     m.numberOfTeams.required,
     m.numberOfTeams.range,
     m.playersPerTeam.notNumeric,

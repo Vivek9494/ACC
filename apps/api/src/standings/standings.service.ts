@@ -3,6 +3,7 @@ import {
   InningsType,
   MatchState,
   resolveStandingsSplitPointOutcome,
+  type AuthUser,
   type StandingsInningsInput,
   type StandingsMatchInput,
   type TournamentStandings,
@@ -14,6 +15,7 @@ import { ScorecardReader } from '../scoring/scorecard-reader';
 import { MediaUrlResolver } from '../storage/media-url.resolver';
 import { activeTeamWhere } from '../teams/team-query';
 import { assertTournamentActive } from '../tournaments/tournament-query';
+import { TennisTournamentVisibilityService } from '../tournaments/tennis-tournament-visibility.service';
 import { computeStandings } from './standings.compute';
 import { wasInningsAllOut } from './standings.nrr';
 
@@ -30,9 +32,13 @@ export class StandingsService {
     private readonly prisma: PrismaService,
     private readonly scorecards: ScorecardReader,
     private readonly mediaUrls: MediaUrlResolver,
+    private readonly tennisVisibility: TennisTournamentVisibilityService,
   ) {}
 
-  async getStandings(tournamentId: string): Promise<TournamentStandings> {
+  async getStandings(
+    tournamentId: string,
+    viewer: AuthUser | null = null,
+  ): Promise<TournamentStandings> {
     const tournament = await this.prisma.tournament.findUnique({
       where: { id: tournamentId },
       include: {
@@ -67,6 +73,9 @@ export class StandingsService {
       },
     });
     assertTournamentActive(tournament);
+    await this.tennisVisibility.assertCanViewCenterLevelTournament(viewer, tournament, {
+      allowUnauthenticated: true,
+    });
 
     const isLeather = tournament.ballType === BallType.Leather;
     const showNetRunRate = !isLeather;

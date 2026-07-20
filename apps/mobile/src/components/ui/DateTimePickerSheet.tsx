@@ -57,7 +57,15 @@ export function DateTimePickerSheet({
   }
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onCancel}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="slide"
+      // Keep the underlying form ScrollView mounted/offset (iOS Modal default
+      // can reset KeyboardAwareFormScrollView to the top).
+      presentationStyle="overFullScreen"
+      onRequestClose={onCancel}
+    >
       <Pressable className="flex-1 justify-end bg-black/40" onPress={onCancel}>
         <Pressable className="rounded-t-xl bg-surface" onPress={() => {}}>
           <View className="flex-row items-center justify-between border-b border-outline-variant/20 px-4 py-3">

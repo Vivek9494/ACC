@@ -91,7 +91,7 @@ export class CaptainService {
 
     const [featuredMatchesRaw, teamLeadMatchCards, squadParticipationPoll, pendingManOfMatch, pendingScorecardConfirmations, scorerMatch, playerStats, tournaments] =
       await Promise.all([
-      this.dashboardFeaturedMatches.loadTodayMatches(),
+      this.dashboardFeaturedMatches.loadTodayMatches(actor),
       this.loadTeamLeadMatchCards(actor),
       this.loadSquadParticipationPoll(userId),
       this.loadPendingManOfMatch(userId, teamIds),

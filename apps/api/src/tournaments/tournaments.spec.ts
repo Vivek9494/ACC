@@ -15,6 +15,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTournamentDto } from './dto/create-tournament.dto';
 import { LeatherTournamentVisibilityService } from './leather-tournament-visibility.service';
+import { TennisTournamentVisibilityService } from './tennis-tournament-visibility.service';
 import { TournamentsService } from './tournaments.service';
 import { TournamentScorersService } from './tournament-scorers.service';
 import { KnockoutBracketService } from '../knockout-bracket/knockout-bracket.service';
@@ -112,6 +113,10 @@ describe('TournamentsService', () => {
   };
   let permissions: { check: jest.Mock };
   let notifications: { notify: jest.Mock; sendToAudience: jest.Mock };
+  let notificationAudience: {
+    resolveTournamentAudience: jest.Mock;
+    resolveTournamentRegisteredPlayers: jest.Mock;
+  };
   let storage: { deleteObject: jest.Mock; resolveObjectKey: jest.Mock };
   let mediaUrls: { resolveReadUrl: jest.Mock; resolveReadUrls: jest.Mock };
   let tx: TxMock;
@@ -169,6 +174,10 @@ describe('TournamentsService', () => {
       notify: jest.fn().mockResolvedValue(undefined),
       sendToAudience: jest.fn().mockResolvedValue({ sent: true }),
     };
+    notificationAudience = {
+      resolveTournamentAudience: jest.fn().mockResolvedValue([]),
+      resolveTournamentRegisteredPlayers: jest.fn().mockResolvedValue(['p1', 'p2']),
+    };
     storage = {
       deleteObject: jest.fn().mockResolvedValue(undefined),
       resolveObjectKey: jest.fn((value: string | null | undefined) => value ?? null),
@@ -187,10 +196,7 @@ describe('TournamentsService', () => {
         { provide: NotificationsService, useValue: notifications },
         {
           provide: NotificationAudienceService,
-          useValue: {
-            resolveTournamentAudience: jest.fn().mockResolvedValue([]),
-            resolveTournamentRegisteredPlayers: jest.fn().mockResolvedValue(['p1', 'p2']),
-          },
+          useValue: notificationAudience,
         },
         { provide: S3StorageService, useValue: storage },
         { provide: MediaUrlResolver, useValue: mediaUrls },
@@ -204,6 +210,18 @@ describe('TournamentsService', () => {
             getVisibleLeatherTournamentIds: jest.fn().mockResolvedValue([]),
             assertCanViewLeatherTournament: jest.fn().mockResolvedValue(undefined),
             canRegisterForLeatherTournament: jest.fn().mockResolvedValue(false),
+          },
+        },
+        {
+          provide: TennisTournamentVisibilityService,
+          useValue: {
+            centerTournamentListWhere: jest.fn().mockReturnValue(null),
+            assertCanViewCenterLevelTournament: jest.fn().mockResolvedValue(undefined),
+            bypassesCenterTournamentScope: jest.fn().mockReturnValue(true),
+            viewerParticipatingCenterIds: jest.fn().mockReturnValue([]),
+            filterTournamentIdsVisibleToViewer: jest
+              .fn()
+              .mockImplementation(async (_v: unknown, ids: string[]) => new Set(ids)),
           },
         },
         {
@@ -317,6 +335,100 @@ describe('TournamentsService', () => {
           }),
         ),
       ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('allows Center Sevak Multi-center create when their center is included', async () => {
+      tx.center.findMany.mockResolvedValue([
+        { id: 'center-A' },
+        { id: 'center-B' },
+        { id: 'center-C' },
+      ]);
+      prisma.roleAssignment.findMany.mockResolvedValueOnce([{ centerId: 'center-A' }]);
+      await service.create(
+        sevak,
+        tennisDto({
+          citySelection: 'MULTI',
+          provinceId: 'prov-1',
+          centerIds: ['center-A', 'center-B'],
+        }),
+      );
+      expect(tx.tournamentCenter.createMany).toHaveBeenCalledWith({
+        data: [
+          { tournamentId: 'tid', centerId: 'center-A' },
+          { tournamentId: 'tid', centerId: 'center-B' },
+        ],
+        skipDuplicates: true,
+      });
+    });
+
+    it('rejects Center Sevak Multi-center create that excludes their center', async () => {
+      prisma.roleAssignment.findMany.mockResolvedValueOnce([{ centerId: 'center-A' }]);
+      await expect(
+        service.create(
+          sevak,
+          tennisDto({
+            citySelection: 'MULTI',
+            provinceId: 'prov-1',
+            centerIds: ['center-B', 'center-C'],
+          }),
+        ),
+      ).rejects.toMatchObject({
+        response: expect.objectContaining({
+          error: 'OWN_CENTER_REQUIRED',
+          message: 'Your center must be one of the selected centers.',
+        }),
+      });
+      expect(tx.tournament.create).not.toHaveBeenCalled();
+    });
+
+    it('allows Club Manager Multi-center create without their own center', async () => {
+      tx.center.findMany.mockResolvedValue([
+        { id: 'center-A' },
+        { id: 'center-B' },
+        { id: 'center-C' },
+      ]);
+      await service.create(
+        actor,
+        tennisDto({
+          citySelection: 'MULTI',
+          provinceId: 'prov-1',
+          centerIds: ['center-B', 'center-C'],
+        }),
+      );
+      expect(tx.tournamentCenter.createMany).toHaveBeenCalled();
+    });
+
+    it('notifies Multi-center create via resolveTournamentAudience (participating centers only)', async () => {
+      tx.center.findMany.mockResolvedValue([
+        { id: 'center-north-york' },
+        { id: 'center-etobicoke' },
+        { id: 'center-brampton' },
+      ]);
+      notificationAudience.resolveTournamentAudience.mockResolvedValueOnce([
+        'ny-user',
+        'etob-user',
+      ]);
+
+      await service.create(
+        actor,
+        tennisDto({
+          name: 'NY + Etobicoke Cup',
+          citySelection: 'MULTI',
+          provinceId: 'prov-1',
+          centerIds: ['center-north-york', 'center-etobicoke'],
+        }),
+      );
+
+      expect(notificationAudience.resolveTournamentAudience).toHaveBeenCalledWith('tid');
+      expect(notifications.sendToAudience).toHaveBeenCalledWith(
+        ['ny-user', 'etob-user'],
+        expect.objectContaining({
+          triggerKey: 'NEW_TOURNAMENT_CREATED',
+          data: expect.objectContaining({ tournamentId: 'tid' }),
+        }),
+      );
+      const notified = notifications.sendToAudience.mock.calls[0][0] as string[];
+      expect(notified).not.toContain('brampton-user');
     });
 
     it('rejects create without tournament dates', async () => {

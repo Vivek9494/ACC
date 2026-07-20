@@ -94,6 +94,7 @@ import { LiveService } from '../live/live.service';
 import { assertTournamentActive } from '../tournaments/tournament-query';
 import { TournamentScorersService } from '../tournaments/tournament-scorers.service';
 import { TennisMatchScoringAuthService } from '../tournaments/tennis-match-scoring-auth.service';
+import { TennisTournamentVisibilityService } from '../tournaments/tennis-tournament-visibility.service';
 import { SuspensionService } from '../suspension/suspension.service';
 import { assertCanCreateMatchFixture } from './create-match-auth.util';
 import { assertCanManageUpcomingMatch } from './match-manage-auth.util';
@@ -250,6 +251,7 @@ export class MatchesService {
     private readonly mediaUrls: MediaUrlResolver,
     private readonly tournamentScorers: TournamentScorersService,
     private readonly tennisMatchScoringAuth: TennisMatchScoringAuthService,
+    private readonly tennisVisibility: TennisTournamentVisibilityService,
     private readonly live: LiveService,
     private readonly scorecardReader: ScorecardReader,
     private readonly suspensions: SuspensionService,
@@ -719,6 +721,15 @@ export class MatchesService {
     teamId?: string,
     viewer?: AuthUser | null,
   ): Promise<MatchListItem[]> {
+    const tournament = await this.prisma.tournament.findUnique({
+      where: { id: tournamentId },
+      select: { id: true, type: true, isDeleted: true },
+    });
+    assertTournamentActive(tournament);
+    await this.tennisVisibility.assertCanViewCenterLevelTournament(viewer, tournament, {
+      allowUnauthenticated: true,
+    });
+
     const includeDeletedMatches = viewer?.role === UserRole.Admin;
     const rows = await this.prisma.match.findMany({
       where: {
@@ -951,6 +962,11 @@ export class MatchesService {
     if (!row || row.isDeleted) {
       throw new NotFoundException({ message: 'Match not found', error: 'NOT_FOUND' });
     }
+    await this.tennisVisibility.assertCanViewCenterLevelTournament(
+      viewer,
+      { id: row.tournamentId, type: row.tournament.type },
+      { allowUnauthenticated: true },
+    );
     const scorerIds = row.scorerGrants.filter((g) => g.revokedAt === null).map((g) => g.userId);
     const names = await this.namesFor(scorerIds);
     const detail = this.toDetail(row, names);

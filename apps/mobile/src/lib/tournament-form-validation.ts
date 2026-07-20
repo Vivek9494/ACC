@@ -67,6 +67,7 @@ export function validateTournamentForm(values: TournamentFormValues): Tournament
     locationAddress: values.locationAddress,
     latitude: values.latitude,
     longitude: values.longitude,
+    centerSevakCenterIds: values.centerSevakCenterIds,
   });
 }
 

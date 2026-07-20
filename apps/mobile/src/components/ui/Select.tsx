@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, Modal, Pressable, View } from 'react-native';
+import { ActivityIndicator, FlatList, Keyboard, Modal, Pressable, View } from 'react-native';
 
 import {
   DEFAULT_PLACEHOLDER_COLOR,
@@ -90,6 +90,7 @@ export function Select({
   const displayText = selected?.label ?? (showLoading ? 'Loading…' : placeholder);
 
   function openSheet(): void {
+    Keyboard.dismiss();
     setSearchQuery('');
     setOpen(true);
   }
@@ -137,7 +138,15 @@ export function Select({
         </View>
       ) : null}
 
-      <Modal visible={open} transparent animationType="slide" onRequestClose={closeSheet}>
+      <Modal
+        visible={open}
+        transparent
+        animationType="slide"
+        // Keep the underlying form ScrollView mounted/offset (iOS Modal default
+        // can reset KeyboardAwareFormScrollView to the top).
+        presentationStyle="overFullScreen"
+        onRequestClose={closeSheet}
+      >
         <Pressable className="flex-1 justify-end bg-black/40" onPress={closeSheet}>
           <View
             className="max-h-[70%] rounded-t-xl bg-surface px-4 pb-8 pt-4"

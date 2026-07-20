@@ -37,6 +37,7 @@ export const TOURNAMENT_FORM_MESSAGES = {
   },
   centers: {
     required: 'Select at least one center',
+    ownCenterRequired: 'Your center must be one of the selected centers.',
   },
   numberOfTeams: {
     required: 'Please select the number of teams',

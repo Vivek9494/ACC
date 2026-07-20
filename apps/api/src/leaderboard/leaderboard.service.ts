@@ -1,4 +1,10 @@
-import { LIVE_MATCH_STATES, MatchState, type TournamentLeaderboard, type TournamentStatsView } from '@acc/types';
+import {
+  LIVE_MATCH_STATES,
+  MatchState,
+  type AuthUser,
+  type TournamentLeaderboard,
+  type TournamentStatsView,
+} from '@acc/types';
 import { Injectable } from '@nestjs/common';
 
 import { LiveService } from '../live/live.service';
@@ -6,6 +12,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { MediaUrlResolver } from '../storage/media-url.resolver';
 import { ScorecardReader } from '../scoring/scorecard-reader';
 import { assertTournamentActive } from '../tournaments/tournament-query';
+import { TennisTournamentVisibilityService } from '../tournaments/tennis-tournament-visibility.service';
 import { activeTeamWhere } from '../teams/team-query';
 import { activeTeamMembershipWhere } from '../teams/team-membership-query';
 import {
@@ -59,11 +66,13 @@ export class LeaderboardService {
     private readonly scorecards: ScorecardReader,
     private readonly mediaUrls: MediaUrlResolver,
     private readonly live: LiveService,
+    private readonly tennisVisibility: TennisTournamentVisibilityService,
   ) {}
 
   async getLeaderboard(
     tournamentId: string,
     teamId?: string | null,
+    viewer: AuthUser | null = null,
   ): Promise<TournamentLeaderboard> {
     const tournament = await this.prisma.tournament.findUnique({
       where: { id: tournamentId },
@@ -82,6 +91,9 @@ export class LeaderboardService {
       },
     });
     assertTournamentActive(tournament);
+    await this.tennisVisibility.assertCanViewCenterLevelTournament(viewer, tournament, {
+      allowUnauthenticated: true,
+    });
 
     const teams = tournament.teams.map((team) => ({
       id: team.id,
@@ -215,6 +227,7 @@ export class LeaderboardService {
   async getTournamentStats(
     tournamentId: string,
     teamId?: string | null,
+    viewer: AuthUser | null = null,
   ): Promise<TournamentStatsView> {
     const tournament = await this.prisma.tournament.findUnique({
       where: { id: tournamentId },
@@ -234,6 +247,9 @@ export class LeaderboardService {
       },
     });
     assertTournamentActive(tournament);
+    await this.tennisVisibility.assertCanViewCenterLevelTournament(viewer, tournament, {
+      allowUnauthenticated: true,
+    });
 
     const teams = tournament.teams.map((team) => ({
       id: team.id,
