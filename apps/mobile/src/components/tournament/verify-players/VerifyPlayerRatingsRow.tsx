@@ -5,7 +5,7 @@ import { Text } from '../../ui/Text';
 
 function Stat({ label, value }: { label: string; value: number | null }): React.ReactElement {
   return (
-    <View className="min-w-[44px] flex-1 items-center">
+    <View className="min-w-[40px] shrink items-center">
       <Text className="font-sans-semibold text-[10px] uppercase tracking-wider text-on-surface-variant/70">
         {label}
       </Text>
@@ -27,7 +27,7 @@ export function VerifyPlayerRatingsRow({
   fielding: number | null;
 }): React.ReactElement {
   return (
-    <View className="mt-2 flex-row gap-3">
+    <View className="min-w-0 flex-1 flex-row items-center gap-3">
       <Stat label="Bat" value={batting} />
       <Stat label="Bowl" value={bowling} />
       <Stat label="Field" value={fielding} />

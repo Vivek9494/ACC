@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { colors } from '@/theme/colors';
 import {
   BallType,
   RegistrationVerificationPhase,
@@ -144,9 +145,9 @@ export function VerifyPlayersScreen({ tournamentId }: VerifyPlayersScreenProps):
         onPress={onLateRegisterPress}
         accessibilityRole="button"
         accessibilityLabel="Late register a player"
-        className="h-10 w-10 shrink-0 items-center justify-center rounded-full active:bg-black/5"
+        className="h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary active:opacity-90"
       >
-        <Ionicons name="add" size={24} color={FIELD_ORANGE} />
+        <Ionicons name="add" size={22} color={colors.textInverse} />
       </Pressable>
     ) : undefined;
 

@@ -70,53 +70,54 @@ export function VerifyPlayerCard({
           {isDeclined ? (
             <Text className="font-sans-medium text-xs text-secondary-900">Declined</Text>
           ) : null}
-          <VerifyPlayerRatingsRow
-            batting={row.battingRating}
-            bowling={row.bowlingRating}
-            fielding={row.fieldingRating}
-          />
+          <View className="mt-2 flex-row items-center gap-2">
+            <VerifyPlayerRatingsRow
+              batting={row.battingRating}
+              bowling={row.bowlingRating}
+              fielding={row.fieldingRating}
+            />
+            {showActions ? (
+              <View className="shrink-0 flex-row items-center gap-1.5">
+                {canApprove ? (
+                  <Pressable
+                    onPress={onApprove}
+                    disabled={busy}
+                    accessibilityRole="button"
+                    accessibilityLabel="Approve player"
+                    className="h-9 w-9 items-center justify-center rounded-full bg-primary-container shadow-md active:scale-90"
+                  >
+                    {busy ? (
+                      <ActivityIndicator color={colors.textInverse} size="small" />
+                    ) : (
+                      <Ionicons name="checkmark" size={20} color={colors.textInverse} />
+                    )}
+                  </Pressable>
+                ) : null}
+                {canDecline ? (
+                  <Pressable
+                    onPress={onDecline}
+                    disabled={busy}
+                    accessibilityRole="button"
+                    accessibilityLabel="Decline player"
+                    className="h-9 w-9 items-center justify-center rounded-full border border-secondary-700/40 bg-surface-container-high active:scale-90"
+                  >
+                    <Ionicons name="close" size={20} color={colors.secondaryDark} />
+                  </Pressable>
+                ) : null}
+                <Pressable
+                  onPress={onEdit}
+                  disabled={busy}
+                  accessibilityRole="button"
+                  accessibilityLabel="Edit ratings"
+                  className="h-9 w-9 items-center justify-center rounded-full bg-surface-container-high active:scale-90"
+                >
+                  <Ionicons name="pencil" size={16} color={FIELD_ORANGE} />
+                </Pressable>
+              </View>
+            ) : null}
+          </View>
         </View>
       </View>
-
-      {showActions ? (
-        <View className="mt-3 flex-row items-center justify-end gap-2 border-t border-outline-variant/60 pt-3">
-          {canApprove ? (
-            <Pressable
-              onPress={onApprove}
-              disabled={busy}
-              accessibilityRole="button"
-              accessibilityLabel="Approve player"
-              className="h-10 w-10 items-center justify-center rounded-full bg-primary-container shadow-md active:scale-90"
-            >
-              {busy ? (
-                <ActivityIndicator color={colors.textInverse} size="small" />
-              ) : (
-                <Ionicons name="checkmark" size={22} color={colors.textInverse} />
-              )}
-            </Pressable>
-          ) : null}
-          {canDecline ? (
-            <Pressable
-              onPress={onDecline}
-              disabled={busy}
-              accessibilityRole="button"
-              accessibilityLabel="Decline player"
-              className="h-10 w-10 items-center justify-center rounded-full border border-secondary-700/40 bg-surface-container-high active:scale-90"
-            >
-              <Ionicons name="close" size={22} color={colors.secondaryDark} />
-            </Pressable>
-          ) : null}
-          <Pressable
-            onPress={onEdit}
-            disabled={busy}
-            accessibilityRole="button"
-            accessibilityLabel="Edit ratings"
-            className="h-10 w-10 items-center justify-center rounded-full bg-surface-container-high active:scale-90"
-          >
-            <Ionicons name="pencil" size={18} color={FIELD_ORANGE} />
-          </Pressable>
-        </View>
-      ) : null}
     </View>
   );
 }
