@@ -21,7 +21,7 @@ export function ListRowIconButton({
   ...props
 }: ListRowIconButtonProps): React.ReactElement {
   const mergedClassName = [
-    'h-9 w-9 items-center justify-center rounded-full active:bg-black/5',
+    'h-9 w-9 items-center justify-center rounded-full bg-surface-container-high active:opacity-70',
     disabled ? 'opacity-40' : '',
     className,
   ]

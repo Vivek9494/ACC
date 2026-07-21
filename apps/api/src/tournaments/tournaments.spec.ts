@@ -304,6 +304,38 @@ describe('TournamentsService', () => {
       );
     });
 
+    it('links centers from the selected tournament type definition id', async () => {
+      tx.center.findMany.mockResolvedValue([
+        { id: 'center-A' },
+        { id: 'center-B' },
+        { id: 'center-C' },
+      ]);
+      tx.tournamentTypeDefinition.findFirst.mockResolvedValue({
+        id: 'apll-def',
+        centerLinks: [{ centerId: 'center-B' }],
+      });
+      await service.create(
+        actor,
+        tennisDto({
+          citySelection: 'APL',
+          provinceId: 'prov-bc',
+          tournamentTypeDefinitionId: 'apll-def',
+        }),
+      );
+      expect(tx.tournamentTypeDefinition.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            id: 'apll-def',
+            provinceId: 'prov-bc',
+          }),
+        }),
+      );
+      expect(tx.tournamentCenter.createMany).toHaveBeenCalledWith({
+        data: [{ tournamentId: 'tid', centerId: 'center-B' }],
+        skipDuplicates: true,
+      });
+    });
+
     it('links APL-defined centers when an APL type exists for the province', async () => {
       tx.center.findMany.mockResolvedValue([
         { id: 'center-A' },

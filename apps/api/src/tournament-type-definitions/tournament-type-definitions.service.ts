@@ -2,6 +2,7 @@ import {
   APL_TOURNAMENT_TYPE_CODE,
   BallType,
   type CreateTournamentTypeDefinitionRequest,
+  type TournamentTypeDefinitionCatalogEntry,
   type TournamentTypeDefinitionDetail,
   type TournamentTypeDefinitionSummary,
   type UpdateTournamentTypeDefinitionRequest,
@@ -36,6 +37,36 @@ export class TournamentTypeDefinitionsService {
       orderBy: [{ name: 'asc' }],
     });
     return rows.map((row) => this.toSummary(row));
+  }
+
+  /**
+   * Create-tournament dropdown: types for a province (optionally filtered by
+   * ball type), including participating center ids.
+   */
+  async listCatalogForProvince(
+    provinceId: string,
+    ballType?: BallType,
+  ): Promise<TournamentTypeDefinitionCatalogEntry[]> {
+    await this.assertProvince(provinceId);
+    const rows = await this.prisma.tournamentTypeDefinition.findMany({
+      where: {
+        ...activeDefinitionWhere,
+        provinceId,
+        ...(ballType ? { ballType } : {}),
+      },
+      include: {
+        centerLinks: { select: { centerId: true } },
+      },
+      orderBy: [{ name: 'asc' }],
+    });
+    return rows.map((row) => ({
+      id: row.id,
+      code: row.code,
+      name: row.name,
+      provinceId: row.provinceId,
+      ballType: row.ballType as BallType,
+      centerIds: row.centerLinks.map((link) => link.centerId),
+    }));
   }
 
   async getById(id: string): Promise<TournamentTypeDefinitionDetail> {

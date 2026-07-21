@@ -115,6 +115,7 @@ import {
   type ProvinceDetail,
   type ProvinceSummary,
   type CreateTournamentTypeDefinitionRequest,
+  type TournamentTypeDefinitionCatalogEntry,
   type TournamentTypeDefinitionDetail,
   type TournamentTypeDefinitionSummary,
   type UpdateTournamentTypeDefinitionRequest,
@@ -596,6 +597,18 @@ export function deleteProvince(id: string): Promise<void> {
 
 export function listTournamentTypeDefinitions(): Promise<TournamentTypeDefinitionSummary[]> {
   return apiFetch<TournamentTypeDefinitionSummary[]>('/admin/tournament-types');
+}
+
+/** Create Tournament — types for a province (authenticated; not Admin-only). */
+export function listTournamentTypeCatalog(
+  provinceId: string,
+  ballType?: BallType,
+): Promise<TournamentTypeDefinitionCatalogEntry[]> {
+  const params = new URLSearchParams({ provinceId });
+  if (ballType) {
+    params.set('ballType', ballType);
+  }
+  return apiFetch<TournamentTypeDefinitionCatalogEntry[]>(`/tournament-types?${params}`);
 }
 
 export function getTournamentTypeDefinition(

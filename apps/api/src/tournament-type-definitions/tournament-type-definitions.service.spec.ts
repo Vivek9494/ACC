@@ -92,6 +92,33 @@ describe('TournamentTypeDefinitionsService', () => {
     });
   });
 
+  it('lists catalog entries for a province with center ids', async () => {
+    prisma.province.findUnique.mockResolvedValue({ id: 'prov-1', isActive: true });
+    prisma.tournamentTypeDefinition.findMany.mockResolvedValue([
+      {
+        id: 'def-apll',
+        code: 'APLL',
+        name: 'APLL',
+        provinceId: 'prov-bc',
+        ballType: BallType.Tennis,
+        centerLinks: [{ centerId: 'c1' }, { centerId: 'c2' }],
+      },
+    ]);
+
+    await expect(
+      service.listCatalogForProvince('prov-bc', BallType.Tennis),
+    ).resolves.toEqual([
+      {
+        id: 'def-apll',
+        code: 'APLL',
+        name: 'APLL',
+        provinceId: 'prov-bc',
+        ballType: BallType.Tennis,
+        centerIds: ['c1', 'c2'],
+      },
+    ]);
+  });
+
   it('findActiveAplForProvince returns null when undefined', async () => {
     prisma.tournamentTypeDefinition.findFirst.mockResolvedValue(null);
     await expect(service.findActiveAplForProvince('prov-1')).resolves.toBeNull();

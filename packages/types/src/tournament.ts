@@ -106,6 +106,11 @@ export interface CreateTournamentRequest {
   ballType: BallType;
   /** City coverage; required for tennis-ball tournaments; ignored for leather/ACC. */
   citySelection?: CitySelection;
+  /**
+   * When citySelection is APL: optional catalog type whose centers are linked.
+   * When omitted, the province’s code=APL definition (or all province centers) is used.
+   */
+  tournamentTypeDefinitionId?: string;
   /** Expected teams for fixture/setup (§6.1). */
   numberOfTeams: number;
   /** Squad size per team; omit or leave unset for no roster cap. Max 30 when provided. */

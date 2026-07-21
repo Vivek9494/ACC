@@ -1402,23 +1402,52 @@ export class TournamentsService {
 
     let centerIds: string[];
     if (dto.citySelection === CitySelection.Apl) {
-      // Prefer Admin-defined APL participating centers; fall back to all active
-      // centers in the province when no APL type is configured yet.
-      const aplDefinition = await tx.tournamentTypeDefinition.findFirst({
-        where: {
-          code: 'APL',
-          provinceId: dto.provinceId,
-          ballType: BallType.Tennis,
-          isDeleted: false,
-        },
-        include: { centerLinks: { select: { centerId: true } } },
-      });
-      if (aplDefinition && aplDefinition.centerLinks.length > 0) {
-        centerIds = aplDefinition.centerLinks
+      if (dto.tournamentTypeDefinitionId) {
+        const definition = await tx.tournamentTypeDefinition.findFirst({
+          where: {
+            id: dto.tournamentTypeDefinitionId,
+            provinceId: dto.provinceId,
+            ballType: BallType.Tennis,
+            isDeleted: false,
+          },
+          include: { centerLinks: { select: { centerId: true } } },
+        });
+        if (!definition) {
+          throw new BadRequestException({
+            message: 'Tournament type is invalid for this province',
+            error: 'INVALID_TOURNAMENT_TYPE',
+            fields: { citySelection: 'Select a valid tournament type for this province' },
+          });
+        }
+        centerIds = definition.centerLinks
           .map((link) => link.centerId)
           .filter((id) => activeIds.has(id));
+        if (centerIds.length === 0) {
+          throw new BadRequestException({
+            message: 'This tournament type has no active centers in the selected province',
+            error: 'TOURNAMENT_TYPE_NO_CENTERS',
+            fields: { citySelection: 'Choose another type or add centers to this type' },
+          });
+        }
       } else {
-        centerIds = activeInProvince.map((c) => c.id);
+        // Prefer Admin-defined APL participating centers; fall back to all active
+        // centers in the province when no APL type is configured yet.
+        const aplDefinition = await tx.tournamentTypeDefinition.findFirst({
+          where: {
+            code: 'APL',
+            provinceId: dto.provinceId,
+            ballType: BallType.Tennis,
+            isDeleted: false,
+          },
+          include: { centerLinks: { select: { centerId: true } } },
+        });
+        if (aplDefinition && aplDefinition.centerLinks.length > 0) {
+          centerIds = aplDefinition.centerLinks
+            .map((link) => link.centerId)
+            .filter((id) => activeIds.has(id));
+        } else {
+          centerIds = activeInProvince.map((c) => c.id);
+        }
       }
     } else {
       if (!dto.centerIds || dto.centerIds.length === 0) {

@@ -18,6 +18,7 @@ import {
   type CreateTournamentRequest,
   deferredMaxOversPerBowler,
   type TournamentDetail,
+  type TournamentTypeDefinitionCatalogEntry,
   type UpdateTournamentRequest,
   UserRole,
 } from '@acc/types';
@@ -55,6 +56,7 @@ import {
   createTournament,
   getProfile,
   getTournamentEditForm,
+  listTournamentTypeCatalog,
   updateTournament,
 } from '../../lib/api';
 import { uploadTournamentPoster } from '../../lib/imageUpload';
@@ -137,6 +139,13 @@ export function TournamentFormScreen({
   const [longitude, setLongitude] = useState<number | null>(null);
   const [ballType, setBallType] = useState<BallType | null>(null);
   const [citySelection, setCitySelection] = useState<CitySelection | null>(null);
+  const [tournamentTypeDefinitionId, setTournamentTypeDefinitionId] = useState<string | null>(
+    null,
+  );
+  const [tournamentTypeCatalog, setTournamentTypeCatalog] = useState<
+    TournamentTypeDefinitionCatalogEntry[]
+  >([]);
+  const [tournamentTypesLoading, setTournamentTypesLoading] = useState(false);
   const [numberOfTeams, setNumberOfTeams] = useState<string | null>(null);
   const [knockoutTeamCount, setKnockoutTeamCount] = useState<string | null>(null);
   const [editTournamentType, setEditTournamentType] = useState<TournamentType | null>(null);
@@ -228,13 +237,18 @@ export function TournamentFormScreen({
     [],
   );
 
-  const scopeOptions = useMemo(
-    (): SelectOption[] => [
-      { value: CitySelection.Apl, label: 'APL' },
-      { value: CitySelection.Multi, label: 'Multi-centers' },
-    ],
-    [],
-  );
+  const scopeOptions = useMemo((): SelectOption[] => {
+    const typeOptions = tournamentTypeCatalog.map((type) => ({
+      value: type.id,
+      label: type.name,
+    }));
+    return [...typeOptions, { value: CitySelection.Multi, label: 'Multi-centers' }];
+  }, [tournamentTypeCatalog]);
+
+  const scopeSelectValue =
+    citySelection === CitySelection.Multi
+      ? CitySelection.Multi
+      : tournamentTypeDefinitionId;
 
   const isTennisBall = ballType === BallType.Tennis;
   const isLeatherBall = ballType === BallType.Leather;
@@ -321,6 +335,48 @@ export function TournamentFormScreen({
     }
     setSelectedCenterIds((prev) => prev.filter((id) => centers.some((center) => center.id === id)));
   }, [centers, isMultiCenters]);
+
+  useEffect(() => {
+    if (isEditMode || !isTennisBall || !tournamentProvinceId) {
+      setTournamentTypeCatalog([]);
+      setTournamentTypesLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setTournamentTypesLoading(true);
+    listTournamentTypeCatalog(tournamentProvinceId, BallType.Tennis)
+      .then((rows) => {
+        if (!cancelled) {
+          setTournamentTypeCatalog(rows);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setTournamentTypeCatalog([]);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setTournamentTypesLoading(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isEditMode, isTennisBall, tournamentProvinceId]);
+
+  useEffect(() => {
+    if (
+      tournamentTypeDefinitionId &&
+      !tournamentTypeCatalog.some((type) => type.id === tournamentTypeDefinitionId)
+    ) {
+      setTournamentTypeDefinitionId(null);
+      if (citySelection === CitySelection.Apl) {
+        setCitySelection(null);
+        setSelectedCenterIds([]);
+      }
+    }
+  }, [tournamentTypeCatalog, tournamentTypeDefinitionId, citySelection]);
 
   const loadEditForm = useCallback(async (options?: { silent?: boolean }) => {
     if (!tournamentId) {
@@ -493,19 +549,29 @@ export function TournamentFormScreen({
     clearFieldError('centers');
   }
 
-  function onScopeChange(value: CitySelection): void {
-    setCitySelection(value);
+  function onScopeChange(value: string): void {
     clearFieldError('citySelection');
-    if (value !== CitySelection.Multi) {
+    if (value === CitySelection.Multi) {
+      setCitySelection(CitySelection.Multi);
+      setTournamentTypeDefinitionId(null);
       clearCenterPicker();
+      return;
     }
+    setCitySelection(CitySelection.Apl);
+    setTournamentTypeDefinitionId(value);
+    const selectedType = tournamentTypeCatalog.find((type) => type.id === value);
+    setSelectedCenterIds(selectedType?.centerIds ?? []);
+    clearFieldError('centers');
   }
 
   function onTournamentProvinceChange(next: string): void {
     setTournamentProvinceId(next);
     setSelectedCenterIds([]);
+    setCitySelection(null);
+    setTournamentTypeDefinitionId(null);
     clearFieldError('province');
     clearFieldError('centers');
+    clearFieldError('citySelection');
   }
 
   function onBallTypeChange(value: BallType): void {
@@ -517,6 +583,8 @@ export function TournamentFormScreen({
     clearFieldError('tournamentDates');
     if (value === BallType.Leather) {
       setCitySelection(null);
+      setTournamentTypeDefinitionId(null);
+      setTournamentTypeCatalog([]);
       clearFieldError('citySelection');
       clearCenterPicker();
       setHasAuctionDate(false);
@@ -910,7 +978,9 @@ export function TournamentFormScreen({
               citySelection,
               ...(citySelection === CitySelection.Multi
                 ? { centerIds: selectedCenterIds }
-                : {}),
+                : tournamentTypeDefinitionId
+                  ? { tournamentTypeDefinitionId }
+                  : {}),
             }
           : {}),
       };
@@ -1196,9 +1266,10 @@ export function TournamentFormScreen({
                       <Select
                         label="Tournament For"
                         placeholder="Select scope"
-                        value={citySelection}
+                        value={scopeSelectValue}
                         options={scopeOptions}
-                        onChange={(value) => onScopeChange(value as CitySelection)}
+                        loading={tournamentTypesLoading}
+                        onChange={(value) => onScopeChange(value)}
                         error={fieldErrors.citySelection}
                       />
                     </View>
@@ -1235,9 +1306,10 @@ export function TournamentFormScreen({
                   <Select
                     label="Tournament For"
                     placeholder="Select scope"
-                    value={citySelection}
+                    value={scopeSelectValue}
                     options={scopeOptions}
-                    onChange={(value) => onScopeChange(value as CitySelection)}
+                    loading={tournamentTypesLoading}
+                    onChange={(value) => onScopeChange(value)}
                     error={fieldErrors.citySelection}
                   />
                 </View>

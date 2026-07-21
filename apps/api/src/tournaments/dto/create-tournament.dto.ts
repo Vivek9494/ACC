@@ -115,6 +115,16 @@ export class CreateTournamentDto implements CreateTournamentRequest {
   @IsIn(CITY_SELECTIONS, { message: M.citySelection.required })
   citySelection?: CitySelection;
 
+  /** Catalog type for Tennis + APL scope — centers come from this definition. */
+  @ValidateIf(
+    (dto: CreateTournamentDto) =>
+      dto.ballType === BallType.Tennis && dto.citySelection === CitySelection.Apl,
+  )
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  tournamentTypeDefinitionId?: string;
+
   @IsString()
   @MinLength(1, { message: M.province.required })
   provinceId!: string;

@@ -24,6 +24,19 @@ export interface TournamentTypeDefinitionDetail extends TournamentTypeDefinition
   formatConfig: unknown | null;
 }
 
+/**
+ * Create-tournament catalog row — types for a province (with center ids for
+ * linking). Readable by any authenticated tournament creator.
+ */
+export interface TournamentTypeDefinitionCatalogEntry {
+  id: string;
+  code: string;
+  name: string;
+  provinceId: string;
+  ballType: BallType;
+  centerIds: string[];
+}
+
 export interface CreateTournamentTypeDefinitionRequest {
   name: string;
   /** Optional; defaults to a slug of `name` (e.g. "APL" → "APL"). */
