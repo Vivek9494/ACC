@@ -189,64 +189,79 @@ export default function TournamentTypeDefinitionFormScreen(): React.ReactElement
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
       <ScreenHeader title={title} onBack={() => router.back()} />
 
-      <KeyboardAwareFormScrollView contentContainerClassName="gap-5 px-4 py-6">
-        <TextInput
-          label="Name"
-          value={name}
-          onChangeText={setName}
-          placeholder="e.g. APL"
-          autoCapitalize="characters"
-        />
-
-        <Select
-          label="Province"
-          placeholder="Select province"
-          value={provinceId}
-          options={provinceOptions}
-          onChange={(value) => {
-            setProvinceId(value);
-            setCenterIds([]);
-          }}
-        />
-
-        <Select
-          label="Ball Type"
-          placeholder="Select ball type"
-          value={ballType}
-          options={BALL_TYPE_OPTIONS}
-          onChange={(value) => setBallType(value as BallType)}
-        />
-
-        <MultiSelect
-          label="Participating Centers"
-          placeholder="Select centers"
-          values={centerIds}
-          options={centerOptions}
-          onChange={setCenterIds}
-          disabled={!provinceId}
-          loading={Boolean(provinceId) && centersLoading}
-          emptyMessage="No centers in this province."
-        />
-
-        {error ? <Text className="font-sans text-sm text-primary">{error}</Text> : null}
-
-        <Button
-          label={saving ? 'Saving…' : isEdit ? 'Save Changes' : 'Save Tournament Type'}
-          className="h-14"
-          disabled={saving}
-          onPress={() => void onSubmit()}
-        />
-
-        {isEdit ? (
-          <View className="pt-2">
+      <KeyboardAwareFormScrollView
+        contentContainerClassName="px-4 pt-2"
+        extraBottomPadding={32}
+        footer={
+          <SafeAreaView
+            edges={['bottom']}
+            className="border-t border-outline-variant/20 bg-background px-4 pt-3"
+          >
+            {error ? (
+              <Text className="mb-3 font-sans text-sm text-primary">{error}</Text>
+            ) : null}
             <Button
-              variant="destructive"
-              label="Delete Tournament Type"
+              label={saving ? 'Saving…' : isEdit ? 'Save Changes' : 'Save Tournament Type'}
               className="h-14"
-              onPress={requestDelete}
+              disabled={saving}
+              onPress={() => void onSubmit()}
             />
-          </View>
-        ) : null}
+            {isEdit ? (
+              <View className="mt-3">
+                <Button
+                  variant="destructive"
+                  label="Delete Tournament Type"
+                  className="h-14"
+                  onPress={requestDelete}
+                />
+              </View>
+            ) : null}
+          </SafeAreaView>
+        }
+      >
+        <View className="gap-5">
+          <TextInput
+            label="Name"
+            value={name}
+            onChangeText={setName}
+            placeholder="e.g. APL"
+            autoCapitalize="characters"
+            containerClassName="gap-1"
+          />
+
+          <Select
+            label="Province"
+            placeholder="Select province"
+            value={provinceId}
+            options={provinceOptions}
+            onChange={(value) => {
+              setProvinceId(value);
+              setCenterIds([]);
+            }}
+            containerClassName="gap-1"
+          />
+
+          <Select
+            label="Ball Type"
+            placeholder="Select ball type"
+            value={ballType}
+            options={BALL_TYPE_OPTIONS}
+            onChange={(value) => setBallType(value as BallType)}
+            containerClassName="gap-1"
+          />
+
+          <MultiSelect
+            label="Participating Centers"
+            placeholder="Select centers"
+            values={centerIds}
+            options={centerOptions}
+            onChange={setCenterIds}
+            disabled={!provinceId}
+            loading={Boolean(provinceId) && centersLoading}
+            emptyMessage="No centers in this province."
+            containerClassName="gap-1"
+          />
+        </View>
       </KeyboardAwareFormScrollView>
     </SafeAreaView>
   );
