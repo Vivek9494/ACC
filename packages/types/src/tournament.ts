@@ -279,6 +279,11 @@ export interface TournamentDetail extends TournamentSummary {
   canViewFavouritePlayers: boolean;
   /** Leather: viewer may self-register (existing leather player or invited). */
   canRegisterForLeatherTournament: boolean;
+  /**
+   * Tennis APL/CENTER: viewer’s center participates (or Admin/CM). When false,
+   * tournament is view-only — hide Registration CTA; server rejects submit.
+   */
+  canRegisterForTennisTournament: boolean;
   /** Leather: Admin / Club Manager may invite until start date. */
   canManageLeatherInvites: boolean;
   /** Authenticated viewer may open Edit Tournament (EDIT_TOURNAMENT). */

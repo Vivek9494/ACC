@@ -273,6 +273,7 @@ export default function TournamentDetailScreen(): React.ReactElement {
       userRole: user?.role,
       registrationStatus: myRegistration?.status ?? null,
       leatherRegistrationEligible: tournament.canRegisterForLeatherTournament,
+      tennisRegistrationEligible: tournament.canRegisterForTennisTournament,
       formatOpensLabel: formatRegistrationOpensLabel,
     });
   }, [myRegistration?.status, registrationChecked, status, tournament, user?.role]);

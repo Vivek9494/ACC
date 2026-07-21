@@ -80,8 +80,9 @@ export class TournamentsController {
 
   @Get()
   @Public()
-  list(): Promise<TournamentSummary[]> {
-    return this.tournaments.list();
+  async list(@Req() req: Request): Promise<TournamentSummary[]> {
+    const viewer = await this.auth.resolveOptionalUser(req);
+    return this.tournaments.list(viewer);
   }
 
   /** Clone suggestion by name (§6.2). Declared before the :tournamentId route. */
@@ -96,7 +97,7 @@ export class TournamentsController {
     return this.tournaments.listDashboardEntries(user);
   }
 
-  /** All tournaments for the browse tab — every status, no membership filter. */
+  /** Authenticated browse tab — tennis center scope + leather access filter. */
   @Get('browse')
   listBrowseEntries(@CurrentUser() user: AuthUser): Promise<TournamentBrowseEntry[]> {
     return this.tournaments.listBrowseEntries(user);

@@ -209,6 +209,10 @@ describe('RegistrationsService', () => {
       assertCanRegisterForLeather: jest.fn().mockResolvedValue(undefined),
       listLateRegisterCandidates: jest.fn().mockResolvedValue([]),
     };
+    const tennisVisibility = {
+      assertCanRegisterForTennisTournament: jest.fn().mockResolvedValue(undefined),
+      canRegisterForTennisTournament: jest.fn().mockResolvedValue(true),
+    };
     const mediaUrls = {
       resolveReadUrl: jest.fn(async (value: string | null) => value),
       resolveReadUrls: jest.fn(async (values: (string | null)[]) => values),
@@ -224,6 +228,7 @@ describe('RegistrationsService', () => {
       notifications as unknown as NotificationsService,
       audit as unknown as AuditService,
       leatherVisibility as unknown as LeatherTournamentVisibilityService,
+      tennisVisibility as unknown as import('../tournaments/tennis-tournament-visibility.service').TennisTournamentVisibilityService,
       mediaUrls as unknown as import('../storage/media-url.resolver').MediaUrlResolver,
     );
   });

@@ -5,6 +5,7 @@ import { ActivityIndicator, Alert, Pressable, ScrollView, View } from 'react-nat
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '../ui/Button';
+import { ListRowIconButton } from '../ui/ListRowIconButton';
 import { ScreenHeader } from '../ui/ScreenHeader';
 import { FIELD_ORANGE } from '../ui/fieldStyles';
 import { Text } from '../ui/Text';
@@ -130,30 +131,35 @@ export function AdminProvincesListScreen({
               {provinces.map((province) => (
                 <View
                   key={province.id}
-                  className="gap-3 rounded-xl border border-outline-variant bg-surface-container-lowest p-4"
+                  className="gap-1 rounded-xl border border-outline-variant bg-surface-container-lowest p-4"
                 >
+                  <View className="flex-row items-center gap-2">
+                    <Pressable
+                      className="min-w-0 flex-1"
+                      onPress={() => router.push(`/admin/provinces/${province.id}`)}
+                    >
+                      <Text className="font-sans-bold text-lg text-on-surface">
+                        {province.name}
+                      </Text>
+                    </Pressable>
+                    <View className="flex-row items-center gap-1">
+                      <ListRowIconButton
+                        icon="pencil"
+                        accessibilityLabel={`Edit ${province.name}`}
+                        onPress={() => router.push(`/admin/provinces/${province.id}/edit`)}
+                      />
+                      <ListRowIconButton
+                        icon="trash-outline"
+                        accessibilityLabel={`Delete ${province.name}`}
+                        onPress={() => requestDeleteProvince(province)}
+                      />
+                    </View>
+                  </View>
                   <Pressable onPress={() => router.push(`/admin/provinces/${province.id}`)}>
-                    <Text className="font-sans-bold text-lg text-on-surface">{province.name}</Text>
-                    <Text className="mt-1 font-sans text-sm text-on-surface-variant">
+                    <Text className="font-sans text-sm text-on-surface-variant">
                       {province.centerCount} center{province.centerCount === 1 ? '' : 's'}
                     </Text>
                   </Pressable>
-                  <View className="flex-row flex-wrap gap-2">
-                    <Button
-                      variant="outline"
-                      label="Edit"
-                      className="h-10 px-4"
-                      textClassName="text-sm"
-                      onPress={() => router.push(`/admin/provinces/${province.id}/edit`)}
-                    />
-                    <Button
-                      variant="destructive"
-                      label="Delete"
-                      className="h-10 px-4"
-                      textClassName="text-sm"
-                      onPress={() => requestDeleteProvince(province)}
-                    />
-                  </View>
                 </View>
               ))}
             </View>

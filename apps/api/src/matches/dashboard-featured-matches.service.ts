@@ -65,8 +65,8 @@ const FEATURED_MATCH_INCLUDE = {
 
 /**
  * App-wide today's fixtures for role home dashboards.
- * CENTER tournament matches are filtered to the viewer's participating centers
- * (Admin / Club Manager see all).
+ * Tennis APL/CENTER matches are visible to all authenticated viewers
+ * (registration/actions remain center-scoped elsewhere).
  */
 @Injectable()
 export class DashboardFeaturedMatchesService {

@@ -5,6 +5,7 @@ import { ActivityIndicator, Alert, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '../../../src/components/ui/Button';
+import { ListRowIconButton } from '../../../src/components/ui/ListRowIconButton';
 import { ScreenHeader } from '../../../src/components/ui/ScreenHeader';
 import { FIELD_ORANGE } from '../../../src/components/ui/fieldStyles';
 import { Text } from '../../../src/components/ui/Text';
@@ -69,15 +70,6 @@ export default function ProvinceCentersScreen(): React.ReactElement {
         title={province?.name ?? 'Province'}
         subtitle="Centers"
         onBack={() => router.back()}
-        trailing={
-          <Button
-            variant="outline"
-            label="Edit"
-            className="h-10 px-3"
-            textClassName="text-sm"
-            onPress={() => router.push(`/admin/provinces/${provinceId}/edit`)}
-          />
-        }
       />
 
       <ScrollView contentContainerClassName="gap-4 px-4 py-6">
@@ -88,24 +80,24 @@ export default function ProvinceCentersScreen(): React.ReactElement {
           centers.map((center) => (
             <View
               key={center.id}
-              className="gap-3 rounded-xl border border-outline-variant bg-surface-container-lowest p-4"
+              className="rounded-xl border border-outline-variant bg-surface-container-lowest p-4"
             >
-              <Text className="font-sans-bold text-lg text-on-surface">{center.name}</Text>
-              <View className="flex-row flex-wrap gap-2">
-                <Button
-                  variant="outline"
-                  label="Edit"
-                  className="h-10 px-4"
-                  textClassName="text-sm"
-                  onPress={() => router.push(`/admin/centers/${center.id}`)}
-                />
-                <Button
-                  variant="destructive"
-                  label="Delete"
-                  className="h-10 px-4"
-                  textClassName="text-sm"
-                  onPress={() => requestDeleteCenter(center)}
-                />
+              <View className="flex-row items-center gap-2">
+                <Text className="min-w-0 flex-1 font-sans-bold text-lg text-on-surface">
+                  {center.name}
+                </Text>
+                <View className="flex-row items-center gap-1">
+                  <ListRowIconButton
+                    icon="pencil"
+                    accessibilityLabel={`Edit ${center.name}`}
+                    onPress={() => router.push(`/admin/centers/${center.id}`)}
+                  />
+                  <ListRowIconButton
+                    icon="trash-outline"
+                    accessibilityLabel={`Delete ${center.name}`}
+                    onPress={() => requestDeleteCenter(center)}
+                  />
+                </View>
               </View>
             </View>
           ))

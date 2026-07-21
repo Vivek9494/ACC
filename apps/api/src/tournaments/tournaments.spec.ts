@@ -228,6 +228,7 @@ describe('TournamentsService', () => {
             assertCanViewCenterLevelTournament: jest.fn().mockResolvedValue(undefined),
             bypassesCenterTournamentScope: jest.fn().mockReturnValue(true),
             viewerParticipatingCenterIds: jest.fn().mockReturnValue([]),
+            canRegisterForTennisTournament: jest.fn().mockResolvedValue(true),
             filterTournamentIdsVisibleToViewer: jest
               .fn()
               .mockImplementation(async (_v: unknown, ids: string[]) => new Set(ids)),

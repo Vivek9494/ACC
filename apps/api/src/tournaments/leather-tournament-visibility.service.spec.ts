@@ -74,6 +74,71 @@ describe('LeatherTournamentVisibilityService', () => {
     await expect(service.isExistingLeatherPlayer('player-1')).resolves.toBe(true);
   });
 
+  it('lists all leather tournaments for Admin and Club Manager', async () => {
+    prisma.tournament.findMany.mockResolvedValue([{ id: 'leather-1' }, { id: 'leather-2' }]);
+
+    await expect(
+      service.getVisibleLeatherTournamentIds({
+        id: 'admin-1',
+        role: UserRole.Admin,
+      } as never),
+    ).resolves.toEqual(['leather-1', 'leather-2']);
+    expect(prisma.matchSquadPlayer.findFirst).not.toHaveBeenCalled();
+
+    await expect(
+      service.getVisibleLeatherTournamentIds({
+        id: 'cm-1',
+        role: UserRole.ClubManager,
+      } as never),
+    ).resolves.toEqual(['leather-1', 'leather-2']);
+  });
+
+  it('lists all leather for existing players and only invites otherwise', async () => {
+    prisma.matchSquadPlayer.findFirst.mockResolvedValue({ id: 'squad-1' });
+    prisma.tournament.findMany.mockResolvedValue([{ id: 'leather-1' }]);
+
+    await expect(
+      service.getVisibleLeatherTournamentIds({
+        id: 'player-1',
+        role: UserRole.Player,
+      } as never),
+    ).resolves.toEqual(['leather-1']);
+
+    prisma.matchSquadPlayer.findFirst.mockResolvedValue(null);
+    prisma.teamMembership.findFirst.mockResolvedValue(null);
+    prisma.tournamentLeatherInvite.findMany.mockResolvedValue([{ tournamentId: 'invited-1' }]);
+
+    await expect(
+      service.getVisibleLeatherTournamentIds({
+        id: 'player-2',
+        role: UserRole.Player,
+      } as never),
+    ).resolves.toEqual(['invited-1']);
+  });
+
+  it('allows Admin to view any leather tournament without editor flag', async () => {
+    await expect(
+      service.canViewLeatherTournament('admin-1', 'tour-1', {
+        id: 'admin-1',
+        role: UserRole.Admin,
+      } as never),
+    ).resolves.toBe(true);
+    expect(prisma.matchSquadPlayer.findFirst).not.toHaveBeenCalled();
+  });
+
+  it('denies non-leather players without an invite', async () => {
+    prisma.matchSquadPlayer.findFirst.mockResolvedValue(null);
+    prisma.teamMembership.findFirst.mockResolvedValue(null);
+    prisma.tournamentLeatherInvite.findUnique.mockResolvedValue(null);
+
+    await expect(
+      service.canViewLeatherTournament('player-1', 'tour-1', {
+        id: 'player-1',
+        role: UserRole.Player,
+      } as never),
+    ).resolves.toBe(false);
+  });
+
   it('allows Club Manager to register without invite or existing leather history', async () => {
     await expect(
       service.canRegisterForLeatherTournament('cm-1', 'tour-1', {

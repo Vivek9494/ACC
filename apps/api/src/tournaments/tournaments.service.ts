@@ -276,25 +276,8 @@ export class TournamentsService {
       orderBy: [{ year: 'desc' }, { createdAt: 'desc' }],
     });
 
-    let visibleLeatherIds: Set<string> | null = null;
-    if (viewer) {
-      const ids = await this.leatherVisibility.getVisibleLeatherTournamentIds(viewer.id);
-      visibleLeatherIds = new Set(ids);
-    }
-
-    return Promise.all(
-      rows
-        .filter((row) => {
-          if (row.ballType !== BallType.Leather) {
-            return true;
-          }
-          if (!viewer) {
-            return false;
-          }
-          return visibleLeatherIds?.has(row.id) ?? false;
-        })
-        .map((row) => this.toSummary(row)),
-    );
+    const visible = await this.filterLeatherVisibleTournaments(viewer, rows);
+    return Promise.all(visible.map((row) => this.toSummary(row)));
   }
 
   async getDetail(id: string, viewer: AuthUser | null = null): Promise<TournamentDetail> {
@@ -510,6 +493,7 @@ export class TournamentsService {
 
     let canEdit = false;
     let canRegisterForLeatherTournament = false;
+    let canRegisterForTennisTournament = false;
     let canManageLeatherInvitesFlag = false;
     let canScheduleMatches = false;
     let viewerLeaderTeamIds: string[] = [];
@@ -541,6 +525,13 @@ export class TournamentsService {
           ballType: BallType.Leather,
           startAt: row.startAt.toISOString(),
         });
+      } else if (row.ballType === BallType.Tennis) {
+        canRegisterForTennisTournament =
+          await this.tennisVisibility.canRegisterForTennisTournament(viewer, {
+            id,
+            type: row.type,
+            ballType: row.ballType,
+          });
       }
     }
 
@@ -564,6 +555,7 @@ export class TournamentsService {
       canViewRegisteredPlayersList,
       canViewFavouritePlayers,
       canRegisterForLeatherTournament,
+      canRegisterForTennisTournament,
       canManageLeatherInvites: canManageLeatherInvitesFlag,
       canEdit,
       canScheduleMatches,
@@ -875,8 +867,9 @@ export class TournamentsService {
   }
 
   /**
-   * Browse tab — APL/CENTER tournaments scoped to the viewer's participating
-   * centers; Admin / Club Manager see all. Includes soft-deleted rows as cancelled.
+   * Browse tab — Tennis APL/CENTER visible to all (actions gated separately);
+   * Leather by the same access rule as detail.
+   * Admin / Club Manager see all leather. Includes soft-deleted rows as cancelled.
    */
   async listBrowseEntries(actor: AuthUser): Promise<TournamentBrowseEntry[]> {
     const centerScope = this.tennisVisibility.centerTournamentListWhere(actor);
@@ -886,14 +879,42 @@ export class TournamentsService {
       orderBy: [{ year: 'desc' }, { createdAt: 'desc' }],
     });
 
+    const visible = await this.filterLeatherVisibleTournaments(actor, rows, {
+      includeSoftDeleted: true,
+    });
+
     return Promise.all(
-      rows.map(async (row) => ({
+      visible.map(async (row) => ({
         tournament: await this.toSummary(row),
         cancelled: row.isDeleted,
         permissions: row.isDeleted
           ? { canEdit: false, canDelete: false, canManageCenterPlayers: false }
           : await this.resolveTournamentMenuPermissions(actor, row),
       })),
+    );
+  }
+
+  /**
+   * Drops leather tournaments the viewer cannot open (same rule as detail).
+   * Guests never receive leather rows.
+   */
+  private async filterLeatherVisibleTournaments<T extends { id: string; ballType: string }>(
+    viewer: AuthUser | null | undefined,
+    rows: T[],
+    options: { includeSoftDeleted?: boolean } = {},
+  ): Promise<T[]> {
+    const leatherRows = rows.filter((row) => row.ballType === BallType.Leather);
+    if (leatherRows.length === 0) {
+      return rows;
+    }
+    if (!viewer) {
+      return rows.filter((row) => row.ballType !== BallType.Leather);
+    }
+    const visibleIds = new Set(
+      await this.leatherVisibility.getVisibleLeatherTournamentIds(viewer, options),
+    );
+    return rows.filter(
+      (row) => row.ballType !== BallType.Leather || visibleIds.has(row.id),
     );
   }
 

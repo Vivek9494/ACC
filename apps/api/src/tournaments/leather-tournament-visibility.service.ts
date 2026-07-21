@@ -88,16 +88,41 @@ export class LeatherTournamentVisibilityService {
     return rows.map((row) => row.tournamentId);
   }
 
-  /** Dashboard / list: existing → all leather; otherwise invited tournaments only. */
-  async getVisibleLeatherTournamentIds(userId: string): Promise<string[]> {
+  /** Admin / Club Manager may view every leather tournament (listing + detail). */
+  bypassesLeatherTournamentScope(actor: AuthUser | null | undefined): boolean {
+    return actor?.role === UserRole.Admin || actor?.role === UserRole.ClubManager;
+  }
+
+  /**
+   * Leather tournament IDs visible to the actor — same rule as
+   * {@link canViewLeatherTournament} (Admin/CM → all; existing leather → all;
+   * otherwise invites only).
+   */
+  async getVisibleLeatherTournamentIds(
+    actor: AuthUser,
+    options: { includeSoftDeleted?: boolean } = {},
+  ): Promise<string[]> {
+    const leatherWhere: Prisma.TournamentWhereInput = {
+      ballType: BallType.Leather,
+      ...(options.includeSoftDeleted ? {} : activeTournamentWhere),
+    };
+
+    if (this.bypassesLeatherTournamentScope(actor)) {
+      const rows = await this.prisma.tournament.findMany({
+        where: leatherWhere,
+        select: { id: true },
+      });
+      return rows.map((row) => row.id);
+    }
+
     const [isExisting, invitedIds] = await Promise.all([
-      this.isExistingLeatherPlayer(userId),
-      this.getInvitedTournamentIds(userId),
+      this.isExistingLeatherPlayer(actor.id),
+      this.getInvitedTournamentIds(actor.id),
     ]);
 
     if (isExisting) {
       const rows = await this.prisma.tournament.findMany({
-        where: { ...activeTournamentWhere, ballType: BallType.Leather },
+        where: leatherWhere,
         select: { id: true },
       });
       return rows.map((row) => row.id);
@@ -112,6 +137,9 @@ export class LeatherTournamentVisibilityService {
     actor: AuthUser | null | undefined,
     options: LeatherTournamentViewOptions = {},
   ): Promise<boolean> {
+    if (this.bypassesLeatherTournamentScope(actor)) {
+      return true;
+    }
     if (options.allowClubManagerManagement && actor?.role === UserRole.ClubManager) {
       return true;
     }

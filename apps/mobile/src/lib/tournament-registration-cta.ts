@@ -30,6 +30,8 @@ export interface RegistrationCtaInput {
   registrationStatus: RegistrationStatusType | null;
   /** Leather only — from tournament detail API. */
   leatherRegistrationEligible?: boolean;
+  /** Tennis APL/CENTER — from tournament detail API; false = view-only. */
+  tennisRegistrationEligible?: boolean;
   formatOpensLabel: (iso: string) => string;
 }
 
@@ -60,6 +62,7 @@ export function resolveRegistrationCta(input: RegistrationCtaInput): Registratio
     userRole,
     registrationStatus,
     leatherRegistrationEligible,
+    tennisRegistrationEligible,
     formatOpensLabel,
   } = input;
 
@@ -74,6 +77,13 @@ export function resolveRegistrationCta(input: RegistrationCtaInput): Registratio
   if (
     tournament.ballType === BallType.Leather &&
     leatherRegistrationEligible === false
+  ) {
+    return { kind: 'hidden' };
+  }
+
+  if (
+    tournament.ballType === BallType.Tennis &&
+    tennisRegistrationEligible === false
   ) {
     return { kind: 'hidden' };
   }

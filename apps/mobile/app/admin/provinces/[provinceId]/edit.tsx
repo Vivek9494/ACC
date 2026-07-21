@@ -57,21 +57,23 @@ export default function EditProvinceScreen(): React.ReactElement {
       {loading ? (
         <ActivityIndicator className="mt-8" color={FIELD_ORANGE} />
       ) : (
-        <KeyboardAwareFormScrollView contentContainerClassName="gap-5 px-4 py-6">
-          <TextInput
-            label="Province Name"
-            value={name}
-            onChangeText={setName}
-            placeholder="Province name"
-            autoCapitalize="words"
-          />
-          {error ? <Text className="font-sans text-sm text-primary">{error}</Text> : null}
-          <Button
-            label={submitting ? 'Saving…' : 'Save Changes'}
-            className="h-14"
-            disabled={submitting}
-            onPress={() => void onSubmit()}
-          />
+        <KeyboardAwareFormScrollView contentContainerClassName="px-4 py-6">
+          <View className="gap-5">
+            <TextInput
+              label="Province Name"
+              value={name}
+              onChangeText={setName}
+              placeholder="Province name"
+              autoCapitalize="words"
+            />
+            {error ? <Text className="font-sans text-sm text-primary">{error}</Text> : null}
+            <Button
+              label={submitting ? 'Saving…' : 'Save Changes'}
+              className="h-14"
+              disabled={submitting}
+              onPress={() => void onSubmit()}
+            />
+          </View>
         </KeyboardAwareFormScrollView>
       )}
     </SafeAreaView>

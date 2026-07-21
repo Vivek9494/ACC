@@ -38,21 +38,23 @@ export default function NewProvinceScreen(): React.ReactElement {
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
       <ScreenHeader title="Add Province" onBack={() => router.back()} />
 
-      <KeyboardAwareFormScrollView contentContainerClassName="gap-5 px-4 py-6">
-        <TextInput
-          label="Province Name"
-          value={name}
-          onChangeText={setName}
-          placeholder="e.g. Ontario"
-          autoCapitalize="words"
-        />
-        {error ? <Text className="font-sans text-sm text-primary">{error}</Text> : null}
-        <Button
-          label={submitting ? 'Saving…' : 'Save Province'}
-          className="h-14"
-          disabled={submitting}
-          onPress={() => void onSubmit()}
-        />
+      <KeyboardAwareFormScrollView contentContainerClassName="px-4 py-6">
+        <View className="gap-5">
+          <TextInput
+            label="Province Name"
+            value={name}
+            onChangeText={setName}
+            placeholder="e.g. Ontario"
+            autoCapitalize="words"
+          />
+          {error ? <Text className="font-sans text-sm text-primary">{error}</Text> : null}
+          <Button
+            label={submitting ? 'Saving…' : 'Save Province'}
+            className="h-14"
+            disabled={submitting}
+            onPress={() => void onSubmit()}
+          />
+        </View>
       </KeyboardAwareFormScrollView>
     </SafeAreaView>
   );

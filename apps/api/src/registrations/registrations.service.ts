@@ -53,6 +53,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { MediaUrlResolver } from '../storage/media-url.resolver';
 import { selectableUserWhere } from '../users/user-query';
 import { LeatherTournamentVisibilityService } from '../tournaments/leather-tournament-visibility.service';
+import { TennisTournamentVisibilityService } from '../tournaments/tennis-tournament-visibility.service';
 import { assertTournamentActive } from '../tournaments/tournament-query';
 import type { BuildCustomFormDto, CreateCustomFormRequestDto } from './dto/custom-form.dto';
 import type { ListLeatherRegisteredPlayersDto } from './dto/list-leather-registrations.dto';
@@ -99,6 +100,7 @@ export class RegistrationsService {
     private readonly notifications: NotificationsService,
     private readonly audit: AuditService,
     private readonly leatherVisibility: LeatherTournamentVisibilityService,
+    private readonly tennisVisibility: TennisTournamentVisibilityService,
     private readonly mediaUrls: MediaUrlResolver,
   ) {}
 
@@ -121,6 +123,11 @@ export class RegistrationsService {
 
     const ballType = tournament.ballType as BallType;
     await this.leatherVisibility.assertCanRegisterForLeather(actor, tournamentId, ballType);
+    await this.tennisVisibility.assertCanRegisterForTennisTournament(actor, {
+      id: tournament.id,
+      type: tournament.type,
+      ballType: tournament.ballType,
+    });
 
     const existing = await this.prisma.registration.findUnique({
       where: { tournamentId_userId: { tournamentId, userId: actor.id } },
