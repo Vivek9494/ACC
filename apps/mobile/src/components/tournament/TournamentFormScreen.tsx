@@ -230,7 +230,7 @@ export function TournamentFormScreen({
 
   const scopeOptions = useMemo(
     (): SelectOption[] => [
-      { value: CitySelection.All, label: 'All the Centers' },
+      { value: CitySelection.Apl, label: 'APL' },
       { value: CitySelection.Multi, label: 'Multi-centers' },
     ],
     [],

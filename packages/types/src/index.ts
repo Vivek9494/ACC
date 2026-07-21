@@ -79,6 +79,7 @@ export * from './tournament-dates';
 export * from './tournament-dashboard';
 export * from './tournament-display-status';
 export * from './tournament-registration';
+export * from './tournament-type-definition';
 export * from './player-mom-stats';
 export * from './player-profile';
 export * from './team';

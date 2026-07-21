@@ -47,7 +47,7 @@ export async function buildTournamentScopeDisplay(
     links[0]?.center.province.name ??
     null;
   const centerNames = links.map((link) => link.center.name);
-  let citySelection: CitySelection | null = CitySelection.All;
+  let citySelection: CitySelection | null = CitySelection.Apl;
   if (type === TournamentType.Center) {
     citySelection = centerNames.length === 1 ? CitySelection.Single : CitySelection.Multi;
   }

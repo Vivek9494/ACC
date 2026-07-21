@@ -28,7 +28,7 @@ export function resolvesToAplOnCreate(
   ballType: BallType | null,
   citySelection: CitySelection | null,
 ): boolean {
-  return ballType === BallType.Tennis && citySelection === CitySelection.All;
+  return ballType === BallType.Tennis && citySelection === CitySelection.Apl;
 }
 
 export function canConfigureKnockoutTeamCount(

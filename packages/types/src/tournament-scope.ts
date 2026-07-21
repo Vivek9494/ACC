@@ -3,9 +3,9 @@ import type { TournamentScopeDisplay } from './tournament';
 
 /** Full scope line for tournament details (from existing Tournament For + province/centers). */
 export function formatTournamentScopeLine(scope: TournamentScopeDisplay): string | null {
-  if (scope.citySelection === CitySelection.All) {
+  if (scope.citySelection === CitySelection.Apl) {
     const province = scope.provinceName?.trim();
-    return province ? `${province} · All Centers` : 'All Centers';
+    return province ? `${province} · APL` : 'APL';
   }
 
   if (scope.centerNames.length > 0) {
@@ -20,7 +20,7 @@ export function formatTournamentScopeLineTruncated(
   scope: TournamentScopeDisplay,
   maxCenters = 2,
 ): string | null {
-  if (scope.citySelection === CitySelection.All) {
+  if (scope.citySelection === CitySelection.Apl) {
     return formatTournamentScopeLine(scope);
   }
 

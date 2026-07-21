@@ -272,6 +272,7 @@ model Province {
   centers Center[]
 
   tournaments Tournament[]
+  tournamentTypeDefinitions TournamentTypeDefinition[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -288,6 +289,7 @@ model Center {
   users           User[]
   registrations   Registration[]
   tournamentLinks TournamentCenter[]
+  tournamentTypeDefinitionLinks TournamentTypeDefinitionCenter[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -549,7 +551,7 @@ model TournamentLeatherInvite {
 }
 
 /// Which Centers (cities) participate — drives the §1.1 type-resolution logic
-/// (APL = all cities; Center-level = a subset).
+/// (APL = all cities or defined subset; Center-level = a subset).
 model TournamentCenter {
   tournamentId String
   centerId     String
@@ -557,6 +559,42 @@ model TournamentCenter {
   center       Center     @relation(fields: [centerId], references: [id])
 
   @@id([tournamentId, centerId])
+  @@index([centerId])
+}
+
+/// Admin-configured tournament type catalog (e.g. APL with participating centers).
+/// Distinct from the resolved {@link TournamentType} enum on Tournament.
+model TournamentTypeDefinition {
+  id         String   @id @default(uuid())
+  /// Stable lookup key (e.g. "APL"); unique among non-deleted rows.
+  code       String
+  name       String
+  provinceId String
+  province   Province @relation(fields: [provinceId], references: [id])
+  ballType   BallType
+  /// Reserved for future format/bracket config — unused for now.
+  formatConfig Json?
+  isDeleted  Boolean  @default(false)
+  deletedAt  DateTime?
+
+  centerLinks TournamentTypeDefinitionCenter[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([provinceId])
+  @@index([code])
+  @@index([isDeleted])
+}
+
+/// Participating centers for a {@link TournamentTypeDefinition}.
+model TournamentTypeDefinitionCenter {
+  tournamentTypeDefinitionId String
+  centerId                   String
+  definition                 TournamentTypeDefinition @relation(fields: [tournamentTypeDefinitionId], references: [id], onDelete: Cascade)
+  center                     Center                   @relation(fields: [centerId], references: [id])
+
+  @@id([tournamentTypeDefinitionId, centerId])
   @@index([centerId])
 }
 

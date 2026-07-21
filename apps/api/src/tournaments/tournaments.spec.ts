@@ -26,6 +26,7 @@ interface TxMock {
   tournamentDate: { createMany: jest.Mock; deleteMany: jest.Mock };
   center: { findMany: jest.Mock };
   tournamentCenter: { createMany: jest.Mock };
+  tournamentTypeDefinition: { findFirst: jest.Mock };
   team: { findMany: jest.Mock; create: jest.Mock };
   roleAssignment: { findMany: jest.Mock; createMany: jest.Mock };
 }
@@ -110,6 +111,7 @@ describe('TournamentsService', () => {
     registration: { findMany: jest.Mock; count: jest.Mock };
     province: { findUnique: jest.Mock };
     center: { findMany: jest.Mock };
+    user: { findUnique: jest.Mock };
   };
   let permissions: { check: jest.Mock };
   let notifications: { notify: jest.Mock; sendToAudience: jest.Mock };
@@ -133,6 +135,7 @@ describe('TournamentsService', () => {
       },
       center: { findMany: jest.fn().mockResolvedValue([]) },
       tournamentCenter: { createMany: jest.fn().mockResolvedValue({ count: 0 }) },
+      tournamentTypeDefinition: { findFirst: jest.fn().mockResolvedValue(null) },
       team: {
         findMany: jest.fn().mockResolvedValue([]),
         create: jest.fn().mockImplementation(({ data }: { data: { name: string } }) =>
@@ -170,6 +173,9 @@ describe('TournamentsService', () => {
       },
       center: {
         findMany: jest.fn().mockResolvedValue([{ id: 'center-A' }, { id: 'center-B' }]),
+      },
+      user: {
+        findUnique: jest.fn().mockResolvedValue({ role: 'PLAYER', centerId: 'center-A' }),
       },
     };
     permissions = { check: jest.fn().mockResolvedValue(true) };
@@ -285,16 +291,55 @@ describe('TournamentsService', () => {
       );
     });
 
-    it('resolves Tennis + Club Manager + ALL cities to APL and checks CREATE_APL_TOURNAMENT', async () => {
+    it('resolves Tennis + Club Manager + APL scope to APL and checks CREATE_APL_TOURNAMENT', async () => {
       await service.create(
         actor,
-        tennisDto({ citySelection: 'ALL', provinceId: 'prov-1' }),
+        tennisDto({ citySelection: 'APL', provinceId: 'prov-1' }),
       );
       expect(permissions.check).toHaveBeenCalledWith(
         Permission.CREATE_APL_TOURNAMENT,
         actor,
         {},
       );
+    });
+
+    it('links APL-defined centers when an APL type exists for the province', async () => {
+      tx.center.findMany.mockResolvedValue([
+        { id: 'center-A' },
+        { id: 'center-B' },
+        { id: 'center-C' },
+      ]);
+      tx.tournamentTypeDefinition.findFirst.mockResolvedValue({
+        id: 'apl-def',
+        centerLinks: [{ centerId: 'center-A' }, { centerId: 'center-C' }],
+      });
+      await service.create(
+        actor,
+        tennisDto({ citySelection: 'APL', provinceId: 'prov-1' }),
+      );
+      expect(tx.tournamentCenter.createMany).toHaveBeenCalledWith({
+        data: [
+          { tournamentId: 'tid', centerId: 'center-A' },
+          { tournamentId: 'tid', centerId: 'center-C' },
+        ],
+        skipDuplicates: true,
+      });
+    });
+
+    it('falls back to all province centers for APL when no type is defined', async () => {
+      tx.center.findMany.mockResolvedValue([{ id: 'center-A' }, { id: 'center-B' }]);
+      tx.tournamentTypeDefinition.findFirst.mockResolvedValue(null);
+      await service.create(
+        actor,
+        tennisDto({ citySelection: 'APL', provinceId: 'prov-1' }),
+      );
+      expect(tx.tournamentCenter.createMany).toHaveBeenCalledWith({
+        data: [
+          { tournamentId: 'tid', centerId: 'center-A' },
+          { tournamentId: 'tid', centerId: 'center-B' },
+        ],
+        skipDuplicates: true,
+      });
     });
 
     it('resolves Tennis + Multi-centers to CENTER and checks CREATE_CENTER_TOURNAMENT', async () => {
@@ -860,7 +905,7 @@ describe('CreateTournamentDto', () => {
       substitutesAllowed: 2,
       dates: ['2026-06-15', '2026-09-30'],
       ballType: 'TENNIS',
-      citySelection: 'ALL',
+      citySelection: 'APL',
       provinceId: 'prov-1',
       format: 'LEAGUE_SINGLE_ROUND_ROBIN',
       impactPlayerEnabled: false,

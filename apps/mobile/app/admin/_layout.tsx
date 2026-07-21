@@ -18,6 +18,7 @@ export default function AdminLayout(): React.ReactElement {
       <Stack.Screen name="broadcast" />
       <Stack.Screen name="provinces" />
       <Stack.Screen name="centers" />
+      <Stack.Screen name="tournament-types/[id]" />
       <Stack.Screen name="users/new" />
       <Stack.Screen name="users/[userId]" />
     </Stack>

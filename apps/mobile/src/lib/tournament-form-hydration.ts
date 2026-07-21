@@ -73,8 +73,8 @@ function scopeLabelFor(data: TournamentEditFormData): string {
   if (data.ballType === BallType.Leather || data.type === 'ACC') {
     return `Leather Ball (${APP_SHORT_NAME})`;
   }
-  if (data.scopeDisplay.citySelection === CitySelection.All) {
-    return 'All the Centers (APL)';
+  if (data.scopeDisplay.citySelection === CitySelection.Apl) {
+    return 'APL';
   }
   if (data.scopeDisplay.citySelection === CitySelection.Multi) {
     return 'Multi-centers';

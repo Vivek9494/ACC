@@ -133,9 +133,9 @@ export interface TournamentScorerManagementContext {
   participatingCenterIds: string[];
 }
 
-/** Province-wide tennis tournament (APL / "All Centers"). */
+/** Province-wide tennis tournament (APL / CitySelection.Apl). */
 export function isAllCentersTennisScope(scope: TournamentScopeDisplay): boolean {
-  return scope.citySelection === CitySelection.All;
+  return scope.citySelection === CitySelection.Apl;
 }
 
 /** Center-level tennis tournament with explicit participating centers. */

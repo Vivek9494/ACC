@@ -24,8 +24,8 @@ export type BallType = (typeof BallType)[keyof typeof BallType];
 
 /** City coverage option chosen at creation (spec §1.1). */
 export const CitySelection = {
-  /** Every city of the province participates. */
-  All: 'ALL',
+  /** Province APL catalog — participating centers from TournamentTypeDefinition. */
+  Apl: 'APL',
   /** More than one city, but not all. */
   Multi: 'MULTI',
   /** A single city. */

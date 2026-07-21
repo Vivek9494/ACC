@@ -17,16 +17,16 @@ describe('TournamentTypeResolverService', () => {
     expect(
       service.resolve({
         ballType: BallType.Leather,
-        citySelection: CitySelection.All,
+        citySelection: CitySelection.Apl,
       }),
     ).toBe(TournamentType.ACC);
   });
 
-  it('resolves Tennis Ball + All the Centers to APL', () => {
+  it('resolves Tennis Ball + APL scope to APL', () => {
     expect(
       service.resolve({
         ballType: BallType.Tennis,
-        citySelection: CitySelection.All,
+        citySelection: CitySelection.Apl,
       }),
     ).toBe(TournamentType.APL);
   });

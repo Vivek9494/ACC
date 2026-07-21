@@ -16,6 +16,7 @@ import { AuditModule } from './audit/audit.module';
 import { AuthModule } from './auth/auth.module';
 import { AuthzModule } from './authz/authz.module';
 import { CentersModule } from './centers/centers.module';
+import { TournamentTypeDefinitionsModule } from './tournament-type-definitions/tournament-type-definitions.module';
 import { validateEnv } from './config/env.validation';
 import { StorageModule } from './storage/storage.module';
 import { HealthModule } from './health/health.module';
@@ -70,6 +71,7 @@ import { KnockoutSeedingModule } from './knockout-seeding/knockout-seeding.modul
     GuestModule,
     ClubManagerModule,
     CentersModule,
+    TournamentTypeDefinitionsModule,
     TournamentsModule,
     TeamsModule,
     GroupsModule,

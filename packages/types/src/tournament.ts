@@ -114,7 +114,7 @@ export interface CreateTournamentRequest {
   substitutesAllowed: number;
   /** Province the tournament belongs to (required on create). */
   provinceId: string;
-  /** Participating Center ids for MULTI/SINGLE; ignored when citySelection=ALL. */
+  /** Participating Center ids for MULTI/SINGLE; ignored when citySelection=APL. */
   centerIds?: string[];
   format: TournamentFormat;
   impactPlayerEnabled: boolean;

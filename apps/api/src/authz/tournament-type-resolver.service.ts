@@ -12,7 +12,7 @@ export interface TournamentTypeInput {
  * Resolves tournament type from ball type + scope (creator role is NOT a factor):
  *
  * - Leather Ball → ACC (scope ignored)
- * - Tennis Ball + ALL → APL
+ * - Tennis Ball + APL → APL
  * - Tennis Ball + MULTI or SINGLE → CENTER (Center-level)
  *
  * Whether the caller may create that type is enforced separately via RBAC.
@@ -31,7 +31,7 @@ export class TournamentTypeResolverService {
       });
     }
 
-    if (input.citySelection === CitySelection.All) {
+    if (input.citySelection === CitySelection.Apl) {
       return TournamentType.APL;
     }
 

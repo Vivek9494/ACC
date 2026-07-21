@@ -114,6 +114,10 @@ import {
   type PlaceSuggestion,
   type ProvinceDetail,
   type ProvinceSummary,
+  type CreateTournamentTypeDefinitionRequest,
+  type TournamentTypeDefinitionDetail,
+  type TournamentTypeDefinitionSummary,
+  type UpdateTournamentTypeDefinitionRequest,
   type RecordDeliveryRequest,
   type RecordTossRequest,
   type RegisterPushTokenRequest,
@@ -588,6 +592,39 @@ export function updateProvince(
 
 export function deleteProvince(id: string): Promise<void> {
   return apiFetch<void>(`/provinces/${id}`, { method: 'DELETE' });
+}
+
+export function listTournamentTypeDefinitions(): Promise<TournamentTypeDefinitionSummary[]> {
+  return apiFetch<TournamentTypeDefinitionSummary[]>('/admin/tournament-types');
+}
+
+export function getTournamentTypeDefinition(
+  id: string,
+): Promise<TournamentTypeDefinitionDetail> {
+  return apiFetch<TournamentTypeDefinitionDetail>(`/admin/tournament-types/${id}`);
+}
+
+export function createTournamentTypeDefinition(
+  body: CreateTournamentTypeDefinitionRequest,
+): Promise<TournamentTypeDefinitionDetail> {
+  return apiFetch<TournamentTypeDefinitionDetail>('/admin/tournament-types', {
+    method: 'POST',
+    body,
+  });
+}
+
+export function updateTournamentTypeDefinition(
+  id: string,
+  body: UpdateTournamentTypeDefinitionRequest,
+): Promise<TournamentTypeDefinitionDetail> {
+  return apiFetch<TournamentTypeDefinitionDetail>(`/admin/tournament-types/${id}`, {
+    method: 'PATCH',
+    body,
+  });
+}
+
+export function deleteTournamentTypeDefinition(id: string): Promise<void> {
+  return apiFetch<void>(`/admin/tournament-types/${id}`, { method: 'DELETE' });
 }
 
 export function listCentersAdmin(provinceId?: string): Promise<CenterDetail[]> {

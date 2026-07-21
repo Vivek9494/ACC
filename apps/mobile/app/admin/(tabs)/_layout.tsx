@@ -28,7 +28,8 @@ function isAdminStackOverlayPath(current: string): boolean {
     /^\/admin\/users\/[^/]+$/.test(current) ||
     current === '/admin/users/new' ||
     current.startsWith('/admin/provinces') ||
-    current.startsWith('/admin/centers')
+    current.startsWith('/admin/centers') ||
+    current.startsWith('/admin/tournament-types')
   );
 }
 

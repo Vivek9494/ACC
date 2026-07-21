@@ -1380,8 +1380,25 @@ export class TournamentsService {
     const activeIds = new Set(activeInProvince.map((c) => c.id));
 
     let centerIds: string[];
-    if (dto.citySelection === 'ALL') {
-      centerIds = activeInProvince.map((c) => c.id);
+    if (dto.citySelection === CitySelection.Apl) {
+      // Prefer Admin-defined APL participating centers; fall back to all active
+      // centers in the province when no APL type is configured yet.
+      const aplDefinition = await tx.tournamentTypeDefinition.findFirst({
+        where: {
+          code: 'APL',
+          provinceId: dto.provinceId,
+          ballType: BallType.Tennis,
+          isDeleted: false,
+        },
+        include: { centerLinks: { select: { centerId: true } } },
+      });
+      if (aplDefinition && aplDefinition.centerLinks.length > 0) {
+        centerIds = aplDefinition.centerLinks
+          .map((link) => link.centerId)
+          .filter((id) => activeIds.has(id));
+      } else {
+        centerIds = activeInProvince.map((c) => c.id);
+      }
     } else {
       if (!dto.centerIds || dto.centerIds.length === 0) {
         throw new BadRequestException({

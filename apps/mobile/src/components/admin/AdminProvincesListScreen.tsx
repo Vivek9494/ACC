@@ -1,4 +1,4 @@
-import type { ProvinceDetail } from '@acc/types';
+import type { ProvinceDetail, TournamentTypeDefinitionSummary } from '@acc/types';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, View } from 'react-native';
@@ -12,6 +12,7 @@ import {
   ApiRequestError,
   deleteProvince,
   listProvincesAdmin,
+  listTournamentTypeDefinitions,
 } from '../../lib/api';
 import { confirmDestructiveDeleteAlert } from '../../lib/confirm-destructive-delete';
 
@@ -26,16 +27,20 @@ export function AdminProvincesListScreen({
 }: AdminProvincesListScreenProps): React.ReactElement {
   const router = useRouter();
   const [provinces, setProvinces] = useState<ProvinceDetail[]>([]);
+  const [tournamentTypes, setTournamentTypes] = useState<TournamentTypeDefinitionSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(() => {
     setLoading(true);
     setError(null);
-    listProvincesAdmin()
-      .then(setProvinces)
+    Promise.all([listProvincesAdmin(), listTournamentTypeDefinitions()])
+      .then(([provinceRows, typeRows]) => {
+        setProvinces(provinceRows);
+        setTournamentTypes(typeRows);
+      })
       .catch((err) => {
-        setError(err instanceof ApiRequestError ? err.message : 'Could not load provinces.');
+        setError(err instanceof ApiRequestError ? err.message : 'Could not load geography.');
       })
       .finally(() => setLoading(false));
   }, []);
@@ -69,11 +74,20 @@ export function AdminProvincesListScreen({
       {variant === 'stack' ? (
         <ScreenHeader title="Provinces" onBack={() => router.back()} />
       ) : (
-        <View className="px-4 pt-4">
-          <Text className="font-sans-bold text-2xl text-text">Geography</Text>
-          <Text className="mt-1 font-sans text-sm text-text-muted">
-            Provinces and centers
-          </Text>
+        <View className="flex-row items-start justify-between gap-3 px-4 pt-4">
+          <View className="min-w-0 flex-1">
+            <Text className="font-sans-bold text-2xl text-text">Geography</Text>
+            <Text className="mt-1 font-sans text-sm text-text-muted">
+              Provinces, centers, and tournament types
+            </Text>
+          </View>
+          <Button
+            variant="outline"
+            label="Add Tournament Type"
+            className="h-10 shrink-0 px-3"
+            textClassName="text-sm"
+            onPress={() => router.push('/admin/tournament-types/new')}
+          />
         </View>
       )}
 
@@ -87,35 +101,63 @@ export function AdminProvincesListScreen({
         {loading ? (
           <ActivityIndicator color={FIELD_ORANGE} />
         ) : (
-          provinces.map((province) => (
-            <View
-              key={province.id}
-              className="gap-3 rounded-xl border border-outline-variant bg-surface-container-lowest p-4"
-            >
-              <Pressable onPress={() => router.push(`/admin/provinces/${province.id}`)}>
-                <Text className="font-sans-bold text-lg text-on-surface">{province.name}</Text>
-                <Text className="mt-1 font-sans text-sm text-on-surface-variant">
-                  {province.centerCount} center{province.centerCount === 1 ? '' : 's'}
+          <>
+            {tournamentTypes.length > 0 ? (
+              <View className="gap-3">
+                <Text className="font-sans-semibold text-xs uppercase tracking-wider text-primary">
+                  Tournament Types
                 </Text>
-              </Pressable>
-              <View className="flex-row flex-wrap gap-2">
-                <Button
-                  variant="outline"
-                  label="Edit"
-                  className="h-10 px-4"
-                  textClassName="text-sm"
-                  onPress={() => router.push(`/admin/provinces/${province.id}/edit`)}
-                />
-                <Button
-                  variant="destructive"
-                  label="Delete"
-                  className="h-10 px-4"
-                  textClassName="text-sm"
-                  onPress={() => requestDeleteProvince(province)}
-                />
+                {tournamentTypes.map((type) => (
+                  <Pressable
+                    key={type.id}
+                    className="gap-1 rounded-xl border border-outline-variant bg-surface-container-lowest p-4"
+                    onPress={() => router.push(`/admin/tournament-types/${type.id}`)}
+                  >
+                    <Text className="font-sans-bold text-lg text-on-surface">{type.name}</Text>
+                    <Text className="font-sans text-sm text-on-surface-variant">
+                      {type.provinceName} · {type.centerCount} center
+                      {type.centerCount === 1 ? '' : 's'}
+                    </Text>
+                  </Pressable>
+                ))}
               </View>
+            ) : null}
+
+            <View className="gap-3">
+              <Text className="font-sans-semibold text-xs uppercase tracking-wider text-primary">
+                Provinces
+              </Text>
+              {provinces.map((province) => (
+                <View
+                  key={province.id}
+                  className="gap-3 rounded-xl border border-outline-variant bg-surface-container-lowest p-4"
+                >
+                  <Pressable onPress={() => router.push(`/admin/provinces/${province.id}`)}>
+                    <Text className="font-sans-bold text-lg text-on-surface">{province.name}</Text>
+                    <Text className="mt-1 font-sans text-sm text-on-surface-variant">
+                      {province.centerCount} center{province.centerCount === 1 ? '' : 's'}
+                    </Text>
+                  </Pressable>
+                  <View className="flex-row flex-wrap gap-2">
+                    <Button
+                      variant="outline"
+                      label="Edit"
+                      className="h-10 px-4"
+                      textClassName="text-sm"
+                      onPress={() => router.push(`/admin/provinces/${province.id}/edit`)}
+                    />
+                    <Button
+                      variant="destructive"
+                      label="Delete"
+                      className="h-10 px-4"
+                      textClassName="text-sm"
+                      onPress={() => requestDeleteProvince(province)}
+                    />
+                  </View>
+                </View>
+              ))}
             </View>
-          ))
+          </>
         )}
 
         <Button
