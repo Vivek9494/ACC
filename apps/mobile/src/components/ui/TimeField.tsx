@@ -71,7 +71,7 @@ export function TimeField({
   labelVariant = 'brand',
   value,
   onChange,
-  placeholder = 'Select time',
+  placeholder = 'Time',
   error,
   containerClassName,
 }: TimeFieldProps): React.ReactElement {

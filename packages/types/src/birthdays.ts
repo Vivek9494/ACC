@@ -9,6 +9,11 @@ export interface BirthdayUserSummary {
   profilePhotoUrl: string | null;
 }
 
+/** Lightweight header badge — active users with a birthday today (Eastern). */
+export interface BirthdayTodayCountResponse {
+  count: number;
+}
+
 /** @deprecated Use {@link BirthdayUserSummary}. */
 export type TodayBirthdayUserSummary = BirthdayUserSummary;
 

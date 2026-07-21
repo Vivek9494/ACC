@@ -27,6 +27,7 @@ import {
   type AdminUserPlayerStatsView,
   type AdminUsersPage,
   type BirthdayUserSummary,
+  type BirthdayTodayCountResponse,
   type TodayBirthdayUserSummary,
   type BallType,
   type ListAdminUsersParams,
@@ -726,6 +727,11 @@ export function listAdminUsers(params: ListAdminUsersParams = {}): Promise<Admin
 
 export function getBirthdayDirectory(): Promise<BirthdayUserSummary[]> {
   return apiFetch<BirthdayUserSummary[]>('/birthdays');
+}
+
+/** Active users with a birthday today (Eastern) — header cake badge. */
+export function getBirthdayTodayCount(): Promise<BirthdayTodayCountResponse> {
+  return apiFetch<BirthdayTodayCountResponse>('/birthdays/today-count');
 }
 
 /** @deprecated Use {@link getBirthdayDirectory}. */

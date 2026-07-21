@@ -27,6 +27,8 @@ import {
   type UpdateAdminUserStatusResponse,
   AuthErrorCode,
   isAdminPlayingRole,
+  DEFAULT_VENUE_TIMEZONE,
+  getTodayCalendarPartsInZone,
 } from '@acc/types';
 import { Injectable, BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
@@ -147,6 +149,23 @@ export class AdminService {
         profilePhotoUrl: row.profilePhotoUrl,
       })),
     );
+  }
+
+  /**
+   * Active users whose DOB month+day is today in America/Toronto (Eastern).
+   * Used by the header cake badge — same calendar rule as birthday push jobs.
+   */
+  async countTodayBirthdays(now: Date = new Date()): Promise<number> {
+    const today = getTodayCalendarPartsInZone(DEFAULT_VENUE_TIMEZONE, now);
+    const rows = await this.prisma.$queryRaw<Array<{ count: number }>>`
+      SELECT COUNT(*)::int AS count
+      FROM "User" u
+      WHERE u."deletedAt" IS NULL
+        AND u."isActive" = true
+        AND EXTRACT(MONTH FROM u."dateOfBirth") = ${today.month}
+        AND EXTRACT(DAY FROM u."dateOfBirth") = ${today.day}
+    `;
+    return rows[0]?.count ?? 0;
   }
 
   /** @deprecated Use {@link listBirthdayDirectory}. */

@@ -22,6 +22,7 @@ describe('AdminService user management', () => {
       deleteMany: jest.Mock;
       create: jest.Mock;
     };
+    $queryRaw: jest.Mock;
   };
   let audit: { record: jest.Mock };
   let playerStats: { buildCareerStats: jest.Mock };
@@ -45,6 +46,7 @@ describe('AdminService user management', () => {
         deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
         create: jest.fn().mockResolvedValue({ id: 'ra-1' }),
       },
+      $queryRaw: jest.fn(),
     };
     audit = { record: jest.fn().mockResolvedValue(undefined) };
     playerStats = {
@@ -261,5 +263,11 @@ describe('AdminService user management', () => {
     });
 
     getUserSpy.mockRestore();
+  });
+
+  it('counts active users with a birthday today in Eastern', async () => {
+    prisma.$queryRaw.mockResolvedValue([{ count: 3 }]);
+    await expect(service.countTodayBirthdays()).resolves.toBe(3);
+    expect(prisma.$queryRaw).toHaveBeenCalled();
   });
 });

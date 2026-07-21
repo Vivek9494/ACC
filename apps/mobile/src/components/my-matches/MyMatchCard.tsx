@@ -6,7 +6,6 @@ import { colors } from '@/theme/colors';
 import { MatchCardDisplayBadge } from '../tournament/MatchCardDisplayBadge';
 import { Button } from '../ui/Button';
 import { INPUT_SHADOW_STYLE } from '../ui/fieldStyles';
-import { TeamAvatar } from '../ui/TeamAvatar';
 import { Text } from '../ui/Text';
 
 function formatMyMatchDateTimeLine(
@@ -59,46 +58,18 @@ function formatMyMatchDateTimeLine(
   return `${dateLabel} • ${timeLabel}`;
 }
 
-function TeamSide({
-  team,
-  align,
-}: {
-  team: MyMatchListItem['teamA'];
-  align: 'left' | 'right';
-}): React.ReactElement {
-  const nameClass = `min-w-0 flex-1 font-sans-semibold text-sm ${
-    team.isWinner ? 'text-primary' : 'text-on-surface'
-  }${align === 'right' ? ' text-right' : ''}`;
-
-  const scoreEl = team.scoreLine ? (
-    <Text
-      className={`shrink-0 font-sans-bold text-sm ${
-        team.isWinner ? 'text-primary' : 'text-on-surface'
-      }`}
-    >
-      {team.scoreLine}
-    </Text>
-  ) : null;
-
-  if (align === 'right') {
-    return (
-      <View className="min-w-0 flex-1 flex-row items-center justify-end gap-2">
-        {scoreEl}
-        <Text className={nameClass} numberOfLines={1}>
-          {team.name}
-        </Text>
-        <TeamAvatar name={team.name} logoUrl={team.logoUrl} size="sm" />
-      </View>
-    );
-  }
+/** Full-width team row — name left (wraps), score right (dashboard MatchSummaryCard style). */
+function TeamRow({ team }: { team: MyMatchListItem['teamA'] }): React.ReactElement {
+  const toneClass = team.isWinner ? 'text-primary' : 'text-on-surface';
 
   return (
-    <View className="min-w-0 flex-1 flex-row items-center gap-2">
-      <TeamAvatar name={team.name} logoUrl={team.logoUrl} size="sm" />
-      <Text className={nameClass} numberOfLines={1}>
+    <View className="flex-row items-start gap-3">
+      <Text className={`min-w-0 flex-1 font-sans-bold text-base ${toneClass}`}>
         {team.name}
       </Text>
-      {scoreEl}
+      {team.scoreLine ? (
+        <Text className={`shrink-0 font-sans-bold text-base ${toneClass}`}>{team.scoreLine}</Text>
+      ) : null}
     </View>
   );
 }
@@ -151,18 +122,14 @@ export function MyMatchCard({
         </Text>
       </View>
 
-      <View className={showFooterLine ? 'gap-3' : undefined}>
-        <View className="flex-row items-center gap-2">
-          <TeamSide team={match.teamA} align="left" />
-          <Text className="shrink-0 px-1 font-sans-bold text-xs uppercase tracking-widest text-on-surface-variant">
-            vs
-          </Text>
-          <TeamSide team={match.teamB} align="right" />
-        </View>
+      <View className="gap-3">
+        <TeamRow team={match.teamA} />
+        <View className="h-0.75 bg-separator" />
+        <TeamRow team={match.teamB} />
 
         {showFooterLine ? (
           <Text
-            className={`text-center font-sans-semibold text-sm ${
+            className={`font-sans-semibold text-sm ${
               isCompleted ? 'text-primary' : 'text-on-surface-variant'
             }`}
           >
