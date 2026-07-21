@@ -5,6 +5,7 @@ import {
   type TournamentTypeDefinitionDetail,
   type TournamentTypeDefinitionSummary,
   type UpdateTournamentTypeDefinitionRequest,
+  TournamentType,
   tournamentTypeDefinitionCodeFromName,
 } from '@acc/types';
 import {
@@ -108,6 +109,10 @@ export class TournamentTypeDefinitionsService {
       return row;
     });
 
+    if (code === APL_TOURNAMENT_TYPE_CODE && dto.ballType === BallType.Tennis) {
+      await this.resyncAplTournamentCenters(dto.provinceId, centerIds);
+    }
+
     return this.toDetail(created);
   }
 
@@ -166,7 +171,45 @@ export class TournamentTypeDefinitionsService {
       });
     });
 
+    if (updated.code === APL_TOURNAMENT_TYPE_CODE && ballType === BallType.Tennis) {
+      await this.resyncAplTournamentCenters(provinceId, centerIds);
+    }
+
     return this.toDetail(updated);
+  }
+
+  /**
+   * Align existing APL tournaments in the province with the type's participating
+   * centers (fixes all-Ontario snapshots from before the type was defined).
+   */
+  async resyncAplTournamentCenters(provinceId: string, centerIds: string[]): Promise<void> {
+    if (centerIds.length === 0) {
+      return;
+    }
+    const tournaments = await this.prisma.tournament.findMany({
+      where: {
+        type: TournamentType.APL,
+        provinceId,
+        isDeleted: false,
+      },
+      select: { id: true },
+    });
+    if (tournaments.length === 0) {
+      return;
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      for (const tournament of tournaments) {
+        await tx.tournamentCenter.deleteMany({ where: { tournamentId: tournament.id } });
+        await tx.tournamentCenter.createMany({
+          data: centerIds.map((centerId) => ({
+            tournamentId: tournament.id,
+            centerId,
+          })),
+          skipDuplicates: true,
+        });
+      }
+    });
   }
 
   async softDelete(id: string): Promise<void> {

@@ -5,8 +5,8 @@ import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { activeTournamentWhere } from './tournament-query';
 
-/** Tennis tournament types surfaced on dashboards by center participation. */
-const DASHBOARD_TENNIS_TYPES: TournamentType[] = [
+/** Tennis tournament types scoped by {@link TournamentCenter} participation. */
+const PARTICIPATING_CENTER_TENNIS_TYPES: TournamentType[] = [
   TournamentType.APL,
   TournamentType.Center,
 ];
@@ -26,7 +26,7 @@ export class TennisTournamentVisibilityService {
         tournament: {
           ...activeTournamentWhere,
           ballType: BallType.Tennis,
-          type: { in: DASHBOARD_TENNIS_TYPES },
+          type: { in: PARTICIPATING_CENTER_TENNIS_TYPES },
         },
       },
       select: { tournamentId: true },
@@ -34,13 +34,13 @@ export class TennisTournamentVisibilityService {
     return [...new Set(links.map((row) => row.tournamentId))];
   }
 
-  /** Admin and Club Manager manage across centers — no CENTER participation filter. */
+  /** Admin and Club Manager manage across centers — no participation filter. */
   bypassesCenterTournamentScope(viewer: AuthUser | null | undefined): boolean {
     return viewer?.role === UserRole.Admin || viewer?.role === UserRole.ClubManager;
   }
 
   /**
-   * Centers that count for CENTER-tournament visibility: home center plus any
+   * Centers that count for APL/CENTER visibility: home center plus any
    * Center Sevak assignments.
    */
   viewerParticipatingCenterIds(viewer: AuthUser): string[] {
@@ -54,9 +54,15 @@ export class TennisTournamentVisibilityService {
     return [...ids];
   }
 
+  private requiresParticipatingCenter(type: string): boolean {
+    return (
+      type === TournamentType.APL || type === TournamentType.Center
+    );
+  }
+
   /**
-   * Prisma `where` fragment for tournament lists: APL/ACC/Leather unchanged;
-   * CENTER rows only when linked to one of the viewer's centers.
+   * Prisma `where` fragment for tournament lists: APL and CENTER only when
+   * linked to one of the viewer's centers. ACC / Leather unchanged.
    * Returns `null` when the viewer bypasses the filter (Admin/CM).
    */
   centerTournamentListWhere(
@@ -66,17 +72,17 @@ export class TennisTournamentVisibilityService {
       return null;
     }
     if (!viewer) {
-      return { type: { not: TournamentType.Center } };
+      return { type: { notIn: PARTICIPATING_CENTER_TENNIS_TYPES } };
     }
     const centerIds = this.viewerParticipatingCenterIds(viewer);
     if (centerIds.length === 0) {
-      return { type: { not: TournamentType.Center } };
+      return { type: { notIn: PARTICIPATING_CENTER_TENNIS_TYPES } };
     }
     return {
       OR: [
-        { type: { not: TournamentType.Center } },
+        { type: { notIn: PARTICIPATING_CENTER_TENNIS_TYPES } },
         {
-          type: TournamentType.Center,
+          type: { in: PARTICIPATING_CENTER_TENNIS_TYPES },
           centerLinks: { some: { centerId: { in: centerIds } } },
         },
       ],
@@ -84,8 +90,8 @@ export class TennisTournamentVisibilityService {
   }
 
   /**
-   * CENTER-level tennis tournaments are visible only when the viewer's center
-   * participates (Admin/CM bypass). APL and Leather are unaffected.
+   * APL and CENTER tennis tournaments are visible only when the viewer's center
+   * participates (Admin/CM bypass).
    *
    * When `allowUnauthenticated` is true (e.g. public live match-by-id), guests
    * may proceed; authenticated non-participants are still denied.
@@ -95,7 +101,7 @@ export class TennisTournamentVisibilityService {
     tournament: { id: string; type: string },
     options: { allowUnauthenticated?: boolean } = {},
   ): Promise<void> {
-    if (tournament.type !== TournamentType.Center) {
+    if (!this.requiresParticipatingCenter(tournament.type)) {
       return;
     }
     if (this.bypassesCenterTournamentScope(viewer)) {
@@ -124,8 +130,9 @@ export class TennisTournamentVisibilityService {
   }
 
   /**
-   * Match-list / featured-match filter: hide CENTER tournament fixtures from
-   * non-participating authenticated users. Guests and Admin/CM are unchanged.
+   * Match-list / featured-match filter: hide APL/CENTER fixtures from
+   * non-participating authenticated users. Guests and Admin/CM are unchanged
+   * (guests keep all ids; callers that need guest hide use list where).
    */
   async filterTournamentIdsVisibleToViewer(
     viewer: AuthUser | null | undefined,
@@ -149,7 +156,7 @@ export class TennisTournamentVisibilityService {
     });
     const visible = new Set<string>();
     for (const row of rows) {
-      if (row.type !== TournamentType.Center) {
+      if (!this.requiresParticipatingCenter(row.type)) {
         visible.add(row.id);
         continue;
       }

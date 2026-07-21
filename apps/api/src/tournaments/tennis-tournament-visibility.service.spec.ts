@@ -73,18 +73,18 @@ describe('TennisTournamentVisibilityService', () => {
       ).toBeNull();
     });
 
-    it('excludes all CENTER tournaments for guests', () => {
+    it('excludes APL and CENTER tournaments for guests', () => {
       expect(service.centerTournamentListWhere(null)).toEqual({
-        type: { not: TournamentType.Center },
+        type: { notIn: [TournamentType.APL, TournamentType.Center] },
       });
     });
 
-    it('scopes CENTER tournaments to the player center', () => {
+    it('scopes APL and CENTER tournaments to the player center', () => {
       expect(service.centerTournamentListWhere(player('center-brampton'))).toEqual({
         OR: [
-          { type: { not: TournamentType.Center } },
+          { type: { notIn: [TournamentType.APL, TournamentType.Center] } },
           {
-            type: TournamentType.Center,
+            type: { in: [TournamentType.APL, TournamentType.Center] },
             centerLinks: { some: { centerId: { in: ['center-brampton'] } } },
           },
         ],
@@ -93,27 +93,47 @@ describe('TennisTournamentVisibilityService', () => {
   });
 
   describe('assertCanViewCenterLevelTournament', () => {
-    it('no-ops for APL / ACC', async () => {
+    it('no-ops for ACC', async () => {
       await expect(
         service.assertCanViewCenterLevelTournament(player('center-a'), {
           id: 't1',
+          type: TournamentType.ACC,
+        }),
+      ).resolves.toBeUndefined();
+      expect(prisma.tournamentCenter.findFirst).not.toHaveBeenCalled();
+    });
+
+    it('requires participation for APL', async () => {
+      prisma.tournamentCenter.findFirst = jest.fn().mockResolvedValue(null);
+      await expect(
+        service.assertCanViewCenterLevelTournament(player('windsor'), {
+          id: 'apl-1',
+          type: TournamentType.APL,
+        }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('allows Admin for any APL tournament', async () => {
+      await expect(
+        service.assertCanViewCenterLevelTournament(admin, {
+          id: 'apl-1',
           type: TournamentType.APL,
         }),
       ).resolves.toBeUndefined();
       expect(prisma.tournamentCenter.findFirst).not.toHaveBeenCalled();
     });
 
-    it('allows Admin for any CENTER tournament', async () => {
+    it('allows a participating player for APL', async () => {
+      prisma.tournamentCenter.findFirst = jest.fn().mockResolvedValue({ centerId: 'center-a' });
       await expect(
-        service.assertCanViewCenterLevelTournament(admin, {
-          id: 't1',
-          type: TournamentType.Center,
+        service.assertCanViewCenterLevelTournament(player('center-a'), {
+          id: 'apl-1',
+          type: TournamentType.APL,
         }),
       ).resolves.toBeUndefined();
-      expect(prisma.tournamentCenter.findFirst).not.toHaveBeenCalled();
     });
 
-    it('allows a participating player', async () => {
+    it('allows a participating player for CENTER', async () => {
       prisma.tournamentCenter.findFirst = jest.fn().mockResolvedValue({ centerId: 'center-a' });
       await expect(
         service.assertCanViewCenterLevelTournament(player('center-a'), {
@@ -123,7 +143,7 @@ describe('TennisTournamentVisibilityService', () => {
       ).resolves.toBeUndefined();
     });
 
-    it('denies a non-participating player', async () => {
+    it('denies a non-participating player for CENTER', async () => {
       prisma.tournamentCenter.findFirst = jest.fn().mockResolvedValue(null);
       await expect(
         service.assertCanViewCenterLevelTournament(player('center-brampton'), {
@@ -148,6 +168,38 @@ describe('TennisTournamentVisibilityService', () => {
           { allowUnauthenticated: true },
         ),
       ).resolves.toBeUndefined();
+    });
+  });
+
+  describe('filterTournamentIdsVisibleToViewer', () => {
+    it('hides APL from non-participating centers (e.g. Windsor)', async () => {
+      prisma.tournament.findMany = jest.fn().mockResolvedValue([
+        {
+          id: 'apl-1',
+          type: TournamentType.APL,
+          centerLinks: [{ centerId: 'center-a' }, { centerId: 'center-b' }],
+        },
+      ]);
+
+      const visible = await service.filterTournamentIdsVisibleToViewer(player('windsor'), [
+        'apl-1',
+      ]);
+      expect(visible.has('apl-1')).toBe(false);
+    });
+
+    it('keeps APL for participating centers', async () => {
+      prisma.tournament.findMany = jest.fn().mockResolvedValue([
+        {
+          id: 'apl-1',
+          type: TournamentType.APL,
+          centerLinks: [{ centerId: 'center-a' }],
+        },
+      ]);
+
+      const visible = await service.filterTournamentIdsVisibleToViewer(player('center-a'), [
+        'apl-1',
+      ]);
+      expect(visible.has('apl-1')).toBe(true);
     });
   });
 });

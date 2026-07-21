@@ -875,8 +875,8 @@ export class TournamentsService {
   }
 
   /**
-   * Browse tab — CENTER tournaments scoped to the viewer's participating centers;
-   * Admin / Club Manager see all. Includes soft-deleted rows as cancelled entries.
+   * Browse tab — APL/CENTER tournaments scoped to the viewer's participating
+   * centers; Admin / Club Manager see all. Includes soft-deleted rows as cancelled.
    */
   async listBrowseEntries(actor: AuthUser): Promise<TournamentBrowseEntry[]> {
     const centerScope = this.tennisVisibility.centerTournamentListWhere(actor);
