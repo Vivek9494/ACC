@@ -524,6 +524,9 @@ export class TournamentsService {
         canManageLeatherInvitesFlag = canManageLeatherInvites(viewer, {
           ballType: BallType.Leather,
           startAt: row.startAt.toISOString(),
+          endAt: row.endAt.toISOString(),
+          timezone: row.timezone,
+          cancelled: isCancelled,
         });
       } else if (row.ballType === BallType.Tennis) {
         canRegisterForTennisTournament =

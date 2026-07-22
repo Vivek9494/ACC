@@ -16,6 +16,7 @@ import {
   profileMobileForStorage,
   PASSWORD_POLICY_INVALID_MESSAGE,
   REFRESH_IDLE_DAYS,
+  REFRESH_IDLE_DAYS_REMEMBER_ME,
   SIGNUP_RATE_LIMIT,
   SIGNUP_VALIDATION_MESSAGES,
   TEMP_PASSWORD_EXPIRED_MESSAGE,
@@ -53,6 +54,11 @@ import type { LoginDto } from './dto/login.dto';
 import type { SignupDto } from './dto/signup.dto';
 
 const REFRESH_IDLE_SECONDS = REFRESH_IDLE_DAYS * 24 * 60 * 60;
+const REFRESH_IDLE_SECONDS_REMEMBER_ME = REFRESH_IDLE_DAYS_REMEMBER_ME * 24 * 60 * 60;
+
+function refreshIdleSeconds(rememberMe: boolean): number {
+  return rememberMe ? REFRESH_IDLE_SECONDS_REMEMBER_ME : REFRESH_IDLE_SECONDS;
+}
 
 @Injectable()
 export class AuthService {
@@ -196,7 +202,7 @@ export class AuthService {
 
     // Single-device enforcement (§3.2): bumping tokenVersion on every login
     // invalidates any token still held by a previously logged-in device.
-    const tokens = await this.startSession(user);
+    const tokens = await this.startSession(user, Boolean(dto.rememberMe));
     return { user: await loadAuthUser(this.prisma, user, this.mediaUrls), tokens };
   }
 
@@ -220,9 +226,13 @@ export class AuthService {
       });
     }
 
+    const rememberMe = Boolean(payload.rememberMe);
+    const idleSeconds = refreshIdleSeconds(rememberMe);
+
     // Idle timeout (§3.2): the active token id lives in Redis with a sliding
-    // 10-day TTL. Missing => unused for 10 days (or superseded) => expired.
-    const activeJti = await this.redis.getAndSlideTtl(refreshKey(payload.sub), REFRESH_IDLE_SECONDS);
+    // TTL (10 days normal / 90 days Remember Me). Missing => unused too long
+    // (or superseded) => expired.
+    const activeJti = await this.redis.getAndSlideTtl(refreshKey(payload.sub), idleSeconds);
     if (activeJti === null || activeJti !== payload.jti) {
       throw new UnauthorizedException({
         message: 'Refresh token is invalid or expired',
@@ -238,8 +248,8 @@ export class AuthService {
       });
     }
 
-    // Rotate the refresh token id (keeps tokenVersion) and slide the window.
-    return this.rotateTokens(user);
+    // Rotate the refresh token id (keeps tokenVersion + rememberMe) and slide the window.
+    return this.rotateTokens(user, rememberMe);
   }
 
   async getMe(userId: string): Promise<AuthUser> {
@@ -342,18 +352,18 @@ export class AuthService {
   }
 
   /** Bumps tokenVersion, then mints a fresh token pair (login/signup entry). */
-  private async startSession(user: User): Promise<AuthTokens> {
+  private async startSession(user: User, rememberMe = false): Promise<AuthTokens> {
     const updated = await this.prisma.user.update({
       where: { id: user.id },
       data: { tokenVersion: { increment: 1 } },
     });
     // Keep the caller's in-memory copy in sync for the response projection.
     user.tokenVersion = updated.tokenVersion;
-    return this.rotateTokens(updated);
+    return this.rotateTokens(updated, rememberMe);
   }
 
   /** Signs a new pair without touching tokenVersion; records the active jti. */
-  private async rotateTokens(user: User): Promise<AuthTokens> {
+  private async rotateTokens(user: User, rememberMe = false): Promise<AuthTokens> {
     const jti = randomUUID();
 
     const accessPayload: AccessTokenPayload = {
@@ -366,6 +376,7 @@ export class AuthService {
       tokenVersion: user.tokenVersion,
       jti,
       type: 'refresh',
+      ...(rememberMe ? { rememberMe: true } : {}),
     };
 
     // jsonwebtoken types `expiresIn` as a template-literal duration; the env
@@ -382,7 +393,7 @@ export class AuthService {
       secret: this.config.getOrThrow<string>('JWT_REFRESH_SECRET'),
     });
 
-    await this.redis.setWithTtl(refreshKey(user.id), jti, REFRESH_IDLE_SECONDS);
+    await this.redis.setWithTtl(refreshKey(user.id), jti, refreshIdleSeconds(rememberMe));
 
     return { accessToken, refreshToken };
   }

@@ -15,6 +15,8 @@ export interface RefreshTokenPayload {
   /** Unique token id; the active one is tracked in Redis for idle expiry. */
   jti: string;
   type: 'refresh';
+  /** When true, Redis idle TTL uses the Remember Me window (survives refresh rotation). */
+  rememberMe?: boolean;
 }
 
 /** Redis key for the failed-login counter of a given mobile number. */

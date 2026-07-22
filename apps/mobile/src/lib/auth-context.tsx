@@ -12,6 +12,7 @@ import {
 } from './api';
 import { registerDeviceForPush, unregisterDeviceForPush } from './push-registration';
 import { clearTokens, loadTokens, saveTokens } from './session';
+import { clearRememberMePreferences } from './remember-me';
 
 export type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated';
 
@@ -99,6 +100,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
     } catch {
       // Best-effort server invalidation; always clear local session.
     }
+    await clearRememberMePreferences();
     await clearSession();
   }, [clearSession]);
 

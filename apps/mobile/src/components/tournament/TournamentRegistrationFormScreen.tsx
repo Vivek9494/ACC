@@ -44,6 +44,7 @@ import { TOURNAMENT_DETAIL_TAB } from '../../lib/tournament-detail-tabs';
 import { Button } from '../ui/Button';
 import { KeyboardAwareFormScrollView } from '../ui/KeyboardAwareFormScrollView';
 import { ScreenHeader } from '../ui/ScreenHeader';
+import { SuccessDialog } from '../ui/SuccessDialog';
 import { FIELD_ORANGE } from '../ui/fieldStyles';
 import { RadioGroup } from '../ui/RadioGroup';
 import { Select, type SelectOption } from '../ui/Select';
@@ -108,6 +109,7 @@ export function TournamentRegistrationFormScreen({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [showLateRegisterSuccess, setShowLateRegisterSuccess] = useState(false);
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -239,6 +241,15 @@ export function TournamentRegistrationFormScreen({
     return null;
   }
 
+  /** After late register: Leather → Registered Players; Tennis → Verify Players. */
+  function navigateAfterLateRegister(): void {
+    const destination = isLeatherBall
+      ? tournamentSubpathHref(user, tournamentId, 'registered-players')
+      : tournamentSubpathHref(user, tournamentId, 'registrations/queue');
+    // Pop to destination when it's in the stack; otherwise replace (drops form + picker).
+    router.dismissTo(destination);
+  }
+
   async function onSubmit(): Promise<void> {
     if (!tournamentId || !centerId) {
       return;
@@ -268,12 +279,10 @@ export function TournamentRegistrationFormScreen({
       };
       if (isLateOnBehalf && onBehalfOfUserId) {
         await lateRegisterPlayer(tournamentId, { ...payload, userId: onBehalfOfUserId });
-        // Drop Register form + Add player picker so Back from Verify Players /
-        // Registered Players does not walk through each late-register visit.
-        if (router.canDismiss()) {
-          router.dismiss(2);
+        if (isLeatherBall) {
+          setShowLateRegisterSuccess(true);
         } else {
-          router.replace(tournamentSubpathHref(user, tournamentId, 'registrations/queue'));
+          navigateAfterLateRegister();
         }
       } else {
         await submitRegistration(tournamentId, payload);
@@ -485,6 +494,16 @@ export function TournamentRegistrationFormScreen({
           </View>
         ) : null}
       </KeyboardAwareFormScrollView>
+
+      <SuccessDialog
+        visible={showLateRegisterSuccess}
+        title="Player registered"
+        message="The player has been added to the registered players list."
+        onDismiss={() => {
+          setShowLateRegisterSuccess(false);
+          navigateAfterLateRegister();
+        }}
+      />
     </SafeAreaView>
   );
 }

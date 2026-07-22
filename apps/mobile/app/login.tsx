@@ -1,11 +1,12 @@
 import { APP_ORG_NAME, APP_SHORT_NAME, AuthErrorCode } from '@acc/types';
 import { Link, useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/theme/colors';
 
 import { Button } from '../src/components/ui/Button';
+import { Checkbox } from '../src/components/ui/Checkbox';
 import { KeyboardAwareFormScrollView } from '../src/components/ui/KeyboardAwareFormScrollView';
 import { PasswordToggle } from '../src/components/ui/PasswordToggle';
 import { Text } from '../src/components/ui/Text';
@@ -18,6 +19,11 @@ import {
   validateLoginMobile,
   validateLoginPassword,
 } from '../src/lib/login-messages';
+import {
+  loadRememberMePreferences,
+  saveRememberedMobile,
+  saveRememberMeFlag,
+} from '../src/lib/remember-me';
 
 function mapLoginApiError(err: unknown): string {
   if (!(err instanceof ApiRequestError)) {
@@ -41,10 +47,28 @@ export default function LoginScreen(): React.ReactElement {
   const [mobileNumber, setMobileNumber] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const [mobileError, setMobileError] = useState<string | undefined>();
   const [passwordError, setPasswordError] = useState<string | undefined>();
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const prefs = await loadRememberMePreferences();
+      if (cancelled) {
+        return;
+      }
+      setRememberMe(prefs.rememberMe);
+      if (prefs.mobileNumber) {
+        setMobileNumber(prefs.mobileNumber);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   function onMobileChange(text: string): void {
     setMobileNumber(text);
@@ -60,6 +84,11 @@ export default function LoginScreen(): React.ReactElement {
     }
   }
 
+  function onRememberMeChange(checked: boolean): void {
+    setRememberMe(checked);
+    void saveRememberMeFlag(checked);
+  }
+
   async function onSubmit(): Promise<void> {
     const nextMobileError = validateLoginMobile(mobileNumber);
     const nextPasswordError = validateLoginPassword(password);
@@ -73,11 +102,17 @@ export default function LoginScreen(): React.ReactElement {
     setFormError(null);
     setSubmitting(true);
     try {
+      const localMobile = mobileNumber.trim();
       await signIn({
-        mobileNumber: loginMobileForApi(mobileNumber),
+        mobileNumber: loginMobileForApi(localMobile),
         password: password.trim(),
+        rememberMe,
       });
-      // Navigation to /home is handled by the root navigator on status change.
+      if (rememberMe) {
+        await saveRememberedMobile(localMobile);
+      } else {
+        await saveRememberMeFlag(false);
+      }
     } catch (err) {
       setFormError(mapLoginApiError(err));
     } finally {
@@ -123,6 +158,10 @@ export default function LoginScreen(): React.ReactElement {
               />
             }
           />
+
+          <Checkbox checked={rememberMe} onChange={onRememberMeChange}>
+            <Text className="font-sans text-base text-on-surface">Remember Me</Text>
+          </Checkbox>
 
           <Link href="/forgot-password" className="self-end font-sans-semibold text-sm text-primary">
             Forgot password?

@@ -193,6 +193,37 @@ describe('AuthService', () => {
     expect(prisma.user.update).toHaveBeenCalledWith(
       expect.objectContaining({ data: { tokenVersion: { increment: 1 } } }),
     );
+    expect(redis.setWithTtl).toHaveBeenCalledWith(
+      'refresh:user-1',
+      expect.any(String),
+      10 * 24 * 60 * 60,
+    );
+    jestBcrypt.mockRestore();
+  });
+
+  it('uses the longer refresh idle TTL when Remember Me is checked', async () => {
+    prisma.user.findUnique.mockResolvedValue(makeUser({ tokenVersion: 1 }));
+    prisma.user.update.mockResolvedValue(makeUser({ tokenVersion: 2 }));
+    redis.get.mockResolvedValue(null);
+
+    const jestBcrypt = jest.spyOn(
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      require('bcrypt') as { compare: (a: string, b: string) => Promise<boolean> },
+      'compare',
+    );
+    jestBcrypt.mockResolvedValue(true as never);
+
+    await service.login({
+      mobileNumber: '+15555550100',
+      password: 'password1',
+      rememberMe: true,
+    });
+
+    expect(redis.setWithTtl).toHaveBeenCalledWith(
+      'refresh:user-1',
+      expect.any(String),
+      90 * 24 * 60 * 60,
+    );
     jestBcrypt.mockRestore();
   });
 

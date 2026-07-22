@@ -3,6 +3,7 @@ import {
   BallType,
   type CenterPlayerRosterEntry,
   clubManagerCanSelfRegisterForLeather,
+  isLeatherInviteWindowOpen,
   type LeatherInviteCandidate,
   type LeatherTournamentInvite,
   UserRole,
@@ -238,7 +239,7 @@ export class LeatherTournamentVisibilityService {
     search: string | undefined,
   ): Promise<LeatherInviteCandidate[]> {
     const tournament = await this.requireLeatherTournament(tournamentId);
-    this.assertInviteWindowOpen(tournament.startAt);
+    this.assertInviteWindowOpen(tournament);
 
     const [existingLeatherUserIds, alreadyInvited, alreadyRegistered] = await Promise.all([
       this.findExistingLeatherPlayerUserIds(),
@@ -294,7 +295,7 @@ export class LeatherTournamentVisibilityService {
 
   async listInvites(tournamentId: string): Promise<LeatherTournamentInvite[]> {
     const tournament = await this.requireLeatherTournament(tournamentId);
-    this.assertInviteWindowOpen(tournament.startAt);
+    this.assertInviteWindowOpen(tournament);
 
     const rows = await this.prisma.tournamentLeatherInvite.findMany({
       where: { tournamentId },
@@ -329,9 +330,9 @@ export class LeatherTournamentVisibilityService {
     tournamentId: string,
     userIds: string[],
   ): Promise<number> {
-    this.assertClubManager(actor);
+    this.assertAdmin(actor);
     const tournament = await this.requireLeatherTournament(tournamentId);
-    this.assertInviteWindowOpen(tournament.startAt);
+    this.assertInviteWindowOpen(tournament);
 
     const uniqueIds = [...new Set(userIds.filter(Boolean))];
     if (uniqueIds.length === 0) {
@@ -385,9 +386,9 @@ export class LeatherTournamentVisibilityService {
   }
 
   async revokeInvite(actor: AuthUser, tournamentId: string, userId: string): Promise<void> {
-    this.assertClubManager(actor);
+    this.assertAdmin(actor);
     const tournament = await this.requireLeatherTournament(tournamentId);
-    this.assertInviteWindowOpen(tournament.startAt);
+    this.assertInviteWindowOpen(tournament);
 
     const registration = await this.prisma.registration.findUnique({
       where: { tournamentId_userId: { tournamentId, userId } },
@@ -411,21 +412,32 @@ export class LeatherTournamentVisibilityService {
     }
   }
 
-  private assertClubManager(actor: AuthUser): void {
-    if (actor.role !== UserRole.ClubManager) {
+  private assertAdmin(actor: AuthUser): void {
+    if (actor.role !== UserRole.Admin) {
       throw new ForbiddenException({
-        message: 'Only Club Managers may manage leather invites',
+        message: 'Only Admins may manage leather invites',
         error: 'FORBIDDEN',
       });
     }
   }
 
-  private async requireLeatherTournament(
-    tournamentId: string,
-  ): Promise<{ id: string; startAt: Date; ballType: string }> {
+  private async requireLeatherTournament(tournamentId: string): Promise<{
+    id: string;
+    startAt: Date;
+    endAt: Date;
+    timezone: string | null;
+    ballType: string;
+  }> {
     const tournament = await this.prisma.tournament.findUnique({
       where: { id: tournamentId },
-      select: { id: true, startAt: true, ballType: true, isDeleted: true },
+      select: {
+        id: true,
+        startAt: true,
+        endAt: true,
+        timezone: true,
+        ballType: true,
+        isDeleted: true,
+      },
     });
     if (!tournament || tournament.isDeleted) {
       throw new NotFoundException({
@@ -442,10 +454,20 @@ export class LeatherTournamentVisibilityService {
     return tournament;
   }
 
-  private assertInviteWindowOpen(startAt: Date): void {
-    if (Date.now() >= startAt.getTime()) {
+  private assertInviteWindowOpen(tournament: {
+    startAt: Date;
+    endAt: Date;
+    timezone: string | null;
+  }): void {
+    if (
+      !isLeatherInviteWindowOpen({
+        startAt: tournament.startAt.toISOString(),
+        endAt: tournament.endAt.toISOString(),
+        timezone: tournament.timezone,
+      })
+    ) {
       throw new BadRequestException({
-        message: 'Invites are closed once the tournament has started',
+        message: 'Invites are closed once the tournament has ended',
         error: 'INVITE_WINDOW_CLOSED',
       });
     }

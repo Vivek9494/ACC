@@ -18,6 +18,7 @@ describe('LeatherTournamentVisibilityService', () => {
   let service: LeatherTournamentVisibilityService;
 
   const futureStart = new Date('2099-06-01T00:00:00.000Z');
+  const futureEnd = new Date('2099-08-01T00:00:00.000Z');
 
   beforeEach(() => {
     prisma = {
@@ -34,6 +35,8 @@ describe('LeatherTournamentVisibilityService', () => {
         findUnique: jest.fn().mockResolvedValue({
           id: 'tour-1',
           startAt: futureStart,
+          endAt: futureEnd,
+          timezone: 'America/Toronto',
           ballType: BallType.Leather,
           isDeleted: false,
         }),
@@ -150,12 +153,12 @@ describe('LeatherTournamentVisibilityService', () => {
     expect(prisma.tournamentLeatherInvite.findUnique).not.toHaveBeenCalled();
   });
 
-  it('rejects non-Club-Manager invite creation', async () => {
+  it('rejects non-Admin invite creation', async () => {
     await expect(
       service.createInvites(
         {
-          id: 'admin-1',
-          role: UserRole.Admin,
+          id: 'cm-1',
+          role: UserRole.ClubManager,
         } as never,
         'tour-1',
         ['player-2'],
@@ -199,8 +202,30 @@ describe('LeatherTournamentVisibilityService', () => {
     await expect(
       service.createInvites(
         {
-          id: 'cm-1',
-          role: UserRole.ClubManager,
+          id: 'admin-1',
+          role: UserRole.Admin,
+        } as never,
+        'tour-1',
+        ['player-2'],
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('rejects invites after the tournament has ended', async () => {
+    prisma.tournament.findUnique.mockResolvedValue({
+      id: 'tour-1',
+      startAt: new Date('2020-06-01T00:00:00.000Z'),
+      endAt: new Date('2020-08-01T00:00:00.000Z'),
+      timezone: 'America/Toronto',
+      ballType: BallType.Leather,
+      isDeleted: false,
+    });
+
+    await expect(
+      service.createInvites(
+        {
+          id: 'admin-1',
+          role: UserRole.Admin,
         } as never,
         'tour-1',
         ['player-2'],

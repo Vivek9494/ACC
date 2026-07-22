@@ -1,11 +1,20 @@
 import { type AuthUser, UserRole } from './auth';
 import { BallType, type BallType as BallTypeValue } from './rbac';
+import {
+  deriveTournamentDisplayStatus,
+  TournamentDisplayStatus,
+} from './tournament-display-status';
 
-/** Tournament fields for leather invite management UI. */
+/** Tournament fields for leather invite management UI / window checks. */
 export interface LeatherInviteTournamentContext {
   ballType: BallTypeValue;
-  /** ISO 8601 UTC — invites hidden once the tournament has started. */
+  /** ISO 8601 UTC — used with endAt for Upcoming / Live / Completed. */
   startAt: string;
+  /** ISO 8601 UTC — invites hidden once venue-local calendar day is past this. */
+  endAt: string;
+  /** IANA venue timezone; defaults to America/Toronto when omitted. */
+  timezone?: string | null;
+  cancelled?: boolean;
 }
 
 /** A registered app user eligible to receive a leather tournament invite. */
@@ -55,7 +64,32 @@ export function clubManagerCanSelfRegisterForLeather(
   return user?.role === UserRole.ClubManager && ballType === BallType.Leather;
 }
 
-/** Club Manager may invite until the tournament start date. */
+/**
+ * Invites are allowed while the tournament is Upcoming or Live (venue-local /
+ * America/Toronto by default). Hidden after Completed or when Cancelled.
+ */
+export function isLeatherInviteWindowOpen(
+  tournament: Pick<
+    LeatherInviteTournamentContext,
+    'startAt' | 'endAt' | 'timezone' | 'cancelled'
+  >,
+  now: Date = new Date(),
+): boolean {
+  const status = deriveTournamentDisplayStatus(
+    {
+      startAt: tournament.startAt,
+      endAt: tournament.endAt,
+      timezone: tournament.timezone,
+      cancelled: tournament.cancelled,
+    },
+    now,
+  );
+  return (
+    status === TournamentDisplayStatus.Upcoming || status === TournamentDisplayStatus.Live
+  );
+}
+
+/** Admin may manage leather invites until the tournament has ended. */
 export function canManageLeatherInvites(
   user: AuthUser | null | undefined,
   tournament: LeatherInviteTournamentContext | null | undefined,
@@ -64,10 +98,10 @@ export function canManageLeatherInvites(
   if (!user || !tournament || tournament.ballType !== BallType.Leather) {
     return false;
   }
-  if (user.role !== UserRole.ClubManager) {
+  if (user.role !== UserRole.Admin) {
     return false;
   }
-  return now.getTime() < new Date(tournament.startAt).getTime();
+  return isLeatherInviteWindowOpen(tournament, now);
 }
 
 /**

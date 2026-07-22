@@ -33,7 +33,7 @@ export class LeatherInvitesController {
     @Param('tournamentId') tournamentId: string,
     @Query('q') search?: string,
   ): Promise<LeatherInviteCandidatesResponse> {
-    this.assertClubManager(user);
+    this.assertAdmin(user);
     return this.leatherVisibility
       .listInviteCandidates(tournamentId, search)
       .then((candidates) => ({ candidates }));
@@ -44,7 +44,7 @@ export class LeatherInvitesController {
     @CurrentUser() user: AuthUser,
     @Param('tournamentId') tournamentId: string,
   ): Promise<LeatherTournamentInvitesResponse> {
-    this.assertClubManager(user);
+    this.assertAdmin(user);
     return this.leatherVisibility.listInvites(tournamentId).then((invites) => ({ invites }));
   }
 
@@ -54,7 +54,7 @@ export class LeatherInvitesController {
     @Param('tournamentId') tournamentId: string,
     @Body() body: CreateLeatherInvitesDto,
   ): Promise<CreateLeatherInvitesResponse> {
-    this.assertClubManager(user);
+    this.assertAdmin(user);
     return this.leatherVisibility
       .createInvites(user, tournamentId, body.userIds)
       .then((invitedCount) => ({ invitedCount }));
@@ -66,14 +66,14 @@ export class LeatherInvitesController {
     @Param('tournamentId') tournamentId: string,
     @Param('userId') userId: string,
   ): Promise<void> {
-    this.assertClubManager(user);
+    this.assertAdmin(user);
     return this.leatherVisibility.revokeInvite(user, tournamentId, userId);
   }
 
-  private assertClubManager(user: AuthUser): void {
-    if (user.role !== UserRole.ClubManager) {
+  private assertAdmin(user: AuthUser): void {
+    if (user.role !== UserRole.Admin) {
       throw new ForbiddenException({
-        message: 'Only Club Managers may manage leather invites',
+        message: 'Only Admins may manage leather invites',
         error: 'FORBIDDEN',
       });
     }

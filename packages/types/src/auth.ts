@@ -15,6 +15,9 @@ export const MIN_SIGNUP_AGE = 18;
 /** A refresh token unused for this many days is treated as expired (§3.2). */
 export const REFRESH_IDLE_DAYS = 10;
 
+/** Sliding idle window when the user opts into Remember Me on login. */
+export const REFRESH_IDLE_DAYS_REMEMBER_ME = 90;
+
 /** Forgot-password OTP policy (§3.3, §3.4). */
 export const OTP_LENGTH = 4;
 export const OTP_TTL_SECONDS = 5 * 60;
@@ -143,6 +146,8 @@ export interface SignupRequest {
 export interface LoginRequest {
   mobileNumber: string;
   password: string;
+  /** When true, server issues a longer-lived refresh idle window. */
+  rememberMe?: boolean;
 }
 
 export interface RefreshRequest {

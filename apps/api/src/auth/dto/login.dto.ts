@@ -1,5 +1,5 @@
 import type { LoginRequest } from '@acc/types';
-import { IsString, MinLength } from 'class-validator';
+import { IsBoolean, IsOptional, IsString, MinLength } from 'class-validator';
 
 export class LoginDto implements LoginRequest {
   @IsString()
@@ -9,4 +9,8 @@ export class LoginDto implements LoginRequest {
   @IsString()
   @MinLength(1)
   password!: string;
+
+  @IsOptional()
+  @IsBoolean()
+  rememberMe?: boolean;
 }
