@@ -322,8 +322,6 @@ export function PollPlayingXiConfirmScreen({
     return ids;
   }, [actionedSuspensions, tally?.in]);
 
-  const outPoolOpen = Boolean(tally && tally.inCount < PLAYING_XI_SIZE);
-
   const lateArrivalIn = useMemo(
     () => pendingSuspensions.filter(isServingSuspensionForMatch),
     [pendingSuspensions],
@@ -342,6 +340,9 @@ export function PollPlayingXiConfirmScreen({
       actionedSuspensions,
     }).confirmedIn;
   }, [actionedSuspensions, pendingSuspensions, tally]);
+
+  /** Enough selectable Confirmed IN players for a full XI (excludes penalty-only). */
+  const outPoolOpen = Boolean(tally && inTabPlayers.length < PLAYING_XI_SIZE);
 
   const lateArrivalOutIds = useMemo(
     () => new Set(lateArrivalOut.map((row) => row.userId)),

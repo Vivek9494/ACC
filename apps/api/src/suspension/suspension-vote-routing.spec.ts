@@ -42,7 +42,7 @@ describe('suspension vote routing', () => {
     expect(out[0]?.actionsEnabled).toBe(pending[0]?.actionsEnabled);
   });
 
-  it('keeps eligible suspensions in Confirmed IN until the captain selects service', () => {
+  it('excludes eligible pending and carried-forward suspensions from Confirmed IN', () => {
     const inVoters = [
       {
         userId: 'player-1',
@@ -58,6 +58,13 @@ describe('suspension vote routing', () => {
         profilePhotoUrl: null,
         skillLabel: null,
       },
+      {
+        userId: 'player-3',
+        firstName: 'C',
+        lastName: 'Three',
+        profilePhotoUrl: null,
+        skillLabel: null,
+      },
     ];
     const pending = enrichPollSuspensionRows(
       [
@@ -65,11 +72,23 @@ describe('suspension vote routing', () => {
           ...baseRow,
           userId: 'player-2',
           suspensionId: 'susp-2',
+          suspensionStatus: SuspensionStatus.Pending,
+          isCarriedForward: false,
+        },
+        {
+          ...baseRow,
+          userId: 'player-3',
+          suspensionId: 'susp-3',
+          firstName: 'C',
+          lastName: 'Three',
+          suspensionStatus: SuspensionStatus.CarriedForward,
+          isCarriedForward: true,
         },
       ],
       new Map([
         ['player-1', true],
         ['player-2', true],
+        ['player-3', true],
       ]),
     );
 
@@ -80,8 +99,9 @@ describe('suspension vote routing', () => {
     });
 
     expect(isServingSuspensionForMatch(pending[0]!)).toBe(true);
-    expect(confirmedIn.map((row) => row.userId)).toEqual(['player-1', 'player-2']);
-    expect(servingSuspensionPenalty.map((row) => row.userId)).toEqual(['player-2']);
+    expect(isServingSuspensionForMatch(pending[1]!)).toBe(true);
+    expect(confirmedIn.map((row) => row.userId)).toEqual(['player-1']);
+    expect(servingSuspensionPenalty.map((row) => row.userId)).toEqual(['player-2', 'player-3']);
   });
 
   it('merges actioned suspensions into Confirmed IN after cancel or carry-forward', () => {

@@ -527,7 +527,8 @@ export class ParticipationPollService {
       tally: {
         ...tally,
         in: confirmedIn,
-        inCount: confirmedIn.length,
+        // Tab count = all who voted IN (includes Late Arrival Penalty players).
+        inCount: tally.inCount,
       },
       pendingSuspensions,
       actionedSuspensions,
@@ -675,8 +676,8 @@ export class ParticipationPollService {
       pendingSuspensions = enrichPollSuspensionRows(rawPendingSuspensions, voteByUser);
       actionedSuspensions = actionedRows;
 
-      // Actioned suspensions return to the pool. Active suspension rows also
-      // remain in IN until the captain explicitly checks them to serve.
+      // Actioned suspensions return to the Confirmed IN pool. Eligible pending /
+      // carried-forward IN voters appear only in Late Arrival Penalty.
       const actionedSuspensionUserIds = new Set(actionedRows.map((row) => row.userId));
       penaltyOwingForSelection = penaltyOwing.filter(
         (row) => !actionedSuspensionUserIds.has(row.userId),
@@ -690,6 +691,7 @@ export class ParticipationPollService {
       confirmedInWithPunch = partition.confirmedIn;
     }
 
+    const votedInCount = inWithPunch.length;
     const isMatchDay = isAttendanceMatchDay(
       {
         matchDate: poll.match.matchDate,
@@ -762,7 +764,7 @@ export class ParticipationPollService {
       matchId: poll.matchId,
       teamId: poll.teamId,
       teamName: poll.team.name,
-      inCount: confirmedInWithPunch.length,
+      inCount: votedInCount,
       outCount: outRows.length,
       in: confirmedInWithPunch,
       out: outRows,

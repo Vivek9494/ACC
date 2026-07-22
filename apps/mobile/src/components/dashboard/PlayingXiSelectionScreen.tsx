@@ -480,11 +480,27 @@ export function PlayingXiSelectionScreen({
     [picks],
   );
 
+  const pendingSuspensions = selection?.pendingSuspensions ?? [];
+
+  const eligibleSuspensions = useMemo(
+    () => pendingSuspensions.filter(isEligibleSuspensionForManualDecision),
+    [pendingSuspensions],
+  );
+
+  const penaltyPoolUserIds = useMemo(
+    () => new Set(eligibleSuspensions.map((player) => player.userId)),
+    [eligibleSuspensions],
+  );
+
   const visibleInPlayers = useMemo(() => {
     if (!selection) {
       return [];
     }
     return selection.in.filter((player) => {
+      // Mutually exclusive with Late Arrival Penalty (pending + carried-forward).
+      if (penaltyPoolUserIds.has(player.userId)) {
+        return false;
+      }
       if (designatedServerUserIds.has(player.userId)) {
         return false;
       }
@@ -494,14 +510,7 @@ export function PlayingXiSelectionScreen({
       }
       return pick !== 'PLAYING_XI';
     });
-  }, [designatedServerUserIds, picks, selection, squadBucket]);
-
-  const pendingSuspensions = selection?.pendingSuspensions ?? [];
-
-  const eligibleSuspensions = useMemo(
-    () => pendingSuspensions.filter(isEligibleSuspensionForManualDecision),
-    [pendingSuspensions],
-  );
+  }, [designatedServerUserIds, penaltyPoolUserIds, picks, selection, squadBucket]);
 
   const showPenaltySection = eligibleSuspensions.length > 0;
 

@@ -106,8 +106,9 @@ export interface PollConfirmedInPartitionRow {
 }
 
 /**
- * Manual suspension selection never excludes an eligible player from Confirmed
- * IN by itself. Exclusion happens only after the captain checks the player.
+ * Players with an active pending/carried-forward suspension for this match who
+ * voted IN — they appear only in Late Arrival Penalty, not Confirmed IN.
+ * Actioned (cancel / captain carry-forward) players are never excluded.
  */
 export function confirmedInExclusionUserIds(args: {
   pendingSuspensions: readonly PollSuspensionPlayerRow[];
@@ -118,14 +119,28 @@ export function confirmedInExclusionUserIds(args: {
    */
   actionedSuspensionUserIds?: ReadonlySet<string>;
 }): Set<string> {
-  void args;
-  return new Set();
+  const actioned = args.actionedSuspensionUserIds ?? new Set<string>();
+  const excluded = new Set<string>();
+  for (const row of args.pendingSuspensions) {
+    if (!isEligibleSuspensionForManualDecision(row)) {
+      continue;
+    }
+    if (actioned.has(row.userId)) {
+      continue;
+    }
+    excluded.add(row.userId);
+  }
+  // penaltyOwingInVoterUserIds is reserved for callers that also gate on the
+  // parallel LateArrivalPenalty ledger; suspension rows above are authoritative
+  // for Confirmed List mutual exclusion.
+  void args.penaltyOwingInVoterUserIds;
+  return excluded;
 }
 
 /**
- * Return IN voters plus actioned rows while separately surfacing manually
- * selectable suspension candidates. The two collections may overlap until the
- * captain checks a candidate.
+ * Confirmed IN pool and Late Arrival Penalty are mutually exclusive: eligible
+ * pending/carried-forward IN voters appear only in the penalty section until
+ * cancel (or captain carry-forward) returns them to the pool.
  */
 export function partitionPollConfirmedInVoters<T extends PollConfirmedInPartitionRow>(args: {
   inVoters: readonly T[];
