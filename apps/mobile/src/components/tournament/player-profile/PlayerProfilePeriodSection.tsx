@@ -11,18 +11,22 @@ import {
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 
+import { SegmentedControl } from '../../ui/SegmentedControl';
 import { Text } from '../../ui/Text';
 import { FIELD_ORANGE } from '../../ui/fieldStyles';
 
 type PeriodTab = 'tournaments' | 'year';
 
-/** Matches PeriodTabButton label — font-sans-semibold text-sm (14px). */
-const PERIOD_TAB_TEXT = 'font-sans-semibold text-sm';
+const PERIOD_TABS = [
+  { value: 'tournaments' as const, label: 'By Tournaments' },
+  { value: 'year' as const, label: 'By Year' },
+];
+
 const CARD_TITLE_TEXT = 'font-sans-bold text-base text-on-surface';
 const CARD_SUBLINE_TEXT = 'font-sans text-sm text-on-surface-variant';
 const CARD_INLINE_LABEL_TEXT = 'font-sans text-sm text-on-surface-variant';
 const CARD_INLINE_VALUE_TEXT = 'font-sans-semibold text-sm text-on-surface';
-const CARD_LINK_TEXT = `${PERIOD_TAB_TEXT} text-primary`;
+const CARD_LINK_TEXT = 'font-sans-semibold text-sm text-primary';
 
 interface PeriodStatCellProps {
   label: string;
@@ -52,31 +56,6 @@ function PeriodStatsGrid({ stats }: { stats: PlayerProfilePeriodStats }): React.
       <PeriodStatCell label="Sixes" value={formatPlayerProfileInteger(stats.sixes)} />
       <PeriodStatCell label="Fours" value={formatPlayerProfileInteger(stats.fours)} />
     </View>
-  );
-}
-
-function PeriodTabButton({
-  label,
-  active,
-  onPress,
-}: {
-  label: string;
-  active: boolean;
-  onPress: () => void;
-}): React.ReactElement {
-  return (
-    <Pressable
-      className={`flex-1 border-b-2 py-3 -mb-px ${active ? 'border-primary' : 'border-transparent'}`}
-      onPress={onPress}
-    >
-      <Text
-        className={`text-center ${PERIOD_TAB_TEXT} ${
-          active ? 'text-primary' : 'text-on-surface-variant'
-        }`}
-      >
-        {label}
-      </Text>
-    </Pressable>
   );
 }
 
@@ -165,16 +144,13 @@ export function PlayerProfilePeriodSection({
 
   return (
     <View className="mb-8">
-      <View className="mb-4 flex-row border-b border-outline-variant">
-        <PeriodTabButton
-          label="By Tournaments"
-          active={tab === 'tournaments'}
-          onPress={() => switchTab('tournaments')}
-        />
-        <PeriodTabButton
-          label="By Year"
-          active={tab === 'year'}
-          onPress={() => switchTab('year')}
+      <View className="mb-4 items-center">
+        <SegmentedControl
+          options={PERIOD_TABS}
+          value={tab}
+          onChange={switchTab}
+          accessibilityLabel="Stats period"
+          size="md"
         />
       </View>
 

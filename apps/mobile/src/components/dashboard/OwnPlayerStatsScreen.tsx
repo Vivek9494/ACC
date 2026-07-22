@@ -9,8 +9,8 @@ import { PlayerMomStatsCard } from '../stats/PlayerMomStatsCard';
 import { PlayerCareerStatsContent } from '../tournament/player-profile/PlayerCareerStatsContent';
 import { PlayerProfileHeader } from '../tournament/player-profile/PlayerProfileHeader';
 import { FIELD_ORANGE } from '../ui/fieldStyles';
+import { SegmentedControl } from '../ui/SegmentedControl';
 import { Text } from '../ui/Text';
-import { UnderlineTabBar } from '../ui/UnderlineTabBar';
 
 const BALL_TYPE_TABS = [
   { value: BallType.Leather, label: 'Leather' },
@@ -54,13 +54,15 @@ export function OwnPlayerStatsScreen(): React.ReactElement {
       <ScrollView className="flex-1" contentContainerClassName="px-4 pb-10 pt-2">
         {stats ? <PlayerProfileHeader profile={stats} /> : null}
 
-        <UnderlineTabBar
-          options={BALL_TYPE_TABS}
-          value={ballType}
-          onChange={setBallType}
-          accessibilityLabel="Ball type"
-          layout="spread"
-        />
+        <View className="mt-3 items-center">
+          <SegmentedControl
+            options={BALL_TYPE_TABS}
+            value={ballType}
+            onChange={setBallType}
+            accessibilityLabel="Ball type"
+            size="md"
+          />
+        </View>
 
         {loading ? (
           <View className="items-center py-12">
