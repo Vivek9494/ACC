@@ -94,8 +94,6 @@ export function TournamentStatsTab({
     <View className="gap-6">
       {teamOptions.length > 1 ? (
         <Select
-          label="Team"
-          labelVariant="brand"
           placeholder="All Teams"
           value={teamFilter ?? 'all'}
           options={teamOptions}
