@@ -318,6 +318,82 @@ describe('SuspensionService', () => {
     });
   });
 
+  it('leaves unchecked suspensions pending when no future match exists on XI confirm', async () => {
+    const servingMatch = {
+      id: 'match-2',
+      tournamentId: 'tournament-1',
+      startTime: new Date('2026-06-08T18:00:00Z'),
+      matchDate: new Date('2026-06-08'),
+      tournament: { ballType: BallType.Leather },
+    };
+    prismaMock.match.findUnique.mockImplementation(async (args: { where: { id: string } }) => {
+      if (args.where.id === 'match-2') {
+        return servingMatch;
+      }
+      return {
+        id: 'match-2',
+        startTime: new Date('2026-06-08T18:00:00Z'),
+        matchDate: new Date('2026-06-08'),
+        tournamentId: 'tournament-1',
+      };
+    });
+    prismaMock.match.findFirst.mockResolvedValue(null);
+    prismaMock.availabilityPoll.findUnique.mockResolvedValue({
+      votes: [{ userId: 'player-2', isAvailable: true }],
+    });
+    prismaMock.suspension.findMany.mockResolvedValue([
+      {
+        id: 'susp-2',
+        userId: 'player-2',
+        teamId: 'team-a',
+        tournamentId: 'tournament-1',
+        servingMatchId: 'match-2',
+        carryForwardCount: 0,
+        user: { firstName: 'Alex', lastName: 'Patel' },
+      },
+    ]);
+    prismaMock.suspension.update.mockResolvedValue({});
+
+    await service.resolveManualSuspensionsOnPlayingXiConfirm('match-2', 'team-a', [], []);
+
+    expect(prismaMock.suspension.update).toHaveBeenCalledWith({
+      where: { id: 'susp-2' },
+      data: {
+        status: SuspensionStatus.Pending,
+        servingMatchId: null,
+        actionedAtMatchId: 'match-2',
+      },
+    });
+  });
+
+  it('does not block confirm preflight when unchecked suspensions have no next match', async () => {
+    prismaMock.match.findUnique.mockResolvedValue({
+      id: 'match-2',
+      tournamentId: 'tournament-1',
+      startTime: new Date('2026-06-08T18:00:00Z'),
+      matchDate: new Date('2026-06-08'),
+      tournament: { ballType: BallType.Leather },
+    });
+    prismaMock.match.findFirst.mockResolvedValue(null);
+    prismaMock.suspension.findMany.mockResolvedValue([
+      {
+        id: 'susp-2',
+        userId: 'player-2',
+        teamId: 'team-a',
+        tournamentId: 'tournament-1',
+        servingMatchId: 'match-2',
+        user: { firstName: 'Alex', lastName: 'Patel' },
+      },
+    ]);
+    prismaMock.availabilityPoll.findUnique.mockResolvedValue({
+      votes: [{ userId: 'player-2', isAvailable: true }],
+    });
+
+    await expect(
+      service.assertManualSuspensionSelection('match-2', 'team-a', [], ['player-xi']),
+    ).resolves.toBeUndefined();
+  });
+
   it('syncs pending suspensions from a live source match when Confirm Playing 11 opens', async () => {
     prismaMock.match.findUnique.mockResolvedValue({
       id: 'match-2',
@@ -336,9 +412,19 @@ describe('SuspensionService', () => {
     prismaMock.suspension.findFirst.mockResolvedValue(null);
     prismaMock.suspension.findMany.mockResolvedValue([]);
     prismaMock.suspension.create.mockResolvedValue({ id: 'susp-1' });
+    prismaMock.suspension.updateMany.mockResolvedValue({ count: 0 });
 
     await service.syncPendingSuspensionsForServingMatch('match-2', 'team-a');
 
+    expect(prismaMock.suspension.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          teamId: 'team-a',
+          servingMatchId: null,
+        }),
+        data: { servingMatchId: 'match-2' },
+      }),
+    );
     expect(prismaMock.suspension.create).toHaveBeenCalledTimes(2);
     expect(prismaMock.suspension.create).toHaveBeenCalledWith(
       expect.objectContaining({

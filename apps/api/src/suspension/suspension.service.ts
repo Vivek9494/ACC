@@ -453,8 +453,10 @@ export class SuspensionService {
   /**
    * Captain's manual suspension decisions on Playing XI confirm.
    * Checked IN voters serve this match; every other active row is carried to
-   * the next team fixture. Voting IN only makes a row selectable — it never
-   * auto-selects service.
+   * the next team fixture when one exists. With no future match, unchecked
+   * rows stay PENDING with servingMatchId cleared so they attach when the
+   * next fixture is scheduled. Voting IN only makes a row selectable — it
+   * never auto-selects service.
    */
   async resolveManualSuspensionsOnPlayingXiConfirm(
     matchId: string,
@@ -471,6 +473,7 @@ export class SuspensionService {
         status: { in: [...PENALTY_TAB_STATUSES] },
         reason: SuspensionReason.LateLastMatch,
       },
+      include: { user: { select: { firstName: true, lastName: true } } },
     });
 
     if (active.length === 0) {
@@ -495,21 +498,22 @@ export class SuspensionService {
         this.resolvePollVoteSide(voteSideByUser, userId) !== SuspensionPollVoteSide.In
       ) {
         throw new BadRequestException({
-          message: 'Only eligible suspended players who voted IN may serve this match',
+          message: `${this.formatSuspensionPlayerLabel(row)} is not eligible to serve this match (must be suspended and voted IN)`,
           error: 'INVALID_PENALTY_SERVER',
         });
       }
       if (squad.has(userId)) {
         throw new BadRequestException({
-          message: 'Penalty servers cannot be in the Playing 11 or substitutes',
+          message: `${this.formatSuspensionPlayerLabel(row)} cannot serve a suspension while also in the Playing 11 or substitutes`,
           error: 'PENALTY_SERVER_IN_SQUAD',
         });
       }
     }
 
+    const unchecked = active.filter((row) => !selected.has(row.userId));
     const serveMatch = await this.requireServingMatch(matchId);
     const nextMatchId =
-      active.some((row) => !selected.has(row.userId))
+      unchecked.length > 0
         ? await this.findNextTeamMatch(
             teamId,
             active[0]!.tournamentId,
@@ -517,13 +521,6 @@ export class SuspensionService {
             matchId,
           )
         : null;
-    if (active.some((row) => !selected.has(row.userId)) && !nextMatchId) {
-      throw new BadRequestException({
-        message:
-          'Unchecked suspensions need a future team match for carry-forward. Schedule the next match, select the player to serve, or cancel the suspension.',
-        error: 'NEXT_MATCH_REQUIRED',
-      });
-    }
 
     for (const row of active) {
       const voteSide = this.resolvePollVoteSide(voteSideByUser, row.userId);
@@ -539,7 +536,7 @@ export class SuspensionService {
           after: { userId: row.userId, servingMatchId: matchId },
         });
         await this.assignParallelLateArrivalPenalty(row, matchId);
-      } else {
+      } else if (nextMatchId) {
         await this.prisma.suspension.update({
           where: { id: row.id },
           data: {
@@ -564,13 +561,38 @@ export class SuspensionService {
           },
         });
         await this.unassignParallelLateArrivalPenalty(row, matchId);
+      } else {
+        // No future fixture yet — keep PENDING; reattach when the next match syncs.
+        await this.prisma.suspension.update({
+          where: { id: row.id },
+          data: {
+            status: SuspensionStatus.Pending,
+            servingMatchId: null,
+            actionedAtMatchId: matchId,
+          },
+        });
+        await this.audit.record({
+          action: 'SUSPENSION_LEFT_PENDING_NO_NEXT_MATCH',
+          targetEntityType: 'suspension',
+          targetEntityId: row.id,
+          after: {
+            userId: row.userId,
+            fromMatchId: matchId,
+            reason:
+              voteSide === SuspensionPollVoteSide.In
+                ? 'Captain left suspension unchecked; no future match scheduled'
+                : 'Player unavailable to serve; no future match scheduled',
+          },
+        });
+        await this.unassignParallelLateArrivalPenalty(row, matchId);
       }
     }
   }
 
   /**
-   * Preflight manual decisions before the squad lock is written, avoiding a
-   * finalized squad when a server is invalid or carry-forward is impossible.
+   * Preflight manual decisions before the squad lock is written.
+   * Unchecked suspensions no longer block Confirm when there is no next match —
+   * they remain pending and attach when a later fixture is scheduled.
    */
   async assertManualSuspensionSelection(
     matchId: string,
@@ -586,6 +608,7 @@ export class SuspensionService {
         status: { in: [...PENALTY_TAB_STATUSES] },
         reason: SuspensionReason.LateLastMatch,
       },
+      include: { user: { select: { firstName: true, lastName: true } } },
     });
     const selected = new Set(selectedServerUserIds);
     const activeByUser = new Map(active.map((row) => [row.userId, row]));
@@ -593,39 +616,35 @@ export class SuspensionService {
     const voteSideByUser = await this.loadPollVoteSideByUser(matchId, teamId);
 
     for (const userId of selected) {
+      const row = activeByUser.get(userId);
       if (
-        !activeByUser.has(userId) ||
+        !row ||
         this.resolvePollVoteSide(voteSideByUser, userId) !== SuspensionPollVoteSide.In
       ) {
         throw new BadRequestException({
-          message: 'Only eligible suspended players who voted IN may serve this match',
+          message: `${this.formatSuspensionPlayerLabel(row)} is not eligible to serve this match (must be suspended and voted IN)`,
           error: 'INVALID_PENALTY_SERVER',
         });
       }
       if (squad.has(userId)) {
         throw new BadRequestException({
-          message: 'Penalty servers cannot be in the Playing 11 or substitutes',
+          message: `${this.formatSuspensionPlayerLabel(row)} cannot serve a suspension while also in the Playing 11 or substitutes`,
           error: 'PENALTY_SERVER_IN_SQUAD',
         });
       }
     }
+  }
 
-    if (active.some((row) => !selected.has(row.userId))) {
-      const serveMatch = await this.requireServingMatch(matchId);
-      const nextMatchId = await this.findNextTeamMatch(
-        teamId,
-        active[0]!.tournamentId,
-        serveMatch.startTime ?? serveMatch.matchDate ?? new Date(),
-        matchId,
-      );
-      if (!nextMatchId) {
-        throw new BadRequestException({
-          message:
-            'Unchecked suspensions need a future team match for carry-forward. Schedule the next match, select the player to serve, or cancel the suspension.',
-          error: 'NEXT_MATCH_REQUIRED',
-        });
-      }
+  private formatSuspensionPlayerLabel(
+    row: { user?: { firstName: string; lastName: string } | null; userId: string } | undefined,
+  ): string {
+    if (!row) {
+      return 'That player';
     }
+    const first = row.user?.firstName?.trim() ?? '';
+    const last = row.user?.lastName?.trim() ?? '';
+    const name = `${first} ${last}`.trim();
+    return name.length > 0 ? name : 'That player';
   }
 
   /** Non-poll squad confirmation has no manual server choices, so all obligations carry. */
@@ -821,6 +840,18 @@ export class SuspensionService {
     if (!servingMatch || servingMatch.tournament.ballType !== BallType.Leather) {
       return;
     }
+
+    // Reattach suspensions left pending when Confirm ran with no next fixture.
+    await this.prisma.suspension.updateMany({
+      where: {
+        teamId,
+        tournamentId: servingMatch.tournamentId,
+        status: { in: [...PENALTY_TAB_STATUSES] },
+        reason: SuspensionReason.LateLastMatch,
+        servingMatchId: null,
+      },
+      data: { servingMatchId },
+    });
 
     const source = await this.findPriorLiveOrCompletedSourceMatch(
       teamId,
