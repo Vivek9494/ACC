@@ -120,7 +120,7 @@ export function isPunchTimeReadOnly(state: MatchStateType): boolean {
   return PUNCH_TIME_READ_ONLY_MATCH_STATES.includes(state);
 }
 
-/** Match Detail "View Punch Time" button visibility (role + leather + state + reporting time). */
+/** Match Detail "Punch Time" button visibility (role + leather + state + reporting time). */
 export function canViewMatchPlayersPunchTimeButton(
   user: AuthUser | null | undefined,
   match: PunchTimeScopeMatch,

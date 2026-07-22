@@ -217,10 +217,13 @@ export default function MatchDetailScreen(): React.ReactElement {
       return { label: 'View Live Score', href: `/matches/${match.id}/live` as const };
     }
     if (POST_MATCH.includes(state)) {
-      return { label: 'View Scorecard', href: `/matches/${match.id}/scorecard` as const };
+      return { label: 'Scorecard', href: `/matches/${match.id}/scorecard` as const };
     }
     return null;
   })();
+
+  const showPunchTime = canViewMatchPlayersPunchTimeButton(user, match);
+  const punchAndScoreSideBySide = showPunchTime && scoreViewAction != null;
 
   function resolvePlayingXiRoute(team: { id: string; name: string }): string {
     if (match.ballType === BallType.Leather) {
@@ -257,23 +260,25 @@ export default function MatchDetailScreen(): React.ReactElement {
           </View>
         ) : null}
 
-        {canViewMatchPlayersPunchTimeButton(user, match) ? (
-          <Button
-            onPress={() => router.push(`/matches/${match.id}/punch-time`)}
-            variant="secondary"
-            className="h-12"
-            label="View Punch Time"
-          />
-        ) : null}
-
-        {/* Live scoring (§28) or post-match scorecard (§13, §16) */}
-        {scoreViewAction ? (
-          <Button
-            onPress={() => router.push(scoreViewAction.href)}
-            variant="secondary"
-            className="h-12"
-            label={scoreViewAction.label}
-          />
+        {showPunchTime || scoreViewAction ? (
+          <View className={punchAndScoreSideBySide ? 'flex-row gap-3' : undefined}>
+            {showPunchTime ? (
+              <Button
+                onPress={() => router.push(`/matches/${match.id}/punch-time`)}
+                variant="secondary"
+                className={punchAndScoreSideBySide ? 'h-12 min-w-0 flex-1' : 'h-12'}
+                label="Punch Time"
+              />
+            ) : null}
+            {scoreViewAction ? (
+              <Button
+                onPress={() => router.push(scoreViewAction.href)}
+                variant="secondary"
+                className={punchAndScoreSideBySide ? 'h-12 min-w-0 flex-1' : 'h-12'}
+                label={scoreViewAction.label}
+              />
+            ) : null}
+          </View>
         ) : null}
 
         {(state === 'COMPLETED' || state === 'SCORECARD_LOCKED') ? (
