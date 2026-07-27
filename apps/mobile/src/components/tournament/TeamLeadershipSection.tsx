@@ -1,12 +1,15 @@
 import { BallType, type TeamDetailPlayerRow, type TeamDetailView } from '@acc/types';
 import { useState } from 'react';
-import { Modal, Pressable, View } from 'react-native';
+import { Dimensions, FlatList, Modal, Pressable, View } from 'react-native';
 
 import { ApiRequestError, assignTeamRoles } from '../../lib/api';
 import { Button } from '../ui/Button';
 import { Text } from '../ui/Text';
 
 type LeadershipRole = 'captain' | 'viceCaptain' | 'manager';
+
+/** Keep the sheet under ~70% of the screen so the roster FlatList scrolls internally. */
+const PICKER_LIST_MAX_HEIGHT = Math.round(Dimensions.get('window').height * 0.55);
 
 export interface TeamLeadershipSectionProps {
   tournamentId: string;
@@ -157,31 +160,59 @@ export function TeamLeadershipSection({
 
       {error ? <Text className="font-sans text-sm text-primary">{error}</Text> : null}
 
-      <Modal visible={pickerRole != null} transparent animationType="slide">
+      <Modal
+        visible={pickerRole != null}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setPickerRole(null)}
+      >
         <Pressable className="flex-1 justify-end bg-black/40" onPress={() => setPickerRole(null)}>
-          <Pressable className="max-h-[70%] rounded-t-2xl bg-background px-4 pb-8 pt-4" onPress={() => undefined}>
+          <Pressable
+            className="max-h-[70%] overflow-hidden rounded-t-2xl bg-background px-4 pb-8 pt-4"
+            onPress={(event) => event.stopPropagation()}
+          >
             <Text className="font-sans-bold text-lg text-on-surface">
               {pickerRole ? pickerTitle(pickerRole) : ''}
             </Text>
-            <Pressable
-              className="mt-4 border-b border-outline-variant py-3"
-              onPress={() => pickerRole && void saveRole(pickerRole, null)}
-              disabled={saving}
-            >
-              <Text className="font-sans-semibold text-base text-on-surface-variant">Clear assignment</Text>
-            </Pressable>
-            {candidates.map((player) => (
-              <Pressable
-                key={player.userId}
-                className="border-b border-outline-variant py-3"
-                onPress={() => pickerRole && void saveRole(pickerRole, player.userId)}
-                disabled={saving}
-              >
-                <Text className="font-sans-semibold text-base text-on-surface">
-                  {player.firstName} {player.lastName}
+            <FlatList
+              data={candidates}
+              keyExtractor={(player) => player.userId}
+              style={{ maxHeight: PICKER_LIST_MAX_HEIGHT, marginTop: 8 }}
+              keyboardShouldPersistTaps="handled"
+              nestedScrollEnabled
+              showsVerticalScrollIndicator
+              ListHeaderComponent={
+                <Pressable
+                  className="border-b border-outline-variant py-3"
+                  onPress={() => pickerRole && void saveRole(pickerRole, null)}
+                  disabled={saving}
+                  accessibilityRole="button"
+                  accessibilityLabel="Clear assignment"
+                >
+                  <Text className="font-sans-semibold text-base text-on-surface-variant">
+                    Clear assignment
+                  </Text>
+                </Pressable>
+              }
+              renderItem={({ item: player }) => (
+                <Pressable
+                  className="border-b border-outline-variant py-3"
+                  onPress={() => pickerRole && void saveRole(pickerRole, player.userId)}
+                  disabled={saving}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${player.firstName} ${player.lastName}`}
+                >
+                  <Text className="font-sans-semibold text-base text-on-surface">
+                    {player.firstName} {player.lastName}
+                  </Text>
+                </Pressable>
+              )}
+              ListEmptyComponent={
+                <Text className="py-6 text-center font-sans text-sm text-on-surface-variant">
+                  No eligible players on this roster.
                 </Text>
-              </Pressable>
-            ))}
+              }
+            />
           </Pressable>
         </Pressable>
       </Modal>

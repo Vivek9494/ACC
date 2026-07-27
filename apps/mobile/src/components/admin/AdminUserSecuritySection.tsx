@@ -4,7 +4,7 @@ import {
   isAdminTempPasswordActive,
 } from '@acc/types';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { copyTextToClipboard } from '../../lib/copy-text';
@@ -37,6 +37,11 @@ export function AdminUserSecuritySection({
     user.tempPasswordExpiresAt != null
       ? formatAdminTempPasswordTimeRemaining(user.tempPasswordExpiresAt)
       : null;
+
+  // New generate/regenerate password must show the copy icon again.
+  useEffect(() => {
+    setCopied(false);
+  }, [revealedTempPassword]);
 
   const onCopy = useCallback(async () => {
     if (!revealedTempPassword) {
