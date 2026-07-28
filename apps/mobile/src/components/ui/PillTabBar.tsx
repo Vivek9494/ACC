@@ -63,7 +63,10 @@ export function PillTabBar<T extends string>({
         showsHorizontalScrollIndicator={false}
         accessibilityRole="tablist"
         accessibilityLabel={accessibilityLabel}
-        contentContainerClassName="flex-row gap-2"
+        // Nested in vertical ScrollViews with flexGrow:1 content (e.g. forms),
+        // horizontal ScrollViews otherwise stretch on the cross-axis and inflate pills.
+        style={{ flexGrow: 0 }}
+        contentContainerClassName="flex-row items-center gap-2"
       >
         {pills}
       </ScrollView>
