@@ -4,6 +4,7 @@ import { BallType, type BallType as BallTypeValue } from './rbac';
 import { RegistrationStatus } from './registration';
 import {
   isTournamentRegistrationWindowClosed,
+  hasRegistrationOpened,
   tournamentHasRegistrationWindow,
 } from './tournament-registration';
 
@@ -114,12 +115,14 @@ export function isRegistrationVerificationComplete(
 }
 
 /**
- * Tennis Details-tab buttons (Registered Players List / Favourite Players).
- * Hidden until verification completes; Captain / VC / Manager (plus Admin / Club Manager).
+ * Tennis Details-tab Registered Players List button.
+ * Shown once registration has opened (verification may still be pending).
+ * Captain / VC / Manager (plus Admin / Club Manager).
  */
 export function canShowTournamentRegistrationPlayerButtons(
   user: AuthUser | null | undefined,
   tournament: RegistrationManagementTournamentContext | null | undefined,
+  now: Date = new Date(),
 ): boolean {
   if (!user || !tournament?.id) {
     return false;
@@ -127,7 +130,17 @@ export function canShowTournamentRegistrationPlayerButtons(
   if (!tournamentUsesRegistrationVerification(tournament.ballType)) {
     return false;
   }
-  if (!tournament.registrationVerificationComplete) {
+  if (!tournament.hasRegistrationWindow) {
+    return false;
+  }
+  if (
+    !hasRegistrationOpened(
+      {
+        registrationOpenAt: tournament.registrationOpenAt ?? null,
+      },
+      now,
+    )
+  ) {
     return false;
   }
   if (user.role === UserRole.ClubManager || user.role === UserRole.Admin) {

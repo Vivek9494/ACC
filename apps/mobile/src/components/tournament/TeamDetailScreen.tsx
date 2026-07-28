@@ -1,5 +1,5 @@
-import type { TeamDetailView } from '@acc/types';
-import { useCallback, useState } from 'react';
+import { PlayerCategory, type TeamDetailPlayerRow, type TeamDetailView } from '@acc/types';
+import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, View } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -40,6 +40,46 @@ function SquadStatusCard({ detail }: { detail: TeamDetailView }): React.ReactEle
   );
 }
 
+function PlayerCategorySection({
+  label,
+  players,
+  showViewProfile,
+  canRemovePlayers,
+  removingUserId,
+  onViewProfile,
+  onRemove,
+}: {
+  label: string;
+  players: TeamDetailPlayerRow[];
+  showViewProfile: boolean;
+  canRemovePlayers: boolean;
+  removingUserId: string | null;
+  onViewProfile: (player: TeamDetailPlayerRow) => void;
+  onRemove: (player: TeamDetailPlayerRow) => void;
+}): React.ReactElement | null {
+  if (players.length === 0) {
+    return null;
+  }
+
+  return (
+    <View className="gap-3">
+      <Text className="font-sans-semibold text-sm text-on-surface-variant">
+        {label} ({players.length})
+      </Text>
+      {players.map((player) => (
+        <TeamPlayerCard
+          key={player.userId}
+          player={player}
+          showViewProfile={showViewProfile}
+          onViewProfile={() => onViewProfile(player)}
+          onRemove={canRemovePlayers ? () => onRemove(player) : undefined}
+          removing={removingUserId === player.userId}
+        />
+      ))}
+    </View>
+  );
+}
+
 export interface TeamDetailScreenProps {
   tournamentId: string;
   teamId: string;
@@ -75,6 +115,32 @@ export function TeamDetailScreen({
     useCallback(() => {
       void load();
     }, [load]),
+  );
+
+  const fulltimePlayers = useMemo(
+    () =>
+      detail?.showPlayerCategorySplit
+        ? detail.players.filter((player) => player.playerCategory === PlayerCategory.Fulltime)
+        : [],
+    [detail],
+  );
+  const parttimePlayers = useMemo(
+    () =>
+      detail?.showPlayerCategorySplit
+        ? detail.players.filter((player) => player.playerCategory === PlayerCategory.Parttime)
+        : [],
+    [detail],
+  );
+  const uncategorizedPlayers = useMemo(
+    () =>
+      detail?.showPlayerCategorySplit
+        ? detail.players.filter(
+            (player) =>
+              player.playerCategory !== PlayerCategory.Fulltime &&
+              player.playerCategory !== PlayerCategory.Parttime,
+          )
+        : [],
+    [detail],
   );
 
   function openPlayerProfile(userId: string, firstName: string, lastName: string): void {
@@ -193,6 +259,56 @@ export function TeamDetailScreen({
               <Text className="font-sans text-sm text-on-surface-variant">
                 No players on this team yet.
               </Text>
+            ) : detail.showPlayerCategorySplit ? (
+              <View className="gap-5">
+                <PlayerCategorySection
+                  label="Full-time"
+                  players={fulltimePlayers}
+                  showViewProfile={detail.canViewPlayerProfiles}
+                  canRemovePlayers={detail.canRemovePlayers}
+                  removingUserId={removingUserId}
+                  onViewProfile={(player) =>
+                    openPlayerProfile(player.userId, player.firstName, player.lastName)
+                  }
+                  onRemove={(player) =>
+                    confirmRemovePlayer(player.userId, player.firstName, player.lastName)
+                  }
+                />
+                <PlayerCategorySection
+                  label="Part-time"
+                  players={parttimePlayers}
+                  showViewProfile={detail.canViewPlayerProfiles}
+                  canRemovePlayers={detail.canRemovePlayers}
+                  removingUserId={removingUserId}
+                  onViewProfile={(player) =>
+                    openPlayerProfile(player.userId, player.firstName, player.lastName)
+                  }
+                  onRemove={(player) =>
+                    confirmRemovePlayer(player.userId, player.firstName, player.lastName)
+                  }
+                />
+                {uncategorizedPlayers.map((player) => (
+                  <TeamPlayerCard
+                    key={player.userId}
+                    player={player}
+                    showViewProfile={detail.canViewPlayerProfiles}
+                    onViewProfile={() =>
+                      openPlayerProfile(player.userId, player.firstName, player.lastName)
+                    }
+                    onRemove={
+                      detail.canRemovePlayers
+                        ? () =>
+                            confirmRemovePlayer(
+                              player.userId,
+                              player.firstName,
+                              player.lastName,
+                            )
+                        : undefined
+                    }
+                    removing={removingUserId === player.userId}
+                  />
+                ))}
+              </View>
             ) : (
               detail.players.map((player) => (
                 <TeamPlayerCard

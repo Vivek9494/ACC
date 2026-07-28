@@ -510,7 +510,14 @@ export interface VerifiedRegisteredPlayerRow extends RegistrationSummary {
 }
 
 export interface VerifiedRegisteredPlayersView {
+  /**
+   * Confirmed registrants (same as {@link confirmed}). Kept for callers that
+   * still read `players` after the three-tab Registered Players list shipped.
+   */
   players: VerifiedRegisteredPlayerRow[];
+  waitlist: VerifiedRegisteredPlayerRow[];
+  confirmed: VerifiedRegisteredPlayerRow[];
+  declined: VerifiedRegisteredPlayerRow[];
   canFavourite: boolean;
   favouriteTeamId: string | null;
   /** §7.6 late-add escape hatch on the Registered Players list. */

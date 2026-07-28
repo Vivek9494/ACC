@@ -753,6 +753,9 @@ describe('RegistrationsService', () => {
       );
 
       expect(result.players).toHaveLength(1);
+      expect(result.confirmed).toHaveLength(1);
+      expect(result.waitlist).toHaveLength(0);
+      expect(result.declined).toHaveLength(0);
       expect(result.canFavourite).toBe(true);
       expect(result.favouriteTeamId).toBe('team-1');
       expect(result.canLateRegister).toBe(true);
@@ -857,8 +860,45 @@ describe('RegistrationsService', () => {
       expect(prisma.teamRegistrationFavourite.upsert).toHaveBeenCalled();
     });
 
-    it('rejects when verification is still pending', async () => {
-      prisma.registration.count.mockResolvedValue(2);
+    it('returns waitlist, confirmed, and declined when registration has opened', async () => {
+      prisma.registration.findMany.mockResolvedValue([
+        row({
+          id: 'r-wait',
+          userId: 'p-wait',
+          status: RegistrationStatus.InWaitlist,
+        }),
+        row({
+          id: 'r-conf',
+          userId: 'p-conf',
+          status: RegistrationStatus.Confirmed,
+        }),
+        row({
+          id: 'r-dec',
+          userId: 'p-dec',
+          status: RegistrationStatus.Declined,
+        }),
+      ]);
+
+      const result = await service.listVerifiedRegisteredPlayers(captain, 'tour-1', {});
+
+      expect(result.waitlist).toHaveLength(1);
+      expect(result.confirmed).toHaveLength(1);
+      expect(result.declined).toHaveLength(1);
+      expect(result.players).toHaveLength(1);
+      expect(result.canFavourite).toBe(false);
+      expect(result.favouriteTeamId).toBeNull();
+    });
+
+    it('rejects when registration has not opened yet', async () => {
+      prisma.tournament.findUnique.mockResolvedValue({
+        id: 'tour-1',
+        state: 'UPCOMING',
+        type: 'APL',
+        ballType: 'TENNIS',
+        isDeleted: false,
+        registrationOpenAt: new Date('2099-01-01T00:00:00.000Z'),
+        registrationCloseAt: new Date('2099-12-31T23:59:59.000Z'),
+      });
 
       await expect(
         service.listVerifiedRegisteredPlayers(captain, 'tour-1', {}),

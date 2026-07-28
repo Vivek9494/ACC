@@ -469,13 +469,23 @@ export class TournamentsService {
           viewer,
           { tournamentId: id },
         );
-      } else if (registrationVerificationComplete) {
-        [canViewRegisteredPlayersList, canViewFavouritePlayers] = await Promise.all([
-          this.permissions.check(Permission.VIEW_VERIFIED_REGISTERED_PLAYERS, viewer, {
-            tournamentId: id,
-          }),
-          this.permissions.check(Permission.FAVOURITE_PLAYERS, viewer, { tournamentId: id }),
-        ]);
+      } else if (
+        row.ballType === BallType.Tennis &&
+        hasRegistrationWindow &&
+        hasRegistrationOpened(detailBase)
+      ) {
+        canViewRegisteredPlayersList = await this.permissions.check(
+          Permission.VIEW_VERIFIED_REGISTERED_PLAYERS,
+          viewer,
+          { tournamentId: id },
+        );
+        if (registrationVerificationComplete) {
+          canViewFavouritePlayers = await this.permissions.check(
+            Permission.FAVOURITE_PLAYERS,
+            viewer,
+            { tournamentId: id },
+          );
+        }
       }
     }
 

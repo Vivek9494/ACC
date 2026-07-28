@@ -20,6 +20,7 @@ import { RegisteredPlayerRegistrationDetailsModal } from '../../../../src/compon
 import { SkillVideoPlayerModal } from '../../../../src/components/tournament/SkillVideoPlayerModal';
 import { ScreenHeader } from '../../../../src/components/ui/ScreenHeader';
 import { KeyboardAwareFormScrollView } from '../../../../src/components/ui/KeyboardAwareFormScrollView';
+import { PillTabBar } from '../../../../src/components/ui/PillTabBar';
 import { TextInput } from '../../../../src/components/ui/TextInput';
 import { Text } from '../../../../src/components/ui/Text';
 import { FIELD_ORANGE } from '../../../../src/components/ui/fieldStyles';
@@ -35,15 +36,29 @@ import {
 import { useAuth } from '../../../../src/lib/auth-context';
 import { tournamentSubpathHref } from '../../../../src/lib/tournament-detail-route';
 
-/** Registered players — tennis (post-verification) or leather (ACC squad-building). */
+type TennisStatusTab = 'waitlist' | 'confirmed' | 'declined';
+
+const TENNIS_STATUS_TABS: readonly {
+  value: TennisStatusTab;
+  label: string;
+}[] = [
+  { value: 'waitlist', label: 'In Waitlist' },
+  { value: 'confirmed', label: 'Confirmed' },
+  { value: 'declined', label: 'Declined' },
+];
+
+/** Registered players — tennis (post-open) or leather (ACC squad-building). */
 export default function VerifiedRegisteredPlayersScreen(): React.ReactElement {
   const router = useRouter();
   const { user } = useAuth();
   const { id: tournamentId } = useLocalSearchParams<{ id: string }>();
   const [isLeather, setIsLeather] = useState(false);
-  const [players, setPlayers] = useState<VerifiedRegisteredPlayerRow[]>([]);
+  const [waitlist, setWaitlist] = useState<VerifiedRegisteredPlayerRow[]>([]);
+  const [confirmed, setConfirmed] = useState<VerifiedRegisteredPlayerRow[]>([]);
+  const [declined, setDeclined] = useState<VerifiedRegisteredPlayerRow[]>([]);
   const [leatherPlayers, setLeatherPlayers] = useState<RegistrationSummary[]>([]);
   const [registeredCount, setRegisteredCount] = useState(0);
+  const [statusTab, setStatusTab] = useState<TennisStatusTab>('waitlist');
   const [canFavourite, setCanFavourite] = useState(false);
   const [canLateRegister, setCanLateRegister] = useState(false);
   const [search, setSearch] = useState('');
@@ -73,20 +88,28 @@ export default function VerifiedRegisteredPlayersScreen(): React.ReactElement {
         const data = await listLeatherRegisteredPlayers(tournamentId);
         setLeatherPlayers(data.players);
         setRegisteredCount(data.totalCount);
-        setPlayers([]);
+        setWaitlist([]);
+        setConfirmed([]);
+        setDeclined([]);
         setCanFavourite(false);
         setCanLateRegister(data.canLateRegister);
       } else {
         const data = await listVerifiedRegisteredPlayers(tournamentId);
-        setPlayers(data.players);
+        setWaitlist(data.waitlist);
+        setConfirmed(data.confirmed);
+        setDeclined(data.declined);
         setLeatherPlayers([]);
-        setRegisteredCount(data.players.length);
+        setRegisteredCount(
+          data.waitlist.length + data.confirmed.length + data.declined.length,
+        );
         setCanFavourite(data.canFavourite);
         setCanLateRegister(data.canLateRegister);
       }
       setError(null);
     } catch (err) {
-      setPlayers([]);
+      setWaitlist([]);
+      setConfirmed([]);
+      setDeclined([]);
       setLeatherPlayers([]);
       setRegisteredCount(0);
       setCanFavourite(false);
@@ -107,9 +130,41 @@ export default function VerifiedRegisteredPlayersScreen(): React.ReactElement {
     }, [load]),
   );
 
+  const tennisTabOptions = useMemo(
+    () =>
+      TENNIS_STATUS_TABS.map((tab) => {
+        const count =
+          tab.value === 'waitlist'
+            ? waitlist.length
+            : tab.value === 'confirmed'
+              ? confirmed.length
+              : declined.length;
+        return {
+          value: tab.value,
+          label: `${tab.label} (${count})`,
+        };
+      }),
+    [waitlist.length, confirmed.length, declined.length],
+  );
+
+  const activeTennisPlayers = useMemo(() => {
+    if (statusTab === 'waitlist') {
+      return waitlist;
+    }
+    if (statusTab === 'declined') {
+      return declined;
+    }
+    return confirmed;
+  }, [statusTab, waitlist, confirmed, declined]);
+
   const filteredTennis = useMemo(() => {
     const q = search.trim().toLowerCase();
-    let rows = players.filter((player) => matchesVerifiedPlayerSkillFilter(player, skillFilter));
+    const applySkill = statusTab === 'confirmed';
+    let rows = applySkill
+      ? activeTennisPlayers.filter((player) =>
+          matchesVerifiedPlayerSkillFilter(player, skillFilter),
+        )
+      : activeTennisPlayers;
 
     if (q) {
       rows = rows.filter((player) => {
@@ -119,8 +174,11 @@ export default function VerifiedRegisteredPlayersScreen(): React.ReactElement {
       });
     }
 
-    return [...rows].sort((a, b) => compareVerifiedPlayersForSkillFilter(a, b, skillFilter));
-  }, [players, search, skillFilter]);
+    if (applySkill) {
+      return [...rows].sort((a, b) => compareVerifiedPlayersForSkillFilter(a, b, skillFilter));
+    }
+    return rows;
+  }, [activeTennisPlayers, search, skillFilter, statusTab]);
 
   const filteredLeather = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -135,12 +193,12 @@ export default function VerifiedRegisteredPlayersScreen(): React.ReactElement {
   }, [leatherPlayers, search]);
 
   async function toggleFavourite(player: VerifiedRegisteredPlayerRow): Promise<void> {
-    if (!tournamentId || !canFavourite) {
+    if (!tournamentId || !canFavourite || statusTab !== 'confirmed') {
       return;
     }
     const next = !player.isFavourited;
     setPendingFavouriteUserId(player.userId);
-    setPlayers((current) =>
+    setConfirmed((current) =>
       current.map((row) =>
         row.userId === player.userId ? { ...row, isFavourited: next } : row,
       ),
@@ -148,7 +206,7 @@ export default function VerifiedRegisteredPlayersScreen(): React.ReactElement {
     try {
       await setRegistrationFavourite(tournamentId, player.userId, next);
     } catch (err) {
-      setPlayers((current) =>
+      setConfirmed((current) =>
         current.map((row) =>
           row.userId === player.userId ? { ...row, isFavourited: player.isFavourited } : row,
         ),
@@ -192,15 +250,18 @@ export default function VerifiedRegisteredPlayersScreen(): React.ReactElement {
     router.push(tournamentSubpathHref(user, tournamentId, 'registrations/late-register'));
   }
 
-  const screenTitle = isLeather ? 'Registered Players' : 'Registered Players';
   const emptyMessage = isLeather
     ? 'No registered players match your search.'
-    : 'No verified players match your search.';
+    : statusTab === 'waitlist'
+      ? 'No players in the waitlist.'
+      : statusTab === 'declined'
+        ? 'No declined players.'
+        : 'No confirmed players match your search.';
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right']}>
       <ScreenHeader
-        title={screenTitle}
+        title="Registered Players"
         onBack={() => router.back()}
         titleTrailing={
           canLateRegister ? (
@@ -233,13 +294,22 @@ export default function VerifiedRegisteredPlayersScreen(): React.ReactElement {
           <Text className="font-sans-semibold text-sm text-on-surface-variant">
             {registeredCount} Registered
           </Text>
+          {!isLeather ? (
+            <PillTabBar
+              options={tennisTabOptions}
+              value={statusTab}
+              onChange={setStatusTab}
+              layout="scroll"
+              accessibilityLabel="Registration status"
+            />
+          ) : null}
           <View className="gap-6">
             <TextInput
               placeholder="Search by name or center…"
               value={search}
               onChangeText={setSearch}
             />
-            {!isLeather ? (
+            {!isLeather && statusTab === 'confirmed' ? (
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -291,7 +361,9 @@ export default function VerifiedRegisteredPlayersScreen(): React.ReactElement {
                 onPress={() => openRegistrationDetails(player)}
                 favouritePending={pendingFavouriteUserId === player.userId}
                 onToggleFavourite={
-                  canFavourite ? () => void toggleFavourite(player) : undefined
+                  canFavourite && statusTab === 'confirmed'
+                    ? () => void toggleFavourite(player)
+                    : undefined
                 }
                 onViewProfile={() => openProfile(player)}
                 onViewVideo={() => skillVideo.openVideo(player)}

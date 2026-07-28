@@ -621,8 +621,9 @@ export class RegistrationsService {
   }
 
   /**
-   * Verified (CONFIRMED) registrants across all centers ? Captain / VC / Club Manager
-   * after Center Sevak verification completes (tennis only).
+   * Tennis Registered Players list — waitlist / confirmed / declined across all
+   * centers. Available once registration has opened (Captain / VC / Manager /
+   * Admin / Club Manager). Favouriting remains gated on verification complete.
    */
   async listVerifiedRegisteredPlayers(
     actor: AuthUser,
@@ -644,7 +645,20 @@ export class RegistrationsService {
       });
     }
 
-    await this.assertRegistrationVerificationComplete(tournament);
+    if (
+      !tournamentHasRegistrationWindow({
+        registrationOpenAt: tournament.registrationOpenAt?.toISOString() ?? null,
+        registrationCloseAt: tournament.registrationCloseAt?.toISOString() ?? null,
+      }) ||
+      !hasRegistrationOpened({
+        registrationOpenAt: tournament.registrationOpenAt?.toISOString() ?? null,
+      })
+    ) {
+      throw new ForbiddenException({
+        message: 'Registered players are available once registration opens',
+        error: 'REGISTRATION_NOT_OPEN',
+      });
+    }
 
     const favouriteTeamId = await this.resolveFavouriteTeamId(actor, tournamentId);
     const favouritedUserIds = favouriteTeamId
@@ -652,15 +666,25 @@ export class RegistrationsService {
       : new Set<string>();
 
     const rows = await this.prisma.registration.findMany({
-      where: { tournamentId, status: RegistrationStatus.Confirmed },
+      where: {
+        tournamentId,
+        status: {
+          in: [
+            RegistrationStatus.InWaitlist,
+            RegistrationStatus.Confirmed,
+            RegistrationStatus.Declined,
+          ],
+        },
+      },
       include: REGISTRATION_INCLUDE,
     });
-    const sorted = this.sort(rows.map((row) => this.toSummary(row)), query.sort);
+
     const skillVideos = await this.loadSkillVideoIdsByUser(
       tournamentId,
-      sorted.map((summary) => summary.userId),
+      rows.map((row) => row.userId),
     );
-    const players: VerifiedRegisteredPlayerRow[] = sorted.map((summary) => {
+
+    const toVerifiedRow = (summary: RegistrationSummary): VerifiedRegisteredPlayerRow => {
       const skillVideoId = skillVideos.get(summary.userId) ?? null;
       return {
         ...summary,
@@ -668,12 +692,54 @@ export class RegistrationsService {
         hasSkillVideo: skillVideoId != null,
         skillVideoId,
       };
+    };
+
+    const waitlistSummaries = this.sort(
+      rows
+        .filter((row) => row.status === RegistrationStatus.InWaitlist)
+        .map((row) => this.toSummary(row)),
+      query.sort,
+    );
+    const confirmedSummaries = this.sort(
+      rows
+        .filter((row) => row.status === RegistrationStatus.Confirmed)
+        .map((row) => this.toSummary(row)),
+      query.sort,
+    );
+    const declinedSummaries = this.sort(
+      rows
+        .filter((row) => row.status === RegistrationStatus.Declined)
+        .map((row) => this.toSummary(row)),
+      query.sort,
+    );
+
+    const [waitlist, confirmed, declined] = await Promise.all([
+      this.resolveSummaryPhotos(waitlistSummaries.map(toVerifiedRow)),
+      this.resolveSummaryPhotos(confirmedSummaries.map(toVerifiedRow)),
+      this.resolveSummaryPhotos(declinedSummaries.map(toVerifiedRow)),
+    ]);
+
+    const hasRegistrationWindow = tournamentHasRegistrationWindow({
+      registrationOpenAt: tournament.registrationOpenAt?.toISOString() ?? null,
+      registrationCloseAt: tournament.registrationCloseAt?.toISOString() ?? null,
     });
+    const verificationComplete = isRegistrationVerificationComplete(
+      {
+        ballType: tournament.ballType as BallType,
+        hasRegistrationWindow,
+        registrationOpenAt: tournament.registrationOpenAt?.toISOString() ?? null,
+        registrationCloseAt: tournament.registrationCloseAt?.toISOString() ?? null,
+      },
+      waitlistSummaries.length,
+    );
 
     return {
-      players: await this.resolveSummaryPhotos(players),
-      canFavourite: favouriteTeamId != null,
-      favouriteTeamId,
+      players: confirmed,
+      waitlist,
+      confirmed,
+      declined,
+      canFavourite: verificationComplete && favouriteTeamId != null,
+      favouriteTeamId: verificationComplete ? favouriteTeamId : null,
       canLateRegister: await this.resolveCanLateRegister(actor, tournamentId),
     };
   }
@@ -1127,9 +1193,9 @@ export class RegistrationsService {
     }
   }
 
-  private async assertRegistrationVerificationComplete(
+  private async isRegistrationVerificationCompleteForTournament(
     tournament: Awaited<ReturnType<typeof this.requireTournament>>,
-  ): Promise<void> {
+  ): Promise<boolean> {
     const hasRegistrationWindow = tournamentHasRegistrationWindow({
       registrationOpenAt: tournament.registrationOpenAt?.toISOString() ?? null,
       registrationCloseAt: tournament.registrationCloseAt?.toISOString() ?? null,
@@ -1140,7 +1206,7 @@ export class RegistrationsService {
         status: RegistrationStatus.InWaitlist,
       },
     });
-    const complete = isRegistrationVerificationComplete(
+    return isRegistrationVerificationComplete(
       {
         ballType: tournament.ballType as BallType,
         hasRegistrationWindow,
@@ -1149,6 +1215,12 @@ export class RegistrationsService {
       },
       pendingWaitlistCount,
     );
+  }
+
+  private async assertRegistrationVerificationComplete(
+    tournament: Awaited<ReturnType<typeof this.requireTournament>>,
+  ): Promise<void> {
+    const complete = await this.isRegistrationVerificationCompleteForTournament(tournament);
     if (!complete) {
       throw new ForbiddenException({
         message: 'Player verification is not complete for this tournament',
