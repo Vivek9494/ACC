@@ -1,7 +1,11 @@
 import { Pressable, View } from 'react-native';
 
-import { CARD_ELEVATION_STYLE, CARD_SHELL_CHROME_CLASS } from './Card';
 import { Text } from './Text';
+import {
+  PILL_TAB_CHIP_ACTIVE_CLASS,
+  PILL_TAB_CHIP_INACTIVE_CLASS,
+  PILL_TAB_CHIP_SHAPE_CLASS,
+} from './PillTabBar';
 
 export interface SegmentedControlOption<T extends string> {
   value: T;
@@ -17,7 +21,10 @@ export interface SegmentedControlProps<T extends string> {
   size?: 'sm' | 'md';
 }
 
-/** Two-or-more-way pill switch — active segment filled primary orange. */
+/**
+ * Multi-way tab switch — same chip shape as {@link PillTabBar} / View Profile
+ * (`rounded-control`, orange active / light inactive).
+ */
 export function SegmentedControl<T extends string>({
   options,
   value,
@@ -25,18 +32,15 @@ export function SegmentedControl<T extends string>({
   accessibilityLabel,
   size = 'sm',
 }: SegmentedControlProps<T>): React.ReactElement {
-  const shellPadding = size === 'sm' ? 'p-0.5' : 'p-1';
-  const segmentPadding = size === 'sm' ? 'px-2.5 py-1.5' : 'px-4 py-2';
-  const segmentRadiusClass = size === 'sm' ? 'rounded-[14px]' : 'rounded-xl';
-  const labelClass = size === 'sm' ? 'text-xs' : 'text-sm';
-  const segmentFlexClass = size === 'sm' ? 'shrink' : 'flex-1';
+  const sizePadding = size === 'sm' ? 'px-2.5 py-1.5' : 'px-4 py-2';
+  const labelSize = size === 'sm' ? 'text-xs' : 'text-sm';
+  const segmentFlexClass = size === 'sm' ? 'shrink' : 'min-w-0 flex-1';
 
   return (
     <View
       accessibilityRole="tablist"
       accessibilityLabel={accessibilityLabel}
-      className={`max-w-full shrink flex-row bg-stone-200 ${CARD_SHELL_CHROME_CLASS} ${shellPadding}`}
-      style={CARD_ELEVATION_STYLE}
+      className="max-w-full shrink flex-row gap-2"
     >
       {options.map((option) => {
         const selected = value === option.value;
@@ -46,12 +50,14 @@ export function SegmentedControl<T extends string>({
             onPress={() => onChange(option.value)}
             accessibilityRole="tab"
             accessibilityState={{ selected }}
-            className={`${segmentFlexClass} ${segmentRadiusClass} ${segmentPadding} ${selected ? 'bg-primary' : ''}`}
+            className={`${PILL_TAB_CHIP_SHAPE_CLASS} ${sizePadding} ${segmentFlexClass} ${
+              selected ? PILL_TAB_CHIP_ACTIVE_CLASS : PILL_TAB_CHIP_INACTIVE_CLASS
+            }`}
           >
             <Text
               numberOfLines={1}
-              className={`font-sans-semibold ${labelClass} ${
-                selected ? 'text-text-inverse' : 'text-text-muted'
+              className={`text-center font-sans-semibold ${labelSize} ${
+                selected ? 'text-on-primary' : 'text-on-surface'
               }`}
             >
               {option.label}

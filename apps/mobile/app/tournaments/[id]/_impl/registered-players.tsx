@@ -20,7 +20,14 @@ import { RegisteredPlayerRegistrationDetailsModal } from '../../../../src/compon
 import { SkillVideoPlayerModal } from '../../../../src/components/tournament/SkillVideoPlayerModal';
 import { ScreenHeader } from '../../../../src/components/ui/ScreenHeader';
 import { KeyboardAwareFormScrollView } from '../../../../src/components/ui/KeyboardAwareFormScrollView';
-import { PillTabBar } from '../../../../src/components/ui/PillTabBar';
+import {
+  PillTabBar,
+  PILL_TAB_CHIP_ACTIVE_CLASS,
+  PILL_TAB_CHIP_BASE_CLASS,
+  PILL_TAB_CHIP_INACTIVE_CLASS,
+  PILL_TAB_LABEL_ACTIVE_CLASS,
+  PILL_TAB_LABEL_INACTIVE_CLASS,
+} from '../../../../src/components/ui/PillTabBar';
 import { TextInput } from '../../../../src/components/ui/TextInput';
 import { Text } from '../../../../src/components/ui/Text';
 import { FIELD_ORANGE } from '../../../../src/components/ui/fieldStyles';
@@ -321,10 +328,14 @@ export default function VerifiedRegisteredPlayersScreen(): React.ReactElement {
                     <Pressable
                       key={key}
                       onPress={() => setSkillFilter(key)}
-                      className={`rounded-full px-4 py-2 ${active ? 'bg-secondary-container' : 'border border-outline-variant bg-surface-container-lowest'}`}
+                      className={`${PILL_TAB_CHIP_BASE_CLASS} shrink-0 ${
+                        active ? PILL_TAB_CHIP_ACTIVE_CLASS : PILL_TAB_CHIP_INACTIVE_CLASS
+                      }`}
                     >
                       <Text
-                        className={`font-sans-semibold text-sm ${active ? 'text-on-secondary-container' : 'text-on-surface-variant'}`}
+                        className={
+                          active ? PILL_TAB_LABEL_ACTIVE_CLASS : PILL_TAB_LABEL_INACTIVE_CLASS
+                        }
                       >
                         {VERIFIED_PLAYER_SKILL_FILTER_LABELS[key]}
                       </Text>

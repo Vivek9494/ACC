@@ -19,9 +19,19 @@ export interface PillTabBarProps<T extends string> {
   layout?: 'equal' | 'scroll';
 }
 
+/** Shared tab chip tokens — shape matches View Profile (`Button` + `rounded-control`). */
+export const PILL_TAB_CHIP_SHAPE_CLASS =
+  'min-h-9 items-center justify-center rounded-control active:opacity-80';
+export const PILL_TAB_CHIP_PADDING_CLASS = 'px-4 py-2';
+export const PILL_TAB_CHIP_BASE_CLASS = `${PILL_TAB_CHIP_SHAPE_CLASS} ${PILL_TAB_CHIP_PADDING_CLASS}`;
+export const PILL_TAB_CHIP_ACTIVE_CLASS = 'bg-primary';
+export const PILL_TAB_CHIP_INACTIVE_CLASS = 'border border-outline-variant bg-surface';
+export const PILL_TAB_LABEL_ACTIVE_CLASS = 'text-center font-sans-semibold text-sm text-on-primary';
+export const PILL_TAB_LABEL_INACTIVE_CLASS = 'text-center font-sans-semibold text-sm text-on-surface';
+
 /**
- * Separate pill tabs — active fill primary orange, inactive outlined surface.
- * Shared by Leather/Tennis, team selectors, Home/Away, and innings tabs.
+ * Separate tab chips — active fill primary orange, inactive outlined surface.
+ * Corner radius / padding aligned with View Profile (`rounded-control` / ~h-9).
  */
 export function PillTabBar<T extends string>({
   options,
@@ -38,17 +48,15 @@ export function PillTabBar<T extends string>({
         onPress={() => onChange(option.value)}
         accessibilityRole="tab"
         accessibilityState={{ selected: active }}
-        className={`rounded-full px-3 py-2.5 active:opacity-80 ${
+        className={`${PILL_TAB_CHIP_BASE_CLASS} ${
           layout === 'equal' ? 'min-w-0 flex-1' : 'shrink-0'
-        } ${active ? 'bg-primary' : 'border border-outline-variant bg-surface'}`}
+        } ${active ? PILL_TAB_CHIP_ACTIVE_CLASS : PILL_TAB_CHIP_INACTIVE_CLASS}`}
       >
         <Text
           numberOfLines={1}
           adjustsFontSizeToFit={layout === 'equal'}
           minimumFontScale={0.8}
-          className={`text-center font-sans-semibold text-sm ${
-            active ? 'text-on-primary' : 'text-on-surface'
-          }`}
+          className={active ? PILL_TAB_LABEL_ACTIVE_CLASS : PILL_TAB_LABEL_INACTIVE_CLASS}
         >
           {option.label}
         </Text>

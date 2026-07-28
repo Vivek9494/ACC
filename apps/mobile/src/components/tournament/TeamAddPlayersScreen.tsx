@@ -19,6 +19,13 @@ import { PlayerAvatar } from '../tournament/PlayerAvatar';
 import { VerifyPlayerRatingsRow } from '../tournament/verify-players/VerifyPlayerRatingsRow';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
+import {
+  PILL_TAB_CHIP_ACTIVE_CLASS,
+  PILL_TAB_CHIP_BASE_CLASS,
+  PILL_TAB_CHIP_INACTIVE_CLASS,
+  PILL_TAB_LABEL_ACTIVE_CLASS,
+  PILL_TAB_LABEL_INACTIVE_CLASS,
+} from '../ui/PillTabBar';
 import { ScreenHeader } from '../ui/ScreenHeader';
 import { Text } from '../ui/Text';
 import { FIELD_ORANGE } from '../ui/fieldStyles';
@@ -230,17 +237,17 @@ export function TeamAddPlayersScreen({
                     <Pressable
                       key={tab.key}
                       onPress={() => setLeatherTab(tab.key)}
-                      className={`min-w-0 flex-1 rounded-full px-3 py-2.5 ${
-                        active ? 'bg-primary' : 'border border-outline-variant bg-surface'
+                      className={`min-w-0 flex-1 ${PILL_TAB_CHIP_BASE_CLASS} ${
+                        active ? PILL_TAB_CHIP_ACTIVE_CLASS : PILL_TAB_CHIP_INACTIVE_CLASS
                       }`}
                     >
                       <Text
                         numberOfLines={1}
                         adjustsFontSizeToFit
                         minimumFontScale={0.8}
-                        className={`text-center font-sans-semibold text-sm ${
-                          active ? 'text-on-primary' : 'text-on-surface'
-                        }`}
+                        className={
+                          active ? PILL_TAB_LABEL_ACTIVE_CLASS : PILL_TAB_LABEL_INACTIVE_CLASS
+                        }
                       >
                         {tab.label}
                       </Text>
