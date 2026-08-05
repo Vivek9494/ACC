@@ -1,6 +1,7 @@
 import {
   buildMatchPlayingXiFinalizationStatus,
   BallType,
+  canManageAdminUsers,
   canViewAdminUsersDirectory,
   getMatchDetailStatusTransitions,
   isAccRegisteredOpponent,
@@ -252,7 +253,10 @@ export default function MatchDetailScreen(): React.ReactElement {
           ) : null}
         </View>
 
-        <MatchDetailsSection match={match} />
+        <MatchDetailsSection
+          match={match}
+          showMatchId={user != null && canManageAdminUsers(user.role)}
+        />
 
         {error ? (
           <View className="rounded-lg bg-primary-50 px-4 py-3">

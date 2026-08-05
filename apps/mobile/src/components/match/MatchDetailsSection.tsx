@@ -9,6 +9,7 @@ import {
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { Pressable, View } from 'react-native';
 
+import { copyTextToClipboard } from '../../lib/copy-text';
 import {
   openableVenueFromMatch,
   promptOpenVenueInMaps,
@@ -67,11 +68,35 @@ function VenueDetailRow({
   );
 }
 
-export interface MatchDetailsSectionProps {
-  match: MatchDetail;
+function MatchIdRow({ matchId }: { matchId: string }): React.ReactElement {
+  return (
+    <View className="gap-1">
+      <Text className="font-sans text-sm text-on-surface-variant">Match ID</Text>
+      <Pressable
+        onLongPress={() => void copyTextToClipboard(matchId)}
+        accessibilityRole="text"
+        accessibilityLabel={`Match ID ${matchId}`}
+        accessibilityHint="Long press to copy"
+        className="active:opacity-80"
+      >
+        <Text className="font-sans-semibold text-sm text-on-surface" selectable>
+          {matchId}
+        </Text>
+      </Pressable>
+    </View>
+  );
 }
 
-export function MatchDetailsSection({ match }: MatchDetailsSectionProps): React.ReactElement {
+export interface MatchDetailsSectionProps {
+  match: MatchDetail;
+  /** Admin-only: show the match UUID (e.g. for OBS overlay). */
+  showMatchId?: boolean;
+}
+
+export function MatchDetailsSection({
+  match,
+  showMatchId = false,
+}: MatchDetailsSectionProps): React.ReactElement {
   const { timezone } = resolveVenueDisplayTimezone(match.tournamentTimezone);
   const scheduleLabel = formatMatchDetailScheduleWithDelay(
     {
@@ -114,6 +139,7 @@ export function MatchDetailsSection({ match }: MatchDetailsSectionProps): React.
         />
       ) : null}
       {venue ? <VenueDetailRow venue={venue} location={venueLocation} /> : null}
+      {showMatchId ? <MatchIdRow matchId={match.id} /> : null}
     </TournamentDetailSectionCard>
   );
 }
