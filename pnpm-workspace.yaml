@@ -13,6 +13,7 @@ allowBuilds:
   '@prisma/engines': true
   bcrypt: true
   dtrace-provider: true
+  esbuild: true
   msgpackr-extract: false
   prisma: true
   protobufjs: true

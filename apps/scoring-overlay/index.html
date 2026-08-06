@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ASC Live Score Strip</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div id="root" aria-live="polite">
+      <div id="strip" class="strip" hidden>
+        <div class="strip-main">
+          <div class="brand-mark" aria-hidden="true">ASC</div>
+          <div class="score-block">
+            <span id="team-name" class="team-name"></span>
+            <span id="score-line" class="score-line"></span>
+            <span id="overs-line" class="overs-line"></span>
+          </div>
+          <div class="players-block">
+            <div id="striker" class="player striker"></div>
+            <div id="non-striker" class="player non-striker"></div>
+            <div id="bowler" class="player bowler"></div>
+          </div>
+          <div id="chase-block" class="chase-block" hidden></div>
+        </div>
+        <div id="conn" class="conn" hidden>Reconnecting…</div>
+      </div>
+      <div id="idle" class="idle" hidden></div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
