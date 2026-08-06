@@ -61,7 +61,7 @@ Socket.IO and scorecard REST honor production `CORS_ORIGINS`. If the overlay is 
 - Seed: Redis snapshot on subscribe + optional `GET /matches/:matchId/scorecard`
 - On disconnect: keep last frame; show subtle “Reconnecting…” (never blank/error)
 
-## Graphics + control (Milestone 3 — Phase A)
+## Graphics + control (Milestone 3)
 
 Same Netlify site / origin as the score strip:
 
@@ -71,7 +71,11 @@ Same Netlify site / origin as the score strip:
 | Graphics (OBS) | `/graphics.html?matchId=…` |
 | Control panel | `/control.html?matchId=…` |
 
-Phase A validates the `graphics:command` relay with a **HELLO** show/hide graphic.
+**V1 graphics (manual):** partnership, fall of wicket, batsman card, bowler card, innings break.
+
+- Live data from `/live` + scorecard (partnership / FOW / innings / this-match figures).
+- Career photo + summary via `GET /broadcast/players/:userId/stats?ballType=LEATHER|TENNIS`.
+- Photo missing → initials fallback. One graphic on air at a time; **Hide all** clears.
 
 Local:
 
@@ -80,5 +84,3 @@ pnpm --filter @acc/scoring-overlay dev
 # Control:  http://localhost:5178/control.html?matchId=UUID&api=http://localhost:3001
 # Graphics: http://localhost:5178/graphics.html?matchId=UUID&api=http://localhost:3001
 ```
-
-Public career card stats: `GET /broadcast/players/:userId/stats?ballType=LEATHER|TENNIS`

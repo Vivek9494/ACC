@@ -4,6 +4,8 @@
 
 import { io, type Socket } from 'socket.io-client';
 
+import type { LiveStateMessage, ScorecardResponse } from './types';
+
 export const DEFAULT_API_BASE = 'https://acc-api-production.up.railway.app';
 
 export const LIVE_NAMESPACE = '/live';
@@ -47,7 +49,6 @@ function normalizeApiBase(raw: string): string {
     const url = new URL(trimmed);
     url.protocol = url.protocol.toLowerCase();
     url.hostname = url.hostname.toLowerCase();
-    // Drop trailing slash from origin+pathname
     return `${url.origin}${url.pathname}`.replace(/\/$/, '');
   } catch {
     return trimmed.toLowerCase();
@@ -60,10 +61,10 @@ export function connectLiveSocket(
   handlers: {
     onStatus?: (status: 'connecting' | 'live' | 'offline') => void;
     onGraphicsCommand?: (cmd: GraphicsCommandMessage) => void;
+    onLiveState?: (state: ScorecardResponse | null) => void;
   } = {},
 ): Socket {
   const socket = io(`${apiBase}${LIVE_NAMESPACE}`, {
-    // Prefer websocket; fall back to polling if upgrade/CORS path is flaky.
     transports: ['websocket', 'polling'],
     reconnection: true,
     reconnectionAttempts: Infinity,
@@ -88,6 +89,14 @@ export function connectLiveSocket(
     handlers.onStatus?.('live');
     subscribe();
   });
+
+  if (handlers.onLiveState) {
+    socket.on(LiveEvent.State, (msg: LiveStateMessage) => {
+      if (msg.matchId === matchId) {
+        handlers.onLiveState?.(msg.state);
+      }
+    });
+  }
 
   if (handlers.onGraphicsCommand) {
     socket.on(LiveEvent.GraphicsCommand, (cmd: GraphicsCommandMessage) => {

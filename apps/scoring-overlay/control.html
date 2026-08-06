@@ -17,20 +17,74 @@
         <h1>ASC Graphics</h1>
         <p id="match-label" class="match-label">Loading…</p>
         <p id="conn-label" class="conn-label">Connecting…</p>
+        <p id="on-air" class="on-air">On air: none</p>
+        <div class="btn-row">
+          <button type="button" id="btn-hide-all" class="btn btn-ghost">Hide all</button>
+        </div>
       </header>
 
       <section class="control-section">
-        <h2>Phase A — Hello</h2>
-        <p id="on-air" class="on-air">On air: none</p>
+        <h2>Partnership</h2>
+        <p class="section-hint">Current unbroken stand (live).</p>
         <div class="btn-row">
-          <button type="button" id="btn-show-hello" class="btn btn-primary">Show HELLO</button>
-          <button type="button" id="btn-hide-hello" class="btn btn-secondary">Hide HELLO</button>
-          <button type="button" id="btn-hide-all" class="btn btn-ghost">Hide all</button>
+          <button type="button" id="btn-show-partnership" class="btn btn-primary">Show</button>
+          <button type="button" id="btn-hide-partnership" class="btn btn-secondary">Hide</button>
+        </div>
+      </section>
+
+      <section class="control-section">
+        <h2>Fall of wicket</h2>
+        <p class="section-hint">Most recent wicket in the active innings.</p>
+        <div class="btn-row">
+          <button type="button" id="btn-show-fow" class="btn btn-primary">Show</button>
+          <button type="button" id="btn-hide-fow" class="btn btn-secondary">Hide</button>
+        </div>
+      </section>
+
+      <section class="control-section">
+        <h2>Batsman card</h2>
+        <label class="field-label" for="pick-batsman">Player</label>
+        <select id="pick-batsman" class="field-select">
+          <option value="">Current striker</option>
+        </select>
+        <div class="btn-row">
+          <button type="button" id="btn-show-batsman" class="btn btn-primary">Show</button>
+          <button type="button" id="btn-hide-batsman" class="btn btn-secondary">Hide</button>
+        </div>
+      </section>
+
+      <section class="control-section">
+        <h2>Bowler card</h2>
+        <label class="field-label" for="pick-bowler">Player</label>
+        <select id="pick-bowler" class="field-select">
+          <option value="">Current bowler</option>
+        </select>
+        <div class="btn-row">
+          <button type="button" id="btn-show-bowler" class="btn btn-primary">Show</button>
+          <button type="button" id="btn-hide-bowler" class="btn btn-secondary">Hide</button>
+        </div>
+      </section>
+
+      <section class="control-section">
+        <h2>Innings break</h2>
+        <p class="section-hint">Both innings totals + target when set.</p>
+        <div class="btn-row">
+          <button type="button" id="btn-show-innings" class="btn btn-primary">Show</button>
+          <button type="button" id="btn-hide-innings" class="btn btn-secondary">Hide</button>
+        </div>
+      </section>
+
+      <section class="control-section control-section-muted">
+        <h2>Hello (Phase A)</h2>
+        <div class="btn-row">
+          <button type="button" id="btn-show-hello" class="btn btn-secondary">Show HELLO</button>
+          <button type="button" id="btn-hide-hello" class="btn btn-ghost">Hide HELLO</button>
         </div>
       </section>
 
       <p class="hint">
-        Open <code>graphics.html?matchId=…</code> in OBS (or another tab) with the same matchId.
+        Open <code>graphics.html?matchId=…</code> in OBS (or another tab) with the same matchId and
+        api.
       </p>
     </main>
     <script type="module" src="/src/control-main.ts"></script>

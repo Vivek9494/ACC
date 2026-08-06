@@ -1,5 +1,5 @@
 /**
- * Minimal ScorecardResponse fields needed for the broadcast strip.
+ * Minimal ScorecardResponse fields needed for the broadcast strip + graphics.
  * Mirrors @acc/types live/scorecard contract (packages/types).
  */
 
@@ -21,11 +21,32 @@ export interface LiveStateMessage {
   updatedAt: string;
 }
 
+export type DismissalType =
+  | 'BOWLED'
+  | 'CAUGHT'
+  | 'LBW'
+  | 'RUN_OUT'
+  | 'STUMPED'
+  | 'HIT_WICKET'
+  | 'RETIRED_OUT'
+  | 'OBSTRUCTING_THE_FIELD'
+  | 'HIT_THE_BALL_TWICE'
+  | 'TIMED_OUT';
+
 export interface BatterCard {
   playerId: string;
   runs: number;
   balls: number;
+  fours: number;
+  sixes: number;
+  strikeRate: number;
   isOut: boolean;
+  dismissalType: DismissalType | null;
+  bowlerId: string | null;
+  fielderId: string | null;
+  fielder2Id: string | null;
+  retiredHurt: boolean;
+  isMankad: boolean;
 }
 
 export interface BowlerCard {
@@ -33,6 +54,23 @@ export interface BowlerCard {
   oversText: string;
   runsConceded: number;
   wickets: number;
+  maidens?: number;
+  economy?: number;
+  legalBalls?: number;
+}
+
+export interface FallOfWicket {
+  wicketNumber: number;
+  playerId: string;
+  teamRuns: number;
+  oversText: string;
+}
+
+export interface Partnership {
+  runs: number;
+  balls: number;
+  batterIds: string[];
+  batterRuns: { playerId: string; runs: number }[];
 }
 
 export interface ScorecardInningsLabels {
@@ -56,6 +94,8 @@ export interface InningsScorecard {
   oversAllotted: number | null;
   batters: BatterCard[];
   bowlers: BowlerCard[];
+  fallOfWickets: FallOfWicket[];
+  partnership: Partnership | null;
   currentStrikerId: string | null;
   currentNonStrikerId: string | null;
   currentBowlerId: string | null;
@@ -80,6 +120,23 @@ export interface ScorecardResponse {
     players: Record<string, string>;
     innings: ScorecardInningsLabels[];
   };
+}
+
+export type BallType = 'LEATHER' | 'TENNIS';
+
+export interface BroadcastPlayerStatsView {
+  userId: string;
+  firstName: string;
+  lastName: string;
+  profilePhotoUrl: string | null;
+  ballType: BallType;
+  matches: number;
+  runs: number;
+  average: number | null;
+  strikeRate: number | null;
+  highestScore: string | null;
+  wickets: number;
+  bestBowling: string | null;
 }
 
 export type ConnectionStatus = 'connecting' | 'live' | 'offline';

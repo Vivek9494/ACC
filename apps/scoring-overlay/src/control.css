@@ -46,28 +46,65 @@ body.control-body {
 }
 
 .control-section {
-  margin-top: 28px;
+  margin-top: 20px;
   padding: 20px;
   border-radius: 8px;
   background: #ffffff;
   box-shadow: 0 4px 18px rgba(41, 76, 116, 0.08);
 }
 
+.control-section-muted {
+  background: #f4f0eb;
+  box-shadow: none;
+}
+
 .control-section h2 {
-  margin: 0 0 12px;
+  margin: 0 0 6px;
   font-size: 16px;
   font-weight: 800;
 }
 
+.section-hint {
+  margin: 0 0 12px;
+  font-size: 13px;
+  font-weight: 600;
+  opacity: 0.75;
+}
+
 .on-air {
-  margin: 0 0 16px;
-  font-size: 15px;
-  font-weight: 700;
+  margin: 14px 0 12px;
+  font-size: 16px;
+  font-weight: 800;
   color: #5a6a7c;
 }
 
 .on-air.is-live {
   color: #ff6b00;
+}
+
+.field-label {
+  display: block;
+  margin: 0 0 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #5a4136;
+}
+
+.field-select {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  margin: 0 0 14px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid rgba(41, 76, 116, 0.2);
+  border-radius: 8px;
+  background: #ffffff;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  color: #294c74;
 }
 
 .btn-row {
