@@ -70,4 +70,46 @@ describe('LiveGateway — guest read-only live push (§29, §2)', () => {
       expect.objectContaining({ matchId: 'match-1', state: expect.objectContaining({ version: 3 }) }),
     );
   });
+
+  it('forwards graphics:command only when the socket is in the match room', async () => {
+    const redis = { get: jest.fn() };
+    const gateway = new LiveGateway(redis as never);
+    const emit = jest.fn();
+    const server = { to: jest.fn().mockReturnValue({ emit }) };
+    (gateway as unknown as { server: unknown }).server = server;
+
+    const room = liveMatchRoom('match-1');
+    const inRoom = {
+      rooms: new Set([room]),
+    };
+    const ack = await gateway.onGraphicsCommand(inRoom as never, {
+      matchId: 'match-1',
+      action: 'show',
+      graphic: 'hello',
+    });
+
+    expect(ack).toEqual({ ok: true });
+    expect(server.to).toHaveBeenCalledWith(room);
+    expect(emit).toHaveBeenCalledWith(LiveEvent.GraphicsCommand, {
+      matchId: 'match-1',
+      action: 'show',
+      graphic: 'hello',
+    });
+  });
+
+  it('rejects graphics:command when the socket is not in the match room', async () => {
+    const redis = { get: jest.fn() };
+    const gateway = new LiveGateway(redis as never);
+    const emit = jest.fn();
+    const server = { to: jest.fn().mockReturnValue({ emit }) };
+    (gateway as unknown as { server: unknown }).server = server;
+
+    const ack = await gateway.onGraphicsCommand(
+      { rooms: new Set<string>() } as never,
+      { matchId: 'match-1', action: 'show', graphic: 'hello' },
+    );
+
+    expect(ack).toEqual({ ok: false });
+    expect(emit).not.toHaveBeenCalled();
+  });
 });

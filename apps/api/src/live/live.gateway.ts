@@ -1,6 +1,9 @@
 import {
+  GraphicsCommandAction,
+  GraphicsKind,
   LIVE_NAMESPACE,
   LiveEvent,
+  type GraphicsCommandMessage,
   type LiveScorerRevokedMessage,
   type LiveStateMessage,
   type LiveSubscribeMessage,
@@ -25,11 +28,17 @@ import type { Server, Socket } from 'socket.io';
 
 import { RedisService } from '../redis/redis.service';
 
+const GRAPHICS_ACTIONS = new Set<string>(Object.values(GraphicsCommandAction));
+const GRAPHICS_KINDS = new Set<string>(Object.values(GraphicsKind));
+
 /**
  * Socket.IO gateway for live score push (spec §29). Read-only and
  * unauthenticated — Guests subscribe freely (spec §2). Scorers never write
  * through the socket; they mutate over REST and the server pushes the
  * recomputed state here via {@link LiveGateway.broadcastState}.
+ *
+ * Also relays room-scoped {@link LiveEvent.GraphicsCommand} for OBS graphics
+ * (pure forward; does not touch scoring).
  */
 @WebSocketGateway({
   namespace: LIVE_NAMESPACE,
@@ -108,6 +117,42 @@ export class LiveGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
     const frame: LiveScorerRevokedMessage = { matchId, userId, reason };
     this.server.to(liveMatchRoom(matchId)).emit(LiveEvent.ScorerRevoked, frame);
+  }
+
+  /**
+   * OBS graphics control — forward to the match room only. Caller must already
+   * be subscribed (`live:subscribe`) so they sit in `match:{id}`.
+   */
+  @SubscribeMessage(LiveEvent.GraphicsCommand)
+  async onGraphicsCommand(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() body: GraphicsCommandMessage,
+  ): Promise<{ ok: boolean }> {
+    const matchId = typeof body?.matchId === 'string' ? body.matchId.trim() : '';
+    const action = body?.action;
+    if (!matchId || !action || !GRAPHICS_ACTIONS.has(action)) {
+      return { ok: false };
+    }
+    if (action !== GraphicsCommandAction.HideAll) {
+      const graphic = body.graphic;
+      if (!graphic || !GRAPHICS_KINDS.has(graphic)) {
+        return { ok: false };
+      }
+    }
+
+    const room = liveMatchRoom(matchId);
+    if (!client.rooms.has(room)) {
+      return { ok: false };
+    }
+
+    const frame: GraphicsCommandMessage = {
+      matchId,
+      action,
+      ...(body.graphic ? { graphic: body.graphic } : {}),
+      ...(body.payload ? { payload: body.payload } : {}),
+    };
+    this.server.to(room).emit(LiveEvent.GraphicsCommand, frame);
+    return { ok: true };
   }
 
   private async readCached(matchId: string): Promise<ScorecardResponse | null> {

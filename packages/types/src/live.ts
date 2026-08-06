@@ -3,6 +3,9 @@
  * display). The scorer mutates state over REST; the server recomputes the full
  * {@link ScorecardResponse}, caches it in Redis, and pushes it to every
  * subscriber of the match room. Guests subscribe read-only, no auth (spec §2).
+ *
+ * Broadcast graphics (OBS overlay) use the same namespace: operators emit
+ * {@link LiveEvent.GraphicsCommand}; the server forwards room-scoped only.
  */
 
 import type { ScorecardResponse } from './scoring';
@@ -19,6 +22,11 @@ export const LiveEvent = {
   State: 'live:state',
   /** Server → match room: outgoing scorer revoked mid-match (Admin/CM swap). */
   ScorerRevoked: 'live:scorer-revoked',
+  /**
+   * Client → server → match room: OBS graphics show/hide (pure forward).
+   * Payload {@link GraphicsCommandMessage}.
+   */
+  GraphicsCommand: 'graphics:command',
 } as const;
 export type LiveEvent = (typeof LiveEvent)[keyof typeof LiveEvent];
 
@@ -86,6 +94,39 @@ export interface LiveScorerRevokedMessage {
 /** Emitted to the incoming scorer's user room after a mid-match swap. */
 export interface UserScorerAssignedMessage {
   matchId: string;
+}
+
+/** On-air graphic kinds for the OBS graphics overlay (v1 — no MOTM). */
+export const GraphicsKind = {
+  Batsman: 'batsman',
+  Bowler: 'bowler',
+  Partnership: 'partnership',
+  FallOfWicket: 'fow',
+  InningsBreak: 'innings_break',
+  /** Phase A validation only — remove once real graphics ship. */
+  Hello: 'hello',
+} as const;
+export type GraphicsKind = (typeof GraphicsKind)[keyof typeof GraphicsKind];
+
+export const GraphicsCommandAction = {
+  Show: 'show',
+  Hide: 'hide',
+  HideAll: 'hide_all',
+} as const;
+export type GraphicsCommandAction =
+  (typeof GraphicsCommandAction)[keyof typeof GraphicsCommandAction];
+
+export interface GraphicsCommandPayload {
+  playerId?: string;
+  playerIds?: string[];
+}
+
+/** Room-scoped OBS graphics control (unauthenticated; pure forward). */
+export interface GraphicsCommandMessage {
+  matchId: string;
+  action: GraphicsCommandAction;
+  graphic?: GraphicsKind;
+  payload?: GraphicsCommandPayload;
 }
 
 /** Shown to the outgoing scorer when their grant is revoked mid-match (organizer swap). */

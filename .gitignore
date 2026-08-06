@@ -46,3 +46,6 @@ android/
 
 # Docker
 docker/data/
+
+# Local Netlify folder
+.netlify

@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ASC Graphics Control</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body class="control-body">
+    <main class="control-shell">
+      <header class="control-header">
+        <h1>ASC Graphics</h1>
+        <p id="match-label" class="match-label">Loading…</p>
+        <p id="conn-label" class="conn-label">Connecting…</p>
+      </header>
+
+      <section class="control-section">
+        <h2>Phase A — Hello</h2>
+        <p id="on-air" class="on-air">On air: none</p>
+        <div class="btn-row">
+          <button type="button" id="btn-show-hello" class="btn btn-primary">Show HELLO</button>
+          <button type="button" id="btn-hide-hello" class="btn btn-secondary">Hide HELLO</button>
+          <button type="button" id="btn-hide-all" class="btn btn-ghost">Hide all</button>
+        </div>
+      </section>
+
+      <p class="hint">
+        Open <code>graphics.html?matchId=…</code> in OBS (or another tab) with the same matchId.
+      </p>
+    </main>
+    <script type="module" src="/src/control-main.ts"></script>
+  </body>
+</html>

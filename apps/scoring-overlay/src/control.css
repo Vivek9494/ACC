@@ -1,0 +1,120 @@
+html,
+body.control-body {
+  margin: 0;
+  min-height: 100%;
+  background: #e7e1db;
+  font-family: 'Montserrat', system-ui, sans-serif;
+  color: #294c74;
+}
+
+.control-shell {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 28px 20px 48px;
+}
+
+.control-header h1 {
+  margin: 0 0 8px;
+  font-size: 28px;
+  font-weight: 800;
+  color: #294c74;
+}
+
+.match-label {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  word-break: break-all;
+  opacity: 0.85;
+}
+
+.conn-label {
+  margin: 6px 0 0;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.conn-label.status-live {
+  color: #ff6b00;
+}
+
+.conn-label.status-offline,
+.conn-label.status-connecting {
+  color: #5a6a7c;
+}
+
+.control-section {
+  margin-top: 28px;
+  padding: 20px;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 4px 18px rgba(41, 76, 116, 0.08);
+}
+
+.control-section h2 {
+  margin: 0 0 12px;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.on-air {
+  margin: 0 0 16px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #5a6a7c;
+}
+
+.on-air.is-live {
+  color: #ff6b00;
+}
+
+.btn-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.btn {
+  min-height: 48px;
+  padding: 0 20px;
+  border: none;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.btn:active {
+  opacity: 0.88;
+}
+
+.btn-primary {
+  background: #ff6b00;
+  color: #ffffff;
+}
+
+.btn-secondary {
+  background: #294c74;
+  color: #ffffff;
+}
+
+.btn-ghost {
+  background: transparent;
+  color: #294c74;
+  border: 2px solid #294c74;
+}
+
+.hint {
+  margin-top: 24px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.45;
+  opacity: 0.8;
+}
+
+.hint code {
+  font-size: 12px;
+}

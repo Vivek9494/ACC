@@ -29,6 +29,7 @@ export * from './guest';
 export * from './center';
 export * from './province';
 export * from './live';
+export * from './broadcast-stats';
 export * from './group';
 export * from './tournament-groups';
 export * from './knockout-team-count';

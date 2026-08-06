@@ -30,6 +30,7 @@ import { RedisModule } from './redis/redis.module';
 import { RegistrationsModule } from './registrations/registrations.module';
 import { ScoringModule } from './scoring/scoring.module';
 import { ProfileModule } from './profile/profile.module';
+import { PlayerStatsModule } from './player-stats/player-stats.module';
 import { SmsModule } from './sms/sms.module';
 import { TournamentsModule } from './tournaments/tournaments.module';
 import { TeamsModule } from './teams/teams.module';
@@ -89,6 +90,7 @@ import { KnockoutSeedingModule } from './knockout-seeding/knockout-seeding.modul
     KnockoutQualificationModule,
     KnockoutSeedingModule,
     LeaderboardModule,
+    PlayerStatsModule,
     LiveModule,
     HealthModule,
     ProfileModule,

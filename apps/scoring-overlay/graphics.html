@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ASC Graphics Overlay</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div id="stage" class="stage" aria-live="polite">
+      <div id="hello" class="graphic hello" hidden>
+        <div class="hello-inner">HELLO</div>
+      </div>
+      <div id="status" class="status" hidden></div>
+    </div>
+    <script type="module" src="/src/graphics-main.ts"></script>
+  </body>
+</html>
