@@ -77,10 +77,13 @@ Same Netlify site / origin as the score strip:
 - Career photo + summary via `GET /broadcast/players/:userId/stats?ballType=LEATHER|TENNIS`.
 - Photo missing → initials fallback. One graphic on air at a time; **Hide all** clears.
 
+**Control panel (operator):** sticky on-air dock + one-tap **Take off air**; section highlight when that graphic is live; live previews; Show disabled until data is ready; batsman/bowler pickers grouped (crease / this innings / all).
+
 Local:
 
 ```bash
 pnpm --filter @acc/scoring-overlay dev
-# Control:  http://localhost:5178/control.html?matchId=UUID&api=http://localhost:3001
-# Graphics: http://localhost:5178/graphics.html?matchId=UUID&api=http://localhost:3001
+# Control:  http://localhost:5179/control.html?matchId=UUID
+# Graphics: http://localhost:5179/graphics.html?matchId=UUID
+# Optional local API: &api=http://localhost:3001
 ```

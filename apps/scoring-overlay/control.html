@@ -14,78 +14,112 @@
   <body class="control-body">
     <main class="control-shell">
       <header class="control-header">
-        <h1>ASC Graphics</h1>
-        <p id="match-label" class="match-label">Loading…</p>
-        <p id="conn-label" class="conn-label">Connecting…</p>
-        <p id="on-air" class="on-air">On air: none</p>
-        <div class="btn-row">
-          <button type="button" id="btn-hide-all" class="btn btn-ghost">Hide all</button>
+        <div class="header-top">
+          <h1>ASC Graphics</h1>
+          <p id="conn-label" class="conn-label">Connecting…</p>
         </div>
+        <p id="match-label" class="match-label">Loading…</p>
       </header>
 
-      <section class="control-section">
-        <h2>Partnership</h2>
-        <p class="section-hint">Current unbroken stand (live).</p>
-        <div class="btn-row">
-          <button type="button" id="btn-show-partnership" class="btn btn-primary">Show</button>
-          <button type="button" id="btn-hide-partnership" class="btn btn-secondary">Hide</button>
+      <aside id="on-air-dock" class="on-air-dock" aria-live="polite">
+        <div class="on-air-copy">
+          <p class="on-air-kicker">On air now</p>
+          <p id="on-air" class="on-air-value">None</p>
+          <p id="on-air-detail" class="on-air-detail"></p>
+        </div>
+        <button type="button" id="btn-clear-air" class="btn btn-danger" disabled>
+          Take off air
+        </button>
+      </aside>
+
+      <section id="sec-partnership" class="control-section" data-graphic="partnership">
+        <div class="section-head">
+          <h2>Partnership</h2>
+          <span class="on-air-badge" hidden>ON AIR</span>
+        </div>
+        <p id="preview-partnership" class="section-preview">Waiting for live score…</p>
+        <div class="btn-row btn-row-split">
+          <button type="button" id="btn-show-partnership" class="btn btn-primary btn-lg" disabled>
+            Show partnership
+          </button>
+          <button type="button" id="btn-hide-partnership" class="btn btn-secondary btn-lg">
+            Hide
+          </button>
         </div>
       </section>
 
-      <section class="control-section">
-        <h2>Fall of wicket</h2>
-        <p class="section-hint">Most recent wicket in the active innings.</p>
-        <div class="btn-row">
-          <button type="button" id="btn-show-fow" class="btn btn-primary">Show</button>
-          <button type="button" id="btn-hide-fow" class="btn btn-secondary">Hide</button>
+      <section id="sec-fow" class="control-section" data-graphic="fow">
+        <div class="section-head">
+          <h2>Fall of wicket</h2>
+          <span class="on-air-badge" hidden>ON AIR</span>
+        </div>
+        <p id="preview-fow" class="section-preview">No wicket yet</p>
+        <div class="btn-row btn-row-split">
+          <button type="button" id="btn-show-fow" class="btn btn-primary btn-lg" disabled>
+            Show FOW
+          </button>
+          <button type="button" id="btn-hide-fow" class="btn btn-secondary btn-lg">Hide</button>
         </div>
       </section>
 
-      <section class="control-section">
-        <h2>Batsman card</h2>
+      <section id="sec-batsman" class="control-section" data-graphic="batsman">
+        <div class="section-head">
+          <h2>Batsman card</h2>
+          <span class="on-air-badge" hidden>ON AIR</span>
+        </div>
         <label class="field-label" for="pick-batsman">Player</label>
         <select id="pick-batsman" class="field-select">
           <option value="">Current striker</option>
         </select>
-        <div class="btn-row">
-          <button type="button" id="btn-show-batsman" class="btn btn-primary">Show</button>
-          <button type="button" id="btn-hide-batsman" class="btn btn-secondary">Hide</button>
+        <p id="preview-batsman" class="section-preview">—</p>
+        <div class="btn-row btn-row-split">
+          <button type="button" id="btn-show-batsman" class="btn btn-primary btn-lg" disabled>
+            Show batsman
+          </button>
+          <button type="button" id="btn-hide-batsman" class="btn btn-secondary btn-lg">Hide</button>
         </div>
       </section>
 
-      <section class="control-section">
-        <h2>Bowler card</h2>
+      <section id="sec-bowler" class="control-section" data-graphic="bowler">
+        <div class="section-head">
+          <h2>Bowler card</h2>
+          <span class="on-air-badge" hidden>ON AIR</span>
+        </div>
         <label class="field-label" for="pick-bowler">Player</label>
         <select id="pick-bowler" class="field-select">
           <option value="">Current bowler</option>
         </select>
-        <div class="btn-row">
-          <button type="button" id="btn-show-bowler" class="btn btn-primary">Show</button>
-          <button type="button" id="btn-hide-bowler" class="btn btn-secondary">Hide</button>
+        <p id="preview-bowler" class="section-preview">—</p>
+        <div class="btn-row btn-row-split">
+          <button type="button" id="btn-show-bowler" class="btn btn-primary btn-lg" disabled>
+            Show bowler
+          </button>
+          <button type="button" id="btn-hide-bowler" class="btn btn-secondary btn-lg">Hide</button>
         </div>
       </section>
 
-      <section class="control-section">
-        <h2>Innings break</h2>
-        <p class="section-hint">Both innings totals + target when set.</p>
-        <div class="btn-row">
-          <button type="button" id="btn-show-innings" class="btn btn-primary">Show</button>
-          <button type="button" id="btn-hide-innings" class="btn btn-secondary">Hide</button>
+      <section id="sec-innings" class="control-section" data-graphic="innings_break">
+        <div class="section-head">
+          <h2>Innings break</h2>
+          <span class="on-air-badge" hidden>ON AIR</span>
+        </div>
+        <p id="preview-innings" class="section-preview">Waiting for innings…</p>
+        <div class="btn-row btn-row-split">
+          <button type="button" id="btn-show-innings" class="btn btn-primary btn-lg" disabled>
+            Show innings break
+          </button>
+          <button type="button" id="btn-hide-innings" class="btn btn-secondary btn-lg">Hide</button>
         </div>
       </section>
 
-      <section class="control-section control-section-muted">
-        <h2>Hello (Phase A)</h2>
-        <div class="btn-row">
-          <button type="button" id="btn-show-hello" class="btn btn-secondary">Show HELLO</button>
-          <button type="button" id="btn-hide-hello" class="btn btn-ghost">Hide HELLO</button>
-        </div>
-      </section>
-
-      <p class="hint">
-        Open <code>graphics.html?matchId=…</code> in OBS (or another tab) with the same matchId and
-        api.
-      </p>
+      <footer class="control-footer">
+        <button type="button" id="btn-hide-all" class="btn btn-danger btn-block">
+          Hide all graphics
+        </button>
+        <p class="hint">
+          Pair with <code>graphics.html?matchId=…</code> (same matchId + api) in OBS.
+        </p>
+      </footer>
     </main>
     <script type="module" src="/src/control-main.ts"></script>
   </body>
