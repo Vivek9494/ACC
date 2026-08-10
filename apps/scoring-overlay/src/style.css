@@ -365,7 +365,8 @@ body {
   align-items: center;
   justify-content: center;
   font-size: 10px;
-  font-weight: 800;
+  font-weight: 700;
+  line-height: 1;
   box-sizing: border-box;
   background: var(--fox-cyan);
   color: #fff;
@@ -373,7 +374,18 @@ body {
 }
 
 .ball-slot.is-dot {
-  font-size: clamp(12px, 1.3vw, 14px);
+  /* Draw a true center dot — Unicode ● is optically off-center. */
+  font-size: 0;
+  color: transparent;
+}
+
+.ball-slot.is-dot::after {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #fff;
+  flex-shrink: 0;
 }
 
 .ball-slot.is-boundary {
