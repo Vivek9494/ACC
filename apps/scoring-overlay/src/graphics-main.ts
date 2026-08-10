@@ -8,6 +8,7 @@ import {
   battingTeamLabel,
   formatDismissalShort,
   formatStat,
+  hasBowlerCareerStats,
   initialsFromName,
   isUuid,
   latestFallOfWicket,
@@ -36,6 +37,7 @@ const GRAPHIC_IDS: Record<Exclude<GraphicsKind, 'toss' | 'chase'>, string> = {
   fow: 'g-fow',
   batsman: 'g-batsman',
   bowler: 'g-bowler',
+  bowler_career: 'g-bowler-career',
   innings_break: 'g-innings',
   hello: 'g-hello',
 };
@@ -355,6 +357,40 @@ async function showBowler(playerId: string): Promise<void> {
   applyCareerToBowler(stats);
 }
 
+function fillBowlerCareer(
+  playerId: string,
+  stats: BroadcastPlayerStatsView | null,
+): void {
+  const full = scorecard
+    ? playerName(scorecard.display, playerId)
+    : stats
+      ? `${stats.firstName} ${stats.lastName}`.trim()
+      : '—';
+  setText('bc-name', shortName(full));
+  if (!stats || !hasBowlerCareerStats(stats)) {
+    setText('bc-matches', '—');
+    setText('bc-wickets', '—');
+    setText('bc-avg', '—');
+    setText('bc-econ', '—');
+    setText('bc-best', '—');
+    return;
+  }
+  setText('bc-matches', String(stats.matches));
+  setText('bc-wickets', String(stats.wickets));
+  setText('bc-avg', formatStat(stats.bowlingAverage, 2));
+  setText('bc-econ', formatStat(stats.economy, 2));
+  setText('bc-best', stats.bestBowling?.trim() || '—');
+}
+
+async function showBowlerCareer(playerId: string): Promise<boolean> {
+  const stats = await loadCareer(playerId);
+  if (!hasBowlerCareerStats(stats)) {
+    return false;
+  }
+  fillBowlerCareer(playerId, stats);
+  return true;
+}
+
 function refreshActiveContent(): void {
   if (!activeKind) {
     return;
@@ -384,6 +420,9 @@ function refreshActiveContent(): void {
       if (activePlayerId) {
         fillBowlerMatch(activePlayerId);
       }
+      break;
+    case 'bowler_career':
+      // Career figures are not live-scorecard derived; keep last painted frame.
       break;
     default:
       break;
@@ -428,6 +467,11 @@ async function showGraphic(
   } else if (kind === 'bowler') {
     playerId = resolveBowlerId(payload?.playerId);
     ok = playerId != null;
+  } else if (kind === 'bowler_career') {
+    playerId = resolveBowlerId(payload?.playerId);
+    if (playerId) {
+      ok = await showBowlerCareer(playerId);
+    }
   }
 
   if (!ok) {

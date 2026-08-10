@@ -27,6 +27,7 @@ export type GraphicsKind =
   | 'innings_break'
   | 'toss'
   | 'chase'
+  | 'bowler_career'
   | 'hello';
 
 export interface GraphicsCommandMessage {

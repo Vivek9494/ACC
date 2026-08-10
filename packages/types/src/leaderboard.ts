@@ -86,6 +86,17 @@ export function computeBattingAverage(runs: number, dismissals: number): number 
   return Math.round((runs / dismissals) * 100) / 100;
 }
 
+/** Bowling average = runs conceded ÷ wickets; null when no wickets. */
+export function computeBowlingAverage(
+  runsConceded: number,
+  wickets: number,
+): number | null {
+  if (wickets <= 0) {
+    return null;
+  }
+  return Math.round((runsConceded / wickets) * 100) / 100;
+}
+
 /** Strike rate = (runs ÷ balls) × 100; null when no balls faced. */
 export function computeStrikeRate(runs: number, balls: number): number | null {
   if (balls <= 0) {

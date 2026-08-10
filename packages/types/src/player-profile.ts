@@ -13,6 +13,10 @@ export interface PlayerProfilePeriodStats {
   highestScoreContext: string | null;
   strikeRate: number | null;
   wickets: number;
+  /** Bowling average (runs conceded ÷ wickets); null when no wickets. */
+  bowlingAverage: number | null;
+  /** Economy (runs conceded ÷ overs); null when no legal balls bowled. */
+  economy: number | null;
   bestBowling: string | null;
   bestBowlingContext: string | null;
   catches: number;

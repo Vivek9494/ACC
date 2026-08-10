@@ -2,6 +2,8 @@ import type { ScorecardResponse } from '@acc/types';
 import {
   DismissalType,
   computeBattingAverage,
+  computeBowlingAverage,
+  computeEconomyRate,
   computeStrikeRate,
   computeStrikeRateBarPercent,
   formatPlayerProfileBestBowling,
@@ -33,6 +35,8 @@ export interface PlayerStatsAccumulator {
   fours: number;
   sixes: number;
   wickets: number;
+  bowlingRunsConceded: number;
+  bowlingLegalBalls: number;
   catches: number;
   droppedCatches: number;
   stumpings: number;
@@ -52,6 +56,8 @@ export function createPlayerStatsAccumulator(): PlayerStatsAccumulator {
     fours: 0,
     sixes: 0,
     wickets: 0,
+    bowlingRunsConceded: 0,
+    bowlingLegalBalls: 0,
     catches: 0,
     droppedCatches: 0,
     stumpings: 0,
@@ -178,6 +184,8 @@ export function applyMatchToPlayerStats(
         continue;
       }
       acc.wickets += bowler.wickets;
+      acc.bowlingRunsConceded += bowler.runsConceded;
+      acc.bowlingLegalBalls += bowler.legalBalls ?? 0;
 
       if (bowler.wickets > 0 || bowler.legalBalls > 0) {
         const candidate: BestBowlingRecord = {
@@ -226,6 +234,8 @@ export function buildPlayerProfilePeriodStats(acc: PlayerStatsAccumulator): Play
     highestScoreContext: formatHighestScoreContext(hs),
     strikeRate: computeStrikeRate(acc.runs, acc.balls),
     wickets: acc.wickets,
+    bowlingAverage: computeBowlingAverage(acc.bowlingRunsConceded, acc.wickets),
+    economy: computeEconomyRate(acc.bowlingRunsConceded, acc.bowlingLegalBalls),
     bestBowling: bbi ? formatPlayerProfileBestBowling(bbi.wickets, bbi.runsConceded) : null,
     bestBowlingContext: formatBestBowlingContext(bbi),
     catches: acc.catches,

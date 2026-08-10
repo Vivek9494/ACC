@@ -151,6 +151,8 @@ describe('player-stats.compute', () => {
     expect(period.matches).toBe(1);
     expect(period.highestScore).toBe(formatPlayerProfileHighestScore(82, true));
     expect(period.bestBowling).toBe(formatPlayerProfileBestBowling(2, 24));
+    expect(period.bowlingAverage).toBe(12);
+    expect(period.economy).toBe(4.8);
     expect(period.highestScoreContext).toBe('Surat Ground, 2024');
     expect(period.bestBowlingContext).toBe('vs ACC 9, 2024');
     expect(period.droppedCatches).toBe(0);

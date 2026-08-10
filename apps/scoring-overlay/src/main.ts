@@ -263,9 +263,36 @@ function start(): void {
   let matchCtx: MatchContext | null = null;
   let status: ConnectionStatus = 'connecting';
   let crrMode: StripCrrMode = 'default';
+  /** Hidden while bowler career card is on air (separate OBS source). */
+  let stripHiddenByCareer = false;
   let socket: Socket | null = null;
 
+  const setStripVisible = (visible: boolean): void => {
+    stripHiddenByCareer = !visible;
+    const wrap = document.getElementById('strip-wrap');
+    const idle = document.getElementById('idle');
+    if (wrap) {
+      if (!visible) {
+        wrap.hidden = true;
+      }
+    }
+    if (idle && !visible) {
+      idle.hidden = true;
+    }
+  };
+
   const paint = (): void => {
+    if (stripHiddenByCareer) {
+      const wrap = document.getElementById('strip-wrap');
+      const idle = document.getElementById('idle');
+      if (wrap) {
+        wrap.hidden = true;
+      }
+      if (idle) {
+        idle.hidden = true;
+      }
+      return;
+    }
     render(latest, matchCtx, status, !matchId, crrMode);
   };
 
@@ -346,8 +373,23 @@ function start(): void {
     }
     if (cmd.action === 'hide_all') {
       crrMode = 'default';
+      setStripVisible(true);
       paint();
       return;
+    }
+    if (cmd.graphic === 'bowler_career') {
+      if (cmd.action === 'show') {
+        setStripVisible(false);
+      } else if (cmd.action === 'hide') {
+        setStripVisible(true);
+      }
+      paint();
+      return;
+    }
+    // Any other full-screen graphic show → strip stays (career exclusive only).
+    // If another graphic replaces career on air, strip returns.
+    if (cmd.action === 'show' && cmd.graphic && cmd.graphic !== 'toss' && cmd.graphic !== 'chase') {
+      setStripVisible(true);
     }
     if (cmd.graphic === 'toss') {
       if (cmd.action === 'show') {

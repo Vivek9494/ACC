@@ -113,6 +113,10 @@ export const GraphicsKind = {
    * No full-screen graphic on graphics.html.
    */
   Chase: 'chase',
+  /**
+   * Full-screen career bowling card (replaces score strip while on air).
+   */
+  BowlerCareer: 'bowler_career',
   /** Phase A validation only — remove once real graphics ship. */
   Hello: 'hello',
 } as const;

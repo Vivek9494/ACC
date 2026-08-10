@@ -22,6 +22,7 @@ export type GraphicsKind =
   | 'innings_break'
   | 'toss'
   | 'chase'
+  | 'bowler_career'
   | 'hello';
 
 export interface GraphicsCommandMessage {
@@ -203,6 +204,8 @@ export interface BroadcastPlayerStatsView {
   strikeRate: number | null;
   highestScore: string | null;
   wickets: number;
+  bowlingAverage: number | null;
+  economy: number | null;
   bestBowling: string | null;
 }
 

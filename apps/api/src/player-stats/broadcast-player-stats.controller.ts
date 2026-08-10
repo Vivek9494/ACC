@@ -65,6 +65,8 @@ export class BroadcastPlayerStatsController {
       strikeRate: career.strikeRate,
       highestScore: career.highestScore,
       wickets: career.wickets,
+      bowlingAverage: career.bowlingAverage,
+      economy: career.economy,
       bestBowling: career.bestBowling,
     };
   }

@@ -83,13 +83,14 @@ Same Netlify site / origin as the score strip:
 | Graphics (OBS) | `/graphics.html?matchId=…` |
 | Control panel | `/control.html?matchId=…` |
 
-**V1 graphics (manual):** partnership, fall of wicket, batsman card, bowler card, innings break. **Toss** and **Runs to win** are strip-only (replace CRR | overs remaining on the score bar).
+**V1 graphics (manual):** partnership, fall of wicket, batsman card, bowler card (this match), **bowler career stats**, innings break. **Toss** and **Runs to win** are strip-only (replace CRR | overs remaining on the score bar).
 
 - Live data from `/live` + scorecard (partnership / FOW / innings / this-match figures).
-- Career photo + summary via `GET /broadcast/players/:userId/stats?ballType=LEATHER|TENNIS`.
+- Career photo + summary via `GET /broadcast/players/:userId/stats?ballType=LEATHER|TENNIS` (includes bowling average + economy).
 - Photo missing → initials fallback. One full-screen graphic on air at a time; **Hide all** clears cards + strip overrides.
 - **Toss (strip):** Show/Hide replaces the CRR row with “X won the toss and chose to bat/bowl”.
 - **Runs to win (strip):** Show/Hide replaces the CRR row with “NEED X OFF Y” (updates live while on).
+- **Bowler Career Stats:** bottom navy/purple bar (Matches / Wickets / Average / Economy / Best). Show disabled until career bowling stats exist for the match ball type. Hides the score strip while on air; strip returns on Hide.
 
 **Control panel (operator):** sticky on-air dock + one-tap **Take off air**; section highlight when that graphic is live; live previews; Show disabled until data is ready; batsman/bowler pickers grouped (crease / this innings / all).
 

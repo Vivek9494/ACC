@@ -4,6 +4,7 @@
 
 import type {
   BatterCard,
+  BroadcastPlayerStatsView,
   FallOfWicket,
   InningsScorecard,
   Partnership,
@@ -114,6 +115,21 @@ export function wicketOrdinal(n: number): string {
   const suffix =
     mod10 === 1 ? 'ST' : mod10 === 2 ? 'ND' : mod10 === 3 ? 'RD' : 'TH';
   return `${n}${suffix}`;
+}
+
+/** True when the player has usable bowling career figures for the card. */
+export function hasBowlerCareerStats(
+  stats: BroadcastPlayerStatsView | null | undefined,
+): boolean {
+  if (!stats || stats.matches <= 0) {
+    return false;
+  }
+  return (
+    stats.wickets > 0 ||
+    stats.economy != null ||
+    stats.bowlingAverage != null ||
+    Boolean(stats.bestBowling?.trim())
+  );
 }
 
 export function resolveActiveInnings(card: ScorecardResponse): InningsScorecard | null {

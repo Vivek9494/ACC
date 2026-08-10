@@ -14,9 +14,14 @@ export interface BroadcastPlayerStatsView {
   ballType: BallType;
   matches: number;
   runs: number;
+  /** Batting average (runs ÷ dismissals). */
   average: number | null;
   strikeRate: number | null;
   highestScore: string | null;
   wickets: number;
+  /** Bowling average (runs conceded ÷ wickets). */
+  bowlingAverage: number | null;
+  /** Economy rate (runs conceded ÷ overs). */
+  economy: number | null;
   bestBowling: string | null;
 }
