@@ -259,11 +259,8 @@ function buildSubtitle(
   if (result) {
     return result;
   }
-  const chase = chaseLine(card, innings);
-  if (chase) {
-    return chase;
-  }
-  return formatTossLine(ctx);
+  // Toss is operator-driven on the CRR row (Show toss) — never auto-stack under CRR.
+  return chaseLine(card, innings);
 }
 
 function teamVm(

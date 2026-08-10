@@ -207,10 +207,15 @@ function render(
   setText('overs-line', vm.oversLine);
   power.hidden = !vm.showPowerplay;
 
-  if (vm.subtitle) {
+  // When toss replaces the CRR row, suppress a duplicate toss subtitle.
+  const tossLine = formatTossLine(ctx);
+  const subtitleText =
+    tossOnStrip && tossLine && vm.subtitle === tossLine ? null : vm.subtitle;
+
+  if (subtitleText) {
     subtitle.hidden = false;
-    if (subtitle.textContent !== vm.subtitle) {
-      subtitle.textContent = vm.subtitle;
+    if (subtitle.textContent !== subtitleText) {
+      subtitle.textContent = subtitleText;
     }
   } else {
     subtitle.hidden = true;

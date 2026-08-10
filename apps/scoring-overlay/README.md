@@ -12,7 +12,7 @@ Left → right, anchored bottom (locked mockup aesthetic — navy / pink / cyan)
 4. **Bowler** + **this-over tracker** (all deliveries in order, variable length; wd/nb interleaved)
 5. **Bowling team logo** (initials fallback)
 
-Logos from public match detail + tournament teams (presigned). Logos swap ends when the batting side changes. Subtitle: result → chase/RRR → toss.
+Logos from public match detail + tournament teams (presigned). Logos swap ends when the batting side changes. Subtitle: result → chase/RRR (toss is operator-only on the CRR row).
 
 ## Quick start
 
