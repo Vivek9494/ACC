@@ -176,6 +176,42 @@ function chaseLine(card: ScorecardResponse, innings: InningsScorecard): string |
   return `NEED ${needs} OFF ${ballsLeft} · RRR ${rrrText}`;
 }
 
+/**
+ * Compact chase line for the CRR row (operator Show): runs needed vs balls left.
+ * e.g. "NEED 45 OFF 32"
+ */
+export function formatRunsToWinLine(card: ScorecardResponse | null): string | null {
+  if (!card) {
+    return null;
+  }
+  const innings = resolveActiveInnings(card);
+  if (!innings) {
+    return null;
+  }
+  if (innings.sequence < 2 && innings.target == null) {
+    return null;
+  }
+
+  const target =
+    innings.target ??
+    card.effectiveTarget ??
+    card.dlsTarget ??
+    card.originalTarget;
+  if (target == null || target <= 0) {
+    return null;
+  }
+
+  const needs = Math.max(0, target - innings.runs);
+  if (needs <= 0) {
+    return `TARGET ${target}`;
+  }
+  const ballsLeft = remainingLegalBalls(innings);
+  if (ballsLeft == null) {
+    return `NEED ${needs}`;
+  }
+  return `NEED ${needs} OFF ${ballsLeft}`;
+}
+
 /** e.g. "ACC 3 won the toss and chose to bat" — null until toss is recorded. */
 export function formatTossLine(ctx: MatchContext | null): string | null {
   if (!ctx?.tossWinner || !ctx.tossDecision) {

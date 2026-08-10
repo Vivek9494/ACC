@@ -31,7 +31,7 @@ import type {
 
 const ANIM_MS = 280;
 
-const GRAPHIC_IDS: Record<Exclude<GraphicsKind, 'toss'>, string> = {
+const GRAPHIC_IDS: Record<Exclude<GraphicsKind, 'toss' | 'chase'>, string> = {
   partnership: 'g-partnership',
   fow: 'g-fow',
   batsman: 'g-batsman',
@@ -88,12 +88,12 @@ function setAvatar(
 
 let scorecard: ScorecardResponse | null = null;
 let ballType: BallType = 'TENNIS';
-let activeKind: Exclude<GraphicsKind, 'toss'> | null = null;
+let activeKind: Exclude<GraphicsKind, 'toss' | 'chase'> | null = null;
 let activePlayerId: string | null = null;
 let careerToken = 0;
 const careerCache = new Map<string, BroadcastPlayerStatsView | null>();
 
-function graphicNode(kind: Exclude<GraphicsKind, 'toss'>): HTMLElement {
+function graphicNode(kind: Exclude<GraphicsKind, 'toss' | 'chase'>): HTMLElement {
   return el(GRAPHIC_IDS[kind]);
 }
 
@@ -115,14 +115,14 @@ function hideAllGraphics(): void {
   activeKind = null;
   activePlayerId = null;
   for (const kind of Object.keys(GRAPHIC_IDS) as Array<
-    Exclude<GraphicsKind, 'toss'>
+    Exclude<GraphicsKind, 'toss' | 'chase'>
   >) {
     hideNode(graphicNode(kind));
   }
 }
 
 function hideGraphic(kind: GraphicsKind): void {
-  if (kind === 'toss') {
+  if (kind === 'toss' || kind === 'chase') {
     return;
   }
   if (activeKind === kind) {
@@ -395,13 +395,13 @@ async function showGraphic(
   payload?: GraphicsCommandMessage['payload'],
 ): Promise<void> {
   // Strip-only — score strip listens; do not touch full-screen cards.
-  if (kind === 'toss') {
+  if (kind === 'toss' || kind === 'chase') {
     return;
   }
 
   if (kind === 'hello') {
     for (const k of Object.keys(GRAPHIC_IDS) as Array<
-      Exclude<GraphicsKind, 'toss'>
+      Exclude<GraphicsKind, 'toss' | 'chase'>
     >) {
       if (k !== 'hello') {
         hideNode(graphicNode(k));
@@ -436,7 +436,7 @@ async function showGraphic(
   }
 
   for (const k of Object.keys(GRAPHIC_IDS) as Array<
-    Exclude<GraphicsKind, 'toss'>
+    Exclude<GraphicsKind, 'toss' | 'chase'>
   >) {
     if (k !== kind) {
       hideNode(graphicNode(k));

@@ -108,6 +108,11 @@ export const GraphicsKind = {
    * No full-screen graphic on graphics.html.
    */
   Toss: 'toss',
+  /**
+   * Strip-only: replace CRR | overs-remaining with runs needed off balls left.
+   * No full-screen graphic on graphics.html.
+   */
+  Chase: 'chase',
   /** Phase A validation only — remove once real graphics ship. */
   Hello: 'hello',
 } as const;

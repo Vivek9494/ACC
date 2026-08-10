@@ -14,11 +14,15 @@ import {
 } from './types';
 import {
   buildStripViewModel,
+  formatRunsToWinLine,
   formatTossLine,
   type StripViewModel,
 } from './view-model';
 
 const DEFAULT_API_BASE = 'https://acc-api-production.up.railway.app';
+
+/** Operator override for the CRR row (one at a time). */
+type StripCrrMode = 'default' | 'toss' | 'chase';
 
 function el<T extends HTMLElement>(id: string): T {
   const node = document.getElementById(id);
@@ -117,31 +121,50 @@ function renderBatters(vm: StripViewModel): void {
   }
 }
 
+function setCrrOverrideLine(text: string): void {
+  const crrRow = el<HTMLDivElement>('crr-row');
+  const runRate = el<HTMLSpanElement>('run-rate');
+  const oversRem = el<HTMLSpanElement>('overs-rem');
+  const crrSep = el<HTMLSpanElement>('crr-sep');
+  crrRow.classList.add('is-override');
+  runRate.classList.add('is-override-line');
+  if (runRate.textContent !== text) {
+    runRate.textContent = text;
+  }
+  oversRem.hidden = true;
+  crrSep.hidden = true;
+  oversRem.textContent = '';
+}
+
 function renderCrrRow(
   vm: StripViewModel,
   ctx: MatchContext | null,
-  tossOnStrip: boolean,
+  card: ScorecardResponse,
+  crrMode: StripCrrMode,
 ): void {
   const crrRow = el<HTMLDivElement>('crr-row');
   const runRate = el<HTMLSpanElement>('run-rate');
   const oversRem = el<HTMLSpanElement>('overs-rem');
   const crrSep = el<HTMLSpanElement>('crr-sep');
-  const tossLine = formatTossLine(ctx);
 
-  if (tossOnStrip && tossLine) {
-    crrRow.classList.add('is-toss');
-    runRate.classList.add('is-toss-line');
-    if (runRate.textContent !== tossLine) {
-      runRate.textContent = tossLine;
+  if (crrMode === 'toss') {
+    const tossLine = formatTossLine(ctx);
+    if (tossLine) {
+      setCrrOverrideLine(tossLine);
+      return;
     }
-    oversRem.hidden = true;
-    crrSep.hidden = true;
-    oversRem.textContent = '';
-    return;
   }
 
-  crrRow.classList.remove('is-toss');
-  runRate.classList.remove('is-toss-line');
+  if (crrMode === 'chase') {
+    const chaseLine = formatRunsToWinLine(card);
+    if (chaseLine) {
+      setCrrOverrideLine(chaseLine);
+      return;
+    }
+  }
+
+  crrRow.classList.remove('is-override');
+  runRate.classList.remove('is-override-line');
   setText('run-rate', vm.runRateLine);
   if (vm.oversRemainingLine) {
     oversRem.hidden = false;
@@ -161,7 +184,7 @@ function render(
   ctx: MatchContext | null,
   status: ConnectionStatus,
   missingMatchId: boolean,
-  tossOnStrip: boolean,
+  crrMode: StripCrrMode,
 ): void {
   const wrap = el<HTMLDivElement>('strip-wrap');
   const idle = el<HTMLDivElement>('idle');
@@ -203,14 +226,20 @@ function render(
   setLogo('bowl-initials', 'bowl-logo', vm.bowling.initials, vm.bowling.logoUrl);
   renderBatters(vm);
   setText('score-line', vm.scoreLine);
-  renderCrrRow(vm, ctx, tossOnStrip);
+  renderCrrRow(vm, ctx, card, crrMode);
   setText('overs-line', vm.oversLine);
   power.hidden = !vm.showPowerplay;
 
-  // When toss replaces the CRR row, suppress a duplicate toss subtitle.
-  const tossLine = formatTossLine(ctx);
-  const subtitleText =
-    tossOnStrip && tossLine && vm.subtitle === tossLine ? null : vm.subtitle;
+  // Avoid stacking the same chase/toss info under an overridden CRR row.
+  let subtitleText = vm.subtitle;
+  if (crrMode === 'chase') {
+    subtitleText = null;
+  } else if (crrMode === 'toss') {
+    const tossLine = formatTossLine(ctx);
+    if (tossLine && vm.subtitle === tossLine) {
+      subtitleText = null;
+    }
+  }
 
   if (subtitleText) {
     subtitle.hidden = false;
@@ -233,11 +262,11 @@ function start(): void {
   let latest: ScorecardResponse | null = null;
   let matchCtx: MatchContext | null = null;
   let status: ConnectionStatus = 'connecting';
-  let tossOnStrip = false;
+  let crrMode: StripCrrMode = 'default';
   let socket: Socket | null = null;
 
   const paint = (): void => {
-    render(latest, matchCtx, status, !matchId, tossOnStrip);
+    render(latest, matchCtx, status, !matchId, crrMode);
   };
 
   paint();
@@ -316,19 +345,27 @@ function start(): void {
       return;
     }
     if (cmd.action === 'hide_all') {
-      tossOnStrip = false;
+      crrMode = 'default';
       paint();
       return;
     }
-    if (cmd.graphic !== 'toss') {
+    if (cmd.graphic === 'toss') {
+      if (cmd.action === 'show') {
+        crrMode = 'toss';
+      } else if (cmd.action === 'hide' && crrMode === 'toss') {
+        crrMode = 'default';
+      }
+      paint();
       return;
     }
-    if (cmd.action === 'show') {
-      tossOnStrip = true;
-    } else if (cmd.action === 'hide') {
-      tossOnStrip = false;
+    if (cmd.graphic === 'chase') {
+      if (cmd.action === 'show') {
+        crrMode = 'chase';
+      } else if (cmd.action === 'hide' && crrMode === 'chase') {
+        crrMode = 'default';
+      }
+      paint();
     }
-    paint();
   });
 
   window.addEventListener('beforeunload', () => {

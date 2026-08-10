@@ -245,12 +245,12 @@ body {
   padding: 0 0 1px;
 }
 
-.crr-row.is-toss {
+.crr-row.is-override {
   gap: 0;
   max-width: 100%;
 }
 
-.run-rate.is-toss-line {
+.run-rate.is-override-line {
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.02em;

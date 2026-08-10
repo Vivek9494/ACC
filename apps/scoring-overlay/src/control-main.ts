@@ -18,11 +18,11 @@ import {
   type GraphicsKind,
 } from './live-client';
 import type { MatchContext, ScorecardResponse } from './types';
-import { formatTossLine } from './view-model';
+import { formatRunsToWinLine, formatTossLine } from './view-model';
 import type { Socket } from 'socket.io-client';
 
-/** Full-screen OBS graphics (not strip-only toss). */
-const LABELS: Record<Exclude<GraphicsKind, 'hello' | 'toss'>, string> = {
+/** Full-screen OBS graphics (not strip-only toss/chase). */
+const LABELS: Record<Exclude<GraphicsKind, 'hello' | 'toss' | 'chase'>, string> = {
   partnership: 'Partnership',
   fow: 'Fall of wicket',
   batsman: 'Batsman',
@@ -72,6 +72,7 @@ function start(): void {
   const btnShowBowler = el<HTMLButtonElement>('btn-show-bowler');
   const btnShowInnings = el<HTMLButtonElement>('btn-show-innings');
   const btnShowToss = el<HTMLButtonElement>('btn-show-toss');
+  const btnShowChase = el<HTMLButtonElement>('btn-show-chase');
 
   if (!matchId) {
     matchLabel.textContent = 'Missing matchId — add ?matchId=… to the URL';
@@ -199,6 +200,10 @@ function start(): void {
     return formatTossLine(matchCtx);
   }
 
+  function previewChase(): string | null {
+    return formatRunsToWinLine(scorecard);
+  }
+
   function detailForKind(kind: keyof typeof LABELS): string {
     switch (kind) {
       case 'partnership':
@@ -216,13 +221,18 @@ function start(): void {
     }
   }
 
-  function setTossOnStrip(live: boolean): void {
-    const section = el<HTMLElement>('sec-toss');
+  function setStripSection(graphic: 'toss' | 'chase', live: boolean): void {
+    const section = el<HTMLElement>(graphic === 'toss' ? 'sec-toss' : 'sec-chase');
     section.classList.toggle('is-on-air', live);
     const badge = section.querySelector<HTMLElement>('.on-air-badge');
     if (badge) {
       badge.hidden = !live;
     }
+  }
+
+  function setStripMode(mode: 'default' | 'toss' | 'chase'): void {
+    setStripSection('toss', mode === 'toss');
+    setStripSection('chase', mode === 'chase');
   }
 
   function setOnAir(kind: keyof typeof LABELS | null): void {
@@ -254,6 +264,11 @@ function start(): void {
     el<HTMLParagraphElement>('preview-toss').textContent =
       toss ?? 'Toss not recorded yet';
     setEnabled(btnShowToss, toss != null);
+
+    const chase = previewChase();
+    el<HTMLParagraphElement>('preview-chase').textContent =
+      chase ?? 'No chase yet (2nd innings / target required)';
+    setEnabled(btnShowChase, chase != null);
 
     const ps = previewPartnership();
     el<HTMLParagraphElement>('preview-partnership').textContent =
@@ -479,7 +494,7 @@ function start(): void {
     onGraphicsCommand: (cmd) => {
       if (cmd.action === 'hide_all') {
         setOnAir(null);
-        setTossOnStrip(false);
+        setStripMode('default');
         return;
       }
       if (!cmd.graphic || cmd.graphic === 'hello') {
@@ -487,9 +502,17 @@ function start(): void {
       }
       if (cmd.graphic === 'toss') {
         if (cmd.action === 'show') {
-          setTossOnStrip(true);
+          setStripMode('toss');
         } else if (cmd.action === 'hide') {
-          setTossOnStrip(false);
+          setStripSection('toss', false);
+        }
+        return;
+      }
+      if (cmd.graphic === 'chase') {
+        if (cmd.action === 'show') {
+          setStripMode('chase');
+        } else if (cmd.action === 'hide') {
+          setStripSection('chase', false);
         }
         return;
       }
@@ -532,6 +555,13 @@ function start(): void {
   });
   el<HTMLButtonElement>('btn-hide-toss').addEventListener('click', () => {
     send({ action: 'hide', graphic: 'toss' });
+  });
+
+  el<HTMLButtonElement>('btn-show-chase').addEventListener('click', () => {
+    send({ action: 'show', graphic: 'chase' });
+  });
+  el<HTMLButtonElement>('btn-hide-chase').addEventListener('click', () => {
+    send({ action: 'hide', graphic: 'chase' });
   });
 
   pickBatsman.addEventListener('change', () => refreshPreviews());
