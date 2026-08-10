@@ -1,5 +1,5 @@
 import './control.css';
-import { fetchScorecard } from './broadcast-fetch';
+import { fetchMatchContext, fetchScorecard } from './broadcast-fetch';
 import {
   battingTeamLabel,
   formatDismissalShort,
@@ -17,10 +17,12 @@ import {
   type GraphicsCommandMessage,
   type GraphicsKind,
 } from './live-client';
-import type { ScorecardResponse } from './types';
+import type { MatchContext, ScorecardResponse } from './types';
+import { formatTossLine } from './view-model';
 import type { Socket } from 'socket.io-client';
 
-const LABELS: Record<Exclude<GraphicsKind, 'hello'>, string> = {
+/** Full-screen OBS graphics (not strip-only toss). */
+const LABELS: Record<Exclude<GraphicsKind, 'hello' | 'toss'>, string> = {
   partnership: 'Partnership',
   fow: 'Fall of wicket',
   batsman: 'Batsman',
@@ -69,6 +71,7 @@ function start(): void {
   const btnShowBatsman = el<HTMLButtonElement>('btn-show-batsman');
   const btnShowBowler = el<HTMLButtonElement>('btn-show-bowler');
   const btnShowInnings = el<HTMLButtonElement>('btn-show-innings');
+  const btnShowToss = el<HTMLButtonElement>('btn-show-toss');
 
   if (!matchId) {
     matchLabel.textContent = 'Missing matchId — add ?matchId=… to the URL';
@@ -84,6 +87,7 @@ function start(): void {
   let onAirGraphic: keyof typeof LABELS | null = null;
   let onAirDetailText = '';
   let scorecard: ScorecardResponse | null = null;
+  let matchCtx: MatchContext | null = null;
 
   function send(cmd: Omit<GraphicsCommandMessage, 'matchId'>): void {
     if (!socket) {
@@ -191,6 +195,10 @@ function start(): void {
     return `${nameOf(playerId)} · ${figs}`;
   }
 
+  function previewToss(): string | null {
+    return formatTossLine(matchCtx);
+  }
+
   function detailForKind(kind: keyof typeof LABELS): string {
     switch (kind) {
       case 'partnership':
@@ -205,6 +213,15 @@ function start(): void {
         return previewInnings() ?? '';
       default:
         return '';
+    }
+  }
+
+  function setTossOnStrip(live: boolean): void {
+    const section = el<HTMLElement>('sec-toss');
+    section.classList.toggle('is-on-air', live);
+    const badge = section.querySelector<HTMLElement>('.on-air-badge');
+    if (badge) {
+      badge.hidden = !live;
     }
   }
 
@@ -233,6 +250,11 @@ function start(): void {
   }
 
   function refreshPreviews(): void {
+    const toss = previewToss();
+    el<HTMLParagraphElement>('preview-toss').textContent =
+      toss ?? 'Toss not recorded yet';
+    setEnabled(btnShowToss, toss != null);
+
     const ps = previewPartnership();
     el<HTMLParagraphElement>('preview-partnership').textContent =
       ps ?? 'No current partnership';
@@ -425,9 +447,17 @@ function start(): void {
     refreshPreviews();
   }
 
-  void fetchScorecard(apiBase, resolvedMatchId).then((seed) => {
+  void Promise.all([
+    fetchScorecard(apiBase, resolvedMatchId),
+    fetchMatchContext(apiBase, resolvedMatchId),
+  ]).then(([seed, ctx]) => {
+    if (ctx) {
+      matchCtx = ctx;
+    }
     if (seed) {
       applyScorecard(seed);
+    } else {
+      refreshPreviews();
     }
   });
 
@@ -449,9 +479,18 @@ function start(): void {
     onGraphicsCommand: (cmd) => {
       if (cmd.action === 'hide_all') {
         setOnAir(null);
+        setTossOnStrip(false);
         return;
       }
       if (!cmd.graphic || cmd.graphic === 'hello') {
+        return;
+      }
+      if (cmd.graphic === 'toss') {
+        if (cmd.action === 'show') {
+          setTossOnStrip(true);
+        } else if (cmd.action === 'hide') {
+          setTossOnStrip(false);
+        }
         return;
       }
       if (cmd.action === 'show') {
@@ -486,6 +525,13 @@ function start(): void {
   bind('btn-show-bowler', 'btn-hide-bowler', 'bowler', () => {
     const playerId = pickBowler.value.trim();
     return playerId ? { playerId } : undefined;
+  });
+
+  el<HTMLButtonElement>('btn-show-toss').addEventListener('click', () => {
+    send({ action: 'show', graphic: 'toss' });
+  });
+  el<HTMLButtonElement>('btn-hide-toss').addEventListener('click', () => {
+    send({ action: 'hide', graphic: 'toss' });
   });
 
   pickBatsman.addEventListener('change', () => refreshPreviews());

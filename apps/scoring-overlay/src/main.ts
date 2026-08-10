@@ -1,15 +1,22 @@
 import { io, type Socket } from 'socket.io-client';
 
+import { fetchMatchContext, fetchScorecard } from './broadcast-fetch';
 import './style.css';
 import {
   LIVE_NAMESPACE,
   LiveEvent,
   type ConnectionStatus,
+  type GraphicsCommandMessage,
   type LiveStateMessage,
   type LiveSubscribeMessage,
+  type MatchContext,
   type ScorecardResponse,
 } from './types';
-import { buildStripViewModel } from './view-model';
+import {
+  buildStripViewModel,
+  formatTossLine,
+  type StripViewModel,
+} from './view-model';
 
 const DEFAULT_API_BASE = 'https://acc-api-production.up.railway.app';
 
@@ -29,24 +36,6 @@ function queryParams(): { matchId: string | null; apiBase: string } {
   return { matchId, apiBase };
 }
 
-async function fetchScorecard(
-  apiBase: string,
-  matchId: string,
-): Promise<ScorecardResponse | null> {
-  try {
-    const res = await fetch(`${apiBase}/matches/${encodeURIComponent(matchId)}/scorecard`, {
-      method: 'GET',
-      headers: { Accept: 'application/json' },
-    });
-    if (!res.ok) {
-      return null;
-    }
-    return (await res.json()) as ScorecardResponse;
-  } catch {
-    return null;
-  }
-}
-
 function setText(id: string, text: string): void {
   const node = el(id);
   if (node.textContent !== text) {
@@ -54,18 +43,134 @@ function setText(id: string, text: string): void {
   }
 }
 
+function setLogo(
+  initialsId: string,
+  imgId: string,
+  initials: string,
+  logoUrl: string | null,
+): void {
+  const initialsEl = el<HTMLSpanElement>(initialsId);
+  const img = el<HTMLImageElement>(imgId);
+  initialsEl.textContent = initials;
+  if (logoUrl) {
+    img.onload = () => {
+      img.hidden = false;
+      initialsEl.hidden = true;
+    };
+    img.onerror = () => {
+      img.hidden = true;
+      initialsEl.hidden = false;
+      img.removeAttribute('src');
+    };
+    if (img.getAttribute('src') !== logoUrl) {
+      img.hidden = true;
+      initialsEl.hidden = false;
+      img.src = logoUrl;
+    }
+  } else {
+    img.hidden = true;
+    initialsEl.hidden = false;
+    img.removeAttribute('src');
+  }
+}
+
+function renderOverTracker(vm: StripViewModel): void {
+  const tracker = el<HTMLDivElement>('over-tracker');
+
+  tracker.replaceChildren();
+  for (const slot of vm.overTracker.slots) {
+    const node = document.createElement('span');
+    node.className = 'ball-slot';
+    if (slot.isExtra) {
+      node.classList.add('is-extra');
+      node.textContent = slot.label;
+    } else if (slot.label === '●') {
+      node.classList.add('is-dot');
+      node.textContent = '●';
+    } else {
+      if (slot.isWicket) {
+        node.classList.add('is-wicket');
+      }
+      if (slot.isBoundary) {
+        node.classList.add('is-boundary');
+      }
+      node.textContent = slot.label;
+    }
+    tracker.appendChild(node);
+  }
+  tracker.hidden = vm.overTracker.slots.length === 0;
+}
+
+function renderBatters(vm: StripViewModel): void {
+  for (let i = 0; i < 2; i += 1) {
+    const batter = vm.batsmen[i] ?? {
+      name: '—',
+      runs: '',
+      balls: '',
+      onStrike: false,
+    };
+    const row = el<HTMLDivElement>(`batter-${i}`);
+    row.classList.toggle('is-strike', batter.onStrike);
+    setText(`batter-${i}-name`, batter.name);
+    setText(`batter-${i}-runs`, batter.runs);
+    setText(`batter-${i}-balls`, batter.balls);
+  }
+}
+
+function renderCrrRow(
+  vm: StripViewModel,
+  ctx: MatchContext | null,
+  tossOnStrip: boolean,
+): void {
+  const crrRow = el<HTMLDivElement>('crr-row');
+  const runRate = el<HTMLSpanElement>('run-rate');
+  const oversRem = el<HTMLSpanElement>('overs-rem');
+  const crrSep = el<HTMLSpanElement>('crr-sep');
+  const tossLine = formatTossLine(ctx);
+
+  if (tossOnStrip && tossLine) {
+    crrRow.classList.add('is-toss');
+    runRate.classList.add('is-toss-line');
+    if (runRate.textContent !== tossLine) {
+      runRate.textContent = tossLine;
+    }
+    oversRem.hidden = true;
+    crrSep.hidden = true;
+    oversRem.textContent = '';
+    return;
+  }
+
+  crrRow.classList.remove('is-toss');
+  runRate.classList.remove('is-toss-line');
+  setText('run-rate', vm.runRateLine);
+  if (vm.oversRemainingLine) {
+    oversRem.hidden = false;
+    crrSep.hidden = false;
+    if (oversRem.textContent !== vm.oversRemainingLine) {
+      oversRem.textContent = vm.oversRemainingLine;
+    }
+  } else {
+    oversRem.hidden = true;
+    crrSep.hidden = true;
+    oversRem.textContent = '';
+  }
+}
+
 function render(
   card: ScorecardResponse | null,
+  ctx: MatchContext | null,
   status: ConnectionStatus,
   missingMatchId: boolean,
+  tossOnStrip: boolean,
 ): void {
-  const strip = el<HTMLDivElement>('strip');
+  const wrap = el<HTMLDivElement>('strip-wrap');
   const idle = el<HTMLDivElement>('idle');
   const conn = el<HTMLDivElement>('conn');
-  const chase = el<HTMLDivElement>('chase-block');
+  const subtitle = el<HTMLParagraphElement>('subtitle');
+  const power = el<HTMLSpanElement>('power-pill');
 
   if (missingMatchId) {
-    strip.hidden = true;
+    wrap.hidden = true;
     idle.hidden = false;
     idle.textContent = 'Add ?matchId=… to the overlay URL';
     return;
@@ -75,17 +180,16 @@ function render(
   conn.textContent = status === 'connecting' ? 'Connecting…' : 'Reconnecting…';
 
   if (!card) {
-    // Keep strip hidden only until first state — never flash errors.
-    if (strip.hidden) {
+    if (wrap.hidden) {
       idle.hidden = false;
       idle.textContent = status === 'live' ? 'Waiting for live score…' : 'Connecting…';
     }
     return;
   }
 
-  const vm = buildStripViewModel(card);
+  const vm = buildStripViewModel(card, ctx);
   if (!vm) {
-    if (strip.hidden) {
+    if (wrap.hidden) {
       idle.hidden = false;
       idle.textContent = 'Match ready — waiting for innings…';
     }
@@ -93,35 +197,42 @@ function render(
   }
 
   idle.hidden = true;
-  strip.hidden = false;
+  wrap.hidden = false;
 
-  setText('team-name', vm.teamName);
+  setLogo('bat-initials', 'bat-logo', vm.batting.initials, vm.batting.logoUrl);
+  setLogo('bowl-initials', 'bowl-logo', vm.bowling.initials, vm.bowling.logoUrl);
+  renderBatters(vm);
   setText('score-line', vm.scoreLine);
+  renderCrrRow(vm, ctx, tossOnStrip);
   setText('overs-line', vm.oversLine);
-  setText('striker', vm.striker);
-  setText('non-striker', vm.nonStriker);
-  setText('bowler', vm.bowler);
+  power.hidden = !vm.showPowerplay;
 
-  const chaseText = vm.resultNote ?? vm.chase;
-  if (chaseText) {
-    chase.hidden = false;
-    if (chase.textContent !== chaseText) {
-      chase.textContent = chaseText;
+  if (vm.subtitle) {
+    subtitle.hidden = false;
+    if (subtitle.textContent !== vm.subtitle) {
+      subtitle.textContent = vm.subtitle;
     }
   } else {
-    chase.hidden = true;
-    chase.textContent = '';
+    subtitle.hidden = true;
+    subtitle.textContent = '';
   }
+
+  setText('bowler-name', vm.bowlerName);
+  setText('bowler-figs', vm.bowlerFigs);
+  setText('bowler-overs', vm.bowlerOvers);
+  renderOverTracker(vm);
 }
 
 function start(): void {
   const { matchId, apiBase } = queryParams();
   let latest: ScorecardResponse | null = null;
+  let matchCtx: MatchContext | null = null;
   let status: ConnectionStatus = 'connecting';
+  let tossOnStrip = false;
   let socket: Socket | null = null;
 
   const paint = (): void => {
-    render(latest, status, !matchId);
+    render(latest, matchCtx, status, !matchId, tossOnStrip);
   };
 
   paint();
@@ -131,15 +242,21 @@ function start(): void {
   }
 
   void (async () => {
-    const seed = await fetchScorecard(apiBase, matchId);
+    const [seed, ctx] = await Promise.all([
+      fetchScorecard(apiBase, matchId),
+      fetchMatchContext(apiBase, matchId),
+    ]);
+    if (ctx) {
+      matchCtx = ctx;
+    }
     if (seed) {
       latest = seed;
-      paint();
     }
+    paint();
   })();
 
   socket = io(`${apiBase}${LIVE_NAMESPACE}`, {
-    transports: ['websocket'],
+    transports: ['websocket', 'polling'],
     reconnection: true,
     reconnectionAttempts: Infinity,
     reconnectionDelay: 1000,
@@ -178,11 +295,34 @@ function start(): void {
     if (frame.matchId !== matchId || !frame.state) {
       return;
     }
-    // Avoid unnecessary work / flicker when version is unchanged.
-    if (latest && latest.version === frame.state.version && latest.matchId === frame.state.matchId) {
+    if (
+      latest &&
+      latest.version === frame.state.version &&
+      latest.matchId === frame.state.matchId
+    ) {
       return;
     }
     latest = frame.state;
+    paint();
+  });
+
+  socket.on(LiveEvent.GraphicsCommand, (cmd: GraphicsCommandMessage) => {
+    if (cmd.matchId !== matchId) {
+      return;
+    }
+    if (cmd.action === 'hide_all') {
+      tossOnStrip = false;
+      paint();
+      return;
+    }
+    if (cmd.graphic !== 'toss') {
+      return;
+    }
+    if (cmd.action === 'show') {
+      tossOnStrip = true;
+    } else if (cmd.action === 'hide') {
+      tossOnStrip = false;
+    }
     paint();
   });
 

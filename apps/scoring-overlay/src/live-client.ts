@@ -25,6 +25,7 @@ export type GraphicsKind =
   | 'partnership'
   | 'fow'
   | 'innings_break'
+  | 'toss'
   | 'hello';
 
 export interface GraphicsCommandMessage {

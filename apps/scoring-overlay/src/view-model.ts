@@ -1,16 +1,45 @@
-import type { InningsScorecard, ScorecardResponse } from './types';
+import { buildCurrentOverTracker, type CurrentOverTracker } from './over-tracker';
+import type {
+  InningsScorecard,
+  MatchContext,
+  MatchResultView,
+  ScorecardInningsLabels,
+  ScorecardResponse,
+} from './types';
 
 const BALLS_PER_OVER = 6;
 
+export interface StripBatterVm {
+  name: string;
+  runs: string;
+  balls: string;
+  onStrike: boolean;
+}
+
+export interface StripTeamVm {
+  name: string;
+  logoUrl: string | null;
+  initials: string;
+}
+
 export interface StripViewModel {
-  teamName: string;
+  batting: StripTeamVm;
+  bowling: StripTeamVm;
+  batsmen: StripBatterVm[];
+  /** runs-wickets, e.g. "120-3". */
   scoreLine: string;
+  /** Current run rate, e.g. "CRR 8.50". */
+  runRateLine: string;
+  /** Remaining overs, e.g. "18.2 OV REM", or null if unknown. */
+  oversRemainingLine: string | null;
   oversLine: string;
-  striker: string;
-  nonStriker: string;
-  bowler: string;
-  chase: string | null;
-  resultNote: string | null;
+  showPowerplay: boolean;
+  subtitle: string | null;
+  bowlerName: string;
+  /** wickets-runs, e.g. "1-24". */
+  bowlerFigs: string;
+  bowlerOvers: string;
+  overTracker: CurrentOverTracker;
 }
 
 function playerName(
@@ -24,9 +53,9 @@ function playerName(
   return name && name.length > 0 ? name : '—';
 }
 
-function shortName(full: string): string {
-  if (full === '—') {
-    return full;
+export function shortName(full: string): string {
+  if (full === '—' || !full.trim()) {
+    return full || '—';
   }
   const parts = full.trim().split(/\s+/).filter(Boolean);
   if (parts.length <= 1) {
@@ -37,42 +66,28 @@ function shortName(full: string): string {
   return initial ? `${initial}. ${last}` : last;
 }
 
-function formatRunsBalls(
+export function teamInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) {
+    return '?';
+  }
+  if (parts.length === 1) {
+    return (parts[0]?.slice(0, 2) ?? '?').toUpperCase();
+  }
+  const a = parts[0]?.[0] ?? '';
+  const b = parts[parts.length - 1]?.[0] ?? '';
+  return `${a}${b}`.toUpperCase() || '?';
+}
+
+function batterRunsBalls(
   innings: InningsScorecard,
   playerId: string,
-  onStrike: boolean,
-): string {
+): { runs: string; balls: string } {
   const card = innings.batters.find((b) => b.playerId === playerId);
   if (!card) {
-    return '';
+    return { runs: '0', balls: '0' };
   }
-  const runs = onStrike && !card.isOut ? `${card.runs}*` : String(card.runs);
-  return `${runs} (${card.balls})`;
-}
-
-function playerLine(
-  card: ScorecardResponse,
-  innings: InningsScorecard,
-  playerId: string | null,
-  onStrike: boolean,
-): string {
-  if (!playerId) {
-    return '—';
-  }
-  const name = shortName(playerName(card.display, playerId));
-  const figs = formatRunsBalls(innings, playerId, onStrike);
-  return figs ? `${name}  ${figs}` : name;
-}
-
-function bowlingFigures(innings: InningsScorecard, bowlerId: string | null): string {
-  if (!bowlerId) {
-    return '';
-  }
-  const row = innings.bowlers.find((b) => b.playerId === bowlerId);
-  if (!row) {
-    return '';
-  }
-  return `${row.oversText}-${row.runsConceded}-${row.wickets}`;
+  return { runs: String(card.runs), balls: String(card.balls) };
 }
 
 /** Active or most recent innings for the strip. */
@@ -87,16 +102,42 @@ export function resolveActiveInnings(card: ScorecardResponse): InningsScorecard 
   return card.innings[card.innings.length - 1] ?? null;
 }
 
-function battingTeamLabel(card: ScorecardResponse, innings: InningsScorecard): string {
-  const labels = card.display.innings.find(
-    (row) =>
-      (innings.inningsId != null && row.inningsId === innings.inningsId) ||
-      (row.battingTeamId != null &&
-        innings.battingTeamId != null &&
-        row.battingTeamId === innings.battingTeamId),
+function inningsLabels(
+  card: ScorecardResponse,
+  innings: InningsScorecard,
+): ScorecardInningsLabels | null {
+  return (
+    card.display.innings.find(
+      (row) =>
+        (innings.inningsId != null && row.inningsId === innings.inningsId) ||
+        (row.battingTeamId != null &&
+          innings.battingTeamId != null &&
+          row.battingTeamId === innings.battingTeamId),
+    ) ?? null
   );
-  const name = labels?.battingTeamName?.trim();
-  return name && name.length > 0 ? name : 'Batting';
+}
+
+function formatCurrentRunRate(innings: InningsScorecard): string {
+  if (innings.legalBalls <= 0) {
+    return 'CRR 0.00';
+  }
+  const rr = (innings.runs * BALLS_PER_OVER) / innings.legalBalls;
+  const text = Number.isFinite(rr) ? rr.toFixed(2) : '0.00';
+  return `CRR ${text}`;
+}
+
+function formatOversFromBalls(balls: number): string {
+  const whole = Math.floor(balls / BALLS_PER_OVER);
+  const rem = balls % BALLS_PER_OVER;
+  return `${whole}.${rem}`;
+}
+
+function formatOversRemaining(innings: InningsScorecard): string | null {
+  const ballsLeft = remainingLegalBalls(innings);
+  if (ballsLeft == null) {
+    return null;
+  }
+  return `Overs remaining ${formatOversFromBalls(ballsLeft)}`;
 }
 
 function remainingLegalBalls(innings: InningsScorecard): number | null {
@@ -109,7 +150,6 @@ function remainingLegalBalls(innings: InningsScorecard): number | null {
 }
 
 function chaseLine(card: ScorecardResponse, innings: InningsScorecard): string | null {
-  // Second innings (or later) only — sequence >= 2, or innings-level target.
   if (innings.sequence < 2 && innings.target == null) {
     return null;
   }
@@ -128,44 +168,194 @@ function chaseLine(card: ScorecardResponse, innings: InningsScorecard): string |
     return `TARGET ${target}`;
   }
   const ballsLeft = remainingLegalBalls(innings);
-  if (ballsLeft == null) {
-    return `TARGET ${target}  ·  NEED ${needs}`;
-  }
-  if (ballsLeft === 0) {
-    return `TARGET ${target}  ·  NEED ${needs}`;
+  if (ballsLeft == null || ballsLeft === 0) {
+    return `NEED ${needs} · TARGET ${target}`;
   }
   const rrr = (needs * BALLS_PER_OVER) / ballsLeft;
   const rrrText = Number.isFinite(rrr) ? rrr.toFixed(2) : '—';
-  return `TARGET ${target}  ·  NEED ${needs} OFF ${ballsLeft}  ·  RRR ${rrrText}`;
+  return `NEED ${needs} OFF ${ballsLeft} · RRR ${rrrText}`;
 }
 
-export function buildStripViewModel(card: ScorecardResponse): StripViewModel | null {
+/** e.g. "ACC 3 won the toss and chose to bat" — null until toss is recorded. */
+export function formatTossLine(ctx: MatchContext | null): string | null {
+  if (!ctx?.tossWinner || !ctx.tossDecision) {
+    return null;
+  }
+  const winnerName =
+    ctx.tossWinner === 'TEAM_A'
+      ? (ctx.homeTeamName ?? 'Home')
+      : (ctx.awayTeamName ?? ctx.externalOpponentName ?? 'Away');
+  const decisionWord = ctx.tossDecision === 'BAT' ? 'bat' : 'bowl';
+  return `${winnerName} won the toss and chose to ${decisionWord}`;
+}
+
+function winnerDisplayName(
+  card: ScorecardResponse,
+  result: MatchResultView,
+  ctx: MatchContext | null,
+): string {
+  if (result.winningTeamId) {
+    for (const row of card.display.innings) {
+      if (row.battingTeamId === result.winningTeamId && row.battingTeamName.trim()) {
+        return row.battingTeamName.trim();
+      }
+      if (row.bowlingTeamId === result.winningTeamId && row.bowlingTeamName.trim()) {
+        return row.bowlingTeamName.trim();
+      }
+    }
+    if (ctx?.homeTeamId === result.winningTeamId && ctx.homeTeamName) {
+      return ctx.homeTeamName;
+    }
+    if (ctx?.awayTeamId === result.winningTeamId && ctx.awayTeamName) {
+      return ctx.awayTeamName;
+    }
+  }
+  return ctx?.homeTeamName ?? 'Winner';
+}
+
+function formatResultLine(
+  card: ScorecardResponse,
+  ctx: MatchContext | null,
+): string | null {
+  const result = card.result;
+  if (!result) {
+    return null;
+  }
+  if (ctx?.resultNote?.trim()) {
+    return ctx.resultNote.trim();
+  }
+  if (result.superOverRequired) {
+    return result.note ?? 'Scores level — Super Over required';
+  }
+  if (result.isTie) {
+    return 'Match tied';
+  }
+  if (!result.decided) {
+    return null;
+  }
+  const winner = winnerDisplayName(card, result, ctx);
+  if (result.marginWickets != null && result.marginWickets >= 0) {
+    const w = result.marginWickets;
+    const line = `${winner} won by ${w} wicket${w === 1 ? '' : 's'}`;
+    return result.note === 'Decided by Super Over' ? `${line} (Super Over)` : line;
+  }
+  if (result.marginRuns != null && result.marginRuns >= 0) {
+    const r = result.marginRuns;
+    const line = `${winner} won by ${r} run${r === 1 ? '' : 's'}`;
+    return result.note === 'Decided by Super Over' ? `${line} (Super Over)` : line;
+  }
+  if (result.note === 'Decided by Super Over') {
+    return `${winner} won (Super Over)`;
+  }
+  return result.note?.trim() || `${winner} won`;
+}
+
+function buildSubtitle(
+  card: ScorecardResponse,
+  innings: InningsScorecard,
+  ctx: MatchContext | null,
+): string | null {
+  const result = formatResultLine(card, ctx);
+  if (result) {
+    return result;
+  }
+  const chase = chaseLine(card, innings);
+  if (chase) {
+    return chase;
+  }
+  return formatTossLine(ctx);
+}
+
+function teamVm(
+  name: string,
+  teamId: string | null,
+  ctx: MatchContext | null,
+): StripTeamVm {
+  const trimmed = name.trim() || '—';
+  const logoUrl =
+    teamId && ctx?.logosByTeamId[teamId] ? ctx.logosByTeamId[teamId] : null;
+  return {
+    name: trimmed,
+    logoUrl,
+    initials: teamInitials(trimmed),
+  };
+}
+
+/** True while still inside the configured fielding powerplay overs. */
+function inPowerplay(
+  innings: InningsScorecard,
+  ctx: MatchContext | null,
+): boolean {
+  const pp = ctx?.powerplayOvers;
+  if (pp == null || pp <= 0) {
+    return false;
+  }
+  const oversStarted = Math.floor(innings.legalBalls / BALLS_PER_OVER);
+  return oversStarted < pp;
+}
+
+export function buildStripViewModel(
+  card: ScorecardResponse,
+  ctx: MatchContext | null = null,
+): StripViewModel | null {
   const innings = resolveActiveInnings(card);
   if (!innings) {
     return null;
   }
 
-  const bowlFigs = bowlingFigures(innings, innings.currentBowlerId);
-  const bowlerName = shortName(playerName(card.display, innings.currentBowlerId));
-  const bowlerLine = innings.currentBowlerId
-    ? bowlFigs
-      ? `${bowlerName}  ${bowlFigs}`
-      : bowlerName
-    : '—';
+  const labels = inningsLabels(card, innings);
+  const battingName = labels?.battingTeamName?.trim() || 'Batting';
+  const bowlingName = labels?.bowlingTeamName?.trim() || 'Bowling';
+  const battingId = labels?.battingTeamId ?? innings.battingTeamId;
+  const bowlingId = labels?.bowlingTeamId ?? innings.bowlingTeamId;
 
-  let resultNote: string | null = null;
-  if (card.result?.decided) {
-    resultNote = card.result.note?.trim() || 'MATCH COMPLETE';
+  const batsmen: StripBatterVm[] = [];
+  const strikerId = innings.currentStrikerId;
+  const nonStrikerId = innings.currentNonStrikerId;
+
+  if (strikerId) {
+    const figs = batterRunsBalls(innings, strikerId);
+    batsmen.push({
+      name: shortName(playerName(card.display, strikerId)),
+      runs: figs.runs,
+      balls: figs.balls,
+      onStrike: true,
+    });
+  }
+  if (nonStrikerId) {
+    const figs = batterRunsBalls(innings, nonStrikerId);
+    batsmen.push({
+      name: shortName(playerName(card.display, nonStrikerId)),
+      runs: figs.runs,
+      balls: figs.balls,
+      onStrike: false,
+    });
+  }
+  while (batsmen.length < 2) {
+    batsmen.push({ name: '—', runs: '', balls: '', onStrike: false });
   }
 
+  const bowlerId = innings.currentBowlerId;
+  const bowlerName = bowlerId
+    ? shortName(playerName(card.display, bowlerId))
+    : '—';
+  const bowlRow = bowlerId
+    ? innings.bowlers.find((b) => b.playerId === bowlerId)
+    : undefined;
+
   return {
-    teamName: battingTeamLabel(card, innings),
-    scoreLine: `${innings.runs}/${innings.wickets}`,
-    oversLine: `(${innings.oversText || '0.0'})`,
-    striker: playerLine(card, innings, innings.currentStrikerId, true),
-    nonStriker: playerLine(card, innings, innings.currentNonStrikerId, false),
-    bowler: bowlerLine,
-    chase: resultNote ? null : chaseLine(card, innings),
-    resultNote,
+    batting: teamVm(battingName, battingId, ctx),
+    bowling: teamVm(bowlingName, bowlingId, ctx),
+    batsmen,
+    scoreLine: `${innings.runs}-${innings.wickets}`,
+    runRateLine: formatCurrentRunRate(innings),
+    oversRemainingLine: formatOversRemaining(innings),
+    oversLine: innings.oversText || '0.0',
+    showPowerplay: inPowerplay(innings, ctx),
+    subtitle: buildSubtitle(card, innings, ctx),
+    bowlerName,
+    bowlerFigs: bowlRow ? `${bowlRow.wickets}-${bowlRow.runsConceded}` : '',
+    bowlerOvers: bowlRow?.oversText ?? '',
+    overTracker: buildCurrentOverTracker(innings),
   };
 }

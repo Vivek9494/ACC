@@ -13,20 +13,59 @@
   </head>
   <body>
     <div id="root" aria-live="polite">
-      <div id="strip" class="strip" hidden>
-        <div class="strip-main">
-          <div class="brand-mark" aria-hidden="true">ASC</div>
-          <div class="score-block">
-            <span id="team-name" class="team-name"></span>
-            <span id="score-line" class="score-line"></span>
-            <span id="overs-line" class="overs-line"></span>
+      <div id="strip-wrap" class="strip-wrap" hidden>
+        <div id="strip" class="strip">
+          <div class="logo">
+            <div class="logo-tile">
+              <span id="bat-initials" class="logo-initials">?</span>
+              <img id="bat-logo" class="logo-img" alt="" hidden />
+            </div>
           </div>
-          <div class="players-block">
-            <div id="striker" class="player striker"></div>
-            <div id="non-striker" class="player non-striker"></div>
-            <div id="bowler" class="player bowler"></div>
+
+          <div class="batters">
+            <div id="batter-0" class="batter">
+              <span class="arrow" aria-hidden="true">▸</span>
+              <span id="batter-0-name" class="name">—</span>
+              <span id="batter-0-runs" class="runs">0</span>
+              <span id="batter-0-balls" class="balls">0</span>
+            </div>
+            <div id="batter-1" class="batter">
+              <span class="arrow" aria-hidden="true">▸</span>
+              <span id="batter-1-name" class="name">—</span>
+              <span id="batter-1-runs" class="runs">0</span>
+              <span id="batter-1-balls" class="balls">0</span>
+            </div>
           </div>
-          <div id="chase-block" class="chase-block" hidden></div>
+
+          <div class="marquee">
+            <div class="marquee-top">
+              <span id="score-line" class="pill pill-score">0-0</span>
+              <span id="power-pill" class="pill pill-power" title="Powerplay" hidden>P</span>
+              <span id="overs-line" class="pill pill-over">0.0</span>
+            </div>
+            <div id="crr-row" class="crr-row">
+              <span id="run-rate" class="run-rate">CRR 0.00</span>
+              <span id="crr-sep" class="crr-sep" hidden>|</span>
+              <span id="overs-rem" class="overs-rem" hidden></span>
+            </div>
+            <p id="subtitle" class="marquee-sub" hidden></p>
+          </div>
+
+          <div class="bowler">
+            <div class="bowler-top">
+              <span id="bowler-name" class="bowler-name">—</span>
+              <span id="bowler-figs" class="bowler-figs"></span>
+              <span id="bowler-overs" class="bowler-overs"></span>
+            </div>
+            <div id="over-tracker" class="tracker" aria-label="This over"></div>
+          </div>
+
+          <div class="logo">
+            <div class="logo-tile">
+              <span id="bowl-initials" class="logo-initials">?</span>
+              <img id="bowl-logo" class="logo-img" alt="" hidden />
+            </div>
+          </div>
         </div>
         <div id="conn" class="conn" hidden>Reconnecting…</div>
       </div>

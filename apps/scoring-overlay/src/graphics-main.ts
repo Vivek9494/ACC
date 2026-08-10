@@ -31,7 +31,7 @@ import type {
 
 const ANIM_MS = 280;
 
-const GRAPHIC_IDS: Record<GraphicsKind, string> = {
+const GRAPHIC_IDS: Record<Exclude<GraphicsKind, 'toss'>, string> = {
   partnership: 'g-partnership',
   fow: 'g-fow',
   batsman: 'g-batsman',
@@ -88,12 +88,12 @@ function setAvatar(
 
 let scorecard: ScorecardResponse | null = null;
 let ballType: BallType = 'TENNIS';
-let activeKind: GraphicsKind | null = null;
+let activeKind: Exclude<GraphicsKind, 'toss'> | null = null;
 let activePlayerId: string | null = null;
 let careerToken = 0;
 const careerCache = new Map<string, BroadcastPlayerStatsView | null>();
 
-function graphicNode(kind: GraphicsKind): HTMLElement {
+function graphicNode(kind: Exclude<GraphicsKind, 'toss'>): HTMLElement {
   return el(GRAPHIC_IDS[kind]);
 }
 
@@ -114,12 +114,17 @@ function showNode(node: HTMLElement): void {
 function hideAllGraphics(): void {
   activeKind = null;
   activePlayerId = null;
-  for (const kind of Object.keys(GRAPHIC_IDS) as GraphicsKind[]) {
+  for (const kind of Object.keys(GRAPHIC_IDS) as Array<
+    Exclude<GraphicsKind, 'toss'>
+  >) {
     hideNode(graphicNode(kind));
   }
 }
 
 function hideGraphic(kind: GraphicsKind): void {
+  if (kind === 'toss') {
+    return;
+  }
   if (activeKind === kind) {
     activeKind = null;
     activePlayerId = null;
@@ -389,8 +394,15 @@ async function showGraphic(
   kind: GraphicsKind,
   payload?: GraphicsCommandMessage['payload'],
 ): Promise<void> {
+  // Strip-only — score strip listens; do not touch full-screen cards.
+  if (kind === 'toss') {
+    return;
+  }
+
   if (kind === 'hello') {
-    for (const k of Object.keys(GRAPHIC_IDS) as GraphicsKind[]) {
+    for (const k of Object.keys(GRAPHIC_IDS) as Array<
+      Exclude<GraphicsKind, 'toss'>
+    >) {
       if (k !== 'hello') {
         hideNode(graphicNode(k));
       }
@@ -423,7 +435,9 @@ async function showGraphic(
     return;
   }
 
-  for (const k of Object.keys(GRAPHIC_IDS) as GraphicsKind[]) {
+  for (const k of Object.keys(GRAPHIC_IDS) as Array<
+    Exclude<GraphicsKind, 'toss'>
+  >) {
     if (k !== kind) {
       hideNode(graphicNode(k));
     }

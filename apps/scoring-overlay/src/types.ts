@@ -9,7 +9,26 @@ export const LiveEvent = {
   Subscribe: 'live:subscribe',
   Unsubscribe: 'live:unsubscribe',
   State: 'live:state',
+  GraphicsCommand: 'graphics:command',
 } as const;
+
+export type GraphicsCommandAction = 'show' | 'hide' | 'hide_all';
+
+export type GraphicsKind =
+  | 'batsman'
+  | 'bowler'
+  | 'partnership'
+  | 'fow'
+  | 'innings_break'
+  | 'toss'
+  | 'hello';
+
+export interface GraphicsCommandMessage {
+  matchId: string;
+  action: GraphicsCommandAction;
+  graphic?: GraphicsKind;
+  payload?: { playerId?: string; playerIds?: string[] };
+}
 
 export interface LiveSubscribeMessage {
   matchId: string;
@@ -73,10 +92,30 @@ export interface Partnership {
   batterRuns: { playerId: string; runs: number }[];
 }
 
+export interface OverSummary {
+  overNumber: number;
+  balls: string[];
+  runs: number;
+  wickets: number;
+}
+
+export interface TimelineEntry {
+  sequence: number;
+  overNumber: number | null;
+  ballNumber: number | null;
+  label: string;
+  code: string;
+  runs: number;
+  isWicket: boolean;
+  isBoundary: boolean;
+  description: string;
+}
+
 export interface ScorecardInningsLabels {
   inningsId: string | null;
   battingTeamId: string | null;
   battingTeamName: string;
+  battingTeamLogoUrl?: string | null;
   bowlingTeamId: string | null;
   bowlingTeamName: string;
 }
@@ -96,11 +135,24 @@ export interface InningsScorecard {
   bowlers: BowlerCard[];
   fallOfWickets: FallOfWicket[];
   partnership: Partnership | null;
+  recentOvers?: OverSummary[];
+  timeline?: TimelineEntry[];
   currentStrikerId: string | null;
   currentNonStrikerId: string | null;
   currentBowlerId: string | null;
   closed: boolean;
   target: number | null;
+}
+
+export interface MatchResultView {
+  decided: boolean;
+  isTie: boolean;
+  isNoResult: boolean;
+  winningTeamId?: string | null;
+  marginRuns?: number | null;
+  marginWickets?: number | null;
+  superOverRequired?: boolean;
+  note: string | null;
 }
 
 export interface ScorecardResponse {
@@ -110,12 +162,7 @@ export interface ScorecardResponse {
   dlsTarget: number | null;
   effectiveTarget: number | null;
   innings: InningsScorecard[];
-  result: {
-    decided: boolean;
-    isTie: boolean;
-    isNoResult: boolean;
-    note: string | null;
-  };
+  result: MatchResultView;
   display: {
     players: Record<string, string>;
     innings: ScorecardInningsLabels[];
@@ -123,6 +170,25 @@ export interface ScorecardResponse {
 }
 
 export type BallType = 'LEATHER' | 'TENNIS';
+export type MatchSide = 'TEAM_A' | 'TEAM_B';
+export type TossDecision = 'BAT' | 'BOWL';
+
+export interface MatchContext {
+  tournamentId: string;
+  homeTeamId: string | null;
+  awayTeamId: string | null;
+  homeTeamName: string | null;
+  awayTeamName: string | null;
+  externalOpponentName: string | null;
+  tossWinner: MatchSide | null;
+  tossDecision: TossDecision | null;
+  /** Fielding powerplay length (0/null = none). */
+  powerplayOvers: number | null;
+  /** Persisted prose result line when available. */
+  resultNote: string | null;
+  /** teamId → presigned logo URL (or null). */
+  logosByTeamId: Record<string, string | null>;
+}
 
 export interface BroadcastPlayerStatsView {
   userId: string;

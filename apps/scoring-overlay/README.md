@@ -2,6 +2,18 @@
 
 Transparent Browser Source page for ASC live matches. Subscribes to the existing NestJS Socket.IO **`/live`** feed (same protocol as the mobile guest live score).
 
+## Strip layout (Fox broadcast bar)
+
+Left → right, anchored bottom (locked mockup aesthetic — navy / pink / cyan):
+
+1. **Batting team logo** (initials fallback)
+2. **Two batsmen** — name + runs + balls columns; striker marked ▸
+3. **Center marquee** — score `runs-wkts` · powerplay **P** · overs · subtitle
+4. **Bowler** + **this-over tracker** (all deliveries in order, variable length; wd/nb interleaved)
+5. **Bowling team logo** (initials fallback)
+
+Logos from public match detail + tournament teams (presigned). Logos swap ends when the batting side changes. Subtitle: result → chase/RRR → toss.
+
 ## Quick start
 
 ```bash
@@ -71,11 +83,12 @@ Same Netlify site / origin as the score strip:
 | Graphics (OBS) | `/graphics.html?matchId=…` |
 | Control panel | `/control.html?matchId=…` |
 
-**V1 graphics (manual):** partnership, fall of wicket, batsman card, bowler card, innings break.
+**V1 graphics (manual):** partnership, fall of wicket, batsman card, bowler card, innings break. **Toss** is strip-only (replaces CRR | overs remaining on the score bar).
 
 - Live data from `/live` + scorecard (partnership / FOW / innings / this-match figures).
 - Career photo + summary via `GET /broadcast/players/:userId/stats?ballType=LEATHER|TENNIS`.
-- Photo missing → initials fallback. One graphic on air at a time; **Hide all** clears.
+- Photo missing → initials fallback. One full-screen graphic on air at a time; **Hide all** clears cards + strip toss.
+- **Toss (strip):** Show/Hide on control replaces the CRR row with “X won the toss and chose to bat/bowl”.
 
 **Control panel (operator):** sticky on-air dock + one-tap **Take off air**; section highlight when that graphic is live; live previews; Show disabled until data is ready; batsman/bowler pickers grouped (crease / this innings / all).
 

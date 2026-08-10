@@ -32,6 +32,20 @@
         </button>
       </aside>
 
+      <section id="sec-toss" class="control-section" data-graphic="toss">
+        <div class="section-head">
+          <h2>Toss (strip)</h2>
+          <span class="on-air-badge" hidden>ON STRIP</span>
+        </div>
+        <p id="preview-toss" class="section-preview">Waiting for toss…</p>
+        <div class="btn-row btn-row-split">
+          <button type="button" id="btn-show-toss" class="btn btn-primary btn-lg" disabled>
+            Show toss
+          </button>
+          <button type="button" id="btn-hide-toss" class="btn btn-secondary btn-lg">Hide</button>
+        </div>
+      </section>
+
       <section id="sec-partnership" class="control-section" data-graphic="partnership">
         <div class="section-head">
           <h2>Partnership</h2>
@@ -117,7 +131,8 @@
           Hide all graphics
         </button>
         <p class="hint">
-          Pair with <code>graphics.html?matchId=…</code> (same matchId + api) in OBS.
+          Pair with <code>graphics.html?matchId=…</code> (full-screen cards) and
+          <code>/?matchId=…</code> (score strip — toss). Same matchId + api.
         </p>
       </footer>
     </main>

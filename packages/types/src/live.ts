@@ -103,6 +103,11 @@ export const GraphicsKind = {
   Partnership: 'partnership',
   FallOfWicket: 'fow',
   InningsBreak: 'innings_break',
+  /**
+   * Strip-only: replace CRR | overs-remaining with the toss line.
+   * No full-screen graphic on graphics.html.
+   */
+  Toss: 'toss',
   /** Phase A validation only — remove once real graphics ship. */
   Hello: 'hello',
 } as const;

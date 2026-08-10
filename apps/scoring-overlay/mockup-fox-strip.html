@@ -1,0 +1,473 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ASC Strip Mockup — Fox reference</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      /*
+        STATIC VISUAL MOCKUP — mirrors live strip (75px Fox bar).
+        Not wired to /live.
+      */
+      :root {
+        --fox-bar: rgba(236, 236, 238, 0.92);
+        --fox-ink: #111111;
+        --fox-muted: #3a3a3a;
+        --fox-navy: #0c2340;
+        --fox-pink: #ef3b6c;
+        --fox-cyan: #1ec8e8;
+        --fox-yellow: #f5d400;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        font-family: 'Montserrat', system-ui, sans-serif;
+        background: #1a4d2e;
+      }
+
+      .stage {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        min-height: 100vh;
+        overflow: hidden;
+        background:
+          radial-gradient(ellipse at 30% 20%, rgba(255, 255, 255, 0.08), transparent 50%),
+          linear-gradient(160deg, #2d6a4f 0%, #1b4332 45%, #081c15 100%);
+      }
+
+      .stage-label {
+        position: absolute;
+        top: 24px;
+        left: 24px;
+        padding: 8px 12px;
+        border-radius: 6px;
+        background: rgba(0, 0, 0, 0.45);
+        color: #fff;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+
+      .stage-note {
+        position: absolute;
+        top: 24px;
+        right: 24px;
+        max-width: 340px;
+        padding: 10px 14px;
+        border-radius: 8px;
+        background: rgba(0, 0, 0, 0.5);
+        color: #e8e8e8;
+        font-size: 12px;
+        font-weight: 600;
+        line-height: 1.45;
+      }
+
+      .compare {
+        position: absolute;
+        left: 28px;
+        right: 28px;
+        bottom: 130px;
+        display: flex;
+        gap: 12px;
+        justify-content: flex-end;
+      }
+
+      .chip {
+        padding: 8px 12px;
+        border-radius: 999px;
+        background: rgba(0, 0, 0, 0.55);
+        color: #fff;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        text-decoration: none;
+      }
+
+      .chip:hover {
+        background: rgba(0, 0, 0, 0.75);
+      }
+
+      /* —— Live strip parity —— */
+      .strip-wrap {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 28px;
+        padding: 0 28px;
+      }
+
+      .strip {
+        position: relative;
+        display: flex;
+        align-items: stretch;
+        gap: 4px;
+        height: 75px;
+        min-height: 75px;
+        max-height: 75px;
+        width: 100%;
+        border-radius: 18px;
+        background: var(--fox-bar);
+        box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35);
+        overflow: hidden;
+      }
+
+      .strip::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: repeating-linear-gradient(
+          -32deg,
+          transparent 0 18px,
+          rgba(255, 255, 255, 0.35) 18px 19px,
+          transparent 19px 38px
+        );
+        opacity: 0.35;
+        pointer-events: none;
+      }
+
+      .strip > * {
+        position: relative;
+        z-index: 1;
+      }
+
+      .logo {
+        flex: 0 0 70px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 6px;
+      }
+
+      .logo-tile {
+        width: 56px;
+        height: 56px;
+        border-radius: 12px;
+        background: #ffffff;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        font-size: 12px;
+        font-weight: 800;
+        color: var(--fox-navy);
+        letter-spacing: 0.04em;
+      }
+
+      .logo-tile.pak {
+        background: linear-gradient(145deg, #01411c, #0a6b36);
+        color: #fff;
+      }
+
+      .logo-tile.ind {
+        background: linear-gradient(145deg, #ff9933 0 33%, #fff 33% 66%, #138808 66%);
+        color: #000080;
+        text-shadow: 0 0 2px #fff;
+      }
+
+      .batters {
+        flex: 1 1 0;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 4px;
+        padding: 6px 8px 6px 4px;
+        color: var(--fox-ink);
+      }
+
+      .batter {
+        display: grid;
+        grid-template-columns: 16px minmax(0, 1fr) 28px 28px;
+        align-items: baseline;
+        gap: 4px 8px;
+      }
+
+      .arrow {
+        color: var(--fox-pink);
+        font-size: 14px;
+        font-weight: 800;
+        line-height: 1;
+        visibility: hidden;
+      }
+
+      .batter.is-strike .arrow {
+        visibility: visible;
+      }
+
+      .name {
+        font-size: 14px;
+        font-weight: 800;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .runs,
+      .balls {
+        font-size: 13px;
+        font-weight: 700;
+        text-align: right;
+        color: var(--fox-muted);
+      }
+
+      .marquee {
+        flex: 0 1 auto;
+        width: max-content;
+        max-width: min(520px, 48%);
+        min-width: 0;
+        margin: 2px 8px;
+        padding: 0 75px;
+        box-sizing: border-box;
+        border-radius: 999px;
+        overflow: hidden;
+        background: var(--fox-navy);
+        color: #fff;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+      }
+
+      .marquee-top {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 2px 0 0;
+        min-height: 0;
+      }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        border-radius: 999px;
+        font-weight: 800;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+        white-space: nowrap;
+        line-height: 1;
+      }
+
+      .pill-score {
+        min-width: 48px;
+        padding: 4px 10px;
+        background: rgba(239, 59, 108, 0.16);
+        border: 2px solid var(--fox-pink);
+        color: var(--fox-pink);
+        font-size: 22px;
+        letter-spacing: 0.04em;
+      }
+
+      .pill-power {
+        width: 24px;
+        height: 24px;
+        padding: 0;
+        background: var(--fox-yellow);
+        color: #111;
+        font-size: 12px;
+      }
+
+      .pill-over {
+        min-width: 42px;
+        padding: 4px 10px;
+        background: var(--fox-cyan);
+        color: #fff;
+        font-size: 16px;
+      }
+
+      .run-rate {
+        margin: 0;
+        padding: 0 0 1px;
+        text-align: center;
+        font-size: 9px;
+        font-weight: 800;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--fox-cyan);
+        white-space: nowrap;
+      }
+
+      .marquee-sub {
+        margin: 0;
+        padding: 0 0 2px;
+        text-align: center;
+        font-size: 8px;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        opacity: 0.95;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 100%;
+      }
+
+      .bowler {
+        flex: 1 1 0;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 4px;
+        padding: 6px 12px 6px 8px;
+        color: var(--fox-ink);
+      }
+
+      .bowler-top {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto auto;
+        align-items: baseline;
+        gap: 10px;
+      }
+
+      .bowler-name {
+        font-size: 14px;
+        font-weight: 800;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .bowler-figs,
+      .bowler-overs {
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--fox-muted);
+        white-space: nowrap;
+      }
+
+      .tracker {
+        display: flex;
+        flex-wrap: nowrap;
+        align-items: center;
+        gap: 5px;
+        overflow: hidden;
+      }
+
+      .ball {
+        width: 20px;
+        height: 20px;
+        border-radius: 999px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 10px;
+        font-weight: 800;
+        box-sizing: border-box;
+        background: var(--fox-cyan);
+        color: #fff;
+        flex-shrink: 0;
+      }
+
+      .ball.dot::before {
+        content: '';
+        width: 6px;
+        height: 6px;
+        border-radius: 999px;
+        background: #fff;
+      }
+
+      .ball.extra {
+        background: var(--fox-pink);
+        font-size: 8px;
+        text-transform: uppercase;
+        width: auto;
+        min-width: 20px;
+        padding: 0 4px;
+      }
+
+      .ball.boundary {
+        background: var(--fox-pink);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="stage">
+      <div class="stage-label">Mockup only · Fox · 75px</div>
+      <div class="stage-note">
+        Mirrors live strip: no team name in center; score + overs one row; CRR below;
+        chronological ball row; strip height 75px.
+      </div>
+
+      <div class="compare">
+        <a class="chip" href="./">Open live strip</a>
+        <a class="chip" href="./control.html">Control panel</a>
+      </div>
+
+      <div class="strip-wrap">
+        <div class="strip" role="img" aria-label="Fox-style score strip mockup">
+          <div class="logo">
+            <div class="logo-tile pak">PAK</div>
+          </div>
+
+          <div class="batters">
+            <div class="batter">
+              <span class="arrow">▸</span>
+              <span class="name">Rizwan</span>
+              <span class="runs">0</span>
+              <span class="balls">6</span>
+            </div>
+            <div class="batter is-strike">
+              <span class="arrow">▸</span>
+              <span class="name">Shan Masood</span>
+              <span class="runs">0</span>
+              <span class="balls">3</span>
+            </div>
+          </div>
+
+          <div class="marquee">
+            <div class="marquee-top">
+              <span class="pill pill-score">1-1</span>
+              <span class="pill pill-power" title="Powerplay">P</span>
+              <span class="pill pill-over">1.4</span>
+            </div>
+            <p class="run-rate">CRR 1.50</p>
+            <p class="marquee-sub">IND won the toss chose to field</p>
+          </div>
+
+          <div class="bowler">
+            <div class="bowler-top">
+              <span class="bowler-name">Arshdeep</span>
+              <span class="bowler-figs">1-0</span>
+              <span class="bowler-overs">0.4</span>
+            </div>
+            <div class="tracker" aria-label="This over">
+              <span class="ball">W</span>
+              <span class="ball extra">wd</span>
+              <span class="ball dot"></span>
+              <span class="ball">1</span>
+              <span class="ball extra">nb</span>
+              <span class="ball boundary">4</span>
+            </div>
+          </div>
+
+          <div class="logo">
+            <div class="logo-tile ind">IND</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
