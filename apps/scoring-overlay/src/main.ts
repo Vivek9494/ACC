@@ -1,5 +1,6 @@
 import { io, type Socket } from 'socket.io-client';
 
+import { mountBatsmanCareerCard } from './batsman-career-card';
 import {
   fetchBroadcastPlayerStats,
   fetchMatchBallType,
@@ -308,8 +309,23 @@ function start(): void {
   let careerBase: BroadcastPlayerStatsView | null = null;
   let careerToken = 0;
   let socket: Socket | null = null;
+  const batsmanCareer = mountBatsmanCareerCard(el('batsman-career-host'));
 
   const careerWrap = (): HTMLDivElement => el<HTMLDivElement>('career-wrap');
+
+  const hideBatsmanCareerCard = (): void => {
+    batsmanCareer.hide();
+  };
+
+  const showBatsmanCareerCard = async (playerId: string): Promise<void> => {
+    const placeholderName =
+      latest?.display.players[playerId]?.trim() || undefined;
+    await batsmanCareer.show(playerId, {
+      apiBase,
+      ballType,
+      placeholderName,
+    });
+  };
 
   const paintCareerNumbers = (): void => {
     if (!careerOnAir || !careerPlayerId || !careerBase) {
@@ -448,11 +464,13 @@ function start(): void {
     if (cmd.action === 'hide_all') {
       crrMode = 'default';
       hideCareerCard();
+      hideBatsmanCareerCard();
       paint();
       return;
     }
     if (cmd.graphic === 'bowler_career') {
       if (cmd.action === 'show') {
+        hideBatsmanCareerCard();
         const playerId = cmd.payload?.playerId?.trim() || null;
         if (playerId) {
           void showCareerCard(playerId);
@@ -460,6 +478,21 @@ function start(): void {
       } else if (cmd.action === 'hide') {
         hideCareerCard();
         paint();
+      }
+      return;
+    }
+    if (cmd.graphic === 'batsman_career') {
+      if (cmd.action === 'show') {
+        if (careerOnAir) {
+          hideCareerCard();
+          paint();
+        }
+        const playerId = cmd.payload?.playerId?.trim() || null;
+        if (playerId) {
+          void showBatsmanCareerCard(playerId);
+        }
+      } else if (cmd.action === 'hide') {
+        hideBatsmanCareerCard();
       }
       return;
     }
@@ -472,6 +505,9 @@ function start(): void {
       careerOnAir
     ) {
       hideCareerCard();
+    }
+    if (cmd.action === 'show' && cmd.graphic && cmd.graphic !== 'toss' && cmd.graphic !== 'chase') {
+      hideBatsmanCareerCard();
     }
     if (cmd.graphic === 'toss') {
       if (cmd.action === 'show') {

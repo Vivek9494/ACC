@@ -1,4 +1,5 @@
 import './graphics.css';
+import { mountBatsmanCareerCard } from './batsman-career-card';
 import {
   fetchBroadcastPlayerStats,
   fetchMatchBallType,
@@ -7,9 +8,7 @@ import {
 import {
   battingTeamLabel,
   formatDismissalShort,
-  formatHighestScoreMeta,
   formatStat,
-  hasBatsmanCareerStats,
   initialsFromName,
   isUuid,
   latestFallOfWicket,
@@ -99,6 +98,7 @@ let activeKind: OverlayKind | null = null;
 let activePlayerId: string | null = null;
 let careerToken = 0;
 const careerCache = new Map<string, BroadcastPlayerStatsView | null>();
+const batsmanCareer = mountBatsmanCareerCard(el('g-batsman-career'));
 
 function graphicNode(kind: OverlayKind): HTMLElement {
   return el(GRAPHIC_IDS[kind]);
@@ -125,7 +125,11 @@ function showNode(node: HTMLElement): void {
 function hideAllGraphics(): void {
   activeKind = null;
   activePlayerId = null;
+  batsmanCareer.hide();
   for (const kind of Object.keys(GRAPHIC_IDS) as OverlayKind[]) {
+    if (kind === 'batsman_career') {
+      continue;
+    }
     hideNode(graphicNode(kind));
   }
 }
@@ -137,6 +141,10 @@ function hideGraphic(kind: GraphicsKind): void {
   if (activeKind === kind) {
     activeKind = null;
     activePlayerId = null;
+  }
+  if (kind === 'batsman_career') {
+    batsmanCareer.hide();
+    return;
   }
   hideNode(graphicNode(kind));
 }
@@ -342,59 +350,6 @@ function applyCareerToBowler(stats: BroadcastPlayerStatsView | null): void {
   }
 }
 
-function fillBatsmanCareerPlaceholder(playerId: string): void {
-  const full = scorecard ? playerName(scorecard.display, playerId) : '—';
-  const parts = full.trim().split(/\s+/).filter(Boolean);
-  const given = parts.length > 1 ? `${parts.slice(0, -1).join(' ')} ` : '';
-  const family = parts.length > 0 ? (parts[parts.length - 1] ?? '—') : '—';
-  el<HTMLSpanElement>('bc-career-given').textContent = given;
-  el<HTMLSpanElement>('bc-career-family').textContent = family;
-  setText(
-    'bc-career-format',
-    ballType === 'LEATHER' ? 'LEATHER CAREER' : 'TENNIS CAREER',
-  );
-  setText('bc-career-innings', '—');
-  setText('bc-career-runs', '—');
-  setText('bc-career-avg', '—');
-  setText('bc-career-sr', '—');
-  setText('bc-career-thirties', '—');
-  setText('bc-career-fifties', '—');
-  setText('bc-career-hs', '—');
-  const meta = el<HTMLParagraphElement>('bc-career-hs-meta');
-  meta.hidden = true;
-  meta.textContent = '';
-  setAvatar('bc-career-initials', 'bc-career-img', full, null);
-}
-
-function applyBatsmanCareer(stats: BroadcastPlayerStatsView): void {
-  const given = stats.firstName?.trim() ? `${stats.firstName.trim()} ` : '';
-  const family = stats.lastName?.trim() || '—';
-  el<HTMLSpanElement>('bc-career-given').textContent = given;
-  el<HTMLSpanElement>('bc-career-family').textContent = family;
-  setText(
-    'bc-career-format',
-    stats.ballType === 'LEATHER' ? 'LEATHER CAREER' : 'TENNIS CAREER',
-  );
-  setText('bc-career-innings', String(stats.battingInnings));
-  setText('bc-career-runs', String(stats.runs));
-  setText('bc-career-avg', formatStat(stats.average, 2));
-  setText('bc-career-sr', formatStat(stats.strikeRate, 1));
-  setText('bc-career-thirties', String(stats.thirties));
-  setText('bc-career-fifties', String(stats.fifties));
-  setText('bc-career-hs', stats.highestScore?.trim() || '—');
-  const metaLine = formatHighestScoreMeta(stats);
-  const meta = el<HTMLParagraphElement>('bc-career-hs-meta');
-  if (metaLine) {
-    meta.hidden = false;
-    meta.textContent = metaLine;
-  } else {
-    meta.hidden = true;
-    meta.textContent = '';
-  }
-  const full = `${stats.firstName} ${stats.lastName}`.trim() || '—';
-  setAvatar('bc-career-initials', 'bc-career-img', full, stats.profilePhotoUrl);
-}
-
 async function showBatsman(playerId: string): Promise<void> {
   fillBatsmanMatch(playerId);
   applyCareerToBatsman(null);
@@ -418,21 +373,19 @@ async function showBowler(playerId: string): Promise<void> {
 }
 
 async function showBatsmanCareer(playerId: string): Promise<void> {
-  fillBatsmanCareerPlaceholder(playerId);
-  const token = ++careerToken;
-  const stats = await loadCareer(playerId);
-  if (
-    token !== careerToken ||
-    activeKind !== 'batsman_career' ||
-    activePlayerId !== playerId
-  ) {
-    return;
+  const { apiBase } = queryApiAndMatch();
+  const placeholderName = scorecard
+    ? playerName(scorecard.display, playerId)
+    : undefined;
+  const ok = await batsmanCareer.show(playerId, {
+    apiBase,
+    ballType,
+    placeholderName,
+  });
+  if (!ok && activeKind === 'batsman_career' && activePlayerId === playerId) {
+    activeKind = null;
+    activePlayerId = null;
   }
-  if (!stats || !hasBatsmanCareerStats(stats)) {
-    hideGraphic('batsman_career');
-    return;
-  }
-  applyBatsmanCareer(stats);
 }
 
 function refreshActiveContent(): void {
@@ -484,7 +437,11 @@ async function showGraphic(
   if (kind === 'hello') {
     for (const k of Object.keys(GRAPHIC_IDS) as OverlayKind[]) {
       if (k !== 'hello') {
-        hideNode(graphicNode(k));
+        if (k === 'batsman_career') {
+          batsmanCareer.hide();
+        } else {
+          hideNode(graphicNode(k));
+        }
       }
     }
     activeKind = 'hello';
@@ -519,7 +476,12 @@ async function showGraphic(
   }
 
   for (const k of Object.keys(GRAPHIC_IDS) as OverlayKind[]) {
-    if (k !== kind) {
+    if (k === kind) {
+      continue;
+    }
+    if (k === 'batsman_career') {
+      batsmanCareer.hide();
+    } else {
       hideNode(graphicNode(k));
     }
   }
@@ -529,13 +491,15 @@ async function showGraphic(
 
   if (kind === 'batsman' && playerId) {
     void showBatsman(playerId);
+    showNode(graphicNode(kind));
   } else if (kind === 'bowler' && playerId) {
     void showBowler(playerId);
+    showNode(graphicNode(kind));
   } else if (kind === 'batsman_career' && playerId) {
     void showBatsmanCareer(playerId);
+  } else {
+    showNode(graphicNode(kind));
   }
-
-  showNode(graphicNode(kind));
 }
 
 function applyCommand(cmd: GraphicsCommandMessage): void {
