@@ -149,13 +149,92 @@ describe('player-stats.compute', () => {
 
     const period = buildPlayerProfilePeriodStats(acc);
     expect(period.matches).toBe(1);
+    expect(period.battingInnings).toBe(1);
+    expect(period.thirties).toBe(0);
+    expect(period.fifties).toBe(1);
     expect(period.highestScore).toBe(formatPlayerProfileHighestScore(82, true));
     expect(period.bestBowling).toBe(formatPlayerProfileBestBowling(2, 24));
     expect(period.bowlingAverage).toBe(12);
     expect(period.economy).toBe(4.8);
+    expect(period.bowlingRunsConceded).toBe(24);
+    expect(period.bowlingLegalBalls).toBe(30);
+    expect(period.bestBowlingWickets).toBe(2);
+    expect(period.bestBowlingRunsConceded).toBe(24);
     expect(period.highestScoreContext).toBe('Surat Ground, 2024');
     expect(period.bestBowlingContext).toBe('vs ACC 9, 2024');
     expect(period.droppedCatches).toBe(0);
+  });
+
+  it('buckets thirties (30–49) and fifties (50–99) without overlap', () => {
+    const acc = createPlayerStatsAccumulator();
+    const batter = (
+      playerId: string,
+      runs: number,
+    ): ScorecardResponse['innings'][number]['batters'][number] => ({
+      playerId,
+      runs,
+      balls: 20,
+      ones: 0,
+      twos: 0,
+      threes: 0,
+      fours: 0,
+      sixes: 0,
+      strikeRate: 100,
+      isOut: true,
+      dismissalType: DismissalType.Bowled,
+      bowlerId: 'bowler-1',
+      fielderId: null,
+      fielder2Id: null,
+      retiredHurt: false,
+      isMankad: false,
+    });
+
+    applyMatchToPlayerStats(acc, 'player-1', context, {
+      ...emptyScorecard,
+      innings: [
+        {
+          inningsId: 'inn-1',
+          sequence: 1,
+          inningsType: InningsType.Normal,
+          battingTeamId: 'team-a',
+          bowlingTeamId: 'team-b',
+          runs: 200,
+          wickets: 4,
+          legalBalls: 120,
+          oversText: '20.0',
+          oversAllotted: 20,
+          extras: { wides: 0, noBalls: 0, byes: 0, legByes: 0, penalties: 0, total: 0 },
+          batters: [
+            batter('player-1', 29),
+            batter('player-1', 30),
+            batter('player-1', 49),
+            batter('player-1', 50),
+            batter('player-1', 99),
+            batter('player-1', 100),
+          ],
+          bowlers: [],
+          fallOfWickets: [],
+          recentOvers: [],
+          timeline: [],
+          partnership: null,
+          partnerships: [],
+          currentStrikerId: null,
+          currentNonStrikerId: null,
+          currentBowlerId: null,
+          freeHitNext: false,
+          closed: true,
+          closeReason: InningsCloseReason.AllOut,
+          target: null,
+          droppedCatches: [],
+          droppedCatchEvents: [],
+        },
+      ],
+    });
+
+    expect(acc.thirties).toBe(2);
+    expect(acc.fifties).toBe(2);
+    expect(buildPlayerProfilePeriodStats(acc).thirties).toBe(2);
+    expect(buildPlayerProfilePeriodStats(acc).fifties).toBe(2);
   });
 
   it('accumulates dropped catches from innings metadata', () => {

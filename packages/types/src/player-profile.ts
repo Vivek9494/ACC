@@ -6,18 +6,30 @@ import type { OwnPlayerMomStatsSummary } from './player-mom-stats';
 /** Period-scoped stats (year or tournament drilldown). */
 export interface PlayerProfilePeriodStats {
   matches: number;
+  /** Batting innings (scorecard batter appearances), distinct from matches. */
+  battingInnings: number;
   runs: number;
   average: number | null;
   highestScore: string | null;
   highestScoreOpponent: string | null;
   highestScoreContext: string | null;
   strikeRate: number | null;
+  /** Innings scoring 30–49 (does not overlap with fifties). */
+  thirties: number;
+  /** Half-centuries (50–99 inclusive). */
+  fifties: number;
   wickets: number;
   /** Bowling average (runs conceded ÷ wickets); null when no wickets. */
   bowlingAverage: number | null;
   /** Economy (runs conceded ÷ overs); null when no legal balls bowled. */
   economy: number | null;
+  /** Underlying bowling totals — required to merge live this-match figures. */
+  bowlingRunsConceded: number;
+  bowlingLegalBalls: number;
   bestBowling: string | null;
+  /** Structured best bowling for live “best of career vs this match” compares. */
+  bestBowlingWickets: number | null;
+  bestBowlingRunsConceded: number | null;
   bestBowlingContext: string | null;
   catches: number;
   /** Derived from CATCH_DROP events — available for profile display. */

@@ -6,7 +6,11 @@ import {
   fetchMatchContext,
   fetchScorecard,
 } from './broadcast-fetch';
-import { formatStat, hasBowlerCareerStats } from './graphics-format';
+import {
+  combineCareerBowlingWithLive,
+  formatStat,
+  hasBowlerCareerStats,
+} from './graphics-format';
 import './style.css';
 import {
   LIVE_NAMESPACE,
@@ -269,10 +273,10 @@ function render(
 function fillCareerCard(
   playerId: string,
   card: ScorecardResponse | null,
-  stats: BroadcastPlayerStatsView,
+  career: BroadcastPlayerStatsView,
 ): void {
   const full = card?.display.players[playerId]?.trim()
-    || `${stats.firstName} ${stats.lastName}`.trim()
+    || `${career.firstName} ${career.lastName}`.trim()
     || '—';
   const displayName = full === '—' ? '—' : full.toUpperCase();
   const initialEl = el<HTMLSpanElement>('bc-name-initial');
@@ -283,11 +287,12 @@ function fillCareerCard(
   surnameEl.textContent = displayName;
   nameRoot.setAttribute('aria-label', displayName);
 
-  setText('bc-matches', String(stats.matches));
-  setText('bc-wickets', String(stats.wickets));
-  setText('bc-avg', formatStat(stats.bowlingAverage, 2));
-  setText('bc-econ', formatStat(stats.economy, 2));
-  setText('bc-best', stats.bestBowling?.trim() || '—');
+  const combined = combineCareerBowlingWithLive(career, card, playerId);
+  setText('bc-matches', String(combined.matches));
+  setText('bc-wickets', String(combined.wickets));
+  setText('bc-avg', formatStat(combined.average, 2));
+  setText('bc-econ', formatStat(combined.economy, 2));
+  setText('bc-best', combined.best);
 }
 
 function start(): void {
@@ -299,13 +304,24 @@ function start(): void {
   let ballType: BallType = 'TENNIS';
   /** Career card replaces the strip on this same page. */
   let careerOnAir = false;
+  let careerPlayerId: string | null = null;
+  let careerBase: BroadcastPlayerStatsView | null = null;
   let careerToken = 0;
   let socket: Socket | null = null;
 
   const careerWrap = (): HTMLDivElement => el<HTMLDivElement>('career-wrap');
 
+  const paintCareerNumbers = (): void => {
+    if (!careerOnAir || !careerPlayerId || !careerBase) {
+      return;
+    }
+    fillCareerCard(careerPlayerId, latest, careerBase);
+  };
+
   const hideCareerCard = (): void => {
     careerOnAir = false;
+    careerPlayerId = null;
+    careerBase = null;
     const node = careerWrap();
     node.classList.remove('is-visible');
     window.setTimeout(() => {
@@ -326,6 +342,8 @@ function start(): void {
       paint();
       return;
     }
+    careerBase = stats;
+    careerPlayerId = playerId;
     fillCareerCard(playerId, latest, stats);
     careerOnAir = true;
     const node = careerWrap();
@@ -344,11 +362,8 @@ function start(): void {
       if (idle) {
         idle.hidden = true;
       }
+      paintCareerNumbers();
       return;
-    }
-    const node = careerWrap();
-    if (!node.hidden && !node.classList.contains('is-visible')) {
-      // Mid hide animation — leave alone.
     }
     render(latest, matchCtx, status, !matchId, crrMode);
   };

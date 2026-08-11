@@ -69,6 +69,151 @@ body {
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
 }
 
+/* Batsman career profile (graphics.html) — ASC navy / orange / cream */
+.panel-batsman-career {
+  min-width: min(92vw, 720px);
+  max-width: min(94vw, 820px);
+  background: #294c74;
+  color: #e7e1db;
+}
+
+.bc-career-layout {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  min-height: 320px;
+}
+
+.bc-career-photo {
+  position: relative;
+  flex: 0 0 240px;
+  width: 240px;
+  background: #1f3a58;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.bc-career-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.bc-career-initials {
+  font-size: 64px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: #e7e1db;
+}
+
+.bc-career-copy {
+  flex: 1;
+  min-width: 0;
+  padding: 22px 28px 24px;
+  display: flex;
+  flex-direction: column;
+}
+
+.bc-career-format {
+  margin: 0 0 6px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #ff6b00;
+}
+
+.bc-career-name {
+  margin: 0 0 16px;
+  font-size: clamp(28px, 3vw, 40px);
+  line-height: 1.1;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: #fff;
+}
+
+.bc-career-given {
+  font-weight: 500;
+}
+
+.bc-career-family {
+  font-weight: 800;
+}
+
+.bc-career-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  flex: 1 1 auto;
+}
+
+.bc-career-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 12px;
+}
+
+.bc-career-row:nth-child(odd) {
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.bc-career-row:nth-child(even) {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.bc-career-label {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(231, 225, 219, 0.72);
+}
+
+.bc-career-value {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.bc-career-hs {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(231, 225, 219, 0.22);
+}
+
+.bc-career-hs-label {
+  margin: 0 0 4px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #ff6b00;
+}
+
+.bc-career-hs-value {
+  margin: 0;
+  font-size: clamp(36px, 4vw, 52px);
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  color: #fff;
+}
+
+.bc-career-hs-meta {
+  margin: 6px 0 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: rgba(231, 225, 219, 0.78);
+}
+
 .career-inner {
   display: flex;
   align-items: center;
@@ -329,14 +474,24 @@ body {
 @media (max-width: 720px) {
   .panel-card,
   .panel-wide,
-  .panel {
+  .panel,
+  .panel-batsman-career {
     min-width: 0;
     width: min(92vw, 560px);
   }
 
-  .avatar {
+  .avatar,
+  .bc-career-photo {
     flex-basis: 120px;
     width: 120px;
+  }
+
+  .bc-career-layout {
+    min-height: 0;
+  }
+
+  .bc-career-initials {
+    font-size: 40px;
   }
 
   .hero-stat {

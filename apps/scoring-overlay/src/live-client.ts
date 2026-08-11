@@ -28,6 +28,7 @@ export type GraphicsKind =
   | 'toss'
   | 'chase'
   | 'bowler_career'
+  | 'batsman_career'
   | 'hello';
 
 export interface GraphicsCommandMessage {

@@ -83,14 +83,15 @@ Same Netlify site / origin as the score strip:
 | Graphics (OBS) | `/graphics.html?matchId=…` |
 | Control panel | `/control.html?matchId=…` |
 
-**V1 graphics (manual):** partnership, fall of wicket, batsman card, bowler card (this match), **bowler career stats**, innings break. **Toss** and **Runs to win** are strip-only (replace CRR | overs remaining on the score bar).
+**V1 graphics (manual):** partnership, fall of wicket, batsman card, bowler card (this match), **bowler career stats**, **batsman career stats**, innings break. **Toss** and **Runs to win** are strip-only (replace CRR | overs remaining on the score bar).
 
 - Live data from `/live` + scorecard (partnership / FOW / innings / this-match figures).
-- Career photo + summary via `GET /broadcast/players/:userId/stats?ballType=LEATHER|TENNIS` (includes bowling average + economy).
+- Career photo + summary via `GET /broadcast/players/:userId/stats?ballType=LEATHER|TENNIS` (includes batting innings/50s/HS context, bowling average, economy, and underlying bowling totals for live merge).
 - Photo missing → initials fallback. One full-screen graphic on air at a time; **Hide all** clears cards + strip overrides.
 - **Toss (strip):** Show/Hide replaces the CRR row with “X won the toss and chose to bat/bowl”.
 - **Runs to win (strip):** Show/Hide replaces the CRR row with “NEED X OFF Y” (updates live while on).
-- **Bowler Career Stats:** shown on the **score strip page** (`/?matchId=…`) as a bottom navy/purple bar (Matches / Wickets / Average / Economy / Best). Replaces the strip while on air; strip returns on Hide. Show disabled until career bowling stats exist for the match ball type.
+- **Bowler Career Stats:** shown on the **score strip page** (`/?matchId=…`) as a bottom navy/purple bar (Matches / Wickets / Average / Economy / Best). Figures **include the current match live** (career totals + this-match bowling, recomputed from underlying runs/balls/wickets). Replaces the strip while on air; strip returns on Hide. Show disabled until career bowling stats exist for the match ball type.
+- **Batsman Career Stats:** full-screen card on **graphics.html** (photo, LEATHER/TENNIS CAREER header, innings / runs / avg / SR / 30s / 50s, highest score + optional opponent/venue). Uses the **match ball type only** (no operator toggle). 30s = scores 30–49; 50s = 50–99 (same as app Stats). Independent of the in-play batsman card. Show disabled until career batting stats exist for that ball type.
 
 **Control panel (operator):** sticky on-air dock + one-tap **Take off air**; section highlight when that graphic is live; live previews; Show disabled until data is ready; batsman/bowler pickers grouped (crease / this innings / all).
 

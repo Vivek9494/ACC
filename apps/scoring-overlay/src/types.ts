@@ -23,6 +23,7 @@ export type GraphicsKind =
   | 'toss'
   | 'chase'
   | 'bowler_career'
+  | 'batsman_career'
   | 'hello';
 
 export interface GraphicsCommandMessage {
@@ -199,14 +200,23 @@ export interface BroadcastPlayerStatsView {
   profilePhotoUrl: string | null;
   ballType: BallType;
   matches: number;
+  battingInnings: number;
   runs: number;
   average: number | null;
   strikeRate: number | null;
   highestScore: string | null;
+  highestScoreOpponent: string | null;
+  highestScoreContext: string | null;
+  thirties: number;
+  fifties: number;
   wickets: number;
   bowlingAverage: number | null;
   economy: number | null;
+  bowlingRunsConceded: number;
+  bowlingLegalBalls: number;
   bestBowling: string | null;
+  bestBowlingWickets: number | null;
+  bestBowlingRunsConceded: number | null;
 }
 
 export type ConnectionStatus = 'connecting' | 'live' | 'offline';

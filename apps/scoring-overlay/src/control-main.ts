@@ -8,7 +8,9 @@ import {
 import {
   battingTeamLabel,
   formatDismissalShort,
+  formatHighestScoreMeta,
   formatStat,
+  hasBatsmanCareerStats,
   hasBowlerCareerStats,
   latestFallOfWicket,
   partnershipBatterRuns,
@@ -38,6 +40,7 @@ const LABELS: Record<Exclude<GraphicsKind, 'hello' | 'toss' | 'chase'>, string> 
   partnership: 'Partnership',
   fow: 'Fall of wicket',
   batsman: 'Batsman',
+  batsman_career: 'Batsman Career Stats',
   bowler: 'Bowler',
   bowler_career: 'Bowler Career Stats',
   innings_break: 'Innings break',
@@ -79,12 +82,14 @@ function start(): void {
   const pickBatsman = el<HTMLSelectElement>('pick-batsman');
   const pickBowler = el<HTMLSelectElement>('pick-bowler');
   const pickBowlerCareer = el<HTMLSelectElement>('pick-bowler-career');
+  const pickBatsmanCareer = el<HTMLSelectElement>('pick-batsman-career');
 
   const btnShowPartnership = el<HTMLButtonElement>('btn-show-partnership');
   const btnShowFow = el<HTMLButtonElement>('btn-show-fow');
   const btnShowBatsman = el<HTMLButtonElement>('btn-show-batsman');
   const btnShowBowler = el<HTMLButtonElement>('btn-show-bowler');
   const btnShowBowlerCareer = el<HTMLButtonElement>('btn-show-bowler-career');
+  const btnShowBatsmanCareer = el<HTMLButtonElement>('btn-show-batsman-career');
   const btnShowInnings = el<HTMLButtonElement>('btn-show-innings');
   const btnShowToss = el<HTMLButtonElement>('btn-show-toss');
   const btnShowChase = el<HTMLButtonElement>('btn-show-chase');
@@ -106,7 +111,8 @@ function start(): void {
   let matchCtx: MatchContext | null = null;
   let ballType: BallType = 'TENNIS';
   const careerCache = new Map<string, BroadcastPlayerStatsView | null>();
-  let careerPreviewToken = 0;
+  let bowlerCareerPreviewToken = 0;
+  let batsmanCareerPreviewToken = 0;
 
   function send(cmd: Omit<GraphicsCommandMessage, 'matchId'>): void {
     if (!socket) {
@@ -153,6 +159,17 @@ function start(): void {
       return null;
     }
     return resolveActiveInnings(scorecard)?.currentBowlerId ?? null;
+  }
+
+  function resolveBatsmanCareerId(): string | null {
+    const picked = pickBatsmanCareer.value.trim();
+    if (picked) {
+      return picked;
+    }
+    if (!scorecard) {
+      return null;
+    }
+    return resolveActiveInnings(scorecard)?.currentStrikerId ?? null;
   }
 
   async function loadCareerStats(
@@ -241,6 +258,13 @@ function start(): void {
     return `${stats.matches} Mat · ${stats.wickets} Wkt · Avg ${formatStat(stats.bowlingAverage, 2)} · Eco ${formatStat(stats.economy, 2)} · Best ${stats.bestBowling?.trim() || '—'}`;
   }
 
+  function formatBatsmanCareerPreview(stats: BroadcastPlayerStatsView): string {
+    const hs = stats.highestScore?.trim() || '—';
+    const meta = formatHighestScoreMeta(stats);
+    const hsPart = meta ? `HS ${hs} (${meta})` : `HS ${hs}`;
+    return `${stats.battingInnings} Inn · ${stats.runs} Runs · Avg ${formatStat(stats.average, 2)} · SR ${formatStat(stats.strikeRate, 1)} · 30s ${stats.thirties} · 50s ${stats.fifties} · ${hsPart}`;
+  }
+
   function previewToss(): string | null {
     return formatTossLine(matchCtx);
   }
@@ -261,6 +285,18 @@ function start(): void {
         return previewBowler() ?? '';
       case 'bowler_career': {
         const line = el<HTMLParagraphElement>('preview-bowler-career').textContent?.trim();
+        if (
+          !line ||
+          line.includes('Loading') ||
+          line.includes('No career') ||
+          line === '—'
+        ) {
+          return '';
+        }
+        return line;
+      }
+      case 'batsman_career': {
+        const line = el<HTMLParagraphElement>('preview-batsman-career').textContent?.trim();
         if (
           !line ||
           line.includes('Loading') ||
@@ -347,13 +383,18 @@ function start(): void {
     setEnabled(btnShowBowler, bowl != null);
 
     void refreshBowlerCareerPreview();
+    void refreshBatsmanCareerPreview();
 
     const inn = previewInnings();
     el<HTMLParagraphElement>('preview-innings').textContent =
       inn ?? 'Waiting for innings…';
     setEnabled(btnShowInnings, inn != null);
 
-    if (onAirGraphic && onAirGraphic !== 'bowler_career') {
+    if (
+      onAirGraphic &&
+      onAirGraphic !== 'bowler_career' &&
+      onAirGraphic !== 'batsman_career'
+    ) {
       onAirDetailText = detailForKind(onAirGraphic);
       onAirDetail.textContent = onAirDetailText;
     }
@@ -362,7 +403,7 @@ function start(): void {
   async function refreshBowlerCareerPreview(): Promise<void> {
     const playerId = resolveBowlerCareerId();
     const preview = el<HTMLParagraphElement>('preview-bowler-career');
-    const token = ++careerPreviewToken;
+    const token = ++bowlerCareerPreviewToken;
     if (!playerId) {
       preview.textContent = 'Select a bowler (or wait for current bowler)';
       setEnabled(btnShowBowlerCareer, false);
@@ -371,7 +412,7 @@ function start(): void {
     preview.textContent = `${nameOf(playerId)} · Loading career…`;
     setEnabled(btnShowBowlerCareer, false);
     const stats = await loadCareerStats(playerId);
-    if (token !== careerPreviewToken) {
+    if (token !== bowlerCareerPreviewToken) {
       return;
     }
     if (!stats || !hasBowlerCareerStats(stats)) {
@@ -387,8 +428,37 @@ function start(): void {
     }
   }
 
+  async function refreshBatsmanCareerPreview(): Promise<void> {
+    const playerId = resolveBatsmanCareerId();
+    const preview = el<HTMLParagraphElement>('preview-batsman-career');
+    const token = ++batsmanCareerPreviewToken;
+    if (!playerId) {
+      preview.textContent = 'Select a batsman (or wait for striker)';
+      setEnabled(btnShowBatsmanCareer, false);
+      return;
+    }
+    preview.textContent = `${nameOf(playerId)} · Loading career…`;
+    setEnabled(btnShowBatsmanCareer, false);
+    const stats = await loadCareerStats(playerId);
+    if (token !== batsmanCareerPreviewToken) {
+      return;
+    }
+    if (!stats || !hasBatsmanCareerStats(stats)) {
+      preview.textContent = `${nameOf(playerId)} · No career batting stats for ${ballType}`;
+      setEnabled(btnShowBatsmanCareer, false);
+      return;
+    }
+    preview.textContent = `${nameOf(playerId)} · ${formatBatsmanCareerPreview(stats)}`;
+    setEnabled(btnShowBatsmanCareer, true);
+    if (onAirGraphic === 'batsman_career') {
+      onAirDetailText = preview.textContent;
+      onAirDetail.textContent = onAirDetailText;
+    }
+  }
+
   function rebuildPickers(card: ScorecardResponse | null): void {
     const batPrev = pickBatsman.value;
+    const batCareerPrev = pickBatsmanCareer.value;
     const bowlPrev = pickBowler.value;
     const careerPrev = pickBowlerCareer.value;
     const innings = card ? resolveActiveInnings(card) : null;
@@ -402,73 +472,84 @@ function start(): void {
     const batterIds = (innings?.batters ?? []).map((b) => b.playerId);
     const bowlingIds = (innings?.bowlers ?? []).map((b) => b.playerId);
 
-    const used = new Set<string>();
+    const fillBatsmanSelect = (
+      select: HTMLSelectElement,
+      prev: string,
+    ): void => {
+      const used = new Set<string>();
+      select.innerHTML = '';
+      appendOption(
+        select,
+        '',
+        innings?.currentStrikerId
+          ? `Current striker — ${nameOf(innings.currentStrikerId)}`
+          : 'Current striker',
+      );
 
-    pickBatsman.innerHTML = '';
-    appendOption(
-      pickBatsman,
-      '',
-      innings?.currentStrikerId
-        ? `Current striker — ${nameOf(innings.currentStrikerId)}`
-        : 'Current striker',
-    );
+      if (creaseIds.length > 0) {
+        const group = document.createElement('optgroup');
+        group.label = 'At the crease';
+        for (const id of creaseIds) {
+          if (used.has(id)) {
+            continue;
+          }
+          used.add(id);
+          const row = innings?.batters.find((b) => b.playerId === id);
+          const figs = row ? `${row.runs} (${row.balls})` : '';
+          const opt = document.createElement('option');
+          opt.value = id;
+          opt.textContent = figs ? `${nameOf(id)} · ${figs}` : nameOf(id);
+          group.appendChild(opt);
+        }
+        if (group.childElementCount > 0) {
+          select.appendChild(group);
+        }
+      }
 
-    if (creaseIds.length > 0) {
-      const group = document.createElement('optgroup');
-      group.label = 'At the crease';
-      for (const id of creaseIds) {
+      if (batterIds.length > 0) {
+        const group = document.createElement('optgroup');
+        group.label = 'This innings';
+        for (const id of batterIds) {
+          if (used.has(id)) {
+            continue;
+          }
+          used.add(id);
+          const row = innings?.batters.find((b) => b.playerId === id);
+          const figs = row ? `${row.runs} (${row.balls})` : '';
+          const opt = document.createElement('option');
+          opt.value = id;
+          opt.textContent = figs ? `${nameOf(id)} · ${figs}` : nameOf(id);
+          group.appendChild(opt);
+        }
+        if (group.childElementCount > 0) {
+          select.appendChild(group);
+        }
+      }
+
+      const squadGroup = document.createElement('optgroup');
+      squadGroup.label = 'All players';
+      for (const id of Object.keys(players).sort((a, b) =>
+        (players[a] ?? '').localeCompare(players[b] ?? ''),
+      )) {
         if (used.has(id)) {
           continue;
         }
-        used.add(id);
-        const row = innings?.batters.find((b) => b.playerId === id);
-        const figs = row ? `${row.runs} (${row.balls})` : '';
         const opt = document.createElement('option');
         opt.value = id;
-        opt.textContent = figs ? `${nameOf(id)} · ${figs}` : nameOf(id);
-        group.appendChild(opt);
+        opt.textContent = nameOf(id);
+        squadGroup.appendChild(opt);
       }
-      if (group.childElementCount > 0) {
-        pickBatsman.appendChild(group);
+      if (squadGroup.childElementCount > 0) {
+        select.appendChild(squadGroup);
       }
-    }
 
-    if (batterIds.length > 0) {
-      const group = document.createElement('optgroup');
-      group.label = 'This innings';
-      for (const id of batterIds) {
-        if (used.has(id)) {
-          continue;
-        }
-        used.add(id);
-        const row = innings?.batters.find((b) => b.playerId === id);
-        const figs = row ? `${row.runs} (${row.balls})` : '';
-        const opt = document.createElement('option');
-        opt.value = id;
-        opt.textContent = figs ? `${nameOf(id)} · ${figs}` : nameOf(id);
-        group.appendChild(opt);
+      if ([...select.options].some((o) => o.value === prev)) {
+        select.value = prev;
       }
-      if (group.childElementCount > 0) {
-        pickBatsman.appendChild(group);
-      }
-    }
+    };
 
-    const squadGroup = document.createElement('optgroup');
-    squadGroup.label = 'All players';
-    for (const id of Object.keys(players).sort((a, b) =>
-      (players[a] ?? '').localeCompare(players[b] ?? ''),
-    )) {
-      if (used.has(id)) {
-        continue;
-      }
-      const opt = document.createElement('option');
-      opt.value = id;
-      opt.textContent = nameOf(id);
-      squadGroup.appendChild(opt);
-    }
-    if (squadGroup.childElementCount > 0) {
-      pickBatsman.appendChild(squadGroup);
-    }
+    fillBatsmanSelect(pickBatsman, batPrev);
+    fillBatsmanSelect(pickBatsmanCareer, batCareerPrev);
 
     const fillBowlerSelect = (
       select: HTMLSelectElement,
@@ -547,10 +628,6 @@ function start(): void {
 
     fillBowlerSelect(pickBowler, bowlPrev);
     fillBowlerSelect(pickBowlerCareer, careerPrev);
-
-    if ([...pickBatsman.options].some((o) => o.value === batPrev)) {
-      pickBatsman.value = batPrev;
-    }
   }
 
   function applyScorecard(card: ScorecardResponse | null): void {
@@ -664,6 +741,21 @@ function start(): void {
     send({ action: 'hide', graphic: 'bowler_career' });
   });
 
+  el<HTMLButtonElement>('btn-show-batsman-career').addEventListener('click', () => {
+    const playerId = resolveBatsmanCareerId();
+    if (!playerId || btnShowBatsmanCareer.disabled) {
+      return;
+    }
+    send({
+      action: 'show',
+      graphic: 'batsman_career',
+      payload: { playerId },
+    });
+  });
+  el<HTMLButtonElement>('btn-hide-batsman-career').addEventListener('click', () => {
+    send({ action: 'hide', graphic: 'batsman_career' });
+  });
+
   el<HTMLButtonElement>('btn-show-toss').addEventListener('click', () => {
     send({ action: 'show', graphic: 'toss' });
   });
@@ -682,6 +774,9 @@ function start(): void {
   pickBowler.addEventListener('change', () => refreshPreviews());
   pickBowlerCareer.addEventListener('change', () => {
     void refreshBowlerCareerPreview();
+  });
+  pickBatsmanCareer.addEventListener('change', () => {
+    void refreshBatsmanCareerPreview();
   });
 
   btnClearAir.addEventListener('click', () => {

@@ -117,6 +117,10 @@ export const GraphicsKind = {
    * Full-screen career bowling card (replaces score strip while on air).
    */
   BowlerCareer: 'bowler_career',
+  /**
+   * Full-screen batsman career profile card (separate from in-play batsman).
+   */
+  BatsmanCareer: 'batsman_career',
   /** Phase A validation only — remove once real graphics ship. */
   Hello: 'hello',
 } as const;

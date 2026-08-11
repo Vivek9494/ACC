@@ -4,6 +4,7 @@
 
 import type {
   BatterCard,
+  BowlerCard,
   BroadcastPlayerStatsView,
   FallOfWicket,
   InningsScorecard,
@@ -128,8 +129,166 @@ export function hasBowlerCareerStats(
     stats.wickets > 0 ||
     stats.economy != null ||
     stats.bowlingAverage != null ||
+    (stats.bowlingLegalBalls ?? 0) > 0 ||
     Boolean(stats.bestBowling?.trim())
   );
+}
+
+/** True when the player has usable batting career figures for the card. */
+export function hasBatsmanCareerStats(
+  stats: BroadcastPlayerStatsView | null | undefined,
+): boolean {
+  if (!stats || stats.matches <= 0) {
+    return false;
+  }
+  return (
+    stats.battingInnings > 0 ||
+    stats.runs > 0 ||
+    stats.average != null ||
+    stats.strikeRate != null ||
+    Boolean(stats.highestScore?.trim())
+  );
+}
+
+/** Highest-score footer: `v Opponent, venue, year` when parts exist. */
+export function formatHighestScoreMeta(
+  stats: BroadcastPlayerStatsView | null | undefined,
+): string | null {
+  if (!stats) {
+    return null;
+  }
+  const opponent = stats.highestScoreOpponent?.trim() || null;
+  const context = stats.highestScoreContext?.trim() || null;
+  if (opponent && context) {
+    return `v ${opponent}, ${context}`;
+  }
+  if (opponent) {
+    return `v ${opponent}`;
+  }
+  return context;
+}
+
+export interface LiveCareerBowlingDisplay {
+  matches: number;
+  wickets: number;
+  average: number | null;
+  economy: number | null;
+  best: string;
+}
+
+function parseBestBowling(
+  text: string | null | undefined,
+): { wickets: number; runsConceded: number } | null {
+  if (!text?.trim()) {
+    return null;
+  }
+  const m = /^(\d+)\s*\/\s*(\d+)$/.exec(text.trim());
+  if (!m) {
+    return null;
+  }
+  return { wickets: Number(m[1]), runsConceded: Number(m[2]) };
+}
+
+function isBetterBowlingFigures(
+  current: { wickets: number; runsConceded: number } | null,
+  candidate: { wickets: number; runsConceded: number },
+): boolean {
+  if (!current) {
+    return true;
+  }
+  if (candidate.wickets !== current.wickets) {
+    return candidate.wickets > current.wickets;
+  }
+  return candidate.runsConceded < current.runsConceded;
+}
+
+function formatBestBowling(wickets: number, runsConceded: number): string {
+  return `${wickets}/${runsConceded}`;
+}
+
+function thisMatchBowler(
+  card: ScorecardResponse | null,
+  playerId: string,
+): BowlerCard | null {
+  if (!card) {
+    return null;
+  }
+  let merged: BowlerCard | null = null;
+  for (const innings of card.innings) {
+    const row = innings.bowlers.find((b) => b.playerId === playerId);
+    if (!row) {
+      continue;
+    }
+    if (!merged) {
+      merged = { ...row };
+      continue;
+    }
+    merged = {
+      ...merged,
+      runsConceded: merged.runsConceded + row.runsConceded,
+      wickets: merged.wickets + row.wickets,
+      legalBalls: (merged.legalBalls ?? 0) + (row.legalBalls ?? 0),
+    };
+  }
+  return merged;
+}
+
+/**
+ * Career (completed) + this-match live bowling, combined from underlying totals.
+ * Matches +1 once the bowler has bowled ≥1 legal ball this match.
+ */
+export function combineCareerBowlingWithLive(
+  career: BroadcastPlayerStatsView,
+  card: ScorecardResponse | null,
+  playerId: string,
+): LiveCareerBowlingDisplay {
+  const live = thisMatchBowler(card, playerId);
+  const liveBalls = live?.legalBalls ?? 0;
+  const liveRuns = live?.runsConceded ?? 0;
+  const liveWkts = live?.wickets ?? 0;
+  const hasBowledThisMatch = liveBalls > 0;
+
+  const careerRuns = career.bowlingRunsConceded ?? 0;
+  const careerBalls = career.bowlingLegalBalls ?? 0;
+  const careerWkts = career.wickets;
+
+  const totalRuns = careerRuns + (hasBowledThisMatch ? liveRuns : 0);
+  const totalBalls = careerBalls + (hasBowledThisMatch ? liveBalls : 0);
+  const totalWkts = careerWkts + (hasBowledThisMatch ? liveWkts : 0);
+  const matches = career.matches + (hasBowledThisMatch ? 1 : 0);
+
+  const average =
+    totalWkts > 0 ? Math.round((totalRuns / totalWkts) * 100) / 100 : null;
+  const economy =
+    totalBalls > 0
+      ? Math.round((totalRuns / (totalBalls / 6)) * 100) / 100
+      : null;
+
+  let bestCareer =
+    career.bestBowlingWickets != null && career.bestBowlingRunsConceded != null
+      ? {
+          wickets: career.bestBowlingWickets,
+          runsConceded: career.bestBowlingRunsConceded,
+        }
+      : parseBestBowling(career.bestBowling);
+
+  let best = bestCareer;
+  if (hasBowledThisMatch && (liveWkts > 0 || liveBalls > 0)) {
+    const liveBest = { wickets: liveWkts, runsConceded: liveRuns };
+    if (isBetterBowlingFigures(best, liveBest)) {
+      best = liveBest;
+    }
+  }
+
+  return {
+    matches,
+    wickets: totalWkts,
+    average,
+    economy,
+    best: best
+      ? formatBestBowling(best.wickets, best.runsConceded)
+      : career.bestBowling?.trim() || '—',
+  };
 }
 
 export function resolveActiveInnings(card: ScorecardResponse): InningsScorecard | null {

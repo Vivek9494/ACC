@@ -60,14 +60,23 @@ export class BroadcastPlayerStatsController {
       profilePhotoUrl: await this.mediaUrls.resolveReadUrl(user.profilePhotoUrl),
       ballType,
       matches: career.matches,
+      battingInnings: career.battingInnings,
       runs: career.runs,
       average: career.average,
       strikeRate: career.strikeRate,
       highestScore: career.highestScore,
+      highestScoreOpponent: career.highestScoreOpponent,
+      highestScoreContext: career.highestScoreContext,
+      thirties: career.thirties,
+      fifties: career.fifties,
       wickets: career.wickets,
       bowlingAverage: career.bowlingAverage,
       economy: career.economy,
+      bowlingRunsConceded: career.bowlingRunsConceded,
+      bowlingLegalBalls: career.bowlingLegalBalls,
       bestBowling: career.bestBowling,
+      bestBowlingWickets: career.bestBowlingWickets,
+      bestBowlingRunsConceded: career.bestBowlingRunsConceded,
     };
   }
 }

@@ -29,11 +29,14 @@ export interface BestBowlingRecord {
 
 export interface PlayerStatsAccumulator {
   lockedXiMatchIds: Set<string>;
+  battingInnings: number;
   runs: number;
   balls: number;
   dismissals: number;
   fours: number;
   sixes: number;
+  thirties: number;
+  fifties: number;
   wickets: number;
   bowlingRunsConceded: number;
   bowlingLegalBalls: number;
@@ -50,11 +53,14 @@ export interface PlayerStatsAccumulator {
 export function createPlayerStatsAccumulator(): PlayerStatsAccumulator {
   return {
     lockedXiMatchIds: new Set(),
+    battingInnings: 0,
     runs: 0,
     balls: 0,
     dismissals: 0,
     fours: 0,
     sixes: 0,
+    thirties: 0,
+    fifties: 0,
     wickets: 0,
     bowlingRunsConceded: 0,
     bowlingLegalBalls: 0,
@@ -148,12 +154,18 @@ export function applyMatchToPlayerStats(
   for (const innings of scorecard.innings) {
     for (const batter of innings.batters) {
       if (batter.playerId === userId) {
+        acc.battingInnings += 1;
         acc.runs += batter.runs;
         acc.balls += batter.balls;
         acc.fours += batter.fours;
         acc.sixes += batter.sixes;
         if (batter.isOut) {
           acc.dismissals += 1;
+        }
+        if (batter.runs >= 30 && batter.runs < 50) {
+          acc.thirties += 1;
+        } else if (batter.runs >= 50 && batter.runs < 100) {
+          acc.fifties += 1;
         }
 
         if (batter.runs > 0 || batter.balls > 0 || batter.isOut) {
@@ -227,16 +239,23 @@ export function buildPlayerProfilePeriodStats(acc: PlayerStatsAccumulator): Play
 
   return {
     matches: acc.lockedXiMatchIds.size,
+    battingInnings: acc.battingInnings,
     runs: acc.runs,
     average: computeBattingAverage(acc.runs, acc.dismissals),
     highestScore: hs ? formatPlayerProfileHighestScore(hs.runs, hs.notOut) : null,
     highestScoreOpponent: hs?.opponent ?? null,
     highestScoreContext: formatHighestScoreContext(hs),
     strikeRate: computeStrikeRate(acc.runs, acc.balls),
+    thirties: acc.thirties,
+    fifties: acc.fifties,
     wickets: acc.wickets,
     bowlingAverage: computeBowlingAverage(acc.bowlingRunsConceded, acc.wickets),
     economy: computeEconomyRate(acc.bowlingRunsConceded, acc.bowlingLegalBalls),
+    bowlingRunsConceded: acc.bowlingRunsConceded,
+    bowlingLegalBalls: acc.bowlingLegalBalls,
     bestBowling: bbi ? formatPlayerProfileBestBowling(bbi.wickets, bbi.runsConceded) : null,
+    bestBowlingWickets: bbi ? bbi.wickets : null,
+    bestBowlingRunsConceded: bbi ? bbi.runsConceded : null,
     bestBowlingContext: formatBestBowlingContext(bbi),
     catches: acc.catches,
     droppedCatches: acc.droppedCatches,
