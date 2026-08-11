@@ -73,7 +73,15 @@
       <!-- Replaces the score strip while Bowler Career Stats is on air -->
       <div id="career-wrap" class="career-wrap" hidden>
         <div class="career-card">
-          <p id="bc-name" class="career-name">—</p>
+          <div class="career-name-band">
+            <p id="bc-name" class="career-name" aria-label="Bowler name">
+              <span id="bc-name-initial" class="career-name-initial"></span><span
+                id="bc-name-surname"
+                class="career-name-surname"
+                >—</span
+              >
+            </p>
+          </div>
           <div class="career-stats" role="group" aria-label="Career bowling stats">
             <div class="career-stat">
               <span id="bc-matches" class="career-value">—</span>

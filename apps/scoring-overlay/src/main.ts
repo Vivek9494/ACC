@@ -6,7 +6,7 @@ import {
   fetchMatchContext,
   fetchScorecard,
 } from './broadcast-fetch';
-import { formatStat, hasBowlerCareerStats, shortName } from './graphics-format';
+import { formatStat, hasBowlerCareerStats } from './graphics-format';
 import './style.css';
 import {
   LIVE_NAMESPACE,
@@ -274,7 +274,30 @@ function fillCareerCard(
   const full = card?.display.players[playerId]?.trim()
     || `${stats.firstName} ${stats.lastName}`.trim()
     || '—';
-  setText('bc-name', shortName(full));
+  const parts = full.trim().split(/\s+/).filter(Boolean);
+  const initialEl = el<HTMLSpanElement>('bc-name-initial');
+  const surnameEl = el<HTMLSpanElement>('bc-name-surname');
+  const nameRoot = el<HTMLParagraphElement>('bc-name');
+
+  if (parts.length === 0 || full === '—') {
+    initialEl.textContent = '';
+    surnameEl.textContent = '—';
+    nameRoot.setAttribute('aria-label', '—');
+  } else if (parts.length === 1) {
+    initialEl.textContent = '';
+    surnameEl.textContent = (parts[0] ?? '—').toUpperCase();
+    nameRoot.setAttribute('aria-label', surnameEl.textContent);
+  } else {
+    const initial = (parts[0]?.[0] ?? '').toUpperCase();
+    const surname = (parts[parts.length - 1] ?? '').toUpperCase();
+    initialEl.textContent = initial ? `${initial}. ` : '';
+    surnameEl.textContent = surname;
+    nameRoot.setAttribute(
+      'aria-label',
+      `${initialEl.textContent}${surname}`.trim(),
+    );
+  }
+
   setText('bc-matches', String(stats.matches));
   setText('bc-wickets', String(stats.wickets));
   setText('bc-avg', formatStat(stats.bowlingAverage, 2));
