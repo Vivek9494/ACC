@@ -1,10 +1,18 @@
 import { io, type Socket } from 'socket.io-client';
 
-import { fetchMatchContext, fetchScorecard } from './broadcast-fetch';
+import {
+  fetchBroadcastPlayerStats,
+  fetchMatchBallType,
+  fetchMatchContext,
+  fetchScorecard,
+} from './broadcast-fetch';
+import { formatStat, hasBowlerCareerStats, shortName } from './graphics-format';
 import './style.css';
 import {
   LIVE_NAMESPACE,
   LiveEvent,
+  type BallType,
+  type BroadcastPlayerStatsView,
   type ConnectionStatus,
   type GraphicsCommandMessage,
   type LiveStateMessage,
@@ -20,6 +28,7 @@ import {
 } from './view-model';
 
 const DEFAULT_API_BASE = 'https://acc-api-production.up.railway.app';
+const CAREER_ANIM_MS = 280;
 
 /** Operator override for the CRR row (one at a time). */
 type StripCrrMode = 'default' | 'toss' | 'chase';
@@ -257,32 +266,68 @@ function render(
   renderOverTracker(vm);
 }
 
+function fillCareerCard(
+  playerId: string,
+  card: ScorecardResponse | null,
+  stats: BroadcastPlayerStatsView,
+): void {
+  const full = card?.display.players[playerId]?.trim()
+    || `${stats.firstName} ${stats.lastName}`.trim()
+    || '—';
+  setText('bc-name', shortName(full));
+  setText('bc-matches', String(stats.matches));
+  setText('bc-wickets', String(stats.wickets));
+  setText('bc-avg', formatStat(stats.bowlingAverage, 2));
+  setText('bc-econ', formatStat(stats.economy, 2));
+  setText('bc-best', stats.bestBowling?.trim() || '—');
+}
+
 function start(): void {
   const { matchId, apiBase } = queryParams();
   let latest: ScorecardResponse | null = null;
   let matchCtx: MatchContext | null = null;
   let status: ConnectionStatus = 'connecting';
   let crrMode: StripCrrMode = 'default';
-  /** Hidden while bowler career card is on air (separate OBS source). */
-  let stripHiddenByCareer = false;
+  let ballType: BallType = 'TENNIS';
+  /** Career card replaces the strip on this same page. */
+  let careerOnAir = false;
+  let careerToken = 0;
   let socket: Socket | null = null;
 
-  const setStripVisible = (visible: boolean): void => {
-    stripHiddenByCareer = !visible;
-    const wrap = document.getElementById('strip-wrap');
-    const idle = document.getElementById('idle');
-    if (wrap) {
-      if (!visible) {
-        wrap.hidden = true;
+  const careerWrap = (): HTMLDivElement => el<HTMLDivElement>('career-wrap');
+
+  const hideCareerCard = (): void => {
+    careerOnAir = false;
+    const node = careerWrap();
+    node.classList.remove('is-visible');
+    window.setTimeout(() => {
+      if (!careerOnAir) {
+        node.hidden = true;
       }
+    }, CAREER_ANIM_MS);
+  };
+
+  const showCareerCard = async (playerId: string): Promise<void> => {
+    const token = ++careerToken;
+    const stats = await fetchBroadcastPlayerStats(apiBase, playerId, ballType);
+    if (token !== careerToken) {
+      return;
     }
-    if (idle && !visible) {
-      idle.hidden = true;
+    if (!hasBowlerCareerStats(stats) || !stats) {
+      hideCareerCard();
+      paint();
+      return;
     }
+    fillCareerCard(playerId, latest, stats);
+    careerOnAir = true;
+    const node = careerWrap();
+    node.hidden = false;
+    requestAnimationFrame(() => node.classList.add('is-visible'));
+    paint();
   };
 
   const paint = (): void => {
-    if (stripHiddenByCareer) {
+    if (careerOnAir) {
       const wrap = document.getElementById('strip-wrap');
       const idle = document.getElementById('idle');
       if (wrap) {
@@ -292,6 +337,10 @@ function start(): void {
         idle.hidden = true;
       }
       return;
+    }
+    const node = careerWrap();
+    if (!node.hidden && !node.classList.contains('is-visible')) {
+      // Mid hide animation — leave alone.
     }
     render(latest, matchCtx, status, !matchId, crrMode);
   };
@@ -303,10 +352,12 @@ function start(): void {
   }
 
   void (async () => {
-    const [seed, ctx] = await Promise.all([
+    const [seed, ctx, bt] = await Promise.all([
       fetchScorecard(apiBase, matchId),
       fetchMatchContext(apiBase, matchId),
+      fetchMatchBallType(apiBase, matchId),
     ]);
+    ballType = bt;
     if (ctx) {
       matchCtx = ctx;
     }
@@ -373,23 +424,31 @@ function start(): void {
     }
     if (cmd.action === 'hide_all') {
       crrMode = 'default';
-      setStripVisible(true);
+      hideCareerCard();
       paint();
       return;
     }
     if (cmd.graphic === 'bowler_career') {
       if (cmd.action === 'show') {
-        setStripVisible(false);
+        const playerId = cmd.payload?.playerId?.trim() || null;
+        if (playerId) {
+          void showCareerCard(playerId);
+        }
       } else if (cmd.action === 'hide') {
-        setStripVisible(true);
+        hideCareerCard();
+        paint();
       }
-      paint();
       return;
     }
-    // Any other full-screen graphic show → strip stays (career exclusive only).
-    // If another graphic replaces career on air, strip returns.
-    if (cmd.action === 'show' && cmd.graphic && cmd.graphic !== 'toss' && cmd.graphic !== 'chase') {
-      setStripVisible(true);
+    // Another full-screen graphic taking air → restore strip if career was up.
+    if (
+      cmd.action === 'show' &&
+      cmd.graphic &&
+      cmd.graphic !== 'toss' &&
+      cmd.graphic !== 'chase' &&
+      careerOnAir
+    ) {
+      hideCareerCard();
     }
     if (cmd.graphic === 'toss') {
       if (cmd.action === 'show') {
