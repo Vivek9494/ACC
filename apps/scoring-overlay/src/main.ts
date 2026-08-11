@@ -274,29 +274,14 @@ function fillCareerCard(
   const full = card?.display.players[playerId]?.trim()
     || `${stats.firstName} ${stats.lastName}`.trim()
     || '—';
-  const parts = full.trim().split(/\s+/).filter(Boolean);
+  const displayName = full === '—' ? '—' : full.toUpperCase();
   const initialEl = el<HTMLSpanElement>('bc-name-initial');
   const surnameEl = el<HTMLSpanElement>('bc-name-surname');
   const nameRoot = el<HTMLParagraphElement>('bc-name');
 
-  if (parts.length === 0 || full === '—') {
-    initialEl.textContent = '';
-    surnameEl.textContent = '—';
-    nameRoot.setAttribute('aria-label', '—');
-  } else if (parts.length === 1) {
-    initialEl.textContent = '';
-    surnameEl.textContent = (parts[0] ?? '—').toUpperCase();
-    nameRoot.setAttribute('aria-label', surnameEl.textContent);
-  } else {
-    const initial = (parts[0]?.[0] ?? '').toUpperCase();
-    const surname = (parts[parts.length - 1] ?? '').toUpperCase();
-    initialEl.textContent = initial ? `${initial}. ` : '';
-    surnameEl.textContent = surname;
-    nameRoot.setAttribute(
-      'aria-label',
-      `${initialEl.textContent}${surname}`.trim(),
-    );
-  }
+  initialEl.textContent = '';
+  surnameEl.textContent = displayName;
+  nameRoot.setAttribute('aria-label', displayName);
 
   setText('bc-matches', String(stats.matches));
   setText('bc-wickets', String(stats.wickets));
