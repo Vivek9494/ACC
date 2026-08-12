@@ -7,6 +7,8 @@ import {
 } from './broadcast-fetch';
 import {
   battingTeamLabel,
+  deriveBatterDotBalls,
+  formatBatterInningsScore,
   formatDismissalShort,
   formatStat,
   initialsFromName,
@@ -280,23 +282,29 @@ function resolveBowlerId(preferred: string | null | undefined): string | null {
 }
 
 function fillBatsmanMatch(playerId: string): void {
-  if (!scorecard) {
-    return;
+  try {
+    if (!scorecard) {
+      return;
+    }
+    const innings = resolveActiveInnings(scorecard);
+    const batter = innings?.batters.find((b) => b.playerId === playerId);
+    const full = playerName(scorecard.display, playerId);
+    setText('bat-name', full === '—' ? '—' : full);
+    setText('bat-match', formatBatterInningsScore(batter));
+    setText('bat-dots', String(deriveBatterDotBalls(batter)));
+    setText('bat-twos', String(batter?.twos ?? 0));
+    setText('bat-fours', String(batter?.fours ?? 0));
+    setText('bat-sixes', String(batter?.sixes ?? 0));
+    const sr =
+      batter && Number.isFinite(batter.strikeRate)
+        ? batter.strikeRate
+        : batter && batter.balls > 0
+          ? (batter.runs / batter.balls) * 100
+          : 0;
+    setText('bat-sr', formatStat(sr, 2));
+  } catch (err) {
+    console.warn('[graphics] fill batsman failed', err);
   }
-  const innings = resolveActiveInnings(scorecard);
-  const batter = innings?.batters.find((b) => b.playerId === playerId);
-  const full = playerName(scorecard.display, playerId);
-  setText('bat-name', shortName(full));
-  if (batter) {
-    const onStrike = innings?.currentStrikerId === playerId && !batter.isOut;
-    setText(
-      'bat-match',
-      `${onStrike ? `${batter.runs}*` : batter.runs} (${batter.balls})`,
-    );
-  } else {
-    setText('bat-match', '0 (0)');
-  }
-  setAvatar('bat-initials', 'bat-img', full, null);
 }
 
 function fillBowlerMatch(playerId: string): void {
@@ -318,22 +326,6 @@ function fillBowlerMatch(playerId: string): void {
   setAvatar('bowl-initials', 'bowl-img', full, null);
 }
 
-function applyCareerToBatsman(stats: BroadcastPlayerStatsView | null): void {
-  if (stats) {
-    setText('bat-avg', formatStat(stats.average));
-    setText('bat-sr', formatStat(stats.strikeRate));
-    setText('bat-hs', stats.highestScore?.trim() || '—');
-    setText('bat-mat', String(stats.matches));
-    const full = `${stats.firstName} ${stats.lastName}`.trim();
-    setAvatar('bat-initials', 'bat-img', full || '—', stats.profilePhotoUrl);
-  } else {
-    setText('bat-avg', '—');
-    setText('bat-sr', '—');
-    setText('bat-hs', '—');
-    setText('bat-mat', '—');
-  }
-}
-
 function applyCareerToBowler(stats: BroadcastPlayerStatsView | null): void {
   if (stats) {
     setText('bowl-wkts', String(stats.wickets));
@@ -350,15 +342,8 @@ function applyCareerToBowler(stats: BroadcastPlayerStatsView | null): void {
   }
 }
 
-async function showBatsman(playerId: string): Promise<void> {
+function showBatsman(playerId: string): void {
   fillBatsmanMatch(playerId);
-  applyCareerToBatsman(null);
-  const token = ++careerToken;
-  const stats = await loadCareer(playerId);
-  if (token !== careerToken || activeKind !== 'batsman' || activePlayerId !== playerId) {
-    return;
-  }
-  applyCareerToBatsman(stats);
 }
 
 async function showBowler(playerId: string): Promise<void> {
@@ -499,7 +484,7 @@ async function showGraphic(
   activePlayerId = playerId;
 
   if (kind === 'batsman' && playerId) {
-    void showBatsman(playerId);
+    showBatsman(playerId);
     showNode(graphicNode(kind));
   } else if (kind === 'bowler' && playerId) {
     void showBowler(playerId);

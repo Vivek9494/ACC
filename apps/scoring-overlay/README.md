@@ -86,7 +86,8 @@ Same Netlify site / origin as the score strip:
 **V1 graphics (manual):** partnership, fall of wicket, batsman card, bowler card (this match), **bowler career stats**, **batsman career stats**, innings break. **Toss** and **Runs to win** are strip-only (replace CRR | overs remaining on the score bar).
 
 - Live data from `/live` + scorecard (partnership / FOW / innings / this-match figures).
-- Career photo + summary via `GET /broadcast/players/:userId/stats?ballType=LEATHER|TENNIS` (includes batting innings/50s/HS context, bowling average, economy, and underlying bowling totals for live merge).
+- **In-play batsman card:** this-innings only (full name + runs*(balls); Dot Balls / 2s / 4s / 6s / SR). No career/broadcast-stats fetch. Dot balls derived as `balls − ones − twos − threes − fours − sixes`.
+- Career photo + summary via `GET /broadcast/players/:userId/stats?ballType=LEATHER|TENNIS` (includes batting innings/30s/50s/HS context, bowling average, economy, and underlying bowling totals for live merge) — used by career cards only.
 - Photo missing → initials fallback. One full-screen graphic on air at a time; **Hide all** clears cards + strip overrides.
 - **Toss (strip):** Show/Hide replaces the CRR row with “X won the toss and chose to bat/bowl”.
 - **Runs to win (strip):** Show/Hide replaces the CRR row with “NEED X OFF Y” (updates live while on).

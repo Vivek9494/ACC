@@ -49,6 +49,42 @@ export function shortName(full: string): string {
   return initial ? `${initial}. ${last}` : last;
 }
 
+/** This-innings score line: `100* (34)` when not out, else `100 (34)`. */
+export function formatBatterInningsScore(
+  batter: Pick<BatterCard, 'runs' | 'balls' | 'isOut'> | null | undefined,
+): string {
+  if (!batter) {
+    return '0 (0)';
+  }
+  const runs = Number.isFinite(batter.runs) ? batter.runs : 0;
+  const balls = Number.isFinite(batter.balls) ? batter.balls : 0;
+  const star = batter.isOut ? '' : '*';
+  return `${runs}${star} (${balls})`;
+}
+
+/**
+ * Faced balls with no off-bat 1/2/3/4/6 credited — derived because BatterCard
+ * has no `dotBalls` field (only bowlers do).
+ */
+export function deriveBatterDotBalls(
+  batter: Pick<
+    BatterCard,
+    'balls' | 'ones' | 'twos' | 'threes' | 'fours' | 'sixes'
+  > | null | undefined,
+): number {
+  if (!batter) {
+    return 0;
+  }
+  const balls = Number.isFinite(batter.balls) ? batter.balls : 0;
+  const scored =
+    (batter.ones ?? 0) +
+    (batter.twos ?? 0) +
+    (batter.threes ?? 0) +
+    (Number.isFinite(batter.fours) ? batter.fours : 0) +
+    (Number.isFinite(batter.sixes) ? batter.sixes : 0);
+  return Math.max(0, balls - scored);
+}
+
 export function initialsFromName(full: string): string {
   const parts = full.trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) {

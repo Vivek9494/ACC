@@ -59,6 +59,12 @@ export interface BatterCard {
   playerId: string;
   runs: number;
   balls: number;
+  /** Off-bat singles (non-boundary). Present on live feed. */
+  ones?: number;
+  /** Off-bat twos (non-boundary). Present on live feed. */
+  twos?: number;
+  /** Off-bat threes (non-boundary). Present on live feed. */
+  threes?: number;
   fours: number;
   sixes: number;
   strikeRate: number;

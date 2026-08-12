@@ -44,35 +44,34 @@
         </div>
       </div>
 
-      <!-- Batsman card -->
-      <div id="g-batsman" class="graphic panel panel-card" hidden>
+      <!-- Batsman card (this innings only — no career fetch) -->
+      <div id="g-batsman" class="graphic panel panel-batsman-live" hidden>
         <div class="panel-accent"></div>
-        <div class="card-layout">
-          <div id="bat-photo" class="avatar" aria-hidden="true">
-            <span id="bat-initials" class="avatar-initials">?</span>
-            <img id="bat-img" alt="" hidden />
+        <div class="bat-live-body">
+          <div class="bat-live-stripe">
+            <p id="bat-name" class="bat-live-name">—</p>
+            <p id="bat-match" class="bat-live-score">0 (0)</p>
           </div>
-          <div class="card-copy">
-            <p class="eyebrow">Batsman</p>
-            <p id="bat-name" class="hero-name">—</p>
-            <p id="bat-match" class="hero-stat">0 (0)</p>
-            <div class="stat-grid">
-              <div>
-                <span class="stat-label">Avg</span>
-                <span id="bat-avg" class="stat-value">—</span>
-              </div>
-              <div>
-                <span class="stat-label">SR</span>
-                <span id="bat-sr" class="stat-value">—</span>
-              </div>
-              <div>
-                <span class="stat-label">HS</span>
-                <span id="bat-hs" class="stat-value">—</span>
-              </div>
-              <div>
-                <span class="stat-label">Mat</span>
-                <span id="bat-mat" class="stat-value">—</span>
-              </div>
+          <div class="bat-live-stats" role="group" aria-label="This innings batting">
+            <div class="bat-live-stat">
+              <span class="bat-live-stat-label">Dot Balls</span>
+              <span id="bat-dots" class="bat-live-stat-value">0</span>
+            </div>
+            <div class="bat-live-stat">
+              <span class="bat-live-stat-label">2s</span>
+              <span id="bat-twos" class="bat-live-stat-value">0</span>
+            </div>
+            <div class="bat-live-stat">
+              <span class="bat-live-stat-label">4s</span>
+              <span id="bat-fours" class="bat-live-stat-value">0</span>
+            </div>
+            <div class="bat-live-stat">
+              <span class="bat-live-stat-label">6s</span>
+              <span id="bat-sixes" class="bat-live-stat-value">0</span>
+            </div>
+            <div class="bat-live-stat">
+              <span class="bat-live-stat-label">SR</span>
+              <span id="bat-sr" class="bat-live-stat-value">0.00</span>
             </div>
           </div>
         </div>

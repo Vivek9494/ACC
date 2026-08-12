@@ -61,6 +61,84 @@ body {
   min-width: 560px;
 }
 
+.panel-batsman-live {
+  min-width: min(92vw, 640px);
+  max-width: min(94vw, 720px);
+}
+
+.bat-live-body {
+  padding: 18px 28px 20px;
+}
+
+.bat-live-stripe {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.bat-live-name {
+  margin: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: clamp(26px, 3vw, 36px);
+  font-weight: 800;
+  line-height: 1.15;
+  color: #e7e1db;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bat-live-score {
+  margin: 0;
+  flex: 0 0 auto;
+  font-size: clamp(28px, 3.2vw, 40px);
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  line-height: 1.1;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.bat-live-stats {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(231, 225, 219, 0.22);
+}
+
+.bat-live-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.bat-live-stat-label {
+  font-size: clamp(9px, 1vw, 11px);
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(231, 225, 219, 0.68);
+  white-space: nowrap;
+}
+
+.bat-live-stat-value {
+  font-size: clamp(18px, 2vw, 24px);
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #fff;
+  line-height: 1;
+  white-space: nowrap;
+}
+
 .panel-career {
   min-width: min(92vw, 980px);
   max-width: min(96vw, 1100px);
@@ -329,9 +407,14 @@ body {
 @media (max-width: 720px) {
   .panel-card,
   .panel-wide,
-  .panel {
+  .panel,
+  .panel-batsman-live {
     min-width: 0;
     width: min(92vw, 560px);
+  }
+
+  .bat-live-body {
+    padding: 14px 18px 16px;
   }
 
   .avatar {
