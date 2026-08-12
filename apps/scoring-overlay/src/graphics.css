@@ -111,6 +111,15 @@ body {
   border-top: 1px solid rgba(231, 225, 219, 0.22);
 }
 
+.fow-how-out {
+  margin: 12px 0 0;
+  font-size: clamp(16px, 1.8vw, 20px);
+  font-weight: 700;
+  line-height: 1.25;
+  color: rgba(231, 225, 219, 0.88);
+  text-align: left;
+}
+
 .bat-live-stat {
   display: flex;
   flex-direction: column;

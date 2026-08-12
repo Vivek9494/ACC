@@ -7,6 +7,7 @@ import {
 } from './broadcast-fetch';
 import {
   battingTeamLabel,
+  formatBatterInningsScore,
   formatDismissalShort,
   formatHighestScoreMeta,
   formatStat,
@@ -17,7 +18,6 @@ import {
   playerName,
   resolveActiveInnings,
   shortName,
-  wicketOrdinal,
 } from './graphics-format';
 import {
   connectLiveSocket,
@@ -39,7 +39,7 @@ import type { Socket } from 'socket.io-client';
 /** Full-screen OBS graphics (not strip-only toss/chase). */
 const LABELS: Record<Exclude<GraphicsKind, 'hello' | 'toss' | 'chase'>, string> = {
   partnership: 'Partnership',
-  fow: 'Fall of wicket',
+  fow: 'Last Wicket',
   batsman: 'Batsman',
   batsman_career: 'Batsman Career Stats',
   bowler: 'Bowler',
@@ -210,10 +210,14 @@ function start(): void {
       return null;
     }
     const batter = innings.batters.find((row) => row.playerId === fow.playerId);
-    const dismissal = batter
-      ? formatDismissalShort(batter, (id) => nameOf(id))
+    const dismissalRaw = batter
+      ? formatDismissalShort(batter, (id) => nameOf(id)).trim()
       : '';
-    return `${wicketOrdinal(fow.wicketNumber)} · ${nameOf(fow.playerId)}${dismissal ? ` · ${dismissal}` : ''} · ${fow.wicketNumber}-${fow.teamRuns} (${fow.oversText})`;
+    const dismissal = dismissalRaw || 'out';
+    const figs = batter
+      ? formatBatterInningsScore(batter)
+      : '0 (0)';
+    return `${nameOf(fow.playerId)} · ${figs} · ${dismissal}`;
   }
 
   function previewInnings(): string | null {

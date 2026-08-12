@@ -16,7 +16,6 @@ import {
   playerName,
   resolveActiveInnings,
   shortName,
-  wicketOrdinal,
 } from './graphics-format';
 import type { GraphicsCommandMessage, GraphicsKind } from './live-client';
 import {
@@ -72,13 +71,32 @@ export function buildGraphicsStageMarkup(): string {
         </div>
       </div>
 
-      <div id="g-fow" class="graphic panel panel-wide" hidden>
+      <div id="g-fow" class="graphic panel panel-batsman-live" hidden>
         <div class="panel-accent"></div>
-        <div class="panel-body">
-          <p id="fow-headline" class="eyebrow">Wicket</p>
-          <p id="fow-name" class="hero-name">—</p>
-          <p id="fow-dismissal" class="sub dismissal">—</p>
-          <p id="fow-detail" class="meta">—</p>
+        <div class="bat-live-body">
+          <div class="bat-live-stripe">
+            <p id="fow-name" class="bat-live-name">—</p>
+            <p id="fow-score" class="bat-live-score">0 (0)</p>
+          </div>
+          <p id="fow-dismissal" class="fow-how-out">out</p>
+          <div class="bat-live-stats" role="group" aria-label="This innings batting">
+            <div class="bat-live-stat">
+              <span class="bat-live-stat-label">Dots</span>
+              <span id="fow-dots" class="bat-live-stat-value">0</span>
+            </div>
+            <div class="bat-live-stat">
+              <span class="bat-live-stat-label">4s</span>
+              <span id="fow-fours" class="bat-live-stat-value">0</span>
+            </div>
+            <div class="bat-live-stat">
+              <span class="bat-live-stat-label">6s</span>
+              <span id="fow-sixes" class="bat-live-stat-value">0</span>
+            </div>
+            <div class="bat-live-stat">
+              <span class="bat-live-stat-label">SR</span>
+              <span id="fow-sr" class="bat-live-stat-value">0.00</span>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -316,31 +334,38 @@ export function createGraphicsStage(
   };
 
   const fillFow = (): boolean => {
-    if (!scorecard) {
+    try {
+      if (!scorecard) {
+        return false;
+      }
+      const innings = resolveActiveInnings(scorecard);
+      const fow = latestFallOfWicket(innings);
+      if (!fow || !innings) {
+        return false;
+      }
+      const batter = innings.batters.find((b) => b.playerId === fow.playerId);
+      const fullName = playerName(scorecard.display, fow.playerId);
+      setText('fow-name', fullName === '—' ? '—' : fullName);
+      setText('fow-score', formatBatterInningsScore(batter));
+      const dismissal = batter
+        ? formatDismissalShort(batter, (id) => nameOf(id)).trim()
+        : '';
+      setText('fow-dismissal', dismissal || 'out');
+      setText('fow-dots', String(deriveBatterDotBalls(batter)));
+      setText('fow-fours', String(batter?.fours ?? 0));
+      setText('fow-sixes', String(batter?.sixes ?? 0));
+      const sr =
+        batter && Number.isFinite(batter.strikeRate)
+          ? batter.strikeRate
+          : batter && batter.balls > 0
+            ? (batter.runs / batter.balls) * 100
+            : 0;
+      setText('fow-sr', formatStat(sr, 2));
+      return true;
+    } catch (err) {
+      console.warn('[graphics] fill fow failed', err);
       return false;
     }
-    const innings = resolveActiveInnings(scorecard);
-    const fow = latestFallOfWicket(innings);
-    if (!fow || !innings) {
-      return false;
-    }
-    const batter = innings.batters.find((b) => b.playerId === fow.playerId);
-    const fullName = playerName(scorecard.display, fow.playerId);
-    setText(
-      'fow-headline',
-      `${wicketOrdinal(fow.wicketNumber)} WICKET · ${fow.wicketNumber}-${fow.teamRuns}`,
-    );
-    setText('fow-name', shortName(fullName));
-    setText(
-      'fow-dismissal',
-      batter ? formatDismissalShort(batter, (id) => nameOf(id)) : '—',
-    );
-    const figures = batter ? `${batter.runs} (${batter.balls})` : '';
-    setText(
-      'fow-detail',
-      [figures, `${fow.oversText} ov`].filter(Boolean).join(' · '),
-    );
-    return true;
   };
 
   const fillInningsBreak = (): boolean => {
