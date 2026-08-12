@@ -182,6 +182,10 @@
   color: rgba(231, 225, 219, 0.78);
 }
 
+.panel-batsman-career [hidden] {
+  display: none !important;
+}
+
 @media (max-width: 720px) {
   .panel-batsman-career {
     min-width: 0;

@@ -138,12 +138,12 @@ export function hasBowlerCareerStats(
 export function hasBatsmanCareerStats(
   stats: BroadcastPlayerStatsView | null | undefined,
 ): boolean {
-  if (!stats || stats.matches <= 0) {
+  if (!stats || (stats.matches ?? 0) <= 0) {
     return false;
   }
   return (
-    stats.battingInnings > 0 ||
-    stats.runs > 0 ||
+    (stats.battingInnings ?? 0) > 0 ||
+    (stats.runs ?? 0) > 0 ||
     stats.average != null ||
     stats.strikeRate != null ||
     Boolean(stats.highestScore?.trim())

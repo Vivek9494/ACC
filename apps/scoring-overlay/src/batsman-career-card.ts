@@ -1,5 +1,8 @@
 /**
  * Shared batsman career profile card for the root strip page and graphics.html.
+ *
+ * Isolation: all fetch/render paths are try/catch'd. Failures clear the card
+ * silently (console.warn only) so a graphics error never breaks the strip.
  */
 
 import './batsman-career-card.css';
@@ -34,19 +37,56 @@ export interface BatsmanCareerCardController {
   show(playerId: string, opts: BatsmanCareerShowOptions): Promise<boolean>;
 }
 
-function qs<T extends HTMLElement>(root: ParentNode, selector: string): T {
-  const node = root.querySelector(selector);
-  if (!node) {
-    throw new Error(`Missing ${selector} in batsman career card`);
-  }
-  return node as T;
+type StatRowKey = 'innings' | 'runs' | 'avg' | 'sr' | 'thirties' | 'fifties';
+
+function warnGraphics(err: unknown): void {
+  console.warn('[batsman-career]', err);
+}
+
+function qs<T extends HTMLElement>(
+  root: ParentNode,
+  selector: string,
+): T | null {
+  return root.querySelector(selector) as T | null;
 }
 
 function setText(root: ParentNode, selector: string, text: string): void {
   const node = qs<HTMLElement>(root, selector);
+  if (!node) {
+    return;
+  }
   if (node.textContent !== text) {
     node.textContent = text;
   }
+}
+
+function setRowVisible(
+  root: ParentNode,
+  key: StatRowKey,
+  visible: boolean,
+): void {
+  const row = qs<HTMLElement>(root, `[data-bc-row="${key}"]`);
+  if (!row) {
+    return;
+  }
+  row.hidden = !visible;
+}
+
+function setRowValue(
+  root: ParentNode,
+  key: StatRowKey,
+  value: string | null,
+): void {
+  if (value == null) {
+    setRowVisible(root, key, false);
+    return;
+  }
+  setRowVisible(root, key, true);
+  setText(root, `[data-bc="${key}"]`, value);
+}
+
+function isPresentNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value);
 }
 
 function setAvatar(
@@ -56,6 +96,9 @@ function setAvatar(
 ): void {
   const initials = qs<HTMLSpanElement>(root, '[data-bc="initials"]');
   const img = qs<HTMLImageElement>(root, '[data-bc="img"]');
+  if (!initials || !img) {
+    return;
+  }
   initials.textContent = initialsFromName(name);
   if (photoUrl) {
     img.onload = () => {
@@ -94,32 +137,32 @@ function buildCardMarkup(): string {
             <span data-bc="given" class="bc-career-given"></span><span data-bc="family" class="bc-career-family">—</span>
           </p>
           <div class="bc-career-rows" role="table" aria-label="Batting career stats">
-            <div class="bc-career-row" role="row">
+            <div class="bc-career-row" data-bc-row="innings" role="row">
               <span class="bc-career-label">Innings</span>
               <span data-bc="innings" class="bc-career-value">—</span>
             </div>
-            <div class="bc-career-row" role="row">
+            <div class="bc-career-row" data-bc-row="runs" role="row">
               <span class="bc-career-label">Runs</span>
               <span data-bc="runs" class="bc-career-value">—</span>
             </div>
-            <div class="bc-career-row" role="row">
+            <div class="bc-career-row" data-bc-row="avg" role="row">
               <span class="bc-career-label">Average</span>
               <span data-bc="avg" class="bc-career-value">—</span>
             </div>
-            <div class="bc-career-row" role="row">
+            <div class="bc-career-row" data-bc-row="sr" role="row">
               <span class="bc-career-label">Strike Rate</span>
               <span data-bc="sr" class="bc-career-value">—</span>
             </div>
-            <div class="bc-career-row" role="row">
+            <div class="bc-career-row" data-bc-row="thirties" role="row">
               <span class="bc-career-label">30s</span>
               <span data-bc="thirties" class="bc-career-value">—</span>
             </div>
-            <div class="bc-career-row" role="row">
+            <div class="bc-career-row" data-bc-row="fifties" role="row">
               <span class="bc-career-label">50s</span>
               <span data-bc="fifties" class="bc-career-value">—</span>
             </div>
           </div>
-          <div class="bc-career-hs">
+          <div class="bc-career-hs" data-bc="hs-block">
             <p class="bc-career-hs-label">Highest Score</p>
             <p data-bc="hs" class="bc-career-hs-value">—</p>
             <p data-bc="hs-meta" class="bc-career-hs-meta" hidden></p>
@@ -144,8 +187,14 @@ function splitName(full: string): { given: string; family: string } {
   };
 }
 
-function formatLabel(ballType: BallType): string {
-  return ballType === 'LEATHER' ? 'LEATHER CAREER' : 'TENNIS CAREER';
+function formatLabel(ballType: BallType | string | null | undefined): string {
+  if (ballType === 'LEATHER') {
+    return 'LEATHER CAREER';
+  }
+  if (ballType === 'TENNIS') {
+    return 'TENNIS CAREER';
+  }
+  return 'CAREER';
 }
 
 function fillPlaceholder(
@@ -154,46 +203,106 @@ function fillPlaceholder(
   displayName: string,
 ): void {
   const { given, family } = splitName(displayName);
-  qs<HTMLSpanElement>(root, '[data-bc="given"]').textContent = given;
-  qs<HTMLSpanElement>(root, '[data-bc="family"]').textContent = family;
+  const givenEl = qs<HTMLSpanElement>(root, '[data-bc="given"]');
+  const familyEl = qs<HTMLSpanElement>(root, '[data-bc="family"]');
+  if (givenEl) {
+    givenEl.textContent = given;
+  }
+  if (familyEl) {
+    familyEl.textContent = family;
+  }
   setText(root, '[data-bc="format"]', formatLabel(ballType));
-  setText(root, '[data-bc="innings"]', '—');
-  setText(root, '[data-bc="runs"]', '—');
-  setText(root, '[data-bc="avg"]', '—');
-  setText(root, '[data-bc="sr"]', '—');
-  setText(root, '[data-bc="thirties"]', '—');
-  setText(root, '[data-bc="fifties"]', '—');
+  for (const key of [
+    'innings',
+    'runs',
+    'avg',
+    'sr',
+    'thirties',
+    'fifties',
+  ] as const) {
+    setRowVisible(root, key, true);
+    setText(root, `[data-bc="${key}"]`, '—');
+  }
+  const hsBlock = qs<HTMLElement>(root, '[data-bc="hs-block"]');
+  if (hsBlock) {
+    hsBlock.hidden = false;
+  }
   setText(root, '[data-bc="hs"]', '—');
   const meta = qs<HTMLParagraphElement>(root, '[data-bc="hs-meta"]');
-  meta.hidden = true;
-  meta.textContent = '';
+  if (meta) {
+    meta.hidden = true;
+    meta.textContent = '';
+  }
   setAvatar(root, displayName || '—', null);
 }
 
 function applyStats(root: ParentNode, stats: BroadcastPlayerStatsView): void {
   const given = stats.firstName?.trim() ? `${stats.firstName.trim()} ` : '';
   const family = stats.lastName?.trim() || '—';
-  qs<HTMLSpanElement>(root, '[data-bc="given"]').textContent = given;
-  qs<HTMLSpanElement>(root, '[data-bc="family"]').textContent = family;
-  setText(root, '[data-bc="format"]', formatLabel(stats.ballType));
-  setText(root, '[data-bc="innings"]', String(stats.battingInnings));
-  setText(root, '[data-bc="runs"]', String(stats.runs));
-  setText(root, '[data-bc="avg"]', formatStat(stats.average, 2));
-  setText(root, '[data-bc="sr"]', formatStat(stats.strikeRate, 1));
-  setText(root, '[data-bc="thirties"]', String(stats.thirties));
-  setText(root, '[data-bc="fifties"]', String(stats.fifties));
-  setText(root, '[data-bc="hs"]', stats.highestScore?.trim() || '—');
-  const metaLine = formatHighestScoreMeta(stats);
-  const meta = qs<HTMLParagraphElement>(root, '[data-bc="hs-meta"]');
-  if (metaLine) {
-    meta.hidden = false;
-    meta.textContent = metaLine;
-  } else {
-    meta.hidden = true;
-    meta.textContent = '';
+  const givenEl = qs<HTMLSpanElement>(root, '[data-bc="given"]');
+  const familyEl = qs<HTMLSpanElement>(root, '[data-bc="family"]');
+  if (givenEl) {
+    givenEl.textContent = given;
   }
-  const full = `${stats.firstName} ${stats.lastName}`.trim() || '—';
-  setAvatar(root, full, stats.profilePhotoUrl);
+  if (familyEl) {
+    familyEl.textContent = family;
+  }
+  setText(root, '[data-bc="format"]', formatLabel(stats.ballType));
+
+  setRowValue(
+    root,
+    'innings',
+    isPresentNumber(stats.battingInnings) ? String(stats.battingInnings) : null,
+  );
+  setRowValue(
+    root,
+    'runs',
+    isPresentNumber(stats.runs) ? String(stats.runs) : null,
+  );
+  setRowValue(
+    root,
+    'avg',
+    isPresentNumber(stats.average) ? formatStat(stats.average, 2) : null,
+  );
+  setRowValue(
+    root,
+    'sr',
+    isPresentNumber(stats.strikeRate) ? formatStat(stats.strikeRate, 1) : null,
+  );
+  setRowValue(
+    root,
+    'thirties',
+    isPresentNumber(stats.thirties) ? String(stats.thirties) : null,
+  );
+  setRowValue(
+    root,
+    'fifties',
+    isPresentNumber(stats.fifties) ? String(stats.fifties) : null,
+  );
+
+  const hs = stats.highestScore?.trim() || null;
+  const hsBlock = qs<HTMLElement>(root, '[data-bc="hs-block"]');
+  if (hsBlock) {
+    hsBlock.hidden = !hs;
+  }
+  if (hs) {
+    setText(root, '[data-bc="hs"]', hs);
+    const metaLine = formatHighestScoreMeta(stats);
+    const meta = qs<HTMLParagraphElement>(root, '[data-bc="hs-meta"]');
+    if (meta) {
+      if (metaLine) {
+        meta.hidden = false;
+        meta.textContent = metaLine;
+      } else {
+        meta.hidden = true;
+        meta.textContent = '';
+      }
+    }
+  }
+
+  const full =
+    `${stats.firstName ?? ''} ${stats.lastName ?? ''}`.trim() || '—';
+  setAvatar(root, full, stats.profilePhotoUrl ?? null);
 }
 
 /**
@@ -204,8 +313,13 @@ function applyStats(root: ParentNode, stats: BroadcastPlayerStatsView): void {
 export function mountBatsmanCareerCard(
   host: HTMLElement,
 ): BatsmanCareerCardController {
-  host.innerHTML = buildCardMarkup();
-  host.setAttribute('aria-live', 'polite');
+  try {
+    host.innerHTML = buildCardMarkup();
+    host.setAttribute('aria-live', 'polite');
+  } catch (err) {
+    warnGraphics(err);
+    host.innerHTML = '';
+  }
 
   let onAir = false;
   let token = 0;
@@ -231,43 +345,68 @@ export function mountBatsmanCareerCard(
     host,
     isOnAir: () => onAir,
     hide: () => {
-      token += 1;
-      hideHost();
+      try {
+        token += 1;
+        hideHost();
+      } catch (err) {
+        warnGraphics(err);
+        onAir = false;
+        host.hidden = true;
+        host.classList.remove('is-visible');
+      }
     },
     async show(playerId, opts) {
-      if (!isUuid(playerId)) {
-        hideHost();
+      try {
+        if (!isUuid(playerId)) {
+          hideHost();
+          return false;
+        }
+
+        const displayName = opts.placeholderName?.trim() || '—';
+        fillPlaceholder(host, opts.ballType, displayName);
+        showHost();
+
+        const request = ++token;
+        const key = `${playerId}:${opts.ballType}`;
+        let stats: BroadcastPlayerStatsView | null;
+        if (cache.has(key)) {
+          stats = cache.get(key) ?? null;
+        } else {
+          try {
+            stats = await fetchBroadcastPlayerStats(
+              opts.apiBase,
+              playerId,
+              opts.ballType,
+            );
+          } catch (err) {
+            warnGraphics(err);
+            stats = null;
+          }
+          cache.set(key, stats);
+        }
+
+        if (request !== token) {
+          return false;
+        }
+        if (!stats || !hasBatsmanCareerStats(stats)) {
+          hideHost();
+          return false;
+        }
+        applyStats(host, stats);
+        onAir = true;
+        return true;
+      } catch (err) {
+        warnGraphics(err);
+        try {
+          hideHost();
+        } catch (hideErr) {
+          warnGraphics(hideErr);
+          onAir = false;
+          host.hidden = true;
+          host.classList.remove('is-visible');
+        }
         return false;
       }
-
-      const displayName = opts.placeholderName?.trim() || '—';
-      fillPlaceholder(host, opts.ballType, displayName);
-      showHost();
-
-      const request = ++token;
-      const key = `${playerId}:${opts.ballType}`;
-      let stats: BroadcastPlayerStatsView | null;
-      if (cache.has(key)) {
-        stats = cache.get(key) ?? null;
-      } else {
-        stats = await fetchBroadcastPlayerStats(
-          opts.apiBase,
-          playerId,
-          opts.ballType,
-        );
-        cache.set(key, stats);
-      }
-
-      if (request !== token) {
-        return false;
-      }
-      if (!stats || !hasBatsmanCareerStats(stats)) {
-        hideHost();
-        return false;
-      }
-      applyStats(host, stats);
-      onAir = true;
-      return true;
     },
   };
 }

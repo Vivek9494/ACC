@@ -314,17 +314,26 @@ function start(): void {
   const careerWrap = (): HTMLDivElement => el<HTMLDivElement>('career-wrap');
 
   const hideBatsmanCareerCard = (): void => {
-    batsmanCareer.hide();
+    try {
+      batsmanCareer.hide();
+    } catch (err) {
+      console.warn('[overlay graphics] hide batsman career failed', err);
+    }
   };
 
   const showBatsmanCareerCard = async (playerId: string): Promise<void> => {
-    const placeholderName =
-      latest?.display.players[playerId]?.trim() || undefined;
-    await batsmanCareer.show(playerId, {
-      apiBase,
-      ballType,
-      placeholderName,
-    });
+    try {
+      const placeholderName =
+        latest?.display.players[playerId]?.trim() || undefined;
+      await batsmanCareer.show(playerId, {
+        apiBase,
+        ballType,
+        placeholderName,
+      });
+    } catch (err) {
+      console.warn('[overlay graphics] show batsman career failed', err);
+      hideBatsmanCareerCard();
+    }
   };
 
   const paintCareerNumbers = (): void => {
@@ -348,24 +357,30 @@ function start(): void {
   };
 
   const showCareerCard = async (playerId: string): Promise<void> => {
-    const token = ++careerToken;
-    const stats = await fetchBroadcastPlayerStats(apiBase, playerId, ballType);
-    if (token !== careerToken) {
-      return;
-    }
-    if (!hasBowlerCareerStats(stats) || !stats) {
+    try {
+      const token = ++careerToken;
+      const stats = await fetchBroadcastPlayerStats(apiBase, playerId, ballType);
+      if (token !== careerToken) {
+        return;
+      }
+      if (!hasBowlerCareerStats(stats) || !stats) {
+        hideCareerCard();
+        paint();
+        return;
+      }
+      careerBase = stats;
+      careerPlayerId = playerId;
+      fillCareerCard(playerId, latest, stats);
+      careerOnAir = true;
+      const node = careerWrap();
+      node.hidden = false;
+      requestAnimationFrame(() => node.classList.add('is-visible'));
+      paint();
+    } catch (err) {
+      console.warn('[overlay graphics] show bowler career failed', err);
       hideCareerCard();
       paint();
-      return;
     }
-    careerBase = stats;
-    careerPlayerId = playerId;
-    fillCareerCard(playerId, latest, stats);
-    careerOnAir = true;
-    const node = careerWrap();
-    node.hidden = false;
-    requestAnimationFrame(() => node.classList.add('is-visible'));
-    paint();
   };
 
   const paint = (): void => {
@@ -458,73 +473,88 @@ function start(): void {
   });
 
   socket.on(LiveEvent.GraphicsCommand, (cmd: GraphicsCommandMessage) => {
-    if (cmd.matchId !== matchId) {
-      return;
-    }
-    if (cmd.action === 'hide_all') {
-      crrMode = 'default';
-      hideCareerCard();
-      hideBatsmanCareerCard();
-      paint();
-      return;
-    }
-    if (cmd.graphic === 'bowler_career') {
-      if (cmd.action === 'show') {
-        hideBatsmanCareerCard();
-        const playerId = cmd.payload?.playerId?.trim() || null;
-        if (playerId) {
-          void showCareerCard(playerId);
-        }
-      } else if (cmd.action === 'hide') {
-        hideCareerCard();
-        paint();
+    try {
+      if (cmd.matchId !== matchId) {
+        return;
       }
-      return;
-    }
-    if (cmd.graphic === 'batsman_career') {
-      if (cmd.action === 'show') {
-        if (careerOnAir) {
+      if (cmd.action === 'hide_all') {
+        crrMode = 'default';
+        hideCareerCard();
+        hideBatsmanCareerCard();
+        paint();
+        return;
+      }
+      if (cmd.graphic === 'bowler_career') {
+        if (cmd.action === 'show') {
+          hideBatsmanCareerCard();
+          const playerId = cmd.payload?.playerId?.trim() || null;
+          if (playerId) {
+            void showCareerCard(playerId);
+          }
+        } else if (cmd.action === 'hide') {
           hideCareerCard();
           paint();
         }
-        const playerId = cmd.payload?.playerId?.trim() || null;
-        if (playerId) {
-          void showBatsmanCareerCard(playerId);
+        return;
+      }
+      if (cmd.graphic === 'batsman_career') {
+        if (cmd.action === 'show') {
+          if (careerOnAir) {
+            hideCareerCard();
+            paint();
+          }
+          const playerId = cmd.payload?.playerId?.trim() || null;
+          if (playerId) {
+            void showBatsmanCareerCard(playerId);
+          }
+        } else if (cmd.action === 'hide') {
+          hideBatsmanCareerCard();
         }
-      } else if (cmd.action === 'hide') {
+        return;
+      }
+      // Another full-screen graphic taking air → restore strip if career was up.
+      if (
+        cmd.action === 'show' &&
+        cmd.graphic &&
+        cmd.graphic !== 'toss' &&
+        cmd.graphic !== 'chase' &&
+        careerOnAir
+      ) {
+        hideCareerCard();
+      }
+      if (
+        cmd.action === 'show' &&
+        cmd.graphic &&
+        cmd.graphic !== 'toss' &&
+        cmd.graphic !== 'chase'
+      ) {
         hideBatsmanCareerCard();
       }
-      return;
-    }
-    // Another full-screen graphic taking air → restore strip if career was up.
-    if (
-      cmd.action === 'show' &&
-      cmd.graphic &&
-      cmd.graphic !== 'toss' &&
-      cmd.graphic !== 'chase' &&
-      careerOnAir
-    ) {
-      hideCareerCard();
-    }
-    if (cmd.action === 'show' && cmd.graphic && cmd.graphic !== 'toss' && cmd.graphic !== 'chase') {
-      hideBatsmanCareerCard();
-    }
-    if (cmd.graphic === 'toss') {
-      if (cmd.action === 'show') {
-        crrMode = 'toss';
-      } else if (cmd.action === 'hide' && crrMode === 'toss') {
-        crrMode = 'default';
+      if (cmd.graphic === 'toss') {
+        if (cmd.action === 'show') {
+          crrMode = 'toss';
+        } else if (cmd.action === 'hide' && crrMode === 'toss') {
+          crrMode = 'default';
+        }
+        paint();
+        return;
       }
-      paint();
-      return;
-    }
-    if (cmd.graphic === 'chase') {
-      if (cmd.action === 'show') {
-        crrMode = 'chase';
-      } else if (cmd.action === 'hide' && crrMode === 'chase') {
-        crrMode = 'default';
+      if (cmd.graphic === 'chase') {
+        if (cmd.action === 'show') {
+          crrMode = 'chase';
+        } else if (cmd.action === 'hide' && crrMode === 'chase') {
+          crrMode = 'default';
+        }
+        paint();
       }
-      paint();
+    } catch (err) {
+      // Graphics must never interrupt the strip's live:state loop.
+      console.warn('[overlay graphics] command handler failed', err);
+      try {
+        hideBatsmanCareerCard();
+      } catch {
+        /* ignore */
+      }
     }
   });
 

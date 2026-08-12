@@ -373,18 +373,27 @@ async function showBowler(playerId: string): Promise<void> {
 }
 
 async function showBatsmanCareer(playerId: string): Promise<void> {
-  const { apiBase } = queryApiAndMatch();
-  const placeholderName = scorecard
-    ? playerName(scorecard.display, playerId)
-    : undefined;
-  const ok = await batsmanCareer.show(playerId, {
-    apiBase,
-    ballType,
-    placeholderName,
-  });
-  if (!ok && activeKind === 'batsman_career' && activePlayerId === playerId) {
-    activeKind = null;
-    activePlayerId = null;
+  try {
+    const { apiBase } = queryApiAndMatch();
+    const placeholderName = scorecard
+      ? playerName(scorecard.display, playerId)
+      : undefined;
+    const ok = await batsmanCareer.show(playerId, {
+      apiBase,
+      ballType,
+      placeholderName,
+    });
+    if (!ok && activeKind === 'batsman_career' && activePlayerId === playerId) {
+      activeKind = null;
+      activePlayerId = null;
+    }
+  } catch (err) {
+    console.warn('[graphics] batsman career failed', err);
+    batsmanCareer.hide();
+    if (activeKind === 'batsman_career') {
+      activeKind = null;
+      activePlayerId = null;
+    }
   }
 }
 
@@ -503,19 +512,37 @@ async function showGraphic(
 }
 
 function applyCommand(cmd: GraphicsCommandMessage): void {
-  if (cmd.action === 'hide_all') {
-    hideAllGraphics();
-    return;
-  }
-  if (!cmd.graphic) {
-    return;
-  }
-  if (cmd.action === 'hide') {
-    hideGraphic(cmd.graphic);
-    return;
-  }
-  if (cmd.action === 'show') {
-    void showGraphic(cmd.graphic, cmd.payload);
+  try {
+    if (cmd.action === 'hide_all') {
+      hideAllGraphics();
+      return;
+    }
+    if (!cmd.graphic) {
+      return;
+    }
+    if (cmd.action === 'hide') {
+      hideGraphic(cmd.graphic);
+      return;
+    }
+    if (cmd.action === 'show') {
+      void showGraphic(cmd.graphic, cmd.payload).catch((err: unknown) => {
+        console.warn('[graphics] show failed', err);
+        try {
+          if (cmd.graphic === 'batsman_career') {
+            batsmanCareer.hide();
+          }
+        } catch {
+          /* ignore */
+        }
+      });
+    }
+  } catch (err) {
+    console.warn('[graphics] command handler failed', err);
+    try {
+      batsmanCareer.hide();
+    } catch {
+      /* ignore */
+    }
   }
 }
 
