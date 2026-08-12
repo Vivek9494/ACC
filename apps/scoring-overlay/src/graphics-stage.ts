@@ -5,15 +5,12 @@
 
 import './graphics.css';
 import { mountBatsmanCareerCard } from './batsman-career-card';
-import { fetchBroadcastPlayerStats } from './broadcast-fetch';
 import {
   battingTeamLabel,
   deriveBatterDotBalls,
   formatBatterInningsScore,
   formatDismissalShort,
   formatStat,
-  initialsFromName,
-  isUuid,
   latestFallOfWicket,
   partnershipBatterRuns,
   playerName,
@@ -28,7 +25,6 @@ import {
 } from './toss-result-card';
 import type {
   BallType,
-  BroadcastPlayerStatsView,
   MatchContext,
   ScorecardResponse,
 } from './types';
@@ -122,34 +118,36 @@ export function buildGraphicsStageMarkup(): string {
 
       <div id="g-toss-result" class="graphic graphic-centered toss-result-graphic" hidden></div>
 
-      <div id="g-bowler" class="graphic panel panel-card" hidden>
+      <div id="g-bowler" class="graphic panel panel-batsman-live" hidden>
         <div class="panel-accent"></div>
-        <div class="card-layout">
-          <div id="bowl-photo" class="avatar" aria-hidden="true">
-            <span id="bowl-initials" class="avatar-initials">?</span>
-            <img id="bowl-img" alt="" hidden />
+        <div class="bat-live-body">
+          <div class="bat-live-stripe">
+            <p id="bowl-name" class="bat-live-name">—</p>
           </div>
-          <div class="card-copy">
-            <p class="eyebrow">Bowler</p>
-            <p id="bowl-name" class="hero-name">—</p>
-            <p id="bowl-match" class="hero-stat">0-0-0</p>
-            <div class="stat-grid">
-              <div>
-                <span class="stat-label">Wkts</span>
-                <span id="bowl-wkts" class="stat-value">—</span>
-              </div>
-              <div>
-                <span class="stat-label">Best</span>
-                <span id="bowl-best" class="stat-value">—</span>
-              </div>
-              <div>
-                <span class="stat-label">Mat</span>
-                <span id="bowl-mat" class="stat-value">—</span>
-              </div>
-              <div>
-                <span class="stat-label">Runs</span>
-                <span id="bowl-runs" class="stat-value">—</span>
-              </div>
+          <div class="bat-live-stats" role="group" aria-label="This innings bowling">
+            <div class="bat-live-stat">
+              <span class="bat-live-stat-label">Overs</span>
+              <span id="bowl-overs" class="bat-live-stat-value">0.0</span>
+            </div>
+            <div class="bat-live-stat">
+              <span class="bat-live-stat-label">Maidens</span>
+              <span id="bowl-maidens" class="bat-live-stat-value">0</span>
+            </div>
+            <div class="bat-live-stat">
+              <span class="bat-live-stat-label">Dots</span>
+              <span id="bowl-dots" class="bat-live-stat-value">0</span>
+            </div>
+            <div class="bat-live-stat">
+              <span class="bat-live-stat-label">Wickets</span>
+              <span id="bowl-wickets" class="bat-live-stat-value">0</span>
+            </div>
+            <div class="bat-live-stat">
+              <span class="bat-live-stat-label">Runs</span>
+              <span id="bowl-runs" class="bat-live-stat-value">0</span>
+            </div>
+            <div class="bat-live-stat">
+              <span class="bat-live-stat-label">Economy</span>
+              <span id="bowl-economy" class="bat-live-stat-value">0.00</span>
             </div>
           </div>
         </div>
@@ -218,44 +216,11 @@ export function createGraphicsStage(
     }
   };
 
-  const setAvatar = (
-    initialsId: string,
-    imgId: string,
-    name: string,
-    photoUrl: string | null,
-  ): void => {
-    const initials = el<HTMLSpanElement>(initialsId);
-    const img = el<HTMLImageElement>(imgId);
-    initials.textContent = initialsFromName(name);
-    if (photoUrl) {
-      img.onload = () => {
-        img.hidden = false;
-        initials.hidden = true;
-      };
-      img.onerror = () => {
-        img.hidden = true;
-        initials.hidden = false;
-        img.removeAttribute('src');
-      };
-      if (img.getAttribute('src') !== photoUrl) {
-        img.hidden = true;
-        initials.hidden = false;
-        img.src = photoUrl;
-      }
-    } else {
-      img.hidden = true;
-      initials.hidden = false;
-      img.removeAttribute('src');
-    }
-  };
-
   let scorecard: ScorecardResponse | null = null;
   let matchCtx: MatchContext | null = null;
   let ballType: BallType = 'TENNIS';
   let activeKind: OverlayKind | null = null;
   let activePlayerId: string | null = null;
-  let careerToken = 0;
-  const careerCache = new Map<string, BroadcastPlayerStatsView | null>();
   const batsmanCareer = mountBatsmanCareerCard(el('g-batsman-career'));
   const tossResult = mountTossResultCard(el('g-toss-result'));
 
@@ -410,25 +375,6 @@ export function createGraphicsStage(
     return true;
   };
 
-  const loadCareer = async (
-    playerId: string,
-  ): Promise<BroadcastPlayerStatsView | null> => {
-    if (!isUuid(playerId)) {
-      return null;
-    }
-    const key = `${playerId}:${ballType}`;
-    if (careerCache.has(key)) {
-      return careerCache.get(key) ?? null;
-    }
-    const stats = await fetchBroadcastPlayerStats(
-      options.apiBase,
-      playerId,
-      ballType,
-    );
-    careerCache.set(key, stats);
-    return stats;
-  };
-
   const resolveBatsmanId = (
     preferred: string | null | undefined,
   ): string | null => {
@@ -480,55 +426,29 @@ export function createGraphicsStage(
   };
 
   const fillBowlerMatch = (playerId: string): void => {
-    if (!scorecard) {
-      return;
+    try {
+      if (!scorecard) {
+        return;
+      }
+      const innings = resolveActiveInnings(scorecard);
+      const bowler = innings?.bowlers.find((b) => b.playerId === playerId);
+      const full = playerName(scorecard.display, playerId);
+      setText('bowl-name', full === '—' ? '—' : full);
+      setText('bowl-overs', bowler?.oversText?.trim() || '0.0');
+      setText('bowl-maidens', String(bowler?.maidens ?? 0));
+      setText('bowl-dots', String(bowler?.dotBalls ?? 0));
+      setText('bowl-wickets', String(bowler?.wickets ?? 0));
+      setText('bowl-runs', String(bowler?.runsConceded ?? 0));
+      const economy =
+        bowler && Number.isFinite(bowler.economy)
+          ? bowler.economy
+          : bowler && bowler.legalBalls > 0
+            ? (bowler.runsConceded / (bowler.legalBalls / 6))
+            : 0;
+      setText('bowl-economy', formatStat(economy, 2));
+    } catch (err) {
+      console.warn('[graphics] fill bowler failed', err);
     }
-    const innings = resolveActiveInnings(scorecard);
-    const bowler = innings?.bowlers.find((b) => b.playerId === playerId);
-    const full = playerName(scorecard.display, playerId);
-    setText('bowl-name', shortName(full));
-    if (bowler) {
-      setText(
-        'bowl-match',
-        `${bowler.oversText}-${bowler.runsConceded}-${bowler.wickets}`,
-      );
-    } else {
-      setText('bowl-match', '0-0-0');
-    }
-    setAvatar('bowl-initials', 'bowl-img', full, null);
-  };
-
-  const applyCareerToBowler = (
-    stats: BroadcastPlayerStatsView | null,
-  ): void => {
-    if (stats) {
-      setText('bowl-wkts', String(stats.wickets));
-      setText('bowl-best', stats.bestBowling?.trim() || '—');
-      setText('bowl-mat', String(stats.matches));
-      setText('bowl-runs', String(stats.runs));
-      const full = `${stats.firstName} ${stats.lastName}`.trim();
-      setAvatar('bowl-initials', 'bowl-img', full || '—', stats.profilePhotoUrl);
-    } else {
-      setText('bowl-wkts', '—');
-      setText('bowl-best', '—');
-      setText('bowl-mat', '—');
-      setText('bowl-runs', '—');
-    }
-  };
-
-  const showBowler = async (playerId: string): Promise<void> => {
-    fillBowlerMatch(playerId);
-    applyCareerToBowler(null);
-    const token = ++careerToken;
-    const stats = await loadCareer(playerId);
-    if (
-      token !== careerToken ||
-      activeKind !== 'bowler' ||
-      activePlayerId !== playerId
-    ) {
-      return;
-    }
-    applyCareerToBowler(stats);
   };
 
   const showBatsmanCareer = async (playerId: string): Promise<void> => {
@@ -666,7 +586,7 @@ export function createGraphicsStage(
       fillBatsmanMatch(playerId);
       showNode(graphicNode(kind));
     } else if (kind === 'bowler' && playerId) {
-      void showBowler(playerId);
+      fillBowlerMatch(playerId);
       showNode(graphicNode(kind));
     } else if (kind === 'batsman_career' && playerId) {
       void showBatsmanCareer(playerId);
@@ -702,7 +622,6 @@ export function createGraphicsStage(
     },
     setBallType(next) {
       ballType = next;
-      careerCache.clear();
     },
     hideAll: hideAllGraphics,
     isOnAir: () =>

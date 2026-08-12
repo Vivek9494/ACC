@@ -80,12 +80,13 @@ export interface BatterCard {
 
 export interface BowlerCard {
   playerId: string;
+  legalBalls: number;
   oversText: string;
   runsConceded: number;
   wickets: number;
-  maidens?: number;
-  economy?: number;
-  legalBalls?: number;
+  maidens: number;
+  dotBalls: number;
+  economy: number;
 }
 
 export interface FallOfWicket {

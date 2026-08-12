@@ -251,10 +251,16 @@ function start(): void {
     }
     const innings = resolveActiveInnings(scorecard);
     const bowler = innings?.bowlers.find((b) => b.playerId === playerId);
-    const figs = bowler
-      ? `${bowler.oversText}-${bowler.runsConceded}-${bowler.wickets}`
-      : '0-0-0';
-    return `${nameOf(playerId)} · ${figs}`;
+    const overs = bowler?.oversText?.trim() || '0.0';
+    const maidens = bowler?.maidens ?? 0;
+    const dots = bowler?.dotBalls ?? 0;
+    const wickets = bowler?.wickets ?? 0;
+    const runs = bowler?.runsConceded ?? 0;
+    const economy =
+      bowler && Number.isFinite(bowler.economy)
+        ? bowler.economy
+        : 0;
+    return `${nameOf(playerId)} · ${overs} ov · ${maidens} M · ${dots} D · ${wickets} W · ${runs} R · Eco ${formatStat(economy, 2)}`;
   }
 
   function formatCareerPreview(stats: BroadcastPlayerStatsView): string {
