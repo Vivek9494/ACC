@@ -85,6 +85,7 @@ Same Netlify site / origin as the score strip:
 
 **V1 graphics (manual):** partnership, fall of wicket, batsman card, bowler card (this match), **bowler career stats**, **batsman career stats**, innings break. **Toss** and **Runs to win** are strip-only (replace CRR | overs remaining on the score bar).
 
+- **Single OBS source (recommended):** root `/?matchId=…` renders the score strip **and** full-screen graphics via a shared `graphics-stage` layer (centered above the strip). `graphics.html` remains available and uses the same module.
 - Live data from `/live` + scorecard (partnership / FOW / innings / this-match figures).
 - **In-play batsman card:** this-innings only (full name + runs*(balls); Dot Balls / 2s / 4s / 6s / SR). No career/broadcast-stats fetch. Dot balls derived as `balls − ones − twos − threes − fours − sixes`.
 - Career photo + summary via `GET /broadcast/players/:userId/stats?ballType=LEATHER|TENNIS` (includes batting innings/30s/50s/HS context, bowling average, economy, and underlying bowling totals for live merge) — used by career cards only.
@@ -92,7 +93,7 @@ Same Netlify site / origin as the score strip:
 - **Toss (strip):** Show/Hide replaces the CRR row with “X won the toss and chose to bat/bowl”.
 - **Runs to win (strip):** Show/Hide replaces the CRR row with “NEED X OFF Y” (updates live while on).
 - **Bowler Career Stats:** shown on the **score strip page** (`/?matchId=…`) as a bottom navy/purple bar (Matches / Wickets / Average / Economy / Best). Figures **include the current match live** (career totals + this-match bowling, recomputed from underlying runs/balls/wickets). Replaces the strip while on air; strip returns on Hide. Show disabled until career bowling stats exist for the match ball type.
-- **Batsman Career Stats:** full-screen card on the **root strip page** (`/?matchId=…`) and `graphics.html` via shared `batsman-career-card` module (photo, LEATHER/TENNIS CAREER header, innings / runs / avg / SR / 30s / 50s, highest score + optional opponent/venue). On the root page it sits **centered above the strip** (strip keeps updating underneath). Graphics fetch/render is **isolated** (try/catch; failures clear the card silently — strip never blanks). Missing fields omit their row. Uses the **match ball type only** (no operator toggle). 30s = scores 30–49; 50s = 50–99 (same as app Stats). Independent of the in-play batsman card. Show disabled until career batting stats exist for that ball type.
+- **Batsman Career Stats:** full-screen card on the **root strip page** and `graphics.html` via the shared graphics stage (photo, LEATHER/TENNIS CAREER header, innings / runs / avg / SR / 30s / 50s, highest score + optional opponent/venue). Centered above the strip; strip keeps updating. Graphics fetch/render is **isolated** (try/catch). Uses the **match ball type only**. Independent of the in-play batsman card. Show disabled until career batting stats exist for that ball type.
 
 **Control panel (operator):** sticky on-air dock + one-tap **Take off air**; section highlight when that graphic is live; live previews; Show disabled until data is ready; batsman/bowler pickers grouped (crease / this innings / all).
 

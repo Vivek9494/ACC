@@ -1,6 +1,5 @@
 import { io, type Socket } from 'socket.io-client';
 
-import { mountBatsmanCareerCard } from './batsman-career-card';
 import {
   fetchBroadcastPlayerStats,
   fetchMatchBallType,
@@ -12,6 +11,7 @@ import {
   formatStat,
   hasBowlerCareerStats,
 } from './graphics-format';
+import { createGraphicsStage, isStripOwnedKind } from './graphics-stage';
 import './style.css';
 import {
   LIVE_NAMESPACE,
@@ -309,32 +309,12 @@ function start(): void {
   let careerBase: BroadcastPlayerStatsView | null = null;
   let careerToken = 0;
   let socket: Socket | null = null;
-  const batsmanCareer = mountBatsmanCareerCard(el('batsman-career-host'));
+  const graphicsStage = createGraphicsStage(el('graphics-stage'), {
+    apiBase,
+    injectMarkup: true,
+  });
 
   const careerWrap = (): HTMLDivElement => el<HTMLDivElement>('career-wrap');
-
-  const hideBatsmanCareerCard = (): void => {
-    try {
-      batsmanCareer.hide();
-    } catch (err) {
-      console.warn('[overlay graphics] hide batsman career failed', err);
-    }
-  };
-
-  const showBatsmanCareerCard = async (playerId: string): Promise<void> => {
-    try {
-      const placeholderName =
-        latest?.display.players[playerId]?.trim() || undefined;
-      await batsmanCareer.show(playerId, {
-        apiBase,
-        ballType,
-        placeholderName,
-      });
-    } catch (err) {
-      console.warn('[overlay graphics] show batsman career failed', err);
-      hideBatsmanCareerCard();
-    }
-  };
 
   const paintCareerNumbers = (): void => {
     if (!careerOnAir || !careerPlayerId || !careerBase) {
@@ -358,6 +338,7 @@ function start(): void {
 
   const showCareerCard = async (playerId: string): Promise<void> => {
     try {
+      graphicsStage.hideAll();
       const token = ++careerToken;
       const stats = await fetchBroadcastPlayerStats(apiBase, playerId, ballType);
       if (token !== careerToken) {
@@ -412,11 +393,13 @@ function start(): void {
       fetchMatchBallType(apiBase, matchId),
     ]);
     ballType = bt;
+    graphicsStage.setBallType(bt);
     if (ctx) {
       matchCtx = ctx;
     }
     if (seed) {
       latest = seed;
+      graphicsStage.setScorecard(seed);
     }
     paint();
   })();
@@ -469,6 +452,7 @@ function start(): void {
       return;
     }
     latest = frame.state;
+    graphicsStage.setScorecard(frame.state);
     paint();
   });
 
@@ -480,13 +464,13 @@ function start(): void {
       if (cmd.action === 'hide_all') {
         crrMode = 'default';
         hideCareerCard();
-        hideBatsmanCareerCard();
+        graphicsStage.hideAll();
         paint();
         return;
       }
       if (cmd.graphic === 'bowler_career') {
         if (cmd.action === 'show') {
-          hideBatsmanCareerCard();
+          graphicsStage.hideAll();
           const playerId = cmd.payload?.playerId?.trim() || null;
           if (playerId) {
             void showCareerCard(playerId);
@@ -496,39 +480,6 @@ function start(): void {
           paint();
         }
         return;
-      }
-      if (cmd.graphic === 'batsman_career') {
-        if (cmd.action === 'show') {
-          if (careerOnAir) {
-            hideCareerCard();
-            paint();
-          }
-          const playerId = cmd.payload?.playerId?.trim() || null;
-          if (playerId) {
-            void showBatsmanCareerCard(playerId);
-          }
-        } else if (cmd.action === 'hide') {
-          hideBatsmanCareerCard();
-        }
-        return;
-      }
-      // Another full-screen graphic taking air → restore strip if career was up.
-      if (
-        cmd.action === 'show' &&
-        cmd.graphic &&
-        cmd.graphic !== 'toss' &&
-        cmd.graphic !== 'chase' &&
-        careerOnAir
-      ) {
-        hideCareerCard();
-      }
-      if (
-        cmd.action === 'show' &&
-        cmd.graphic &&
-        cmd.graphic !== 'toss' &&
-        cmd.graphic !== 'chase'
-      ) {
-        hideBatsmanCareerCard();
       }
       if (cmd.graphic === 'toss') {
         if (cmd.action === 'show') {
@@ -546,12 +497,21 @@ function start(): void {
           crrMode = 'default';
         }
         paint();
+        return;
+      }
+      // Full-screen stage graphics (batsman, FOW, partnership, …).
+      if (cmd.graphic && !isStripOwnedKind(cmd.graphic)) {
+        if (cmd.action === 'show' && careerOnAir) {
+          hideCareerCard();
+          paint();
+        }
+        graphicsStage.applyCommand(cmd);
       }
     } catch (err) {
       // Graphics must never interrupt the strip's live:state loop.
       console.warn('[overlay graphics] command handler failed', err);
       try {
-        hideBatsmanCareerCard();
+        graphicsStage.hideAll();
       } catch {
         /* ignore */
       }

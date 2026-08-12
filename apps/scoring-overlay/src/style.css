@@ -69,6 +69,19 @@ body {
     opacity 0.28s ease,
     transform 0.28s ease;
   pointer-events: none;
+  z-index: 5;
+}
+
+/* Full-screen graphics (batsman, FOW, …) — above strip, never blocks input */
+.graphics-stage-layer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 150px;
+  pointer-events: none;
+  z-index: 20;
+  overflow: hidden;
 }
 
 .career-wrap.is-visible {
