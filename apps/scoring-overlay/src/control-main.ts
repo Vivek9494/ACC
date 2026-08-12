@@ -496,7 +496,48 @@ function start(): void {
     const batterIds = (innings?.batters ?? []).map((b) => b.playerId);
     const bowlingIds = (innings?.bowlers ?? []).map((b) => b.playerId);
 
-    const fillBatsmanSelect = (
+    /** In-play batsman card: crease pair only (striker + non-striker). */
+    const fillCreaseBatsmanSelect = (
+      select: HTMLSelectElement,
+      prev: string,
+    ): void => {
+      select.innerHTML = '';
+      const seen = new Set<string>();
+      for (const id of creaseIds) {
+        if (seen.has(id)) {
+          continue;
+        }
+        seen.add(id);
+        const row = innings?.batters.find((b) => b.playerId === id);
+        const figs = row ? `${row.runs} (${row.balls})` : '';
+        const role =
+          id === innings?.currentStrikerId
+            ? 'Striker'
+            : id === innings?.currentNonStrikerId
+              ? 'Non-striker'
+              : null;
+        const label = [
+          nameOf(id),
+          figs,
+          role,
+        ]
+          .filter(Boolean)
+          .join(' · ');
+        appendOption(select, id, label || nameOf(id));
+      }
+      if (select.options.length === 0) {
+        appendOption(select, '', 'Waiting for batsmen…');
+      }
+      if ([...select.options].some((o) => o.value === prev && prev !== '')) {
+        select.value = prev;
+      } else if (innings?.currentStrikerId) {
+        select.value = innings.currentStrikerId;
+      } else if (select.options[0]) {
+        select.selectedIndex = 0;
+      }
+    };
+
+    const fillBatsmanCareerSelect = (
       select: HTMLSelectElement,
       prev: string,
     ): void => {
@@ -572,10 +613,52 @@ function start(): void {
       }
     };
 
-    fillBatsmanSelect(pickBatsman, batPrev);
-    fillBatsmanSelect(pickBatsmanCareer, batCareerPrev);
+    fillCreaseBatsmanSelect(pickBatsman, batPrev);
+    fillBatsmanCareerSelect(pickBatsmanCareer, batCareerPrev);
 
-    const fillBowlerSelect = (
+    /** In-play bowler card: anyone who has bowled this innings (bowlers[]). */
+    const fillInPlayBowlerSelect = (
+      select: HTMLSelectElement,
+      prev: string,
+    ): void => {
+      select.innerHTML = '';
+      const seen = new Set<string>();
+      const orderedIds: string[] = [];
+      if (innings?.currentBowlerId) {
+        orderedIds.push(innings.currentBowlerId);
+      }
+      for (const id of bowlingIds) {
+        if (!orderedIds.includes(id)) {
+          orderedIds.push(id);
+        }
+      }
+      for (const id of orderedIds) {
+        if (seen.has(id)) {
+          continue;
+        }
+        seen.add(id);
+        const row = innings?.bowlers.find((b) => b.playerId === id);
+        const figs = row
+          ? `${row.oversText}-${row.runsConceded}-${row.wickets}`
+          : '';
+        const role =
+          id === innings?.currentBowlerId ? 'Current' : null;
+        const label = [nameOf(id), figs, role].filter(Boolean).join(' · ');
+        appendOption(select, id, label || nameOf(id));
+      }
+      if (select.options.length === 0) {
+        appendOption(select, '', 'No bowlers yet…');
+      }
+      if ([...select.options].some((o) => o.value === prev && prev !== '')) {
+        select.value = prev;
+      } else if (innings?.currentBowlerId) {
+        select.value = innings.currentBowlerId;
+      } else if (select.options[0]) {
+        select.selectedIndex = 0;
+      }
+    };
+
+    const fillBowlerCareerSelect = (
       select: HTMLSelectElement,
       prev: string,
     ): void => {
@@ -650,8 +733,8 @@ function start(): void {
       }
     };
 
-    fillBowlerSelect(pickBowler, bowlPrev);
-    fillBowlerSelect(pickBowlerCareer, careerPrev);
+    fillInPlayBowlerSelect(pickBowler, bowlPrev);
+    fillBowlerCareerSelect(pickBowlerCareer, careerPrev);
   }
 
   function applyScorecard(card: ScorecardResponse | null): void {
