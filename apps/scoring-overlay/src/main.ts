@@ -303,7 +303,7 @@ function start(): void {
   let status: ConnectionStatus = 'connecting';
   let crrMode: StripCrrMode = 'default';
   let ballType: BallType = 'TENNIS';
-  /** Career card replaces the strip on this same page. */
+  /** Career card on air (strip stays visible underneath). */
   let careerOnAir = false;
   let careerPlayerId: string | null = null;
   let careerBase: BroadcastPlayerStatsView | null = null;
@@ -365,19 +365,10 @@ function start(): void {
   };
 
   const paint = (): void => {
-    if (careerOnAir) {
-      const wrap = document.getElementById('strip-wrap');
-      const idle = document.getElementById('idle');
-      if (wrap) {
-        wrap.hidden = true;
-      }
-      if (idle) {
-        idle.hidden = true;
-      }
-      paintCareerNumbers();
-      return;
-    }
     render(latest, matchCtx, status, !matchId, crrMode);
+    if (careerOnAir) {
+      paintCareerNumbers();
+    }
   };
 
   paint();

@@ -60,23 +60,27 @@ body {
   right: 0;
   bottom: var(--strip-bottom-inset);
   padding: 0 28px;
+  z-index: 30;
 }
 
+/* Centered bowler career card — strip stays visible below. */
 .career-wrap {
   position: absolute;
   left: 0;
   right: 0;
-  bottom: var(--strip-bottom-inset);
-  padding: 0 28px;
+  top: 0;
+  bottom: var(--graphics-bottom-offset);
+  padding: 24px;
   display: flex;
+  align-items: center;
   justify-content: center;
   opacity: 0;
-  transform: translateY(10px);
+  transform: scale(0.94);
   transition:
     opacity 0.28s ease,
     transform 0.28s ease;
   pointer-events: none;
-  z-index: 5;
+  z-index: 15;
 }
 
 /* Full-screen graphics (batsman, FOW, …) — above strip, never blocks input */
@@ -113,7 +117,7 @@ body {
 
 .career-wrap.is-visible {
   opacity: 1;
-  transform: translateY(0);
+  transform: scale(1);
 }
 
 .career-card {
@@ -607,10 +611,14 @@ body {
     --strip-bottom-inset: 16px;
   }
 
-  .strip-wrap,
-  .career-wrap {
+  .strip-wrap {
     padding: 0 10px;
     bottom: var(--strip-bottom-inset);
+  }
+
+  .career-wrap {
+    padding: 16px 10px;
+    bottom: var(--graphics-bottom-offset);
   }
 
   .career-card {

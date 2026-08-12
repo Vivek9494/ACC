@@ -114,6 +114,56 @@ export async function fetchMatchContext(
   }
 }
 
+/** Public tournament team roster (fielding-side career picker). */
+export interface TeamRosterPlayer {
+  userId: string;
+  firstName: string;
+  lastName: string;
+}
+
+export async function fetchTeamRoster(
+  apiBase: string,
+  tournamentId: string,
+  teamId: string,
+): Promise<TeamRosterPlayer[]> {
+  try {
+    const tid = tournamentId.trim();
+    const id = teamId.trim();
+    if (!tid || !id) {
+      return [];
+    }
+    const res = await fetch(
+      `${apiBase}/tournaments/${encodeURIComponent(tid)}/teams/${encodeURIComponent(id)}`,
+      { method: 'GET', headers: { Accept: 'application/json' } },
+    );
+    if (!res.ok) {
+      return [];
+    }
+    const body = (await res.json()) as {
+      players?: Array<{
+        userId?: string;
+        firstName?: string;
+        lastName?: string;
+      }>;
+    };
+    const out: TeamRosterPlayer[] = [];
+    for (const p of body.players ?? []) {
+      const userId = p.userId?.trim();
+      if (!userId) {
+        continue;
+      }
+      out.push({
+        userId,
+        firstName: p.firstName?.trim() ?? '',
+        lastName: p.lastName?.trim() ?? '',
+      });
+    }
+    return out;
+  } catch {
+    return [];
+  }
+}
+
 export async function fetchBroadcastPlayerStats(
   apiBase: string,
   userId: string,

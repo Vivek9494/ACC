@@ -4,6 +4,8 @@ import {
   fetchMatchBallType,
   fetchMatchContext,
   fetchScorecard,
+  fetchTeamRoster,
+  type TeamRosterPlayer,
 } from './broadcast-fetch';
 import {
   battingTeamLabel,
@@ -116,6 +118,10 @@ function start(): void {
   const careerCache = new Map<string, BroadcastPlayerStatsView | null>();
   let bowlerCareerPreviewToken = 0;
   let batsmanCareerPreviewToken = 0;
+  /** tournament teamId → full roster (bowling-side career picker). */
+  const rosterByTeamId = new Map<string, TeamRosterPlayer[]>();
+  const rosterLoading = new Set<string>();
+  let rosterFetchToken = 0;
 
   function send(cmd: Omit<GraphicsCommandMessage, 'matchId'>): void {
     if (!socket) {
@@ -480,20 +486,114 @@ function start(): void {
     }
   }
 
+  function rosterDisplayName(p: TeamRosterPlayer): string {
+    const fromScore = scorecard
+      ? playerName(scorecard.display, p.userId)
+      : '—';
+    if (fromScore !== '—') {
+      return shortName(fromScore);
+    }
+    const full = `${p.firstName} ${p.lastName}`.trim();
+    return full ? shortName(full) : '—';
+  }
+
+  function requestTeamRoster(teamId: string): void {
+    const tournamentId = matchCtx?.tournamentId?.trim() ?? '';
+    if (!tournamentId || rosterByTeamId.has(teamId) || rosterLoading.has(teamId)) {
+      return;
+    }
+    rosterLoading.add(teamId);
+    const token = ++rosterFetchToken;
+    void fetchTeamRoster(apiBase, tournamentId, teamId).then((players) => {
+      rosterLoading.delete(teamId);
+      if (token !== rosterFetchToken) {
+        return;
+      }
+      rosterByTeamId.set(teamId, players);
+      rebuildPickers(scorecard);
+      void refreshBowlerCareerPreview();
+      void refreshBatsmanCareerPreview();
+    });
+  }
+
+  /**
+   * Shared team-roster career picker (bowling side or batting side).
+   * `preferredPlayerId` is listed first and tagged when present on the roster.
+   */
+  function fillTeamCareerSelect(
+    select: HTMLSelectElement,
+    prev: string,
+    teamId: string | null,
+    preferredPlayerId: string | null,
+    labels: {
+      waiting: string;
+      loading: string;
+      empty: string;
+      preferredRole: string;
+    },
+  ): void {
+    select.innerHTML = '';
+    if (!teamId) {
+      appendOption(select, '', labels.waiting);
+      return;
+    }
+    const roster = rosterByTeamId.get(teamId);
+    if (!roster) {
+      appendOption(select, '', labels.loading);
+      requestTeamRoster(teamId);
+      return;
+    }
+    if (roster.length === 0) {
+      appendOption(select, '', labels.empty);
+      return;
+    }
+
+    const sorted = [...roster].sort((a, b) =>
+      rosterDisplayName(a).localeCompare(rosterDisplayName(b)),
+    );
+    const ordered: TeamRosterPlayer[] = [];
+    if (preferredPlayerId) {
+      const cur = sorted.find((p) => p.userId === preferredPlayerId);
+      if (cur) {
+        ordered.push(cur);
+      }
+    }
+    for (const p of sorted) {
+      if (!ordered.some((o) => o.userId === p.userId)) {
+        ordered.push(p);
+      }
+    }
+
+    for (const p of ordered) {
+      const role =
+        p.userId === preferredPlayerId ? labels.preferredRole : null;
+      const label = [rosterDisplayName(p), role].filter(Boolean).join(' · ');
+      appendOption(select, p.userId, label);
+    }
+
+    if ([...select.options].some((o) => o.value === prev && prev !== '')) {
+      select.value = prev;
+    } else if (
+      preferredPlayerId &&
+      [...select.options].some((o) => o.value === preferredPlayerId)
+    ) {
+      select.value = preferredPlayerId;
+    } else if (select.options[0]) {
+      select.selectedIndex = 0;
+    }
+  }
+
   function rebuildPickers(card: ScorecardResponse | null): void {
     const batPrev = pickBatsman.value;
     const batCareerPrev = pickBatsmanCareer.value;
     const bowlPrev = pickBowler.value;
     const careerPrev = pickBowlerCareer.value;
     const innings = card ? resolveActiveInnings(card) : null;
-    const players = card?.display.players ?? {};
 
     const creaseIds = [
       innings?.currentStrikerId,
       innings?.currentNonStrikerId,
     ].filter((id): id is string => Boolean(id));
-    const bowlerIds = innings?.currentBowlerId ? [innings.currentBowlerId] : [];
-    const batterIds = (innings?.batters ?? []).map((b) => b.playerId);
     const bowlingIds = (innings?.bowlers ?? []).map((b) => b.playerId);
 
     /** In-play batsman card: crease pair only (striker + non-striker). */
@@ -537,84 +637,19 @@ function start(): void {
       }
     };
 
-    const fillBatsmanCareerSelect = (
-      select: HTMLSelectElement,
-      prev: string,
-    ): void => {
-      const used = new Set<string>();
-      select.innerHTML = '';
-      appendOption(
-        select,
-        '',
-        innings?.currentStrikerId
-          ? `Current striker — ${nameOf(innings.currentStrikerId)}`
-          : 'Current striker',
-      );
-
-      if (creaseIds.length > 0) {
-        const group = document.createElement('optgroup');
-        group.label = 'At the crease';
-        for (const id of creaseIds) {
-          if (used.has(id)) {
-            continue;
-          }
-          used.add(id);
-          const row = innings?.batters.find((b) => b.playerId === id);
-          const figs = row ? `${row.runs} (${row.balls})` : '';
-          const opt = document.createElement('option');
-          opt.value = id;
-          opt.textContent = figs ? `${nameOf(id)} · ${figs}` : nameOf(id);
-          group.appendChild(opt);
-        }
-        if (group.childElementCount > 0) {
-          select.appendChild(group);
-        }
-      }
-
-      if (batterIds.length > 0) {
-        const group = document.createElement('optgroup');
-        group.label = 'This innings';
-        for (const id of batterIds) {
-          if (used.has(id)) {
-            continue;
-          }
-          used.add(id);
-          const row = innings?.batters.find((b) => b.playerId === id);
-          const figs = row ? `${row.runs} (${row.balls})` : '';
-          const opt = document.createElement('option');
-          opt.value = id;
-          opt.textContent = figs ? `${nameOf(id)} · ${figs}` : nameOf(id);
-          group.appendChild(opt);
-        }
-        if (group.childElementCount > 0) {
-          select.appendChild(group);
-        }
-      }
-
-      const squadGroup = document.createElement('optgroup');
-      squadGroup.label = 'All players';
-      for (const id of Object.keys(players).sort((a, b) =>
-        (players[a] ?? '').localeCompare(players[b] ?? ''),
-      )) {
-        if (used.has(id)) {
-          continue;
-        }
-        const opt = document.createElement('option');
-        opt.value = id;
-        opt.textContent = nameOf(id);
-        squadGroup.appendChild(opt);
-      }
-      if (squadGroup.childElementCount > 0) {
-        select.appendChild(squadGroup);
-      }
-
-      if ([...select.options].some((o) => o.value === prev)) {
-        select.value = prev;
-      }
-    };
-
     fillCreaseBatsmanSelect(pickBatsman, batPrev);
-    fillBatsmanCareerSelect(pickBatsmanCareer, batCareerPrev);
+    fillTeamCareerSelect(
+      pickBatsmanCareer,
+      batCareerPrev,
+      innings?.battingTeamId ?? null,
+      innings?.currentStrikerId ?? null,
+      {
+        waiting: 'Waiting for batting team…',
+        loading: 'Loading batting team…',
+        empty: 'No players on batting team…',
+        preferredRole: 'Striker',
+      },
+    );
 
     /** In-play bowler card: anyone who has bowled this innings (bowlers[]). */
     const fillInPlayBowlerSelect = (
@@ -658,83 +693,19 @@ function start(): void {
       }
     };
 
-    const fillBowlerCareerSelect = (
-      select: HTMLSelectElement,
-      prev: string,
-    ): void => {
-      const usedBowl = new Set<string>();
-      select.innerHTML = '';
-      appendOption(
-        select,
-        '',
-        innings?.currentBowlerId
-          ? `Current bowler — ${nameOf(innings.currentBowlerId)}`
-          : 'Current bowler',
-      );
-
-      if (bowlerIds.length > 0) {
-        const group = document.createElement('optgroup');
-        group.label = 'Current';
-        for (const id of bowlerIds) {
-          usedBowl.add(id);
-          const row = innings?.bowlers.find((b) => b.playerId === id);
-          const figs = row
-            ? `${row.oversText}-${row.runsConceded}-${row.wickets}`
-            : '';
-          const opt = document.createElement('option');
-          opt.value = id;
-          opt.textContent = figs ? `${nameOf(id)} · ${figs}` : nameOf(id);
-          group.appendChild(opt);
-        }
-        select.appendChild(group);
-      }
-
-      if (bowlingIds.length > 0) {
-        const group = document.createElement('optgroup');
-        group.label = 'This innings';
-        for (const id of bowlingIds) {
-          if (usedBowl.has(id)) {
-            continue;
-          }
-          usedBowl.add(id);
-          const row = innings?.bowlers.find((b) => b.playerId === id);
-          const figs = row
-            ? `${row.oversText}-${row.runsConceded}-${row.wickets}`
-            : '';
-          const opt = document.createElement('option');
-          opt.value = id;
-          opt.textContent = figs ? `${nameOf(id)} · ${figs}` : nameOf(id);
-          group.appendChild(opt);
-        }
-        if (group.childElementCount > 0) {
-          select.appendChild(group);
-        }
-      }
-
-      const allGroup = document.createElement('optgroup');
-      allGroup.label = 'All players';
-      for (const id of Object.keys(players).sort((a, b) =>
-        (players[a] ?? '').localeCompare(players[b] ?? ''),
-      )) {
-        if (usedBowl.has(id)) {
-          continue;
-        }
-        const opt = document.createElement('option');
-        opt.value = id;
-        opt.textContent = nameOf(id);
-        allGroup.appendChild(opt);
-      }
-      if (allGroup.childElementCount > 0) {
-        select.appendChild(allGroup);
-      }
-
-      if ([...select.options].some((o) => o.value === prev)) {
-        select.value = prev;
-      }
-    };
-
     fillInPlayBowlerSelect(pickBowler, bowlPrev);
-    fillBowlerCareerSelect(pickBowlerCareer, careerPrev);
+    fillTeamCareerSelect(
+      pickBowlerCareer,
+      careerPrev,
+      innings?.bowlingTeamId ?? null,
+      innings?.currentBowlerId ?? null,
+      {
+        waiting: 'Waiting for bowling team…',
+        loading: 'Loading bowling team…',
+        empty: 'No players on bowling team…',
+        preferredRole: 'Current',
+      },
+    );
   }
 
   function applyScorecard(card: ScorecardResponse | null): void {
