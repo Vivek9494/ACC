@@ -396,6 +396,7 @@ function start(): void {
     graphicsStage.setBallType(bt);
     if (ctx) {
       matchCtx = ctx;
+      graphicsStage.setMatchContext(ctx);
     }
     if (seed) {
       latest = seed;

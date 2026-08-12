@@ -1,0 +1,165 @@
+/* Centered TOSS RESULT card (root strip + graphics.html). */
+
+.toss-result-graphic {
+  /* Positioned by .graphic / .graphic-centered; panel styles below. */
+}
+
+.panel-toss-result {
+  min-width: min(92vw, 720px);
+  max-width: min(94vw, 900px);
+  border-radius: 8px;
+  overflow: hidden;
+  background: #294c74;
+  color: #e7e1db;
+  box-shadow: 0 14px 44px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+}
+
+.panel-toss-result .panel-accent {
+  height: 6px;
+  background: #ff6b00;
+}
+
+.tr-body {
+  padding: 22px 32px 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+}
+
+.tr-eyebrow {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #ff6b00;
+}
+
+.tr-teams {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  width: 100%;
+}
+
+.tr-team {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  flex: 1 1 0;
+}
+
+.tr-team-a {
+  justify-content: flex-end;
+}
+
+.tr-team-b {
+  justify-content: flex-start;
+}
+
+.tr-logo {
+  position: relative;
+  flex: 0 0 56px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #1f3a58;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  box-shadow: 0 0 0 2px rgba(231, 225, 219, 0.35);
+}
+
+.tr-logo-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.tr-initials {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #e7e1db;
+}
+
+.tr-name {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+  color: #e7e1db;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.tr-vs {
+  margin: 0;
+  flex: 0 0 auto;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(231, 225, 219, 0.65);
+}
+
+.tr-result {
+  margin: 4px 0 0;
+  max-width: 36em;
+  text-align: center;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: #e7e1db;
+}
+
+.tr-winner,
+.tr-choice {
+  font-weight: 800;
+  color: #ff6b00;
+}
+
+.tr-choice {
+  letter-spacing: 0.06em;
+}
+
+@media (max-width: 720px) {
+  .tr-body {
+    padding: 18px 20px 22px;
+    gap: 14px;
+  }
+
+  .tr-teams {
+    gap: 12px;
+  }
+
+  .tr-logo {
+    flex-basis: 44px;
+    width: 44px;
+    height: 44px;
+  }
+
+  .tr-initials {
+    font-size: 14px;
+  }
+
+  .tr-name {
+    font-size: 16px;
+  }
+
+  .tr-result {
+    font-size: 16px;
+  }
+}

@@ -7,6 +7,13 @@
   --fox-pink: #ef3b6c;
   --fox-cyan: #1ec8e8;
   --fox-yellow: #f5d400;
+  /* Strip geometry — graphics cards clear strip top + gap */
+  --strip-bottom-inset: 28px;
+  --strip-height: 75px;
+  --graphics-above-strip-gap: 20px;
+  --graphics-bottom-offset: calc(
+    var(--strip-bottom-inset) + var(--strip-height) + var(--graphics-above-strip-gap)
+  );
 }
 
 * {
@@ -51,7 +58,7 @@ body {
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 28px;
+  bottom: var(--strip-bottom-inset);
   padding: 0 28px;
 }
 
@@ -59,7 +66,7 @@ body {
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 28px;
+  bottom: var(--strip-bottom-inset);
   padding: 0 28px;
   display: flex;
   justify-content: center;
@@ -75,13 +82,33 @@ body {
 /* Full-screen graphics (batsman, FOW, …) — above strip, never blocks input */
 .graphics-stage-layer {
   position: absolute;
-  left: 0;
-  right: 0;
-  top: 0;
-  bottom: 150px;
+  inset: 0;
   pointer-events: none;
   z-index: 20;
   overflow: hidden;
+}
+
+/* Root page: anchor cards just above the strip (not vertically centered). */
+.graphics-stage-layer .graphic {
+  top: auto;
+  bottom: var(--graphics-bottom-offset);
+  left: 50%;
+  transform: translate(-50%, 12px) scale(0.94);
+}
+
+.graphics-stage-layer .graphic.is-visible {
+  transform: translate(-50%, 0) scale(1);
+}
+
+/* Centered full-frame cards (toss result, batsman career) — not docked above strip. */
+.graphics-stage-layer .graphic.graphic-centered {
+  top: 42%;
+  bottom: auto;
+  transform: translate(-50%, -36%) scale(0.94);
+}
+
+.graphics-stage-layer .graphic.graphic-centered.is-visible {
+  transform: translate(-50%, -50%) scale(1);
 }
 
 .career-wrap.is-visible {
@@ -177,9 +204,9 @@ body {
   display: flex;
   align-items: stretch;
   gap: 4px;
-  height: 75px;
-  min-height: 75px;
-  max-height: 75px;
+  height: var(--strip-height);
+  min-height: var(--strip-height);
+  max-height: var(--strip-height);
   width: 100%;
   border-radius: 18px;
   background: var(--fox-bar);
@@ -576,10 +603,14 @@ body {
 }
 
 @media (max-width: 720px) {
+  :root {
+    --strip-bottom-inset: 16px;
+  }
+
   .strip-wrap,
   .career-wrap {
     padding: 0 10px;
-    bottom: 16px;
+    bottom: var(--strip-bottom-inset);
   }
 
   .career-card {

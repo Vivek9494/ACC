@@ -22,9 +22,14 @@ import {
   wicketOrdinal,
 } from './graphics-format';
 import type { GraphicsCommandMessage, GraphicsKind } from './live-client';
+import {
+  formatTossResultLine,
+  mountTossResultCard,
+} from './toss-result-card';
 import type {
   BallType,
   BroadcastPlayerStatsView,
+  MatchContext,
   ScorecardResponse,
 } from './types';
 
@@ -41,6 +46,7 @@ const GRAPHIC_IDS: Record<OverlayKind, string> = {
   batsman_career: 'g-batsman-career',
   bowler: 'g-bowler',
   innings_break: 'g-innings',
+  toss_result: 'g-toss-result',
   hello: 'g-hello',
 };
 
@@ -112,7 +118,9 @@ export function buildGraphicsStageMarkup(): string {
         </div>
       </div>
 
-      <div id="g-batsman-career" class="graphic batsman-career-graphic" hidden></div>
+      <div id="g-batsman-career" class="graphic graphic-centered batsman-career-graphic" hidden></div>
+
+      <div id="g-toss-result" class="graphic graphic-centered toss-result-graphic" hidden></div>
 
       <div id="g-bowler" class="graphic panel panel-card" hidden>
         <div class="panel-accent"></div>
@@ -179,6 +187,7 @@ export interface GraphicsStageOptions {
 
 export interface GraphicsStageController {
   setScorecard(card: ScorecardResponse | null): void;
+  setMatchContext(ctx: MatchContext | null): void;
   setBallType(ballType: BallType): void;
   applyCommand(cmd: GraphicsCommandMessage): void;
   hideAll(): void;
@@ -241,14 +250,19 @@ export function createGraphicsStage(
   };
 
   let scorecard: ScorecardResponse | null = null;
+  let matchCtx: MatchContext | null = null;
   let ballType: BallType = 'TENNIS';
   let activeKind: OverlayKind | null = null;
   let activePlayerId: string | null = null;
   let careerToken = 0;
   const careerCache = new Map<string, BroadcastPlayerStatsView | null>();
   const batsmanCareer = mountBatsmanCareerCard(el('g-batsman-career'));
+  const tossResult = mountTossResultCard(el('g-toss-result'));
 
   const graphicNode = (kind: OverlayKind): HTMLElement => el(GRAPHIC_IDS[kind]);
+
+  const isMountManaged = (kind: OverlayKind): boolean =>
+    kind === 'batsman_career' || kind === 'toss_result';
 
   const hideNode = (node: HTMLElement): void => {
     node.classList.remove('is-visible');
@@ -268,8 +282,9 @@ export function createGraphicsStage(
     activeKind = null;
     activePlayerId = null;
     batsmanCareer.hide();
+    tossResult.hide();
     for (const kind of Object.keys(GRAPHIC_IDS) as OverlayKind[]) {
-      if (kind === 'batsman_career') {
+      if (isMountManaged(kind)) {
         continue;
       }
       hideNode(graphicNode(kind));
@@ -288,7 +303,21 @@ export function createGraphicsStage(
       batsmanCareer.hide();
       return;
     }
+    if (kind === 'toss_result') {
+      tossResult.hide();
+      return;
+    }
     hideNode(graphicNode(kind));
+  };
+
+  const showTossResult = (): boolean => {
+    try {
+      return tossResult.show(matchCtx);
+    } catch (err) {
+      console.warn('[graphics] toss result failed', err);
+      tossResult.hide();
+      return false;
+    }
   };
 
   const nameOf = (id: string | null): string => {
@@ -578,6 +607,8 @@ export function createGraphicsStage(
         if (k !== 'hello') {
           if (k === 'batsman_career') {
             batsmanCareer.hide();
+          } else if (k === 'toss_result') {
+            tossResult.hide();
           } else {
             hideNode(graphicNode(k));
           }
@@ -607,6 +638,8 @@ export function createGraphicsStage(
     } else if (kind === 'batsman_career') {
       playerId = resolveBatsmanId(payload?.playerId);
       ok = playerId != null;
+    } else if (kind === 'toss_result') {
+      ok = formatTossResultLine(matchCtx) != null;
     }
 
     if (!ok) {
@@ -619,6 +652,8 @@ export function createGraphicsStage(
       }
       if (k === 'batsman_career') {
         batsmanCareer.hide();
+      } else if (k === 'toss_result') {
+        tossResult.hide();
       } else {
         hideNode(graphicNode(k));
       }
@@ -635,6 +670,11 @@ export function createGraphicsStage(
       showNode(graphicNode(kind));
     } else if (kind === 'batsman_career' && playerId) {
       void showBatsmanCareer(playerId);
+    } else if (kind === 'toss_result') {
+      if (!showTossResult()) {
+        activeKind = null;
+        activePlayerId = null;
+      }
     } else {
       showNode(graphicNode(kind));
     }
@@ -649,12 +689,24 @@ export function createGraphicsStage(
         console.warn('[graphics] refresh failed', err);
       }
     },
+    setMatchContext(ctx) {
+      matchCtx = ctx;
+      try {
+        if (activeKind === 'toss_result' && !showTossResult()) {
+          activeKind = null;
+          activePlayerId = null;
+        }
+      } catch (err) {
+        console.warn('[graphics] toss context refresh failed', err);
+      }
+    },
     setBallType(next) {
       ballType = next;
       careerCache.clear();
     },
     hideAll: hideAllGraphics,
-    isOnAir: () => activeKind != null || batsmanCareer.isOnAir(),
+    isOnAir: () =>
+      activeKind != null || batsmanCareer.isOnAir() || tossResult.isOnAir(),
     applyCommand(cmd) {
       try {
         if (cmd.action === 'hide_all') {

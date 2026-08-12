@@ -1,5 +1,6 @@
 import {
   fetchMatchBallType,
+  fetchMatchContext,
   fetchScorecard,
 } from './broadcast-fetch';
 import {
@@ -40,13 +41,15 @@ function start(): void {
   status.textContent = `Connecting to ${apiBase}…`;
 
   void (async () => {
-    const [seed, bt] = await Promise.all([
+    const [seed, ctx, bt] = await Promise.all([
       fetchScorecard(apiBase, matchId),
+      fetchMatchContext(apiBase, matchId),
       fetchMatchBallType(apiBase, matchId),
     ]);
     if (seed) {
       stage.setScorecard(seed);
     }
+    stage.setMatchContext(ctx);
     stage.setBallType(bt);
   })();
 

@@ -33,6 +33,7 @@ import type {
   ScorecardResponse,
 } from './types';
 import { formatRunsToWinLine, formatTossLine } from './view-model';
+import { formatTossResultLine } from './toss-result-card';
 import type { Socket } from 'socket.io-client';
 
 /** Full-screen OBS graphics (not strip-only toss/chase). */
@@ -44,6 +45,7 @@ const LABELS: Record<Exclude<GraphicsKind, 'hello' | 'toss' | 'chase'>, string> 
   bowler: 'Bowler',
   bowler_career: 'Bowler Career Stats',
   innings_break: 'Innings break',
+  toss_result: 'Toss Result',
 };
 
 const OPERATOR_KINDS = Object.keys(LABELS) as Array<keyof typeof LABELS>;
@@ -92,6 +94,7 @@ function start(): void {
   const btnShowBatsmanCareer = el<HTMLButtonElement>('btn-show-batsman-career');
   const btnShowInnings = el<HTMLButtonElement>('btn-show-innings');
   const btnShowToss = el<HTMLButtonElement>('btn-show-toss');
+  const btnShowTossResult = el<HTMLButtonElement>('btn-show-toss-result');
   const btnShowChase = el<HTMLButtonElement>('btn-show-chase');
 
   if (!matchId) {
@@ -269,6 +272,10 @@ function start(): void {
     return formatTossLine(matchCtx);
   }
 
+  function previewTossResult(): string | null {
+    return formatTossResultLine(matchCtx);
+  }
+
   function previewChase(): string | null {
     return formatRunsToWinLine(scorecard);
   }
@@ -309,6 +316,8 @@ function start(): void {
       }
       case 'innings_break':
         return previewInnings() ?? '';
+      case 'toss_result':
+        return previewTossResult() ?? '';
       default:
         return '';
     }
@@ -357,6 +366,11 @@ function start(): void {
     el<HTMLParagraphElement>('preview-toss').textContent =
       toss ?? 'Toss not recorded yet';
     setEnabled(btnShowToss, toss != null);
+
+    const tossResult = previewTossResult();
+    el<HTMLParagraphElement>('preview-toss-result').textContent =
+      tossResult ?? 'Toss not recorded yet';
+    setEnabled(btnShowTossResult, tossResult != null);
 
     const chase = previewChase();
     el<HTMLParagraphElement>('preview-chase').textContent =
@@ -717,6 +731,7 @@ function start(): void {
   bind('btn-show-partnership', 'btn-hide-partnership', 'partnership');
   bind('btn-show-fow', 'btn-hide-fow', 'fow');
   bind('btn-show-innings', 'btn-hide-innings', 'innings_break');
+  bind('btn-show-toss-result', 'btn-hide-toss-result', 'toss_result');
   bind('btn-show-batsman', 'btn-hide-batsman', 'batsman', () => {
     const playerId = pickBatsman.value.trim();
     return playerId ? { playerId } : undefined;
