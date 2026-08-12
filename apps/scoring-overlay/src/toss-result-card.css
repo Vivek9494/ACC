@@ -39,24 +39,24 @@
 
 .tr-teams {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  gap: 20px;
+  gap: 24px;
   width: 100%;
 }
 
 .tr-team {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 14px;
+  justify-content: flex-start;
+  gap: 10px;
   min-width: 0;
   flex: 1 1 0;
+  text-align: center;
 }
 
-.tr-team-a {
-  justify-content: flex-end;
-}
-
+.tr-team-a,
 .tr-team-b {
   justify-content: flex-start;
 }
@@ -92,7 +92,9 @@
 
 .tr-name {
   margin: 0;
-  font-size: 22px;
+  max-width: 11em;
+  width: 100%;
+  font-size: 20px;
   font-weight: 800;
   letter-spacing: 0.02em;
   line-height: 1.2;
@@ -108,11 +110,14 @@
 .tr-vs {
   margin: 0;
   flex: 0 0 auto;
+  /* Vertically center against the 56px logo row */
+  margin-top: 16px;
   font-size: 16px;
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: rgba(231, 225, 219, 0.65);
+  line-height: 1;
 }
 
 .tr-result {
@@ -142,7 +147,7 @@
   }
 
   .tr-teams {
-    gap: 12px;
+    gap: 14px;
   }
 
   .tr-logo {
@@ -151,12 +156,17 @@
     height: 44px;
   }
 
+  .tr-vs {
+    margin-top: 12px;
+  }
+
   .tr-initials {
     font-size: 14px;
   }
 
   .tr-name {
-    font-size: 16px;
+    font-size: 15px;
+    max-width: 9em;
   }
 
   .tr-result {

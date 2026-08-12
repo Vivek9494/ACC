@@ -103,11 +103,11 @@ function buildCardMarkup(): string {
           </div>
           <p class="tr-vs" aria-hidden="true">vs</p>
           <div class="tr-team tr-team-b">
-            <p data-tr-name="b" class="tr-name">—</p>
             <div class="tr-logo" aria-hidden="true">
               <span data-tr-initials="b" class="tr-initials">—</span>
               <img data-tr-logo="b" class="tr-logo-img" alt="" hidden />
             </div>
+            <p data-tr-name="b" class="tr-name">—</p>
           </div>
         </div>
         <p data-tr-line class="tr-result"></p>

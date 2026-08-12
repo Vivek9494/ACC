@@ -60,13 +60,13 @@ export function buildGraphicsStageMarkup(): string {
           <p id="ps-total" class="hero-stat">0 (0)</p>
           <div class="pair-row">
             <div class="pair-batter">
-              <p id="ps-a-name" class="name">—</p>
-              <p id="ps-a-runs" class="sub">0</p>
+              <p id="ps-a-name" class="pair-name">—</p>
+              <p id="ps-a-runs" class="pair-runs">0</p>
             </div>
-            <div class="pair-sep">&</div>
+            <div class="pair-sep" aria-hidden="true">&</div>
             <div class="pair-batter">
-              <p id="ps-b-name" class="name">—</p>
-              <p id="ps-b-runs" class="sub">0</p>
+              <p id="ps-b-name" class="pair-name">—</p>
+              <p id="ps-b-runs" class="pair-runs">0</p>
             </div>
           </div>
         </div>
@@ -293,21 +293,26 @@ export function createGraphicsStage(
   };
 
   const fillPartnership = (): boolean => {
-    if (!scorecard) {
+    try {
+      if (!scorecard) {
+        return false;
+      }
+      const innings = resolveActiveInnings(scorecard);
+      const ps = innings?.partnership ?? null;
+      if (!ps || ps.batterIds.length < 2) {
+        return false;
+      }
+      const [aId, bId] = ps.batterIds;
+      setText('ps-total', `${ps.runs} (${ps.balls})`);
+      setText('ps-a-name', nameOf(aId ?? null));
+      setText('ps-b-name', nameOf(bId ?? null));
+      setText('ps-a-runs', String(partnershipBatterRuns(ps, aId ?? '')));
+      setText('ps-b-runs', String(partnershipBatterRuns(ps, bId ?? '')));
+      return true;
+    } catch (err) {
+      console.warn('[graphics] fill partnership failed', err);
       return false;
     }
-    const innings = resolveActiveInnings(scorecard);
-    const ps = innings?.partnership ?? null;
-    if (!ps || ps.batterIds.length < 2) {
-      return false;
-    }
-    const [aId, bId] = ps.batterIds;
-    setText('ps-total', `${ps.runs} (${ps.balls})`);
-    setText('ps-a-name', nameOf(aId ?? null));
-    setText('ps-b-name', nameOf(bId ?? null));
-    setText('ps-a-runs', String(partnershipBatterRuns(ps, aId ?? '')));
-    setText('ps-b-runs', String(partnershipBatterRuns(ps, bId ?? '')));
-    return true;
   };
 
   const fillFow = (): boolean => {
