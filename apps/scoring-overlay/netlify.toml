@@ -1,0 +1,12 @@
+# ASC scoring overlay — Netlify site (acc-overlay)
+# Build from monorepo root; publish only this app's dist.
+
+[build]
+  command = "pnpm --filter @acc/scoring-overlay... run build"
+  publish = "apps/scoring-overlay/dist"
+
+[build.environment]
+  # Overlay is public (API URL + /live only). Smart detection still flags the
+  # Expo Google Maps client key living under apps/mobile/ in this monorepo.
+  # Omit that tree from scanning — do NOT disable smart detection globally.
+  SECRETS_SCAN_OMIT_PATHS = "apps/mobile/**"
