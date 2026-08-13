@@ -2,8 +2,8 @@ import { io, type Socket } from 'socket.io-client';
 
 import {
   fetchBroadcastPlayerStats,
+  ensureMatchContext,
   fetchMatchBallType,
-  fetchMatchContext,
   fetchScorecard,
 } from './broadcast-fetch';
 import {
@@ -314,6 +314,7 @@ function start(): void {
   let socket: Socket | null = null;
   const graphicsStage = createGraphicsStage(el('graphics-stage'), {
     apiBase,
+    matchId,
     injectMarkup: true,
   });
 
@@ -383,7 +384,7 @@ function start(): void {
   void (async () => {
     const [seed, ctx, bt] = await Promise.all([
       fetchScorecard(apiBase, matchId),
-      fetchMatchContext(apiBase, matchId),
+      ensureMatchContext(apiBase, matchId),
       fetchMatchBallType(apiBase, matchId),
     ]);
     ballType = bt;

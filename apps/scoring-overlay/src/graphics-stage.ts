@@ -4,17 +4,21 @@
  */
 
 import './graphics.css';
+import { ensureMatchContext } from './broadcast-fetch';
 import { mountBatsmanCareerCard } from './batsman-career-card';
 import { mountInningsScorecard } from './innings-scorecard';
 import {
   deriveBatterDotBalls,
+  firstInnings,
   formatBatterInningsScore,
   formatDismissalShort,
   formatStat,
+  hasPlayingXiForTeam,
   latestFallOfWicket,
   partnershipBatterRuns,
   playerName,
   resolveActiveInnings,
+  resolveBattingTeamId,
   shortName,
 } from './graphics-format';
 import type { GraphicsCommandMessage, GraphicsKind } from './live-client';
@@ -181,6 +185,7 @@ export function buildGraphicsStageMarkup(): string {
 
 export interface GraphicsStageOptions {
   apiBase: string;
+  matchId?: string | null;
   /** When true, inject panel markup into an empty host (root page). */
   injectMarkup?: boolean;
 }
@@ -225,6 +230,7 @@ export function createGraphicsStage(
   let ballType: BallType = 'TENNIS';
   let activeKind: OverlayKind | null = null;
   let activePlayerId: string | null = null;
+  let inningsEnsureToken = 0;
   const batsmanCareer = mountBatsmanCareerCard(el('g-batsman-career'));
   const tossResult = mountTossResultCard(el('g-toss-result'));
   const inningsCard = mountInningsScorecard(el('g-innings'));
@@ -253,6 +259,7 @@ export function createGraphicsStage(
   const hideAllGraphics = (): void => {
     activeKind = null;
     activePlayerId = null;
+    inningsEnsureToken += 1;
     batsmanCareer.hide();
     tossResult.hide();
     inningsCard.hide();
@@ -281,6 +288,7 @@ export function createGraphicsStage(
       return;
     }
     if (kind === 'innings_break') {
+      inningsEnsureToken += 1;
       inningsCard.hide();
       return;
     }
@@ -293,6 +301,61 @@ export function createGraphicsStage(
     } catch (err) {
       console.warn('[graphics] toss result failed', err);
       tossResult.hide();
+      return false;
+    }
+  };
+
+  const showInningsBreak = async (
+    view: 'batting' | 'bowling',
+  ): Promise<boolean> => {
+    const token = ++inningsEnsureToken;
+    try {
+      if (!scorecard) {
+        return false;
+      }
+      const innings = firstInnings(scorecard);
+      if (!innings) {
+        return false;
+      }
+      const battingTeamId = resolveBattingTeamId(scorecard, innings);
+      const matchId = options.matchId?.trim() ?? '';
+
+      if (!battingTeamId) {
+        return inningsCard.show(scorecard, matchCtx, view, 'no_squad');
+      }
+
+      if (hasPlayingXiForTeam(matchCtx, battingTeamId)) {
+        return inningsCard.show(scorecard, matchCtx, view, 'full');
+      }
+
+      if (!matchId) {
+        return inningsCard.show(scorecard, matchCtx, view, 'no_squad');
+      }
+
+      inningsCard.showLoading(view);
+      const ctx = await ensureMatchContext(options.apiBase, matchId, {
+        battingTeamId,
+      });
+      if (token !== inningsEnsureToken || activeKind !== 'innings_break') {
+        return false;
+      }
+      if (ctx) {
+        matchCtx = ctx;
+      }
+      if (hasPlayingXiForTeam(matchCtx, battingTeamId)) {
+        return inningsCard.show(scorecard, matchCtx, view, 'full');
+      }
+      if (ctx) {
+        return inningsCard.show(scorecard, matchCtx, view, 'no_squad');
+      }
+      inningsCard.showLoading(view);
+      return true;
+    } catch (err) {
+      console.warn('[graphics] innings break failed', err);
+      if (token === inningsEnsureToken && activeKind === 'innings_break') {
+        inningsCard.showLoading(view);
+        return true;
+      }
       return false;
     }
   };
@@ -377,6 +440,7 @@ export function createGraphicsStage(
       return;
     }
     if (kind === 'innings_break') {
+      inningsEnsureToken += 1;
       inningsCard.hide();
       return;
     }
@@ -503,7 +567,17 @@ export function createGraphicsStage(
         }
         break;
       case 'innings_break':
-        if (!inningsCard.show(scorecard, matchCtx, inningsCard.currentView())) {
+        if (inningsCard.xiStatus() === 'loading') {
+          break;
+        }
+        if (
+          !inningsCard.show(
+            scorecard,
+            matchCtx,
+            inningsCard.currentView(),
+            inningsCard.xiStatus() === 'full' ? 'full' : 'no_squad',
+          )
+        ) {
           hideGraphic('innings_break');
         }
         break;
@@ -592,7 +666,8 @@ export function createGraphicsStage(
         activePlayerId = null;
       }
     } else if (kind === 'innings_break') {
-      if (!inningsCard.show(scorecard, matchCtx, parseInningsView(payload))) {
+      const painted = await showInningsBreak(parseInningsView(payload));
+      if (!painted && activeKind === 'innings_break') {
         activeKind = null;
         activePlayerId = null;
       }
@@ -617,12 +692,20 @@ export function createGraphicsStage(
           activeKind = null;
           activePlayerId = null;
         }
-        if (
-          activeKind === 'innings_break' &&
-          !inningsCard.show(scorecard, matchCtx, inningsCard.currentView())
-        ) {
-          activeKind = null;
-          activePlayerId = null;
+        if (activeKind === 'innings_break') {
+          if (inningsCard.xiStatus() === 'loading') {
+            void showInningsBreak(inningsCard.currentView());
+          } else if (
+            !inningsCard.show(
+              scorecard,
+              matchCtx,
+              inningsCard.currentView(),
+              inningsCard.xiStatus() === 'full' ? 'full' : 'no_squad',
+            )
+          ) {
+            activeKind = null;
+            activePlayerId = null;
+          }
         }
       } catch (err) {
         console.warn('[graphics] match context refresh failed', err);

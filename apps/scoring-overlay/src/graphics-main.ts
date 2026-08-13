@@ -1,6 +1,6 @@
 import {
+  ensureMatchContext,
   fetchMatchBallType,
-  fetchMatchContext,
   fetchScorecard,
 } from './broadcast-fetch';
 import {
@@ -27,6 +27,7 @@ function start(): void {
   stageRoot.innerHTML = '';
   const stage = createGraphicsStage(stageRoot, {
     apiBase,
+    matchId,
     injectMarkup: true,
   });
   stageRoot.appendChild(statusNode);
@@ -43,7 +44,7 @@ function start(): void {
   void (async () => {
     const [seed, ctx, bt] = await Promise.all([
       fetchScorecard(apiBase, matchId),
-      fetchMatchContext(apiBase, matchId),
+      ensureMatchContext(apiBase, matchId),
       fetchMatchBallType(apiBase, matchId),
     ]);
     if (seed) {

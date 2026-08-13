@@ -9,7 +9,9 @@ import {
   extrasTotal,
   firstInnings,
   formatStat,
+  hasPlayingXiForTeam,
   playerName,
+  resolveBattingTeamId,
   shortName,
 } from './graphics-format';
 import type {
@@ -23,16 +25,20 @@ import type {
 const ANIM_MS = 280;
 
 export type InningsScorecardView = 'batting' | 'bowling';
+export type InningsXiStatus = 'full' | 'no_squad' | 'loading';
 
 export interface InningsScorecardController {
   readonly host: HTMLElement;
   isOnAir(): boolean;
   currentView(): InningsScorecardView;
+  xiStatus(): InningsXiStatus | null;
   hide(): void;
+  showLoading(view?: InningsScorecardView): boolean;
   show(
     card: ScorecardResponse | null,
     ctx: MatchContext | null,
     view?: InningsScorecardView,
+    xiStatus?: InningsXiStatus,
   ): boolean;
 }
 
@@ -56,22 +62,6 @@ function squadName(p: MatchSquadPlayer, card: ScorecardResponse): string {
   return full ? shortName(full) : '—';
 }
 
-function resolveBattingTeamId(
-  card: ScorecardResponse,
-  innings: InningsScorecard,
-): string | null {
-  if (innings.battingTeamId) {
-    return innings.battingTeamId;
-  }
-  const labels =
-    card.display.innings.find(
-      (row) =>
-        innings.inningsId != null && row.inningsId === innings.inningsId,
-    ) ?? card.display.innings[0];
-  const fromLabels = labels?.battingTeamId?.trim();
-  return fromLabels && fromLabels.length > 0 ? fromLabels : null;
-}
-
 function playingXi(
   ctx: MatchContext | null,
   battingTeamId: string | null,
@@ -86,7 +76,6 @@ function playingXi(
   return squad.players.filter((p) => p.role === 'PLAYING_XI');
 }
 
-/** DNB append order: battingOrder when every leftover has one, else squad/lock order. */
 function dnbInRosterOrder(
   xi: MatchSquadPlayer[],
   seen: Set<string>,
@@ -104,7 +93,7 @@ function dnbInRosterOrder(
   );
 }
 
-type BatRowStatus = 'out' | 'not_out' | 'dnb';
+type BatRowStatus = 'out' | 'not_out';
 
 interface BatRow {
   playerId: string;
@@ -119,9 +108,7 @@ interface BatRow {
 function buildBatRows(
   card: ScorecardResponse,
   innings: InningsScorecard,
-  ctx: MatchContext | null,
 ): BatRow[] {
-  const xi = playingXi(ctx, resolveBattingTeamId(card, innings));
   const seen = new Set<string>();
   const rows: BatRow[] = [];
 
@@ -159,20 +146,26 @@ function buildBatRows(
     pushBatter(batter);
   }
 
-  for (const p of dnbInRosterOrder(xi, seen)) {
-    seen.add(p.userId);
-    rows.push({
-      playerId: p.userId,
-      name: squadName(p, card),
-      status: 'dnb',
-      fielder: 'did not bat',
-      bowler: '',
-      runs: '',
-      balls: '',
-    });
-  }
-
   return rows;
+}
+
+function dnbLineText(
+  card: ScorecardResponse,
+  innings: InningsScorecard,
+  ctx: MatchContext | null,
+): string | null {
+  const teamId = resolveBattingTeamId(card, innings);
+  if (!hasPlayingXiForTeam(ctx, teamId)) {
+    return null;
+  }
+  const seen = new Set(innings.batters.map((b) => b.playerId));
+  const names = dnbInRosterOrder(playingXi(ctx, teamId), seen)
+    .map((p) => squadName(p, card))
+    .filter((n) => n !== '—');
+  if (names.length === 0) {
+    return null;
+  }
+  return `Did not bat: ${names.join(', ')}`;
 }
 
 function buildCardMarkup(): string {
@@ -184,6 +177,7 @@ function buildCardMarkup(): string {
           <span data-isc-tab="batting" class="isc-tab is-active">Batting</span>
           <span data-isc-tab="bowling" class="isc-tab">Bowling</span>
         </div>
+        <p data-isc-loading class="isc-loading" hidden>Loading playing XI…</p>
         <div data-isc-pane="batting" class="isc-pane">
           <div class="isc-table-wrap">
             <table class="isc-table" aria-label="Batting scorecard">
@@ -199,6 +193,7 @@ function buildCardMarkup(): string {
               <tbody data-isc-bat-body></tbody>
             </table>
           </div>
+          <p data-isc-dnb class="isc-dnb" hidden></p>
           <div class="isc-fow">
             <p class="isc-fow-label">Fall of wickets</p>
             <p data-isc-fow class="isc-fow-line"></p>
@@ -235,6 +230,7 @@ export function mountInningsScorecard(
 ): InningsScorecardController {
   let onAir = false;
   let view: InningsScorecardView = 'batting';
+  let xiStatus: InningsXiStatus | null = null;
 
   const qs = <T extends HTMLElement>(selector: string): T | null =>
     host.querySelector(selector) as T | null;
@@ -247,6 +243,7 @@ export function mountInningsScorecard(
 
   const hideNode = (): void => {
     onAir = false;
+    xiStatus = null;
     host.classList.remove('is-visible');
     window.setTimeout(() => {
       if (!onAir) {
@@ -269,9 +266,18 @@ export function mountInningsScorecard(
     }
   };
 
+  const setLoadingUi = (loading: boolean): void => {
+    const loadingEl = qs<HTMLElement>('[data-isc-loading]');
+    if (loadingEl) {
+      loadingEl.hidden = !loading;
+    }
+    qs<HTMLElement>('.panel-innings-sc')?.classList.toggle('is-loading-xi', loading);
+  };
+
   const paint = (
     card: ScorecardResponse,
     ctx: MatchContext | null,
+    status: InningsXiStatus,
   ): boolean => {
     ensureMarkup();
     const innings = firstInnings(card);
@@ -280,17 +286,19 @@ export function mountInningsScorecard(
     }
 
     setViewUi();
+    setLoadingUi(false);
 
     const batBody = qs<HTMLTableSectionElement>('[data-isc-bat-body]');
     const bowlBody = qs<HTMLTableSectionElement>('[data-isc-bowl-body]');
     const fowEl = qs<HTMLElement>('[data-isc-fow]');
     const totalLine = qs<HTMLElement>('[data-isc-total-line]');
     const totalMeta = qs<HTMLElement>('[data-isc-total-meta]');
-    if (!batBody || !bowlBody || !fowEl || !totalLine || !totalMeta) {
+    const dnbEl = qs<HTMLElement>('[data-isc-dnb]');
+    if (!batBody || !bowlBody || !fowEl || !totalLine || !totalMeta || !dnbEl) {
       return false;
     }
 
-    const batRows = buildBatRows(card, innings, ctx);
+    const batRows = buildBatRows(card, innings);
     batBody.replaceChildren();
     for (const row of batRows) {
       const tr = document.createElement('tr');
@@ -309,6 +317,15 @@ export function mountInningsScorecard(
         tr.appendChild(td);
       }
       batBody.appendChild(tr);
+    }
+
+    if (status === 'full') {
+      const line = dnbLineText(card, innings, ctx);
+      dnbEl.textContent = line ?? '';
+      dnbEl.hidden = line == null;
+    } else {
+      dnbEl.textContent = '';
+      dnbEl.hidden = true;
     }
 
     const fow = innings.fallOfWickets ?? [];
@@ -367,6 +384,7 @@ export function mountInningsScorecard(
     host,
     isOnAir: () => onAir,
     currentView: () => view,
+    xiStatus: () => xiStatus,
     hide(): void {
       try {
         hideNode();
@@ -374,13 +392,54 @@ export function mountInningsScorecard(
         warnGraphics(err);
       }
     },
-    show(card, ctx, nextView = 'batting'): boolean {
+    showLoading(nextView = 'batting'): boolean {
       try {
         view = nextView === 'bowling' ? 'bowling' : 'batting';
-        if (!card || !paint(card, ctx)) {
+        xiStatus = 'loading';
+        ensureMarkup();
+        setViewUi();
+        setLoadingUi(true);
+        onAir = true;
+        showNode();
+        return true;
+      } catch (err) {
+        warnGraphics(err);
+        try {
+          hideNode();
+        } catch {
+          /* ignore */
+        }
+        return false;
+      }
+    },
+    show(card, ctx, nextView = 'batting', status = 'no_squad'): boolean {
+      try {
+        view = nextView === 'bowling' ? 'bowling' : 'batting';
+        if (status === 'loading') {
+          xiStatus = 'loading';
+          ensureMarkup();
+          setViewUi();
+          setLoadingUi(true);
+          onAir = true;
+          showNode();
+          return true;
+        }
+        if (!card) {
           hideNode();
           return false;
         }
+        const innings = firstInnings(card);
+        const xi: InningsXiStatus =
+          status === 'full' &&
+          innings != null &&
+          hasPlayingXiForTeam(ctx, resolveBattingTeamId(card, innings))
+            ? 'full'
+            : 'no_squad';
+        if (!paint(card, ctx, xi)) {
+          hideNode();
+          return false;
+        }
+        xiStatus = xi;
         onAir = true;
         showNode();
         return true;

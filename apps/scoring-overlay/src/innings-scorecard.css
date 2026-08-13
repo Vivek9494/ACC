@@ -110,9 +110,25 @@
   color: #e7e1db;
 }
 
-.isc-row-dnb td {
-  opacity: 0.78;
+.isc-loading {
+  margin: 8px 0 4px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #ff6b00;
+}
+
+.panel-innings-sc.is-loading-xi [data-isc-pane] {
+  opacity: 0.35;
+}
+
+.isc-dnb {
+  margin: 8px 0 0;
+  font-size: 13px;
   font-weight: 600;
+  line-height: 1.35;
+  color: rgba(231, 225, 219, 0.82);
 }
 
 .isc-fow {

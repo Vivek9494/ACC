@@ -151,6 +151,99 @@ export async function fetchMatchContext(
   }
 }
 
+const MATCH_CTX_RETRY_BACKOFF_MS = [0, 200, 600] as const;
+
+const matchCtxCache = new Map<string, MatchContext>();
+const matchCtxInflight = new Map<string, Promise<MatchContext | null>>();
+const matchCtxNoSquad = new Set<string>();
+
+function matchCtxCacheKey(apiBase: string, matchId: string): string {
+  return `${apiBase}|${matchId}`;
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+}
+
+export function hasPlayingXiInContext(
+  ctx: MatchContext | null,
+  battingTeamId: string | null,
+): boolean {
+  if (!ctx || !battingTeamId) {
+    return false;
+  }
+  return ctx.squads.some(
+    (squad) =>
+      squad.teamId === battingTeamId &&
+      squad.players.some((p) => p.role === 'PLAYING_XI'),
+  );
+}
+
+/**
+ * Cached match detail with retries. Recovers a failed boot fetch on the next
+ * caller (e.g. Show Innings Break) without a page reload. Concurrent callers
+ * share one in-flight GET.
+ */
+export async function ensureMatchContext(
+  apiBase: string,
+  matchId: string,
+  options?: { battingTeamId?: string | null },
+): Promise<MatchContext | null> {
+  const id = matchId.trim();
+  if (!id) {
+    return null;
+  }
+  const key = matchCtxCacheKey(apiBase, id);
+  const battingTeamId = options?.battingTeamId?.trim() || null;
+  const noSquadKey = battingTeamId ? `${key}|${battingTeamId}` : null;
+
+  const cached = matchCtxCache.get(key) ?? null;
+  if (cached) {
+    if (!battingTeamId || hasPlayingXiInContext(cached, battingTeamId)) {
+      return cached;
+    }
+    if (noSquadKey && matchCtxNoSquad.has(noSquadKey)) {
+      return cached;
+    }
+  }
+
+  const existing = matchCtxInflight.get(key);
+  if (existing) {
+    const ctx = await existing;
+    if (ctx && battingTeamId && !hasPlayingXiInContext(ctx, battingTeamId) && noSquadKey) {
+      matchCtxNoSquad.add(noSquadKey);
+    }
+    return ctx;
+  }
+
+  const pending = (async (): Promise<MatchContext | null> => {
+    let last: MatchContext | null = null;
+    for (const waitMs of MATCH_CTX_RETRY_BACKOFF_MS) {
+      if (waitMs > 0) {
+        await delay(waitMs);
+      }
+      last = await fetchMatchContext(apiBase, id);
+      if (last) {
+        matchCtxCache.set(key, last);
+        if (battingTeamId && !hasPlayingXiInContext(last, battingTeamId) && noSquadKey) {
+          matchCtxNoSquad.add(noSquadKey);
+        }
+        return last;
+      }
+    }
+    return last;
+  })();
+
+  matchCtxInflight.set(key, pending);
+  try {
+    return await pending;
+  } finally {
+    matchCtxInflight.delete(key);
+  }
+}
+
 /** Public tournament team roster (fielding-side career picker). */
 export interface TeamRosterPlayer {
   userId: string;

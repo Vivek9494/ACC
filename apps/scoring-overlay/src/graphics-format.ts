@@ -8,6 +8,7 @@ import type {
   BroadcastPlayerStatsView,
   FallOfWicket,
   InningsScorecard,
+  MatchContext,
   Partnership,
   ScorecardResponse,
 } from './types';
@@ -340,6 +341,36 @@ export function resolveActiveInnings(card: ScorecardResponse): InningsScorecard 
 
 export function firstInnings(card: ScorecardResponse): InningsScorecard | null {
   return card.innings[0] ?? null;
+}
+
+export function resolveBattingTeamId(
+  card: ScorecardResponse,
+  innings: InningsScorecard,
+): string | null {
+  if (innings.battingTeamId) {
+    return innings.battingTeamId;
+  }
+  const labels =
+    card.display.innings.find(
+      (row) =>
+        innings.inningsId != null && row.inningsId === innings.inningsId,
+    ) ?? card.display.innings[0];
+  const fromLabels = labels?.battingTeamId?.trim();
+  return fromLabels && fromLabels.length > 0 ? fromLabels : null;
+}
+
+export function hasPlayingXiForTeam(
+  ctx: MatchContext | null,
+  battingTeamId: string | null,
+): boolean {
+  if (!ctx || !battingTeamId) {
+    return false;
+  }
+  return ctx.squads.some(
+    (squad) =>
+      squad.teamId === battingTeamId &&
+      squad.players.some((p) => p.role === 'PLAYING_XI'),
+  );
 }
 
 export function extrasTotal(innings: InningsScorecard): number {
