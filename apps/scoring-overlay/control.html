@@ -195,11 +195,20 @@
           <button type="button" id="btn-hide-innings" class="btn btn-secondary btn-lg">Hide</button>
         </div>
         <div id="innings-tabs" class="btn-row innings-tabs" hidden>
-          <button type="button" id="btn-innings-batting" class="btn btn-secondary innings-tab is-active-tab">
+          <button type="button" class="btn btn-secondary innings-tab is-active-tab" data-innings-view="batting">
             Batting
           </button>
-          <button type="button" id="btn-innings-bowling" class="btn btn-secondary innings-tab">
+          <button type="button" class="btn btn-secondary innings-tab" data-innings-view="bowling">
             Bowling
+          </button>
+          <button type="button" class="btn btn-secondary innings-tab" data-innings-view="fow">
+            Fall of wickets
+          </button>
+          <button type="button" class="btn btn-secondary innings-tab" data-innings-view="partnerships">
+            Partnerships
+          </button>
+          <button type="button" class="btn btn-secondary innings-tab" data-innings-view="overs">
+            Overs summary
           </button>
         </div>
       </section>

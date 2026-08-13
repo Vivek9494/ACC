@@ -31,9 +31,11 @@ import {
 import type {
   BallType,
   BroadcastPlayerStatsView,
+  InningsBreakView,
   MatchContext,
   ScorecardResponse,
 } from './types';
+import { parseInningsBreakView } from './types';
 import { formatRunsToWinLine, formatTossLine } from './view-model';
 import { formatTossResultLine } from './toss-result-card';
 import type { Socket } from 'socket.io-client';
@@ -111,7 +113,7 @@ function start(): void {
 
   let socket: Socket | null = null;
   let onAirGraphic: keyof typeof LABELS | null = null;
-  let inningsView: 'batting' | 'bowling' = 'batting';
+  let inningsView: InningsBreakView = 'batting';
   let onAirDetailText = '';
   let scorecard: ScorecardResponse | null = null;
   let matchCtx: MatchContext | null = null;
@@ -358,14 +360,12 @@ function start(): void {
     const tabs = el<HTMLElement>('innings-tabs');
     const onAir = onAirGraphic === 'innings_break';
     tabs.hidden = !onAir;
-    el<HTMLButtonElement>('btn-innings-batting').classList.toggle(
-      'is-active-tab',
-      inningsView === 'batting',
-    );
-    el<HTMLButtonElement>('btn-innings-bowling').classList.toggle(
-      'is-active-tab',
-      inningsView === 'bowling',
-    );
+    for (const btn of tabs.querySelectorAll<HTMLButtonElement>('[data-innings-view]')) {
+      btn.classList.toggle(
+        'is-active-tab',
+        btn.dataset.inningsView === inningsView,
+      );
+    }
   }
 
   function setOnAir(kind: keyof typeof LABELS | null): void {
@@ -788,7 +788,7 @@ function start(): void {
       }
       if (cmd.action === 'show') {
         if (cmd.graphic === 'innings_break') {
-          inningsView = cmd.payload?.view === 'bowling' ? 'bowling' : 'batting';
+          inningsView = parseInningsBreakView(cmd.payload?.view);
         }
         setOnAir(cmd.graphic);
       } else if (cmd.action === 'hide' && onAirGraphic === cmd.graphic) {
@@ -817,22 +817,22 @@ function start(): void {
     view: inningsView,
   }));
 
-  el<HTMLButtonElement>('btn-innings-batting').addEventListener('click', () => {
-    inningsView = 'batting';
+  el<HTMLElement>('innings-tabs').addEventListener('click', (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) {
+      return;
+    }
+    const btn = target.closest<HTMLButtonElement>('[data-innings-view]');
+    if (!btn) {
+      return;
+    }
+    const next = parseInningsBreakView(btn.dataset.inningsView);
+    inningsView = next;
     syncInningsTabs();
     send({
       action: 'show',
       graphic: 'innings_break',
-      payload: { view: 'batting' },
-    });
-  });
-  el<HTMLButtonElement>('btn-innings-bowling').addEventListener('click', () => {
-    inningsView = 'bowling';
-    syncInningsTabs();
-    send({
-      action: 'show',
-      graphic: 'innings_break',
-      payload: { view: 'bowling' },
+      payload: { view: next },
     });
   });
   bind('btn-show-toss-result', 'btn-hide-toss-result', 'toss_result');

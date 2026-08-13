@@ -27,9 +27,11 @@ import {
 } from './toss-result-card';
 import type {
   BallType,
+  InningsBreakView,
   MatchContext,
   ScorecardResponse,
 } from './types';
+import { parseInningsBreakView } from './types';
 
 const ANIM_MS = 280;
 
@@ -305,7 +307,7 @@ export function createGraphicsStage(
   };
 
   const showInningsBreak = async (
-    view: 'batting' | 'bowling',
+    view: InningsBreakView,
   ): Promise<boolean> => {
     const token = ++inningsEnsureToken;
     try {
@@ -441,8 +443,7 @@ export function createGraphicsStage(
 
   const parseInningsView = (
     payload?: GraphicsCommandMessage['payload'],
-  ): 'batting' | 'bowling' =>
-    payload?.view === 'bowling' ? 'bowling' : 'batting';
+  ): InningsBreakView => parseInningsBreakView(payload?.view);
 
   const hideManagedGraphic = (kind: OverlayKind): void => {
     if (kind === 'batsman_career') {

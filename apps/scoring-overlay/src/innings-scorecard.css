@@ -36,10 +36,12 @@
 }
 
 .isc-tab {
-  padding: 6px 18px 8px;
-  font-size: 13px;
+  flex: 1 1 0;
+  padding: 6px 6px 8px;
+  font-size: 11px;
   font-weight: 800;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.08em;
+  text-align: center;
   text-transform: uppercase;
   color: rgba(231, 225, 219, 0.55);
 }
@@ -56,6 +58,10 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.isc-pane[hidden] {
+  display: none;
 }
 
 /* Grows with the XI: eleven rows must never clip or scroll. */
@@ -185,6 +191,145 @@
   color: rgba(231, 225, 219, 0.75);
 }
 
+.isc-empty {
+  margin: 12px 0 0;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(231, 225, 219, 0.55);
+}
+
+.isc-fow-list,
+.isc-ps-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.isc-fow-card {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: rgba(231, 225, 219, 0.08);
+}
+
+.isc-fow-score {
+  flex-shrink: 0;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #ff6b00;
+  font-variant-numeric: tabular-nums;
+}
+
+.isc-fow-batter {
+  min-width: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #e7e1db;
+}
+
+.isc-ps-stand {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.isc-ps-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.isc-ps-end {
+  flex: 1 1 0;
+  min-width: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #e7e1db;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.isc-ps-b {
+  text-align: right;
+}
+
+.isc-ps-total {
+  flex-shrink: 0;
+  padding: 0 8px;
+  font-size: 16px;
+  font-weight: 800;
+  color: #ff6b00;
+  font-variant-numeric: tabular-nums;
+}
+
+.isc-ps-bar {
+  display: flex;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: rgba(231, 225, 219, 0.12);
+}
+
+.isc-ps-bar-a {
+  background: #ff6b00;
+}
+
+.isc-ps-bar-b {
+  background: #e7e1db;
+}
+
+.isc-overs-chart {
+  flex: 1 1 auto;
+  min-height: 220px;
+}
+
+.isc-overs-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: min(52vh, 360px);
+}
+
+.isc-overs-axis {
+  stroke: rgba(231, 225, 219, 0.45);
+  stroke-width: 1.5;
+}
+
+.isc-overs-grid {
+  stroke: rgba(231, 225, 219, 0.12);
+  stroke-width: 1;
+}
+
+.isc-overs-ylabel,
+.isc-overs-xlabel {
+  fill: rgba(231, 225, 219, 0.65);
+  font-size: 12px;
+  font-weight: 700;
+  font-family: Montserrat, sans-serif;
+}
+
+.isc-overs-ylabel {
+  text-anchor: end;
+}
+
+.isc-overs-xlabel {
+  text-anchor: middle;
+}
+
+.isc-overs-bar {
+  fill: #e7e1db;
+}
+
+.isc-overs-wicket {
+  fill: #e53935;
+}
+
 @media (max-width: 720px) {
   .panel-innings-sc {
     min-width: 94vw;
@@ -218,5 +363,18 @@
 
   .isc-total-score {
     font-size: 19px;
+  }
+
+  .isc-fow-card {
+    padding: 7px 12px;
+  }
+
+  .isc-fow-score {
+    font-size: 18px;
+  }
+
+  .isc-fow-batter,
+  .isc-ps-end {
+    font-size: 14px;
   }
 }

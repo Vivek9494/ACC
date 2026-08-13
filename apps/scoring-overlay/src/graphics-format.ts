@@ -11,9 +11,12 @@ import type {
   MatchContext,
   MatchSquadContext,
   MatchSquadPlayer,
+  CompletedPartnership,
+  OverSummary,
   Partnership,
   ScorecardInningsLabels,
   ScorecardResponse,
+  TimelineEntry,
 } from './types';
 
 const DISMISSAL_LABELS: Record<string, string> = {
@@ -653,10 +656,53 @@ export function battingTeamLabel(
 }
 
 export function partnershipBatterRuns(
-  partnership: Partnership,
+  partnership: Pick<Partnership, 'batterRuns'>,
   playerId: string,
 ): number {
   return partnership.batterRuns.find((r) => r.playerId === playerId)?.runs ?? 0;
+}
+
+/**
+ * All stands for the innings-break partnerships tab: closed wickets plus the
+ * unbroken last pair. Do not drop the trailing stand on a closed innings
+ * (171–1 still has a live partnership).
+ */
+export function partnershipStandRows(
+  innings: InningsScorecard,
+): CompletedPartnership[] {
+  const rows: CompletedPartnership[] = [...(innings.partnerships ?? [])];
+  if (innings.partnership) {
+    rows.push({
+      batterIds: innings.partnership.batterIds,
+      batterRuns: innings.partnership.batterRuns,
+      runs: innings.partnership.runs,
+      balls: innings.partnership.balls,
+    });
+  }
+  return rows;
+}
+
+/** Full-innings over aggregates from the ball-by-ball timeline (not last-6 recentOvers). */
+export function groupTimelineByOver(
+  timeline: TimelineEntry[] | undefined,
+): OverSummary[] {
+  const overMap = new Map<number, OverSummary>();
+  for (const entry of timeline ?? []) {
+    if (entry.overNumber === null) {
+      continue;
+    }
+    let over = overMap.get(entry.overNumber);
+    if (!over) {
+      over = { overNumber: entry.overNumber, balls: [], runs: 0, wickets: 0 };
+      overMap.set(entry.overNumber, over);
+    }
+    over.balls.push(entry.code);
+    over.runs += entry.runs;
+    if (entry.isWicket) {
+      over.wickets += 1;
+    }
+  }
+  return [...overMap.values()].sort((a, b) => a.overNumber - b.overNumber);
 }
 
 export function latestFallOfWicket(

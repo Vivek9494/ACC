@@ -194,15 +194,23 @@ body.control-body {
 
 .innings-tabs {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   margin-top: 10px;
+  gap: 8px;
+}
+
+.innings-tabs[hidden] {
+  display: none;
 }
 
 .innings-tab {
   min-height: 44px;
-  font-size: 14px;
-  letter-spacing: 0.08em;
+  padding: 8px 6px;
+  font-size: 11px;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
+  white-space: normal;
+  line-height: 1.2;
 }
 
 .innings-tab.is-active-tab {

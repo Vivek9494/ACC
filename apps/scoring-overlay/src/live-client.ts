@@ -4,7 +4,11 @@
 
 import { io, type Socket } from 'socket.io-client';
 
-import type { LiveStateMessage, ScorecardResponse } from './types';
+import type {
+  InningsBreakView,
+  LiveStateMessage,
+  ScorecardResponse,
+} from './types';
 
 export const DEFAULT_API_BASE = 'https://acc-api-production.up.railway.app';
 
@@ -39,7 +43,7 @@ export interface GraphicsCommandMessage {
   payload?: {
     playerId?: string;
     playerIds?: string[];
-    view?: 'batting' | 'bowling';
+    view?: InningsBreakView;
   };
 }
 

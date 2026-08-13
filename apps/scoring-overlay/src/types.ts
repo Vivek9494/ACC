@@ -14,6 +14,35 @@ export const LiveEvent = {
 
 export type GraphicsCommandAction = 'show' | 'hide' | 'hide_all';
 
+/** Innings-break scorecard tab. Overlay-local; API forwards payload.view as-is. */
+export type InningsBreakView =
+  | 'batting'
+  | 'bowling'
+  | 'fow'
+  | 'partnerships'
+  | 'overs';
+
+function isInningsBreakView(
+  value: string,
+): value is InningsBreakView {
+  return (
+    value === 'batting' ||
+    value === 'bowling' ||
+    value === 'fow' ||
+    value === 'partnerships' ||
+    value === 'overs'
+  );
+}
+
+export function parseInningsBreakView(
+  value: string | null | undefined,
+): InningsBreakView {
+  if (value && isInningsBreakView(value)) {
+    return value;
+  }
+  return 'batting';
+}
+
 export type GraphicsKind =
   | 'batsman'
   | 'bowler'
@@ -34,7 +63,7 @@ export interface GraphicsCommandMessage {
   payload?: {
     playerId?: string;
     playerIds?: string[];
-    view?: 'batting' | 'bowling';
+    view?: InningsBreakView;
   };
 }
 
@@ -116,6 +145,14 @@ export interface Partnership {
   batterRuns: { playerId: string; runs: number }[];
 }
 
+/** A stand closed by a wicket. Same shape as the live current partnership. */
+export interface CompletedPartnership {
+  batterIds: string[];
+  batterRuns: { playerId: string; runs: number }[];
+  runs: number;
+  balls: number;
+}
+
 export interface OverSummary {
   overNumber: number;
   balls: string[];
@@ -163,6 +200,8 @@ export interface InningsScorecard {
   bowlers: BowlerCard[];
   fallOfWickets: FallOfWicket[];
   partnership: Partnership | null;
+  /** Wicket-to-wicket stands closed before the current partnership. */
+  partnerships?: CompletedPartnership[];
   recentOvers?: OverSummary[];
   timeline?: TimelineEntry[];
   currentStrikerId: string | null;
