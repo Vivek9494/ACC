@@ -368,11 +368,7 @@ function playingXiPlayers(squad: MatchSquadContext): MatchSquadPlayer[] {
   return squad.players.filter((p) => p.role === 'PLAYING_XI');
 }
 
-export type BattingSquadSource =
-  | 'innings'
-  | 'frame'
-  | 'single_squad'
-  | 'member_match';
+export type BattingSquadSource = 'innings' | 'frame' | 'member_match';
 
 export interface ResolvedBattingSquad {
   teamId: string;
@@ -393,6 +389,68 @@ function squadByTeamId(
   );
 }
 
+function squadUserIds(squad: MatchSquadContext): Set<string> {
+  return new Set(squad.players.map((p) => String(p.userId)));
+}
+
+function allBattersInSquad(
+  squad: MatchSquadContext,
+  batterIds: ReadonlySet<string>,
+): boolean {
+  if (batterIds.size === 0) {
+    return true;
+  }
+  const ids = squadUserIds(squad);
+  for (const id of batterIds) {
+    if (!ids.has(id)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function wrapSquad(
+  squad: MatchSquadContext,
+  source: BattingSquadSource,
+): ResolvedBattingSquad {
+  return {
+    teamId: normTeamId(squad.teamId) ?? squad.teamId,
+    squad,
+    source,
+  };
+}
+
+/** Squad whose roster contains the people who actually batted. */
+function matchSquadByMembers(
+  withXi: MatchSquadContext[],
+  batterIds: ReadonlySet<string>,
+): MatchSquadContext | null {
+  if (batterIds.size === 0 || withXi.length === 0) {
+    return null;
+  }
+  const containingAll = withXi.filter((s) => allBattersInSquad(s, batterIds));
+  if (containingAll.length === 1 && containingAll[0]) {
+    return containingAll[0];
+  }
+  let best: MatchSquadContext | null = null;
+  let bestHits = 0;
+  const candidates = containingAll.length > 0 ? containingAll : withXi;
+  for (const squad of candidates) {
+    const ids = squadUserIds(squad);
+    let hits = 0;
+    for (const id of batterIds) {
+      if (ids.has(id)) {
+        hits += 1;
+      }
+    }
+    if (hits > bestHits) {
+      bestHits = hits;
+      best = squad;
+    }
+  }
+  return bestHits > 0 ? best : null;
+}
+
 export function resolveBattingTeamId(
   card: ScorecardResponse,
   innings: InningsScorecard,
@@ -410,8 +468,8 @@ export function resolveBattingTeamId(
 }
 
 /**
- * Identify the batting Playing XI even when innings.battingTeamId is null
- * (ACC leather / incomplete live frame). Null team id alone is not "no squad".
+ * Batting Playing XI: teamId only when present AND the squad contains the
+ * batters; otherwise member-match (never "first/only squad").
  */
 export function resolveBattingSquad(
   card: ScorecardResponse,
@@ -422,18 +480,28 @@ export function resolveBattingSquad(
     return null;
   }
   const withXi = ctx.squads.filter((s) => playingXiPlayers(s).length > 0);
-  const hit = (
+  const batterIds = new Set(innings.batters.map((b) => String(b.playerId)));
+
+  const byTeamId = (
     teamId: string | null,
-    source: BattingSquadSource,
+    source: 'innings' | 'frame',
   ): ResolvedBattingSquad | null => {
     const squad = squadByTeamId(ctx, teamId);
     if (!squad || playingXiPlayers(squad).length === 0) {
       return null;
     }
-    return { teamId: normTeamId(squad.teamId) ?? squad.teamId, squad, source };
+    if (batterIds.size > 0 && !allBattersInSquad(squad, batterIds)) {
+      console.warn('[isc-xi] sanity', {
+        reason: 'batters not in teamId squad',
+        rejectedTeamId: normTeamId(squad.teamId),
+        rejectedSource: source,
+      });
+      return null;
+    }
+    return wrapSquad(squad, source);
   };
 
-  const fromInnings = hit(innings.battingTeamId, 'innings');
+  const fromInnings = byTeamId(innings.battingTeamId, 'innings');
   if (fromInnings) {
     return fromInnings;
   }
@@ -443,68 +511,20 @@ export function resolveBattingSquad(
       (row) =>
         innings.inningsId != null && row.inningsId === innings.inningsId,
     ) ?? card.display.innings[0];
-  const fromFrameId = hit(labels?.battingTeamId ?? null, 'frame');
-  if (fromFrameId) {
-    return fromFrameId;
-  }
-  const battingName = labels?.battingTeamName?.trim() ?? '';
-  if (battingName) {
-    if (ctx.homeTeamName?.trim() === battingName) {
-      const home = hit(ctx.homeTeamId, 'frame');
-      if (home) {
-        return home;
-      }
-    }
-    if (ctx.awayTeamName?.trim() === battingName) {
-      const away = hit(ctx.awayTeamId, 'frame');
-      if (away) {
-        return away;
-      }
-    }
-  }
-  const bowlingId = normTeamId(
-    innings.bowlingTeamId ?? labels?.bowlingTeamId ?? null,
-  );
-  if (bowlingId && withXi.length === 2) {
-    const other = withXi.find((s) => normTeamId(s.teamId) !== bowlingId);
-    if (other) {
-      return {
-        teamId: normTeamId(other.teamId) ?? other.teamId,
-        squad: other,
-        source: 'frame',
-      };
-    }
+  const fromFrame = byTeamId(labels?.battingTeamId ?? null, 'frame');
+  if (fromFrame) {
+    return fromFrame;
   }
 
-  if (withXi.length === 1 && withXi[0]) {
-    const only = withXi[0];
-    return {
-      teamId: normTeamId(only.teamId) ?? only.teamId,
-      squad: only,
-      source: 'single_squad',
-    };
-  }
-
-  const batterIds = new Set(innings.batters.map((b) => String(b.playerId)));
-  if (batterIds.size > 0) {
-    let best: MatchSquadContext | null = null;
-    let bestHits = 0;
-    for (const squad of withXi) {
-      const hits = squad.players.filter((p) =>
-        batterIds.has(String(p.userId)),
-      ).length;
-      if (hits > bestHits) {
-        bestHits = hits;
-        best = squad;
-      }
+  const byMembers = matchSquadByMembers(withXi, batterIds);
+  if (byMembers) {
+    if (batterIds.size > 0 && !allBattersInSquad(byMembers, batterIds)) {
+      console.warn('[isc-xi] sanity', {
+        reason: 'member-match squad missing a batter',
+        teamId: normTeamId(byMembers.teamId),
+      });
     }
-    if (best && bestHits > 0) {
-      return {
-        teamId: normTeamId(best.teamId) ?? best.teamId,
-        squad: best,
-        source: 'member_match',
-      };
-    }
+    return wrapSquad(byMembers, 'member_match');
   }
 
   return null;

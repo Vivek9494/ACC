@@ -1,9 +1,11 @@
 /* Full innings scorecard (innings break) — centered, strip hidden while on air. */
 
 .panel-innings-sc {
+  display: flex;
+  flex-direction: column;
   min-width: min(92vw, 820px);
   max-width: min(96vw, 980px);
-  max-height: min(86vh, 720px);
+  max-height: min(88vh, 760px);
   border-radius: 8px;
   overflow: hidden;
   background: #294c74;
@@ -18,14 +20,16 @@
 }
 
 .isc-body {
-  padding: 14px 18px 16px;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 12px 18px 14px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  max-height: min(80vh, 680px);
+  gap: 8px;
 }
 
 .isc-tabs {
+  flex-shrink: 0;
   display: flex;
   gap: 0;
   border-bottom: 2px solid rgba(231, 225, 219, 0.2);
@@ -46,9 +50,18 @@
   margin-bottom: -2px;
 }
 
+.isc-pane {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .isc-table-wrap {
-  overflow: auto;
-  max-height: min(52vh, 420px);
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .isc-table {
@@ -68,10 +81,10 @@
 }
 
 .isc-table td {
-  padding: 5px 8px;
+  padding: 4px 8px;
   font-size: 15px;
   font-weight: 700;
-  line-height: 1.2;
+  line-height: 1.15;
   vertical-align: middle;
   border-top: 1px solid rgba(231, 225, 219, 0.12);
 }
@@ -111,6 +124,7 @@
 }
 
 .isc-loading {
+  flex-shrink: 0;
   margin: 8px 0 4px;
   font-size: 14px;
   font-weight: 700;
@@ -123,12 +137,22 @@
   opacity: 0.35;
 }
 
-.isc-row-dnb td {
-  opacity: 0.78;
+.isc-dnb {
+  flex-shrink: 0;
+  margin: 0;
+  font-size: 12px;
   font-weight: 600;
+  line-height: 1.35;
+  color: rgba(231, 225, 219, 0.78);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  max-height: calc(1.35em * 2);
 }
 
 .isc-fow {
+  flex-shrink: 0;
   padding-top: 6px;
   border-top: 1px solid rgba(231, 225, 219, 0.2);
 }
@@ -151,6 +175,7 @@
 }
 
 .isc-total {
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
