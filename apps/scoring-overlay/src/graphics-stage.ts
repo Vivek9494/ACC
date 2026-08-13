@@ -9,16 +9,15 @@ import { mountBatsmanCareerCard } from './batsman-career-card';
 import { mountInningsScorecard } from './innings-scorecard';
 import {
   deriveBatterDotBalls,
-  firstInnings,
   formatBatterInningsScore,
   formatDismissalShort,
   formatStat,
-  hasPlayingXiForTeam,
   latestFallOfWicket,
   partnershipBatterRuns,
   playerName,
   resolveActiveInnings,
-  resolveBattingTeamId,
+  resolveBattingSquad,
+  resolveInningsBreakInnings,
   shortName,
 } from './graphics-format';
 import type { GraphicsCommandMessage, GraphicsKind } from './live-client';
@@ -310,50 +309,39 @@ export function createGraphicsStage(
   ): Promise<boolean> => {
     const token = ++inningsEnsureToken;
     try {
-      if (!scorecard) {
+      const card = scorecard;
+      if (!card) {
         return false;
       }
-      const innings = firstInnings(scorecard);
+      const innings = resolveInningsBreakInnings(card);
       if (!innings) {
         return false;
       }
-      const battingTeamId = resolveBattingTeamId(scorecard, innings);
       const matchId = options.matchId?.trim() ?? '';
 
-      console.warn('[isc-xi] show', {
-        hasCtx: Boolean(matchCtx),
-        squadsLen: matchCtx?.squads.length ?? 0,
-        battingTeamId,
-        battersLen: innings.batters.length,
-      });
+      const paintResolved = (): boolean => {
+        const resolved = resolveBattingSquad(card, innings, matchCtx);
+        if (resolved) {
+          console.warn('[isc-xi] resolver', {
+            source: resolved.source,
+            teamId: resolved.teamId,
+          });
+          return inningsCard.show(card, matchCtx, view, 'full');
+        }
+        return inningsCard.show(card, matchCtx, view, 'no_squad');
+      };
 
-      if (!battingTeamId) {
-        console.warn('[isc-xi] refetch not reached', { reason: 'no battingTeamId' });
-        return inningsCard.show(scorecard, matchCtx, view, 'no_squad');
-      }
-
-      if (hasPlayingXiForTeam(matchCtx, battingTeamId)) {
-        console.warn('[isc-xi] refetch not reached', {
-          reason: 'ctx already has playing XI',
-        });
-        return inningsCard.show(scorecard, matchCtx, view, 'full');
+      if (resolveBattingSquad(card, innings, matchCtx)) {
+        return paintResolved();
       }
 
       if (!matchId) {
-        console.warn('[isc-xi] refetch not reached', { reason: 'no matchId' });
-        return inningsCard.show(scorecard, matchCtx, view, 'no_squad');
+        return inningsCard.show(card, matchCtx, view, 'no_squad');
       }
 
       inningsCard.showLoading(view);
-      const url = `${options.apiBase}/matches/${encodeURIComponent(matchId)}`;
-      console.warn('[isc-xi] refetch fires', { url, battingTeamId });
       const ctx = await ensureMatchContext(options.apiBase, matchId, {
-        battingTeamId,
-      });
-      console.warn('[isc-xi] refetch result', {
-        ok: Boolean(ctx),
-        squadsLen: ctx?.squads.length ?? 0,
-        hasXi: hasPlayingXiForTeam(ctx, battingTeamId),
+        battingTeamId: innings.battingTeamId,
       });
       if (token !== inningsEnsureToken || activeKind !== 'innings_break') {
         return false;
@@ -361,11 +349,11 @@ export function createGraphicsStage(
       if (ctx) {
         matchCtx = ctx;
       }
-      if (hasPlayingXiForTeam(matchCtx, battingTeamId)) {
-        return inningsCard.show(scorecard, matchCtx, view, 'full');
+      if (resolveBattingSquad(card, innings, matchCtx)) {
+        return paintResolved();
       }
       if (ctx) {
-        return inningsCard.show(scorecard, matchCtx, view, 'no_squad');
+        return inningsCard.show(card, matchCtx, view, 'no_squad');
       }
       inningsCard.showLoading(view);
       return true;

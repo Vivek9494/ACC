@@ -174,9 +174,10 @@ export function hasPlayingXiInContext(
   if (!ctx || !battingTeamId) {
     return false;
   }
+  const want = String(battingTeamId).trim();
   return ctx.squads.some(
     (squad) =>
-      squad.teamId === battingTeamId &&
+      String(squad.teamId).trim() === want &&
       squad.players.some((p) => p.role === 'PLAYING_XI'),
   );
 }

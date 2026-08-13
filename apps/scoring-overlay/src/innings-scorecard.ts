@@ -7,11 +7,10 @@ import {
   battingTeamLabel,
   dismissalColumns,
   extrasTotal,
-  firstInnings,
   formatStat,
-  hasPlayingXiForTeam,
   playerName,
-  resolveBattingTeamId,
+  resolveBattingSquad,
+  resolveInningsBreakInnings,
   shortName,
 } from './graphics-format';
 import type {
@@ -62,31 +61,15 @@ function squadName(p: MatchSquadPlayer, card: ScorecardResponse): string {
   return full ? shortName(full) : '—';
 }
 
-function playingXi(
-  ctx: MatchContext | null,
-  battingTeamId: string | null,
-): MatchSquadPlayer[] {
-  const squadTeamIds = ctx?.squads.map((s) => s.teamId) ?? [];
-  const found =
-    ctx && battingTeamId
-      ? ctx.squads.find((s) => s.teamId === battingTeamId)
-      : undefined;
-  const xi =
-    found?.players.filter((p) => p.role === 'PLAYING_XI') ?? [];
-  console.warn('[isc-xi] playingXi', {
-    battingTeamId,
-    squadTeamIds,
-    matchedSquad: Boolean(found),
-    xiLen: xi.length,
-  });
-  return xi;
+function playingXiFromSquad(squad: MatchSquadPlayer[]): MatchSquadPlayer[] {
+  return squad.filter((p) => p.role === 'PLAYING_XI');
 }
 
 function dnbInRosterOrder(
   xi: MatchSquadPlayer[],
   seen: Set<string>,
 ): MatchSquadPlayer[] {
-  const remaining = xi.filter((p) => !seen.has(p.userId));
+  const remaining = xi.filter((p) => !seen.has(String(p.userId)));
   if (remaining.length === 0) {
     return remaining;
   }
@@ -99,7 +82,7 @@ function dnbInRosterOrder(
   );
 }
 
-type BatRowStatus = 'out' | 'not_out';
+type BatRowStatus = 'out' | 'not_out' | 'dnb';
 
 interface BatRow {
   playerId: string;
@@ -114,15 +97,17 @@ interface BatRow {
 function buildBatRows(
   card: ScorecardResponse,
   innings: InningsScorecard,
+  xi: MatchSquadPlayer[],
 ): BatRow[] {
   const seen = new Set<string>();
   const rows: BatRow[] = [];
 
   const pushBatter = (batter: BatterCard): void => {
-    if (seen.has(batter.playerId)) {
+    const batterId = String(batter.playerId);
+    if (seen.has(batterId)) {
       return;
     }
-    seen.add(batter.playerId);
+    seen.add(batterId);
     const name = nameOfCard(card, batter.playerId);
     if (batter.isOut) {
       const cols = dismissalColumns(batter, (id) => nameOfCard(card, id));
@@ -152,26 +137,20 @@ function buildBatRows(
     pushBatter(batter);
   }
 
-  return rows;
-}
+  for (const p of dnbInRosterOrder(xi, seen)) {
+    seen.add(String(p.userId));
+    rows.push({
+      playerId: p.userId,
+      name: squadName(p, card),
+      status: 'dnb',
+      fielder: 'did not bat',
+      bowler: '',
+      runs: '',
+      balls: '',
+    });
+  }
 
-function dnbLineText(
-  card: ScorecardResponse,
-  innings: InningsScorecard,
-  ctx: MatchContext | null,
-): string | null {
-  const teamId = resolveBattingTeamId(card, innings);
-  if (!hasPlayingXiForTeam(ctx, teamId)) {
-    return null;
-  }
-  const seen = new Set(innings.batters.map((b) => b.playerId));
-  const names = dnbInRosterOrder(playingXi(ctx, teamId), seen)
-    .map((p) => squadName(p, card))
-    .filter((n) => n !== '—');
-  if (names.length === 0) {
-    return null;
-  }
-  return `Did not bat: ${names.join(', ')}`;
+  return rows;
 }
 
 function buildCardMarkup(): string {
@@ -199,7 +178,6 @@ function buildCardMarkup(): string {
               <tbody data-isc-bat-body></tbody>
             </table>
           </div>
-          <p data-isc-dnb class="isc-dnb" hidden></p>
           <div class="isc-fow">
             <p class="isc-fow-label">Fall of wickets</p>
             <p data-isc-fow class="isc-fow-line"></p>
@@ -286,7 +264,7 @@ export function mountInningsScorecard(
     status: InningsXiStatus,
   ): boolean => {
     ensureMarkup();
-    const innings = firstInnings(card);
+    const innings = resolveInningsBreakInnings(card);
     if (!innings) {
       return false;
     }
@@ -299,18 +277,16 @@ export function mountInningsScorecard(
     const fowEl = qs<HTMLElement>('[data-isc-fow]');
     const totalLine = qs<HTMLElement>('[data-isc-total-line]');
     const totalMeta = qs<HTMLElement>('[data-isc-total-meta]');
-    const dnbEl = qs<HTMLElement>('[data-isc-dnb]');
-    if (!batBody || !bowlBody || !fowEl || !totalLine || !totalMeta || !dnbEl) {
+    if (!batBody || !bowlBody || !fowEl || !totalLine || !totalMeta) {
       return false;
     }
 
-    const batRows = buildBatRows(card, innings);
-    const dnbPreview = status === 'full' ? dnbLineText(card, innings, ctx) : null;
-    console.warn('[isc-xi] paint', {
-      xiStatus: status,
-      tableRows: batRows.length,
-      dnbLine: dnbPreview,
-    });
+    const resolved = status === 'full' ? resolveBattingSquad(card, innings, ctx) : null;
+    const xi =
+      resolved != null
+        ? playingXiFromSquad(resolved.squad.players)
+        : [];
+    const batRows = buildBatRows(card, innings, xi);
     batBody.replaceChildren();
     for (const row of batRows) {
       const tr = document.createElement('tr');
@@ -329,15 +305,6 @@ export function mountInningsScorecard(
         tr.appendChild(td);
       }
       batBody.appendChild(tr);
-    }
-
-    if (status === 'full') {
-      const line = dnbLineText(card, innings, ctx);
-      dnbEl.textContent = line ?? '';
-      dnbEl.hidden = line == null;
-    } else {
-      dnbEl.textContent = '';
-      dnbEl.hidden = true;
     }
 
     const fow = innings.fallOfWickets ?? [];
@@ -440,13 +407,11 @@ export function mountInningsScorecard(
           hideNode();
           return false;
         }
-        const innings = firstInnings(card);
+        const innings = resolveInningsBreakInnings(card);
+        const resolved =
+          innings != null ? resolveBattingSquad(card, innings, ctx) : null;
         const xi: InningsXiStatus =
-          status === 'full' &&
-          innings != null &&
-          hasPlayingXiForTeam(ctx, resolveBattingTeamId(card, innings))
-            ? 'full'
-            : 'no_squad';
+          status === 'full' && resolved != null ? 'full' : 'no_squad';
         if (!paint(card, ctx, xi)) {
           hideNode();
           return false;

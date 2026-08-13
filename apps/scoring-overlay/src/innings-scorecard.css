@@ -123,12 +123,9 @@
   opacity: 0.35;
 }
 
-.isc-dnb {
-  margin: 8px 0 0;
-  font-size: 13px;
+.isc-row-dnb td {
+  opacity: 0.78;
   font-weight: 600;
-  line-height: 1.35;
-  color: rgba(231, 225, 219, 0.82);
 }
 
 .isc-fow {
