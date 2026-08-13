@@ -205,12 +205,16 @@ body.control-body {
 
 .innings-tab {
   min-height: 44px;
-  padding: 8px 6px;
-  font-size: 11px;
-  letter-spacing: 0.06em;
+  padding: 6px 4px;
+  font-size: 12px;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   white-space: normal;
-  line-height: 1.2;
+  line-height: 1.15;
+}
+
+.btn.innings-tab {
+  font-size: 12px;
 }
 
 .innings-tab.is-active-tab {
