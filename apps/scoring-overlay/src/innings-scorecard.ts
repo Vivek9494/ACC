@@ -166,8 +166,8 @@ function buildCardMarkup(): string {
               <thead>
                 <tr>
                   <th class="isc-col-name">Batter</th>
-                  <th class="isc-col-how">How out</th>
-                  <th class="isc-col-how">Bowler</th>
+                  <th class="isc-col-how"></th>
+                  <th class="isc-col-how"></th>
                   <th class="isc-col-num">R</th>
                   <th class="isc-col-num">B</th>
                 </tr>
@@ -176,12 +176,11 @@ function buildCardMarkup(): string {
             </table>
           </div>
           <p data-isc-note class="isc-note" hidden></p>
-          <div class="isc-fow">
-            <p class="isc-fow-label">Fall of wickets</p>
-            <p data-isc-fow class="isc-fow-line"></p>
-          </div>
           <div class="isc-total">
-            <p data-isc-total-line class="isc-total-score"></p>
+            <p class="isc-total-score">
+              <span data-isc-total-team class="isc-total-team"></span>
+              <span data-isc-total-runs class="isc-total-runs"></span>
+            </p>
             <p data-isc-total-meta class="isc-total-meta"></p>
           </div>
         </div>
@@ -272,11 +271,18 @@ export function mountInningsScorecard(
 
     const batBody = qs<HTMLTableSectionElement>('[data-isc-bat-body]');
     const bowlBody = qs<HTMLTableSectionElement>('[data-isc-bowl-body]');
-    const fowEl = qs<HTMLElement>('[data-isc-fow]');
-    const totalLine = qs<HTMLElement>('[data-isc-total-line]');
+    const totalTeam = qs<HTMLElement>('[data-isc-total-team]');
+    const totalRuns = qs<HTMLElement>('[data-isc-total-runs]');
     const totalMeta = qs<HTMLElement>('[data-isc-total-meta]');
     const noteEl = qs<HTMLElement>('[data-isc-note]');
-    if (!batBody || !bowlBody || !fowEl || !totalLine || !totalMeta || !noteEl) {
+    if (
+      !batBody ||
+      !bowlBody ||
+      !totalTeam ||
+      !totalRuns ||
+      !totalMeta ||
+      !noteEl
+    ) {
       return false;
     }
 
@@ -307,14 +313,8 @@ export function mountInningsScorecard(
     noteEl.textContent = showNote ? 'Playing XI unavailable for this side' : '';
     noteEl.hidden = !showNote;
 
-    const fow = innings.fallOfWickets ?? [];
-    fowEl.textContent =
-      fow.length > 0
-        ? fow.map((w) => `${w.wicketNumber}–${w.teamRuns}`).join('   ')
-        : '—';
-
-    const team = battingTeamLabel(card, innings);
-    totalLine.textContent = `${team}  ${innings.runs}–${innings.wickets}`;
+    totalTeam.textContent = battingTeamLabel(card, innings);
+    totalRuns.textContent = `${innings.runs}–${innings.wickets}`;
     const extra = extrasTotal(innings);
     const extras = innings.extras;
     const extraParts: string[] = [];
