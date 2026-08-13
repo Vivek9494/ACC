@@ -5,7 +5,7 @@
   flex-direction: column;
   min-width: min(92vw, 820px);
   max-width: min(96vw, 980px);
-  max-height: min(88vh, 760px);
+  max-height: 94vh;
   border-radius: 8px;
   overflow: hidden;
   background: #294c74;
@@ -58,10 +58,9 @@
   gap: 8px;
 }
 
+/* Grows with the XI: eleven rows must never clip or scroll. */
 .isc-table-wrap {
-  flex: 0 1 auto;
-  min-height: 0;
-  overflow: hidden;
+  flex: 0 0 auto;
 }
 
 .isc-table {
@@ -137,18 +136,9 @@
   opacity: 0.35;
 }
 
-.isc-dnb {
-  flex-shrink: 0;
-  margin: 0;
-  font-size: 12px;
+.isc-row-dnb td {
   font-weight: 600;
-  line-height: 1.35;
-  color: rgba(231, 225, 219, 0.78);
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  overflow: hidden;
-  max-height: calc(1.35em * 2);
+  color: rgba(231, 225, 219, 0.82);
 }
 
 .isc-note {
@@ -222,5 +212,26 @@
 
   .isc-total-score {
     font-size: 18px;
+  }
+}
+
+/* Short viewports (720p and below): tighten rows so the full XI + footer fit. */
+@media (max-height: 800px) {
+  .isc-body {
+    padding: 10px 16px 12px;
+    gap: 6px;
+  }
+
+  .isc-pane {
+    gap: 6px;
+  }
+
+  .isc-table td {
+    padding: 3px 8px;
+    font-size: 14px;
+  }
+
+  .isc-total-score {
+    font-size: 19px;
   }
 }

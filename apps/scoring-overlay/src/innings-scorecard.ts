@@ -75,7 +75,7 @@ function dnbInRosterOrder(
   return [...remaining].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 }
 
-type BatRowStatus = 'out' | 'not_out';
+type BatRowStatus = 'out' | 'not_out' | 'dnb';
 
 interface BatRow {
   playerId: string;
@@ -90,6 +90,7 @@ interface BatRow {
 function buildBatRows(
   card: ScorecardResponse,
   innings: InningsScorecard,
+  xi: SidePlayer[],
 ): BatRow[] {
   const seen = new Set<string>();
   const rows: BatRow[] = [];
@@ -129,25 +130,24 @@ function buildBatRows(
     pushBatter(batter);
   }
 
-  return rows;
-}
+  for (const p of dnbInRosterOrder(xi, seen)) {
+    const name = sidePlayerName(p, card);
+    if (name === '—') {
+      continue;
+    }
+    seen.add(String(p.playerId));
+    rows.push({
+      playerId: p.playerId,
+      name,
+      status: 'dnb',
+      fielder: '',
+      bowler: '',
+      runs: '',
+      balls: '',
+    });
+  }
 
-function dnbLineText(
-  card: ScorecardResponse,
-  innings: InningsScorecard,
-  xi: SidePlayer[],
-): string | null {
-  if (xi.length === 0) {
-    return null;
-  }
-  const seen = new Set(innings.batters.map((b) => String(b.playerId)));
-  const names = dnbInRosterOrder(xi, seen)
-    .map((p) => sidePlayerName(p, card))
-    .filter((n) => n !== '—');
-  if (names.length === 0) {
-    return null;
-  }
-  return `Did not bat: ${names.join(', ')}`;
+  return rows;
 }
 
 function buildCardMarkup(): string {
@@ -175,7 +175,6 @@ function buildCardMarkup(): string {
               <tbody data-isc-bat-body></tbody>
             </table>
           </div>
-          <p data-isc-dnb class="isc-dnb" hidden></p>
           <p data-isc-note class="isc-note" hidden></p>
           <div class="isc-fow">
             <p class="isc-fow-label">Fall of wickets</p>
@@ -276,23 +275,14 @@ export function mountInningsScorecard(
     const fowEl = qs<HTMLElement>('[data-isc-fow]');
     const totalLine = qs<HTMLElement>('[data-isc-total-line]');
     const totalMeta = qs<HTMLElement>('[data-isc-total-meta]');
-    const dnbEl = qs<HTMLElement>('[data-isc-dnb]');
     const noteEl = qs<HTMLElement>('[data-isc-note]');
-    if (
-      !batBody ||
-      !bowlBody ||
-      !fowEl ||
-      !totalLine ||
-      !totalMeta ||
-      !dnbEl ||
-      !noteEl
-    ) {
+    if (!batBody || !bowlBody || !fowEl || !totalLine || !totalMeta || !noteEl) {
       return false;
     }
 
     const side = status === 'full' ? resolveBattingSide(card, innings, ctx) : null;
     const xi = side?.players ?? [];
-    const batRows = buildBatRows(card, innings);
+    const batRows = buildBatRows(card, innings, xi);
     batBody.replaceChildren();
     for (const row of batRows) {
       const tr = document.createElement('tr');
@@ -312,10 +302,6 @@ export function mountInningsScorecard(
       }
       batBody.appendChild(tr);
     }
-
-    const line = xi.length > 0 ? dnbLineText(card, innings, xi) : null;
-    dnbEl.textContent = line ?? '';
-    dnbEl.hidden = line == null;
 
     const showNote = status !== 'full' || xi.length === 0;
     noteEl.textContent = showNote ? 'Playing XI unavailable for this side' : '';
