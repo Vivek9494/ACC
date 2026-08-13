@@ -12,6 +12,16 @@
     />
   </head>
   <body class="control-body">
+    <aside id="on-air-dock" class="on-air-dock" aria-live="polite">
+      <div class="on-air-copy">
+        <p id="on-air" class="on-air-value">Nothing on air</p>
+        <p id="on-air-detail" class="on-air-detail"></p>
+      </div>
+      <button type="button" id="btn-clear-air" class="btn btn-danger" disabled>
+        Take off air
+      </button>
+    </aside>
+
     <main class="control-shell">
       <header class="control-header">
         <div class="header-top">
@@ -21,257 +31,202 @@
         <p id="match-label" class="match-label">Loading…</p>
       </header>
 
-      <aside id="on-air-dock" class="on-air-dock" aria-live="polite">
-        <div class="on-air-copy">
-          <p class="on-air-kicker">On air now</p>
-          <p id="on-air" class="on-air-value">None</p>
-          <p id="on-air-detail" class="on-air-detail"></p>
-        </div>
-        <button type="button" id="btn-clear-air" class="btn btn-danger" disabled>
-          Take off air
-        </button>
-      </aside>
-
-      <section id="sec-toss" class="control-section" data-graphic="toss">
-        <div class="section-head">
-          <h2>Toss (strip)</h2>
-          <span class="on-air-badge" hidden>ON STRIP</span>
-        </div>
-        <p id="preview-toss" class="section-preview">Waiting for toss…</p>
-        <div class="btn-row btn-row-split">
-          <button type="button" id="btn-show-toss" class="btn btn-primary btn-lg" disabled>
-            Show toss
-          </button>
-          <button type="button" id="btn-hide-toss" class="btn btn-secondary btn-lg">Hide</button>
-        </div>
-      </section>
-
-      <section id="sec-toss-result" class="control-section" data-graphic="toss_result">
-        <div class="section-head">
-          <h2>Toss result</h2>
-          <span class="on-air-badge" hidden>ON AIR</span>
-        </div>
-        <p id="preview-toss-result" class="section-preview">Waiting for toss…</p>
-        <div class="btn-row btn-row-split">
-          <button type="button" id="btn-show-toss-result" class="btn btn-primary btn-lg" disabled>
-            Show toss result
-          </button>
-          <button type="button" id="btn-hide-toss-result" class="btn btn-secondary btn-lg">
-            Hide
-          </button>
+      <section class="control-group">
+        <h2 class="group-title">Strip</h2>
+        <div class="card-grid">
+          <article id="sec-toss" class="control-card" data-graphic="toss">
+            <div class="card-head">
+              <h3>Toss</h3>
+              <span class="on-air-badge" hidden>ON STRIP</span>
+            </div>
+            <p id="preview-toss" class="card-preview">Waiting for toss…</p>
+            <button type="button" id="btn-show-toss" class="btn btn-primary" disabled>
+              Show toss
+            </button>
+          </article>
+          <article id="sec-chase" class="control-card" data-graphic="chase">
+            <div class="card-head">
+              <h3>Runs to win</h3>
+              <span class="on-air-badge" hidden>ON STRIP</span>
+            </div>
+            <p id="preview-chase" class="card-preview">Waiting for chase…</p>
+            <button type="button" id="btn-show-chase" class="btn btn-primary" disabled>
+              Show runs to win
+            </button>
+          </article>
         </div>
       </section>
 
-      <section id="sec-chase" class="control-section" data-graphic="chase">
-        <div class="section-head">
-          <h2>Runs to win (strip)</h2>
-          <span class="on-air-badge" hidden>ON STRIP</span>
-        </div>
-        <p id="preview-chase" class="section-preview">Waiting for chase…</p>
-        <div class="btn-row btn-row-split">
-          <button type="button" id="btn-show-chase" class="btn btn-primary btn-lg" disabled>
-            Show runs to win
-          </button>
-          <button type="button" id="btn-hide-chase" class="btn btn-secondary btn-lg">Hide</button>
-        </div>
-      </section>
-
-      <section id="sec-partnership" class="control-section" data-graphic="partnership">
-        <div class="section-head">
-          <h2>Partnership</h2>
-          <span class="on-air-badge" hidden>ON AIR</span>
-        </div>
-        <p id="preview-partnership" class="section-preview">Waiting for live score…</p>
-        <div class="btn-row btn-row-split">
-          <button type="button" id="btn-show-partnership" class="btn btn-primary btn-lg" disabled>
-            Show partnership
-          </button>
-          <button type="button" id="btn-hide-partnership" class="btn btn-secondary btn-lg">
-            Hide
-          </button>
-        </div>
-      </section>
-
-      <section id="sec-fow" class="control-section" data-graphic="fow">
-        <div class="section-head">
-          <h2>Last Wicket</h2>
-          <span class="on-air-badge" hidden>ON AIR</span>
-        </div>
-        <p id="preview-fow" class="section-preview">No wicket yet</p>
-        <div class="btn-row btn-row-split">
-          <button type="button" id="btn-show-fow" class="btn btn-primary btn-lg" disabled>
-            Show last wicket
-          </button>
-          <button type="button" id="btn-hide-fow" class="btn btn-secondary btn-lg">Hide</button>
-        </div>
-      </section>
-
-      <section id="sec-batsman" class="control-section" data-graphic="batsman">
-        <div class="section-head">
-          <h2>Batsman card</h2>
-          <span class="on-air-badge" hidden>ON AIR</span>
-        </div>
-        <label class="field-label" for="pick-batsman">Player</label>
-        <select id="pick-batsman" class="field-select">
-          <option value="">Waiting for batsmen…</option>
-        </select>
-        <p id="preview-batsman" class="section-preview">—</p>
-        <div class="btn-row btn-row-split">
-          <button type="button" id="btn-show-batsman" class="btn btn-primary btn-lg" disabled>
-            Show batsman
-          </button>
-          <button type="button" id="btn-hide-batsman" class="btn btn-secondary btn-lg">Hide</button>
-        </div>
-      </section>
-
-      <section id="sec-bowler" class="control-section" data-graphic="bowler">
-        <div class="section-head">
-          <h2>Bowler card</h2>
-          <span class="on-air-badge" hidden>ON AIR</span>
-        </div>
-        <label class="field-label" for="pick-bowler">Player</label>
-        <select id="pick-bowler" class="field-select">
-          <option value="">No bowlers yet…</option>
-        </select>
-        <p id="preview-bowler" class="section-preview">—</p>
-        <div class="btn-row btn-row-split">
-          <button type="button" id="btn-show-bowler" class="btn btn-primary btn-lg" disabled>
-            Show bowler
-          </button>
-          <button type="button" id="btn-hide-bowler" class="btn btn-secondary btn-lg">Hide</button>
-        </div>
-      </section>
-
-      <section id="sec-bowler-career" class="control-section" data-graphic="bowler_career">
-        <div class="section-head">
-          <h2>Bowler Career Stats</h2>
-          <span class="on-air-badge" hidden>ON AIR</span>
-        </div>
-        <label class="field-label" for="pick-bowler-career">Player</label>
-        <select id="pick-bowler-career" class="field-select">
-          <option value="">Loading bowling team…</option>
-        </select>
-        <p id="preview-bowler-career" class="section-preview">—</p>
-        <div class="btn-row btn-row-split">
-          <button type="button" id="btn-show-bowler-career" class="btn btn-primary btn-lg" disabled>
-            Show career stats
-          </button>
-          <button type="button" id="btn-hide-bowler-career" class="btn btn-secondary btn-lg">
-            Hide
-          </button>
+      <section class="control-group">
+        <h2 class="group-title">In-play cards</h2>
+        <div class="card-grid">
+          <article id="sec-toss-result" class="control-card" data-graphic="toss_result">
+            <div class="card-head">
+              <h3>Toss result</h3>
+              <span class="on-air-badge" hidden>ON AIR</span>
+            </div>
+            <p id="preview-toss-result" class="card-preview">Waiting for toss…</p>
+            <button type="button" id="btn-show-toss-result" class="btn btn-primary" disabled>
+              Show toss result
+            </button>
+          </article>
+          <article id="sec-partnership" class="control-card" data-graphic="partnership">
+            <div class="card-head">
+              <h3>Partnership</h3>
+              <span class="on-air-badge" hidden>ON AIR</span>
+            </div>
+            <p id="preview-partnership" class="card-preview">Waiting for live score…</p>
+            <button type="button" id="btn-show-partnership" class="btn btn-primary" disabled>
+              Show partnership
+            </button>
+          </article>
+          <article id="sec-fow" class="control-card" data-graphic="fow">
+            <div class="card-head">
+              <h3>Last wicket</h3>
+              <span class="on-air-badge" hidden>ON AIR</span>
+            </div>
+            <p id="preview-fow" class="card-preview">No wicket yet</p>
+            <button type="button" id="btn-show-fow" class="btn btn-primary" disabled>
+              Show last wicket
+            </button>
+          </article>
+          <article id="sec-batsman" class="control-card" data-graphic="batsman">
+            <div class="card-head">
+              <h3>Batsman</h3>
+              <span class="on-air-badge" hidden>ON AIR</span>
+            </div>
+            <label class="field-label" for="pick-batsman">Player</label>
+            <select id="pick-batsman" class="field-select">
+              <option value="">Waiting for batsmen…</option>
+            </select>
+            <button type="button" id="btn-show-batsman" class="btn btn-primary" disabled>
+              Show batsman
+            </button>
+          </article>
+          <article id="sec-bowler" class="control-card" data-graphic="bowler">
+            <div class="card-head">
+              <h3>Bowler</h3>
+              <span class="on-air-badge" hidden>ON AIR</span>
+            </div>
+            <label class="field-label" for="pick-bowler">Player</label>
+            <select id="pick-bowler" class="field-select">
+              <option value="">No bowlers yet…</option>
+            </select>
+            <button type="button" id="btn-show-bowler" class="btn btn-primary" disabled>
+              Show bowler
+            </button>
+          </article>
+          <article id="sec-batsman-career" class="control-card" data-graphic="batsman_career">
+            <div class="card-head">
+              <h3>Batsman career</h3>
+              <span class="on-air-badge" hidden>ON AIR</span>
+            </div>
+            <label class="field-label" for="pick-batsman-career">Player</label>
+            <select id="pick-batsman-career" class="field-select">
+              <option value="">Loading batting team…</option>
+            </select>
+            <button type="button" id="btn-show-batsman-career" class="btn btn-primary" disabled>
+              Show career stats
+            </button>
+          </article>
+          <article id="sec-bowler-career" class="control-card" data-graphic="bowler_career">
+            <div class="card-head">
+              <h3>Bowler career</h3>
+              <span class="on-air-badge" hidden>ON AIR</span>
+            </div>
+            <label class="field-label" for="pick-bowler-career">Player</label>
+            <select id="pick-bowler-career" class="field-select">
+              <option value="">Loading bowling team…</option>
+            </select>
+            <button type="button" id="btn-show-bowler-career" class="btn btn-primary" disabled>
+              Show career stats
+            </button>
+          </article>
         </div>
       </section>
 
-      <section id="sec-batsman-career" class="control-section" data-graphic="batsman_career">
-        <div class="section-head">
-          <h2>Batsman Career Stats</h2>
-          <span class="on-air-badge" hidden>ON AIR</span>
-        </div>
-        <label class="field-label" for="pick-batsman-career">Player</label>
-        <select id="pick-batsman-career" class="field-select">
-          <option value="">Loading batting team…</option>
-        </select>
-        <p id="preview-batsman-career" class="section-preview">—</p>
-        <div class="btn-row btn-row-split">
-          <button type="button" id="btn-show-batsman-career" class="btn btn-primary btn-lg" disabled>
-            Show career stats
-          </button>
-          <button type="button" id="btn-hide-batsman-career" class="btn btn-secondary btn-lg">
-            Hide
-          </button>
-        </div>
-      </section>
-
-      <section id="sec-innings" class="control-section" data-graphic="innings_break">
-        <div class="section-head">
-          <h2>Innings break</h2>
-          <span class="on-air-badge" hidden>ON AIR</span>
-        </div>
-        <p id="preview-innings" class="section-preview">Waiting for innings…</p>
-        <div class="btn-row btn-row-split">
-          <button type="button" id="btn-show-innings" class="btn btn-primary btn-lg" disabled>
+      <section class="control-group">
+        <h2 class="group-title">Innings break</h2>
+        <article id="sec-innings" class="control-card control-card-wide" data-graphic="innings_break">
+          <div class="card-head">
+            <h3>Innings break</h3>
+            <span class="on-air-badge" hidden>ON AIR</span>
+          </div>
+          <p id="preview-innings" class="card-preview">Waiting for innings…</p>
+          <button type="button" id="btn-show-innings" class="btn btn-primary" disabled>
             Show innings break
           </button>
-          <button type="button" id="btn-hide-innings" class="btn btn-secondary btn-lg">Hide</button>
-        </div>
-        <div id="innings-tabs" class="btn-row innings-tabs" hidden>
-          <button type="button" class="btn btn-secondary innings-tab is-active-tab" data-innings-view="batting">
-            Batting
-          </button>
-          <button type="button" class="btn btn-secondary innings-tab" data-innings-view="bowling">
-            Bowling
-          </button>
-          <button type="button" class="btn btn-secondary innings-tab" data-innings-view="fow">
-            Fall of wickets
-          </button>
-          <button type="button" class="btn btn-secondary innings-tab" data-innings-view="partnerships">
-            Partnerships
-          </button>
-          <button type="button" class="btn btn-secondary innings-tab" data-innings-view="overs">
-            Overs summary
-          </button>
-        </div>
+          <div id="innings-tabs" class="btn-row innings-tabs" hidden>
+            <button type="button" class="btn btn-secondary innings-tab is-active-tab" data-innings-view="batting">
+              Batting
+            </button>
+            <button type="button" class="btn btn-secondary innings-tab" data-innings-view="bowling">
+              Bowling
+            </button>
+            <button type="button" class="btn btn-secondary innings-tab" data-innings-view="fow">
+              Fall of wickets
+            </button>
+            <button type="button" class="btn btn-secondary innings-tab" data-innings-view="partnerships">
+              Partnerships
+            </button>
+            <button type="button" class="btn btn-secondary innings-tab" data-innings-view="overs">
+              Overs summary
+            </button>
+          </div>
+        </article>
       </section>
 
-      <section id="sec-scorecard-views" class="control-section">
-        <div class="section-head">
-          <h2>Scorecard views</h2>
+      <section id="sec-scorecard-views" class="control-group">
+        <div class="group-head">
+          <h2 class="group-title">Scorecard views</h2>
           <span class="on-air-badge" hidden>ON AIR</span>
         </div>
-        <p id="preview-scorecard-views" class="section-preview">
+        <p id="preview-scorecard-views" class="group-preview">
           Select a team that has batted…
         </p>
-        <div class="scorecard-view-row" data-scorecard-view="batting">
-          <p class="field-label">Batting</p>
-          <select class="field-select scorecard-team-pick" data-scorecard-view="batting" aria-label="Batting team"></select>
-          <div class="btn-row btn-row-split">
-            <button type="button" class="btn btn-primary btn-show-scorecard" data-scorecard-view="batting" disabled>Show</button>
-            <button type="button" class="btn btn-secondary btn-hide-scorecard" data-scorecard-view="batting">Hide</button>
-          </div>
-        </div>
-        <div class="scorecard-view-row" data-scorecard-view="bowling">
-          <p class="field-label">Bowling</p>
-          <select class="field-select scorecard-team-pick" data-scorecard-view="bowling" aria-label="Bowling team"></select>
-          <div class="btn-row btn-row-split">
-            <button type="button" class="btn btn-primary btn-show-scorecard" data-scorecard-view="bowling" disabled>Show</button>
-            <button type="button" class="btn btn-secondary btn-hide-scorecard" data-scorecard-view="bowling">Hide</button>
-          </div>
-        </div>
-        <div class="scorecard-view-row" data-scorecard-view="fow">
-          <p class="field-label">Fall of wickets</p>
-          <select class="field-select scorecard-team-pick" data-scorecard-view="fow" aria-label="Fall of wickets team"></select>
-          <div class="btn-row btn-row-split">
-            <button type="button" class="btn btn-primary btn-show-scorecard" data-scorecard-view="fow" disabled>Show</button>
-            <button type="button" class="btn btn-secondary btn-hide-scorecard" data-scorecard-view="fow">Hide</button>
-          </div>
-        </div>
-        <div class="scorecard-view-row" data-scorecard-view="partnerships">
-          <p class="field-label">Partnerships</p>
-          <select class="field-select scorecard-team-pick" data-scorecard-view="partnerships" aria-label="Partnerships team"></select>
-          <div class="btn-row btn-row-split">
-            <button type="button" class="btn btn-primary btn-show-scorecard" data-scorecard-view="partnerships" disabled>Show</button>
-            <button type="button" class="btn btn-secondary btn-hide-scorecard" data-scorecard-view="partnerships">Hide</button>
-          </div>
-        </div>
-        <div class="scorecard-view-row" data-scorecard-view="overs">
-          <p class="field-label">Overs summary</p>
-          <select class="field-select scorecard-team-pick" data-scorecard-view="overs" aria-label="Overs summary team"></select>
-          <div class="btn-row btn-row-split">
-            <button type="button" class="btn btn-primary btn-show-scorecard" data-scorecard-view="overs" disabled>Show</button>
-            <button type="button" class="btn btn-secondary btn-hide-scorecard" data-scorecard-view="overs">Hide</button>
-          </div>
+        <div class="card-grid">
+          <article class="control-card scorecard-view-row" data-scorecard-view="batting">
+            <h3>Batting</h3>
+            <select class="field-select scorecard-team-pick" data-scorecard-view="batting" aria-label="Batting team"></select>
+            <button type="button" class="btn btn-primary btn-show-scorecard" data-scorecard-view="batting" disabled>
+              Show
+            </button>
+          </article>
+          <article class="control-card scorecard-view-row" data-scorecard-view="bowling">
+            <h3>Bowling</h3>
+            <select class="field-select scorecard-team-pick" data-scorecard-view="bowling" aria-label="Bowling team"></select>
+            <button type="button" class="btn btn-primary btn-show-scorecard" data-scorecard-view="bowling" disabled>
+              Show
+            </button>
+          </article>
+          <article class="control-card scorecard-view-row" data-scorecard-view="fow">
+            <h3>Fall of wickets</h3>
+            <select class="field-select scorecard-team-pick" data-scorecard-view="fow" aria-label="Fall of wickets team"></select>
+            <button type="button" class="btn btn-primary btn-show-scorecard" data-scorecard-view="fow" disabled>
+              Show
+            </button>
+          </article>
+          <article class="control-card scorecard-view-row" data-scorecard-view="partnerships">
+            <h3>Partnerships</h3>
+            <select class="field-select scorecard-team-pick" data-scorecard-view="partnerships" aria-label="Partnerships team"></select>
+            <button type="button" class="btn btn-primary btn-show-scorecard" data-scorecard-view="partnerships" disabled>
+              Show
+            </button>
+          </article>
+          <article class="control-card scorecard-view-row" data-scorecard-view="overs">
+            <h3>Overs summary</h3>
+            <select class="field-select scorecard-team-pick" data-scorecard-view="overs" aria-label="Overs summary team"></select>
+            <button type="button" class="btn btn-primary btn-show-scorecard" data-scorecard-view="overs" disabled>
+              Show
+            </button>
+          </article>
         </div>
       </section>
 
-      <footer class="control-footer">
-        <button type="button" id="btn-hide-all" class="btn btn-danger btn-block">
-          Hide all graphics
-        </button>
-        <p class="hint">
-          Pair with <code>graphics.html?matchId=…</code> (full-screen cards) and
-          <code>/?matchId=…</code> (score strip — toss). Same matchId + api.
-        </p>
-      </footer>
+      <p class="hint">
+        Pair with <code>graphics.html?matchId=…</code> (full-screen cards) and
+        <code>/?matchId=…</code> (score strip — toss). Same matchId + api.
+      </p>
     </main>
     <script type="module" src="/src/control-main.ts"></script>
   </body>
