@@ -56,6 +56,22 @@ function squadName(p: MatchSquadPlayer, card: ScorecardResponse): string {
   return full ? shortName(full) : '—';
 }
 
+function resolveBattingTeamId(
+  card: ScorecardResponse,
+  innings: InningsScorecard,
+): string | null {
+  if (innings.battingTeamId) {
+    return innings.battingTeamId;
+  }
+  const labels =
+    card.display.innings.find(
+      (row) =>
+        innings.inningsId != null && row.inningsId === innings.inningsId,
+    ) ?? card.display.innings[0];
+  const fromLabels = labels?.battingTeamId?.trim();
+  return fromLabels && fromLabels.length > 0 ? fromLabels : null;
+}
+
 function playingXi(
   ctx: MatchContext | null,
   battingTeamId: string | null,
@@ -68,6 +84,24 @@ function playingXi(
     return [];
   }
   return squad.players.filter((p) => p.role === 'PLAYING_XI');
+}
+
+/** DNB append order: battingOrder when every leftover has one, else squad/lock order. */
+function dnbInRosterOrder(
+  xi: MatchSquadPlayer[],
+  seen: Set<string>,
+): MatchSquadPlayer[] {
+  const remaining = xi.filter((p) => !seen.has(p.userId));
+  if (remaining.length === 0) {
+    return remaining;
+  }
+  const allHaveOrder = remaining.every((p) => p.battingOrder != null);
+  if (!allHaveOrder) {
+    return remaining;
+  }
+  return [...remaining].sort(
+    (a, b) => (a.battingOrder ?? 0) - (b.battingOrder ?? 0),
+  );
 }
 
 type BatRowStatus = 'out' | 'not_out' | 'dnb';
@@ -87,7 +121,7 @@ function buildBatRows(
   innings: InningsScorecard,
   ctx: MatchContext | null,
 ): BatRow[] {
-  const xi = playingXi(ctx, innings.battingTeamId);
+  const xi = playingXi(ctx, resolveBattingTeamId(card, innings));
   const seen = new Set<string>();
   const rows: BatRow[] = [];
 
@@ -125,24 +159,7 @@ function buildBatRows(
     pushBatter(batter);
   }
 
-  const remaining = [...xi].sort((a, b) => {
-    const ao = a.battingOrder;
-    const bo = b.battingOrder;
-    if (ao != null && bo != null) {
-      return ao - bo;
-    }
-    if (ao != null) {
-      return -1;
-    }
-    if (bo != null) {
-      return 1;
-    }
-    return squadName(a, card).localeCompare(squadName(b, card));
-  });
-  for (const p of remaining) {
-    if (seen.has(p.userId)) {
-      continue;
-    }
+  for (const p of dnbInRosterOrder(xi, seen)) {
     seen.add(p.userId);
     rows.push({
       playerId: p.userId,
