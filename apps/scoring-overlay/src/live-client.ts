@@ -8,6 +8,7 @@ import type {
   InningsBreakView,
   LiveStateMessage,
   ScorecardResponse,
+  ScorecardViewSource,
 } from './types';
 
 export const DEFAULT_API_BASE = 'https://acc-api-production.up.railway.app';
@@ -44,6 +45,8 @@ export interface GraphicsCommandMessage {
     playerId?: string;
     playerIds?: string[];
     view?: InningsBreakView;
+    inningsId?: string | null;
+    source?: ScorecardViewSource;
   };
 }
 

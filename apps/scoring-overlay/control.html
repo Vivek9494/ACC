@@ -213,6 +213,56 @@
         </div>
       </section>
 
+      <section id="sec-scorecard-views" class="control-section">
+        <div class="section-head">
+          <h2>Scorecard views</h2>
+          <span class="on-air-badge" hidden>ON AIR</span>
+        </div>
+        <p id="preview-scorecard-views" class="section-preview">
+          Select a team that has batted…
+        </p>
+        <div class="scorecard-view-row" data-scorecard-view="batting">
+          <p class="field-label">Batting</p>
+          <select class="field-select scorecard-team-pick" data-scorecard-view="batting" aria-label="Batting team"></select>
+          <div class="btn-row btn-row-split">
+            <button type="button" class="btn btn-primary btn-show-scorecard" data-scorecard-view="batting" disabled>Show</button>
+            <button type="button" class="btn btn-secondary btn-hide-scorecard" data-scorecard-view="batting">Hide</button>
+          </div>
+        </div>
+        <div class="scorecard-view-row" data-scorecard-view="bowling">
+          <p class="field-label">Bowling</p>
+          <select class="field-select scorecard-team-pick" data-scorecard-view="bowling" aria-label="Bowling team"></select>
+          <div class="btn-row btn-row-split">
+            <button type="button" class="btn btn-primary btn-show-scorecard" data-scorecard-view="bowling" disabled>Show</button>
+            <button type="button" class="btn btn-secondary btn-hide-scorecard" data-scorecard-view="bowling">Hide</button>
+          </div>
+        </div>
+        <div class="scorecard-view-row" data-scorecard-view="fow">
+          <p class="field-label">Fall of wickets</p>
+          <select class="field-select scorecard-team-pick" data-scorecard-view="fow" aria-label="Fall of wickets team"></select>
+          <div class="btn-row btn-row-split">
+            <button type="button" class="btn btn-primary btn-show-scorecard" data-scorecard-view="fow" disabled>Show</button>
+            <button type="button" class="btn btn-secondary btn-hide-scorecard" data-scorecard-view="fow">Hide</button>
+          </div>
+        </div>
+        <div class="scorecard-view-row" data-scorecard-view="partnerships">
+          <p class="field-label">Partnerships</p>
+          <select class="field-select scorecard-team-pick" data-scorecard-view="partnerships" aria-label="Partnerships team"></select>
+          <div class="btn-row btn-row-split">
+            <button type="button" class="btn btn-primary btn-show-scorecard" data-scorecard-view="partnerships" disabled>Show</button>
+            <button type="button" class="btn btn-secondary btn-hide-scorecard" data-scorecard-view="partnerships">Hide</button>
+          </div>
+        </div>
+        <div class="scorecard-view-row" data-scorecard-view="overs">
+          <p class="field-label">Overs summary</p>
+          <select class="field-select scorecard-team-pick" data-scorecard-view="overs" aria-label="Overs summary team"></select>
+          <div class="btn-row btn-row-split">
+            <button type="button" class="btn btn-primary btn-show-scorecard" data-scorecard-view="overs" disabled>Show</button>
+            <button type="button" class="btn btn-secondary btn-hide-scorecard" data-scorecard-view="overs">Hide</button>
+          </div>
+        </div>
+      </section>
+
       <footer class="control-footer">
         <button type="button" id="btn-hide-all" class="btn btn-danger btn-block">
           Hide all graphics

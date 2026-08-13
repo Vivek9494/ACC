@@ -17,7 +17,7 @@ import {
   playerName,
   resolveActiveInnings,
   resolveBattingSide,
-  resolveInningsBreakInnings,
+  resolveScorecardInnings,
   shortName,
 } from './graphics-format';
 import type { GraphicsCommandMessage, GraphicsKind } from './live-client';
@@ -31,7 +31,8 @@ import type {
   MatchContext,
   ScorecardResponse,
 } from './types';
-import { parseInningsBreakView } from './types';
+import { parseInningsBreakView, parseScorecardViewSource } from './types';
+import type { ScorecardViewSource } from './types';
 
 const ANIM_MS = 280;
 
@@ -232,6 +233,11 @@ export function createGraphicsStage(
   let activeKind: OverlayKind | null = null;
   let activePlayerId: string | null = null;
   let inningsEnsureToken = 0;
+  let inningsCmd = {
+    view: 'batting' as InningsBreakView,
+    inningsId: null as string | null,
+    source: 'break' as ScorecardViewSource,
+  };
   const batsmanCareer = mountBatsmanCareerCard(el('g-batsman-career'));
   const tossResult = mountTossResultCard(el('g-toss-result'));
   const inningsCard = mountInningsScorecard(el('g-innings'));
@@ -307,7 +313,7 @@ export function createGraphicsStage(
   };
 
   const showInningsBreak = async (
-    view: InningsBreakView,
+    view: InningsBreakView = inningsCmd.view,
   ): Promise<boolean> => {
     const token = ++inningsEnsureToken;
     try {
@@ -315,7 +321,7 @@ export function createGraphicsStage(
       if (!card) {
         return false;
       }
-      const innings = resolveInningsBreakInnings(card);
+      const innings = resolveScorecardInnings(card, inningsCmd);
       if (!innings) {
         return false;
       }
@@ -334,9 +340,9 @@ export function createGraphicsStage(
             isExternal: side.isExternal,
             xiLen: side.players.length,
           });
-          return inningsCard.show(card, matchCtx, view, 'full');
+          return inningsCard.show(card, matchCtx, view, 'full', innings);
         }
-        return inningsCard.show(card, matchCtx, view, 'no_squad');
+        return inningsCard.show(card, matchCtx, view, 'no_squad', innings);
       };
 
       if (hasBattingSide(matchCtx)) {
@@ -344,7 +350,7 @@ export function createGraphicsStage(
       }
 
       if (!matchId) {
-        return inningsCard.show(card, matchCtx, view, 'no_squad');
+        return inningsCard.show(card, matchCtx, view, 'no_squad', innings);
       }
 
       inningsCard.showLoading(view);
@@ -362,7 +368,7 @@ export function createGraphicsStage(
         return paintResolved();
       }
       if (ctx) {
-        return inningsCard.show(card, matchCtx, view, 'no_squad');
+        return inningsCard.show(card, matchCtx, view, 'no_squad', innings);
       }
       inningsCard.showLoading(view);
       return true;
@@ -585,15 +591,22 @@ export function createGraphicsStage(
         if (inningsCard.xiStatus() === 'loading') {
           break;
         }
-        if (
-          !inningsCard.show(
-            scorecard,
-            matchCtx,
-            inningsCard.currentView(),
-            inningsCard.xiStatus() === 'full' ? 'full' : 'no_squad',
-          )
-        ) {
-          hideGraphic('innings_break');
+        {
+          const innings = scorecard
+            ? resolveScorecardInnings(scorecard, inningsCmd)
+            : null;
+          if (
+            !innings ||
+            !inningsCard.show(
+              scorecard,
+              matchCtx,
+              inningsCmd.view,
+              inningsCard.xiStatus() === 'full' ? 'full' : 'no_squad',
+              innings,
+            )
+          ) {
+            hideGraphic('innings_break');
+          }
         }
         break;
       case 'batsman':
@@ -681,7 +694,12 @@ export function createGraphicsStage(
         activePlayerId = null;
       }
     } else if (kind === 'innings_break') {
-      const painted = await showInningsBreak(parseInningsView(payload));
+      inningsCmd = {
+        view: parseInningsView(payload),
+        inningsId: payload?.inningsId?.trim() || null,
+        source: parseScorecardViewSource(payload?.source),
+      };
+      const painted = await showInningsBreak(inningsCmd.view);
       if (!painted && activeKind === 'innings_break') {
         activeKind = null;
         activePlayerId = null;
@@ -708,19 +726,12 @@ export function createGraphicsStage(
           activePlayerId = null;
         }
         if (activeKind === 'innings_break') {
-          if (inningsCard.xiStatus() === 'loading') {
-            void showInningsBreak(inningsCard.currentView());
-          } else if (
-            !inningsCard.show(
-              scorecard,
-              matchCtx,
-              inningsCard.currentView(),
-              inningsCard.xiStatus() === 'full' ? 'full' : 'no_squad',
-            )
-          ) {
-            activeKind = null;
-            activePlayerId = null;
-          }
+          void showInningsBreak(inningsCmd.view).then((ok) => {
+            if (!ok && activeKind === 'innings_break') {
+              activeKind = null;
+              activePlayerId = null;
+            }
+          });
         }
       } catch (err) {
         console.warn('[graphics] match context refresh failed', err);

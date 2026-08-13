@@ -8,7 +8,9 @@ import {
   type TeamRosterPlayer,
 } from './broadcast-fetch';
 import {
+  battingSideOptions,
   battingTeamLabel,
+  findInningsByKey,
   formatBatterInningsScore,
   formatDismissalShort,
   formatHighestScoreMeta,
@@ -35,7 +37,8 @@ import type {
   MatchContext,
   ScorecardResponse,
 } from './types';
-import { parseInningsBreakView } from './types';
+import { parseInningsBreakView, parseScorecardViewSource } from './types';
+import type { ScorecardViewSource } from './types';
 import { formatRunsToWinLine, formatTossLine } from './view-model';
 import { formatTossResultLine } from './toss-result-card';
 import type { Socket } from 'socket.io-client';
@@ -53,6 +56,14 @@ const LABELS: Record<Exclude<GraphicsKind, 'hello' | 'toss' | 'chase'>, string> 
 };
 
 const OPERATOR_KINDS = Object.keys(LABELS) as Array<keyof typeof LABELS>;
+
+const SCORECARD_VIEW_LABELS: Record<InningsBreakView, string> = {
+  batting: 'Batting',
+  bowling: 'Bowling',
+  fow: 'Fall of wickets',
+  partnerships: 'Partnerships',
+  overs: 'Overs summary',
+};
 
 function el<T extends HTMLElement>(id: string): T {
   const node = document.getElementById(id);
@@ -114,6 +125,9 @@ function start(): void {
   let socket: Socket | null = null;
   let onAirGraphic: keyof typeof LABELS | null = null;
   let inningsView: InningsBreakView = 'batting';
+  let inningsSource: ScorecardViewSource = 'break';
+  let scorecardOnAirView: InningsBreakView | null = null;
+  let scorecardOnAirInningsId: string | null = null;
   let onAirDetailText = '';
   let scorecard: ScorecardResponse | null = null;
   let matchCtx: MatchContext | null = null;
@@ -229,6 +243,44 @@ function start(): void {
     return `${nameOf(fow.playerId)} · ${figs} · ${dismissal}`;
   }
 
+  function populateScorecardTeamPicks(): void {
+    const options = battingSideOptions(scorecard, matchCtx);
+    const picks = document.querySelectorAll<HTMLSelectElement>('.scorecard-team-pick');
+    const hasEnabled = options.some((o) => o.enabled);
+    for (const pick of picks) {
+      const prev = pick.value;
+      pick.replaceChildren();
+      if (options.length === 0) {
+        appendOption(pick, '', 'No innings yet');
+        pick.disabled = true;
+        continue;
+      }
+      pick.disabled = false;
+      for (const opt of options) {
+        const node = document.createElement('option');
+        node.value = opt.inningsId ?? '';
+        node.textContent = opt.label;
+        node.disabled = !opt.enabled;
+        pick.appendChild(node);
+      }
+      const keep = [...pick.options].some(
+        (o) => o.value === prev && !o.disabled && prev.length > 0,
+      );
+      const firstEnabled = [...pick.options].find((o) => !o.disabled && o.value);
+      pick.value = keep ? prev : (firstEnabled?.value ?? '');
+    }
+    for (const btn of document.querySelectorAll<HTMLButtonElement>('.btn-show-scorecard')) {
+      const view = btn.dataset.scorecardView;
+      const pick = document.querySelector<HTMLSelectElement>(
+        `.scorecard-team-pick[data-scorecard-view="${view}"]`,
+      );
+      setEnabled(btn, Boolean(pick?.value));
+    }
+    el<HTMLParagraphElement>('preview-scorecard-views').textContent = hasEnabled
+      ? 'Show any innings view for the selected batting side'
+      : 'Waiting for a team to bat…';
+  }
+
   function previewInnings(): string | null {
     if (!scorecard || scorecard.innings.length === 0) {
       return null;
@@ -334,6 +386,14 @@ function start(): void {
         return line;
       }
       case 'innings_break':
+        if (inningsSource === 'scorecard' && scorecardOnAirInningsId && scorecard) {
+          const inn = findInningsByKey(scorecard, scorecardOnAirInningsId);
+          const viewLabel = SCORECARD_VIEW_LABELS[scorecardOnAirView ?? inningsView];
+          if (inn) {
+            return `${viewLabel} · ${battingTeamLabel(scorecard, inn)} ${inn.runs}/${inn.wickets}`;
+          }
+          return viewLabel;
+        }
         return previewInnings() ?? '';
       case 'toss_result':
         return previewTossResult() ?? '';
@@ -358,7 +418,8 @@ function start(): void {
 
   function syncInningsTabs(): void {
     const tabs = el<HTMLElement>('innings-tabs');
-    const onAir = onAirGraphic === 'innings_break';
+    const onAir =
+      onAirGraphic === 'innings_break' && inningsSource === 'break';
     tabs.hidden = !onAir;
     for (const btn of tabs.querySelectorAll<HTMLButtonElement>('[data-innings-view]')) {
       btn.classList.toggle(
@@ -368,14 +429,38 @@ function start(): void {
     }
   }
 
+  function syncScorecardViewRows(): void {
+    const live =
+      onAirGraphic === 'innings_break' && inningsSource === 'scorecard';
+    for (const row of document.querySelectorAll<HTMLElement>('.scorecard-view-row')) {
+      const view = parseInningsBreakView(row.dataset.scorecardView);
+      row.classList.toggle(
+        'is-on-air',
+        live && view === scorecardOnAirView,
+      );
+    }
+  }
+
   function setOnAir(kind: keyof typeof LABELS | null): void {
     onAirGraphic = kind;
+    if (kind !== 'innings_break') {
+      inningsSource = 'break';
+      scorecardOnAirView = null;
+      scorecardOnAirInningsId = null;
+    }
     onAirDetailText = kind ? detailForKind(kind) : '';
-    onAir.textContent = kind ? LABELS[kind] : 'None';
+    const inningsStandalone =
+      kind === 'innings_break' && inningsSource === 'scorecard';
+    onAir.textContent = inningsStandalone
+      ? `Scorecard · ${SCORECARD_VIEW_LABELS[scorecardOnAirView ?? inningsView]}`
+      : kind
+        ? LABELS[kind]
+        : 'None';
     onAirDetail.textContent = onAirDetailText;
     onAirDock.classList.toggle('is-live', kind != null);
     setEnabled(btnClearAir, kind != null);
     syncInningsTabs();
+    syncScorecardViewRows();
 
     for (const k of OPERATOR_KINDS) {
       const section = document.querySelector<HTMLElement>(
@@ -384,12 +469,22 @@ function start(): void {
       if (!section) {
         continue;
       }
-      const live = kind === k;
+      const live =
+        k === 'innings_break'
+          ? kind === k && inningsSource === 'break'
+          : kind === k;
       section.classList.toggle('is-on-air', live);
       const badge = section.querySelector<HTMLElement>('.on-air-badge');
       if (badge) {
         badge.hidden = !live;
       }
+    }
+
+    const scorecardSec = el<HTMLElement>('sec-scorecard-views');
+    scorecardSec.classList.toggle('is-on-air', inningsStandalone);
+    const scorecardBadge = scorecardSec.querySelector<HTMLElement>('.on-air-badge');
+    if (scorecardBadge) {
+      scorecardBadge.hidden = !inningsStandalone;
     }
   }
 
@@ -435,6 +530,7 @@ function start(): void {
     el<HTMLParagraphElement>('preview-innings').textContent =
       inn ?? 'Waiting for innings…';
     setEnabled(btnShowInnings, inn != null);
+    populateScorecardTeamPicks();
 
     if (
       onAirGraphic &&
@@ -789,6 +885,14 @@ function start(): void {
       if (cmd.action === 'show') {
         if (cmd.graphic === 'innings_break') {
           inningsView = parseInningsBreakView(cmd.payload?.view);
+          inningsSource = parseScorecardViewSource(cmd.payload?.source);
+          if (inningsSource === 'scorecard') {
+            scorecardOnAirView = inningsView;
+            scorecardOnAirInningsId = cmd.payload?.inningsId?.trim() || null;
+          } else {
+            scorecardOnAirView = null;
+            scorecardOnAirInningsId = null;
+          }
         }
         setOnAir(cmd.graphic);
       } else if (cmd.action === 'hide' && onAirGraphic === cmd.graphic) {
@@ -813,9 +917,19 @@ function start(): void {
 
   bind('btn-show-partnership', 'btn-hide-partnership', 'partnership');
   bind('btn-show-fow', 'btn-hide-fow', 'fow');
-  bind('btn-show-innings', 'btn-hide-innings', 'innings_break', () => ({
-    view: inningsView,
-  }));
+  el<HTMLButtonElement>('btn-show-innings').addEventListener('click', () => {
+    inningsSource = 'break';
+    send({
+      action: 'show',
+      graphic: 'innings_break',
+      payload: { view: inningsView, source: 'break' },
+    });
+  });
+  el<HTMLButtonElement>('btn-hide-innings').addEventListener('click', () => {
+    if (onAirGraphic === 'innings_break' && inningsSource === 'break') {
+      send({ action: 'hide', graphic: 'innings_break' });
+    }
+  });
 
   el<HTMLElement>('innings-tabs').addEventListener('click', (event) => {
     const target = event.target;
@@ -829,11 +943,50 @@ function start(): void {
     const next = parseInningsBreakView(btn.dataset.inningsView);
     inningsView = next;
     syncInningsTabs();
+    inningsSource = 'break';
     send({
       action: 'show',
       graphic: 'innings_break',
-      payload: { view: next },
+      payload: { view: next, source: 'break' },
     });
+  });
+
+  el<HTMLElement>('sec-scorecard-views').addEventListener('click', (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) {
+      return;
+    }
+    const showBtn = target.closest<HTMLButtonElement>('.btn-show-scorecard');
+    const hideBtn = target.closest<HTMLButtonElement>('.btn-hide-scorecard');
+    if (showBtn) {
+      const view = parseInningsBreakView(showBtn.dataset.scorecardView);
+      const pick = document.querySelector<HTMLSelectElement>(
+        `.scorecard-team-pick[data-scorecard-view="${view}"]`,
+      );
+      const inningsId = pick?.value.trim() ?? '';
+      if (!inningsId || showBtn.disabled) {
+        return;
+      }
+      inningsSource = 'scorecard';
+      scorecardOnAirView = view;
+      scorecardOnAirInningsId = inningsId;
+      send({
+        action: 'show',
+        graphic: 'innings_break',
+        payload: { view, inningsId, source: 'scorecard' },
+      });
+      return;
+    }
+    if (hideBtn) {
+      const view = parseInningsBreakView(hideBtn.dataset.scorecardView);
+      if (
+        onAirGraphic === 'innings_break' &&
+        inningsSource === 'scorecard' &&
+        scorecardOnAirView === view
+      ) {
+        send({ action: 'hide', graphic: 'innings_break' });
+      }
+    }
   });
   bind('btn-show-toss-result', 'btn-hide-toss-result', 'toss_result');
   bind('btn-show-batsman', 'btn-hide-batsman', 'batsman', () => {

@@ -44,6 +44,7 @@ export interface InningsScorecardController {
     ctx: MatchContext | null,
     view?: InningsScorecardView,
     xiStatus?: InningsXiStatus,
+    innings?: InningsScorecard | null,
   ): boolean;
 }
 
@@ -467,12 +468,9 @@ export function mountInningsScorecard(
     card: ScorecardResponse,
     ctx: MatchContext | null,
     status: InningsXiStatus,
+    innings: InningsScorecard,
   ): boolean => {
     ensureMarkup();
-    const innings = resolveInningsBreakInnings(card);
-    if (!innings) {
-      return false;
-    }
 
     setViewUi();
     setLoadingUi(false);
@@ -629,7 +627,7 @@ export function mountInningsScorecard(
         return false;
       }
     },
-    show(card, ctx, nextView = 'batting', status = 'no_squad'): boolean {
+    show(card, ctx, nextView = 'batting', status = 'no_squad', inningsArg = null): boolean {
       try {
         view = parseInningsBreakView(nextView);
         if (status === 'loading') {
@@ -645,14 +643,18 @@ export function mountInningsScorecard(
           hideNode();
           return false;
         }
-        const innings = resolveInningsBreakInnings(card);
-        const side =
-          innings != null ? resolveBattingSide(card, innings, ctx) : null;
+        const innings =
+          inningsArg ?? resolveInningsBreakInnings(card);
+        if (!innings) {
+          hideNode();
+          return false;
+        }
+        const side = resolveBattingSide(card, innings, ctx);
         const xi: InningsXiStatus =
           status === 'full' && side != null && side.players.length > 0
             ? 'full'
             : 'no_squad';
-        if (!paint(card, ctx, xi)) {
+        if (!paint(card, ctx, xi, innings)) {
           hideNode();
           return false;
         }

@@ -360,6 +360,96 @@ export function resolveInningsBreakInnings(
   return card.innings[0] ?? null;
 }
 
+export function inningsKey(innings: InningsScorecard): string {
+  const id = innings.inningsId?.trim();
+  if (id) {
+    return id;
+  }
+  return `seq:${innings.sequence}`;
+}
+
+export function findInningsByKey(
+  card: ScorecardResponse,
+  key: string | null | undefined,
+): InningsScorecard | null {
+  const want = key?.trim();
+  if (!want) {
+    return null;
+  }
+  return card.innings.find((inn) => inningsKey(inn) === want) ?? null;
+}
+
+export function resolveScorecardInnings(
+  card: ScorecardResponse,
+  options?: { inningsId?: string | null; source?: string | null },
+): InningsScorecard | null {
+  if (options?.source === 'scorecard') {
+    return findInningsByKey(card, options.inningsId ?? null);
+  }
+  return resolveInningsBreakInnings(card);
+}
+
+export interface BattingSideOption {
+  inningsId: string | null;
+  label: string;
+  enabled: boolean;
+}
+
+/** Dropdown rows: existing batting innings (enabled) + sides that have not batted (disabled). */
+export function battingSideOptions(
+  card: ScorecardResponse | null,
+  ctx: MatchContext | null,
+): BattingSideOption[] {
+  const options: BattingSideOption[] = [];
+  const innings = card?.innings ?? [];
+  const labels = innings.map((inn) =>
+    card ? battingTeamLabel(card, inn) : `Innings ${inn.sequence}`,
+  );
+  const dup = new Set(
+    labels.filter((name, i) => labels.indexOf(name) !== i),
+  );
+  const battedTeamIds = new Set<string>();
+  let battedExternal = false;
+
+  for (const [i, inn] of innings.entries()) {
+    const base = labels[i] ?? `Innings ${inn.sequence}`;
+    const label = dup.has(base) ? `${base} (${inn.sequence})` : base;
+    options.push({ inningsId: inningsKey(inn), label, enabled: true });
+    const tid = normTeamId(inn.battingTeamId);
+    if (tid) {
+      battedTeamIds.add(tid);
+    }
+    if (inn.battingIsExternal === true || (!tid && Boolean(ctx?.externalOpponentName))) {
+      battedExternal = true;
+    }
+  }
+
+  const pending: string[] = [];
+  const homeId = normTeamId(ctx?.homeTeamId ?? null);
+  const awayId = normTeamId(ctx?.awayTeamId ?? null);
+  if (homeId && !battedTeamIds.has(homeId)) {
+    pending.push(ctx?.homeTeamName?.trim() || 'Home');
+  }
+  if (awayId && !battedTeamIds.has(awayId)) {
+    pending.push(ctx?.awayTeamName?.trim() || 'Away');
+  }
+  if (
+    ctx?.externalOpponentName?.trim() &&
+    !awayId &&
+    !battedExternal
+  ) {
+    pending.push(ctx.externalOpponentName.trim());
+  }
+  for (const name of pending) {
+    options.push({
+      inningsId: null,
+      label: `${name} (not yet batted)`,
+      enabled: false,
+    });
+  }
+  return options;
+}
+
 export function normTeamId(id: string | null | undefined): string | null {
   if (id == null) {
     return null;

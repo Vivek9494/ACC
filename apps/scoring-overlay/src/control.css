@@ -222,6 +222,22 @@ body.control-body {
   color: #ffffff;
 }
 
+.scorecard-view-row + .scorecard-view-row {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(41, 76, 116, 0.12);
+}
+
+.scorecard-view-row.is-on-air {
+  outline: 2px solid #ff6b00;
+  outline-offset: 6px;
+  border-radius: 8px;
+}
+
+.scorecard-view-row .field-select {
+  margin-bottom: 8px;
+}
+
 .btn {
   min-height: 52px;
   padding: 0 18px;

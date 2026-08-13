@@ -43,6 +43,14 @@ export function parseInningsBreakView(
   return 'batting';
 }
 
+export type ScorecardViewSource = 'break' | 'scorecard';
+
+export function parseScorecardViewSource(
+  value: string | null | undefined,
+): ScorecardViewSource {
+  return value === 'scorecard' ? 'scorecard' : 'break';
+}
+
 export type GraphicsKind =
   | 'batsman'
   | 'bowler'
@@ -64,6 +72,10 @@ export interface GraphicsCommandMessage {
     playerId?: string;
     playerIds?: string[];
     view?: InningsBreakView;
+    /** Target innings for standalone scorecard views. */
+    inningsId?: string | null;
+    /** `break` = just-finished innings; `scorecard` = dropdown-selected innings. */
+    source?: ScorecardViewSource;
   };
 }
 
