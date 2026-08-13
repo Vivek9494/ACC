@@ -40,6 +40,7 @@ import type {
 import { parseInningsBreakView, parseScorecardViewSource } from './types';
 import type { ScorecardViewSource } from './types';
 import { formatRunsToWinLine, formatTossLine } from './view-model';
+import { formatPlayingXiPreview } from './playing-xi-card';
 import { formatTossResultLine } from './toss-result-card';
 import type { Socket } from 'socket.io-client';
 
@@ -53,6 +54,7 @@ const LABELS: Record<Exclude<GraphicsKind, 'hello' | 'toss' | 'chase'>, string> 
   bowler_career: 'Bowler Career Stats',
   innings_break: 'Innings break',
   toss_result: 'Toss Result',
+  playing_xi: 'Playing XI',
 };
 
 const OPERATOR_KINDS = Object.keys(LABELS) as Array<keyof typeof LABELS>;
@@ -110,6 +112,7 @@ function start(): void {
   const btnShowInnings = el<HTMLButtonElement>('btn-show-innings');
   const btnShowToss = el<HTMLButtonElement>('btn-show-toss');
   const btnShowTossResult = el<HTMLButtonElement>('btn-show-toss-result');
+  const btnShowPlayingXi = el<HTMLButtonElement>('btn-show-playing-xi');
   const btnShowChase = el<HTMLButtonElement>('btn-show-chase');
 
   if (!matchId) {
@@ -380,6 +383,8 @@ function start(): void {
         return previewInnings() ?? '';
       case 'toss_result':
         return previewTossResult() ?? '';
+      case 'playing_xi':
+        return formatPlayingXiPreview(matchCtx) ?? '';
       default:
         return '';
     }
@@ -512,6 +517,11 @@ function start(): void {
     el<HTMLParagraphElement>('preview-toss-result').textContent =
       tossResult ?? 'Toss not recorded yet';
     setEnabled(btnShowTossResult, tossResult != null);
+
+    const playingXi = formatPlayingXiPreview(matchCtx);
+    el<HTMLParagraphElement>('preview-playing-xi').textContent =
+      playingXi ?? 'Waiting for squads…';
+    setEnabled(btnShowPlayingXi, playingXi != null);
 
     const chase = previewChase();
     el<HTMLParagraphElement>('preview-chase').textContent =
@@ -974,6 +984,7 @@ function start(): void {
     });
   });
   bindShow('btn-show-toss-result', 'toss_result');
+  bindShow('btn-show-playing-xi', 'playing_xi');
   bindShow('btn-show-batsman', 'batsman', () => {
     const playerId = pickBatsman.value.trim();
     return playerId ? { playerId } : undefined;

@@ -4,7 +4,7 @@
  */
 
 import './graphics.css';
-import { ensureMatchContext } from './broadcast-fetch';
+import { ensureMatchContext, fetchMatchContext } from './broadcast-fetch';
 import { mountBatsmanCareerCard } from './batsman-career-card';
 import { mountInningsScorecard } from './innings-scorecard';
 import {
@@ -21,6 +21,10 @@ import {
   shortName,
 } from './graphics-format';
 import type { GraphicsCommandMessage, GraphicsKind } from './live-client';
+import {
+  formatPlayingXiPreview,
+  mountPlayingXiCard,
+} from './playing-xi-card';
 import {
   formatTossResultLine,
   mountTossResultCard,
@@ -48,6 +52,7 @@ const GRAPHIC_IDS: Record<OverlayKind, string> = {
   bowler: 'g-bowler',
   innings_break: 'g-innings',
   toss_result: 'g-toss-result',
+  playing_xi: 'g-playing-xi',
   hello: 'g-hello',
 };
 
@@ -141,6 +146,8 @@ export function buildGraphicsStageMarkup(): string {
       <div id="g-batsman-career" class="graphic graphic-centered batsman-career-graphic" hidden></div>
 
       <div id="g-toss-result" class="graphic graphic-centered toss-result-graphic" hidden></div>
+
+      <div id="g-playing-xi" class="graphic graphic-centered playing-xi-graphic" hidden></div>
 
       <div id="g-bowler" class="graphic panel panel-batsman-live" hidden>
         <div class="panel-accent"></div>
@@ -240,6 +247,7 @@ export function createGraphicsStage(
   };
   const batsmanCareer = mountBatsmanCareerCard(el('g-batsman-career'));
   const tossResult = mountTossResultCard(el('g-toss-result'));
+  const playingXi = mountPlayingXiCard(el('g-playing-xi'));
   const inningsCard = mountInningsScorecard(el('g-innings'));
 
   const graphicNode = (kind: OverlayKind): HTMLElement => el(GRAPHIC_IDS[kind]);
@@ -247,6 +255,7 @@ export function createGraphicsStage(
   const isMountManaged = (kind: OverlayKind): boolean =>
     kind === 'batsman_career' ||
     kind === 'toss_result' ||
+    kind === 'playing_xi' ||
     kind === 'innings_break';
 
   const hideNode = (node: HTMLElement): void => {
@@ -269,6 +278,7 @@ export function createGraphicsStage(
     inningsEnsureToken += 1;
     batsmanCareer.hide();
     tossResult.hide();
+    playingXi.hide();
     inningsCard.hide();
     for (const kind of Object.keys(GRAPHIC_IDS) as OverlayKind[]) {
       if (isMountManaged(kind)) {
@@ -294,6 +304,10 @@ export function createGraphicsStage(
       tossResult.hide();
       return;
     }
+    if (kind === 'playing_xi') {
+      playingXi.hide();
+      return;
+    }
     if (kind === 'innings_break') {
       inningsEnsureToken += 1;
       inningsCard.hide();
@@ -308,6 +322,23 @@ export function createGraphicsStage(
     } catch (err) {
       console.warn('[graphics] toss result failed', err);
       tossResult.hide();
+      return false;
+    }
+  };
+
+  const showPlayingXi = async (): Promise<boolean> => {
+    try {
+      const matchId = options.matchId?.trim() ?? '';
+      if (matchId) {
+        const fresh = await fetchMatchContext(options.apiBase, matchId);
+        if (fresh) {
+          matchCtx = fresh;
+        }
+      }
+      return playingXi.show(matchCtx);
+    } catch (err) {
+      console.warn('[graphics] playing xi failed', err);
+      playingXi.hide();
       return false;
     }
   };
@@ -458,6 +489,10 @@ export function createGraphicsStage(
     }
     if (kind === 'toss_result') {
       tossResult.hide();
+      return;
+    }
+    if (kind === 'playing_xi') {
+      playingXi.hide();
       return;
     }
     if (kind === 'innings_break') {
@@ -664,6 +699,10 @@ export function createGraphicsStage(
       ok = playerId != null;
     } else if (kind === 'toss_result') {
       ok = formatTossResultLine(matchCtx) != null;
+    } else if (kind === 'playing_xi') {
+      ok =
+        formatPlayingXiPreview(matchCtx) != null ||
+        Boolean(options.matchId?.trim());
     }
 
     if (!ok) {
@@ -690,6 +729,12 @@ export function createGraphicsStage(
       void showBatsmanCareer(playerId);
     } else if (kind === 'toss_result') {
       if (!showTossResult()) {
+        activeKind = null;
+        activePlayerId = null;
+      }
+    } else if (kind === 'playing_xi') {
+      const painted = await showPlayingXi();
+      if (!painted && activeKind === 'playing_xi') {
         activeKind = null;
         activePlayerId = null;
       }
@@ -725,6 +770,10 @@ export function createGraphicsStage(
           activeKind = null;
           activePlayerId = null;
         }
+        if (activeKind === 'playing_xi' && !playingXi.show(matchCtx)) {
+          activeKind = null;
+          activePlayerId = null;
+        }
         if (activeKind === 'innings_break') {
           void showInningsBreak(inningsCmd.view).then((ok) => {
             if (!ok && activeKind === 'innings_break') {
@@ -745,6 +794,7 @@ export function createGraphicsStage(
       activeKind != null ||
       batsmanCareer.isOnAir() ||
       tossResult.isOnAir() ||
+      playingXi.isOnAir() ||
       inningsCard.isOnAir(),
     activeKind: () => activeKind,
     applyCommand(cmd) {

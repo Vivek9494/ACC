@@ -62,6 +62,7 @@ export type GraphicsKind =
   | 'bowler_career'
   | 'batsman_career'
   | 'toss_result'
+  | 'playing_xi'
   | 'hello';
 
 export interface GraphicsCommandMessage {

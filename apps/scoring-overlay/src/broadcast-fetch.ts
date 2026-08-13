@@ -108,7 +108,7 @@ export async function fetchMatchContext(
       }
     }
 
-    return {
+    const ctx: MatchContext = {
       tournamentId,
       homeTeamId: body.homeTeamId ?? null,
       awayTeamId: body.awayTeamId ?? null,
@@ -165,6 +165,12 @@ export async function fetchMatchContext(
         })
         .filter((p): p is NonNullable<typeof p> => p != null),
     };
+
+    const id = matchId.trim();
+    if (id) {
+      matchCtxCache.set(matchCtxCacheKey(apiBase, id), ctx);
+    }
+    return ctx;
   } catch {
     return null;
   }

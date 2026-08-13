@@ -126,6 +126,11 @@ export const GraphicsKind = {
    * Distinct from strip-only `toss` (CRR override).
    */
   TossResult: 'toss_result',
+  /**
+   * Centered both-teams Playing XI card (home left / away-or-external right).
+   * Match-level; not tied to an innings.
+   */
+  PlayingXi: 'playing_xi',
   /** Phase A validation only — remove once real graphics ship. */
   Hello: 'hello',
 } as const;
