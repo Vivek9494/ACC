@@ -66,14 +66,20 @@ function playingXi(
   ctx: MatchContext | null,
   battingTeamId: string | null,
 ): MatchSquadPlayer[] {
-  if (!ctx || !battingTeamId) {
-    return [];
-  }
-  const squad = ctx.squads.find((s) => s.teamId === battingTeamId);
-  if (!squad) {
-    return [];
-  }
-  return squad.players.filter((p) => p.role === 'PLAYING_XI');
+  const squadTeamIds = ctx?.squads.map((s) => s.teamId) ?? [];
+  const found =
+    ctx && battingTeamId
+      ? ctx.squads.find((s) => s.teamId === battingTeamId)
+      : undefined;
+  const xi =
+    found?.players.filter((p) => p.role === 'PLAYING_XI') ?? [];
+  console.warn('[isc-xi] playingXi', {
+    battingTeamId,
+    squadTeamIds,
+    matchedSquad: Boolean(found),
+    xiLen: xi.length,
+  });
+  return xi;
 }
 
 function dnbInRosterOrder(
@@ -299,6 +305,12 @@ export function mountInningsScorecard(
     }
 
     const batRows = buildBatRows(card, innings);
+    const dnbPreview = status === 'full' ? dnbLineText(card, innings, ctx) : null;
+    console.warn('[isc-xi] paint', {
+      xiStatus: status,
+      tableRows: batRows.length,
+      dnbLine: dnbPreview,
+    });
     batBody.replaceChildren();
     for (const row of batRows) {
       const tr = document.createElement('tr');

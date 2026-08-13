@@ -320,21 +320,40 @@ export function createGraphicsStage(
       const battingTeamId = resolveBattingTeamId(scorecard, innings);
       const matchId = options.matchId?.trim() ?? '';
 
+      console.warn('[isc-xi] show', {
+        hasCtx: Boolean(matchCtx),
+        squadsLen: matchCtx?.squads.length ?? 0,
+        battingTeamId,
+        battersLen: innings.batters.length,
+      });
+
       if (!battingTeamId) {
+        console.warn('[isc-xi] refetch not reached', { reason: 'no battingTeamId' });
         return inningsCard.show(scorecard, matchCtx, view, 'no_squad');
       }
 
       if (hasPlayingXiForTeam(matchCtx, battingTeamId)) {
+        console.warn('[isc-xi] refetch not reached', {
+          reason: 'ctx already has playing XI',
+        });
         return inningsCard.show(scorecard, matchCtx, view, 'full');
       }
 
       if (!matchId) {
+        console.warn('[isc-xi] refetch not reached', { reason: 'no matchId' });
         return inningsCard.show(scorecard, matchCtx, view, 'no_squad');
       }
 
       inningsCard.showLoading(view);
+      const url = `${options.apiBase}/matches/${encodeURIComponent(matchId)}`;
+      console.warn('[isc-xi] refetch fires', { url, battingTeamId });
       const ctx = await ensureMatchContext(options.apiBase, matchId, {
         battingTeamId,
+      });
+      console.warn('[isc-xi] refetch result', {
+        ok: Boolean(ctx),
+        squadsLen: ctx?.squads.length ?? 0,
+        hasXi: hasPlayingXiForTeam(ctx, battingTeamId),
       });
       if (token !== inningsEnsureToken || activeKind !== 'innings_break') {
         return false;
