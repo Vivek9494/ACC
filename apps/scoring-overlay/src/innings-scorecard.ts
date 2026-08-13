@@ -9,15 +9,15 @@ import {
   extrasTotal,
   formatStat,
   playerName,
-  resolveBattingSquad,
+  resolveBattingSide,
   resolveInningsBreakInnings,
   shortName,
 } from './graphics-format';
+import type { SidePlayer } from './graphics-format';
 import type {
   BatterCard,
   InningsScorecard,
   MatchContext,
-  MatchSquadPlayer,
   ScorecardResponse,
 } from './types';
 
@@ -52,34 +52,27 @@ function nameOfCard(
   return shortName(playerName(card.display, id));
 }
 
-function squadName(p: MatchSquadPlayer, card: ScorecardResponse): string {
-  const fromDisplay = playerName(card.display, p.userId);
+function sidePlayerName(p: SidePlayer, card: ScorecardResponse): string {
+  const fromDisplay = playerName(card.display, p.playerId);
   if (fromDisplay !== '—') {
     return shortName(fromDisplay);
   }
-  const full = `${p.firstName} ${p.lastName}`.trim();
-  return full ? shortName(full) : '—';
-}
-
-function playingXiFromSquad(squad: MatchSquadPlayer[]): MatchSquadPlayer[] {
-  return squad.filter((p) => p.role === 'PLAYING_XI');
+  return p.name ? shortName(p.name) : '—';
 }
 
 function dnbInRosterOrder(
-  xi: MatchSquadPlayer[],
-  seen: Set<string>,
-): MatchSquadPlayer[] {
-  const remaining = xi.filter((p) => !seen.has(String(p.userId)));
+  xi: SidePlayer[],
+  seen: ReadonlySet<string>,
+): SidePlayer[] {
+  const remaining = xi.filter((p) => !seen.has(String(p.playerId)));
   if (remaining.length === 0) {
     return remaining;
   }
-  const allHaveOrder = remaining.every((p) => p.battingOrder != null);
+  const allHaveOrder = remaining.every((p) => p.order != null);
   if (!allHaveOrder) {
     return remaining;
   }
-  return [...remaining].sort(
-    (a, b) => (a.battingOrder ?? 0) - (b.battingOrder ?? 0),
-  );
+  return [...remaining].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 }
 
 type BatRowStatus = 'out' | 'not_out';
@@ -142,14 +135,14 @@ function buildBatRows(
 function dnbLineText(
   card: ScorecardResponse,
   innings: InningsScorecard,
-  xi: MatchSquadPlayer[],
+  xi: SidePlayer[],
 ): string | null {
   if (xi.length === 0) {
     return null;
   }
   const seen = new Set(innings.batters.map((b) => String(b.playerId)));
   const names = dnbInRosterOrder(xi, seen)
-    .map((p) => squadName(p, card))
+    .map((p) => sidePlayerName(p, card))
     .filter((n) => n !== '—');
   if (names.length === 0) {
     return null;
@@ -183,6 +176,7 @@ function buildCardMarkup(): string {
             </table>
           </div>
           <p data-isc-dnb class="isc-dnb" hidden></p>
+          <p data-isc-note class="isc-note" hidden></p>
           <div class="isc-fow">
             <p class="isc-fow-label">Fall of wickets</p>
             <p data-isc-fow class="isc-fow-line"></p>
@@ -283,15 +277,21 @@ export function mountInningsScorecard(
     const totalLine = qs<HTMLElement>('[data-isc-total-line]');
     const totalMeta = qs<HTMLElement>('[data-isc-total-meta]');
     const dnbEl = qs<HTMLElement>('[data-isc-dnb]');
-    if (!batBody || !bowlBody || !fowEl || !totalLine || !totalMeta || !dnbEl) {
+    const noteEl = qs<HTMLElement>('[data-isc-note]');
+    if (
+      !batBody ||
+      !bowlBody ||
+      !fowEl ||
+      !totalLine ||
+      !totalMeta ||
+      !dnbEl ||
+      !noteEl
+    ) {
       return false;
     }
 
-    const resolved = status === 'full' ? resolveBattingSquad(card, innings, ctx) : null;
-    const xi =
-      resolved != null
-        ? playingXiFromSquad(resolved.squad.players)
-        : [];
+    const side = status === 'full' ? resolveBattingSide(card, innings, ctx) : null;
+    const xi = side?.players ?? [];
     const batRows = buildBatRows(card, innings);
     batBody.replaceChildren();
     for (const row of batRows) {
@@ -313,14 +313,13 @@ export function mountInningsScorecard(
       batBody.appendChild(tr);
     }
 
-    if (status === 'full' && xi.length > 0) {
-      const line = dnbLineText(card, innings, xi);
-      dnbEl.textContent = line ?? '';
-      dnbEl.hidden = line == null;
-    } else {
-      dnbEl.textContent = '';
-      dnbEl.hidden = true;
-    }
+    const line = xi.length > 0 ? dnbLineText(card, innings, xi) : null;
+    dnbEl.textContent = line ?? '';
+    dnbEl.hidden = line == null;
+
+    const showNote = status !== 'full' || xi.length === 0;
+    noteEl.textContent = showNote ? 'Playing XI unavailable for this side' : '';
+    noteEl.hidden = !showNote;
 
     const fow = innings.fallOfWickets ?? [];
     fowEl.textContent =
@@ -423,10 +422,12 @@ export function mountInningsScorecard(
           return false;
         }
         const innings = resolveInningsBreakInnings(card);
-        const resolved =
-          innings != null ? resolveBattingSquad(card, innings, ctx) : null;
+        const side =
+          innings != null ? resolveBattingSide(card, innings, ctx) : null;
         const xi: InningsXiStatus =
-          status === 'full' && resolved != null ? 'full' : 'no_squad';
+          status === 'full' && side != null && side.players.length > 0
+            ? 'full'
+            : 'no_squad';
         if (!paint(card, ctx, xi)) {
           hideNode();
           return false;

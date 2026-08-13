@@ -78,6 +78,11 @@ export async function fetchMatchContext(
           battingOrder?: number | null;
         }>;
       }>;
+      externalPlayers?: Array<{
+        id?: string;
+        slot?: number;
+        name?: string;
+      }>;
     };
 
     const tournamentId = body.tournamentId?.trim() ?? '';
@@ -145,6 +150,20 @@ export async function fetchMatchContext(
           };
         })
         .filter((s): s is NonNullable<typeof s> => s != null),
+      externalPlayers: (body.externalPlayers ?? [])
+        .map((p) => {
+          const id = p.id?.trim();
+          const name = p.name?.trim();
+          if (!id || !name) {
+            return null;
+          }
+          return {
+            id,
+            slot: typeof p.slot === 'number' ? p.slot : 0,
+            name,
+          };
+        })
+        .filter((p): p is NonNullable<typeof p> => p != null),
     };
   } catch {
     return null;
@@ -155,7 +174,7 @@ const MATCH_CTX_RETRY_BACKOFF_MS = [0, 200, 600] as const;
 
 const matchCtxCache = new Map<string, MatchContext>();
 const matchCtxInflight = new Map<string, Promise<MatchContext | null>>();
-const matchCtxNoSquad = new Set<string>();
+const matchCtxUnmet = new Set<string>();
 
 function matchCtxCacheKey(apiBase: string, matchId: string): string {
   return `${apiBase}|${matchId}`;
@@ -167,19 +186,11 @@ function delay(ms: number): Promise<void> {
   });
 }
 
-export function hasPlayingXiInContext(
-  ctx: MatchContext | null,
-  battingTeamId: string | null,
-): boolean {
-  if (!ctx || !battingTeamId) {
-    return false;
-  }
-  const want = String(battingTeamId).trim();
-  return ctx.squads.some(
-    (squad) =>
-      String(squad.teamId).trim() === want &&
-      squad.players.some((p) => p.role === 'PLAYING_XI'),
-  );
+export interface EnsureMatchContextOptions {
+  /** True once the context holds what the caller needs (e.g. a batting side). */
+  isSatisfied?: (ctx: MatchContext) => boolean;
+  /** Identifies the requirement so one unmet refetch isn't repeated forever. */
+  requirementKey?: string | null;
 }
 
 /**
@@ -190,22 +201,37 @@ export function hasPlayingXiInContext(
 export async function ensureMatchContext(
   apiBase: string,
   matchId: string,
-  options?: { battingTeamId?: string | null },
+  options?: EnsureMatchContextOptions,
 ): Promise<MatchContext | null> {
   const id = matchId.trim();
   if (!id) {
     return null;
   }
   const key = matchCtxCacheKey(apiBase, id);
-  const battingTeamId = options?.battingTeamId?.trim() || null;
-  const noSquadKey = battingTeamId ? `${key}|${battingTeamId}` : null;
+  const isSatisfied = options?.isSatisfied ?? null;
+  const requirementKey = options?.requirementKey?.trim() || null;
+  const unmetKey = requirementKey ? `${key}|${requirementKey}` : null;
+
+  const satisfied = (ctx: MatchContext | null): boolean => {
+    if (!ctx) {
+      return false;
+    }
+    if (!isSatisfied) {
+      return true;
+    }
+    try {
+      return isSatisfied(ctx);
+    } catch {
+      return true;
+    }
+  };
 
   const cached = matchCtxCache.get(key) ?? null;
   if (cached) {
-    if (!battingTeamId || hasPlayingXiInContext(cached, battingTeamId)) {
+    if (satisfied(cached)) {
       return cached;
     }
-    if (noSquadKey && matchCtxNoSquad.has(noSquadKey)) {
+    if (unmetKey && matchCtxUnmet.has(unmetKey)) {
       return cached;
     }
   }
@@ -213,8 +239,8 @@ export async function ensureMatchContext(
   const existing = matchCtxInflight.get(key);
   if (existing) {
     const ctx = await existing;
-    if (ctx && battingTeamId && !hasPlayingXiInContext(ctx, battingTeamId) && noSquadKey) {
-      matchCtxNoSquad.add(noSquadKey);
+    if (ctx && unmetKey && !satisfied(ctx)) {
+      matchCtxUnmet.add(unmetKey);
     }
     return ctx;
   }
@@ -228,8 +254,8 @@ export async function ensureMatchContext(
       last = await fetchMatchContext(apiBase, id);
       if (last) {
         matchCtxCache.set(key, last);
-        if (battingTeamId && !hasPlayingXiInContext(last, battingTeamId) && noSquadKey) {
-          matchCtxNoSquad.add(noSquadKey);
+        if (unmetKey && !satisfied(last)) {
+          matchCtxUnmet.add(unmetKey);
         }
         return last;
       }

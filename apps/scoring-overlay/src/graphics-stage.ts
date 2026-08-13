@@ -16,7 +16,7 @@ import {
   partnershipBatterRuns,
   playerName,
   resolveActiveInnings,
-  resolveBattingSquad,
+  resolveBattingSide,
   resolveInningsBreakInnings,
   shortName,
 } from './graphics-format';
@@ -318,20 +318,26 @@ export function createGraphicsStage(
         return false;
       }
       const matchId = options.matchId?.trim() ?? '';
+      const hasBattingSide = (ctx: MatchContext | null): boolean => {
+        const side = resolveBattingSide(card, innings, ctx);
+        return side != null && side.players.length > 0;
+      };
 
       const paintResolved = (): boolean => {
-        const resolved = resolveBattingSquad(card, innings, matchCtx);
-        if (resolved) {
+        const side = resolveBattingSide(card, innings, matchCtx);
+        if (side && side.players.length > 0) {
           console.warn('[isc-xi] resolver', {
-            source: resolved.source,
-            teamId: resolved.teamId,
+            source: side.source,
+            teamId: side.teamId,
+            isExternal: side.isExternal,
+            xiLen: side.players.length,
           });
           return inningsCard.show(card, matchCtx, view, 'full');
         }
         return inningsCard.show(card, matchCtx, view, 'no_squad');
       };
 
-      if (resolveBattingSquad(card, innings, matchCtx)) {
+      if (hasBattingSide(matchCtx)) {
         return paintResolved();
       }
 
@@ -341,7 +347,8 @@ export function createGraphicsStage(
 
       inningsCard.showLoading(view);
       const ctx = await ensureMatchContext(options.apiBase, matchId, {
-        battingTeamId: innings.battingTeamId,
+        requirementKey: `batting-side|${innings.inningsId ?? innings.sequence}`,
+        isSatisfied: hasBattingSide,
       });
       if (token !== inningsEnsureToken || activeKind !== 'innings_break') {
         return false;
@@ -349,7 +356,7 @@ export function createGraphicsStage(
       if (ctx) {
         matchCtx = ctx;
       }
-      if (resolveBattingSquad(card, innings, matchCtx)) {
+      if (hasBattingSide(matchCtx)) {
         return paintResolved();
       }
       if (ctx) {

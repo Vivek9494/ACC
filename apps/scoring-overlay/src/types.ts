@@ -150,6 +150,9 @@ export interface InningsScorecard {
   inningsType: string;
   battingTeamId: string | null;
   bowlingTeamId: string | null;
+  /** True when the batting side is a name-only external opponent (§9.5). */
+  battingIsExternal?: boolean;
+  bowlingIsExternal?: boolean;
   runs: number;
   wickets: number;
   legalBalls: number;
@@ -215,6 +218,8 @@ export interface MatchContext {
   logosByTeamId: Record<string, string | null>;
   /** Locked matchday squads (Playing XI + roles). */
   squads: MatchSquadContext[];
+  /** External opponent roster — the only player records an external side has. */
+  externalPlayers: MatchExternalPlayer[];
 }
 
 export interface MatchSquadPlayer {
@@ -228,6 +233,14 @@ export interface MatchSquadPlayer {
 export interface MatchSquadContext {
   teamId: string;
   players: MatchSquadPlayer[];
+}
+
+/** Name-only opponent roster for an ACC leather match (§9.5). */
+export interface MatchExternalPlayer {
+  /** Same id space as BatterCard.playerId for external sides. */
+  id: string;
+  slot: number;
+  name: string;
 }
 
 export interface BroadcastPlayerStatsView {

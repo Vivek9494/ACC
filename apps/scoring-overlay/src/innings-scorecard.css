@@ -151,6 +151,16 @@
   max-height: calc(1.35em * 2);
 }
 
+.isc-note {
+  flex-shrink: 0;
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(231, 225, 219, 0.55);
+}
+
 .isc-fow {
   flex-shrink: 0;
   padding-top: 6px;
