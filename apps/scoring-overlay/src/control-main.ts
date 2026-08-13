@@ -111,6 +111,7 @@ function start(): void {
 
   let socket: Socket | null = null;
   let onAirGraphic: keyof typeof LABELS | null = null;
+  let inningsView: 'batting' | 'bowling' = 'batting';
   let onAirDetailText = '';
   let scorecard: ScorecardResponse | null = null;
   let matchCtx: MatchContext | null = null;
@@ -353,6 +354,20 @@ function start(): void {
     setStripSection('chase', mode === 'chase');
   }
 
+  function syncInningsTabs(): void {
+    const tabs = el<HTMLElement>('innings-tabs');
+    const onAir = onAirGraphic === 'innings_break';
+    tabs.hidden = !onAir;
+    el<HTMLButtonElement>('btn-innings-batting').classList.toggle(
+      'is-active-tab',
+      inningsView === 'batting',
+    );
+    el<HTMLButtonElement>('btn-innings-bowling').classList.toggle(
+      'is-active-tab',
+      inningsView === 'bowling',
+    );
+  }
+
   function setOnAir(kind: keyof typeof LABELS | null): void {
     onAirGraphic = kind;
     onAirDetailText = kind ? detailForKind(kind) : '';
@@ -360,6 +375,7 @@ function start(): void {
     onAirDetail.textContent = onAirDetailText;
     onAirDock.classList.toggle('is-live', kind != null);
     setEnabled(btnClearAir, kind != null);
+    syncInningsTabs();
 
     for (const k of OPERATOR_KINDS) {
       const section = document.querySelector<HTMLElement>(
@@ -771,6 +787,9 @@ function start(): void {
         return;
       }
       if (cmd.action === 'show') {
+        if (cmd.graphic === 'innings_break') {
+          inningsView = cmd.payload?.view === 'bowling' ? 'bowling' : 'batting';
+        }
         setOnAir(cmd.graphic);
       } else if (cmd.action === 'hide' && onAirGraphic === cmd.graphic) {
         setOnAir(null);
@@ -794,7 +813,28 @@ function start(): void {
 
   bind('btn-show-partnership', 'btn-hide-partnership', 'partnership');
   bind('btn-show-fow', 'btn-hide-fow', 'fow');
-  bind('btn-show-innings', 'btn-hide-innings', 'innings_break');
+  bind('btn-show-innings', 'btn-hide-innings', 'innings_break', () => ({
+    view: inningsView,
+  }));
+
+  el<HTMLButtonElement>('btn-innings-batting').addEventListener('click', () => {
+    inningsView = 'batting';
+    syncInningsTabs();
+    send({
+      action: 'show',
+      graphic: 'innings_break',
+      payload: { view: 'batting' },
+    });
+  });
+  el<HTMLButtonElement>('btn-innings-bowling').addEventListener('click', () => {
+    inningsView = 'bowling';
+    syncInningsTabs();
+    send({
+      action: 'show',
+      graphic: 'innings_break',
+      payload: { view: 'bowling' },
+    });
+  });
   bind('btn-show-toss-result', 'btn-hide-toss-result', 'toss_result');
   bind('btn-show-batsman', 'btn-hide-batsman', 'batsman', () => {
     const playerId = pickBatsman.value.trim();

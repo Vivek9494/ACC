@@ -199,6 +199,7 @@ function render(
   status: ConnectionStatus,
   missingMatchId: boolean,
   crrMode: StripCrrMode,
+  hideStrip = false,
 ): void {
   const wrap = el<HTMLDivElement>('strip-wrap');
   const idle = el<HTMLDivElement>('idle');
@@ -234,7 +235,7 @@ function render(
   }
 
   idle.hidden = true;
-  wrap.hidden = false;
+  wrap.hidden = hideStrip;
 
   setLogo('bat-initials', 'bat-logo', vm.batting.initials, vm.batting.logoUrl);
   setLogo('bowl-initials', 'bowl-logo', vm.bowling.initials, vm.bowling.logoUrl);
@@ -305,6 +306,8 @@ function start(): void {
   let ballType: BallType = 'TENNIS';
   /** Career card on air (strip stays visible underneath). */
   let careerOnAir = false;
+  /** Full innings scorecard — strip is hidden while this graphic is on air. */
+  let inningsBreakOnAir = false;
   let careerPlayerId: string | null = null;
   let careerBase: BroadcastPlayerStatsView | null = null;
   let careerToken = 0;
@@ -365,7 +368,7 @@ function start(): void {
   };
 
   const paint = (): void => {
-    render(latest, matchCtx, status, !matchId, crrMode);
+    render(latest, matchCtx, status, !matchId, crrMode, inningsBreakOnAir);
     if (careerOnAir) {
       paintCareerNumbers();
     }
@@ -455,12 +458,14 @@ function start(): void {
       }
       if (cmd.action === 'hide_all') {
         crrMode = 'default';
+        inningsBreakOnAir = false;
         hideCareerCard();
         graphicsStage.hideAll();
         paint();
         return;
       }
       if (cmd.graphic === 'bowler_career') {
+        inningsBreakOnAir = false;
         if (cmd.action === 'show') {
           graphicsStage.hideAll();
           const playerId = cmd.payload?.playerId?.trim() || null;
@@ -495,9 +500,11 @@ function start(): void {
       if (cmd.graphic && !isStripOwnedKind(cmd.graphic)) {
         if (cmd.action === 'show' && careerOnAir) {
           hideCareerCard();
-          paint();
         }
+        inningsBreakOnAir =
+          cmd.action === 'show' && cmd.graphic === 'innings_break';
         graphicsStage.applyCommand(cmd);
+        paint();
       }
     } catch (err) {
       // Graphics must never interrupt the strip's live:state loop.

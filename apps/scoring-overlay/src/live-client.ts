@@ -36,7 +36,11 @@ export interface GraphicsCommandMessage {
   matchId: string;
   action: GraphicsCommandAction;
   graphic?: GraphicsKind;
-  payload?: { playerId?: string; playerIds?: string[] };
+  payload?: {
+    playerId?: string;
+    playerIds?: string[];
+    view?: 'batting' | 'bowling';
+  };
 }
 
 export function queryApiAndMatch(): { matchId: string | null; apiBase: string } {

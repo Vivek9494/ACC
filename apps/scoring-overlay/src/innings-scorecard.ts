@@ -1,0 +1,381 @@
+/**
+ * Full innings scorecard graphic (batting / bowling tabs) for innings break.
+ */
+
+import './innings-scorecard.css';
+import {
+  battingTeamLabel,
+  dismissalColumns,
+  extrasTotal,
+  firstInnings,
+  formatStat,
+  playerName,
+  shortName,
+} from './graphics-format';
+import type {
+  BatterCard,
+  InningsScorecard,
+  MatchContext,
+  MatchSquadPlayer,
+  ScorecardResponse,
+} from './types';
+
+const ANIM_MS = 280;
+
+export type InningsScorecardView = 'batting' | 'bowling';
+
+export interface InningsScorecardController {
+  readonly host: HTMLElement;
+  isOnAir(): boolean;
+  currentView(): InningsScorecardView;
+  hide(): void;
+  show(
+    card: ScorecardResponse | null,
+    ctx: MatchContext | null,
+    view?: InningsScorecardView,
+  ): boolean;
+}
+
+function warnGraphics(err: unknown): void {
+  console.warn('[innings-scorecard]', err);
+}
+
+function nameOfCard(
+  card: ScorecardResponse,
+  id: string | null | undefined,
+): string {
+  return shortName(playerName(card.display, id));
+}
+
+function squadName(p: MatchSquadPlayer, card: ScorecardResponse): string {
+  const fromDisplay = playerName(card.display, p.userId);
+  if (fromDisplay !== '—') {
+    return shortName(fromDisplay);
+  }
+  const full = `${p.firstName} ${p.lastName}`.trim();
+  return full ? shortName(full) : '—';
+}
+
+function playingXi(
+  ctx: MatchContext | null,
+  battingTeamId: string | null,
+): MatchSquadPlayer[] {
+  if (!ctx || !battingTeamId) {
+    return [];
+  }
+  const squad = ctx.squads.find((s) => s.teamId === battingTeamId);
+  if (!squad) {
+    return [];
+  }
+  return squad.players.filter((p) => p.role === 'PLAYING_XI');
+}
+
+type BatRowStatus = 'out' | 'not_out' | 'dnb';
+
+interface BatRow {
+  playerId: string;
+  name: string;
+  status: BatRowStatus;
+  fielder: string;
+  bowler: string;
+  runs: string;
+  balls: string;
+}
+
+function buildBatRows(
+  card: ScorecardResponse,
+  innings: InningsScorecard,
+  ctx: MatchContext | null,
+): BatRow[] {
+  const xi = playingXi(ctx, innings.battingTeamId);
+  const seen = new Set<string>();
+  const rows: BatRow[] = [];
+
+  const pushBatter = (batter: BatterCard): void => {
+    if (seen.has(batter.playerId)) {
+      return;
+    }
+    seen.add(batter.playerId);
+    const name = nameOfCard(card, batter.playerId);
+    if (batter.isOut) {
+      const cols = dismissalColumns(batter, (id) => nameOfCard(card, id));
+      rows.push({
+        playerId: batter.playerId,
+        name,
+        status: 'out',
+        fielder: cols.fielder,
+        bowler: cols.bowler,
+        runs: String(batter.runs),
+        balls: String(batter.balls),
+      });
+      return;
+    }
+    rows.push({
+      playerId: batter.playerId,
+      name,
+      status: 'not_out',
+      fielder: 'NOT OUT',
+      bowler: '',
+      runs: String(batter.runs),
+      balls: String(batter.balls),
+    });
+  };
+
+  for (const batter of innings.batters) {
+    pushBatter(batter);
+  }
+
+  const remaining = [...xi].sort((a, b) => {
+    const ao = a.battingOrder;
+    const bo = b.battingOrder;
+    if (ao != null && bo != null) {
+      return ao - bo;
+    }
+    if (ao != null) {
+      return -1;
+    }
+    if (bo != null) {
+      return 1;
+    }
+    return squadName(a, card).localeCompare(squadName(b, card));
+  });
+  for (const p of remaining) {
+    if (seen.has(p.userId)) {
+      continue;
+    }
+    seen.add(p.userId);
+    rows.push({
+      playerId: p.userId,
+      name: squadName(p, card),
+      status: 'dnb',
+      fielder: 'did not bat',
+      bowler: '',
+      runs: '',
+      balls: '',
+    });
+  }
+
+  return rows;
+}
+
+function buildCardMarkup(): string {
+  return `
+    <div class="panel panel-innings-sc">
+      <div class="panel-accent"></div>
+      <div class="isc-body">
+        <div class="isc-tabs" role="tablist" aria-label="Scorecard">
+          <span data-isc-tab="batting" class="isc-tab is-active">Batting</span>
+          <span data-isc-tab="bowling" class="isc-tab">Bowling</span>
+        </div>
+        <div data-isc-pane="batting" class="isc-pane">
+          <div class="isc-table-wrap">
+            <table class="isc-table" aria-label="Batting scorecard">
+              <thead>
+                <tr>
+                  <th class="isc-col-name">Batter</th>
+                  <th class="isc-col-how">How out</th>
+                  <th class="isc-col-how">Bowler</th>
+                  <th class="isc-col-num">R</th>
+                  <th class="isc-col-num">B</th>
+                </tr>
+              </thead>
+              <tbody data-isc-bat-body></tbody>
+            </table>
+          </div>
+          <div class="isc-fow">
+            <p class="isc-fow-label">Fall of wickets</p>
+            <p data-isc-fow class="isc-fow-line"></p>
+          </div>
+          <div class="isc-total">
+            <p data-isc-total-line class="isc-total-score"></p>
+            <p data-isc-total-meta class="isc-total-meta"></p>
+          </div>
+        </div>
+        <div data-isc-pane="bowling" class="isc-pane" hidden>
+          <div class="isc-table-wrap">
+            <table class="isc-table" aria-label="Bowling figures">
+              <thead>
+                <tr>
+                  <th class="isc-col-name">Bowler</th>
+                  <th class="isc-col-num">O</th>
+                  <th class="isc-col-num">M</th>
+                  <th class="isc-col-num">R</th>
+                  <th class="isc-col-num">W</th>
+                  <th class="isc-col-num">Econ</th>
+                </tr>
+              </thead>
+              <tbody data-isc-bowl-body></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  `.trim();
+}
+
+export function mountInningsScorecard(
+  host: HTMLElement,
+): InningsScorecardController {
+  let onAir = false;
+  let view: InningsScorecardView = 'batting';
+
+  const qs = <T extends HTMLElement>(selector: string): T | null =>
+    host.querySelector(selector) as T | null;
+
+  const ensureMarkup = (): void => {
+    if (!host.querySelector('.panel-innings-sc')) {
+      host.innerHTML = buildCardMarkup();
+    }
+  };
+
+  const hideNode = (): void => {
+    onAir = false;
+    host.classList.remove('is-visible');
+    window.setTimeout(() => {
+      if (!onAir) {
+        host.hidden = true;
+      }
+    }, ANIM_MS);
+  };
+
+  const showNode = (): void => {
+    host.hidden = false;
+    requestAnimationFrame(() => host.classList.add('is-visible'));
+  };
+
+  const setViewUi = (): void => {
+    for (const tab of host.querySelectorAll<HTMLElement>('[data-isc-tab]')) {
+      tab.classList.toggle('is-active', tab.dataset.iscTab === view);
+    }
+    for (const pane of host.querySelectorAll<HTMLElement>('[data-isc-pane]')) {
+      pane.hidden = pane.dataset.iscPane !== view;
+    }
+  };
+
+  const paint = (
+    card: ScorecardResponse,
+    ctx: MatchContext | null,
+  ): boolean => {
+    ensureMarkup();
+    const innings = firstInnings(card);
+    if (!innings) {
+      return false;
+    }
+
+    setViewUi();
+
+    const batBody = qs<HTMLTableSectionElement>('[data-isc-bat-body]');
+    const bowlBody = qs<HTMLTableSectionElement>('[data-isc-bowl-body]');
+    const fowEl = qs<HTMLElement>('[data-isc-fow]');
+    const totalLine = qs<HTMLElement>('[data-isc-total-line]');
+    const totalMeta = qs<HTMLElement>('[data-isc-total-meta]');
+    if (!batBody || !bowlBody || !fowEl || !totalLine || !totalMeta) {
+      return false;
+    }
+
+    const batRows = buildBatRows(card, innings, ctx);
+    batBody.replaceChildren();
+    for (const row of batRows) {
+      const tr = document.createElement('tr');
+      tr.className = `isc-row isc-row-${row.status}`;
+      const cells = [row.name, row.fielder, row.bowler, row.runs, row.balls];
+      for (const [i, text] of cells.entries()) {
+        const td = document.createElement('td');
+        td.textContent = text;
+        if (i >= 3) {
+          td.className = 'isc-col-num';
+        } else if (i === 0) {
+          td.className = 'isc-col-name';
+        } else {
+          td.className = 'isc-col-how';
+        }
+        tr.appendChild(td);
+      }
+      batBody.appendChild(tr);
+    }
+
+    const fow = innings.fallOfWickets ?? [];
+    fowEl.textContent =
+      fow.length > 0
+        ? fow.map((w) => `${w.wicketNumber}–${w.teamRuns}`).join('   ')
+        : '—';
+
+    const team = battingTeamLabel(card, innings);
+    totalLine.textContent = `${team}  ${innings.runs}–${innings.wickets}`;
+    const extra = extrasTotal(innings);
+    const extras = innings.extras;
+    const extraParts: string[] = [];
+    if (extras) {
+      if (extras.wides > 0) extraParts.push(`${extras.wides} wd`);
+      if (extras.noBalls > 0) extraParts.push(`${extras.noBalls} nb`);
+      if (extras.byes > 0) extraParts.push(`${extras.byes} b`);
+      if (extras.legByes > 0) extraParts.push(`${extras.legByes} lb`);
+      if (extras.penalties > 0) extraParts.push(`${extras.penalties} p`);
+    }
+    const extraBit =
+      extraParts.length > 0
+        ? `${extra} EXTRAS (${extraParts.join(', ')})`
+        : `${extra} EXTRAS`;
+    totalMeta.textContent = `${innings.oversText} OVERS  |  ${extraBit}`;
+
+    bowlBody.replaceChildren();
+    for (const bowler of innings.bowlers) {
+      const tr = document.createElement('tr');
+      tr.className = 'isc-row';
+      const econ =
+        Number.isFinite(bowler.economy) && bowler.legalBalls > 0
+          ? formatStat(bowler.economy, 2)
+          : '0.00';
+      const vals = [
+        nameOfCard(card, bowler.playerId),
+        bowler.oversText?.trim() || '0.0',
+        String(bowler.maidens ?? 0),
+        String(bowler.runsConceded ?? 0),
+        String(bowler.wickets ?? 0),
+        econ,
+      ];
+      for (const [i, text] of vals.entries()) {
+        const td = document.createElement('td');
+        td.textContent = text;
+        td.className = i === 0 ? 'isc-col-name' : 'isc-col-num';
+        tr.appendChild(td);
+      }
+      bowlBody.appendChild(tr);
+    }
+
+    return batRows.length > 0 || innings.bowlers.length > 0 || innings.runs >= 0;
+  };
+
+  return {
+    host,
+    isOnAir: () => onAir,
+    currentView: () => view,
+    hide(): void {
+      try {
+        hideNode();
+      } catch (err) {
+        warnGraphics(err);
+      }
+    },
+    show(card, ctx, nextView = 'batting'): boolean {
+      try {
+        view = nextView === 'bowling' ? 'bowling' : 'batting';
+        if (!card || !paint(card, ctx)) {
+          hideNode();
+          return false;
+        }
+        onAir = true;
+        showNode();
+        return true;
+      } catch (err) {
+        warnGraphics(err);
+        try {
+          hideNode();
+        } catch {
+          /* ignore */
+        }
+        return false;
+      }
+    },
+  };
+}

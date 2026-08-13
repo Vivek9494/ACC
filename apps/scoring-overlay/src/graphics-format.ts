@@ -338,6 +338,77 @@ export function resolveActiveInnings(card: ScorecardResponse): InningsScorecard 
   return card.innings[card.innings.length - 1] ?? null;
 }
 
+export function firstInnings(card: ScorecardResponse): InningsScorecard | null {
+  return card.innings[0] ?? null;
+}
+
+export function extrasTotal(innings: InningsScorecard): number {
+  const total = innings.extras?.total;
+  return typeof total === 'number' && Number.isFinite(total) ? total : 0;
+}
+
+/** Split how-out into fielder column + bowler column for the scorecard table. */
+export function dismissalColumns(
+  card: Pick<
+    BatterCard,
+    'dismissalType' | 'bowlerId' | 'fielderId' | 'fielder2Id' | 'isMankad'
+  >,
+  nameOf: (id: string | null) => string,
+): { fielder: string; bowler: string } {
+  const bowlerName = card.bowlerId ? nameOf(card.bowlerId) : '';
+  const fielderName = card.fielderId ? nameOf(card.fielderId) : '';
+  const fielder2Name = card.fielder2Id ? nameOf(card.fielder2Id) : '';
+  const bowlerOk = Boolean(bowlerName && bowlerName !== '—');
+  const fielderOk = Boolean(fielderName && fielderName !== '—');
+  const fielder2Ok = Boolean(fielder2Name && fielder2Name !== '—');
+
+  switch (card.dismissalType) {
+    case 'BOWLED':
+      return { fielder: '', bowler: bowlerOk ? `b ${bowlerName}` : 'bowled' };
+    case 'CAUGHT':
+      if (card.fielderId && card.bowlerId && card.fielderId === card.bowlerId && bowlerOk) {
+        return { fielder: `c & b ${bowlerName}`, bowler: '' };
+      }
+      return {
+        fielder: fielderOk ? `c ${fielderName}` : 'caught',
+        bowler: bowlerOk ? `b ${bowlerName}` : '',
+      };
+    case 'LBW':
+      return { fielder: 'lbw', bowler: bowlerOk ? `b ${bowlerName}` : '' };
+    case 'RUN_OUT': {
+      let label = 'run out';
+      if (fielderOk && fielder2Ok) {
+        label = `run out (${fielderName}/${fielder2Name})`;
+      } else if (fielderOk && card.isMankad) {
+        label = `run out (${fielderName}) (mankad)`;
+      } else if (fielderOk) {
+        label = `run out (${fielderName})`;
+      }
+      return { fielder: label, bowler: '' };
+    }
+    case 'STUMPED':
+      return {
+        fielder: fielderOk ? `st ${fielderName}` : 'stumped',
+        bowler: bowlerOk ? `b ${bowlerName}` : '',
+      };
+    case 'HIT_WICKET':
+      return {
+        fielder: 'hit wicket',
+        bowler: bowlerOk ? `b ${bowlerName}` : '',
+      };
+    case 'RETIRED_OUT':
+      return { fielder: 'retired out', bowler: '' };
+    default:
+      if (!card.dismissalType) {
+        return { fielder: 'out', bowler: '' };
+      }
+      return {
+        fielder: DISMISSAL_LABELS[card.dismissalType] ?? 'out',
+        bowler: '',
+      };
+  }
+}
+
 export function battingTeamLabel(
   card: ScorecardResponse,
   innings: InningsScorecard,

@@ -104,7 +104,7 @@ body {
   transform: translate(-50%, 0) scale(1);
 }
 
-/* Centered full-frame cards (toss result, batsman career) — not docked above strip. */
+/* Centered full-frame cards (toss, batsman career, innings scorecard). */
 .graphics-stage-layer .graphic.graphic-centered {
   top: 42%;
   bottom: auto;

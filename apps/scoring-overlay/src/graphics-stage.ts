@@ -5,8 +5,8 @@
 
 import './graphics.css';
 import { mountBatsmanCareerCard } from './batsman-career-card';
+import { mountInningsScorecard } from './innings-scorecard';
 import {
-  battingTeamLabel,
   deriveBatterDotBalls,
   formatBatterInningsScore,
   formatDismissalShort,
@@ -171,23 +171,7 @@ export function buildGraphicsStageMarkup(): string {
         </div>
       </div>
 
-      <div id="g-innings" class="graphic panel panel-wide" hidden>
-        <div class="panel-accent"></div>
-        <div class="panel-body">
-          <p class="eyebrow">Innings break</p>
-          <div class="innings-rows">
-            <div class="innings-row">
-              <p id="inn1-team" class="name">—</p>
-              <p id="inn1-score" class="hero-stat compact">—</p>
-            </div>
-            <div class="innings-row">
-              <p id="inn2-team" class="name">—</p>
-              <p id="inn2-score" class="hero-stat compact">—</p>
-            </div>
-          </div>
-          <p id="inn-target" class="meta target-line" hidden></p>
-        </div>
-      </div>
+      <div id="g-innings" class="graphic graphic-centered innings-scorecard-graphic" hidden></div>
 
       <div id="g-hello" class="graphic hello" hidden>
         <div class="hello-inner">HELLO</div>
@@ -209,6 +193,8 @@ export interface GraphicsStageController {
   hideAll(): void;
   /** True when any full-screen overlay graphic is on air. */
   isOnAir(): boolean;
+  /** Active stage graphic kind, or null. */
+  activeKind(): OverlayKind | null;
 }
 
 export function createGraphicsStage(
@@ -241,11 +227,14 @@ export function createGraphicsStage(
   let activePlayerId: string | null = null;
   const batsmanCareer = mountBatsmanCareerCard(el('g-batsman-career'));
   const tossResult = mountTossResultCard(el('g-toss-result'));
+  const inningsCard = mountInningsScorecard(el('g-innings'));
 
   const graphicNode = (kind: OverlayKind): HTMLElement => el(GRAPHIC_IDS[kind]);
 
   const isMountManaged = (kind: OverlayKind): boolean =>
-    kind === 'batsman_career' || kind === 'toss_result';
+    kind === 'batsman_career' ||
+    kind === 'toss_result' ||
+    kind === 'innings_break';
 
   const hideNode = (node: HTMLElement): void => {
     node.classList.remove('is-visible');
@@ -266,6 +255,7 @@ export function createGraphicsStage(
     activePlayerId = null;
     batsmanCareer.hide();
     tossResult.hide();
+    inningsCard.hide();
     for (const kind of Object.keys(GRAPHIC_IDS) as OverlayKind[]) {
       if (isMountManaged(kind)) {
         continue;
@@ -288,6 +278,10 @@ export function createGraphicsStage(
     }
     if (kind === 'toss_result') {
       tossResult.hide();
+      return;
+    }
+    if (kind === 'innings_break') {
+      inningsCard.hide();
       return;
     }
     hideNode(graphicNode(kind));
@@ -368,41 +362,25 @@ export function createGraphicsStage(
     }
   };
 
-  const fillInningsBreak = (): boolean => {
-    if (!scorecard || scorecard.innings.length === 0) {
-      return false;
-    }
-    const inn1 = scorecard.innings[0];
-    const inn2 = scorecard.innings[1];
-    if (!inn1) {
-      return false;
-    }
+  const parseInningsView = (
+    payload?: GraphicsCommandMessage['payload'],
+  ): 'batting' | 'bowling' =>
+    payload?.view === 'bowling' ? 'bowling' : 'batting';
 
-    setText('inn1-team', battingTeamLabel(scorecard, inn1));
-    setText('inn1-score', `${inn1.runs}/${inn1.wickets} (${inn1.oversText})`);
-
-    const inn2Team = el<HTMLParagraphElement>('inn2-team');
-    const inn2Score = el<HTMLParagraphElement>('inn2-score');
-    if (inn2) {
-      inn2Team.hidden = false;
-      inn2Score.hidden = false;
-      setText('inn2-team', battingTeamLabel(scorecard, inn2));
-      setText('inn2-score', `${inn2.runs}/${inn2.wickets} (${inn2.oversText})`);
-    } else {
-      inn2Team.hidden = true;
-      inn2Score.hidden = true;
+  const hideManagedGraphic = (kind: OverlayKind): void => {
+    if (kind === 'batsman_career') {
+      batsmanCareer.hide();
+      return;
     }
-
-    const targetEl = el<HTMLParagraphElement>('inn-target');
-    const target = scorecard.effectiveTarget;
-    if (target != null && target > 0) {
-      targetEl.hidden = false;
-      targetEl.textContent = `Target ${target}`;
-    } else {
-      targetEl.hidden = true;
-      targetEl.textContent = '';
+    if (kind === 'toss_result') {
+      tossResult.hide();
+      return;
     }
-    return true;
+    if (kind === 'innings_break') {
+      inningsCard.hide();
+      return;
+    }
+    hideNode(graphicNode(kind));
   };
 
   const resolveBatsmanId = (
@@ -525,7 +503,7 @@ export function createGraphicsStage(
         }
         break;
       case 'innings_break':
-        if (!fillInningsBreak()) {
+        if (!inningsCard.show(scorecard, matchCtx, inningsCard.currentView())) {
           hideGraphic('innings_break');
         }
         break;
@@ -555,13 +533,7 @@ export function createGraphicsStage(
     if (kind === 'hello') {
       for (const k of Object.keys(GRAPHIC_IDS) as OverlayKind[]) {
         if (k !== 'hello') {
-          if (k === 'batsman_career') {
-            batsmanCareer.hide();
-          } else if (k === 'toss_result') {
-            tossResult.hide();
-          } else {
-            hideNode(graphicNode(k));
-          }
+          hideManagedGraphic(k);
         }
       }
       activeKind = 'hello';
@@ -578,7 +550,7 @@ export function createGraphicsStage(
     } else if (kind === 'fow') {
       ok = fillFow();
     } else if (kind === 'innings_break') {
-      ok = fillInningsBreak();
+      ok = scorecard != null && scorecard.innings.length > 0;
     } else if (kind === 'batsman') {
       playerId = resolveBatsmanId(payload?.playerId);
       ok = playerId != null;
@@ -600,13 +572,7 @@ export function createGraphicsStage(
       if (k === kind) {
         continue;
       }
-      if (k === 'batsman_career') {
-        batsmanCareer.hide();
-      } else if (k === 'toss_result') {
-        tossResult.hide();
-      } else {
-        hideNode(graphicNode(k));
-      }
+      hideManagedGraphic(k);
     }
 
     activeKind = kind;
@@ -622,6 +588,11 @@ export function createGraphicsStage(
       void showBatsmanCareer(playerId);
     } else if (kind === 'toss_result') {
       if (!showTossResult()) {
+        activeKind = null;
+        activePlayerId = null;
+      }
+    } else if (kind === 'innings_break') {
+      if (!inningsCard.show(scorecard, matchCtx, parseInningsView(payload))) {
         activeKind = null;
         activePlayerId = null;
       }
@@ -646,8 +617,15 @@ export function createGraphicsStage(
           activeKind = null;
           activePlayerId = null;
         }
+        if (
+          activeKind === 'innings_break' &&
+          !inningsCard.show(scorecard, matchCtx, inningsCard.currentView())
+        ) {
+          activeKind = null;
+          activePlayerId = null;
+        }
       } catch (err) {
-        console.warn('[graphics] toss context refresh failed', err);
+        console.warn('[graphics] match context refresh failed', err);
       }
     },
     setBallType(next) {
@@ -655,7 +633,11 @@ export function createGraphicsStage(
     },
     hideAll: hideAllGraphics,
     isOnAir: () =>
-      activeKind != null || batsmanCareer.isOnAir() || tossResult.isOnAir(),
+      activeKind != null ||
+      batsmanCareer.isOnAir() ||
+      tossResult.isOnAir() ||
+      inningsCard.isOnAir(),
+    activeKind: () => activeKind,
     applyCommand(cmd) {
       try {
         if (cmd.action === 'hide_all') {

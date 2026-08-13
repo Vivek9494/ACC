@@ -68,6 +68,16 @@ export async function fetchMatchContext(
       tossDecision?: TossDecision | null;
       powerplayOvers?: number | null;
       resultNote?: string | null;
+      squads?: Array<{
+        teamId?: string;
+        players?: Array<{
+          userId?: string;
+          firstName?: string;
+          lastName?: string;
+          role?: string;
+          battingOrder?: number | null;
+        }>;
+      }>;
     };
 
     const tournamentId = body.tournamentId?.trim() ?? '';
@@ -108,6 +118,33 @@ export async function fetchMatchContext(
           : null,
       resultNote: body.resultNote ?? null,
       logosByTeamId,
+      squads: (body.squads ?? [])
+        .map((squad) => {
+          const teamId = squad.teamId?.trim() ?? '';
+          if (!teamId) {
+            return null;
+          }
+          return {
+            teamId,
+            players: (squad.players ?? [])
+              .map((p) => {
+                const userId = p.userId?.trim();
+                if (!userId) {
+                  return null;
+                }
+                return {
+                  userId,
+                  firstName: p.firstName?.trim() ?? '',
+                  lastName: p.lastName?.trim() ?? '',
+                  role: p.role?.trim() || 'PLAYING_XI',
+                  battingOrder:
+                    typeof p.battingOrder === 'number' ? p.battingOrder : null,
+                };
+              })
+              .filter((p): p is NonNullable<typeof p> => p != null),
+          };
+        })
+        .filter((s): s is NonNullable<typeof s> => s != null),
     };
   } catch {
     return null;

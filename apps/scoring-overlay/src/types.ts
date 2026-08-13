@@ -31,7 +31,11 @@ export interface GraphicsCommandMessage {
   matchId: string;
   action: GraphicsCommandAction;
   graphic?: GraphicsKind;
-  payload?: { playerId?: string; playerIds?: string[] };
+  payload?: {
+    playerId?: string;
+    playerIds?: string[];
+    view?: 'batting' | 'bowling';
+  };
 }
 
 export interface LiveSubscribeMessage {
@@ -89,6 +93,15 @@ export interface BowlerCard {
   economy: number;
 }
 
+export interface ExtrasBreakdown {
+  wides: number;
+  noBalls: number;
+  byes: number;
+  legByes: number;
+  penalties: number;
+  total: number;
+}
+
 export interface FallOfWicket {
   wicketNumber: number;
   playerId: string;
@@ -142,6 +155,7 @@ export interface InningsScorecard {
   legalBalls: number;
   oversText: string;
   oversAllotted: number | null;
+  extras?: ExtrasBreakdown;
   batters: BatterCard[];
   bowlers: BowlerCard[];
   fallOfWickets: FallOfWicket[];
@@ -199,6 +213,21 @@ export interface MatchContext {
   resultNote: string | null;
   /** teamId → presigned logo URL (or null). */
   logosByTeamId: Record<string, string | null>;
+  /** Locked matchday squads (Playing XI + roles). */
+  squads: MatchSquadContext[];
+}
+
+export interface MatchSquadPlayer {
+  userId: string;
+  firstName: string;
+  lastName: string;
+  role: string;
+  battingOrder: number | null;
+}
+
+export interface MatchSquadContext {
+  teamId: string;
+  players: MatchSquadPlayer[];
 }
 
 export interface BroadcastPlayerStatsView {

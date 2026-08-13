@@ -1,0 +1,178 @@
+/* Full innings scorecard (innings break) — centered, strip hidden while on air. */
+
+.panel-innings-sc {
+  min-width: min(92vw, 820px);
+  max-width: min(96vw, 980px);
+  max-height: min(86vh, 720px);
+  border-radius: 8px;
+  overflow: hidden;
+  background: #294c74;
+  color: #e7e1db;
+  box-shadow: 0 14px 44px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+}
+
+.panel-innings-sc .panel-accent {
+  height: 6px;
+  background: #ff6b00;
+}
+
+.isc-body {
+  padding: 14px 18px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: min(80vh, 680px);
+}
+
+.isc-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid rgba(231, 225, 219, 0.2);
+}
+
+.isc-tab {
+  padding: 6px 18px 8px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(231, 225, 219, 0.55);
+}
+
+.isc-tab.is-active {
+  color: #ff6b00;
+  border-bottom: 3px solid #ff6b00;
+  margin-bottom: -2px;
+}
+
+.isc-table-wrap {
+  overflow: auto;
+  max-height: min(52vh, 420px);
+}
+
+.isc-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.isc-table th {
+  text-align: left;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(231, 225, 219, 0.55);
+  padding: 4px 8px 6px;
+}
+
+.isc-table td {
+  padding: 5px 8px;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.2;
+  vertical-align: middle;
+  border-top: 1px solid rgba(231, 225, 219, 0.12);
+}
+
+.isc-col-name {
+  width: 28%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.isc-col-how {
+  width: 22%;
+  font-weight: 600;
+  color: rgba(231, 225, 219, 0.88);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.isc-col-num {
+  width: 8%;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.isc-table th.isc-col-num {
+  text-align: right;
+}
+
+.isc-row-not_out {
+  background: rgba(46, 160, 90, 0.28);
+}
+
+.isc-row-not_out td {
+  color: #e7e1db;
+}
+
+.isc-row-dnb td {
+  opacity: 0.62;
+  font-weight: 600;
+}
+
+.isc-fow {
+  padding-top: 6px;
+  border-top: 1px solid rgba(231, 225, 219, 0.2);
+}
+
+.isc-fow-label {
+  margin: 0 0 4px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #ff6b00;
+}
+
+.isc-fow-line {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #e7e1db;
+}
+
+.isc-total {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  padding-top: 4px;
+}
+
+.isc-total-score {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #fff;
+}
+
+.isc-total-meta {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(231, 225, 219, 0.75);
+}
+
+@media (max-width: 720px) {
+  .panel-innings-sc {
+    min-width: 94vw;
+  }
+
+  .isc-table td {
+    font-size: 13px;
+    padding: 4px 6px;
+  }
+
+  .isc-total-score {
+    font-size: 18px;
+  }
+}
