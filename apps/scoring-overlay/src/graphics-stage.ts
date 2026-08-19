@@ -371,9 +371,23 @@ export function createGraphicsStage(
             isExternal: side.isExternal,
             xiLen: side.players.length,
           });
-          return inningsCard.show(card, matchCtx, view, 'full', innings);
+          return inningsCard.show(
+            card,
+            matchCtx,
+            view,
+            'full',
+            innings,
+            inningsCmd.source,
+          );
         }
-        return inningsCard.show(card, matchCtx, view, 'no_squad', innings);
+        return inningsCard.show(
+          card,
+          matchCtx,
+          view,
+          'no_squad',
+          innings,
+          inningsCmd.source,
+        );
       };
 
       if (hasBattingSide(matchCtx)) {
@@ -381,10 +395,17 @@ export function createGraphicsStage(
       }
 
       if (!matchId) {
-        return inningsCard.show(card, matchCtx, view, 'no_squad', innings);
+        return inningsCard.show(
+          card,
+          matchCtx,
+          view,
+          'no_squad',
+          innings,
+          inningsCmd.source,
+        );
       }
 
-      inningsCard.showLoading(view);
+      inningsCard.showLoading(view, inningsCmd.source);
       const ctx = await ensureMatchContext(options.apiBase, matchId, {
         requirementKey: `batting-side|${innings.inningsId ?? innings.sequence}`,
         isSatisfied: hasBattingSide,
@@ -399,14 +420,21 @@ export function createGraphicsStage(
         return paintResolved();
       }
       if (ctx) {
-        return inningsCard.show(card, matchCtx, view, 'no_squad', innings);
+        return inningsCard.show(
+          card,
+          matchCtx,
+          view,
+          'no_squad',
+          innings,
+          inningsCmd.source,
+        );
       }
-      inningsCard.showLoading(view);
+      inningsCard.showLoading(view, inningsCmd.source);
       return true;
     } catch (err) {
       console.warn('[graphics] innings break failed', err);
       if (token === inningsEnsureToken && activeKind === 'innings_break') {
-        inningsCard.showLoading(view);
+        inningsCard.showLoading(view, inningsCmd.source);
         return true;
       }
       return false;
@@ -638,6 +666,7 @@ export function createGraphicsStage(
               inningsCmd.view,
               inningsCard.xiStatus() === 'full' ? 'full' : 'no_squad',
               innings,
+              inningsCmd.source,
             )
           ) {
             hideGraphic('innings_break');

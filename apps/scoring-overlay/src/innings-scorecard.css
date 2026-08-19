@@ -35,6 +35,10 @@
   border-bottom: 2px solid rgba(231, 225, 219, 0.2);
 }
 
+.isc-tabs[hidden] {
+  display: none;
+}
+
 .isc-tab {
   flex: 1 1 0;
   padding: 6px 6px 8px;

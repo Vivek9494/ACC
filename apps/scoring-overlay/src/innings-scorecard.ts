@@ -24,8 +24,9 @@ import type {
   MatchContext,
   OverSummary,
   ScorecardResponse,
+  ScorecardViewSource,
 } from './types';
-import { parseInningsBreakView } from './types';
+import { parseInningsBreakView, parseScorecardViewSource } from './types';
 
 const ANIM_MS = 280;
 
@@ -38,13 +39,17 @@ export interface InningsScorecardController {
   currentView(): InningsScorecardView;
   xiStatus(): InningsXiStatus | null;
   hide(): void;
-  showLoading(view?: InningsScorecardView): boolean;
+  showLoading(
+    view?: InningsScorecardView,
+    source?: ScorecardViewSource,
+  ): boolean;
   show(
     card: ScorecardResponse | null,
     ctx: MatchContext | null,
     view?: InningsScorecardView,
     xiStatus?: InningsXiStatus,
     innings?: InningsScorecard | null,
+    source?: ScorecardViewSource,
   ): boolean;
 }
 
@@ -417,6 +422,7 @@ export function mountInningsScorecard(
 ): InningsScorecardController {
   let onAir = false;
   let view: InningsScorecardView = 'batting';
+  let chrome: ScorecardViewSource = 'break';
   let xiStatus: InningsXiStatus | null = null;
 
   const qs = <T extends HTMLElement>(selector: string): T | null =>
@@ -448,6 +454,14 @@ export function mountInningsScorecard(
   };
 
   const setViewUi = (): void => {
+    const tabs = qs<HTMLElement>('.isc-tabs');
+    if (tabs) {
+      tabs.hidden = chrome === 'scorecard';
+    }
+    qs<HTMLElement>('.panel-innings-sc')?.classList.toggle(
+      'is-single-view',
+      chrome === 'scorecard',
+    );
     for (const tab of host.querySelectorAll<HTMLElement>('[data-isc-tab]')) {
       tab.classList.toggle('is-active', tab.dataset.iscTab === view);
     }
@@ -607,9 +621,10 @@ export function mountInningsScorecard(
         warnGraphics(err);
       }
     },
-    showLoading(nextView = 'batting'): boolean {
+    showLoading(nextView = 'batting', source: ScorecardViewSource = 'break'): boolean {
       try {
         view = parseInningsBreakView(nextView);
+        chrome = parseScorecardViewSource(source);
         xiStatus = 'loading';
         ensureMarkup();
         setViewUi();
@@ -627,9 +642,17 @@ export function mountInningsScorecard(
         return false;
       }
     },
-    show(card, ctx, nextView = 'batting', status = 'no_squad', inningsArg = null): boolean {
+    show(
+      card,
+      ctx,
+      nextView = 'batting',
+      status = 'no_squad',
+      inningsArg = null,
+      source: ScorecardViewSource = 'break',
+    ): boolean {
       try {
         view = parseInningsBreakView(nextView);
+        chrome = parseScorecardViewSource(source);
         if (status === 'loading') {
           xiStatus = 'loading';
           ensureMarkup();
