@@ -77,6 +77,10 @@ export interface GraphicsCommandMessage {
     inningsId?: string | null;
     /** `break` = just-finished innings; `scorecard` = dropdown-selected innings. */
     source?: ScorecardViewSource;
+    /** Single-team playing XI / lineup; omit for both teams. */
+    teamId?: string | null;
+    /** `both` = two columns; `single` = one team XI; `lineup` = batting order. */
+    variant?: 'both' | 'single' | 'lineup';
   };
 }
 

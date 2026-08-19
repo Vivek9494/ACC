@@ -8,21 +8,27 @@ import {
   type TeamRosterPlayer,
 } from './broadcast-fetch';
 import {
-  battingSideOptions,
   battingTeamLabel,
-  findInningsByKey,
-  formatBatterInningsScore,
-  formatDismissalShort,
   formatHighestScoreMeta,
   formatStat,
   hasBatsmanCareerStats,
   hasBowlerCareerStats,
-  latestFallOfWicket,
-  partnershipBatterRuns,
   playerName,
   resolveActiveInnings,
   shortName,
 } from './graphics-format';
+import {
+  buildTeamShowCommand,
+  findBattingInningsForTeam,
+  previewTeamLastWicket,
+  resolveTeamSection,
+  teamActionToInningsView,
+  teamHasPlayingXi,
+  teamMatchesInningsBatting,
+  teamMatchesInningsBowling,
+  type TeamControlAction,
+  type TeamSide,
+} from './control-team';
 import {
   connectLiveSocket,
   emitGraphicsCommand,
@@ -44,9 +50,12 @@ import { formatPlayingXiPreview } from './playing-xi-card';
 import { formatTossResultLine } from './toss-result-card';
 import type { Socket } from 'socket.io-client';
 
-/** Full-screen OBS graphics (not strip-only toss/chase). */
-const LABELS: Record<Exclude<GraphicsKind, 'hello' | 'toss' | 'chase'>, string> = {
-  partnership: 'Partnership',
+const TEAM_SIDES: TeamSide[] = ['a', 'b'];
+
+const COMMON_LABELS: Record<
+  Exclude<GraphicsKind, 'hello' | 'toss' | 'chase' | 'partnership'>,
+  string
+> = {
   fow: 'Last Wicket',
   batsman: 'Batsman',
   batsman_career: 'Batsman Career Stats',
@@ -57,7 +66,17 @@ const LABELS: Record<Exclude<GraphicsKind, 'hello' | 'toss' | 'chase'>, string> 
   playing_xi: 'Playing XI',
 };
 
-const OPERATOR_KINDS = Object.keys(LABELS) as Array<keyof typeof LABELS>;
+const TEAM_ACTION_LABELS: Record<TeamControlAction, string> = {
+  playing_xi: 'Playing XI',
+  batting_lineup: 'Batting line-up',
+  bowling: 'Bowling',
+  partnerships: 'Partnership',
+  fow: 'Last wicket',
+  batsman: 'Batsman',
+  bowler: 'Bowler',
+  batsman_career: 'Batsman career',
+  bowler_career: 'Bowler career',
+};
 
 const SCORECARD_VIEW_LABELS: Record<InningsBreakView, string> = {
   batting: 'Batting',
@@ -90,6 +109,27 @@ function appendOption(
   select.appendChild(opt);
 }
 
+function parseTeamSide(value: string | null | undefined): TeamSide | null {
+  return value === 'a' || value === 'b' ? value : null;
+}
+
+function parseTeamAction(value: string | null | undefined): TeamControlAction | null {
+  const actions: TeamControlAction[] = [
+    'playing_xi',
+    'batting_lineup',
+    'bowling',
+    'partnerships',
+    'fow',
+    'batsman',
+    'bowler',
+    'batsman_career',
+    'bowler_career',
+  ];
+  return actions.includes(value as TeamControlAction)
+    ? (value as TeamControlAction)
+    : null;
+}
+
 function start(): void {
   const { matchId, apiBase } = queryApiAndMatch();
   const matchLabel = el<HTMLParagraphElement>('match-label');
@@ -98,17 +138,6 @@ function start(): void {
   const onAir = el<HTMLParagraphElement>('on-air');
   const onAirDetail = el<HTMLParagraphElement>('on-air-detail');
   const btnClearAir = el<HTMLButtonElement>('btn-clear-air');
-  const pickBatsman = el<HTMLSelectElement>('pick-batsman');
-  const pickBowler = el<HTMLSelectElement>('pick-bowler');
-  const pickBowlerCareer = el<HTMLSelectElement>('pick-bowler-career');
-  const pickBatsmanCareer = el<HTMLSelectElement>('pick-batsman-career');
-
-  const btnShowPartnership = el<HTMLButtonElement>('btn-show-partnership');
-  const btnShowFow = el<HTMLButtonElement>('btn-show-fow');
-  const btnShowBatsman = el<HTMLButtonElement>('btn-show-batsman');
-  const btnShowBowler = el<HTMLButtonElement>('btn-show-bowler');
-  const btnShowBowlerCareer = el<HTMLButtonElement>('btn-show-bowler-career');
-  const btnShowBatsmanCareer = el<HTMLButtonElement>('btn-show-batsman-career');
   const btnShowInnings = el<HTMLButtonElement>('btn-show-innings');
   const btnShowToss = el<HTMLButtonElement>('btn-show-toss');
   const btnShowTossResult = el<HTMLButtonElement>('btn-show-toss-result');
@@ -126,22 +155,21 @@ function start(): void {
   connLabel.textContent = `Connecting to ${apiBase}…`;
 
   let socket: Socket | null = null;
-  let onAirGraphic: keyof typeof LABELS | null = null;
+  let onAirGraphic: keyof typeof COMMON_LABELS | null = null;
+  let onAirTeamSide: TeamSide | null = null;
+  let onAirTeamAction: TeamControlAction | null = null;
+  let playingXiVariant: 'both' | 'single' | 'lineup' = 'both';
   let inningsView: InningsBreakView = 'batting';
   let inningsSource: ScorecardViewSource = 'break';
   let scorecardOnAirView: InningsBreakView | null = null;
-  let scorecardOnAirInningsId: string | null = null;
   let stripMode: 'default' | 'toss' | 'chase' = 'default';
   let onAirDetailText = '';
-  let batsmanCareerDetail = '';
-  let bowlerCareerDetail = '';
+  const careerDetailByKey = new Map<string, string>();
   let scorecard: ScorecardResponse | null = null;
   let matchCtx: MatchContext | null = null;
   let ballType: BallType = 'TENNIS';
   const careerCache = new Map<string, BroadcastPlayerStatsView | null>();
-  let bowlerCareerPreviewToken = 0;
-  let batsmanCareerPreviewToken = 0;
-  /** tournament teamId → full roster (bowling-side career picker). */
+  const careerPreviewTokenByKey = new Map<string, number>();
   const rosterByTeamId = new Map<string, TeamRosterPlayer[]>();
   const rosterLoading = new Set<string>();
   let rosterFetchToken = 0;
@@ -153,6 +181,10 @@ function start(): void {
     emitGraphicsCommand(socket, { matchId: resolvedMatchId, ...cmd });
   }
 
+  function teamBinding(side: TeamSide) {
+    return resolveTeamSection(matchCtx, side);
+  }
+
   function nameOf(id: string | null | undefined): string {
     if (!scorecard || !id) {
       return '—';
@@ -160,48 +192,19 @@ function start(): void {
     return shortName(playerName(scorecard.display, id));
   }
 
-  function resolveBatsmanId(): string | null {
-    const picked = pickBatsman.value.trim();
-    if (picked) {
-      return picked;
-    }
-    if (!scorecard) {
-      return null;
-    }
-    return resolveActiveInnings(scorecard)?.currentStrikerId ?? null;
+  function teamPick(side: TeamSide, pick: string): HTMLSelectElement | null {
+    return document.querySelector<HTMLSelectElement>(
+      `.team-pick[data-team-side="${side}"][data-pick="${pick}"]`,
+    );
   }
 
-  function resolveBowlerId(): string | null {
-    const picked = pickBowler.value.trim();
-    if (picked) {
-      return picked;
-    }
-    if (!scorecard) {
-      return null;
-    }
-    return resolveActiveInnings(scorecard)?.currentBowlerId ?? null;
-  }
-
-  function resolveBowlerCareerId(): string | null {
-    const picked = pickBowlerCareer.value.trim();
-    if (picked) {
-      return picked;
-    }
-    if (!scorecard) {
-      return null;
-    }
-    return resolveActiveInnings(scorecard)?.currentBowlerId ?? null;
-  }
-
-  function resolveBatsmanCareerId(): string | null {
-    const picked = pickBatsmanCareer.value.trim();
-    if (picked) {
-      return picked;
-    }
-    if (!scorecard) {
-      return null;
-    }
-    return resolveActiveInnings(scorecard)?.currentStrikerId ?? null;
+  function teamShowButton(
+    side: TeamSide,
+    action: TeamControlAction,
+  ): HTMLButtonElement | null {
+    return document.querySelector<HTMLButtonElement>(
+      `.btn-team-show[data-team-side="${side}"][data-team-action="${action}"]`,
+    );
   }
 
   async function loadCareerStats(
@@ -216,124 +219,6 @@ function start(): void {
     return stats;
   }
 
-  function previewPartnership(): string | null {
-    if (!scorecard) {
-      return null;
-    }
-    const innings = resolveActiveInnings(scorecard);
-    const ps = innings?.partnership;
-    if (!ps || ps.batterIds.length < 2) {
-      return null;
-    }
-    const [a, b] = ps.batterIds;
-    return `${ps.runs} (${ps.balls}) · ${nameOf(a)} ${partnershipBatterRuns(ps, a ?? '')} & ${nameOf(b)} ${partnershipBatterRuns(ps, b ?? '')}`;
-  }
-
-  function previewFow(): string | null {
-    if (!scorecard) {
-      return null;
-    }
-    const innings = resolveActiveInnings(scorecard);
-    const fow = latestFallOfWicket(innings);
-    if (!fow || !innings) {
-      return null;
-    }
-    const batter = innings.batters.find((row) => row.playerId === fow.playerId);
-    const dismissalRaw = batter
-      ? formatDismissalShort(batter, (id) => nameOf(id)).trim()
-      : '';
-    const dismissal = dismissalRaw || 'out';
-    const figs = batter
-      ? formatBatterInningsScore(batter)
-      : '0 (0)';
-    return `${nameOf(fow.playerId)} · ${figs} · ${dismissal}`;
-  }
-
-  function populateScorecardTeamPicks(): void {
-    const options = battingSideOptions(scorecard, matchCtx);
-    const picks = document.querySelectorAll<HTMLSelectElement>('.scorecard-team-pick');
-    const hasEnabled = options.some((o) => o.enabled);
-    for (const pick of picks) {
-      const prev = pick.value;
-      pick.replaceChildren();
-      if (options.length === 0) {
-        appendOption(pick, '', 'No innings yet');
-        pick.disabled = true;
-        continue;
-      }
-      pick.disabled = false;
-      for (const opt of options) {
-        const node = document.createElement('option');
-        node.value = opt.inningsId ?? '';
-        node.textContent = opt.label;
-        node.disabled = !opt.enabled;
-        pick.appendChild(node);
-      }
-      const keep = [...pick.options].some(
-        (o) => o.value === prev && !o.disabled && prev.length > 0,
-      );
-      const firstEnabled = [...pick.options].find((o) => !o.disabled && o.value);
-      pick.value = keep ? prev : (firstEnabled?.value ?? '');
-    }
-    for (const btn of document.querySelectorAll<HTMLButtonElement>('.btn-show-scorecard')) {
-      const view = btn.dataset.scorecardView;
-      const pick = document.querySelector<HTMLSelectElement>(
-        `.scorecard-team-pick[data-scorecard-view="${view}"]`,
-      );
-      setEnabled(btn, Boolean(pick?.value));
-    }
-    el<HTMLParagraphElement>('preview-scorecard-views').textContent = hasEnabled
-      ? 'Show any innings view for the selected batting side'
-      : 'Waiting for a team to bat…';
-  }
-
-  function previewInnings(): string | null {
-    if (!scorecard || scorecard.innings.length === 0) {
-      return null;
-    }
-    const parts = scorecard.innings.map((inn) => {
-      const team = battingTeamLabel(scorecard!, inn);
-      return `${team} ${inn.runs}/${inn.wickets} (${inn.oversText})`;
-    });
-    const target =
-      scorecard.effectiveTarget != null && scorecard.effectiveTarget > 0
-        ? ` · Target ${scorecard.effectiveTarget}`
-        : '';
-    return `${parts.join(' · ')}${target}`;
-  }
-
-  function previewBatsman(): string | null {
-    const playerId = resolveBatsmanId();
-    if (!playerId || !scorecard) {
-      return null;
-    }
-    const innings = resolveActiveInnings(scorecard);
-    const batter = innings?.batters.find((b) => b.playerId === playerId);
-    const figs = batter
-      ? `${innings?.currentStrikerId === playerId && !batter.isOut ? `${batter.runs}*` : batter.runs} (${batter.balls})`
-      : '0 (0)';
-    return `${nameOf(playerId)} · ${figs}`;
-  }
-
-  function previewBowler(): string | null {
-    const playerId = resolveBowlerId();
-    if (!playerId || !scorecard) {
-      return null;
-    }
-    const innings = resolveActiveInnings(scorecard);
-    const bowler = innings?.bowlers.find((b) => b.playerId === playerId);
-    const overs = bowler?.oversText?.trim() || '0.0';
-    const maidens = bowler?.maidens ?? 0;
-    const dots = bowler?.dotBalls ?? 0;
-    const wickets = bowler?.wickets ?? 0;
-    const runs = bowler?.runsConceded ?? 0;
-    const economy =
-      bowler && Number.isFinite(bowler.economy)
-        ? bowler.economy
-        : 0;
-    return `${nameOf(playerId)} · ${overs} ov · ${maidens} M · ${dots} D · ${wickets} W · ${runs} R · Eco ${formatStat(economy, 2)}`;
-  }
-
   function formatCareerPreview(stats: BroadcastPlayerStatsView): string {
     return `${stats.matches} Mat · ${stats.wickets} Wkt · Avg ${formatStat(stats.bowlingAverage, 2)} · Eco ${formatStat(stats.economy, 2)} · Best ${stats.bestBowling?.trim() || '—'}`;
   }
@@ -343,274 +228,6 @@ function start(): void {
     const meta = formatHighestScoreMeta(stats);
     const hsPart = meta ? `HS ${hs} (${meta})` : `HS ${hs}`;
     return `${stats.battingInnings} Inn · ${stats.runs} Runs · Avg ${formatStat(stats.average, 2)} · SR ${formatStat(stats.strikeRate, 1)} · 30s ${stats.thirties} · 50s ${stats.fifties} · ${hsPart}`;
-  }
-
-  function previewToss(): string | null {
-    return formatTossLine(matchCtx);
-  }
-
-  function previewTossResult(): string | null {
-    return formatTossResultLine(matchCtx);
-  }
-
-  function previewChase(): string | null {
-    return formatRunsToWinLine(scorecard);
-  }
-
-  function detailForKind(kind: keyof typeof LABELS): string {
-    switch (kind) {
-      case 'partnership':
-        return previewPartnership() ?? '';
-      case 'fow':
-        return previewFow() ?? '';
-      case 'batsman':
-        return previewBatsman() ?? '';
-      case 'bowler':
-        return previewBowler() ?? '';
-      case 'bowler_career':
-        return bowlerCareerDetail;
-      case 'batsman_career':
-        return batsmanCareerDetail;
-      case 'innings_break':
-        if (inningsSource === 'scorecard' && scorecardOnAirInningsId && scorecard) {
-          const inn = findInningsByKey(scorecard, scorecardOnAirInningsId);
-          const viewLabel = SCORECARD_VIEW_LABELS[scorecardOnAirView ?? inningsView];
-          if (inn) {
-            return `${viewLabel} · ${battingTeamLabel(scorecard, inn)} ${inn.runs}/${inn.wickets}`;
-          }
-          return viewLabel;
-        }
-        return previewInnings() ?? '';
-      case 'toss_result':
-        return previewTossResult() ?? '';
-      case 'playing_xi':
-        return formatPlayingXiPreview(matchCtx) ?? '';
-      default:
-        return '';
-    }
-  }
-
-  function setStripSection(graphic: 'toss' | 'chase', live: boolean): void {
-    const section = el<HTMLElement>(graphic === 'toss' ? 'sec-toss' : 'sec-chase');
-    section.classList.toggle('is-on-air', live);
-    const badge = section.querySelector<HTMLElement>('.on-air-badge');
-    if (badge) {
-      badge.hidden = !live;
-    }
-  }
-
-  function setStripMode(mode: 'default' | 'toss' | 'chase'): void {
-    stripMode = mode;
-    setStripSection('toss', mode === 'toss');
-    setStripSection('chase', mode === 'chase');
-    paintOnAirDock();
-  }
-
-  function syncInningsTabs(): void {
-    const tabs = el<HTMLElement>('innings-tabs');
-    const onAir =
-      onAirGraphic === 'innings_break' && inningsSource === 'break';
-    tabs.hidden = !onAir;
-    for (const btn of tabs.querySelectorAll<HTMLButtonElement>('[data-innings-view]')) {
-      btn.classList.toggle(
-        'is-active-tab',
-        btn.dataset.inningsView === inningsView,
-      );
-    }
-  }
-
-  function syncScorecardViewRows(): void {
-    const live =
-      onAirGraphic === 'innings_break' && inningsSource === 'scorecard';
-    for (const row of document.querySelectorAll<HTMLElement>('.scorecard-view-row')) {
-      const view = parseInningsBreakView(row.dataset.scorecardView);
-      row.classList.toggle(
-        'is-on-air',
-        live && view === scorecardOnAirView,
-      );
-    }
-  }
-
-  function anythingLive(): boolean {
-    return onAirGraphic != null || stripMode !== 'default';
-  }
-
-  function paintOnAirDock(): void {
-    const live = anythingLive();
-    onAirDock.classList.toggle('is-live', live);
-    setEnabled(btnClearAir, live);
-    const inningsStandalone =
-      onAirGraphic === 'innings_break' && inningsSource === 'scorecard';
-    if (inningsStandalone) {
-      onAir.textContent = `ON AIR: Scorecard · ${SCORECARD_VIEW_LABELS[scorecardOnAirView ?? inningsView]}`;
-      onAirDetail.textContent = onAirDetailText;
-      return;
-    }
-    if (onAirGraphic) {
-      onAir.textContent = `ON AIR: ${LABELS[onAirGraphic]}`;
-      onAirDetail.textContent = onAirDetailText;
-      return;
-    }
-    if (stripMode === 'toss') {
-      onAir.textContent = 'ON AIR: Toss (strip)';
-      onAirDetail.textContent =
-        el<HTMLParagraphElement>('preview-toss').textContent ?? '';
-      return;
-    }
-    if (stripMode === 'chase') {
-      onAir.textContent = 'ON AIR: Runs to win (strip)';
-      onAirDetail.textContent =
-        el<HTMLParagraphElement>('preview-chase').textContent ?? '';
-      return;
-    }
-    onAir.textContent = 'Nothing on air';
-    onAirDetail.textContent = '';
-  }
-
-  function setOnAir(kind: keyof typeof LABELS | null): void {
-    onAirGraphic = kind;
-    if (kind !== 'innings_break') {
-      inningsSource = 'break';
-      scorecardOnAirView = null;
-      scorecardOnAirInningsId = null;
-    }
-    onAirDetailText = kind ? detailForKind(kind) : '';
-    const inningsStandalone =
-      kind === 'innings_break' && inningsSource === 'scorecard';
-    paintOnAirDock();
-    syncInningsTabs();
-    syncScorecardViewRows();
-
-    for (const k of OPERATOR_KINDS) {
-      const section = document.querySelector<HTMLElement>(
-        `.control-card[data-graphic="${k}"]`,
-      );
-      if (!section) {
-        continue;
-      }
-      const live =
-        k === 'innings_break'
-          ? kind === k && inningsSource === 'break'
-          : kind === k;
-      section.classList.toggle('is-on-air', live);
-      const badge = section.querySelector<HTMLElement>('.on-air-badge');
-      if (badge) {
-        badge.hidden = !live;
-      }
-    }
-
-    const scorecardSec = el<HTMLElement>('sec-scorecard-views');
-    scorecardSec.classList.toggle('is-on-air', inningsStandalone);
-    const scorecardBadge = scorecardSec.querySelector<HTMLElement>('.on-air-badge');
-    if (scorecardBadge) {
-      scorecardBadge.hidden = !inningsStandalone;
-    }
-  }
-
-  function refreshPreviews(): void {
-    const toss = previewToss();
-    el<HTMLParagraphElement>('preview-toss').textContent =
-      toss ?? 'Toss not recorded yet';
-    setEnabled(btnShowToss, toss != null);
-
-    const tossResult = previewTossResult();
-    el<HTMLParagraphElement>('preview-toss-result').textContent =
-      tossResult ?? 'Toss not recorded yet';
-    setEnabled(btnShowTossResult, tossResult != null);
-
-    const playingXi = formatPlayingXiPreview(matchCtx);
-    el<HTMLParagraphElement>('preview-playing-xi').textContent =
-      playingXi ?? 'Waiting for squads…';
-    setEnabled(btnShowPlayingXi, playingXi != null);
-
-    const chase = previewChase();
-    el<HTMLParagraphElement>('preview-chase').textContent =
-      chase ?? 'No chase yet (2nd innings / target required)';
-    setEnabled(btnShowChase, chase != null);
-
-    const ps = previewPartnership();
-    el<HTMLParagraphElement>('preview-partnership').textContent =
-      ps ?? 'No current partnership';
-    setEnabled(btnShowPartnership, ps != null);
-
-    const fow = previewFow();
-    el<HTMLParagraphElement>('preview-fow').textContent = fow ?? 'No wicket yet';
-    setEnabled(btnShowFow, fow != null);
-
-    setEnabled(btnShowBatsman, previewBatsman() != null);
-    setEnabled(btnShowBowler, previewBowler() != null);
-
-    void refreshBowlerCareerPreview();
-    void refreshBatsmanCareerPreview();
-
-    const inn = previewInnings();
-    el<HTMLParagraphElement>('preview-innings').textContent =
-      inn ?? 'Waiting for innings…';
-    setEnabled(btnShowInnings, inn != null);
-    populateScorecardTeamPicks();
-
-    if (
-      onAirGraphic &&
-      onAirGraphic !== 'bowler_career' &&
-      onAirGraphic !== 'batsman_career'
-    ) {
-      onAirDetailText = detailForKind(onAirGraphic);
-      onAirDetail.textContent = onAirDetailText;
-    }
-  }
-
-  async function refreshBowlerCareerPreview(): Promise<void> {
-    const playerId = resolveBowlerCareerId();
-    const token = ++bowlerCareerPreviewToken;
-    if (!playerId) {
-      bowlerCareerDetail = '';
-      setEnabled(btnShowBowlerCareer, false);
-      return;
-    }
-    bowlerCareerDetail = '';
-    setEnabled(btnShowBowlerCareer, false);
-    const stats = await loadCareerStats(playerId);
-    if (token !== bowlerCareerPreviewToken) {
-      return;
-    }
-    if (!stats || !hasBowlerCareerStats(stats)) {
-      bowlerCareerDetail = '';
-      setEnabled(btnShowBowlerCareer, false);
-      return;
-    }
-    bowlerCareerDetail = `${nameOf(playerId)} · ${formatCareerPreview(stats)}`;
-    setEnabled(btnShowBowlerCareer, true);
-    if (onAirGraphic === 'bowler_career') {
-      onAirDetailText = bowlerCareerDetail;
-      onAirDetail.textContent = onAirDetailText;
-    }
-  }
-
-  async function refreshBatsmanCareerPreview(): Promise<void> {
-    const playerId = resolveBatsmanCareerId();
-    const token = ++batsmanCareerPreviewToken;
-    if (!playerId) {
-      batsmanCareerDetail = '';
-      setEnabled(btnShowBatsmanCareer, false);
-      return;
-    }
-    batsmanCareerDetail = '';
-    setEnabled(btnShowBatsmanCareer, false);
-    const stats = await loadCareerStats(playerId);
-    if (token !== batsmanCareerPreviewToken) {
-      return;
-    }
-    if (!stats || !hasBatsmanCareerStats(stats)) {
-      batsmanCareerDetail = '';
-      setEnabled(btnShowBatsmanCareer, false);
-      return;
-    }
-    batsmanCareerDetail = `${nameOf(playerId)} · ${formatBatsmanCareerPreview(stats)}`;
-    setEnabled(btnShowBatsmanCareer, true);
-    if (onAirGraphic === 'batsman_career') {
-      onAirDetailText = batsmanCareerDetail;
-      onAirDetail.textContent = onAirDetailText;
-    }
   }
 
   function rosterDisplayName(p: TeamRosterPlayer): string {
@@ -637,16 +254,11 @@ function start(): void {
         return;
       }
       rosterByTeamId.set(teamId, players);
-      rebuildPickers(scorecard);
-      void refreshBowlerCareerPreview();
-      void refreshBatsmanCareerPreview();
+      rebuildTeamPickers();
+      void refreshTeamCareerPreviews();
     });
   }
 
-  /**
-   * Shared team-roster career picker (bowling side or batting side).
-   * `preferredPlayerId` is listed first and tagged when present on the roster.
-   */
   function fillTeamCareerSelect(
     select: HTMLSelectElement,
     prev: string,
@@ -662,19 +274,22 @@ function start(): void {
     select.innerHTML = '';
     if (!teamId) {
       appendOption(select, '', labels.waiting);
+      select.disabled = true;
       return;
     }
     const roster = rosterByTeamId.get(teamId);
     if (!roster) {
       appendOption(select, '', labels.loading);
+      select.disabled = true;
       requestTeamRoster(teamId);
       return;
     }
     if (roster.length === 0) {
       appendOption(select, '', labels.empty);
+      select.disabled = true;
       return;
     }
-
+    select.disabled = false;
     const sorted = [...roster].sort((a, b) =>
       rosterDisplayName(a).localeCompare(rosterDisplayName(b)),
     );
@@ -690,14 +305,12 @@ function start(): void {
         ordered.push(p);
       }
     }
-
     for (const p of ordered) {
       const role =
         p.userId === preferredPlayerId ? labels.preferredRole : null;
       const label = [rosterDisplayName(p), role].filter(Boolean).join(' · ');
       appendOption(select, p.userId, label);
     }
-
     if ([...select.options].some((o) => o.value === prev && prev !== '')) {
       select.value = prev;
     } else if (
@@ -710,135 +323,566 @@ function start(): void {
     }
   }
 
-  function rebuildPickers(card: ScorecardResponse | null): void {
-    const batPrev = pickBatsman.value;
-    const batCareerPrev = pickBatsmanCareer.value;
-    const bowlPrev = pickBowler.value;
-    const careerPrev = pickBowlerCareer.value;
-    const innings = card ? resolveActiveInnings(card) : null;
+  function rebuildTeamPickers(): void {
+    const innings = scorecard ? resolveActiveInnings(scorecard) : null;
+    for (const side of TEAM_SIDES) {
+      const team = teamBinding(side);
+      const batPick = teamPick(side, 'batsman');
+      const bowlPick = teamPick(side, 'bowler');
+      const batCareerPick = teamPick(side, 'batsman_career');
+      const bowlCareerPick = teamPick(side, 'bowler_career');
+      if (!batPick || !bowlPick || !batCareerPick || !bowlCareerPick) {
+        continue;
+      }
 
-    const creaseIds = [
-      innings?.currentStrikerId,
-      innings?.currentNonStrikerId,
-    ].filter((id): id is string => Boolean(id));
-    const bowlingIds = (innings?.bowlers ?? []).map((b) => b.playerId);
+      const batPrev = batPick.value;
+      const bowlPrev = bowlPick.value;
+      const batCareerPrev = batCareerPick.value;
+      const bowlCareerPrev = bowlCareerPick.value;
 
-    /** In-play batsman card: crease pair only (striker + non-striker). */
-    const fillCreaseBatsmanSelect = (
-      select: HTMLSelectElement,
-      prev: string,
-    ): void => {
-      select.innerHTML = '';
-      const seen = new Set<string>();
-      for (const id of creaseIds) {
-        if (seen.has(id)) {
+      batPick.innerHTML = '';
+      bowlPick.innerHTML = '';
+
+      const battingNow = teamMatchesInningsBatting(team, innings);
+      const bowlingNow = teamMatchesInningsBowling(team, innings);
+
+      if (battingNow && innings) {
+        batPick.disabled = false;
+        const creaseIds = [
+          innings.currentStrikerId,
+          innings.currentNonStrikerId,
+        ].filter((id): id is string => Boolean(id));
+        const seen = new Set<string>();
+        for (const id of creaseIds) {
+          if (seen.has(id)) {
+            continue;
+          }
+          seen.add(id);
+          const row = innings.batters.find((b) => b.playerId === id);
+          const figs = row ? `${row.runs} (${row.balls})` : '';
+          const role =
+            id === innings.currentStrikerId
+              ? 'Striker'
+              : id === innings.currentNonStrikerId
+                ? 'Non-striker'
+                : null;
+          appendOption(
+            batPick,
+            id,
+            [nameOf(id), figs, role].filter(Boolean).join(' · '),
+          );
+        }
+        if (batPick.options.length === 0) {
+          appendOption(batPick, '', 'Waiting for batsmen…');
+          batPick.disabled = true;
+        } else if ([...batPick.options].some((o) => o.value === batPrev)) {
+          batPick.value = batPrev;
+        } else if (innings.currentStrikerId) {
+          batPick.value = innings.currentStrikerId;
+        }
+      } else {
+        appendOption(batPick, '', 'Team not batting…');
+        batPick.disabled = true;
+      }
+
+      if (bowlingNow && innings) {
+        bowlPick.disabled = false;
+        const orderedIds: string[] = [];
+        if (innings.currentBowlerId) {
+          orderedIds.push(innings.currentBowlerId);
+        }
+        for (const b of innings.bowlers) {
+          if (!orderedIds.includes(b.playerId)) {
+            orderedIds.push(b.playerId);
+          }
+        }
+        for (const id of orderedIds) {
+          const row = innings.bowlers.find((b) => b.playerId === id);
+          const figs = row
+            ? `${row.oversText}-${row.runsConceded}-${row.wickets}`
+            : '';
+          const role = id === innings.currentBowlerId ? 'Current' : null;
+          appendOption(
+            bowlPick,
+            id,
+            [nameOf(id), figs, role].filter(Boolean).join(' · '),
+          );
+        }
+        if (bowlPick.options.length === 0) {
+          appendOption(bowlPick, '', 'No bowlers yet…');
+          bowlPick.disabled = true;
+        } else if ([...bowlPick.options].some((o) => o.value === bowlPrev)) {
+          bowlPick.value = bowlPrev;
+        } else if (innings.currentBowlerId) {
+          bowlPick.value = innings.currentBowlerId;
+        }
+      } else {
+        appendOption(bowlPick, '', 'Team not bowling…');
+        bowlPick.disabled = true;
+      }
+
+      const preferredBatter =
+        battingNow && innings?.currentStrikerId ? innings.currentStrikerId : null;
+      const preferredBowler =
+        bowlingNow && innings?.currentBowlerId ? innings.currentBowlerId : null;
+
+      fillTeamCareerSelect(
+        batCareerPick,
+        batCareerPrev,
+        team.isExternal ? null : team.teamId,
+        preferredBatter,
+        {
+          waiting: team.isExternal ? 'External team' : 'Loading team…',
+          loading: 'Loading roster…',
+          empty: 'No players…',
+          preferredRole: 'Striker',
+        },
+      );
+      fillTeamCareerSelect(
+        bowlCareerPick,
+        bowlCareerPrev,
+        team.isExternal ? null : team.teamId,
+        preferredBowler,
+        {
+          waiting: team.isExternal ? 'External team' : 'Loading team…',
+          loading: 'Loading roster…',
+          empty: 'No players…',
+          preferredRole: 'Current',
+        },
+      );
+    }
+  }
+
+  async function refreshTeamCareerPreview(
+    side: TeamSide,
+    pick: 'batsman_career' | 'bowler_career',
+  ): Promise<void> {
+    const select = teamPick(side, pick);
+    const btn = teamShowButton(
+      side,
+      pick === 'batsman_career' ? 'batsman_career' : 'bowler_career',
+    );
+    if (!select || !btn) {
+      return;
+    }
+    const key = `${side}:${pick}`;
+    const token = (careerPreviewTokenByKey.get(key) ?? 0) + 1;
+    careerPreviewTokenByKey.set(key, token);
+    const playerId = select.value.trim();
+    if (!playerId || select.disabled) {
+      careerDetailByKey.delete(key);
+      setEnabled(btn, false);
+      return;
+    }
+    careerDetailByKey.delete(key);
+    setEnabled(btn, false);
+    const stats = await loadCareerStats(playerId);
+    if (token !== careerPreviewTokenByKey.get(key)) {
+      return;
+    }
+    const ok =
+      pick === 'batsman_career'
+        ? stats != null && hasBatsmanCareerStats(stats)
+        : stats != null && hasBowlerCareerStats(stats);
+    if (!ok) {
+      careerDetailByKey.delete(key);
+      setEnabled(btn, false);
+      return;
+    }
+    const detail =
+      pick === 'batsman_career'
+        ? `${nameOf(playerId)} · ${formatBatsmanCareerPreview(stats!)}`
+        : `${nameOf(playerId)} · ${formatCareerPreview(stats!)}`;
+    careerDetailByKey.set(key, detail);
+    setEnabled(btn, true);
+    paintOnAirDock();
+  }
+
+  async function refreshTeamCareerPreviews(): Promise<void> {
+    for (const side of TEAM_SIDES) {
+      await refreshTeamCareerPreview(side, 'batsman_career');
+      await refreshTeamCareerPreview(side, 'bowler_career');
+    }
+  }
+
+  function refreshTeamTitles(): void {
+    for (const side of TEAM_SIDES) {
+      const title = document.querySelector<HTMLElement>(
+        `[data-team-title="${side}"]`,
+      );
+      if (title) {
+        title.textContent = teamBinding(side).name;
+      }
+    }
+  }
+
+  function refreshTeamControls(): void {
+    refreshTeamTitles();
+    for (const side of TEAM_SIDES) {
+      const team = teamBinding(side);
+      const innings = scorecard ? resolveActiveInnings(scorecard) : null;
+      const battingInnings = findBattingInningsForTeam(scorecard, team);
+      const hasXi = teamHasPlayingXi(matchCtx, team);
+
+      for (const action of Object.keys(TEAM_ACTION_LABELS) as TeamControlAction[]) {
+        const btn = teamShowButton(side, action);
+        if (!btn) {
           continue;
         }
-        seen.add(id);
-        const row = innings?.batters.find((b) => b.playerId === id);
-        const figs = row ? `${row.runs} (${row.balls})` : '';
-        const role =
-          id === innings?.currentStrikerId
-            ? 'Striker'
-            : id === innings?.currentNonStrikerId
-              ? 'Non-striker'
-              : null;
-        const label = [
-          nameOf(id),
-          figs,
-          role,
-        ]
-          .filter(Boolean)
-          .join(' · ');
-        appendOption(select, id, label || nameOf(id));
-      }
-      if (select.options.length === 0) {
-        appendOption(select, '', 'Waiting for batsmen…');
-      }
-      if ([...select.options].some((o) => o.value === prev && prev !== '')) {
-        select.value = prev;
-      } else if (innings?.currentStrikerId) {
-        select.value = innings.currentStrikerId;
-      } else if (select.options[0]) {
-        select.selectedIndex = 0;
-      }
-    };
-
-    fillCreaseBatsmanSelect(pickBatsman, batPrev);
-    fillTeamCareerSelect(
-      pickBatsmanCareer,
-      batCareerPrev,
-      innings?.battingTeamId ?? null,
-      innings?.currentStrikerId ?? null,
-      {
-        waiting: 'Waiting for batting team…',
-        loading: 'Loading batting team…',
-        empty: 'No players on batting team…',
-        preferredRole: 'Striker',
-      },
-    );
-
-    /** In-play bowler card: anyone who has bowled this innings (bowlers[]). */
-    const fillInPlayBowlerSelect = (
-      select: HTMLSelectElement,
-      prev: string,
-    ): void => {
-      select.innerHTML = '';
-      const seen = new Set<string>();
-      const orderedIds: string[] = [];
-      if (innings?.currentBowlerId) {
-        orderedIds.push(innings.currentBowlerId);
-      }
-      for (const id of bowlingIds) {
-        if (!orderedIds.includes(id)) {
-          orderedIds.push(id);
+        let enabled = false;
+        switch (action) {
+          case 'playing_xi':
+          case 'batting_lineup':
+            enabled = hasXi;
+            break;
+          case 'bowling':
+          case 'partnerships':
+            enabled = battingInnings != null;
+            break;
+          case 'fow':
+            enabled = previewTeamLastWicket(scorecard, team) != null;
+            break;
+          case 'batsman':
+            enabled =
+              teamMatchesInningsBatting(team, innings) &&
+              Boolean(teamPick(side, 'batsman')?.value.trim());
+            break;
+          case 'bowler':
+            enabled =
+              teamMatchesInningsBowling(team, innings) &&
+              Boolean(teamPick(side, 'bowler')?.value.trim());
+            break;
+          case 'batsman_career':
+          case 'bowler_career': {
+            const pick = teamPick(side, action);
+            enabled = Boolean(pick && !pick.disabled && pick.value.trim());
+            break;
+          }
+          default:
+            break;
         }
+        setEnabled(btn, enabled);
       }
-      for (const id of orderedIds) {
-        if (seen.has(id)) {
+    }
+  }
+
+  function previewInnings(): string | null {
+    if (!scorecard || scorecard.innings.length === 0) {
+      return null;
+    }
+    const card = scorecard;
+    const parts = card.innings.map((inn) => {
+      const label = battingTeamLabel(card, inn);
+      return `${label} ${inn.runs}/${inn.wickets} (${inn.oversText})`;
+    });
+    const target =
+      scorecard.effectiveTarget != null && scorecard.effectiveTarget > 0
+        ? ` · Target ${scorecard.effectiveTarget}`
+        : '';
+    return `${parts.join(' · ')}${target}`;
+  }
+
+  function anythingLive(): boolean {
+    return onAirGraphic != null || stripMode !== 'default';
+  }
+
+  function syncInningsTabs(): void {
+    const tabs = el<HTMLElement>('innings-tabs');
+    const onAir =
+      onAirGraphic === 'innings_break' && inningsSource === 'break';
+    tabs.hidden = !onAir;
+    for (const btn of tabs.querySelectorAll<HTMLButtonElement>('[data-innings-view]')) {
+      btn.classList.toggle(
+        'is-active-tab',
+        btn.dataset.inningsView === inningsView,
+      );
+    }
+  }
+
+  function syncTeamOnAir(): void {
+    for (const side of TEAM_SIDES) {
+      for (const action of Object.keys(TEAM_ACTION_LABELS) as TeamControlAction[]) {
+        const row = document.querySelector<HTMLElement>(
+          `.team-column[data-team-side="${side}"] .team-control[data-team-action="${action}"]`,
+        );
+        if (!row) {
           continue;
         }
-        seen.add(id);
-        const row = innings?.bowlers.find((b) => b.playerId === id);
-        const figs = row
-          ? `${row.oversText}-${row.runsConceded}-${row.wickets}`
-          : '';
-        const role =
-          id === innings?.currentBowlerId ? 'Current' : null;
-        const label = [nameOf(id), figs, role].filter(Boolean).join(' · ');
-        appendOption(select, id, label || nameOf(id));
+        let live = false;
+        if (onAirTeamSide === side && onAirTeamAction === action) {
+          if (action === 'playing_xi' && onAirGraphic === 'playing_xi') {
+            live = playingXiVariant === 'single';
+          } else if (action === 'batting_lineup' && onAirGraphic === 'playing_xi') {
+            live = playingXiVariant === 'lineup';
+          } else if (
+            (action === 'bowling' || action === 'partnerships') &&
+            onAirGraphic === 'innings_break'
+          ) {
+            live = inningsSource === 'scorecard';
+          } else if (action === 'fow' && onAirGraphic === 'fow') {
+            live = true;
+          } else if (
+            (action === 'batsman' ||
+              action === 'bowler' ||
+              action === 'batsman_career' ||
+              action === 'bowler_career') &&
+            onAirGraphic === action
+          ) {
+            live = true;
+          }
+        }
+        row.classList.toggle('is-on-air', live);
+        const badge = row.querySelector<HTMLElement>('.on-air-badge');
+        if (badge) {
+          badge.hidden = !live;
+        }
       }
-      if (select.options.length === 0) {
-        appendOption(select, '', 'No bowlers yet…');
-      }
-      if ([...select.options].some((o) => o.value === prev && prev !== '')) {
-        select.value = prev;
-      } else if (innings?.currentBowlerId) {
-        select.value = innings.currentBowlerId;
-      } else if (select.options[0]) {
-        select.selectedIndex = 0;
-      }
-    };
+    }
+  }
 
-    fillInPlayBowlerSelect(pickBowler, bowlPrev);
-    fillTeamCareerSelect(
-      pickBowlerCareer,
-      careerPrev,
-      innings?.bowlingTeamId ?? null,
-      innings?.currentBowlerId ?? null,
-      {
-        waiting: 'Waiting for bowling team…',
-        loading: 'Loading bowling team…',
-        empty: 'No players on bowling team…',
-        preferredRole: 'Current',
-      },
-    );
+  function syncCommonOnAir(): void {
+    const inningsStandalone =
+      onAirGraphic === 'innings_break' && inningsSource === 'break';
+    for (const card of document.querySelectorAll<HTMLElement>('.control-card[data-graphic]')) {
+      const graphic = card.dataset.graphic;
+      if (!graphic || graphic === 'toss' || graphic === 'chase') {
+        continue;
+      }
+      let live = false;
+      if (graphic === 'innings_break') {
+        live = inningsStandalone;
+      } else if (graphic === 'playing_xi') {
+        live = onAirGraphic === 'playing_xi' && playingXiVariant === 'both';
+      } else {
+        live = onAirGraphic === graphic;
+      }
+      card.classList.toggle('is-on-air', live);
+      const badge = card.querySelector<HTMLElement>('.on-air-badge');
+      if (badge) {
+        badge.hidden = !live;
+      }
+    }
+  }
+
+  function paintOnAirDock(): void {
+    const live = anythingLive();
+    onAirDock.classList.toggle('is-live', live);
+    setEnabled(btnClearAir, live);
+
+    if (
+      onAirGraphic === 'innings_break' &&
+      inningsSource === 'scorecard' &&
+      onAirTeamSide
+    ) {
+      onAir.textContent = `ON AIR: ${teamBinding(onAirTeamSide).name} · ${SCORECARD_VIEW_LABELS[scorecardOnAirView ?? inningsView]}`;
+      onAirDetail.textContent = onAirDetailText;
+      return;
+    }
+    if (
+      onAirGraphic === 'innings_break' &&
+      inningsSource === 'break'
+    ) {
+      onAir.textContent = 'ON AIR: Innings break';
+      onAirDetail.textContent = onAirDetailText;
+      return;
+    }
+    if (onAirGraphic === 'playing_xi' && onAirTeamSide && playingXiVariant !== 'both') {
+      onAir.textContent = `ON AIR: ${teamBinding(onAirTeamSide).name} · ${playingXiVariant === 'lineup' ? 'Batting line-up' : 'Playing XI'}`;
+      onAirDetail.textContent = onAirDetailText;
+      return;
+    }
+    if (onAirGraphic && onAirTeamSide && onAirTeamAction) {
+      onAir.textContent = `ON AIR: ${teamBinding(onAirTeamSide).name} · ${TEAM_ACTION_LABELS[onAirTeamAction]}`;
+      onAirDetail.textContent = onAirDetailText;
+      return;
+    }
+    if (onAirGraphic) {
+      onAir.textContent = `ON AIR: ${COMMON_LABELS[onAirGraphic]}`;
+      onAirDetail.textContent = onAirDetailText;
+      return;
+    }
+    if (stripMode === 'toss') {
+      onAir.textContent = 'ON AIR: Toss (strip)';
+      onAirDetail.textContent =
+        el<HTMLParagraphElement>('preview-toss').textContent ?? '';
+      return;
+    }
+    if (stripMode === 'chase') {
+      onAir.textContent = 'ON AIR: Runs to win (strip)';
+      onAirDetail.textContent =
+        el<HTMLParagraphElement>('preview-chase').textContent ?? '';
+      return;
+    }
+    onAir.textContent = 'Nothing on air';
+    onAirDetail.textContent = '';
+  }
+
+  function setStripSection(graphic: 'toss' | 'chase', live: boolean): void {
+    const section = el<HTMLElement>(graphic === 'toss' ? 'sec-toss' : 'sec-chase');
+    section.classList.toggle('is-on-air', live);
+    const badge = section.querySelector<HTMLElement>('.on-air-badge');
+    if (badge) {
+      badge.hidden = !live;
+    }
+  }
+
+  function setStripMode(mode: 'default' | 'toss' | 'chase'): void {
+    stripMode = mode;
+    setStripSection('toss', mode === 'toss');
+    setStripSection('chase', mode === 'chase');
+    paintOnAirDock();
+  }
+
+  function setOnAir(
+    kind: keyof typeof COMMON_LABELS | null,
+    teamSide: TeamSide | null = null,
+    teamAction: TeamControlAction | null = null,
+    xiVariant: 'both' | 'single' | 'lineup' = 'both',
+  ): void {
+    onAirGraphic = kind;
+    onAirTeamSide = teamSide;
+    onAirTeamAction = teamAction;
+    playingXiVariant = xiVariant;
+    if (kind !== 'innings_break') {
+      if (teamAction !== 'bowling' && teamAction !== 'partnerships') {
+        inningsSource = 'break';
+        scorecardOnAirView = null;
+      }
+    }
+    if (kind === 'playing_xi' && xiVariant === 'both') {
+      onAirTeamSide = null;
+      onAirTeamAction = null;
+    }
+    if (teamAction === 'batsman_career' || teamAction === 'bowler_career') {
+      const key = `${teamSide}:${teamAction}`;
+      onAirDetailText = careerDetailByKey.get(key) ?? '';
+    } else if (kind === 'playing_xi' && xiVariant === 'both') {
+      onAirDetailText = formatPlayingXiPreview(matchCtx) ?? '';
+    } else if (kind === 'toss_result') {
+      onAirDetailText = formatTossResultLine(matchCtx) ?? '';
+    } else if (kind === 'innings_break' && inningsSource === 'break') {
+      onAirDetailText = previewInnings() ?? '';
+    } else {
+      onAirDetailText = '';
+    }
+    paintOnAirDock();
+    syncInningsTabs();
+    syncTeamOnAir();
+    syncCommonOnAir();
+  }
+
+  function refreshCommonPreviews(): void {
+    const toss = formatTossLine(matchCtx);
+    el<HTMLParagraphElement>('preview-toss').textContent =
+      toss ?? 'Toss not recorded yet';
+    setEnabled(btnShowToss, toss != null);
+
+    const tossResult = formatTossResultLine(matchCtx);
+    el<HTMLParagraphElement>('preview-toss-result').textContent =
+      tossResult ?? 'Toss not recorded yet';
+    setEnabled(btnShowTossResult, tossResult != null);
+
+    const playingXi = formatPlayingXiPreview(matchCtx);
+    el<HTMLParagraphElement>('preview-playing-xi').textContent =
+      playingXi ?? 'Waiting for squads…';
+    setEnabled(btnShowPlayingXi, playingXi != null);
+
+    const chase = formatRunsToWinLine(scorecard);
+    el<HTMLParagraphElement>('preview-chase').textContent =
+      chase ?? 'No chase yet (2nd innings / target required)';
+    setEnabled(btnShowChase, chase != null);
+
+    const inn = previewInnings();
+    el<HTMLParagraphElement>('preview-innings').textContent =
+      inn ?? 'Waiting for innings…';
+    setEnabled(btnShowInnings, inn != null);
+  }
+
+  function refreshPreviews(): void {
+    refreshCommonPreviews();
+    refreshTeamControls();
+    if (onAirGraphic === 'innings_break' && inningsSource === 'break') {
+      onAirDetailText = previewInnings() ?? '';
+      onAirDetail.textContent = onAirDetailText;
+    }
+    paintOnAirDock();
   }
 
   function applyScorecard(card: ScorecardResponse | null): void {
     scorecard = card;
-    rebuildPickers(card);
-    refreshPreviews();
+    rebuildTeamPickers();
+    void refreshTeamCareerPreviews().then(() => {
+      refreshPreviews();
+    });
+  }
+
+  function resolvePlayerForTeamAction(
+    side: TeamSide,
+    action: TeamControlAction,
+  ): string | null {
+    if (action === 'batsman') {
+      return teamPick(side, 'batsman')?.value.trim() || null;
+    }
+    if (action === 'bowler') {
+      return teamPick(side, 'bowler')?.value.trim() || null;
+    }
+    if (action === 'batsman_career') {
+      return teamPick(side, 'batsman_career')?.value.trim() || null;
+    }
+    if (action === 'bowler_career') {
+      return teamPick(side, 'bowler_career')?.value.trim() || null;
+    }
+    return null;
+  }
+
+  function showTeamGraphic(side: TeamSide, action: TeamControlAction): void {
+    const team = teamBinding(side);
+    const playerId = resolvePlayerForTeamAction(side, action);
+    const cmd = buildTeamShowCommand(
+      action,
+      team,
+      scorecard,
+      matchCtx,
+      playerId,
+    );
+    if (!cmd) {
+      return;
+    }
+    send(cmd);
+
+    const view = teamActionToInningsView(action);
+    if (view) {
+      inningsSource = 'scorecard';
+      scorecardOnAirView = view;
+      setOnAir('innings_break', side, action, 'both');
+      return;
+    }
+    if (action === 'playing_xi') {
+      setOnAir('playing_xi', side, action, 'single');
+      return;
+    }
+    if (action === 'batting_lineup') {
+      setOnAir('playing_xi', side, action, 'lineup');
+      return;
+    }
+    if (
+      action === 'fow' ||
+      action === 'batsman' ||
+      action === 'bowler' ||
+      action === 'batsman_career' ||
+      action === 'bowler_career'
+    ) {
+      setOnAir(action, side, action, 'both');
+    }
+  }
+
+  function primeTeamRosters(): void {
+    for (const side of TEAM_SIDES) {
+      const teamId = teamBinding(side).teamId;
+      if (teamId) {
+        requestTeamRoster(teamId);
+      }
+    }
   }
 
   void Promise.all([
@@ -849,10 +893,12 @@ function start(): void {
     ballType = bt;
     if (ctx) {
       matchCtx = ctx;
+      primeTeamRosters();
     }
     if (seed) {
       applyScorecard(seed);
     } else {
+      rebuildTeamPickers();
       refreshPreviews();
     }
   });
@@ -903,31 +949,63 @@ function start(): void {
           inningsSource = parseScorecardViewSource(cmd.payload?.source);
           if (inningsSource === 'scorecard') {
             scorecardOnAirView = inningsView;
-            scorecardOnAirInningsId = cmd.payload?.inningsId?.trim() || null;
           } else {
             scorecardOnAirView = null;
-            scorecardOnAirInningsId = null;
           }
+          setOnAir('innings_break');
+        } else if (cmd.graphic === 'playing_xi') {
+          const variant = cmd.payload?.variant ?? 'both';
+          setOnAir('playing_xi', null, null, variant);
+        } else if (
+          cmd.graphic === 'fow' ||
+          cmd.graphic === 'batsman' ||
+          cmd.graphic === 'bowler' ||
+          cmd.graphic === 'batsman_career' ||
+          cmd.graphic === 'bowler_career' ||
+          cmd.graphic === 'toss_result'
+        ) {
+          setOnAir(cmd.graphic);
         }
-        setOnAir(cmd.graphic);
       } else if (cmd.action === 'hide' && onAirGraphic === cmd.graphic) {
         setOnAir(null);
       }
     },
   });
 
-  const bindShow = (
-    showId: string,
-    kind: keyof typeof LABELS,
-    payloadFn?: () => GraphicsCommandMessage['payload'] | undefined,
-  ): void => {
-    el<HTMLButtonElement>(showId).addEventListener('click', () => {
-      send({ action: 'show', graphic: kind, payload: payloadFn?.() });
-    });
-  };
+  document.querySelector<HTMLElement>('.team-columns')?.addEventListener(
+    'click',
+    (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) {
+        return;
+      }
+      const btn = target.closest<HTMLButtonElement>('.btn-team-show');
+      if (!btn || btn.disabled) {
+        return;
+      }
+      const side = parseTeamSide(btn.dataset.teamSide);
+      const action = parseTeamAction(btn.dataset.teamAction);
+      if (!side || !action) {
+        return;
+      }
+      showTeamGraphic(side, action);
+    },
+  );
 
-  bindShow('btn-show-partnership', 'partnership');
-  bindShow('btn-show-fow', 'fow');
+  for (const side of TEAM_SIDES) {
+    for (const pick of ['batsman', 'bowler'] as const) {
+      teamPick(side, pick)?.addEventListener('change', () => {
+        refreshTeamControls();
+      });
+    }
+    for (const pick of ['batsman_career', 'bowler_career'] as const) {
+      teamPick(side, pick)?.addEventListener('change', () => {
+        void refreshTeamCareerPreview(side, pick);
+        refreshTeamControls();
+      });
+    }
+  }
+
   el<HTMLButtonElement>('btn-show-innings').addEventListener('click', () => {
     inningsSource = 'break';
     send({
@@ -935,6 +1013,7 @@ function start(): void {
       graphic: 'innings_break',
       payload: { view: inningsView, source: 'break' },
     });
+    setOnAir('innings_break');
   });
 
   el<HTMLElement>('innings-tabs').addEventListener('click', (event) => {
@@ -955,67 +1034,21 @@ function start(): void {
       graphic: 'innings_break',
       payload: { view: next, source: 'break' },
     });
+    setOnAir('innings_break');
   });
 
-  el<HTMLElement>('sec-scorecard-views').addEventListener('click', (event) => {
-    const target = event.target;
-    if (!(target instanceof HTMLElement)) {
-      return;
-    }
-    const showBtn = target.closest<HTMLButtonElement>('.btn-show-scorecard');
-    if (!showBtn) {
-      return;
-    }
-    const view = parseInningsBreakView(showBtn.dataset.scorecardView);
-    const pick = document.querySelector<HTMLSelectElement>(
-      `.scorecard-team-pick[data-scorecard-view="${view}"]`,
-    );
-    const inningsId = pick?.value.trim() ?? '';
-    if (!inningsId || showBtn.disabled) {
-      return;
-    }
-    inningsSource = 'scorecard';
-    scorecardOnAirView = view;
-    scorecardOnAirInningsId = inningsId;
-    send({
-      action: 'show',
-      graphic: 'innings_break',
-      payload: { view, inningsId, source: 'scorecard' },
-    });
-  });
-  bindShow('btn-show-toss-result', 'toss_result');
-  bindShow('btn-show-playing-xi', 'playing_xi');
-  bindShow('btn-show-batsman', 'batsman', () => {
-    const playerId = pickBatsman.value.trim();
-    return playerId ? { playerId } : undefined;
-  });
-  bindShow('btn-show-bowler', 'bowler', () => {
-    const playerId = pickBowler.value.trim();
-    return playerId ? { playerId } : undefined;
+  el<HTMLButtonElement>('btn-show-toss-result').addEventListener('click', () => {
+    send({ action: 'show', graphic: 'toss_result' });
+    setOnAir('toss_result');
   });
 
-  el<HTMLButtonElement>('btn-show-bowler-career').addEventListener('click', () => {
-    const playerId = resolveBowlerCareerId();
-    if (!playerId || btnShowBowlerCareer.disabled) {
-      return;
-    }
+  el<HTMLButtonElement>('btn-show-playing-xi').addEventListener('click', () => {
     send({
       action: 'show',
-      graphic: 'bowler_career',
-      payload: { playerId },
+      graphic: 'playing_xi',
+      payload: { variant: 'both' },
     });
-  });
-
-  el<HTMLButtonElement>('btn-show-batsman-career').addEventListener('click', () => {
-    const playerId = resolveBatsmanCareerId();
-    if (!playerId || btnShowBatsmanCareer.disabled) {
-      return;
-    }
-    send({
-      action: 'show',
-      graphic: 'batsman_career',
-      payload: { playerId },
-    });
+    setOnAir('playing_xi', null, null, 'both');
   });
 
   el<HTMLButtonElement>('btn-show-toss').addEventListener('click', () => {
@@ -1024,15 +1057,6 @@ function start(): void {
 
   el<HTMLButtonElement>('btn-show-chase').addEventListener('click', () => {
     send({ action: 'show', graphic: 'chase' });
-  });
-
-  pickBatsman.addEventListener('change', () => refreshPreviews());
-  pickBowler.addEventListener('change', () => refreshPreviews());
-  pickBowlerCareer.addEventListener('change', () => {
-    void refreshBowlerCareerPreview();
-  });
-  pickBatsmanCareer.addEventListener('change', () => {
-    void refreshBatsmanCareerPreview();
   });
 
   btnClearAir.addEventListener('click', () => {

@@ -10,6 +10,13 @@ import { teamInitials } from './view-model';
 const ANIM_MS = 280;
 const EMPTY_NOTE = 'Squad not available';
 
+export type PlayingXiVariant = 'both' | 'single' | 'lineup';
+
+export interface PlayingXiShowOptions {
+  teamId?: string | null;
+  variant?: PlayingXiVariant;
+}
+
 export interface PlayingXiSide {
   name: string;
   logoUrl: string | null;
@@ -22,7 +29,7 @@ export interface PlayingXiCardController {
   isOnAir(): boolean;
   hide(): void;
   /** Returns false when match context has no team names. */
-  show(ctx: MatchContext | null): boolean;
+  show(ctx: MatchContext | null, options?: PlayingXiShowOptions): boolean;
 }
 
 function warnGraphics(err: unknown): void {
@@ -38,6 +45,16 @@ function qs<T extends HTMLElement>(
 
 function fullName(player: MatchSquadPlayer): string {
   return `${player.firstName} ${player.lastName}`.trim();
+}
+
+function squadLineup(squad: MatchSquadContext | null | undefined): string[] {
+  if (!squad) {
+    return [];
+  }
+  return squad.players
+    .filter((p) => p.role === 'PLAYING_XI')
+    .map((p) => fullName(p))
+    .filter((name) => name.length > 0);
 }
 
 function squadXi(squad: MatchSquadContext | null | undefined): string[] {
@@ -134,6 +151,61 @@ export function resolvePlayingXiSides(ctx: MatchContext): {
   };
 }
 
+export function resolveTeamPlayingXiSide(
+  ctx: MatchContext,
+  teamId: string | null,
+  isExternal: boolean,
+  variant: PlayingXiVariant,
+): PlayingXiSide | null {
+  const homeId = ctx.homeTeamId?.trim() || null;
+  const awayId = ctx.awayTeamId?.trim() || null;
+  const useLineup = variant === 'lineup';
+  const pickPlayers = useLineup ? squadLineup : squadXi;
+
+  if (isExternal || (!teamId && ctx.externalOpponentName?.trim())) {
+    const name =
+      ctx.awayTeamName?.trim() ||
+      ctx.externalOpponentName?.trim() ||
+      'Away';
+    const players = externalXi(ctx);
+    return {
+      name,
+      logoUrl: awayId && ctx.logosByTeamId[awayId]
+        ? ctx.logosByTeamId[awayId]
+        : null,
+      initials: teamInitials(name),
+      players,
+    };
+  }
+
+  if (teamId && homeId === teamId) {
+    const name = ctx.homeTeamName?.trim() || 'Home';
+    const squad = ctx.squads.find((s) => s.teamId === teamId) ?? null;
+    return {
+      name,
+      logoUrl: ctx.logosByTeamId[teamId] ?? null,
+      initials: teamInitials(name),
+      players: pickPlayers(squad),
+    };
+  }
+
+  if (teamId) {
+    const squad = ctx.squads.find((s) => s.teamId === teamId) ?? null;
+    const name =
+      (teamId === awayId ? ctx.awayTeamName?.trim() : null) ||
+      (teamId === homeId ? ctx.homeTeamName?.trim() : null) ||
+      'Team';
+    return {
+      name,
+      logoUrl: ctx.logosByTeamId[teamId] ?? null,
+      initials: teamInitials(name),
+      players: pickPlayers(squad),
+    };
+  }
+
+  return null;
+}
+
 export function formatPlayingXiPreview(ctx: MatchContext | null): string | null {
   if (!ctx) {
     return null;
@@ -216,7 +288,7 @@ function buildCardMarkup(): string {
       <div class="pxi-body">
         <p class="pxi-eyebrow">Playing XI</p>
         <div class="pxi-cols">
-          <section class="pxi-col" aria-label="Team A">
+          <section class="pxi-col" data-pxi-col="a" aria-label="Team A">
             <div class="pxi-head">
               <div class="pxi-logo" aria-hidden="true">
                 <span data-pxi-initials="a" class="pxi-initials">—</span>
@@ -227,7 +299,7 @@ function buildCardMarkup(): string {
             <ol data-pxi-list="a" class="pxi-list"></ol>
             <p data-pxi-empty="a" class="pxi-empty" hidden>${EMPTY_NOTE}</p>
           </section>
-          <section class="pxi-col" aria-label="Team B">
+          <section class="pxi-col" data-pxi-col="b" aria-label="Team B">
             <div class="pxi-head">
               <div class="pxi-logo" aria-hidden="true">
                 <span data-pxi-initials="b" class="pxi-initials">—</span>
@@ -268,23 +340,60 @@ export function mountPlayingXiCard(host: HTMLElement): PlayingXiCardController {
     requestAnimationFrame(() => host.classList.add('is-visible'));
   };
 
-  const paint = (ctx: MatchContext): boolean => {
+  const paint = (
+    ctx: MatchContext,
+    options?: PlayingXiShowOptions,
+  ): boolean => {
     ensureMarkup();
-    if (!formatPlayingXiPreview(ctx)) {
-      return false;
-    }
-    const sides = resolvePlayingXiSides(ctx);
+    const variant = options?.variant ?? 'both';
+    const cols = qs<HTMLElement>(host, '.pxi-cols');
+    const eyebrow = qs<HTMLElement>(host, '.pxi-eyebrow');
+    const colA = qs<HTMLElement>(host, '[data-pxi-col="a"]');
+    const colB = qs<HTMLElement>(host, '[data-pxi-col="b"]');
     const nameA = qs<HTMLElement>(host, '[data-pxi-team="a"]');
     const nameB = qs<HTMLElement>(host, '[data-pxi-team="b"]');
-    if (!nameA || !nameB) {
+    if (!cols || !eyebrow || !colA || !colB || !nameA || !nameB) {
       return false;
     }
-    nameA.textContent = sides.a.name;
-    nameB.textContent = sides.b.name;
-    setLogo(host, 'a', sides.a.logoUrl, sides.a.initials);
-    setLogo(host, 'b', sides.b.logoUrl, sides.b.initials);
-    paintList(host, 'a', sides.a.players);
-    paintList(host, 'b', sides.b.players);
+
+    if (variant === 'lineup') {
+      eyebrow.textContent = 'Batting line-up';
+    } else {
+      eyebrow.textContent = 'Playing XI';
+    }
+
+    if (variant === 'both') {
+      if (!formatPlayingXiPreview(ctx)) {
+        return false;
+      }
+      cols.classList.remove('is-single');
+      colA.hidden = false;
+      colB.hidden = false;
+      const sides = resolvePlayingXiSides(ctx);
+      nameA.textContent = sides.a.name;
+      nameB.textContent = sides.b.name;
+      setLogo(host, 'a', sides.a.logoUrl, sides.a.initials);
+      setLogo(host, 'b', sides.b.logoUrl, sides.b.initials);
+      paintList(host, 'a', sides.a.players);
+      paintList(host, 'b', sides.b.players);
+      return true;
+    }
+
+    const teamId = options?.teamId?.trim() || null;
+    const isExternal =
+      !teamId &&
+      Boolean(ctx.externalOpponentName?.trim()) &&
+      !ctx.awayTeamId?.trim();
+    const side = resolveTeamPlayingXiSide(ctx, teamId, isExternal, variant);
+    if (!side) {
+      return false;
+    }
+    cols.classList.add('is-single');
+    colA.hidden = false;
+    colB.hidden = true;
+    nameA.textContent = side.name;
+    setLogo(host, 'a', side.logoUrl, side.initials);
+    paintList(host, 'a', side.players);
     return true;
   };
 
@@ -301,9 +410,9 @@ export function mountPlayingXiCard(host: HTMLElement): PlayingXiCardController {
         host.classList.remove('is-visible');
       }
     },
-    show(ctx) {
+    show(ctx, options) {
       try {
-        if (!ctx || !paint(ctx)) {
+        if (!ctx || !paint(ctx, options)) {
           hideNode();
           return false;
         }

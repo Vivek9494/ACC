@@ -320,6 +320,71 @@ body.control-body {
   font-size: 11px;
 }
 
+.team-panels {
+  margin-top: 12px;
+}
+
+.team-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  align-items: start;
+}
+
+.team-column {
+  min-width: 0;
+}
+
+.team-title {
+  margin-bottom: 8px;
+}
+
+.team-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.team-control {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border-radius: 8px;
+  background: #ffffff;
+  border: 2px solid transparent;
+  box-shadow: 0 4px 14px rgba(41, 76, 116, 0.08);
+}
+
+.team-control.is-on-air {
+  border-color: #ff6b00;
+  box-shadow: 0 4px 14px rgba(255, 107, 0, 0.18);
+}
+
+.team-control-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.team-control h3 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 800;
+  color: #294c74;
+}
+
+.team-control .btn {
+  margin-top: 0;
+}
+
+@media (max-width: 900px) {
+  .team-columns {
+    grid-template-columns: 1fr;
+  }
+}
+
 [hidden] {
   display: none !important;
 }

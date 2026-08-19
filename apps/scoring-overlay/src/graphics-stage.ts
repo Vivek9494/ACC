@@ -9,6 +9,7 @@ import { mountBatsmanCareerCard } from './batsman-career-card';
 import { mountInningsScorecard } from './innings-scorecard';
 import {
   deriveBatterDotBalls,
+  findInningsByKey,
   formatBatterInningsScore,
   formatDismissalShort,
   formatStat,
@@ -24,6 +25,7 @@ import type { GraphicsCommandMessage, GraphicsKind } from './live-client';
 import {
   formatPlayingXiPreview,
   mountPlayingXiCard,
+  type PlayingXiShowOptions,
 } from './playing-xi-card';
 import {
   formatTossResultLine,
@@ -245,6 +247,8 @@ export function createGraphicsStage(
     inningsId: null as string | null,
     source: 'break' as ScorecardViewSource,
   };
+  let playingXiCmd: PlayingXiShowOptions = { variant: 'both' };
+  let fowInningsId: string | null = null;
   const batsmanCareer = mountBatsmanCareerCard(el('g-batsman-career'));
   const tossResult = mountTossResultCard(el('g-toss-result'));
   const playingXi = mountPlayingXiCard(el('g-playing-xi'));
@@ -326,7 +330,9 @@ export function createGraphicsStage(
     }
   };
 
-  const showPlayingXi = async (): Promise<boolean> => {
+  const showPlayingXi = async (
+    xiOptions: PlayingXiShowOptions = playingXiCmd,
+  ): Promise<boolean> => {
     try {
       const matchId = options.matchId?.trim() ?? '';
       if (matchId) {
@@ -335,7 +341,7 @@ export function createGraphicsStage(
           matchCtx = fresh;
         }
       }
-      return playingXi.show(matchCtx);
+      return playingXi.show(matchCtx, xiOptions);
     } catch (err) {
       console.warn('[graphics] playing xi failed', err);
       playingXi.hide();
@@ -476,7 +482,10 @@ export function createGraphicsStage(
       if (!scorecard) {
         return false;
       }
-      const innings = resolveActiveInnings(scorecard);
+      const innings =
+        (fowInningsId
+          ? findInningsByKey(scorecard, fowInningsId)
+          : null) ?? resolveActiveInnings(scorecard);
       const fow = latestFallOfWicket(innings);
       if (!fow || !innings) {
         return false;
@@ -714,6 +723,7 @@ export function createGraphicsStage(
     if (kind === 'partnership') {
       ok = fillPartnership();
     } else if (kind === 'fow') {
+      fowInningsId = payload?.inningsId?.trim() || null;
       ok = fillFow();
     } else if (kind === 'innings_break') {
       ok = scorecard != null && scorecard.innings.length > 0;
@@ -729,9 +739,14 @@ export function createGraphicsStage(
     } else if (kind === 'toss_result') {
       ok = formatTossResultLine(matchCtx) != null;
     } else if (kind === 'playing_xi') {
+      playingXiCmd = {
+        teamId: payload?.teamId?.trim() || null,
+        variant: payload?.variant ?? (payload?.teamId ? 'single' : 'both'),
+      };
       ok =
         formatPlayingXiPreview(matchCtx) != null ||
-        Boolean(options.matchId?.trim());
+        Boolean(options.matchId?.trim()) ||
+        playingXiCmd.variant !== 'both';
     }
 
     if (!ok) {
@@ -762,7 +777,7 @@ export function createGraphicsStage(
         activePlayerId = null;
       }
     } else if (kind === 'playing_xi') {
-      const painted = await showPlayingXi();
+      const painted = await showPlayingXi(playingXiCmd);
       if (!painted && activeKind === 'playing_xi') {
         activeKind = null;
         activePlayerId = null;
@@ -799,7 +814,7 @@ export function createGraphicsStage(
           activeKind = null;
           activePlayerId = null;
         }
-        if (activeKind === 'playing_xi' && !playingXi.show(matchCtx)) {
+        if (activeKind === 'playing_xi' && !playingXi.show(matchCtx, playingXiCmd)) {
           activeKind = null;
           activePlayerId = null;
         }

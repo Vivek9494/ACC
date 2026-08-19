@@ -48,6 +48,8 @@ export interface GraphicsCommandMessage {
     view?: InningsBreakView;
     inningsId?: string | null;
     source?: ScorecardViewSource;
+    teamId?: string | null;
+    variant?: 'both' | 'single' | 'lineup';
   };
 }
 

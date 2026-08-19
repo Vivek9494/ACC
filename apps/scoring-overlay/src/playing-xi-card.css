@@ -52,6 +52,16 @@
   align-items: start;
 }
 
+.pxi-cols.is-single {
+  grid-template-columns: minmax(0, 360px);
+  justify-content: center;
+}
+
+.pxi-cols.is-single .pxi-col + .pxi-col {
+  border-left: none;
+}
+
+
 .pxi-col {
   min-width: 0;
   padding: 0 14px;
