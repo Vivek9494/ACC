@@ -22,7 +22,7 @@ import {
 } from '@acc/types';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, ScrollView, View } from 'react-native';
+import { ActivityIndicator, Platform, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BonusRunsDialog } from '../../../src/components/scoring/BonusRunsDialog';
@@ -45,6 +45,7 @@ import { LiveScoringHeader } from '../../../src/components/scoring/LiveScoringHe
 import { LiveScoringKeypad } from '../../../src/components/scoring/LiveScoringKeypad';
 import { LiveScoringPlayerCards } from '../../../src/components/scoring/LiveScoringPlayerCards';
 import { LiveScoringScorecardTab } from '../../../src/components/scoring/LiveScoringScorecardTab';
+import { ScoringCockpit } from '../../../src/components/scoring/cockpit/ScoringCockpit';
 import { ScorerRevokedDialog } from '../../../src/components/scoring/ScorerRevokedDialog';
 import {
   WicketDismissalSheet,
@@ -84,6 +85,7 @@ import {
   isPickerAutoPromptSuppressed,
 } from '../../../src/lib/scoring-picker-navigation';
 import { useAuth } from '../../../src/lib/auth-context';
+import { useDesktopLayout } from '../../../src/lib/desktop-layout';
 import { homeRouteForUser } from '../../../src/lib/home-route';
 import { useMatchScorerRevokeListener } from '../../../src/lib/live-socket';
 
@@ -243,6 +245,8 @@ export default function LiveScoringScreen(): React.ReactElement {
   const { matchId } = useLocalSearchParams<{ matchId: string }>();
   const router = useRouter();
   const { user } = useAuth();
+  const { isDesktop } = useDesktopLayout();
+  const useCockpit = Platform.OS === 'web' && isDesktop;
 
   const [match, setMatch] = useState<MatchDetail | null>(null);
   const [card, setCard] = useState<ScorecardResponse | null>(null);
@@ -1064,6 +1068,51 @@ export default function LiveScoringScreen(): React.ReactElement {
   const keypadDisabled =
     working || !openersReady || (Boolean(inn?.closed) && !inningsTransitionPending);
 
+  const inningsLabels = card?.display.innings.find(
+    (row) => inn?.inningsId != null && row.inningsId === inn.inningsId,
+  );
+  const battingTeamName =
+    inningsLabels?.battingTeamName ?? match?.homeTeamName ?? 'Batting';
+  const bowlingTeamName =
+    inningsLabels?.bowlingTeamName ??
+    match?.awayTeamName ??
+    match?.externalOpponentName ??
+    'Bowling';
+
+  const cockpitPrompt = !inn
+    ? null
+    : inn.inningsType === InningsType.SuperOver && !openersReady && !inn.closed
+      ? 'Super Over — select batters and bowler (2 wickets ends the innings)'
+      : inn.inningsType === InningsType.Normal &&
+          inn.sequence === 1 &&
+          !openersReady &&
+          !inn.closed
+        ? 'Select opening batters and bowler to start scoring'
+        : inn.inningsType === InningsType.Normal &&
+            inn.sequence > 1 &&
+            !openersReady &&
+            !inn.closed
+          ? 'Select opening batters and bowler for the chase'
+          : needsIncomingBatter
+            ? 'Select incoming batter'
+            : inningsAllOut
+              ? `All out (${WICKETS_FOR_ALL_OUT} wickets)`
+              : needsBowlerForNewOver
+                ? 'Select next bowler'
+                : null;
+
+  const dialogOpen =
+    showWicket ||
+    showWide ||
+    showNoBall ||
+    showLegByes ||
+    showByes ||
+    showBonus ||
+    showMore ||
+    showCatchDrop ||
+    showEndInningsConfirm ||
+    moreAction != null;
+
   const scoringViewToggle =
     inn != null ? (
       <SegmentedControl
@@ -1077,7 +1126,67 @@ export default function LiveScoringScreen(): React.ReactElement {
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'bottom']}>
-      <ScreenHeader compact showProfileMenu={false} trailing={scoringViewToggle} />
+      <ScreenHeader
+        compact
+        showProfileMenu={false}
+        trailing={useCockpit && inn ? undefined : scoringViewToggle}
+      />
+      {useCockpit && inn && match && matchId ? (
+        <ScoringCockpit
+          matchId={matchId}
+          match={match}
+          card={card!}
+          innings={inn}
+          user={user}
+          nameOf={nameOf}
+          battingTeamName={battingTeamName}
+          bowlingTeamName={bowlingTeamName}
+          strikerId={strikerId}
+          nonStrikerId={nonStrikerId}
+          bowlerId={bowlerId}
+          strikerCard={inn.batters.find((b) => b.playerId === strikerId)}
+          nonStrikerCard={inn.batters.find((b) => b.playerId === nonStrikerId)}
+          bowlerCard={inn.bowlers.find((b) => b.playerId === bowlerId)}
+          battingXi={battingSquad}
+          bowlingXi={bowlingSquad}
+          keypadDisabled={keypadDisabled}
+          keyboardEnabled={!keypadDisabled && !dialogOpen}
+          error={error && !isScoringNotAllowedMessage(error) ? error : null}
+          prompt={cockpitPrompt}
+          onRuns={(runs, isBoundary) => {
+            void record({ type: DeliveryType.Legal, runsBat: runs, isBoundary });
+          }}
+          onWide={(ranPortion) => {
+            void record({ type: DeliveryType.Wide, extraRuns: 1 + ranPortion });
+          }}
+          onNoBall={(runsBat) => {
+            void record(buildNoBallDelivery({ branch: 'OFF_BAT', runsBat }));
+          }}
+          onBye={(extraRuns) => {
+            void record({ type: DeliveryType.Bye, extraRuns });
+          }}
+          onLegBye={(extraRuns) => {
+            void record({ type: DeliveryType.LegBye, extraRuns });
+          }}
+          onWicket={() => setShowWicket(true)}
+          onPenalty={() => handleMoreSelect('PENALTY')}
+          onLegalOddRuns={(runs) => {
+            void record({ type: DeliveryType.Legal, runsBat: runs, isBoundary: false });
+          }}
+          onUndo={() => {
+            const inningsId = inn.inningsId;
+            if (!matchId || !card || !inningsId) return;
+            void applyMutation(() =>
+              undoLastDelivery(matchId, inningsId, {
+                expectedVersion: card.version,
+              }),
+            );
+          }}
+          onPickStriker={() => openBatsmanPicker('striker')}
+          onPickNonStriker={() => openBatsmanPicker('nonStriker')}
+          onPickBowler={() => openBowlerPicker()}
+        />
+      ) : (
       <View className="min-h-0 flex-1">
         {!inn ? (
           <View className="flex-1 justify-center gap-4 px-4">
@@ -1269,6 +1378,7 @@ export default function LiveScoringScreen(): React.ReactElement {
           </>
         )}
       </View>
+      )}
 
       <CatchDropFielderPicker
         visible={showCatchDrop}

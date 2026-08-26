@@ -187,6 +187,8 @@ export interface TimelineEntry {
   isWicket: boolean;
   isBoundary: boolean;
   description: string;
+  strikerId?: string | null;
+  bowlerId?: string | null;
 }
 
 export interface ScorecardInningsLabels {

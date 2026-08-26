@@ -1,8 +1,7 @@
-import * as SecureStore from 'expo-secure-store';
+import { deleteSecureItem, getSecureItem, setSecureItem } from './secure-storage';
 
 /**
- * Remember Me preferences — phone is personal data, so Keychain/Keystore via
- * expo-secure-store (same convention as auth tokens in session.ts).
+ * Remember Me preferences — SecureStore on native, localStorage on web.
  */
 
 const REMEMBER_ME_KEY = 'acc.rememberMe';
@@ -16,8 +15,8 @@ export interface RememberMePreferences {
 
 export async function loadRememberMePreferences(): Promise<RememberMePreferences> {
   const [flag, mobile] = await Promise.all([
-    SecureStore.getItemAsync(REMEMBER_ME_KEY),
-    SecureStore.getItemAsync(REMEMBERED_MOBILE_KEY),
+    getSecureItem(REMEMBER_ME_KEY),
+    getSecureItem(REMEMBERED_MOBILE_KEY),
   ]);
   const rememberMe = flag === '1';
   if (!rememberMe) {
@@ -36,27 +35,27 @@ export async function loadRememberMePreferences(): Promise<RememberMePreferences
 /** Persist checkbox preference immediately (survives abandon without login). */
 export async function saveRememberMeFlag(rememberMe: boolean): Promise<void> {
   if (rememberMe) {
-    await SecureStore.setItemAsync(REMEMBER_ME_KEY, '1');
+    await setSecureItem(REMEMBER_ME_KEY, '1');
     return;
   }
   await Promise.all([
-    SecureStore.setItemAsync(REMEMBER_ME_KEY, '0'),
-    SecureStore.deleteItemAsync(REMEMBERED_MOBILE_KEY),
+    setSecureItem(REMEMBER_ME_KEY, '0'),
+    deleteSecureItem(REMEMBERED_MOBILE_KEY),
   ]);
 }
 
 /** After successful login with Remember Me checked — store 10-digit local number. */
 export async function saveRememberedMobile(tenDigits: string): Promise<void> {
   await Promise.all([
-    SecureStore.setItemAsync(REMEMBER_ME_KEY, '1'),
-    SecureStore.setItemAsync(REMEMBERED_MOBILE_KEY, tenDigits.trim()),
+    setSecureItem(REMEMBER_ME_KEY, '1'),
+    setSecureItem(REMEMBERED_MOBILE_KEY, tenDigits.trim()),
   ]);
 }
 
 /** Explicit logout / uncheck — drop phone and preference. */
 export async function clearRememberMePreferences(): Promise<void> {
   await Promise.all([
-    SecureStore.deleteItemAsync(REMEMBER_ME_KEY),
-    SecureStore.deleteItemAsync(REMEMBERED_MOBILE_KEY),
+    deleteSecureItem(REMEMBER_ME_KEY),
+    deleteSecureItem(REMEMBERED_MOBILE_KEY),
   ]);
 }

@@ -324,6 +324,13 @@ export function deriveInnings(events: ScoringEvent[], ctx: InningsContext = {}):
     ensureBatter(striker);
     ensureBatter(nonStriker);
 
+    // Snapshot participants for this ball before wicket/retirement/rotation mutate
+    // crease state. Prefer Delivery-mapped event ids (userId ?? externalId); fall
+    // back to derived crease / current bowler when the event left a slot blank.
+    const timelineStrikerId = e.strikerId ?? striker;
+    const timelineNonStrikerId = e.nonStrikerId ?? nonStriker;
+    const timelineBowlerId = e.bowlerId ?? currentBowlerId;
+
     if (e.type === DeliveryType.CatchDrop && e.fielderId) {
       droppedCatchCounts.set(e.fielderId, (droppedCatchCounts.get(e.fielderId) ?? 0) + 1);
       const batsmanId = e.strikerId ?? striker;
@@ -584,6 +591,9 @@ export function deriveInnings(events: ScoringEvent[], ctx: InningsContext = {}):
       isWicket: isWicketEvent(e),
       isBoundary: e.isBoundary,
       description: deliveryDescription(e),
+      strikerId: timelineStrikerId,
+      nonStrikerId: timelineNonStrikerId,
+      bowlerId: timelineBowlerId,
     });
 
     // Free hit bookkeeping for the next delivery (§12.1).

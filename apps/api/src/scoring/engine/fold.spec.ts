@@ -515,7 +515,42 @@ describe('Scoring engine — live display derivations (§28)', () => {
     );
     expect(card.timeline.map((t) => t.code)).toEqual(['4', 'Wd', 'W']);
     expect(card.timeline[0]!.description).toBe('FOUR');
-    expect(card.timeline[2]!).toMatchObject({ isWicket: true, description: 'WICKET — Bowled' });
+    expect(card.timeline[0]!).toMatchObject({
+      strikerId: 'A',
+      nonStrikerId: 'B',
+      bowlerId: 'X',
+    });
+    expect(card.timeline[2]!).toMatchObject({
+      isWicket: true,
+      description: 'WICKET — Bowled',
+      strikerId: 'A',
+      nonStrikerId: 'B',
+      bowlerId: 'X',
+    });
+  });
+
+  it('carries opaque external-player ids on timeline entries (no names)', () => {
+    const card = deriveInnings(
+      innings([
+        {
+          type: DeliveryType.Legal,
+          runsBat: 1,
+          strikerId: 'ext-batter-1',
+          nonStrikerId: 'ext-batter-2',
+          bowlerId: 'ext-bowler-1',
+        },
+      ]),
+    );
+    expect(card.timeline[0]!).toEqual(
+      expect.objectContaining({
+        strikerId: 'ext-batter-1',
+        nonStrikerId: 'ext-batter-2',
+        bowlerId: 'ext-bowler-1',
+        code: '1',
+      }),
+    );
+    expect(card.timeline[0]!).not.toHaveProperty('strikerName');
+    expect(card.timeline[0]!).not.toHaveProperty('bowlerName');
   });
 
   it('groups deliveries into a recent-overs strip', () => {

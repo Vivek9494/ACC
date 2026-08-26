@@ -265,16 +265,22 @@ export const KeyboardAwareFormScrollView = forwardRef<
         {...scrollProps}
       >
         {/*
-          Tap empty / non-control areas to dismiss. Use Pressable + box-none so
-          nested Buttons/Pressables claim the full control hit target — wrapping
-          with TouchableWithoutFeedback was stealing edge taps (only the label
-          responded on full-width orange buttons).
+          Native: tap empty / non-control areas to dismiss the soft keyboard.
+          Use Pressable + box-none so nested Buttons/Pressables claim the full
+          control hit target. On web, skip the Pressable — it steals clicks from
+          TextInputs (react-native-web); there is no soft keyboard to dismiss.
         */}
-        <Pressable accessible={false} onPress={dismissKeyboard} style={{ flexGrow: 1 }}>
-          <View collapsable={false} pointerEvents="box-none" style={{ flexGrow: 1 }}>
+        {Platform.OS === 'web' ? (
+          <View collapsable={false} style={{ flexGrow: 1 }}>
             {children}
           </View>
-        </Pressable>
+        ) : (
+          <Pressable accessible={false} onPress={dismissKeyboard} style={{ flexGrow: 1 }}>
+            <View collapsable={false} pointerEvents="box-none" style={{ flexGrow: 1 }}>
+              {children}
+            </View>
+          </Pressable>
+        )}
       </ScrollView>
     </View>
   );

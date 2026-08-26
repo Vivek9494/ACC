@@ -50,6 +50,11 @@ function collectParticipantIds(card: ScorecardResponse): Set<string> {
     for (const bowler of inn.bowlers) {
       add(bowler.playerId);
     }
+    for (const entry of inn.timeline) {
+      add(entry.strikerId);
+      add(entry.nonStrikerId);
+      add(entry.bowlerId);
+    }
     for (const fow of inn.fallOfWickets) {
       add(fow.playerId);
     }

@@ -308,6 +308,15 @@ export interface TimelineEntry {
   isBoundary: boolean;
   /** Human description, e.g. "FOUR", "WICKET — bowled". */
   description: string;
+  /**
+   * On-strike batter for this delivery (opaque user id or external-player id).
+   * IDs only — clients resolve names via display.players / squads.
+   */
+  strikerId: string | null;
+  /** Non-striker at the crease for this delivery (opaque user or external id). */
+  nonStrikerId: string | null;
+  /** Bowler who delivered this ball (opaque user or external id). */
+  bowlerId: string | null;
 }
 
 /** A completed/partial over for the recent-overs strip (spec §28). */

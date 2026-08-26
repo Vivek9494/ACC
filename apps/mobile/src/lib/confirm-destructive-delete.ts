@@ -1,4 +1,4 @@
-import { Alert } from 'react-native';
+import { Alert, Platform } from 'react-native';
 
 export interface ConfirmDestructiveDeleteOptions {
   title: string;
@@ -6,12 +6,22 @@ export interface ConfirmDestructiveDeleteOptions {
   onConfirm: () => void | Promise<void>;
 }
 
-/** Native iOS/Android destructive delete confirmation — grouped Cancel + red Delete. */
+/** Destructive delete confirmation — native Alert on iOS/Android; `window.confirm` on web. */
 export function confirmDestructiveDeleteAlert({
   title,
   message,
   onConfirm,
 }: ConfirmDestructiveDeleteOptions): void {
+  if (Platform.OS === 'web') {
+    const ok =
+      typeof window !== 'undefined' &&
+      window.confirm(`${title}\n\n${message}`);
+    if (ok) {
+      void Promise.resolve(onConfirm());
+    }
+    return;
+  }
+
   Alert.alert(title, message, [
     { text: 'Cancel', style: 'cancel' },
     {

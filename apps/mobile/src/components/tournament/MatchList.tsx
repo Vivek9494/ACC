@@ -87,36 +87,41 @@ function MatchListCard({
       ? 'gap-6'
       : 'gap-4';
 
+  const onCardPress =
+    isDeleted
+      ? onPress
+      : isLive
+        ? onWatchLivePress
+        : isCancelled || isCompletedTerminal
+          ? onScorecardPress
+          : onPress;
+
+  const shellClass = `gap-4 rounded-control border border-outline-variant bg-surface p-4 ${
+    isDeleted
+      ? 'border-primary bg-surface-container-low opacity-75'
+      : isLive
+        ? 'border-primary/30'
+        : isCancelled
+          ? 'border-error/20'
+          : ''
+  }`;
+
+  /** Main body is pressable; overflow menu + footer Buttons stay siblings (no nested <button> on web). */
   return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={
-        isDeleted
-          ? onPress
-          : isLive
-            ? onWatchLivePress
-            : isCancelled || isCompletedTerminal
-              ? onScorecardPress
-              : onPress
-      }
-      className={`gap-4 rounded-control border border-outline-variant bg-surface p-4 active:opacity-90 ${
-        isDeleted
-          ? 'border-primary bg-surface-container-low opacity-75'
-          : isLive
-            ? 'border-primary/30'
-            : isCancelled
-              ? 'border-error/20'
-              : ''
-      }`}
-      style={INPUT_SHADOW_STYLE}
-    >
+    <View className={shellClass} style={INPUT_SHADOW_STYLE}>
       <View className="flex-row items-center justify-between gap-2">
-        <Text
-          className="min-w-0 flex-1 font-sans-semibold text-sm text-on-surface-variant"
-          numberOfLines={1}
+        <Pressable
+          accessibilityRole="button"
+          onPress={onCardPress}
+          className="min-w-0 flex-1 active:opacity-90"
         >
-          {contextLabel}
-        </Text>
+          <Text
+            className="font-sans-semibold text-sm text-on-surface-variant"
+            numberOfLines={1}
+          >
+            {contextLabel}
+          </Text>
+        </Pressable>
         <View className="shrink-0 flex-row items-center gap-1.5">
           {match.homeAway ? <MatchHomeAwayBadge homeAway={match.homeAway} /> : null}
           {isDeleted ? (
@@ -130,7 +135,11 @@ function MatchListCard({
         </View>
       </View>
 
-      <View className={bodyGap}>
+      <Pressable
+        accessibilityRole="button"
+        onPress={onCardPress}
+        className={`${bodyGap} active:opacity-90`}
+      >
         <View className="flex-row items-center justify-between gap-2">
           <TeamColumn
             name={match.teamA.name}
@@ -160,7 +169,7 @@ function MatchListCard({
         {!isDeleted && match.displayState === MatchCardDisplayState.Scheduled && venue ? (
           <VenueRow venue={venue} />
         ) : null}
-      </View>
+      </Pressable>
 
       {isDeleted ? (
         <View className="flex-row gap-2">
@@ -247,7 +256,7 @@ function MatchListCard({
           />
         </View>
       ) : null}
-    </Pressable>
+    </View>
   );
 }
 

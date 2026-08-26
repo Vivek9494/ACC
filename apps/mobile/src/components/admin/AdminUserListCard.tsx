@@ -1,5 +1,5 @@
 import type { AdminUserSummary } from '@acc/types';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
 import { colors } from '@/theme/colors';
 
@@ -44,17 +44,30 @@ export function AdminUserListCard({
   ];
 
   return (
-    <Card onPress={onPress}>
+    <Card>
       <View className="flex-row items-center gap-3">
-        <PlayerAvatar
-          firstName={user.firstName}
-          profilePhotoUrl={user.profilePhotoUrl}
-          size="sm"
-        />
+        <Pressable
+          onPress={onPress}
+          accessibilityRole="button"
+          accessibilityLabel={`${user.firstName} ${user.lastName}`}
+          className="shrink-0 active:opacity-90"
+        >
+          <PlayerAvatar
+            firstName={user.firstName}
+            profilePhotoUrl={user.profilePhotoUrl}
+            size="sm"
+          />
+        </Pressable>
         <View className="min-w-0 flex-1 gap-1">
-          <Text className="font-sans-bold text-base text-text" numberOfLines={2}>
-            {user.firstName} {user.lastName}
-          </Text>
+          <Pressable
+            onPress={onPress}
+            accessibilityRole="button"
+            className="active:opacity-90"
+          >
+            <Text className="font-sans-bold text-base text-text" numberOfLines={2}>
+              {user.firstName} {user.lastName}
+            </Text>
+          </Pressable>
           <View className="flex-row flex-wrap items-center gap-x-2 gap-y-1">
             <AdminUserMobileContact
               mobileNumber={user.mobileNumber}

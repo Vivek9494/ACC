@@ -1,29 +1,29 @@
 import type { AuthTokens } from '@acc/types';
-import * as SecureStore from 'expo-secure-store';
+
+import { deleteSecureItem, getSecureItem, setSecureItem } from './secure-storage';
 
 /**
- * Token persistence backed by expo-secure-store (Keychain on iOS, Keystore on
- * Android). Access + refresh tokens are stored under separate keys.
+ * Token persistence — SecureStore on native, localStorage on web (auth v1).
  */
 
 const ACCESS_TOKEN_KEY = 'acc.accessToken';
 const REFRESH_TOKEN_KEY = 'acc.refreshToken';
 
 export async function loadAccessToken(): Promise<string | null> {
-  return SecureStore.getItemAsync(ACCESS_TOKEN_KEY);
+  return getSecureItem(ACCESS_TOKEN_KEY);
 }
 
 export async function saveTokens(tokens: AuthTokens): Promise<void> {
   await Promise.all([
-    SecureStore.setItemAsync(ACCESS_TOKEN_KEY, tokens.accessToken),
-    SecureStore.setItemAsync(REFRESH_TOKEN_KEY, tokens.refreshToken),
+    setSecureItem(ACCESS_TOKEN_KEY, tokens.accessToken),
+    setSecureItem(REFRESH_TOKEN_KEY, tokens.refreshToken),
   ]);
 }
 
 export async function loadTokens(): Promise<AuthTokens | null> {
   const [accessToken, refreshToken] = await Promise.all([
-    SecureStore.getItemAsync(ACCESS_TOKEN_KEY),
-    SecureStore.getItemAsync(REFRESH_TOKEN_KEY),
+    getSecureItem(ACCESS_TOKEN_KEY),
+    getSecureItem(REFRESH_TOKEN_KEY),
   ]);
   if (!accessToken || !refreshToken) {
     return null;
@@ -33,7 +33,7 @@ export async function loadTokens(): Promise<AuthTokens | null> {
 
 export async function clearTokens(): Promise<void> {
   await Promise.all([
-    SecureStore.deleteItemAsync(ACCESS_TOKEN_KEY),
-    SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY),
+    deleteSecureItem(ACCESS_TOKEN_KEY),
+    deleteSecureItem(REFRESH_TOKEN_KEY),
   ]);
 }
