@@ -10,6 +10,7 @@ import type { ScoringEvent } from './engine';
  */
 export function toScoringEvent(d: Delivery): ScoringEvent {
   return {
+    deliveryId: d.id,
     sequence: d.sequence,
     overNumber: d.overNumber,
     ballNumber: d.ballNumber,

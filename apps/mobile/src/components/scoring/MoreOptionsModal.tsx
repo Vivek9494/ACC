@@ -19,7 +19,7 @@ export interface MoreOptionsModalProps {
 
 const ROWS: readonly { action: MoreOptionsAction; label: string; icon: IoniconName }[] = [
   { action: 'END_INNINGS', label: 'End Inning', icon: 'flag-outline' },
-  { action: 'PENALTY', label: 'Penalty', icon: 'warning-outline' },
+  { action: 'PENALTY', label: 'Penalty 5', icon: 'warning-outline' },
   { action: 'CHANGE_TARGET', label: 'Change Target', icon: 'locate-outline' },
   { action: 'CHANGE_OVERS', label: 'Change Overs', icon: 'time-outline' },
 ] as const;

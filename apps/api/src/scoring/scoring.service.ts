@@ -90,6 +90,8 @@ interface DeliveryDraft {
   dismissedId: string | null;
   fielderId: string | null;
   fielder2Id: string | null;
+  shotX?: number | null;
+  shotY?: number | null;
   createdByUserId: string;
   revision?: number;
 }
@@ -220,6 +222,8 @@ export class ScoringService {
       dismissedId: req.dismissal?.dismissedId ?? null,
       fielderId: req.fielderId ?? req.dismissal?.fielderId ?? null,
       fielder2Id: req.dismissal?.fielder2Id ?? null,
+      shotX: req.shotX ?? null,
+      shotY: req.shotY ?? null,
       createdByUserId: user.id,
     });
 
@@ -406,6 +410,8 @@ export class ScoringService {
       dismissedId: req.dismissal?.dismissedId ?? null,
       fielderId: req.fielderId ?? req.dismissal?.fielderId ?? null,
       fielder2Id: req.dismissal?.fielder2Id ?? null,
+      shotX: req.shotX ?? target.shotX ?? null,
+      shotY: req.shotY ?? target.shotY ?? null,
       createdByUserId: user.id,
       revision: target.revision + 1,
     });
@@ -419,6 +425,63 @@ export class ScoringService {
       if (opts.postConfirm) {
         await this.auditPostConfirm(user, matchId, target, replacement);
       }
+      return this.bumpVersion(tx, matchId);
+    });
+    return this.publishAndReturn(updated);
+  }
+
+  /** Persist or clear optional per-ball shot placement (display metadata only). */
+  async setDeliveryShotPlacement(
+    user: AuthUser,
+    matchId: string,
+    inningsId: string,
+    req: import('@acc/types').SetDeliveryShotPlacementRequest,
+  ): Promise<ScorecardResponse> {
+    void user;
+    const match = await this.requireMatch(matchId);
+    this.assertVersion(match, req.expectedVersion);
+    this.assertEditable(match, {});
+
+    await this.requireInnings(matchId, inningsId);
+
+    const clearing = req.shotX == null && req.shotY == null;
+    if (!clearing && (req.shotX == null || req.shotY == null)) {
+      throw new BadRequestException({
+        message: 'Both shotX and shotY are required unless clearing placement',
+        error: 'SHOT_PLACEMENT_INCOMPLETE',
+      });
+    }
+
+    if (!req.deliveryId && req.sequence == null) {
+      throw new BadRequestException({
+        message: 'deliveryId or sequence is required',
+        error: 'SHOT_PLACEMENT_TARGET_REQUIRED',
+      });
+    }
+
+    let target = req.deliveryId
+      ? await this.prisma.delivery.findUnique({ where: { id: req.deliveryId } })
+      : null;
+    if (!target || target.isVoided || target.inningsId !== inningsId) {
+      target =
+        req.sequence != null
+          ? await this.prisma.delivery.findFirst({
+              where: { inningsId, sequence: req.sequence, isVoided: false },
+            })
+          : null;
+    }
+    if (!target || target.isVoided || target.inningsId !== inningsId) {
+      throw new NotFoundException({ message: 'Delivery not found', error: 'DELIVERY_NOT_FOUND' });
+    }
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      await tx.delivery.update({
+        where: { id: target.id },
+        data: {
+          shotX: clearing ? null : req.shotX,
+          shotY: clearing ? null : req.shotY,
+        },
+      });
       return this.bumpVersion(tx, matchId);
     });
     return this.publishAndReturn(updated);
@@ -652,6 +715,8 @@ export class ScoringService {
         dismissedId: null,
         fielderId: null,
         fielder2Id: null,
+        shotX: null,
+        shotY: null,
         createdByUserId: user.id,
       });
       await this.prisma.$transaction(async (tx) => {
@@ -1163,6 +1228,8 @@ export class ScoringService {
       fielderExternalId: extCol(draft.fielderId),
       fielder2UserId: userCol(draft.fielder2Id),
       fielder2ExternalId: extCol(draft.fielder2Id),
+      shotX: draft.shotX ?? null,
+      shotY: draft.shotY ?? null,
       revision: draft.revision ?? 1,
       createdByUserId: draft.createdByUserId,
     };

@@ -3,6 +3,8 @@ import {
   DeliveryType,
   InningsType,
   type ScorecardResponse,
+  type TimelineEntry,
+  type DismissalType,
 } from '@acc/types';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import type { Delivery, Match } from '@prisma/client';
@@ -89,20 +91,23 @@ export class ScorecardReader {
         target = firstRuns + 1;
       }
 
-      return deriveInnings(
-        this.eventsForInningsFold(inn, innings),
-        {
-          inningsId: inn.id,
-          sequence: inn.sequence,
-          inningsType: inn.inningsType as InningsType,
-          battingTeamId: inn.battingTeamId,
-          bowlingTeamId: inn.bowlingTeamId,
-          battingIsExternal: inn.battingIsExternal,
-          bowlingIsExternal: inn.bowlingIsExternal,
-          oversAllotted: inn.oversAllotted,
-          target,
-          ...selectedParticipantContext(inn),
-        },
+      return this.enrichInningsTimeline(
+        deriveInnings(
+          this.eventsForInningsFold(inn, innings),
+          {
+            inningsId: inn.id,
+            sequence: inn.sequence,
+            inningsType: inn.inningsType as InningsType,
+            battingTeamId: inn.battingTeamId,
+            bowlingTeamId: inn.bowlingTeamId,
+            battingIsExternal: inn.battingIsExternal,
+            bowlingIsExternal: inn.bowlingIsExternal,
+            oversAllotted: inn.oversAllotted,
+            target,
+            ...selectedParticipantContext(inn),
+          },
+        ),
+        inn.deliveries,
       );
     });
 
@@ -151,6 +156,49 @@ export class ScorecardReader {
         externalPlayers: { select: { id: true, name: true } },
       },
     });
+  }
+
+  /** Attach persisted delivery ids/types on timeline rows (admin/API edit path). */
+  private enrichInningsTimeline(
+    card: InningsScorecard,
+    deliveries: Delivery[],
+  ): InningsScorecard {
+    const byId = new Map(deliveries.map((d) => [d.id, d]));
+    const bySequence = new Map(deliveries.map((d) => [d.sequence, d]));
+    return {
+      ...card,
+      timeline: card.timeline.map((entry): TimelineEntry => {
+        const row = entry.deliveryId
+          ? (byId.get(entry.deliveryId) ?? null)
+          : (bySequence.get(entry.sequence) ?? null);
+        if (!row) {
+          return entry;
+        }
+        const dismissedId = row.dismissedUserId ?? row.dismissedExternalId ?? null;
+        return {
+          ...entry,
+          deliveryId: row.id,
+          deliveryType: row.type as DeliveryType,
+          runsBat: row.runsBat,
+          extraRuns: row.extraRuns,
+          noBallByeRuns: row.noBallByeRuns,
+          noBallLegByeRuns: row.noBallLegByeRuns,
+          isBoundary: row.isBoundary,
+          shotX: row.shotX,
+          shotY: row.shotY,
+          ...(row.dismissalType && dismissedId
+            ? {
+                dismissal: {
+                  type: row.dismissalType as DismissalType,
+                  dismissedId,
+                  fielderId: row.fielderUserId ?? row.fielderExternalId ?? null,
+                  fielder2Id: row.fielder2UserId ?? row.fielder2ExternalId ?? null,
+                },
+              }
+            : {}),
+        };
+      }),
+    };
   }
 
   private eventsForInningsFold(

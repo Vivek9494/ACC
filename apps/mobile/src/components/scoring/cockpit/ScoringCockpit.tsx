@@ -21,31 +21,92 @@ import { OverlayScoreboardPanel } from './OverlayScoreboardPanel';
 import { ScorecardDockPanel } from './ScorecardDockPanel';
 import { ScoreSummaryPanel } from './ScoreSummaryPanel';
 import { ScoringInputPanel } from './ScoringInputPanel';
+import { WagonWheelPanel } from './WagonWheelPanel';
 
-/** Mockup grid — fixed tracks (not resizable). Web-only CSS Grid. */
-const COCKPIT_GRID: ViewStyle = {
-  display: 'grid' as unknown as ViewStyle['display'],
+/**
+ * Mockup v6 structure (theme unchanged):
+ * Top: natural height from left stack; columns 40:30:30 (Summary : Ball-by-Ball : Scoreboard).
+ * Bottom: Fielding : Wagon Wheel : Scorecard at 10:30:60.
+ */
+const COCKPIT_ROOT: ViewStyle = {
   flex: 1,
   minHeight: 0,
   gap: 7,
   padding: 7,
-  gridTemplateColumns: '232px minmax(0, 1fr) 340px',
-  gridTemplateRows: 'auto minmax(0, 1fr) minmax(168px, 28%)',
-  gridTemplateAreas: `
-    "summary summary scoreboard"
-    "scoring balls scoreboard"
-    "fielding scorecard scorecard"
-  `,
+};
+
+const TOP_GRID: ViewStyle = {
+  display: 'grid' as unknown as ViewStyle['display'],
+  flexGrow: 0,
+  flexShrink: 0,
+  flexBasis: 'auto',
+  gap: 7,
+  gridTemplateColumns: 'minmax(0, 40fr) minmax(0, 30fr) minmax(0, 30fr)',
+  gridTemplateRows: 'auto',
+  gridTemplateAreas: '"stack balls scoreboard"',
+  alignItems: 'stretch',
 } as ViewStyle;
 
-const AREA = {
-  summary: { gridArea: 'summary', minHeight: 0, minWidth: 0, height: '100%' } as ViewStyle,
-  scoring: { gridArea: 'scoring', minHeight: 0, minWidth: 0, height: '100%' } as ViewStyle,
-  balls: { gridArea: 'balls', minHeight: 0, minWidth: 0, height: '100%' } as ViewStyle,
-  scoreboard: { gridArea: 'scoreboard', minHeight: 0, minWidth: 0, height: '100%' } as ViewStyle,
-  fielding: { gridArea: 'fielding', minHeight: 0, minWidth: 0, height: '100%' } as ViewStyle,
-  scorecard: { gridArea: 'scorecard', minHeight: 0, minWidth: 0, height: '100%' } as ViewStyle,
-};
+const STACK_COL: ViewStyle = {
+  gridArea: 'stack',
+  minWidth: 0,
+  gap: 7,
+  display: 'flex',
+  flexDirection: 'column',
+  alignSelf: 'start',
+  width: '100%',
+} as ViewStyle;
+
+const BALLS_COL: ViewStyle = {
+  gridArea: 'balls',
+  minWidth: 0,
+  minHeight: 0,
+  alignSelf: 'stretch',
+  display: 'flex',
+  flexDirection: 'column',
+} as ViewStyle;
+
+const SCOREBOARD_COL: ViewStyle = {
+  gridArea: 'scoreboard',
+  minWidth: 0,
+  minHeight: 0,
+  alignSelf: 'stretch',
+  display: 'flex',
+  flexDirection: 'column',
+} as ViewStyle;
+
+const BOTTOM_BAND: ViewStyle = {
+  display: 'grid' as unknown as ViewStyle['display'],
+  flexGrow: 1,
+  flexShrink: 1,
+  flexBasis: 'auto',
+  minHeight: 168,
+  gap: 7,
+  gridTemplateColumns: 'minmax(0, 40fr) minmax(0, 20fr) minmax(0, 40fr)',
+  gridTemplateRows: 'minmax(0, 1fr)',
+  alignItems: 'stretch',
+} as ViewStyle;
+
+const FIELDING_COL: ViewStyle = {
+  minWidth: 0,
+  minHeight: 0,
+  display: 'flex',
+  flexDirection: 'column',
+} as ViewStyle;
+
+const WAGON_COL: ViewStyle = {
+  minWidth: 0,
+  minHeight: 0,
+  display: 'flex',
+  flexDirection: 'column',
+} as ViewStyle;
+
+const SCORECARD_COL: ViewStyle = {
+  minWidth: 0,
+  minHeight: 0,
+  display: 'flex',
+  flexDirection: 'column',
+} as ViewStyle;
 
 export interface ScoringCockpitProps {
   matchId: string;
@@ -74,12 +135,20 @@ export interface ScoringCockpitProps {
   onBye: (extraRuns: number) => void;
   onLegBye: (extraRuns: number) => void;
   onWicket: () => void;
+  onOpenCatchDrop: () => void;
+  onOpenBonus: () => void;
+  onOpenMore: () => void;
   onPenalty: () => void;
-  onLegalOddRuns: (runs: 5 | 7) => void;
   onUndo: () => void;
-  onPickStriker: () => void;
-  onPickNonStriker: () => void;
-  onPickBowler: () => void;
+  onSelectStriker: (userId: string) => void;
+  onSelectNonStriker: (userId: string) => void;
+  onSelectBowler: (userId: string) => void;
+  working?: boolean;
+  onSetShotPlacement: (
+    target: { deliveryId?: string; sequence: number },
+    shotX: number | null,
+    shotY: number | null,
+  ) => void;
 }
 
 export function ScoringCockpit({
@@ -109,12 +178,16 @@ export function ScoringCockpit({
   onBye,
   onLegBye,
   onWicket,
+  onOpenCatchDrop,
+  onOpenBonus,
+  onOpenMore,
   onPenalty,
-  onLegalOddRuns,
   onUndo,
-  onPickStriker,
-  onPickNonStriker,
-  onPickBowler,
+  onSelectStriker,
+  onSelectNonStriker,
+  onSelectBowler,
+  working,
+  onSetShotPlacement,
 }: ScoringCockpitProps): React.ReactElement {
   const live = useLiveScore(matchId, card);
   const toss = formatMatchTossSummaryLine(match);
@@ -129,6 +202,8 @@ export function ScoringCockpit({
     onBye: () => onBye(1),
     onLegBye: () => onLegBye(1),
     onUndo,
+    /** Scoring keypad End Ball ⏎ label only — engine commits on each key. */
+    onEndBall: () => {},
   });
 
   return (
@@ -144,55 +219,68 @@ export function ScoringCockpit({
         </View>
       ) : null}
 
-      <View style={COCKPIT_GRID}>
-        <View style={AREA.summary}>
-          <ScoreSummaryPanel
-            match={match}
-            innings={innings}
-            battingTeamName={battingTeamName}
-            bowlingTeamName={bowlingTeamName}
-            nameOf={nameOf}
-            strikerId={strikerId}
-            nonStrikerId={nonStrikerId}
-            bowlerId={bowlerId}
-            strikerCard={strikerCard}
-            nonStrikerCard={nonStrikerCard}
-            bowlerCard={bowlerCard}
-            onPickStriker={onPickStriker}
-            onPickNonStriker={onPickNonStriker}
-            onPickBowler={onPickBowler}
-          />
+      <View style={COCKPIT_ROOT}>
+        <View style={TOP_GRID}>
+          <View style={STACK_COL}>
+            <ScoreSummaryPanel
+              matchId={matchId}
+              match={match}
+              innings={innings}
+              battingTeamName={battingTeamName}
+              bowlingTeamName={bowlingTeamName}
+              nameOf={nameOf}
+              strikerId={strikerId}
+              nonStrikerId={nonStrikerId}
+              bowlerId={bowlerId}
+              strikerCard={strikerCard}
+              nonStrikerCard={nonStrikerCard}
+              bowlerCard={bowlerCard}
+              onSelectStriker={onSelectStriker}
+              onSelectNonStriker={onSelectNonStriker}
+              onSelectBowler={onSelectBowler}
+            />
+            <ScoringInputPanel
+              disabled={keypadDisabled}
+              onRuns={onRuns}
+              onWide={onWide}
+              onNoBall={onNoBall}
+              onBye={onBye}
+              onLegBye={onLegBye}
+              onWicket={onWicket}
+              onOpenCatchDrop={onOpenCatchDrop}
+              onOpenBonus={onOpenBonus}
+              onOpenMore={onOpenMore}
+              onPenalty={onPenalty}
+            />
+          </View>
+          <View style={BALLS_COL}>
+            <BallByBallPanel innings={innings} nameOf={nameOf} />
+          </View>
+          <View style={SCOREBOARD_COL}>
+            <OverlayScoreboardPanel matchId={matchId} />
+          </View>
         </View>
-        <View style={AREA.scoring}>
-          <ScoringInputPanel
-            disabled={keypadDisabled}
-            onRuns={onRuns}
-            onWide={onWide}
-            onNoBall={onNoBall}
-            onBye={onBye}
-            onLegBye={onLegBye}
-            onWicket={onWicket}
-            onPenalty={onPenalty}
-            onLegalOddRuns={onLegalOddRuns}
-            onUndo={onUndo}
-          />
-        </View>
-        <View style={AREA.balls}>
-          <BallByBallPanel innings={innings} nameOf={nameOf} />
-        </View>
-        <View style={AREA.scoreboard}>
-          <OverlayScoreboardPanel matchId={matchId} />
-        </View>
-        <View style={AREA.fielding}>
-          <FieldingAnalysisPanel bowlingXi={bowlingXi} nameOf={nameOf} />
-        </View>
-        <View style={AREA.scorecard}>
-          <ScorecardDockPanel
-            card={card}
-            innings={innings}
-            battingXi={battingXi}
-            nameOf={nameOf}
-          />
+
+        <View style={BOTTOM_BAND}>
+          <View style={FIELDING_COL}>
+            <FieldingAnalysisPanel bowlingXi={bowlingXi} nameOf={nameOf} />
+          </View>
+          <View style={WAGON_COL}>
+            <WagonWheelPanel
+              innings={innings}
+              nameOf={nameOf}
+              working={working}
+              onSetShotPlacement={onSetShotPlacement}
+            />
+          </View>
+          <View style={SCORECARD_COL}>
+            <ScorecardDockPanel
+              card={card}
+              innings={innings}
+              battingXi={battingXi}
+              nameOf={nameOf}
+            />
+          </View>
         </View>
       </View>
 

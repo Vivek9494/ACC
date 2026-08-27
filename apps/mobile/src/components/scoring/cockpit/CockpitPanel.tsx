@@ -1,6 +1,10 @@
+import type { ViewStyle } from 'react-native';
 import { View } from 'react-native';
 
 import { Text } from '../../ui/Text';
+
+/** Matches `h-7` panel chrome — scroll bodies pin below this. */
+export const COCKPIT_PANEL_HEADER_PX = 28;
 
 export function CockpitPanel({
   title,
@@ -8,6 +12,13 @@ export function CockpitPanel({
   badge,
   children,
   bodyNoPad,
+  /** Content-sized panel (left stack). Does not stretch to fill the grid cell. */
+  fitContent,
+  /**
+   * Scroll/fill body is absolutely positioned under the header so intrinsic
+   * content cannot grow the grid row (Ball by Ball / Main Scoreboard).
+   */
+  bodyAbsolute,
   style,
 }: {
   title: string;
@@ -15,12 +26,28 @@ export function CockpitPanel({
   badge?: string;
   children: React.ReactNode;
   bodyNoPad?: boolean;
+  fitContent?: boolean;
+  bodyAbsolute?: boolean;
   style?: object;
 }): React.ReactElement {
+  const rootStyle: ViewStyle = fitContent
+    ? { flexGrow: 0, flexShrink: 0, alignSelf: 'stretch' }
+    : { flex: 1, height: '100%' };
+
+  const bodyStyle: ViewStyle = bodyAbsolute
+    ? {
+        position: 'absolute',
+        top: COCKPIT_PANEL_HEADER_PX,
+        left: 0,
+        right: 0,
+        bottom: 0,
+      }
+    : { flex: 1, minHeight: 0 };
+
   return (
     <View
       className="min-h-0 min-w-0 overflow-hidden rounded-control border border-outline-variant bg-surface"
-      style={[{ flex: 1, height: '100%' }, style]}
+      style={[{ position: 'relative' }, rootStyle, style]}
     >
       <View className="h-7 flex-row items-center gap-2 border-b border-outline-variant bg-surface-container-low px-2.5">
         <View className={`h-1.5 w-1.5 rounded-full ${live ? 'bg-primary' : 'bg-stone-400'}`} />
@@ -34,7 +61,12 @@ export function CockpitPanel({
           </Text>
         ) : null}
       </View>
-      <View className={`min-h-0 flex-1 ${bodyNoPad ? '' : 'p-2.5'}`}>{children}</View>
+      <View
+        className={`min-h-0 ${bodyNoPad ? '' : 'p-2.5'}`}
+        style={bodyStyle}
+      >
+        {children}
+      </View>
     </View>
   );
 }

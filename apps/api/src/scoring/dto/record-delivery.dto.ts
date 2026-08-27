@@ -10,8 +10,10 @@ import {
   IsBoolean,
   IsIn,
   IsInt,
+  IsNumber,
   IsOptional,
   IsString,
+  Max,
   Min,
   ValidateNested,
 } from 'class-validator';
@@ -87,6 +89,18 @@ export class RecordDeliveryDto implements RecordDeliveryRequest {
   @IsOptional()
   @IsString()
   fielderId?: string | null;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(-1)
+  @Max(1)
+  shotX?: number | null;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(-1)
+  @Max(1)
+  shotY?: number | null;
 
   @IsInt()
   @Min(0)

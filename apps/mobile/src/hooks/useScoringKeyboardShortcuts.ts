@@ -12,7 +12,7 @@ export interface ScoringKeyboardShortcutHandlers {
   onLegBye: () => void;
   onBye: () => void;
   onUndo: () => void;
-  /** Bound to Enter; engine already commits on each key — default no-op. */
+  /** Bound to Enter on the Scoring keypad End Ball label only (no-op). Omit for no binding. */
   onEndBall?: () => void;
 }
 
@@ -88,13 +88,16 @@ export function useScoringKeyboardShortcuts({
         return;
       }
       if (keyMatches(event.key, SCORING_KEYBOARD_MAP.undo)) {
+        if (!onUndo) {
+          return;
+        }
         event.preventDefault();
         onUndo();
         return;
       }
-      if (keyMatches(event.key, SCORING_KEYBOARD_MAP.endBall)) {
+      if (onEndBall && keyMatches(event.key, SCORING_KEYBOARD_MAP.endBall)) {
         event.preventDefault();
-        onEndBall?.();
+        onEndBall();
       }
     }
 

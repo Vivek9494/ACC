@@ -1138,6 +1138,10 @@ model Delivery {
   /// Who recorded the event (the active Scorer); not a hard FK.
   createdByUserId String
 
+  /// Normalized ground coordinates [-1, 1] relative to field centre (optional analysis metadata).
+  shotX Float?
+  shotY Float?
+
   createdAt DateTime @default(now())
 
   @@index([inningsId])

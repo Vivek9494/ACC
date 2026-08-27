@@ -4,7 +4,7 @@
  *
  * Mockup keys (not the phone keypad): W = wide, P = wicket.
  * Number keys commit immediately (same `recordDelivery` as a click).
- * Enter is bound as End Ball but is a no-op — the engine commits on each event.
+ * Undo (⌫) and End Ball (⏎) bind to the Scoring keypad only — not Play Control.
  */
 export const SCORING_KEYBOARD_MAP = {
   runs: {

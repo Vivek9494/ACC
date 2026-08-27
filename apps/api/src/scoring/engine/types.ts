@@ -6,6 +6,8 @@ import type { DeliveryType, DismissalType, InningsType } from '@acc/types';
  * (system user id or an external-player id) — the engine never interprets them.
  */
 export interface ScoringEvent {
+  /** Persisted delivery row id — set when folding over stored deliveries. */
+  deliveryId?: string;
   sequence: number;
   overNumber: number | null;
   ballNumber: number | null;

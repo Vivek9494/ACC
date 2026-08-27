@@ -20,7 +20,8 @@
       "autoIncrement": true,
       "channel": "production",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://acc-api-production.up.railway.app"
+        "EXPO_PUBLIC_API_URL": "https://acc-api-production.up.railway.app",
+        "EXPO_PUBLIC_OVERLAY_URL": "https://acc-overlay.netlify.app"
       }
     }
   },

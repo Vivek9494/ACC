@@ -461,7 +461,7 @@ async function apiFetchInternal<T>(path: string, options: InternalRequestOptions
     ...rest
   } = options;
 
-  if (optionalAuth && !skipAuthHeader) {
+  if (!skipAuthHeader) {
     await hydrateAuthTokenFromStorage();
   }
 
@@ -1931,6 +1931,18 @@ export function endInnings(
     method: 'POST',
     body,
   });
+}
+
+/** Persist or clear per-ball shot placement on an existing delivery. */
+export function setDeliveryShotPlacement(
+  matchId: string,
+  inningsId: string,
+  body: import('@acc/types').SetDeliveryShotPlacementRequest,
+): Promise<ScorecardResponse> {
+  return apiFetch<ScorecardResponse>(
+    `/matches/${matchId}/innings/${inningsId}/deliveries/shot-placement`,
+    { method: 'PATCH', body },
+  );
 }
 
 /** Persist at-crease batters and/or the current-over bowler before the next delivery. */

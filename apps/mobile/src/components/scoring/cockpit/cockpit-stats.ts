@@ -60,6 +60,37 @@ export function thisOverBallsText(innings: InningsScorecard): string {
   return over.balls.join('  ');
 }
 
+/**
+ * Boundary fours/sixes in the current unbroken partnership (both batters).
+ * Counts timeline deliveries after the last wicket that are marked as boundaries.
+ */
+export function partnershipBoundaryCounts(innings: InningsScorecard): {
+  fours: number;
+  sixes: number;
+} {
+  const timeline = innings.timeline;
+  let start = 0;
+  for (let i = timeline.length - 1; i >= 0; i--) {
+    if (timeline[i]?.isWicket) {
+      start = i + 1;
+      break;
+    }
+  }
+
+  let fours = 0;
+  let sixes = 0;
+  for (let i = start; i < timeline.length; i++) {
+    const entry = timeline[i];
+    if (!entry?.isBoundary) continue;
+    if (entry.code === '6' || entry.code.endsWith('6')) {
+      sixes += 1;
+    } else if (entry.code === '4' || entry.code.endsWith('4')) {
+      fours += 1;
+    }
+  }
+  return { fours, sixes };
+}
+
 export function extrasTypeFromCode(code: string): string {
   if (code.startsWith('Wd') || code.includes('Nb') || code.startsWith('Lb') || code.startsWith('pen')) {
     return code;

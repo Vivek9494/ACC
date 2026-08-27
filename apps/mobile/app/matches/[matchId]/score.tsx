@@ -3,6 +3,7 @@ import {
   replaceGenericHomeAwayInResultNote,
   resolveMatchWinnerDisplayName,
   MatchState,
+  MatchSquadRole,
   InningsType,
   BatsmanPickerRole,
   DeliveryType,
@@ -19,6 +20,7 @@ import {
   type ScorecardResponse,
   type ScorerRevokedReason,
   type SetInningsParticipantsRequest,
+  type SquadPlayerView,
 } from '@acc/types';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -46,6 +48,11 @@ import { LiveScoringKeypad } from '../../../src/components/scoring/LiveScoringKe
 import { LiveScoringPlayerCards } from '../../../src/components/scoring/LiveScoringPlayerCards';
 import { LiveScoringScorecardTab } from '../../../src/components/scoring/LiveScoringScorecardTab';
 import { ScoringCockpit } from '../../../src/components/scoring/cockpit/ScoringCockpit';
+import {
+  ConfirmNextBowlerDialog,
+  EndOverConfirmDialog,
+  upcomingOverNumber,
+} from '../../../src/components/scoring/cockpit/EndOverFlowDialogs';
 import { ScorerRevokedDialog } from '../../../src/components/scoring/ScorerRevokedDialog';
 import {
   WicketDismissalSheet,
@@ -66,6 +73,7 @@ import {
   getMatch,
   getScorecard,
   recordDelivery,
+  setDeliveryShotPlacement,
   setDlsTarget,
   setInningsParticipants,
   setOversAllotted,
@@ -98,6 +106,17 @@ const SCORING_VIEW_TAB_OPTIONS = [
 
 function incomingBatterAutoPromptKey(live: InningsScorecard): string {
   return `${live.legalBalls}:${live.wickets}:${live.currentStrikerId ?? ''}:${live.currentNonStrikerId ?? ''}`;
+}
+
+/** Delivery types that consume a legal ball (count toward the over) — matches engine fold. */
+function deliveryCountsAsLegalBall(
+  body: Omit<RecordDeliveryRequest, 'expectedVersion'>,
+): boolean {
+  return (
+    body.type === DeliveryType.Legal ||
+    body.type === DeliveryType.Bye ||
+    body.type === DeliveryType.LegBye
+  );
 }
 
 function buildNoBallDelivery(
@@ -244,7 +263,7 @@ function applyBattingSlotPick(pick: ScoringPickResult, prev: BattingSlots): Batt
 export default function LiveScoringScreen(): React.ReactElement {
   const { matchId } = useLocalSearchParams<{ matchId: string }>();
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, status: authStatus } = useAuth();
   const { isDesktop } = useDesktopLayout();
   const useCockpit = Platform.OS === 'web' && isDesktop;
 
@@ -280,6 +299,16 @@ export default function LiveScoringScreen(): React.ReactElement {
   const [showEndInningsConfirm, setShowEndInningsConfirm] = useState(false);
   const [scoringBlockedOpen, setScoringBlockedOpen] = useState(false);
   const [scoringBlockedMessage, setScoringBlockedMessage] = useState(SCORING_NOT_ALLOWED_MESSAGE);
+  /** Desktop end-of-over: hold 6th legal ball until Dialog 2 OK commits it. */
+  const [endOverStep, setEndOverStep] = useState<'confirm' | 'bowler' | null>(null);
+  const [endOverPending, setEndOverPending] = useState<{
+    body: Omit<RecordDeliveryRequest, 'expectedVersion'>;
+    strikerId: string | null;
+    nonStrikerId: string | null;
+    bowlerId: string | null;
+    legalBalls: number;
+  } | null>(null);
+  const [endOverConfirming, setEndOverConfirming] = useState(false);
   const endInningsPromptDismissedRef = useRef(false);
   const pendingBatsmanPickerRef = useRef(false);
   const pendingBowlerRef = useRef(false);
@@ -355,8 +384,11 @@ export default function LiveScoringScreen(): React.ReactElement {
   }, [matchId]);
 
   useEffect(() => {
+    if (authStatus === 'loading') {
+      return;
+    }
     void load();
-  }, [load]);
+  }, [load, authStatus]);
 
   const handleScorerRevoked = useCallback((reason?: ScorerRevokedReason) => {
     setScorerRevokedReason(reason);
@@ -496,13 +528,45 @@ export default function LiveScoringScreen(): React.ReactElement {
   function promptBowlerIfNeeded(live: NonNullable<typeof inn>): void {
     if (!needsBowlerSelection(live, live.currentBowlerId)) return;
     if (isPickerAutoPromptSuppressed(bowlerAutoPromptSuppressedForBallsRef, live.legalBalls)) return;
+    if (useCockpit) {
+      openDesktopNextBowlerDialog(live);
+      return;
+    }
     openBowlerPicker(live);
+  }
+
+  /** Desktop recovery / end-over: Dialog 2 without navigating to the full-page picker. */
+  function openDesktopNextBowlerDialog(
+    liveInnings: NonNullable<typeof inn> | null = inn,
+  ): void {
+    if (!matchId || !liveInnings?.inningsId) return;
+    if (endOverStep != null) return;
+    if (!isMatchScoringAllowed(match)) {
+      showScoringBlocked();
+      return;
+    }
+    bowlerAutoPromptSuppressedForBallsRef.current = null;
+    setEndOverPending(null);
+    setEndOverStep('bowler');
+  }
+
+  function clearEndOverFlow(opts: { suppressBowlerAutoPrompt?: boolean } = {}): void {
+    if (opts.suppressBowlerAutoPrompt && inn) {
+      bowlerAutoPromptSuppressedForBallsRef.current = inn.legalBalls;
+    }
+    setEndOverStep(null);
+    setEndOverPending(null);
+    setEndOverConfirming(false);
   }
 
   function openBowlerPicker(liveInnings: NonNullable<typeof inn> | null = inn): void {
     if (!matchId || !liveInnings?.inningsId || pendingBowlerRef.current) return;
     if (!isMatchScoringAllowed(match)) {
       showScoringBlocked();
+      return;
+    }
+    if (useCockpit && needsBowlerSelection(liveInnings, bowlerId ?? liveInnings.currentBowlerId)) {
+      openDesktopNextBowlerDialog(liveInnings);
       return;
     }
     beginExplicitPickerNavigation(
@@ -554,6 +618,104 @@ export default function LiveScoringScreen(): React.ReactElement {
       body.nonStrikerId = pick.userId;
     }
     return body;
+  }
+
+  /** Desktop Play Control — same setInningsParticipants write as the full-page batsman picker. */
+  function selectBatterInline(role: 'striker' | 'nonStriker', userId: string): void {
+    const snapshot = card;
+    const liveInnings = inn;
+    const inningsId = liveInnings?.inningsId;
+    if (!matchId || !snapshot || !inningsId) return;
+    if (!isMatchScoringAllowed(match)) {
+      showScoringBlocked();
+      return;
+    }
+    const pick: ScoringPickResult = {
+      kind: 'batsman',
+      role: role === 'striker' ? BatsmanPickerRole.Striker : BatsmanPickerRole.NonStriker,
+      userId,
+    };
+    setBattingSlots((prev) => applyBattingSlotPick(pick, prev));
+    if (role === 'striker') {
+      setStrikerId(userId);
+    } else {
+      setNonStrikerId(userId);
+    }
+    void (async () => {
+      setWorking(true);
+      setError(null);
+      try {
+        syncFromCard(
+          await setInningsParticipants(
+            matchId,
+            inningsId,
+            participantsBodyFromPick(pick, snapshot.version),
+          ),
+          { promptBowlers: false },
+        );
+      } catch (err) {
+        if (err instanceof ApiRequestError) {
+          if (isScoringNotAllowedError(err)) {
+            showScoringBlocked(err.message || SCORING_NOT_ALLOWED_MESSAGE);
+          } else {
+            setError(scoringWriteErrorMessage(err));
+          }
+          if (err.status === 409) {
+            syncFromCard(await getScorecard(matchId), { promptBowlers: false });
+          }
+        } else {
+          setError('Could not save player selection.');
+        }
+      } finally {
+        setWorking(false);
+      }
+    })();
+  }
+
+  /** Desktop Play Control — same setInningsParticipants write as the full-page bowler picker. */
+  function selectBowlerInline(userId: string): void {
+    const snapshot = card;
+    const liveInnings = inn;
+    const inningsId = liveInnings?.inningsId;
+    if (!matchId || !snapshot || !inningsId) return;
+    if (!isMatchScoringAllowed(match)) {
+      showScoringBlocked();
+      return;
+    }
+    const pick: ScoringPickResult = { kind: 'bowler', userId };
+    setBowlerId(userId);
+    void (async () => {
+      setWorking(true);
+      setError(null);
+      try {
+        syncFromCard(
+          await setInningsParticipants(
+            matchId,
+            inningsId,
+            participantsBodyFromPick(pick, snapshot.version),
+          ),
+          { promptBowlers: false },
+        );
+      } catch (err) {
+        if (err instanceof ApiRequestError) {
+          if (isScoringNotAllowedError(err)) {
+            showScoringBlocked(err.message || SCORING_NOT_ALLOWED_MESSAGE);
+          } else {
+            setError(scoringWriteErrorMessage(err));
+          }
+          if (err.status === 409) {
+            syncFromCard(await getScorecard(matchId), { promptBowlers: false });
+          } else {
+            setBowlerId(liveInnings?.currentBowlerId ?? null);
+          }
+        } else {
+          setError('Could not save player selection.');
+          setBowlerId(liveInnings?.currentBowlerId ?? null);
+        }
+      } finally {
+        setWorking(false);
+      }
+    })();
   }
 
   useFocusEffect(
@@ -694,14 +856,63 @@ export default function LiveScoringScreen(): React.ReactElement {
     return options;
   }, [battingTeamId, bowlingTeamId, match?.awayTeamId, match?.awayTeamName, match?.homeTeamId, match?.homeTeamName]);
 
-  const battingSquad = useMemo(
-    () => match?.squads.find((s) => s.teamId === battingTeamId)?.players.filter((p) => p.role === 'PLAYING_XI') ?? [],
-    [battingTeamId, match?.squads],
-  );
-  const bowlingSquad = useMemo(
-    () => match?.squads.find((s) => s.teamId === bowlingTeamId)?.players.filter((p) => p.role === 'PLAYING_XI') ?? [],
-    [bowlingTeamId, match?.squads],
-  );
+  const battingSquad = useMemo((): SquadPlayerView[] => {
+    if (inn?.battingIsExternal) {
+      return (match?.externalPlayers ?? [])
+        .slice()
+        .sort((a, b) => a.slot - b.slot)
+        .map((player) => ({
+          userId: player.id,
+          firstName: player.name,
+          lastName: '',
+          role: MatchSquadRole.PlayingXi,
+          isActiveImpact: false,
+          battingOrder: player.slot,
+        }));
+    }
+    const players =
+      match?.squads.find((s) => s.teamId === battingTeamId)?.players.filter(
+        (p) => p.role === MatchSquadRole.PlayingXi,
+      ) ?? [];
+    return players
+      .slice()
+      .sort(
+        (a, b) =>
+          (a.battingOrder ?? 999) - (b.battingOrder ?? 999) ||
+          a.userId.localeCompare(b.userId),
+      );
+  }, [
+    battingTeamId,
+    inn?.battingIsExternal,
+    match?.externalPlayers,
+    match?.squads,
+  ]);
+  const bowlingSquad = useMemo((): SquadPlayerView[] => {
+    if (inn?.bowlingIsExternal) {
+      return (match?.externalPlayers ?? [])
+        .slice()
+        .sort((a, b) => a.slot - b.slot)
+        .map((player) => ({
+          userId: player.id,
+          firstName: player.name,
+          lastName: '',
+          role: MatchSquadRole.PlayingXi,
+          isActiveImpact: false,
+          battingOrder: player.slot,
+        }));
+    }
+    return (
+      match?.squads
+        .find((s) => s.teamId === bowlingTeamId)
+        ?.players.filter((p) => p.role === MatchSquadRole.PlayingXi) ?? []
+    );
+  }, [
+    bowlingTeamId,
+    inn?.bowlingIsExternal,
+    match?.externalPlayers,
+    match?.squads,
+  ]);
+
 
   const battersReady = Boolean(strikerId && nonStrikerId);
   const needsIncomingBatter = Boolean(inn && needIncomingBatter(inn));
@@ -936,6 +1147,31 @@ export default function LiveScoringScreen(): React.ReactElement {
     if (!matchId || !card || !inn) return;
     const inningsId = inn.inningsId;
     if (!inningsId) return;
+
+    // Desktop: 6th legal ball only opens end-over Dialog 1 — do not commit yet.
+    if (
+      useCockpit &&
+      !isPenalty &&
+      deliveryCountsAsLegalBall(body) &&
+      inn.legalBalls % 6 === 5 &&
+      endOverStep == null
+    ) {
+      if (!isMatchScoringAllowed(match)) {
+        showScoringBlocked();
+        return;
+      }
+      setError(null);
+      setEndOverPending({
+        body,
+        strikerId,
+        nonStrikerId,
+        bowlerId,
+        legalBalls: inn.legalBalls,
+      });
+      setEndOverStep('confirm');
+      return;
+    }
+
     await applyMutation(
       () =>
         recordDelivery(matchId, inningsId, {
@@ -947,6 +1183,55 @@ export default function LiveScoringScreen(): React.ReactElement {
         }),
       isPenalty ? { promptBowlers: false, ...opts } : opts,
     );
+  }
+
+  async function commitEndOverWithBowler(nextBowlerId: string): Promise<void> {
+    if (!matchId || !inn?.inningsId || !card) return;
+    if (!isMatchScoringAllowed(match)) {
+      showScoringBlocked();
+      return;
+    }
+    const inningsId = inn.inningsId;
+    setEndOverConfirming(true);
+    setWorking(true);
+    setError(null);
+    try {
+      let version = card.version;
+      let liveAfterBall = inn;
+      const pending = endOverPending;
+      if (pending) {
+        const afterBall = await recordDelivery(matchId, inningsId, {
+          ...pending.body,
+          strikerId: pending.strikerId,
+          nonStrikerId: pending.nonStrikerId,
+          bowlerId: pending.bowlerId,
+          expectedVersion: version,
+        });
+        version = afterBall.version;
+        syncFromCard(afterBall, { promptBowlers: false });
+        liveAfterBall = afterBall.innings.at(-1) ?? inn;
+      }
+      // Innings may have closed on the 6th ball — no next-over bowler to assign.
+      if (liveAfterBall.closed || !needsBowlerSelection(liveAfterBall, liveAfterBall.currentBowlerId)) {
+        clearEndOverFlow();
+        return;
+      }
+      const afterBowler = await setInningsParticipants(matchId, inningsId, {
+        expectedVersion: version,
+        bowlerId: nextBowlerId,
+      });
+      syncFromCard(afterBowler, { promptBowlers: false });
+      clearEndOverFlow();
+    } catch (err) {
+      reportWriteError(err, 'Could not end the over.');
+      if (err instanceof ApiRequestError && err.status === 409) {
+        syncFromCard(await getScorecard(matchId), { promptBowlers: false });
+        clearEndOverFlow();
+      }
+    } finally {
+      setEndOverConfirming(false);
+      setWorking(false);
+    }
   }
 
   async function recordWicket(result: WicketDismissalResult): Promise<void> {
@@ -1066,7 +1351,10 @@ export default function LiveScoringScreen(): React.ReactElement {
   const batsman2Card = inn?.batters.find((b) => b.playerId === battingSlots.batsman2Id);
   const bowlerCard = inn?.bowlers.find((b) => b.playerId === bowlerId);
   const keypadDisabled =
-    working || !openersReady || (Boolean(inn?.closed) && !inningsTransitionPending);
+    working ||
+    endOverStep != null ||
+    !openersReady ||
+    (Boolean(inn?.closed) && !inningsTransitionPending);
 
   const inningsLabels = card?.display.innings.find(
     (row) => inn?.inningsId != null && row.inningsId === inn.inningsId,
@@ -1111,6 +1399,7 @@ export default function LiveScoringScreen(): React.ReactElement {
     showMore ||
     showCatchDrop ||
     showEndInningsConfirm ||
+    endOverStep != null ||
     moreAction != null;
 
   const scoringViewToggle =
@@ -1169,10 +1458,10 @@ export default function LiveScoringScreen(): React.ReactElement {
             void record({ type: DeliveryType.LegBye, extraRuns });
           }}
           onWicket={() => setShowWicket(true)}
+          onOpenCatchDrop={() => setShowCatchDrop(true)}
+          onOpenBonus={() => setShowBonus(true)}
+          onOpenMore={() => setShowMore(true)}
           onPenalty={() => handleMoreSelect('PENALTY')}
-          onLegalOddRuns={(runs) => {
-            void record({ type: DeliveryType.Legal, runsBat: runs, isBoundary: false });
-          }}
           onUndo={() => {
             const inningsId = inn.inningsId;
             if (!matchId || !card || !inningsId) return;
@@ -1182,9 +1471,22 @@ export default function LiveScoringScreen(): React.ReactElement {
               }),
             );
           }}
-          onPickStriker={() => openBatsmanPicker('striker')}
-          onPickNonStriker={() => openBatsmanPicker('nonStriker')}
-          onPickBowler={() => openBowlerPicker()}
+          onSelectStriker={(userId) => selectBatterInline('striker', userId)}
+          onSelectNonStriker={(userId) => selectBatterInline('nonStriker', userId)}
+          onSelectBowler={(userId) => selectBowlerInline(userId)}
+          working={working}
+          onSetShotPlacement={(target, shotX, shotY) => {
+            const inningsId = inn.inningsId;
+            if (!matchId || !card || !inningsId || working) return;
+            void applyMutation(() =>
+              setDeliveryShotPlacement(matchId, inningsId, {
+                ...target,
+                shotX,
+                shotY,
+                expectedVersion: card.version,
+              }),
+            );
+          }}
         />
       ) : (
       <View className="min-h-0 flex-1">
@@ -1541,6 +1843,42 @@ export default function LiveScoringScreen(): React.ReactElement {
         reason={scorerRevokedReason}
         onDismiss={dismissScorerRevoked}
       />
+
+      {useCockpit && matchId && inn?.inningsId ? (
+        <>
+          <EndOverConfirmDialog
+            visible={endOverStep === 'confirm'}
+            onNo={() => {
+              clearEndOverFlow();
+            }}
+            onYes={() => {
+              setEndOverStep('bowler');
+            }}
+          />
+          <ConfirmNextBowlerDialog
+            visible={endOverStep === 'bowler'}
+            matchId={matchId}
+            inningsId={inn.inningsId}
+            upcomingOver={upcomingOverNumber(
+              endOverPending?.legalBalls ?? inn.legalBalls,
+            )}
+            previousOverBowlerId={
+              endOverPending?.bowlerId ?? inn.currentBowlerId ?? bowlerId
+            }
+            confirming={endOverConfirming}
+            onCancel={() => {
+              // Recovery (no pending ball): suppress auto-reopen. Pending 6th-ball
+              // abandon needs no suppress — over is still incomplete.
+              clearEndOverFlow({
+                suppressBowlerAutoPrompt: endOverPending == null,
+              });
+            }}
+            onConfirm={(nextBowlerId) => {
+              void commitEndOverWithBowler(nextBowlerId);
+            }}
+          />
+        </>
+      ) : null}
     </SafeAreaView>
   );
 }

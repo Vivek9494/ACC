@@ -176,6 +176,23 @@ export interface RecordDeliveryRequest {
    */
   penaltyBeneficiaryTeamId?: string | null;
   expectedVersion: number;
+  /**
+   * Optional normalized ground coordinates [-1, 1] relative to field centre.
+   * Display metadata only — not used by the scoring fold.
+   */
+  shotX?: number | null;
+  shotY?: number | null;
+}
+
+/** Persist or clear per-ball shot placement without superseding the delivery. */
+export interface SetDeliveryShotPlacementRequest {
+  /** Prefer delivery id when enriched on the timeline; otherwise pass sequence. */
+  deliveryId?: string;
+  sequence?: number;
+  /** Pass null for both coordinates to clear placement. */
+  shotX: number | null;
+  shotY: number | null;
+  expectedVersion: number;
 }
 
 /** Edit an existing ball within the scorer edit window (§12.2). */
@@ -317,6 +334,26 @@ export interface TimelineEntry {
   nonStrikerId: string | null;
   /** Bowler who delivered this ball (opaque user or external id). */
   bowlerId: string | null;
+  /** Persisted delivery row id (this innings only) — for scorer edits (§12.2). */
+  deliveryId?: string | null;
+  /** Raw delivery type when `deliveryId` is set. */
+  deliveryType?: DeliveryType;
+  runsBat?: number;
+  extraRuns?: number;
+  noBallByeRuns?: number;
+  noBallLegByeRuns?: number;
+  /**
+   * Normalized ground coordinates [-1, 1] relative to field centre.
+   * Optional per-ball analysis metadata — region labels are derived, not stored.
+   */
+  shotX?: number | null;
+  shotY?: number | null;
+  dismissal?: {
+    type: DismissalType;
+    dismissedId: string;
+    fielderId?: string | null;
+    fielder2Id?: string | null;
+  };
 }
 
 /** A completed/partial over for the recent-overs strip (spec §28). */

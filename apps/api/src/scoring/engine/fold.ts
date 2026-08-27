@@ -580,6 +580,8 @@ export function deriveInnings(events: ScoringEvent[], ctx: InningsContext = {}):
       sequence: e.sequence,
       overNumber: e.overNumber,
       ballNumber: e.ballNumber,
+      ...(e.deliveryId ? { deliveryId: e.deliveryId } : {}),
+      deliveryType: e.type,
       label: e.overNumber !== null && e.ballNumber !== null ? `${e.overNumber}.${e.ballNumber}` : '',
       code: deliveryCode(e),
       runs:

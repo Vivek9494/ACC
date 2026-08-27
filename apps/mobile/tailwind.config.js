@@ -7,6 +7,8 @@
 module.exports = {
   content: ['./app/**/*.{ts,tsx}', './src/**/*.{ts,tsx}'],
   presets: [require('nativewind/preset')],
+  /** Web: avoid css-interop "darkMode media" throw when colorScheme is set. App stays light. */
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {

@@ -1,32 +1,86 @@
+import type { ViewStyle } from 'react-native';
 import { Pressable, View } from 'react-native';
 
 import { Text } from '../../ui/Text';
-import { SCORING_KEY_HINTS } from '../../../lib/scoring-keyboard-map';
 import { CockpitPanel } from './CockpitPanel';
+
+/** Ran portions beyond the automatic 1-run wide penalty (same as WideBallDialog). */
+const WIDE_RAN: readonly (readonly number[])[] = [
+  [0, 1, 2],
+  [3, 4, 6],
+] as const;
+
+/** Off-the-bat runs on a no-ball (same as NoBallDialog OFF_BAT). */
+const NO_BALL_OFF_BAT: readonly (readonly number[])[] = [
+  [0, 1, 2],
+  [3, 4, 6],
+] as const;
+
+const BYE_VALUES: readonly (readonly number[])[] = [
+  [1, 2, 3],
+  [4, 5, 6],
+] as const;
+
+const LEG_BYE_VALUES: readonly (readonly number[])[] = [
+  [1, 2, 3],
+  [4, 5, 6],
+] as const;
+
+const RUNS_OFF_BAT: readonly (readonly { runs: number; boundary: boolean }[])[] = [
+  [
+    { runs: 0, boundary: false },
+    { runs: 1, boundary: false },
+    { runs: 2, boundary: false },
+  ],
+  [
+    { runs: 3, boundary: false },
+    { runs: 4, boundary: true },
+    { runs: 6, boundary: true },
+  ],
+] as const;
 
 export interface ScoringInputPanelProps {
   disabled: boolean;
   onRuns: (runs: number, isBoundary: boolean) => void;
+  /** Wide — same event as WideBallDialog (`extraRuns: 1 + ranPortion`). */
   onWide: (ranPortion: number) => void;
+  /** No-ball off bat — same as NoBallDialog OFF_BAT branch. */
   onNoBall: (runsBat: number) => void;
+  /** Bye — same as ByesDialog. */
   onBye: (extraRuns: number) => void;
+  /** Leg bye — same as LegByesDialog. */
   onLegBye: (extraRuns: number) => void;
   onWicket: () => void;
+  /** Opens CatchDropFielderPicker. */
+  onOpenCatchDrop: () => void;
+  /** Opens BonusRunsDialog (±1…±6). */
+  onOpenBonus: () => void;
+  /** Opens MoreOptionsModal (End Inning, Change Target/Overs, …). */
+  onOpenMore: () => void;
+  /** Opens PenaltyRunsDialog (fixed 5-run penalty + team). Distinct from Bonus ±. */
   onPenalty: () => void;
-  onLegalOddRuns: (runs: 5 | 7) => void;
-  onUndo: () => void;
 }
+
+const CLUSTER_GRID: ViewStyle = {
+  display: 'grid' as unknown as ViewStyle['display'],
+  gridTemplateColumns: 'repeat(3, minmax(44px, 1fr))',
+  gap: 3,
+} as ViewStyle;
+
+const OUT_GRID: ViewStyle = {
+  display: 'grid' as unknown as ViewStyle['display'],
+  gridTemplateColumns: 'minmax(72px, 1.4fr) minmax(56px, 1fr) minmax(52px, 1fr)',
+  gap: 3,
+} as ViewStyle;
 
 function KeyCap({
   label,
-  hint,
   onPress,
   disabled,
   className,
   textClassName,
 }: {
   label: string;
-  hint?: string;
   onPress?: () => void;
   disabled: boolean;
   className: string;
@@ -36,28 +90,42 @@ function KeyCap({
     <Pressable
       disabled={disabled || !onPress}
       onPress={onPress}
-      className={`relative h-8 flex-1 items-center justify-center rounded ${className} ${
+      className={`h-7 min-w-0 items-center justify-center rounded px-0.5 ${className} ${
         disabled || !onPress ? 'opacity-40' : 'active:opacity-80'
       }`}
       accessibilityRole="button"
       accessibilityLabel={label}
     >
-      {hint ? (
-        <Text className="absolute right-0.5 top-0 font-sans text-[8px] text-text-inverse/70">
-          {hint}
-        </Text>
-      ) : null}
-      <Text className={`font-sans-bold text-[13px] ${textClassName}`}>{label}</Text>
+      <Text className={`font-sans-bold text-[11px] ${textClassName}`} numberOfLines={1}>
+        {label}
+      </Text>
     </Pressable>
   );
 }
 
-function SectionLabel({ children }: { children: string }): React.ReactElement {
+function Cluster({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}): React.ReactElement {
   return (
-    <Text className="mb-1 font-sans text-[9px] uppercase tracking-wider text-on-surface-variant">
-      {children}
-    </Text>
+    <View className="gap-0.5">
+      <Text className="font-sans text-[8px] uppercase tracking-wider text-on-surface-variant">
+        {label}
+      </Text>
+      <View style={CLUSTER_GRID}>{children}</View>
+    </View>
   );
+}
+
+function formatWideLabel(ranPortion: number): string {
+  return ranPortion === 0 ? 'wd' : `wd+${ranPortion}`;
+}
+
+function formatNbLabel(runsBat: number): string {
+  return runsBat === 0 ? 'nb' : `nb+${runsBat}`;
 }
 
 export function ScoringInputPanel({
@@ -68,198 +136,120 @@ export function ScoringInputPanel({
   onBye,
   onLegBye,
   onWicket,
+  onOpenCatchDrop,
+  onOpenBonus,
+  onOpenMore,
   onPenalty,
-  onLegalOddRuns,
-  onUndo,
 }: ScoringInputPanelProps): React.ReactElement {
   return (
-    <CockpitPanel title="Scoring" live bodyNoPad>
-      <View className="gap-1.5 p-2">
-        <View>
-          <SectionLabel>Runs off the bat</SectionLabel>
-          <View className="flex-row gap-1">
-            {([0, 1, 2, 3] as const).map((runs) => (
-              <KeyCap
-                key={runs}
-                label={String(runs)}
-                hint={String(runs)}
-                disabled={disabled}
-                onPress={() => onRuns(runs, false)}
-                className="bg-secondary"
-                textClassName="text-text-inverse"
-              />
-            ))}
+    <CockpitPanel title="Scoring" live bodyNoPad fitContent>
+      <View className="flex-row flex-wrap items-end gap-x-2.5 gap-y-2 px-1.5 py-1.5">
+        <Cluster label="Runs off the bat">
+          {RUNS_OFF_BAT.flat().map(({ runs, boundary }) => (
             <KeyCap
-              label="4"
-              hint="4"
+              key={runs}
+              label={String(runs)}
               disabled={disabled}
-              onPress={() => onRuns(4, true)}
-              className="bg-secondary"
+              onPress={() => onRuns(runs, boundary)}
+              className={runs === 6 ? 'bg-primary' : 'bg-secondary'}
+              textClassName="text-text-inverse"
+            />
+          ))}
+        </Cluster>
+
+        <Cluster label="Wide">
+          {WIDE_RAN.flat().map((ranPortion) => (
+            <KeyCap
+              key={ranPortion}
+              label={formatWideLabel(ranPortion)}
+              disabled={disabled}
+              onPress={() => onWide(ranPortion)}
+              className="bg-secondary-700"
+              textClassName="text-text-inverse"
+            />
+          ))}
+        </Cluster>
+
+        <Cluster label="No ball">
+          {NO_BALL_OFF_BAT.flat().map((runsBat) => (
+            <KeyCap
+              key={runsBat}
+              label={formatNbLabel(runsBat)}
+              disabled={disabled}
+              onPress={() => onNoBall(runsBat)}
+              className="bg-secondary-800"
+              textClassName="text-text-inverse"
+            />
+          ))}
+        </Cluster>
+
+        <Cluster label="Bye">
+          {BYE_VALUES.flat().map((runs) => (
+            <KeyCap
+              key={runs}
+              label={`${runs} B`}
+              disabled={disabled}
+              onPress={() => onBye(runs)}
+              className="bg-secondary-600"
+              textClassName="text-text-inverse"
+            />
+          ))}
+        </Cluster>
+
+        <Cluster label="Leg bye">
+          {LEG_BYE_VALUES.flat().map((runs) => (
+            <KeyCap
+              key={runs}
+              label={`${runs} LB`}
+              disabled={disabled}
+              onPress={() => onLegBye(runs)}
+              className="bg-stone-600"
+              textClassName="text-text-inverse"
+            />
+          ))}
+        </Cluster>
+
+        <View className="gap-0.5">
+          <Text className="font-sans text-[8px] uppercase tracking-wider text-on-surface-variant">
+            Out & extras
+          </Text>
+          <View style={OUT_GRID}>
+            <KeyCap
+              label="WICKET"
+              disabled={disabled}
+              onPress={onWicket}
+              className="bg-secondary-900"
               textClassName="text-text-inverse"
             />
             <KeyCap
-              label="6"
-              hint="6"
+              label="Catch/Drop"
               disabled={disabled}
-              onPress={() => onRuns(6, true)}
-              className="bg-primary"
+              onPress={onOpenCatchDrop}
+              className="bg-stone-500"
               textClassName="text-text-inverse"
             />
+            <KeyCap
+              label="Bonus ±"
+              disabled={disabled}
+              onPress={onOpenBonus}
+              className="bg-stone-500"
+              textClassName="text-text-inverse"
+            />
+            <KeyCap
+              label="Pen 5"
+              disabled={disabled}
+              onPress={onPenalty}
+              className="bg-primary-700"
+              textClassName="text-text-inverse"
+            />
+            <KeyCap
+              label="More ▾"
+              disabled={disabled}
+              onPress={onOpenMore}
+              className="border border-outline-variant bg-surface-container-low"
+              textClassName="text-on-surface"
+            />
           </View>
-        </View>
-
-        <View className="flex-row gap-2">
-          <View className="flex-1">
-            <SectionLabel>Wide</SectionLabel>
-            <View className="flex-row gap-1">
-              <KeyCap
-                label="w"
-                hint={SCORING_KEY_HINTS.wide}
-                disabled={disabled}
-                onPress={() => onWide(0)}
-                className="bg-secondary-700"
-                textClassName="text-text-inverse"
-              />
-              <KeyCap
-                label="+1"
-                disabled={disabled}
-                onPress={() => onWide(1)}
-                className="bg-secondary-700"
-                textClassName="text-text-inverse"
-              />
-              <KeyCap
-                label="+2"
-                disabled={disabled}
-                onPress={() => onWide(2)}
-                className="bg-secondary-700"
-                textClassName="text-text-inverse"
-              />
-              <KeyCap
-                label="+4"
-                disabled={disabled}
-                onPress={() => onWide(4)}
-                className="bg-secondary-700"
-                textClassName="text-text-inverse"
-              />
-            </View>
-          </View>
-          <View className="flex-1">
-            <SectionLabel>No ball</SectionLabel>
-            <View className="flex-row gap-1">
-              <KeyCap
-                label="nb"
-                hint={SCORING_KEY_HINTS.noBall}
-                disabled={disabled}
-                onPress={() => onNoBall(0)}
-                className="bg-secondary-800"
-                textClassName="text-text-inverse"
-              />
-              <KeyCap
-                label="+1"
-                disabled={disabled}
-                onPress={() => onNoBall(1)}
-                className="bg-secondary-800"
-                textClassName="text-text-inverse"
-              />
-              <KeyCap
-                label="+2"
-                disabled={disabled}
-                onPress={() => onNoBall(2)}
-                className="bg-secondary-800"
-                textClassName="text-text-inverse"
-              />
-              <KeyCap
-                label="+4"
-                disabled={disabled}
-                onPress={() => onNoBall(4)}
-                className="bg-secondary-800"
-                textClassName="text-text-inverse"
-              />
-            </View>
-          </View>
-        </View>
-
-        <View className="flex-row gap-2">
-          <View className="flex-1">
-            <SectionLabel>Bye</SectionLabel>
-            <View className="flex-row gap-1">
-              {([1, 2, 3, 4] as const).map((runs) => (
-                <KeyCap
-                  key={runs}
-                  label={String(runs)}
-                  hint={runs === 1 ? SCORING_KEY_HINTS.bye : undefined}
-                  disabled={disabled}
-                  onPress={() => onBye(runs)}
-                  className="bg-secondary-600"
-                  textClassName="text-text-inverse"
-                />
-              ))}
-            </View>
-          </View>
-          <View className="flex-1">
-            <SectionLabel>Leg bye</SectionLabel>
-            <View className="flex-row gap-1">
-              {([1, 2, 3, 4] as const).map((runs) => (
-                <KeyCap
-                  key={runs}
-                  label={String(runs)}
-                  hint={runs === 1 ? SCORING_KEY_HINTS.legBye : undefined}
-                  disabled={disabled}
-                  onPress={() => onLegBye(runs)}
-                  className="bg-stone-600"
-                  textClassName="text-text-inverse"
-                />
-              ))}
-            </View>
-          </View>
-        </View>
-
-        <View className="flex-row gap-1">
-          <KeyCap
-            label="WICKET"
-            hint={SCORING_KEY_HINTS.wicket}
-            disabled={disabled}
-            onPress={onWicket}
-            className="bg-secondary-900"
-            textClassName="text-text-inverse"
-          />
-          <KeyCap
-            label="Pen"
-            disabled={disabled}
-            onPress={onPenalty}
-            className="bg-primary-700"
-            textClassName="text-text-inverse"
-          />
-          <KeyCap
-            label="5"
-            disabled={disabled}
-            onPress={() => onLegalOddRuns(5)}
-            className="bg-stone-200"
-            textClassName="text-on-surface"
-          />
-          <KeyCap
-            label="7"
-            disabled={disabled}
-            onPress={() => onLegalOddRuns(7)}
-            className="bg-stone-200"
-            textClassName="text-on-surface"
-          />
-        </View>
-
-        <View className="mt-1 flex-row gap-1.5">
-          <KeyCap
-            label={`Undo ${SCORING_KEY_HINTS.undo}`}
-            disabled={disabled}
-            onPress={onUndo}
-            className="border border-outline-variant bg-surface-container-low"
-            textClassName="text-on-surface"
-          />
-          <KeyCap
-            label={`End Ball ${SCORING_KEY_HINTS.endBall}`}
-            disabled
-            className="bg-secondary-100"
-            textClassName="text-secondary"
-          />
         </View>
       </View>
     </CockpitPanel>
