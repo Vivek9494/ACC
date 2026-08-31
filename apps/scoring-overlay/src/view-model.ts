@@ -25,18 +25,34 @@ export interface StripTeamVm {
 export interface StripViewModel {
   batting: StripTeamVm;
   bowling: StripTeamVm;
+  /** Compact batting-side label for the center notch (e.g. MCC / initials). */
+  teamShort: string;
   batsmen: StripBatterVm[];
   /** runs-wickets, e.g. "120-3". */
   scoreLine: string;
   /** Current run rate, e.g. "CRR 8.50". */
   runRateLine: string;
+  /** Required run rate when chasing, e.g. "RRR 9.20", or null. */
+  requiredRunRateLine: string | null;
+  /** Combined "CRR x | RRR y" (or CRR alone). */
+  ratesLine: string;
+  /** Chase: "NEED {runs} OFF {balls}", or null when not chasing. */
+  needOffLine: string | null;
+  /** Innings fours/sixes totals: "FOURS n  SIXES m". */
+  boundariesLine: string;
+  /**
+   * Auto sub-line: NEED when chase in progress, else CRR|RRR.
+   * Operator overrides (toss / chase / boundaries) applied in main.ts.
+   */
+  autoSubLine: string | null;
   /** Remaining overs, e.g. "18.2 OV REM", or null if unknown. */
   oversRemainingLine: string | null;
+  /** Overs display, e.g. "8.0/10" or "8.0". */
   oversLine: string;
   showPowerplay: boolean;
   subtitle: string | null;
   bowlerName: string;
-  /** wickets-runs, e.g. "1-24". */
+  /** runs-wickets (Theme 1 mockup), e.g. "15-1". */
   bowlerFigs: string;
   bowlerOvers: string;
   overTracker: CurrentOverTracker;
@@ -118,6 +134,7 @@ function inningsLabels(
 }
 
 function formatCurrentRunRate(innings: InningsScorecard): string {
+  // CRR = runs / (legal balls / 6). Extras (wd/nb) must NOT inflate the denominator.
   if (innings.legalBalls <= 0) {
     return 'CRR 0.00';
   }
@@ -210,6 +227,87 @@ export function formatRunsToWinLine(card: ScorecardResponse | null): string | nu
     return `NEED ${needs}`;
   }
   return `NEED ${needs} OFF ${ballsLeft}`;
+}
+
+function formatRequiredRunRate(
+  card: ScorecardResponse,
+  innings: InningsScorecard,
+): string | null {
+  if (innings.sequence < 2 && innings.target == null) {
+    return null;
+  }
+  const target =
+    innings.target ??
+    card.effectiveTarget ??
+    card.dlsTarget ??
+    card.originalTarget;
+  if (target == null || target <= 0) {
+    return null;
+  }
+  const needs = Math.max(0, target - innings.runs);
+  if (needs <= 0) {
+    return null;
+  }
+  const ballsLeft = remainingLegalBalls(innings);
+  if (ballsLeft == null || ballsLeft === 0) {
+    return null;
+  }
+  const rrr = (needs * BALLS_PER_OVER) / ballsLeft;
+  const text = Number.isFinite(rrr) ? rrr.toFixed(2) : '—';
+  return `RRR ${text}`;
+}
+
+function formatRatesLine(card: ScorecardResponse, innings: InningsScorecard): string {
+  const crr = formatCurrentRunRate(innings);
+  const rrr = formatRequiredRunRate(card, innings);
+  return rrr ? `${crr} | ${rrr}` : crr;
+}
+
+function formatBoundariesLine(innings: InningsScorecard): string {
+  let fours = 0;
+  let sixes = 0;
+  for (const b of innings.batters) {
+    fours += b.fours ?? 0;
+    sixes += b.sixes ?? 0;
+  }
+  return `FOURS ${fours}  SIXES ${sixes}`;
+}
+
+/**
+ * Fingerprint of scoring progress — changes when a new delivery is recorded
+ * (legal or extra). Used to auto-clear momentary strip flashes.
+ */
+export function deliveryProgressKey(card: ScorecardResponse | null): string {
+  if (!card) {
+    return '';
+  }
+  const innings = resolveActiveInnings(card);
+  if (!innings) {
+    return '';
+  }
+  const timeline = innings.timeline ?? [];
+  const last = timeline[timeline.length - 1];
+  return `${innings.inningsId ?? innings.sequence}:${timeline.length}:${last?.sequence ?? -1}:${innings.legalBalls}`;
+}
+
+/** Short label for the notch team slot. */
+export function shortTeamLabel(name: string): string {
+  const trimmed = name.trim();
+  if (!trimmed) {
+    return '—';
+  }
+  if (trimmed.length <= 10) {
+    return trimmed.toUpperCase();
+  }
+  return teamInitials(trimmed);
+}
+
+function formatOversLine(innings: InningsScorecard): string {
+  const current = innings.oversText || '0.0';
+  if (innings.oversAllotted != null && innings.oversAllotted > 0) {
+    return `${current}/${innings.oversAllotted}`;
+  }
+  return current;
 }
 
 /** e.g. "ACC 3 won the toss and chose to bat" — null until toss is recorded. */
@@ -379,16 +477,25 @@ export function buildStripViewModel(
   return {
     batting: teamVm(battingName, battingId, ctx),
     bowling: teamVm(bowlingName, bowlingId, ctx),
+    teamShort: shortTeamLabel(battingName),
     batsmen,
     scoreLine: `${innings.runs}-${innings.wickets}`,
     runRateLine: formatCurrentRunRate(innings),
+    requiredRunRateLine: formatRequiredRunRate(card, innings),
+    ratesLine: formatRatesLine(card, innings),
+    needOffLine: formatRunsToWinLine(card),
+    boundariesLine: formatBoundariesLine(innings),
+    autoSubLine:
+      formatRunsToWinLine(card) ?? formatRatesLine(card, innings),
     oversRemainingLine: formatOversRemaining(innings),
-    oversLine: innings.oversText || '0.0',
+    oversLine: formatOversLine(innings),
     showPowerplay: inPowerplay(innings, ctx),
     subtitle: buildSubtitle(card, innings, ctx),
     bowlerName,
-    bowlerFigs: bowlRow ? `${bowlRow.wickets}-${bowlRow.runsConceded}` : '',
-    bowlerOvers: bowlRow?.oversText ?? '',
+    bowlerFigs: bowlRow
+      ? `${bowlRow.runsConceded}-${bowlRow.wickets}`
+      : '0-0',
+    bowlerOvers: bowlRow?.oversText ?? '0.0',
     overTracker: buildCurrentOverTracker(innings),
   };
 }

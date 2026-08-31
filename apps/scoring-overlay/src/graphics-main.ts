@@ -1,13 +1,17 @@
 import {
   ensureMatchContext,
   fetchMatchBallType,
+  fetchMatchOverlayTheme,
   fetchScorecard,
 } from './broadcast-fetch';
 import {
   connectLiveSocket,
   queryApiAndMatch,
 } from './live-client';
-import { createGraphicsStage } from './graphics-stage';
+import {
+  DEFAULT_OVERLAY_THEME,
+  resolveOverlayTheme,
+} from './themes/registry';
 
 function el<T extends HTMLElement>(id: string): T {
   const node = document.getElementById(id);
@@ -17,15 +21,21 @@ function el<T extends HTMLElement>(id: string): T {
   return node as T;
 }
 
-function start(): void {
+async function start(): Promise<void> {
   const { matchId, apiBase } = queryApiAndMatch();
   const stageRoot = el<HTMLDivElement>('stage');
   const status = el<HTMLDivElement>('status');
 
-  // Keep status outside injected markup.
+  let themeKey = DEFAULT_OVERLAY_THEME;
+  if (matchId) {
+    themeKey = await fetchMatchOverlayTheme(apiBase, matchId);
+  }
+  const theme = resolveOverlayTheme(themeKey);
+  theme.loadStyles();
+
   const statusNode = status;
   stageRoot.innerHTML = '';
-  const stage = createGraphicsStage(stageRoot, {
+  const stage = theme.createGraphicsStage(stageRoot, {
     apiBase,
     matchId,
     injectMarkup: true,
@@ -73,4 +83,4 @@ function start(): void {
   });
 }
 
-start();
+void start();

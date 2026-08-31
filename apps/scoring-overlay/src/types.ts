@@ -59,10 +59,12 @@ export type GraphicsKind =
   | 'innings_break'
   | 'toss'
   | 'chase'
+  | 'boundaries'
   | 'bowler_career'
   | 'batsman_career'
   | 'toss_result'
   | 'playing_xi'
+  | 'wagon_wheel'
   | 'hello';
 
 export interface GraphicsCommandMessage {
@@ -81,6 +83,10 @@ export interface GraphicsCommandMessage {
     teamId?: string | null;
     /** `both` = two columns; `single` = one team XI; `lineup` = batting order. */
     variant?: 'both' | 'single' | 'lineup';
+    /** Wagon wheel: `team` or batter id. */
+    subject?: 'team' | string;
+    /** Wagon wheel: boundary / all-shots filter. */
+    filter?: '4s' | '6s' | '4s6s' | 'all';
   };
 }
 
@@ -272,6 +278,8 @@ export interface MatchContext {
   powerplayOvers: number | null;
   /** Persisted prose result line when available. */
   resultNote: string | null;
+  /** Per-match broadcast overlay theme key. */
+  overlayTheme: import('./themes/registry').OverlayThemeKey;
   /** teamId → presigned logo URL (or null). */
   logosByTeamId: Record<string, string | null>;
   /** Locked matchday squads (Playing XI + roles). */

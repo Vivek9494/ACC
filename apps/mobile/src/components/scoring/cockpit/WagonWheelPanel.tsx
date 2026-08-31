@@ -1,5 +1,4 @@
 import {
-  filterTimelineForWagonWheel,
   timelineEntryHasShotPlacement,
   wagonWheelPlacementDeliveryRef,
   wagonWheelPlacementTarget,
@@ -43,6 +42,16 @@ export function WagonWheelPanel({
     [innings.timeline],
   );
 
+  // New ball → drop optimistic shot for the previous sequence (display-only; DB untouched).
+  useEffect(() => {
+    if (!pendingShot) {
+      return;
+    }
+    if (!placementTarget || placementTarget.sequence !== pendingShot.sequence) {
+      setPendingShot(null);
+    }
+  }, [placementTarget, pendingShot]);
+
   useEffect(() => {
     if (!working) {
       saveInFlightRef.current = false;
@@ -82,17 +91,13 @@ export function WagonWheelPanel({
     return placementTarget;
   }, [pendingShot, placementTarget]);
 
+  /** Live capture: only the current ball (blank until placed). */
   const visibleEntries = useMemo(() => {
-    const filtered = filterTimelineForWagonWheel(innings.timeline, 'team');
-    if (
-      displayTarget &&
-      timelineEntryHasShotPlacement(displayTarget) &&
-      !filtered.some((entry) => entry.sequence === displayTarget.sequence)
-    ) {
-      return [...filtered, displayTarget];
+    if (displayTarget && timelineEntryHasShotPlacement(displayTarget)) {
+      return [displayTarget];
     }
-    return filtered;
-  }, [displayTarget, innings.timeline]);
+    return [];
+  }, [displayTarget]);
 
   const canPlace = placementTarget != null && !working && !saveInFlight;
   const targetHasShot =
@@ -127,7 +132,10 @@ export function WagonWheelPanel({
     <CockpitPanel title="Wagon Wheel" live bodyNoPad>
       <View className="min-h-0 flex-1">
         <View className="flex-row items-center justify-between gap-2 border-b border-outline-variant px-2 py-1.5">
-          <Text className="min-w-0 flex-1 font-sans text-[10px] text-on-surface-variant" numberOfLines={2}>
+          <Text
+            className="min-w-0 flex-1 font-sans text-[10px] text-on-surface-variant"
+            numberOfLines={2}
+          >
             {statusLine}
           </Text>
           {targetHasShot && placementTarget ? (
@@ -136,7 +144,7 @@ export function WagonWheelPanel({
               disabled={working || saveInFlight}
               className="rounded border border-outline-variant bg-surface px-1.5 py-0.5"
               accessibilityRole="button"
-              accessibilityLabel="Clear shot placement"
+              accessibilityLabel="Clear shot placement for this ball"
             >
               <Text className="font-sans-semibold text-[9px] text-on-surface-variant">Clear</Text>
             </Pressable>

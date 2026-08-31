@@ -10,6 +10,7 @@ export function CockpitPanel({
   title,
   live,
   badge,
+  headerTrailing,
   children,
   bodyNoPad,
   /** Content-sized panel (left stack). Does not stretch to fill the grid cell. */
@@ -24,6 +25,8 @@ export function CockpitPanel({
   title: string;
   live?: boolean;
   badge?: string;
+  /** Optional control on the header row (right side, before badge). */
+  headerTrailing?: React.ReactNode;
   children: React.ReactNode;
   bodyNoPad?: boolean;
   fitContent?: boolean;
@@ -55,6 +58,7 @@ export function CockpitPanel({
           {title}
         </Text>
         <View className="flex-1" />
+        {headerTrailing ? <View className="shrink-0">{headerTrailing}</View> : null}
         {badge ? (
           <Text className="rounded border border-secondary-200 bg-secondary-50 px-1.5 py-0.5 font-sans-bold text-[9px] uppercase tracking-wide text-secondary">
             {badge}

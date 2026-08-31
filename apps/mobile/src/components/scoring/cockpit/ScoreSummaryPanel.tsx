@@ -6,10 +6,13 @@ import {
   type InningsScorecard,
   type MatchDetail,
 } from '@acc/types';
+import { Ionicons } from '@expo/vector-icons';
 import type { ViewStyle } from 'react-native';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
 import { Text } from '../../ui/Text';
+import { FIELD_ORANGE } from '../../ui/fieldStyles';
+import { colors } from '../../../theme/colors';
 import { recentBallChipStyle } from '../liveScoringKeypadTokens';
 import { BatterInlineSelect } from './BatterInlineSelect';
 import {
@@ -43,6 +46,9 @@ export interface ScoreSummaryPanelProps {
   onSelectStriker: (userId: string) => void;
   onSelectNonStriker: (userId: string) => void;
   onSelectBowler: (userId: string) => void;
+  /** Live undo last delivery (same as keyboard Backspace). */
+  onUndo: () => void;
+  working?: boolean;
 }
 
 const SUMMARY_TOP: ViewStyle = {
@@ -100,18 +106,8 @@ const PLAY_COL: ViewStyle = {
 const STAT_CELL_W = 28;
 /** Left column — fits "Non-Striker"; keeps batter dropdowns aligned. */
 const ROW_LABEL_W = 80;
-/** Right Play Control column — labels right-aligned; 5px gap to dropdowns via ROW_RIGHT. */
+/** Right Play Control column — shorter labels sit flush to dropdowns. */
 const ROW_LABEL_W_RIGHT = 70;
-const LABEL_DROPDOWN_GAP = 5;
-/** Bowler figures — one shared grid for header + values (widest label/value per column). */
-const BOWLER_STAT_LABELS = ['O', 'M', 'R', 'W', 'Eco', 'Wd', 'NB'] as const;
-const BOWLER_FIGURES_GRID: ViewStyle = {
-  display: 'grid' as unknown as ViewStyle['display'],
-  gridTemplateColumns: '36px 24px 32px 24px 44px 24px 24px',
-  columnGap: 2,
-  flexShrink: 0,
-  alignItems: 'center',
-} as ViewStyle;
 /** Mid-grey — clearly legible header tone (not the faintest variant). */
 const HEADER_LABEL_COLOR = '#6B7280';
 
@@ -128,17 +124,9 @@ const ROW: ViewStyle = {
   minHeight: 33,
 };
 
-/** Rows with a fixed label column + 5px before the control (batters, bowler, etc.). */
-const ROW_LABEL_GAP: ViewStyle = {
+const ROW_RIGHT: ViewStyle = {
   ...ROW,
-  gap: LABEL_DROPDOWN_GAP,
-};
-
-const BOWLER_FIGURES_HEADER_ROW: ViewStyle = {
-  ...ROW_LABEL_GAP,
-  minHeight: 18,
-  paddingBottom: 0,
-  marginBottom: -6,
+  gap: 2,
 };
 
 const HEADER_BAND: ViewStyle = {
@@ -329,6 +317,32 @@ function bowlerStats(card: BowlerCard | undefined): (string | number)[] {
   ];
 }
 
+function UndoIconBtn({
+  onPress,
+  disabled,
+}: {
+  onPress: () => void;
+  disabled?: boolean;
+}): React.ReactElement {
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      accessibilityRole="button"
+      accessibilityLabel="Undo last ball"
+      className={`h-7 w-7 items-center justify-center rounded border border-outline-variant bg-surface-container-lowest ${
+        disabled ? 'opacity-40' : 'active:opacity-80'
+      }`}
+    >
+      <Ionicons
+        name="arrow-undo"
+        size={14}
+        color={disabled ? colors.textMuted : FIELD_ORANGE}
+      />
+    </Pressable>
+  );
+}
+
 export function ScoreSummaryPanel({
   matchId,
   match,
@@ -345,6 +359,8 @@ export function ScoreSummaryPanel({
   onSelectStriker,
   onSelectNonStriker,
   onSelectBowler,
+  onUndo,
+  working,
 }: ScoreSummaryPanelProps): React.ReactElement {
   const toss = formatMatchTossSummaryLine(match);
   const strikerName = strikerId ? nameOf(strikerId) : 'Select striker';
@@ -465,6 +481,7 @@ export function ScoreSummaryPanel({
             <View className="min-h-[28px] min-w-[72px] items-center justify-center rounded border border-outline-variant bg-surface-container-lowest px-2">
               <Text className="font-sans-semibold text-[12px] text-on-surface">{innings.oversText}</Text>
             </View>
+            <UndoIconBtn onPress={onUndo} disabled={working} />
             <View style={{ flex: 1 }} />
           </View>
 

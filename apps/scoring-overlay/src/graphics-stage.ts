@@ -43,8 +43,10 @@ import type { ScorecardViewSource } from './types';
 const ANIM_MS = 280;
 
 /** Strip page owns these — stage ignores them. */
-export type StripOwnedKind = 'toss' | 'chase' | 'bowler_career';
-export type OverlayKind = Exclude<GraphicsKind, StripOwnedKind>;
+export type StripOwnedKind = 'toss' | 'chase' | 'boundaries' | 'bowler_career';
+/** Known command kinds with no stage panel yet (control may still emit). */
+export type PendingOverlayKind = 'wagon_wheel';
+export type OverlayKind = Exclude<GraphicsKind, StripOwnedKind | PendingOverlayKind>;
 
 const GRAPHIC_IDS: Record<OverlayKind, string> = {
   partnership: 'g-partnership',
@@ -59,7 +61,16 @@ const GRAPHIC_IDS: Record<OverlayKind, string> = {
 };
 
 export function isStripOwnedKind(kind: GraphicsKind): kind is StripOwnedKind {
-  return kind === 'toss' || kind === 'chase' || kind === 'bowler_career';
+  return (
+    kind === 'toss' ||
+    kind === 'chase' ||
+    kind === 'boundaries' ||
+    kind === 'bowler_career'
+  );
+}
+
+export function isPendingOverlayKind(kind: GraphicsKind): kind is PendingOverlayKind {
+  return kind === 'wagon_wheel';
 }
 
 /** Markup for panels inside the stage (IDs are unique within the stage root). */
@@ -294,6 +305,9 @@ export function createGraphicsStage(
 
   const hideGraphic = (kind: GraphicsKind): void => {
     if (isStripOwnedKind(kind)) {
+      return;
+    }
+    if (isPendingOverlayKind(kind)) {
       return;
     }
     if (activeKind === kind) {
@@ -704,6 +718,10 @@ export function createGraphicsStage(
     if (isStripOwnedKind(kind)) {
       return;
     }
+    // Follow-up: broadcast wagon-wheel SVG graphic (shotX/shotY) not built yet.
+    if (isPendingOverlayKind(kind)) {
+      return;
+    }
 
     if (kind === 'hello') {
       for (const k of Object.keys(GRAPHIC_IDS) as OverlayKind[]) {
@@ -851,6 +869,9 @@ export function createGraphicsStage(
           return;
         }
         if (isStripOwnedKind(cmd.graphic)) {
+          return;
+        }
+        if (isPendingOverlayKind(cmd.graphic)) {
           return;
         }
         if (cmd.action === 'hide') {

@@ -12,6 +12,7 @@ import { BallType } from './rbac';
 import type { MatchTennisScorerView } from './tournament-scorers';
 import { canManageTournamentScorers } from './tournament-scorers';
 import { canViewAdminUsersDirectory } from './admin';
+import type { OverlayThemeKey } from './overlay-theme';
 
 /** Match states (spec §5.2). */
 export const MatchState = {
@@ -273,6 +274,8 @@ export interface CreateMatchRequest {
   /** ACC ground-setup responsibility (§27); optional. */
   homeAway?: HomeAway | null;
   youtubeUrl?: string | null;
+  /** Broadcast overlay theme key — per-match (`apps/scoring-overlay` registry). */
+  overlayTheme?: OverlayThemeKey | null;
 }
 
 /** Update an upcoming match fixture — same fields as create (§11). */
@@ -415,6 +418,8 @@ export interface MatchDetail extends MatchSummary {
   powerplayOvers: number | null;
   battingPowerplayOvers: number | null;
   youtubeUrl: string | null;
+  /** Broadcast overlay theme — per-match selection from registered themes. */
+  overlayTheme: OverlayThemeKey;
   tossWinner: MatchSide | null;
   tossDecision: TossDecision | null;
   /** Derived from toss when recorded — team batting first in innings 1. */

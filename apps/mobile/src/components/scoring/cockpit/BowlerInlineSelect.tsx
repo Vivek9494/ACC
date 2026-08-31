@@ -118,12 +118,7 @@ export function BowlerInlineSelect({
   const menuLeft = anchor?.x ?? 0;
 
   return (
-    <View
-      ref={fieldRef}
-      className="min-w-0 shrink-0"
-      style={{ width }}
-      collapsable={false}
-    >
+    <View ref={fieldRef} className="min-w-0 w-[148px] shrink-0" collapsable={false}>
       <Pressable
         onPress={openDropdown}
         accessibilityRole="button"

@@ -32,6 +32,9 @@ import {
   BallType,
   HomeAway,
   UserRole,
+  DEFAULT_OVERLAY_THEME,
+  isOverlayThemeKey,
+  type OverlayThemeKey,
   canAssignTeamRoles,
   canViewAdminUsersDirectory,
   formatUtcIsoDate,
@@ -664,6 +667,27 @@ export class MatchesService {
       });
     }
 
+    return this.getDetail(matchId, actor);
+  }
+
+  /** Per-match broadcast overlay theme (cockpit settings — scorer during live). */
+  async updateOverlayTheme(
+    actor: AuthUser,
+    matchId: string,
+    overlayTheme: OverlayThemeKey,
+  ): Promise<MatchDetail> {
+    if (!isOverlayThemeKey(overlayTheme)) {
+      throw new BadRequestException({
+        message: 'Unknown overlay theme',
+        error: 'INVALID_OVERLAY_THEME',
+        fields: { overlayTheme: 'Select a registered overlay theme' },
+      });
+    }
+    await this.requireMatchRow(matchId);
+    await this.prisma.match.update({
+      where: { id: matchId },
+      data: { overlayTheme },
+    });
     return this.getDetail(matchId, actor);
   }
 
@@ -3040,6 +3064,7 @@ export class MatchesService {
       powerplayOvers: row.powerplayOvers,
       battingPowerplayOvers: row.battingPowerplayOvers,
       youtubeUrl: row.youtubeUrl,
+      overlayTheme: normalizeOverlayThemeKey(row.overlayTheme),
       tossWinner: row.tossWinner as MatchSide | null,
       tossDecision: row.tossDecision as TossDecision | null,
       battingFirstTeamId: inningsSides?.battingTeamId ?? null,
@@ -3460,4 +3485,11 @@ export class MatchesService {
       youtubeUrl: dto.youtubeUrl ?? null,
     };
   }
+}
+
+function normalizeOverlayThemeKey(value: string | null | undefined): OverlayThemeKey {
+  if (value != null && isOverlayThemeKey(value)) {
+    return value;
+  }
+  return DEFAULT_OVERLAY_THEME;
 }

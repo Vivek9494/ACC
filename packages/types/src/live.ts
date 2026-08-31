@@ -114,6 +114,10 @@ export const GraphicsKind = {
    */
   Chase: 'chase',
   /**
+   * Strip-only: replace center sub-line with innings FOURS / SIXES totals.
+   */
+  Boundaries: 'boundaries',
+  /**
    * Full-screen career bowling card (replaces score strip while on air).
    */
   BowlerCareer: 'bowler_career',
@@ -131,6 +135,11 @@ export const GraphicsKind = {
    * Match-level; not tied to an innings.
    */
   PlayingXi: 'playing_xi',
+  /**
+   * Full-screen wagon wheel (shot placement from saved shotX/shotY).
+   * Match-level; subject + filter select which shots to draw.
+   */
+  WagonWheel: 'wagon_wheel',
   /** Phase A validation only — remove once real graphics ship. */
   Hello: 'hello',
 } as const;
@@ -147,6 +156,23 @@ export type GraphicsCommandAction =
 export interface GraphicsCommandPayload {
   playerId?: string;
   playerIds?: string[];
+  /** Innings-break / scorecard graphic view tab. */
+  view?: 'batting' | 'bowling' | 'fow' | 'partnerships' | 'overs';
+  inningsId?: string | null;
+  /** `break` = full innings-break card; `scorecard` = team bowling/partnerships view. */
+  source?: 'break' | 'scorecard';
+  teamId?: string | null;
+  /** Playing XI card layout. */
+  variant?: 'both' | 'single' | 'lineup';
+  /**
+   * Wagon wheel subject: literal `team` (all batters) or a batter user/external id.
+   */
+  subject?: 'team' | string;
+  /**
+   * Wagon wheel filter over saved shotX/shotY points.
+   * Team options use `4s` / `6s` / `4s6s`; batter options use `all`.
+   */
+  filter?: '4s' | '6s' | '4s6s' | 'all';
 }
 
 /** Room-scoped OBS graphics control (unauthenticated; pure forward). */

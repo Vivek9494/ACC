@@ -2,17 +2,15 @@
 
 Transparent Browser Source page for ASC live matches. Subscribes to the existing NestJS Socket.IO **`/live`** feed (same protocol as the mobile guest live score).
 
-## Strip layout (Fox broadcast bar)
+## Strip layout (Theme 1 — lower third)
 
-Left → right, anchored bottom (locked mockup aesthetic — navy / pink / cyan):
+Full-width three-part strip (~100px), anchored bottom on a 1920×1080 transparent canvas:
 
-1. **Batting team logo** (initials fallback)
-2. **Two batsmen** — name + runs + balls columns; striker marked ▸
-3. **Center marquee** — score `runs-wkts` · powerplay **P** · overs · subtitle
-4. **Bowler** + **this-over tracker** (all deliveries in order, variable length; wd/nb interleaved)
-5. **Bowling team logo** (initials fallback)
+1. **Left angled navy panel** — two batsmen (striker ▸ in yellow), name + runs + balls; ASC logo puck (`?ascLogo=`)
+2. **Center black slanted notch** — team · score · overs · sub-line (auto: NEED / CRR|RRR; operator overrides for toss, chase, boundaries)
+3. **Right angled navy panel** — bowler name + R-W figures + overs; this-over ball circles (wd/nb add circles without advancing the 6-count); bowling team logo puck
 
-Logos from public match detail + tournament teams (presigned). Logos swap ends when the batting side changes. Subtitle: result → chase/RRR (toss is operator-only on the CRR row).
+Tokens: `src/theme1/tokens.css` + `src/theme1/strip.css` (ASC navy `#1a4d8f`, checker texture).
 
 ## Quick start
 

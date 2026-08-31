@@ -4,15 +4,15 @@ import {
   fetchBroadcastPlayerStats,
   ensureMatchContext,
   fetchMatchBallType,
+  fetchMatchOverlayTheme,
   fetchScorecard,
 } from './broadcast-fetch';
+import { hasBowlerCareerStats } from './graphics-format';
+import { isStripOwnedKind } from './graphics-stage';
 import {
-  combineCareerBowlingWithLive,
-  formatStat,
-  hasBowlerCareerStats,
-} from './graphics-format';
-import { createGraphicsStage, isStripOwnedKind } from './graphics-stage';
-import './style.css';
+  DEFAULT_OVERLAY_THEME,
+  resolveOverlayTheme,
+} from './themes/registry';
 import {
   LIVE_NAMESPACE,
   LiveEvent,
@@ -25,18 +25,14 @@ import {
   type MatchContext,
   type ScorecardResponse,
 } from './types';
-import {
-  buildStripViewModel,
-  formatRunsToWinLine,
-  formatTossLine,
-  type StripViewModel,
-} from './view-model';
+import { deliveryProgressKey } from './view-model';
 
 const DEFAULT_API_BASE = 'https://acc-api-production.up.railway.app';
 const CAREER_ANIM_MS = 280;
+/** Safety net if no ball is bowled while boundaries is flashing. */
+const BOUNDARIES_FLASH_MS = 6000;
 
-/** Operator override for the CRR row (one at a time). */
-type StripCrrMode = 'default' | 'toss' | 'chase';
+type StripCrrMode = 'default' | 'toss' | 'chase' | 'boundaries';
 
 function el<T extends HTMLElement>(id: string): T {
   const node = document.getElementById(id);
@@ -54,288 +50,93 @@ function queryParams(): { matchId: string | null; apiBase: string } {
   return { matchId, apiBase };
 }
 
-function setText(id: string, text: string): void {
-  const node = el(id);
-  if (node.textContent !== text) {
-    node.textContent = text;
-  }
-}
-
-function setLogo(
-  initialsId: string,
-  imgId: string,
-  initials: string,
-  logoUrl: string | null,
-): void {
-  const initialsEl = el<HTMLSpanElement>(initialsId);
-  const img = el<HTMLImageElement>(imgId);
-  initialsEl.textContent = initials;
-  if (logoUrl) {
-    img.onload = () => {
-      img.hidden = false;
-      initialsEl.hidden = true;
-    };
-    img.onerror = () => {
-      img.hidden = true;
-      initialsEl.hidden = false;
-      img.removeAttribute('src');
-    };
-    if (img.getAttribute('src') !== logoUrl) {
-      img.hidden = true;
-      initialsEl.hidden = false;
-      img.src = logoUrl;
-    }
-  } else {
-    img.hidden = true;
-    initialsEl.hidden = false;
-    img.removeAttribute('src');
-  }
-}
-
-function renderOverTracker(vm: StripViewModel): void {
-  const tracker = el<HTMLDivElement>('over-tracker');
-
-  tracker.replaceChildren();
-  for (const slot of vm.overTracker.slots) {
-    const node = document.createElement('span');
-    node.className = 'ball-slot';
-    if (slot.isExtra) {
-      node.classList.add('is-extra');
-      node.textContent = slot.label;
-    } else if (slot.label === '●') {
-      node.classList.add('is-dot');
-      node.textContent = '●';
-    } else {
-      if (slot.isWicket) {
-        node.classList.add('is-wicket');
-      }
-      if (slot.isBoundary) {
-        node.classList.add('is-boundary');
-      }
-      node.textContent = slot.label;
-    }
-    tracker.appendChild(node);
-  }
-  tracker.hidden = vm.overTracker.slots.length === 0;
-}
-
-function renderBatters(vm: StripViewModel): void {
-  for (let i = 0; i < 2; i += 1) {
-    const batter = vm.batsmen[i] ?? {
-      name: '—',
-      runs: '',
-      balls: '',
-      onStrike: false,
-    };
-    const row = el<HTMLDivElement>(`batter-${i}`);
-    row.classList.toggle('is-strike', batter.onStrike);
-    setText(`batter-${i}-name`, batter.name);
-    setText(`batter-${i}-runs`, batter.runs);
-    setText(`batter-${i}-balls`, batter.balls);
-  }
-}
-
-function setCrrOverrideLine(text: string): void {
-  const crrRow = el<HTMLDivElement>('crr-row');
-  const runRate = el<HTMLSpanElement>('run-rate');
-  const oversRem = el<HTMLSpanElement>('overs-rem');
-  const crrSep = el<HTMLSpanElement>('crr-sep');
-  crrRow.classList.add('is-override');
-  runRate.classList.add('is-override-line');
-  if (runRate.textContent !== text) {
-    runRate.textContent = text;
-  }
-  oversRem.hidden = true;
-  crrSep.hidden = true;
-  oversRem.textContent = '';
-}
-
-function renderCrrRow(
-  vm: StripViewModel,
-  ctx: MatchContext | null,
-  card: ScorecardResponse,
-  crrMode: StripCrrMode,
-): void {
-  const crrRow = el<HTMLDivElement>('crr-row');
-  const runRate = el<HTMLSpanElement>('run-rate');
-  const oversRem = el<HTMLSpanElement>('overs-rem');
-  const crrSep = el<HTMLSpanElement>('crr-sep');
-
-  if (crrMode === 'toss') {
-    const tossLine = formatTossLine(ctx);
-    if (tossLine) {
-      setCrrOverrideLine(tossLine);
-      return;
-    }
-  }
-
-  if (crrMode === 'chase') {
-    const chaseLine = formatRunsToWinLine(card);
-    if (chaseLine) {
-      setCrrOverrideLine(chaseLine);
-      return;
-    }
-  }
-
-  crrRow.classList.remove('is-override');
-  runRate.classList.remove('is-override-line');
-  setText('run-rate', vm.runRateLine);
-  if (vm.oversRemainingLine) {
-    oversRem.hidden = false;
-    crrSep.hidden = false;
-    if (oversRem.textContent !== vm.oversRemainingLine) {
-      oversRem.textContent = vm.oversRemainingLine;
-    }
-  } else {
-    oversRem.hidden = true;
-    crrSep.hidden = true;
-    oversRem.textContent = '';
-  }
-}
-
-function render(
-  card: ScorecardResponse | null,
-  ctx: MatchContext | null,
-  status: ConnectionStatus,
-  missingMatchId: boolean,
-  crrMode: StripCrrMode,
-  hideStrip = false,
-): void {
-  const wrap = el<HTMLDivElement>('strip-wrap');
-  const idle = el<HTMLDivElement>('idle');
-  const conn = el<HTMLDivElement>('conn');
-  const subtitle = el<HTMLParagraphElement>('subtitle');
-  const power = el<HTMLSpanElement>('power-pill');
-
-  if (missingMatchId) {
-    wrap.hidden = true;
-    idle.hidden = false;
-    idle.textContent = 'Add ?matchId=… to the overlay URL';
-    return;
-  }
-
-  conn.hidden = status !== 'offline' && status !== 'connecting';
-  conn.textContent = status === 'connecting' ? 'Connecting…' : 'Reconnecting…';
-
-  if (!card) {
-    if (wrap.hidden) {
-      idle.hidden = false;
-      idle.textContent = status === 'live' ? 'Waiting for live score…' : 'Connecting…';
-    }
-    return;
-  }
-
-  const vm = buildStripViewModel(card, ctx);
-  if (!vm) {
-    if (wrap.hidden) {
-      idle.hidden = false;
-      idle.textContent = 'Match ready — waiting for innings…';
-    }
-    return;
-  }
-
-  idle.hidden = true;
-  wrap.hidden = hideStrip;
-
-  setLogo('bat-initials', 'bat-logo', vm.batting.initials, vm.batting.logoUrl);
-  setLogo('bowl-initials', 'bowl-logo', vm.bowling.initials, vm.bowling.logoUrl);
-  renderBatters(vm);
-  setText('score-line', vm.scoreLine);
-  renderCrrRow(vm, ctx, card, crrMode);
-  setText('overs-line', vm.oversLine);
-  power.hidden = !vm.showPowerplay;
-
-  // Avoid stacking the same chase/toss info under an overridden CRR row.
-  let subtitleText = vm.subtitle;
-  if (crrMode === 'chase') {
-    subtitleText = null;
-  } else if (crrMode === 'toss') {
-    const tossLine = formatTossLine(ctx);
-    if (tossLine && vm.subtitle === tossLine) {
-      subtitleText = null;
-    }
-  }
-
-  if (subtitleText) {
-    subtitle.hidden = false;
-    if (subtitle.textContent !== subtitleText) {
-      subtitle.textContent = subtitleText;
-    }
-  } else {
-    subtitle.hidden = true;
-    subtitle.textContent = '';
-  }
-
-  setText('bowler-name', vm.bowlerName);
-  setText('bowler-figs', vm.bowlerFigs);
-  setText('bowler-overs', vm.bowlerOvers);
-  renderOverTracker(vm);
-}
-
-function fillCareerCard(
-  playerId: string,
-  card: ScorecardResponse | null,
-  career: BroadcastPlayerStatsView,
-): void {
-  const full = card?.display.players[playerId]?.trim()
-    || `${career.firstName} ${career.lastName}`.trim()
-    || '—';
-  const displayName = full === '—' ? '—' : full.toUpperCase();
-  const initialEl = el<HTMLSpanElement>('bc-name-initial');
-  const surnameEl = el<HTMLSpanElement>('bc-name-surname');
-  const nameRoot = el<HTMLParagraphElement>('bc-name');
-
-  initialEl.textContent = '';
-  surnameEl.textContent = displayName;
-  nameRoot.setAttribute('aria-label', displayName);
-
-  const combined = combineCareerBowlingWithLive(career, card, playerId);
-  setText('bc-matches', String(combined.matches));
-  setText('bc-wickets', String(combined.wickets));
-  setText('bc-avg', formatStat(combined.average, 2));
-  setText('bc-econ', formatStat(combined.economy, 2));
-  setText('bc-best', combined.best);
-}
-
-function start(): void {
+async function start(): Promise<void> {
   const { matchId, apiBase } = queryParams();
+  const root = document.getElementById('root');
+  if (!root) {
+    throw new Error('Missing #root');
+  }
+
+  let themeKey = DEFAULT_OVERLAY_THEME;
+  if (matchId) {
+    themeKey = await fetchMatchOverlayTheme(apiBase, matchId);
+  }
+  const theme = resolveOverlayTheme(themeKey);
+  theme.loadStyles();
+  theme.injectPageMarkup(root);
+  document.title = `ASC Live Overlay — ${theme.label}`;
+
   let latest: ScorecardResponse | null = null;
   let matchCtx: MatchContext | null = null;
   let status: ConnectionStatus = 'connecting';
   let crrMode: StripCrrMode = 'default';
   let ballType: BallType = 'TENNIS';
-  /** Career card on air (strip stays visible underneath). */
   let careerOnAir = false;
-  /** Full innings scorecard — strip is hidden while this graphic is on air. */
   let inningsBreakOnAir = false;
   let careerPlayerId: string | null = null;
   let careerBase: BroadcastPlayerStatsView | null = null;
   let careerToken = 0;
+  let boundariesArmedKey: string | null = null;
+  let boundariesTimer: number | null = null;
   let socket: Socket | null = null;
-  const graphicsStage = createGraphicsStage(el('graphics-stage'), {
+
+  const scoreStrip = theme.createScoreStripHost();
+  const graphicsStage = theme.createGraphicsStage(el('graphics-stage'), {
     apiBase,
     matchId,
     injectMarkup: true,
   });
 
-  const careerWrap = (): HTMLDivElement => el<HTMLDivElement>('career-wrap');
+  const clearBoundariesFlash = (): void => {
+    boundariesArmedKey = null;
+    if (boundariesTimer != null) {
+      window.clearTimeout(boundariesTimer);
+      boundariesTimer = null;
+    }
+    if (crrMode === 'boundaries') {
+      crrMode = 'default';
+    }
+  };
+
+  const armBoundariesFlash = (): void => {
+    crrMode = 'boundaries';
+    boundariesArmedKey = deliveryProgressKey(latest);
+    if (boundariesTimer != null) {
+      window.clearTimeout(boundariesTimer);
+    }
+    boundariesTimer = window.setTimeout(() => {
+      boundariesTimer = null;
+      if (crrMode === 'boundaries') {
+        clearBoundariesFlash();
+        paint();
+      }
+    }, BOUNDARIES_FLASH_MS);
+  };
+
+  const maybeClearBoundariesOnDelivery = (card: ScorecardResponse): void => {
+    if (crrMode !== 'boundaries' || boundariesArmedKey == null) {
+      return;
+    }
+    const nextKey = deliveryProgressKey(card);
+    if (nextKey !== boundariesArmedKey) {
+      clearBoundariesFlash();
+    }
+  };
 
   const paintCareerNumbers = (): void => {
     if (!careerOnAir || !careerPlayerId || !careerBase) {
       return;
     }
-    fillCareerCard(careerPlayerId, latest, careerBase);
+    scoreStrip.fillCareerCard(careerPlayerId, latest, careerBase);
   };
 
   const hideCareerCard = (): void => {
     careerOnAir = false;
     careerPlayerId = null;
     careerBase = null;
-    const node = careerWrap();
-    node.classList.remove('is-visible');
-    window.setTimeout(() => {
+    scoreStrip.hideCareerCard(() => {
       if (!careerOnAir) {
-        node.hidden = true;
+        scoreStrip.careerWrapElement().hidden = true;
       }
     }, CAREER_ANIM_MS);
   };
@@ -355,11 +156,9 @@ function start(): void {
       }
       careerBase = stats;
       careerPlayerId = playerId;
-      fillCareerCard(playerId, latest, stats);
+      scoreStrip.fillCareerCard(playerId, latest, stats);
       careerOnAir = true;
-      const node = careerWrap();
-      node.hidden = false;
-      requestAnimationFrame(() => node.classList.add('is-visible'));
+      scoreStrip.revealCareerCard();
       paint();
     } catch (err) {
       console.warn('[overlay graphics] show bowler career failed', err);
@@ -369,7 +168,14 @@ function start(): void {
   };
 
   const paint = (): void => {
-    render(latest, matchCtx, status, !matchId, crrMode, inningsBreakOnAir);
+    scoreStrip.render({
+      card: latest,
+      ctx: matchCtx,
+      status,
+      missingMatchId: !matchId,
+      crrMode,
+      hideStrip: inningsBreakOnAir,
+    });
     if (careerOnAir) {
       paintCareerNumbers();
     }
@@ -448,6 +254,7 @@ function start(): void {
       return;
     }
     latest = frame.state;
+    maybeClearBoundariesOnDelivery(frame.state);
     graphicsStage.setScorecard(frame.state);
     paint();
   });
@@ -458,6 +265,7 @@ function start(): void {
         return;
       }
       if (cmd.action === 'hide_all') {
+        clearBoundariesFlash();
         crrMode = 'default';
         inningsBreakOnAir = false;
         hideCareerCard();
@@ -497,18 +305,25 @@ function start(): void {
         paint();
         return;
       }
-      // Full-screen stage graphics (batsman, FOW, partnership, …).
+      if (cmd.graphic === 'boundaries') {
+        if (cmd.action === 'show') {
+          armBoundariesFlash();
+          paint();
+        } else if (cmd.action === 'hide') {
+          clearBoundariesFlash();
+          paint();
+        }
+        return;
+      }
       if (cmd.graphic && !isStripOwnedKind(cmd.graphic)) {
         if (cmd.action === 'show' && careerOnAir) {
           hideCareerCard();
         }
-        inningsBreakOnAir =
-          cmd.action === 'show' && cmd.graphic === 'innings_break';
+        inningsBreakOnAir = cmd.action === 'show' && cmd.graphic === 'innings_break';
         graphicsStage.applyCommand(cmd);
         paint();
       }
     } catch (err) {
-      // Graphics must never interrupt the strip's live:state loop.
       console.warn('[overlay graphics] command handler failed', err);
       try {
         graphicsStage.hideAll();
@@ -528,4 +343,4 @@ function start(): void {
   });
 }
 
-start();
+void start();

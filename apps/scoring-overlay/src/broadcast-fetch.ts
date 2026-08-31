@@ -6,6 +6,11 @@ import type {
   ScorecardResponse,
   TossDecision,
 } from './types';
+import {
+  DEFAULT_OVERLAY_THEME,
+  isOverlayThemeKey,
+  type OverlayThemeKey,
+} from './themes/registry';
 
 export async function fetchScorecard(
   apiBase: string,
@@ -44,6 +49,29 @@ export async function fetchMatchBallType(
   }
 }
 
+/** Per-match overlay theme key from match detail (public GET /matches/:id). */
+export async function fetchMatchOverlayTheme(
+  apiBase: string,
+  matchId: string,
+): Promise<OverlayThemeKey> {
+  try {
+    const res = await fetch(`${apiBase}/matches/${encodeURIComponent(matchId)}`, {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+    });
+    if (!res.ok) {
+      return DEFAULT_OVERLAY_THEME;
+    }
+    const body = (await res.json()) as { overlayTheme?: string | null };
+    if (body.overlayTheme != null && isOverlayThemeKey(body.overlayTheme)) {
+      return body.overlayTheme;
+    }
+  } catch {
+    // Fall back to default registered theme.
+  }
+  return DEFAULT_OVERLAY_THEME;
+}
+
 /** Public match detail + tournament team logos (presigned). */
 export async function fetchMatchContext(
   apiBase: string,
@@ -68,6 +96,7 @@ export async function fetchMatchContext(
       tossDecision?: TossDecision | null;
       powerplayOvers?: number | null;
       resultNote?: string | null;
+      overlayTheme?: string | null;
       squads?: Array<{
         teamId?: string;
         players?: Array<{
@@ -122,6 +151,10 @@ export async function fetchMatchContext(
           ? body.powerplayOvers
           : null,
       resultNote: body.resultNote ?? null,
+      overlayTheme:
+        body.overlayTheme != null && isOverlayThemeKey(body.overlayTheme)
+          ? body.overlayTheme
+          : DEFAULT_OVERLAY_THEME,
       logosByTeamId,
       squads: (body.squads ?? [])
         .map((squad) => {

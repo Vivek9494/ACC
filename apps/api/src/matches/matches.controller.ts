@@ -41,6 +41,7 @@ import { StartMatchSetupDto } from './dto/start-match-setup.dto';
 import { TransitionMatchStateDto } from './dto/transition-match-state.dto';
 import { DelayMatchDto } from './dto/delay-match.dto';
 import { UpdateMatchDto } from './dto/update-match.dto';
+import { UpdateMatchOverlayThemeDto } from './dto/update-match-overlay-theme.dto';
 import { MatchesService } from './matches.service';
 
 /** Match setup endpoints (spec §5.2, §11). */
@@ -87,6 +88,17 @@ export class MatchesController {
     @Body() dto: UpdateMatchDto,
   ): Promise<MatchDetail> {
     return this.matches.update(user, matchId, dto);
+  }
+
+  @Patch('matches/:matchId/overlay-theme')
+  @RequirePermission(Permission.SCORE_BALL)
+  @UseGuards(PermissionGuard)
+  updateOverlayTheme(
+    @CurrentUser() user: AuthUser,
+    @Param('matchId') matchId: string,
+    @Body() dto: UpdateMatchOverlayThemeDto,
+  ): Promise<MatchDetail> {
+    return this.matches.updateOverlayTheme(user, matchId, dto.overlayTheme);
   }
 
   @Delete('matches/:matchId')

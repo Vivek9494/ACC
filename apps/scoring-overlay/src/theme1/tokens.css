@@ -1,0 +1,81 @@
+/**
+ * Theme 1 — locked design tokens (ASC navy / black, static).
+ * Every Theme 1 graphic imports this module. Do not duplicate per-graphic.
+ * Source: asc-theme1-starter.html + asc-theme1-catalog.html
+ */
+@import url('https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@700;800&display=swap');
+
+:root {
+  --t1-primary: #1a4d8f;
+  --t1-primary-dk: #143a6b;
+  --t1-primary-lt: #2c63aa;
+  --t1-ink: #0e1116;
+  --t1-ink-2: #23262c;
+  --t1-panel-light: #eef1f4;
+  --t1-row: #e9edf1;
+  --t1-row-alt: #f4f6f8;
+  --t1-row-hi: #dbe6f4;
+  --t1-white: #ffffff;
+  --t1-dim: #7c8794;
+  --t1-line: #cfd6dd;
+  --t1-num: #12325c;
+  --t1-strike: #ffd23c;
+  --t1-cond: 'Roboto Condensed', 'Arial Narrow', 'Oswald', system-ui, sans-serif;
+  --t1-sans: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  /* Checkerboard texture over primary fills */
+  --t1-checker:
+    linear-gradient(
+      45deg,
+      rgba(255, 255, 255, 0.05) 25%,
+      transparent 25%,
+      transparent 75%,
+      rgba(255, 255, 255, 0.05) 75%
+    ),
+    linear-gradient(
+      45deg,
+      rgba(255, 255, 255, 0.05) 25%,
+      transparent 25%,
+      transparent 75%,
+      rgba(255, 255, 255, 0.05) 75%
+    );
+
+  /* OBS canvas / lower-third geometry (shared by strip + floating cards) */
+  --strip-bottom-inset: 28px;
+  --strip-height: 100px;
+  --t1-notch-width: min(320px, 22vw);
+  /** Half notch + gap — keep side-panel figures clear of the center notch. */
+  --t1-notch-clearance: calc(var(--t1-notch-width) / 2 + 20px);
+  /** Fixed strike-arrow slot before batter names (both rows share this width). */
+  --t1-strike-slot: 22px;
+  --graphics-above-strip-gap: 20px;
+  --graphics-bottom-offset: calc(
+    var(--strip-bottom-inset) + var(--strip-height) + var(--graphics-above-strip-gap)
+  );
+}
+
+.t1-checker {
+  background-image: var(--t1-checker);
+  background-size: 14px 14px;
+  background-position: 0 0, 7px 7px;
+}
+
+.t1-anglebar {
+  position: relative;
+  background: var(--t1-primary);
+}
+
+.t1-anglebar.t1-checker {
+  background-color: var(--t1-primary);
+}
+
+.t1-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--t1-ink);
+  color: var(--t1-white);
+  font-family: var(--t1-cond);
+  font-weight: 800;
+  border-radius: 999px;
+  letter-spacing: 1px;
+}

@@ -32,10 +32,12 @@ export type GraphicsKind =
   | 'innings_break'
   | 'toss'
   | 'chase'
+  | 'boundaries'
   | 'bowler_career'
   | 'batsman_career'
   | 'toss_result'
   | 'playing_xi'
+  | 'wagon_wheel'
   | 'hello';
 
 export interface GraphicsCommandMessage {
@@ -50,6 +52,8 @@ export interface GraphicsCommandMessage {
     source?: ScorecardViewSource;
     teamId?: string | null;
     variant?: 'both' | 'single' | 'lineup';
+    subject?: 'team' | string;
+    filter?: '4s' | '6s' | '4s6s' | 'all';
   };
 }
 

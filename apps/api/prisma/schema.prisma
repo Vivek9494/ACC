@@ -852,6 +852,9 @@ model Match {
   /// Per-match stream URL (§22).
   youtubeUrl String?
 
+  /// Broadcast overlay theme key (`apps/scoring-overlay` registry). Per-match.
+  overlayTheme String @default("theme1")
+
   /// Original and DLS-revised targets shown together on the scorecard (§12.1).
   originalTarget Int?
   dlsTarget      Int?

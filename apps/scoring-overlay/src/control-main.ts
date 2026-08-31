@@ -53,7 +53,7 @@ import type { Socket } from 'socket.io-client';
 const TEAM_SIDES: TeamSide[] = ['a', 'b'];
 
 const COMMON_LABELS: Record<
-  Exclude<GraphicsKind, 'hello' | 'toss' | 'chase' | 'partnership'>,
+  Exclude<GraphicsKind, 'hello' | 'toss' | 'chase' | 'boundaries' | 'partnership'>,
   string
 > = {
   fow: 'Last Wicket',
@@ -64,6 +64,7 @@ const COMMON_LABELS: Record<
   innings_break: 'Innings break',
   toss_result: 'Toss Result',
   playing_xi: 'Playing XI',
+  wagon_wheel: 'Wagon Wheel',
 };
 
 const TEAM_ACTION_LABELS: Record<TeamControlAction, string> = {

@@ -139,6 +139,7 @@ import {
   type StartInningsRequest,
   type UndoDeliveryRequest,
   type UpdateMatchRequest,
+  type UpdateMatchOverlayThemeRequest,
   type UpdateOversAllottedRequest,
   type RegistrationDetail,
   type RegistrationFieldDefinition,
@@ -366,7 +367,7 @@ function isRefreshTerminalFailure(status: number, error: ApiError): boolean {
 let refreshInFlight: Promise<boolean> | null = null;
 let hydrateInFlight: Promise<void> | null = null;
 
-/** Load access token from SecureStore into memory when the in-memory copy is empty. */
+/** Load access token from SecureStore/localStorage into memory when empty. */
 async function hydrateAuthTokenFromStorage(): Promise<void> {
   if (authToken) {
     return;
@@ -394,6 +395,7 @@ async function refreshAccessTokenOnce(): Promise<boolean> {
     const tokens = await apiFetchInternal<AuthTokens>('/auth/refresh', {
       method: 'POST',
       body: { refreshToken: stored.refreshToken } satisfies RefreshRequest,
+      skipAuthHeader: true,
       skipAuthRetry: true,
     });
     await saveTokens(tokens);
@@ -461,18 +463,23 @@ async function apiFetchInternal<T>(path: string, options: InternalRequestOptions
     ...rest
   } = options;
 
-  if (!skipAuthHeader) {
-    await hydrateAuthTokenFromStorage();
-  }
-
   const finalHeaders: Record<string, string> = {
     'Content-Type': 'application/json',
     Accept: 'application/json',
     ...(headers as Record<string, string> | undefined),
   };
 
-  if (authToken && !skipAuthHeader) {
-    finalHeaders.Authorization = `Bearer ${authToken}`;
+  if (!skipAuthHeader) {
+    const token = await resolveAuthTokenForRequest();
+    if (token) {
+      finalHeaders.Authorization = `Bearer ${token}`;
+    } else if (
+      !optionalAuth &&
+      !AUTH_NO_RETRY_PREFIXES.some((prefix) => path.startsWith(prefix))
+    ) {
+      // Protected routes must never go out without Authorization (opaque 401s).
+      return forceSessionLogout();
+    }
   }
 
   const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -1660,6 +1667,13 @@ export function updateMatch(matchId: string, body: UpdateMatchRequest): Promise<
   return apiFetch<MatchDetail>(`/matches/${matchId}`, { method: 'PATCH', body });
 }
 
+export function updateMatchOverlayTheme(
+  matchId: string,
+  body: UpdateMatchOverlayThemeRequest,
+): Promise<MatchDetail> {
+  return apiFetch<MatchDetail>(`/matches/${matchId}/overlay-theme`, { method: 'PATCH', body });
+}
+
 export function deleteMatch(matchId: string): Promise<void> {
   return apiFetch<void>(`/matches/${matchId}`, { method: 'DELETE' });
 }
@@ -1931,6 +1945,18 @@ export function endInnings(
     method: 'POST',
     body,
   });
+}
+
+/** Persist or clear per-ball shot placement on an existing delivery. */
+export function setDeliveryShotPlacement(
+  matchId: string,
+  inningsId: string,
+  body: import('@acc/types').SetDeliveryShotPlacementRequest,
+): Promise<ScorecardResponse> {
+  return apiFetch<ScorecardResponse>(
+    `/matches/${matchId}/innings/${inningsId}/deliveries/shot-placement`,
+    { method: 'PATCH', body },
+  );
 }
 
 /** Persist or clear per-ball shot placement on an existing delivery. */

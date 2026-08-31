@@ -42,6 +42,10 @@ export interface BowlerPickerRowProps {
   onEdit?: (row: BowlerPickerPlayerRow) => void;
 }
 
+/**
+ * Row + optional edit control are siblings (not nested buttons). Card is a non-pressable
+ * shell so react-native-web does not nest &lt;button&gt; inside &lt;button&gt;.
+ */
 export function BowlerPickerRow({
   row,
   selectedBowlerId = null,
@@ -56,8 +60,6 @@ export function BowlerPickerRow({
 
   return (
     <Card
-      onPress={disabled ? undefined : () => onPress(row.userId)}
-      disabled={disabled}
       className={[
         'flex-row items-center gap-3 rounded-control',
         highlighted ? 'border-2 border-primary bg-primary-container' : 'border border-outline-variant',
@@ -66,38 +68,44 @@ export function BowlerPickerRow({
         .filter(Boolean)
         .join(' ')}
     >
-      <PlayerAvatar
-        firstName={row.firstName}
-        profilePhotoUrl={row.profilePhotoUrl}
-        size="md"
-        highlighted={highlighted}
-      />
-      <View className="min-w-0 flex-1">
-        <Text className="font-sans-bold text-base text-on-surface">
-          {row.firstName} {row.lastName}
-        </Text>
-        <Text className="mt-0.5 font-sans text-sm text-on-surface-variant">
-          {typeAndFiguresLine(row)}
-        </Text>
-        {disabled && row.ineligibilityHint ? (
-          <Text className="mt-0.5 font-sans-semibold text-xs text-primary">
-            {row.ineligibilityHint}
+      <Pressable
+        onPress={disabled ? undefined : () => onPress(row.userId)}
+        disabled={disabled}
+        accessibilityRole="button"
+        accessibilityLabel={`Select ${row.firstName} ${row.lastName}`}
+        className="min-w-0 flex-1 flex-row items-center gap-3 active:opacity-90"
+      >
+        <PlayerAvatar
+          firstName={row.firstName}
+          profilePhotoUrl={row.profilePhotoUrl}
+          size="md"
+          highlighted={highlighted}
+        />
+        <View className="min-w-0 flex-1">
+          <Text className="font-sans-bold text-base text-on-surface">
+            {row.firstName} {row.lastName}
           </Text>
-        ) : null}
-      </View>
-      <View className="shrink-0 flex-row items-center gap-1">
-        {showEdit ? (
-          <Pressable
-            onPress={() => onEdit(row)}
-            accessibilityRole="button"
-            accessibilityLabel="Edit player name"
-            className="h-10 w-10 items-center justify-center active:opacity-70"
-          >
-            <MaterialIcons name="edit" size={22} color={FIELD_ORANGE} />
-          </Pressable>
-        ) : null}
+          <Text className="mt-0.5 font-sans text-sm text-on-surface-variant">
+            {typeAndFiguresLine(row)}
+          </Text>
+          {disabled && row.ineligibilityHint ? (
+            <Text className="mt-0.5 font-sans-semibold text-xs text-primary">
+              {row.ineligibilityHint}
+            </Text>
+          ) : null}
+        </View>
         <SelectionIndicator selected={selected} selectable={row.selectable} />
-      </View>
+      </Pressable>
+      {showEdit ? (
+        <Pressable
+          onPress={() => onEdit(row)}
+          accessibilityRole="button"
+          accessibilityLabel="Edit player name"
+          className="h-10 w-10 shrink-0 items-center justify-center active:opacity-70"
+        >
+          <MaterialIcons name="edit" size={22} color={FIELD_ORANGE} />
+        </Pressable>
+      ) : null}
     </Card>
   );
 }

@@ -223,6 +223,7 @@ function matchRow(overrides: Record<string, unknown> = {}): Record<string, unkno
     groundLocation: null,
     homeAway: null,
     youtubeUrl: null,
+    overlayTheme: 'theme1',
     tossWinner: null,
     tossDecision: null,
     homeTeam: { name: 'Home' },

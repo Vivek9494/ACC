@@ -16,7 +16,7 @@ import { useScoringKeyboardShortcuts } from '../../../hooks/useScoringKeyboardSh
 import { useLiveScore } from '../../../lib/live-socket';
 import { Text } from '../../ui/Text';
 import { BallByBallPanel } from './BallByBallPanel';
-import { FieldingAnalysisPanel } from './FieldingAnalysisPanel';
+import { OverlayControlPanel } from './OverlayControlPanel';
 import { OverlayScoreboardPanel } from './OverlayScoreboardPanel';
 import { ScorecardDockPanel } from './ScorecardDockPanel';
 import { ScoreSummaryPanel } from './ScoreSummaryPanel';
@@ -26,7 +26,7 @@ import { WagonWheelPanel } from './WagonWheelPanel';
 /**
  * Mockup v6 structure (theme unchanged):
  * Top: natural height from left stack; columns 40:30:30 (Summary : Ball-by-Ball : Scoreboard).
- * Bottom: Fielding : Wagon Wheel : Scorecard at 10:30:60.
+ * Bottom: Overlay Control : Wagon Wheel : Scorecard at 40:20:40.
  */
 const COCKPIT_ROOT: ViewStyle = {
   flex: 1,
@@ -87,7 +87,7 @@ const BOTTOM_BAND: ViewStyle = {
   alignItems: 'stretch',
 } as ViewStyle;
 
-const FIELDING_COL: ViewStyle = {
+const OVERLAY_CONTROL_COL: ViewStyle = {
   minWidth: 0,
   minHeight: 0,
   display: 'flex',
@@ -167,7 +167,7 @@ export function ScoringCockpit({
   nonStrikerCard,
   bowlerCard,
   battingXi,
-  bowlingXi,
+  bowlingXi: _bowlingXi,
   keypadDisabled,
   keyboardEnabled,
   error,
@@ -238,6 +238,8 @@ export function ScoringCockpit({
               onSelectStriker={onSelectStriker}
               onSelectNonStriker={onSelectNonStriker}
               onSelectBowler={onSelectBowler}
+              onUndo={onUndo}
+              working={working}
             />
             <ScoringInputPanel
               disabled={keypadDisabled}
@@ -262,8 +264,14 @@ export function ScoringCockpit({
         </View>
 
         <View style={BOTTOM_BAND}>
-          <View style={FIELDING_COL}>
-            <FieldingAnalysisPanel bowlingXi={bowlingXi} nameOf={nameOf} />
+          <View style={OVERLAY_CONTROL_COL}>
+            <OverlayControlPanel
+              matchId={matchId}
+              match={match}
+              card={live.state ?? card}
+              innings={innings}
+              nameOf={nameOf}
+            />
           </View>
           <View style={WAGON_COL}>
             <WagonWheelPanel

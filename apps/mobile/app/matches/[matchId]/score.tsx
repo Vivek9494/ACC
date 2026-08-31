@@ -49,6 +49,10 @@ import { LiveScoringPlayerCards } from '../../../src/components/scoring/LiveScor
 import { LiveScoringScorecardTab } from '../../../src/components/scoring/LiveScoringScorecardTab';
 import { ScoringCockpit } from '../../../src/components/scoring/cockpit/ScoringCockpit';
 import {
+  CockpitSettingsHeaderButton,
+  CockpitSettingsModal,
+} from '../../../src/components/scoring/cockpit/CockpitSettingsModal';
+import {
   ConfirmNextBowlerDialog,
   EndOverConfirmDialog,
   upcomingOverNumber,
@@ -106,6 +110,17 @@ const SCORING_VIEW_TAB_OPTIONS = [
 
 function incomingBatterAutoPromptKey(live: InningsScorecard): string {
   return `${live.legalBalls}:${live.wickets}:${live.currentStrikerId ?? ''}:${live.currentNonStrikerId ?? ''}`;
+}
+
+/** Delivery types that consume a legal ball (count toward the over) — matches engine fold. */
+function deliveryCountsAsLegalBall(
+  body: Omit<RecordDeliveryRequest, 'expectedVersion'>,
+): boolean {
+  return (
+    body.type === DeliveryType.Legal ||
+    body.type === DeliveryType.Bye ||
+    body.type === DeliveryType.LegBye
+  );
 }
 
 /** Delivery types that consume a legal ball (count toward the over) — matches engine fold. */
@@ -294,6 +309,7 @@ export default function LiveScoringScreen(): React.ReactElement {
   const [showNoBall, setShowNoBall] = useState(false);
   const [showCatchDrop, setShowCatchDrop] = useState(false);
   const [showMore, setShowMore] = useState(false);
+  const [showCockpitSettings, setShowCockpitSettings] = useState(false);
   const [moreAction, setMoreAction] = useState<MoreOptionsAction | null>(null);
   const [showChangeTargetBlocked, setShowChangeTargetBlocked] = useState(false);
   const [showEndInningsConfirm, setShowEndInningsConfirm] = useState(false);
@@ -1397,10 +1413,16 @@ export default function LiveScoringScreen(): React.ReactElement {
     showByes ||
     showBonus ||
     showMore ||
+    showCockpitSettings ||
     showCatchDrop ||
     showEndInningsConfirm ||
     endOverStep != null ||
     moreAction != null;
+
+  const cockpitHeaderTrailing =
+    useCockpit && inn ? (
+      <CockpitSettingsHeaderButton onPress={() => setShowCockpitSettings(true)} />
+    ) : undefined;
 
   const scoringViewToggle =
     inn != null ? (
@@ -1418,7 +1440,7 @@ export default function LiveScoringScreen(): React.ReactElement {
       <ScreenHeader
         compact
         showProfileMenu={false}
-        trailing={useCockpit && inn ? undefined : scoringViewToggle}
+        trailing={cockpitHeaderTrailing ?? scoringViewToggle}
       />
       {useCockpit && inn && match && matchId ? (
         <ScoringCockpit
@@ -1763,6 +1785,16 @@ export default function LiveScoringScreen(): React.ReactElement {
         visible={showMore}
         onCancel={() => setShowMore(false)}
         onSelect={handleMoreSelect}
+      />
+
+      <CockpitSettingsModal
+        visible={showCockpitSettings}
+        matchId={matchId}
+        overlayTheme={match?.overlayTheme ?? 'theme1'}
+        onClose={() => setShowCockpitSettings(false)}
+        onThemeSaved={(overlayTheme) => {
+          setMatch((prev) => (prev ? { ...prev, overlayTheme } : prev));
+        }}
       />
 
       <ChangeTargetBlockedDialog

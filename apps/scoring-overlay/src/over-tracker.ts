@@ -1,6 +1,9 @@
 /**
  * Derive this-over ball markers from recentOvers / timeline.
- * All deliveries in one row, chronological order (legal + extras interleaved).
+ * Same rule as cockpit Play Control "This Over":
+ * - Show every delivery in the current over in order (legal + wd/nb interleaved).
+ * - Wides/no-balls add a circle but do not count toward the 6 legal balls
+ *   (oversText / legalBalls advance separately on the scorecard).
  * Not padded to a fixed 6 slots.
  */
 
