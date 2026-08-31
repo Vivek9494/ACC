@@ -259,7 +259,7 @@ export function ScoringCockpit({
             <BallByBallPanel innings={innings} nameOf={nameOf} />
           </View>
           <View style={SCOREBOARD_COL}>
-            <OverlayScoreboardPanel matchId={matchId} />
+            <OverlayScoreboardPanel youtubeUrl={match.youtubeUrl} />
           </View>
         </View>
 

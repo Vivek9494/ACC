@@ -281,6 +281,11 @@ export interface CreateMatchRequest {
 /** Update an upcoming match fixture — same fields as create (§11). */
 export type UpdateMatchRequest = CreateMatchRequest;
 
+/** Cockpit settings — per-match YouTube Live monitor URL (Main Scoreboard). */
+export interface UpdateMatchYoutubeUrlRequest {
+  youtubeUrl: string | null;
+}
+
 /** Lock a team's Playing 11 + substitutes (+ impact candidates) — §9.7, §8. */
 export interface LockPlayingXiRequest {
   teamId: string;

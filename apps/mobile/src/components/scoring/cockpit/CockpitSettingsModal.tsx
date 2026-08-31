@@ -2,23 +2,27 @@ import { Ionicons } from '@expo/vector-icons';
 import {
   DEFAULT_OVERLAY_THEME,
   OVERLAY_THEME_CATALOG,
+  parseYoutubeVideoId,
   type OverlayThemeKey,
 } from '@acc/types';
 import { useEffect, useState } from 'react';
 import { Modal, Pressable, View } from 'react-native';
 
-import { updateMatchOverlayTheme } from '../../../lib/api';
+import { updateMatchOverlayTheme, updateMatchYoutubeUrl } from '../../../lib/api';
 import { Button } from '../../ui/Button';
 import { Select } from '../../ui/Select';
 import { Text } from '../../ui/Text';
+import { TextInput } from '../../ui/TextInput';
 import { FIELD_ORANGE, INPUT_SHADOW_STYLE } from '../../ui/fieldStyles';
 
 export interface CockpitSettingsModalProps {
   visible: boolean;
   matchId: string;
   overlayTheme: OverlayThemeKey;
+  youtubeUrl: string | null;
   onClose: () => void;
   onThemeSaved: (overlayTheme: OverlayThemeKey) => void;
+  onYoutubeUrlSaved: (youtubeUrl: string | null) => void;
 }
 
 /** Header gear — matches ScreenHeader back arrow size/colour. */
@@ -43,42 +47,93 @@ export function CockpitSettingsModal({
   visible,
   matchId,
   overlayTheme,
+  youtubeUrl,
   onClose,
   onThemeSaved,
+  onYoutubeUrlSaved,
 }: CockpitSettingsModalProps): React.ReactElement {
   const [selectedTheme, setSelectedTheme] = useState<OverlayThemeKey>(
     overlayTheme ?? DEFAULT_OVERLAY_THEME,
   );
+  const [youtubeInput, setYoutubeInput] = useState(youtubeUrl ?? '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [youtubeError, setYoutubeError] = useState<string | undefined>();
 
   useEffect(() => {
     if (visible) {
       setSelectedTheme(overlayTheme ?? DEFAULT_OVERLAY_THEME);
+      setYoutubeInput(youtubeUrl ?? '');
       setError(null);
+      setYoutubeError(undefined);
     }
-  }, [visible, overlayTheme]);
+  }, [visible, overlayTheme, youtubeUrl]);
 
   const themeOptions = OVERLAY_THEME_CATALOG.map((entry) => ({
     value: entry.key,
     label: entry.label,
   }));
 
-  const dirty = selectedTheme !== (overlayTheme ?? DEFAULT_OVERLAY_THEME);
+  const themeDirty = selectedTheme !== (overlayTheme ?? DEFAULT_OVERLAY_THEME);
+  const normalizedYoutube = youtubeInput.trim();
+  const savedYoutube = youtubeUrl?.trim() ?? '';
+  const youtubeDirty = normalizedYoutube !== savedYoutube;
+  const dirty = themeDirty || youtubeDirty;
+
+  function validateYoutubeInput(value: string): string | undefined {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return undefined;
+    }
+    if (parseYoutubeVideoId(trimmed) == null) {
+      return 'Enter a valid YouTube watch, youtu.be, or live URL';
+    }
+    return undefined;
+  }
+
+  function onYoutubeChange(text: string): void {
+    setYoutubeInput(text);
+    if (youtubeError !== undefined) {
+      setYoutubeError(validateYoutubeInput(text));
+    }
+  }
 
   async function handleSave(): Promise<void> {
-    if (!dirty || saving) {
+    if (!dirty) {
       onClose();
       return;
     }
+
+    const nextYoutubeError = validateYoutubeInput(youtubeInput);
+    if (nextYoutubeError) {
+      setYoutubeError(nextYoutubeError);
+      return;
+    }
+
     setSaving(true);
     setError(null);
     try {
-      const updated = await updateMatchOverlayTheme(matchId, { overlayTheme: selectedTheme });
-      onThemeSaved(updated.overlayTheme);
+      const tasks: Promise<void>[] = [];
+      if (themeDirty) {
+        tasks.push(
+          updateMatchOverlayTheme(matchId, { overlayTheme: selectedTheme }).then((updated) => {
+            onThemeSaved(updated.overlayTheme);
+          }),
+        );
+      }
+      if (youtubeDirty) {
+        tasks.push(
+          updateMatchYoutubeUrl(matchId, {
+            youtubeUrl: normalizedYoutube.length > 0 ? normalizedYoutube : null,
+          }).then((updated) => {
+            onYoutubeUrlSaved(updated.youtubeUrl);
+          }),
+        );
+      }
+      await Promise.all(tasks);
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not save overlay theme.');
+      setError(err instanceof Error ? err.message : 'Could not save settings.');
     } finally {
       setSaving(false);
     }
@@ -113,9 +168,24 @@ export function CockpitSettingsModal({
               disabled={saving}
             />
             <Text className="font-sans text-xs text-on-surface-variant">
-              Per-match broadcast overlay look. The overlay page for this match uses the selected
-              theme.
+              Per-match broadcast overlay look for OBS (Theme 1 score strip, etc.).
             </Text>
+
+            <TextInput
+              label="YouTube Live URL"
+              value={youtubeInput}
+              onChangeText={onYoutubeChange}
+              placeholder="https://youtube.com/watch?v=… or youtu.be/…"
+              autoCapitalize="none"
+              autoCorrect={false}
+              error={youtubeError}
+              editable={!saving}
+            />
+            <Text className="font-sans text-xs text-on-surface-variant">
+              Main Scoreboard panel embeds this stream (muted autoplay). Expect ~10–30s broadcast
+              delay vs live scoring. Saved per match.
+            </Text>
+
             {error ? (
               <Text className="font-sans text-sm text-primary">{error}</Text>
             ) : null}

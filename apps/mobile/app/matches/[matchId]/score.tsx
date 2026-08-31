@@ -1780,9 +1780,13 @@ export default function LiveScoringScreen(): React.ReactElement {
         visible={showCockpitSettings}
         matchId={matchId}
         overlayTheme={match?.overlayTheme ?? 'theme1'}
+        youtubeUrl={match?.youtubeUrl ?? null}
         onClose={() => setShowCockpitSettings(false)}
         onThemeSaved={(overlayTheme) => {
           setMatch((prev) => (prev ? { ...prev, overlayTheme } : prev));
+        }}
+        onYoutubeUrlSaved={(youtubeUrl) => {
+          setMatch((prev) => (prev ? { ...prev, youtubeUrl } : prev));
         }}
       />
 

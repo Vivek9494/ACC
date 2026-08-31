@@ -35,6 +35,7 @@ import {
   DEFAULT_OVERLAY_THEME,
   isOverlayThemeKey,
   type OverlayThemeKey,
+  parseYoutubeVideoId,
   canAssignTeamRoles,
   canViewAdminUsersDirectory,
   formatUtcIsoDate,
@@ -687,6 +688,28 @@ export class MatchesService {
     await this.prisma.match.update({
       where: { id: matchId },
       data: { overlayTheme },
+    });
+    return this.getDetail(matchId, actor);
+  }
+
+  /** Per-match YouTube Live URL for cockpit Main Scoreboard monitor (scorer during live). */
+  async updateYoutubeUrl(
+    actor: AuthUser,
+    matchId: string,
+    youtubeUrl: string | null,
+  ): Promise<MatchDetail> {
+    await this.requireMatchRow(matchId);
+    const trimmed = youtubeUrl?.trim() ?? '';
+    if (trimmed.length > 0 && parseYoutubeVideoId(trimmed) == null) {
+      throw new BadRequestException({
+        message: 'Enter a valid YouTube URL or video id',
+        error: 'INVALID_YOUTUBE_URL',
+        fields: { youtubeUrl: 'Use youtube.com/watch, youtu.be, or youtube.com/live links' },
+      });
+    }
+    await this.prisma.match.update({
+      where: { id: matchId },
+      data: { youtubeUrl: trimmed.length > 0 ? trimmed : null },
     });
     return this.getDetail(matchId, actor);
   }

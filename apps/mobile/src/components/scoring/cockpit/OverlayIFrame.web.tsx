@@ -9,7 +9,7 @@ type EmbedState = 'loading' | 'ready' | 'unavailable';
 
 const LOAD_TIMEOUT_MS = 12_000;
 
-/** Web: embed the existing scoring-overlay page. */
+/** Web: embed the existing scoring-overlay page (OBS overlay link preview). */
 export function OverlayIFrame({
   src,
   matchId,
@@ -22,7 +22,7 @@ export function OverlayIFrame({
   const loadTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    const resolved = matchId != null ? overlayScoreboardUrl(matchId) : src;
+    const resolved = matchId != null ? overlayScoreboardUrl(matchId) : src ?? null;
     if (resolved == null) {
       setEmbedSrc(null);
       setState('unavailable');
@@ -63,18 +63,21 @@ export function OverlayIFrame({
     );
   }
 
+  const loadingOverlay =
+    state === 'loading' ? (
+      <View
+        className="absolute inset-0 z-10 items-center justify-center px-4"
+        pointerEvents="none"
+      >
+        <Text className="text-center font-sans text-xs text-text-inverse/60">
+          Loading overlay…
+        </Text>
+      </View>
+    ) : null;
+
   return (
     <View className="relative flex-1" style={{ flex: 1, minHeight: 0 }}>
-      {state === 'loading' ? (
-        <View
-          className="absolute inset-0 z-10 items-center justify-center px-4"
-          pointerEvents="none"
-        >
-          <Text className="text-center font-sans text-xs text-text-inverse/60">
-            Loading overlay…
-          </Text>
-        </View>
-      ) : null}
+      {loadingOverlay}
       {createElement('iframe', {
         src: embedSrc,
         title: 'Live scoreboard overlay',

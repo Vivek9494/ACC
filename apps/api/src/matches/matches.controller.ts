@@ -42,6 +42,7 @@ import { TransitionMatchStateDto } from './dto/transition-match-state.dto';
 import { DelayMatchDto } from './dto/delay-match.dto';
 import { UpdateMatchDto } from './dto/update-match.dto';
 import { UpdateMatchOverlayThemeDto } from './dto/update-match-overlay-theme.dto';
+import { UpdateMatchYoutubeUrlDto } from './dto/update-match-youtube-url.dto';
 import { MatchesService } from './matches.service';
 
 /** Match setup endpoints (spec §5.2, §11). */
@@ -99,6 +100,17 @@ export class MatchesController {
     @Body() dto: UpdateMatchOverlayThemeDto,
   ): Promise<MatchDetail> {
     return this.matches.updateOverlayTheme(user, matchId, dto.overlayTheme);
+  }
+
+  @Patch('matches/:matchId/youtube-url')
+  @RequirePermission(Permission.SCORE_BALL)
+  @UseGuards(PermissionGuard)
+  updateYoutubeUrl(
+    @CurrentUser() user: AuthUser,
+    @Param('matchId') matchId: string,
+    @Body() dto: UpdateMatchYoutubeUrlDto,
+  ): Promise<MatchDetail> {
+    return this.matches.updateYoutubeUrl(user, matchId, dto.youtubeUrl);
   }
 
   @Delete('matches/:matchId')

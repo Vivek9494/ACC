@@ -140,6 +140,7 @@ import {
   type UndoDeliveryRequest,
   type UpdateMatchRequest,
   type UpdateMatchOverlayThemeRequest,
+  type UpdateMatchYoutubeUrlRequest,
   type UpdateOversAllottedRequest,
   type RegistrationDetail,
   type RegistrationFieldDefinition,
@@ -1699,6 +1700,13 @@ export function updateMatchOverlayTheme(
   body: UpdateMatchOverlayThemeRequest,
 ): Promise<MatchDetail> {
   return apiFetch<MatchDetail>(`/matches/${matchId}/overlay-theme`, { method: 'PATCH', body });
+}
+
+export function updateMatchYoutubeUrl(
+  matchId: string,
+  body: UpdateMatchYoutubeUrlRequest,
+): Promise<MatchDetail> {
+  return apiFetch<MatchDetail>(`/matches/${matchId}/youtube-url`, { method: 'PATCH', body });
 }
 
 export function deleteMatch(matchId: string): Promise<void> {
