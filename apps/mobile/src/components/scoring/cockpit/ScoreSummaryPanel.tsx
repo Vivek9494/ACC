@@ -124,9 +124,28 @@ const ROW: ViewStyle = {
   minHeight: 33,
 };
 
-const ROW_RIGHT: ViewStyle = {
+const LABEL_DROPDOWN_GAP = 5;
+
+/** Rows with a fixed label column + 5px before the control (batters, bowler, etc.). */
+const ROW_LABEL_GAP: ViewStyle = {
   ...ROW,
-  gap: 2,
+  gap: LABEL_DROPDOWN_GAP,
+};
+
+const BOWLER_STAT_LABELS = ['O', 'M', 'R', 'W', 'Eco', 'Wd', 'NB'] as const;
+const BOWLER_FIGURES_GRID: ViewStyle = {
+  display: 'grid' as unknown as ViewStyle['display'],
+  gridTemplateColumns: '36px 24px 32px 24px 44px 24px 24px',
+  columnGap: 2,
+  flexShrink: 0,
+  alignItems: 'center',
+} as ViewStyle;
+
+const BOWLER_FIGURES_HEADER_ROW: ViewStyle = {
+  ...ROW_LABEL_GAP,
+  minHeight: 18,
+  paddingBottom: 0,
+  marginBottom: -6,
 };
 
 const HEADER_BAND: ViewStyle = {
