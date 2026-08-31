@@ -46,7 +46,17 @@ const ANIM_MS = 280;
 export type StripOwnedKind = 'toss' | 'chase' | 'boundaries' | 'bowler_career';
 /** Known command kinds with no stage panel yet (control may still emit). */
 export type PendingOverlayKind = 'wagon_wheel';
-export type OverlayKind = Exclude<GraphicsKind, StripOwnedKind | PendingOverlayKind>;
+/** Tournament aggregates — handled by Theme 1 tournament graphics module. */
+export type TournamentOverlayKind =
+  | 'points_table'
+  | 'tournament_top_batsmen'
+  | 'tournament_top_bowlers'
+  | 'tournament_fours'
+  | 'tournament_sixes';
+export type OverlayKind = Exclude<
+  GraphicsKind,
+  StripOwnedKind | PendingOverlayKind | TournamentOverlayKind
+>;
 
 const GRAPHIC_IDS: Record<OverlayKind, string> = {
   partnership: 'g-partnership',
@@ -71,6 +81,16 @@ export function isStripOwnedKind(kind: GraphicsKind): kind is StripOwnedKind {
 
 export function isPendingOverlayKind(kind: GraphicsKind): kind is PendingOverlayKind {
   return kind === 'wagon_wheel';
+}
+
+export function isTournamentOverlayKind(kind: GraphicsKind): kind is TournamentOverlayKind {
+  return (
+    kind === 'points_table' ||
+    kind === 'tournament_top_batsmen' ||
+    kind === 'tournament_top_bowlers' ||
+    kind === 'tournament_fours' ||
+    kind === 'tournament_sixes'
+  );
 }
 
 /** Markup for panels inside the stage (IDs are unique within the stage root). */
@@ -308,6 +328,9 @@ export function createGraphicsStage(
       return;
     }
     if (isPendingOverlayKind(kind)) {
+      return;
+    }
+    if (isTournamentOverlayKind(kind)) {
       return;
     }
     if (activeKind === kind) {
@@ -722,6 +745,9 @@ export function createGraphicsStage(
     if (isPendingOverlayKind(kind)) {
       return;
     }
+    if (isTournamentOverlayKind(kind)) {
+      return;
+    }
 
     if (kind === 'hello') {
       for (const k of Object.keys(GRAPHIC_IDS) as OverlayKind[]) {
@@ -872,6 +898,9 @@ export function createGraphicsStage(
           return;
         }
         if (isPendingOverlayKind(cmd.graphic)) {
+          return;
+        }
+        if (isTournamentOverlayKind(cmd.graphic)) {
           return;
         }
         if (cmd.action === 'hide') {

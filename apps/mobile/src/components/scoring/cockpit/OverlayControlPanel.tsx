@@ -14,6 +14,7 @@ import { ObsOverlayLinkButton } from './ObsOverlayLinkButton';
 import {
   OVERLAY_INNINGS_BREAK_VIEWS,
   OVERLAY_TEAM_ACTIONS,
+  OVERLAY_TOURNAMENT_ACTIONS,
   anythingOverlayOnAir,
   battingOverlayTeamSide,
   buildOverlayTeamShowCommand,
@@ -423,6 +424,9 @@ export function OverlayControlPanel({
       wagonOptions.some((o) => o.key === prev) ? prev : (wagonOptions[0]?.key ?? ''),
     );
   }, [wagonOptions]);
+
+  const tournamentId = match.tournamentId?.trim() ?? '';
+  const tournamentEnabled = tournamentId.length > 0;
 
   const connLabel =
     status === 'live' ? 'Relay live' : status === 'connecting' ? 'Connecting…' : 'Relay offline';
@@ -1001,6 +1005,41 @@ export function OverlayControlPanel({
                 {tossLine ?? 'Toss not recorded yet'}
               </Text>
             </ControlTile>
+          </View>
+
+          <Text className="mt-0.5 font-sans-semibold text-[11px] uppercase tracking-wider text-on-surface-variant">
+            Tournament
+          </Text>
+
+          <View style={TILE_GRID}>
+            {OVERLAY_TOURNAMENT_ACTIONS.map((row) => {
+              const rowOnAir = isCommonGraphicOnAir(onAir, row.graphic);
+              return (
+                <ControlTile
+                  key={row.graphic}
+                  title={row.label}
+                  onAir={rowOnAir}
+                  enabled={tournamentEnabled}
+                  onPress={() => {
+                    if (rowOnAir) {
+                      hideGraphic(row.graphic);
+                      return;
+                    }
+                    if (!tournamentEnabled) {
+                      return;
+                    }
+                    emit({ action: 'show', graphic: row.graphic });
+                    setLocalOnAir(row.graphic, null, null);
+                  }}
+                >
+                  <Text className="font-sans text-[11px] text-on-surface-variant" numberOfLines={2}>
+                    {tournamentEnabled
+                      ? 'Tournament-wide aggregate'
+                      : 'No tournament linked'}
+                  </Text>
+                </ControlTile>
+              );
+            })}
           </View>
         </ScrollView>
       </View>

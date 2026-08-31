@@ -1,0 +1,63 @@
+@import './tokens.css';
+
+.t1-stat-graphic {
+  /* Positioned by .graphic-centered on the stage. */
+}
+
+.t1-stat-panel {
+  min-width: min(72vw, 420px);
+  max-width: min(80vw, 480px);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--t1-primary);
+  color: var(--t1-white);
+  box-shadow: 0 14px 44px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+  text-align: center;
+}
+
+.t1-stat-panel.t1-checker {
+  background-color: var(--t1-primary);
+}
+
+.t1-stat-accent {
+  height: 6px;
+  background: #ff6b00;
+}
+
+.t1-stat-body {
+  padding: 28px 32px 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.t1-stat-eyebrow {
+  margin: 0;
+  font-family: var(--t1-cond);
+  font-weight: 800;
+  font-size: 22px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.92;
+}
+
+.t1-stat-value {
+  margin: 0;
+  font-family: var(--t1-cond);
+  font-weight: 800;
+  font-size: 96px;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  color: var(--t1-white);
+}
+
+.t1-stat-kind {
+  margin: 0;
+  font-family: var(--t1-cond);
+  font-weight: 800;
+  font-size: 40px;
+  line-height: 1;
+  color: #ff6b00;
+}

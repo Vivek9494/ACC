@@ -1,4 +1,4 @@
-import { createGraphicsStage } from '../../graphics-stage';
+import { createTheme1GraphicsStage } from '../../theme1/create-graphics-stage';
 import type { OverlayThemeDefinition } from '../types';
 import { THEME1_PAGE_MARKUP } from './page-markup';
 import { createTheme1ScoreStripHost } from './score-strip';
@@ -21,7 +21,7 @@ export const theme1Definition: OverlayThemeDefinition = {
   createScoreStripHost: createTheme1ScoreStripHost,
 
   createGraphicsStage(root, options) {
-    return createGraphicsStage(root, options);
+    return createTheme1GraphicsStage(root, options);
   },
 
   components: {
@@ -75,7 +75,15 @@ export const theme1Definition: OverlayThemeDefinition = {
       host: 'graphics_stage',
       componentId: 'theme1/playing-xi-card',
     },
-    leaderboard: { status: 'pending' },
-    points_table: { status: 'pending' },
+    leaderboard: {
+      status: 'implemented',
+      host: 'graphics_stage',
+      componentId: 'theme1/leaderboard-card',
+    },
+    points_table: {
+      status: 'implemented',
+      host: 'graphics_stage',
+      componentId: 'theme1/points-table-card',
+    },
   },
 };

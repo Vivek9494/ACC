@@ -1,0 +1,112 @@
+@import './tokens.css';
+
+.t1-lb-graphic {
+  /* Positioned by .graphic-centered on the stage. */
+}
+
+.t1-lb-panel {
+  min-width: min(88vw, 720px);
+  max-width: min(92vw, 820px);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--t1-white);
+  color: var(--t1-ink);
+  box-shadow: 0 14px 44px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+}
+
+.t1-lb-accent {
+  height: 6px;
+  background: #ff6b00;
+}
+
+.t1-lb-head {
+  background: var(--t1-primary);
+  color: var(--t1-white);
+  padding: 14px 24px;
+}
+
+.t1-lb-title {
+  margin: 0;
+  font-family: var(--t1-cond);
+  font-weight: 800;
+  font-size: 28px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.t1-lb-list {
+  list-style: none;
+  margin: 0;
+  padding: 8px 0;
+}
+
+.t1-lb-row {
+  display: grid;
+  grid-template-columns: 48px 1fr auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 24px;
+  border-bottom: 1px solid var(--t1-line);
+  font-family: var(--t1-sans);
+}
+
+.t1-lb-row:nth-child(even) {
+  background: var(--t1-row-alt);
+}
+
+.t1-lb-row:nth-child(odd) {
+  background: var(--t1-row);
+}
+
+.t1-lb-row:first-child {
+  background: var(--t1-row-hi);
+}
+
+.t1-lb-rank {
+  font-family: var(--t1-cond);
+  font-weight: 800;
+  font-size: 26px;
+  color: var(--t1-num);
+  text-align: center;
+}
+
+.t1-lb-name {
+  font-family: var(--t1-cond);
+  font-weight: 800;
+  font-size: 22px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.t1-lb-team {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--t1-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 10em;
+  text-align: right;
+}
+
+.t1-lb-stat {
+  font-family: var(--t1-cond);
+  font-weight: 800;
+  font-size: 28px;
+  color: var(--t1-num);
+  min-width: 3.5ch;
+  text-align: right;
+}
+
+.t1-lb-empty {
+  margin: 0;
+  padding: 28px 24px;
+  text-align: center;
+  font-family: var(--t1-sans);
+  font-size: 18px;
+  color: var(--t1-dim);
+}

@@ -65,7 +65,74 @@ export type GraphicsKind =
   | 'toss_result'
   | 'playing_xi'
   | 'wagon_wheel'
+  | 'points_table'
+  | 'tournament_top_batsmen'
+  | 'tournament_top_bowlers'
+  | 'tournament_fours'
+  | 'tournament_sixes'
   | 'hello';
+
+/** Tournament-scoped full-screen graphics (aggregates across all tournament matches). */
+export type TournamentGraphicKind =
+  | 'points_table'
+  | 'tournament_top_batsmen'
+  | 'tournament_top_bowlers'
+  | 'tournament_fours'
+  | 'tournament_sixes';
+
+export interface TeamStandingRowView {
+  teamId: string;
+  teamName: string;
+  logoUrl: string | null;
+  matches: number;
+  wins: number;
+  losses: number;
+  noResults: number;
+  points: number;
+  netRunRate: number;
+}
+
+export interface TournamentStandingsView {
+  tournamentId: string;
+  tables: Array<{
+    groupId: string | null;
+    groupName: string;
+    teams: TeamStandingRowView[];
+  }>;
+  showNetRunRate: boolean;
+}
+
+export interface BattingLeaderboardEntryView {
+  rank: number;
+  firstName: string;
+  lastName: string;
+  teamName: string;
+  runs: number;
+}
+
+export interface BowlingLeaderboardEntryView {
+  rank: number;
+  firstName: string;
+  lastName: string;
+  teamName: string;
+  wickets: number;
+}
+
+export interface TournamentLeaderboardView {
+  tournamentId: string;
+  hasRecords: boolean;
+  batting: { entries: BattingLeaderboardEntryView[] };
+  bowling: { entries: BowlingLeaderboardEntryView[] };
+}
+
+export interface TournamentStatsView {
+  tournamentId: string;
+  hasRecords: boolean;
+  aggregates: {
+    fours: number;
+    sixes: number;
+  };
+}
 
 export interface GraphicsCommandMessage {
   matchId: string;

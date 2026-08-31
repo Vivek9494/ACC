@@ -38,6 +38,11 @@ export type GraphicsKind =
   | 'toss_result'
   | 'playing_xi'
   | 'wagon_wheel'
+  | 'points_table'
+  | 'tournament_top_batsmen'
+  | 'tournament_top_bowlers'
+  | 'tournament_fours'
+  | 'tournament_sixes'
   | 'hello';
 
 export interface GraphicsCommandMessage {

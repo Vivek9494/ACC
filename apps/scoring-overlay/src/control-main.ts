@@ -53,7 +53,19 @@ import type { Socket } from 'socket.io-client';
 const TEAM_SIDES: TeamSide[] = ['a', 'b'];
 
 const COMMON_LABELS: Record<
-  Exclude<GraphicsKind, 'hello' | 'toss' | 'chase' | 'boundaries' | 'partnership'>,
+  Exclude<
+    GraphicsKind,
+    | 'hello'
+    | 'toss'
+    | 'chase'
+    | 'boundaries'
+    | 'partnership'
+    | 'points_table'
+    | 'tournament_top_batsmen'
+    | 'tournament_top_bowlers'
+    | 'tournament_fours'
+    | 'tournament_sixes'
+  >,
   string
 > = {
   fow: 'Last Wicket',

@@ -140,6 +140,16 @@ export const GraphicsKind = {
    * Match-level; subject + filter select which shots to draw.
    */
   WagonWheel: 'wagon_wheel',
+  /** Tournament-wide points table (all matches in the tournament). */
+  PointsTable: 'points_table',
+  /** Top 5 batters by runs in the tournament. */
+  TournamentTopBatsmen: 'tournament_top_batsmen',
+  /** Top 5 bowlers by wickets in the tournament. */
+  TournamentTopBowlers: 'tournament_top_bowlers',
+  /** Total fours hit across the tournament. */
+  TournamentFours: 'tournament_fours',
+  /** Total sixes hit across the tournament. */
+  TournamentSixes: 'tournament_sixes',
   /** Phase A validation only — remove once real graphics ship. */
   Hello: 'hello',
 } as const;

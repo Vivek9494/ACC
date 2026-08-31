@@ -5,6 +5,9 @@ import type {
   MatchSide,
   ScorecardResponse,
   TossDecision,
+  TournamentLeaderboardView,
+  TournamentStandingsView,
+  TournamentStatsView,
 } from './types';
 import {
   DEFAULT_OVERLAY_THEME,
@@ -357,6 +360,72 @@ export async function fetchTeamRoster(
     return out;
   } catch {
     return [];
+  }
+}
+
+export async function fetchTournamentStandings(
+  apiBase: string,
+  tournamentId: string,
+): Promise<TournamentStandingsView | null> {
+  try {
+    const tid = tournamentId.trim();
+    if (!tid) {
+      return null;
+    }
+    const res = await fetch(
+      `${apiBase}/tournaments/${encodeURIComponent(tid)}/standings`,
+      { method: 'GET', headers: { Accept: 'application/json' } },
+    );
+    if (!res.ok) {
+      return null;
+    }
+    return (await res.json()) as TournamentStandingsView;
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchTournamentLeaderboard(
+  apiBase: string,
+  tournamentId: string,
+): Promise<TournamentLeaderboardView | null> {
+  try {
+    const tid = tournamentId.trim();
+    if (!tid) {
+      return null;
+    }
+    const res = await fetch(
+      `${apiBase}/tournaments/${encodeURIComponent(tid)}/leaderboard`,
+      { method: 'GET', headers: { Accept: 'application/json' } },
+    );
+    if (!res.ok) {
+      return null;
+    }
+    return (await res.json()) as TournamentLeaderboardView;
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchTournamentStats(
+  apiBase: string,
+  tournamentId: string,
+): Promise<TournamentStatsView | null> {
+  try {
+    const tid = tournamentId.trim();
+    if (!tid) {
+      return null;
+    }
+    const res = await fetch(
+      `${apiBase}/tournaments/${encodeURIComponent(tid)}/stats`,
+      { method: 'GET', headers: { Accept: 'application/json' } },
+    );
+    if (!res.ok) {
+      return null;
+    }
+    return (await res.json()) as TournamentStatsView;
+  } catch {
+    return null;
   }
 }
 

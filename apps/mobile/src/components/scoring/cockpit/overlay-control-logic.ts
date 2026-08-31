@@ -355,7 +355,24 @@ export function isInningsBreakOnAir(state: OverlayOnAirState): boolean {
   return state.graphic === 'innings_break' && state.inningsSource === 'break';
 }
 
-export type OverlayWagonWheelFilter = '4s' | '6s' | '4s6s' | 'all';
+export const OVERLAY_TOURNAMENT_ACTIONS: {
+  graphic:
+    | 'points_table'
+    | 'tournament_top_batsmen'
+    | 'tournament_top_bowlers'
+    | 'tournament_fours'
+    | 'tournament_sixes';
+  label: string;
+}[] = [
+  { graphic: 'points_table', label: 'Point Table' },
+  { graphic: 'tournament_top_batsmen', label: 'Top 5 Batsmen' },
+  { graphic: 'tournament_top_bowlers', label: 'Top 5 Bowlers' },
+  { graphic: 'tournament_fours', label: 'Tournament Fours' },
+  { graphic: 'tournament_sixes', label: 'Tournament Sixes' },
+];
+
+export type OverlayTournamentGraphic =
+  (typeof OVERLAY_TOURNAMENT_ACTIONS)[number]['graphic'];
 
 export type OverlayWagonWheelOption = {
   key: string;
@@ -472,7 +489,14 @@ export function isTeamActionOnAir(
 
 export function isCommonGraphicOnAir(
   state: OverlayOnAirState,
-  graphic: 'toss' | 'chase' | 'playing_xi' | 'toss_result' | 'innings_break' | 'wagon_wheel',
+  graphic:
+    | 'toss'
+    | 'chase'
+    | 'playing_xi'
+    | 'toss_result'
+    | 'innings_break'
+    | 'wagon_wheel'
+    | OverlayTournamentGraphic,
 ): boolean {
   if (graphic === 'toss') {
     return state.stripMode === 'toss';
@@ -522,6 +546,12 @@ export function overlayOnAirLabel(
   }
   if (state.graphic === 'toss_result') {
     return 'ON AIR: Toss result';
+  }
+  const tournamentRow = OVERLAY_TOURNAMENT_ACTIONS.find(
+    (row) => row.graphic === state.graphic,
+  );
+  if (tournamentRow) {
+    return `ON AIR: ${tournamentRow.label}`;
   }
   return `ON AIR: ${state.graphic}`;
 }
