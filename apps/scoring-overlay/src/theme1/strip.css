@@ -93,6 +93,37 @@
   width: 100%;
 }
 
+.t1-strip .bowler-stack.is-toss {
+  justify-content: center;
+}
+
+.t1-strip .bowler-normal {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  width: 100%;
+}
+
+.t1-strip .bowler-normal[hidden],
+.t1-strip .bowler-toss-line[hidden] {
+  display: none;
+}
+
+.t1-strip .bowler-toss-line {
+  font-family: var(--t1-cond);
+  font-weight: 700;
+  font-size: 22px;
+  line-height: 1.25;
+  letter-spacing: 0.3px;
+  color: var(--t1-white);
+  text-align: left;
+  margin: 0;
+  width: 100%;
+  white-space: normal;
+  overflow: visible;
+}
+
 .t1-strip .bowler-top-row {
   display: flex;
   align-items: baseline;

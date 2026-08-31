@@ -393,7 +393,7 @@ function buildSubtitle(
   if (result) {
     return result;
   }
-  // Toss is operator-driven on the CRR row (Show toss) — never auto-stack under CRR.
+  // Toss is operator-driven in the right bowler panel (Show toss) — never in the center notch.
   return chaseLine(card, innings);
 }
 

@@ -114,16 +114,13 @@ function renderBatters(vm: StripViewModel): void {
 
 function renderSubLine(
   vm: StripViewModel,
-  ctx: ScoreStripRenderParams['ctx'],
   card: ScorecardResponse,
   crrMode: ScoreStripRenderParams['crrMode'],
 ): void {
   const sub = el<HTMLDivElement>('sub-line');
   let text: string | null = null;
 
-  if (crrMode === 'toss') {
-    text = formatTossLine(ctx);
-  } else if (crrMode === 'chase') {
+  if (crrMode === 'chase') {
     text = formatRunsToWinLine(card) ?? vm.needOffLine;
   } else if (crrMode === 'boundaries') {
     text = vm.boundariesLine;
@@ -140,6 +137,38 @@ function renderSubLine(
     sub.hidden = true;
     sub.textContent = '';
   }
+}
+
+function renderBowlerPanel(
+  vm: StripViewModel,
+  ctx: ScoreStripRenderParams['ctx'],
+  crrMode: ScoreStripRenderParams['crrMode'],
+): void {
+  const stack = el<HTMLDivElement>('bowler-stack');
+  const normal = el<HTMLDivElement>('bowler-normal');
+  const tossLine = el<HTMLParagraphElement>('bowler-toss-line');
+
+  if (crrMode === 'toss') {
+    const text = formatTossLine(ctx);
+    if (text) {
+      stack.classList.add('is-toss');
+      normal.hidden = true;
+      tossLine.hidden = false;
+      if (tossLine.textContent !== text) {
+        tossLine.textContent = text;
+      }
+      return;
+    }
+  }
+
+  stack.classList.remove('is-toss');
+  normal.hidden = false;
+  tossLine.hidden = true;
+  tossLine.textContent = '';
+  setText('bowler-name', vm.bowlerName);
+  setText('bowler-figs', vm.bowlerFigs);
+  setText('bowler-overs', vm.bowlerOvers);
+  renderOverTracker(vm);
 }
 
 /** Theme 1 lower-third score strip controller. */
@@ -193,11 +222,8 @@ export function createTheme1ScoreStripHost(): ScoreStripHost {
       setText('team-line', vm.teamShort);
       setText('score-line', vm.scoreLine);
       setText('overs-line', vm.oversLine);
-      renderSubLine(vm, ctx, card, crrMode);
-      setText('bowler-name', vm.bowlerName);
-      setText('bowler-figs', vm.bowlerFigs);
-      setText('bowler-overs', vm.bowlerOvers);
-      renderOverTracker(vm);
+      renderSubLine(vm, card, crrMode);
+      renderBowlerPanel(vm, ctx, crrMode);
     },
 
     fillCareerCard(

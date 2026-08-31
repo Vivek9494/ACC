@@ -78,6 +78,7 @@ async function start(): Promise<void> {
   let careerToken = 0;
   let boundariesArmedKey: string | null = null;
   let boundariesTimer: number | null = null;
+  let tossArmedKey: string | null = null;
   let socket: Socket | null = null;
 
   const scoreStrip = theme.createScoreStripHost();
@@ -120,6 +121,23 @@ async function start(): Promise<void> {
     const nextKey = deliveryProgressKey(card);
     if (nextKey !== boundariesArmedKey) {
       clearBoundariesFlash();
+    }
+  };
+
+  const clearTossOnAir = (): void => {
+    tossArmedKey = null;
+    if (crrMode === 'toss') {
+      crrMode = 'default';
+    }
+  };
+
+  const maybeClearTossOnDelivery = (card: ScorecardResponse): void => {
+    if (crrMode !== 'toss' || tossArmedKey == null) {
+      return;
+    }
+    const nextKey = deliveryProgressKey(card);
+    if (nextKey !== tossArmedKey) {
+      clearTossOnAir();
     }
   };
 
@@ -255,6 +273,7 @@ async function start(): Promise<void> {
     }
     latest = frame.state;
     maybeClearBoundariesOnDelivery(frame.state);
+    maybeClearTossOnDelivery(frame.state);
     graphicsStage.setScorecard(frame.state);
     paint();
   });
@@ -266,6 +285,7 @@ async function start(): Promise<void> {
       }
       if (cmd.action === 'hide_all') {
         clearBoundariesFlash();
+        clearTossOnAir();
         crrMode = 'default';
         inningsBreakOnAir = false;
         hideCareerCard();
@@ -290,8 +310,9 @@ async function start(): Promise<void> {
       if (cmd.graphic === 'toss') {
         if (cmd.action === 'show') {
           crrMode = 'toss';
+          tossArmedKey = deliveryProgressKey(latest);
         } else if (cmd.action === 'hide' && crrMode === 'toss') {
-          crrMode = 'default';
+          clearTossOnAir();
         }
         paint();
         return;

@@ -29,17 +29,20 @@ export const THEME1_PAGE_MARKUP = `
 
           <div class="side right t1-checker">
             <div class="rows">
-              <div class="bowler-stack">
-                <div class="b-row bowler-top-row">
-                  <span id="bowler-name" class="b-name">—</span>
-                  <span class="b-fig"
-                    ><span id="bowler-figs">0-0</span>
-                    <span id="bowler-overs" class="b-ball">0.0</span></span
-                  >
+              <div id="bowler-stack" class="bowler-stack">
+                <div id="bowler-normal" class="bowler-normal">
+                  <div class="b-row bowler-top-row">
+                    <span id="bowler-name" class="b-name">—</span>
+                    <span class="b-fig"
+                      ><span id="bowler-figs">0-0</span>
+                      <span id="bowler-overs" class="b-ball">0.0</span></span
+                    >
+                  </div>
+                  <div class="b-row b-row-over">
+                    <div id="over-tracker" class="over-balls" aria-label="This over"></div>
+                  </div>
                 </div>
-                <div class="b-row b-row-over">
-                  <div id="over-tracker" class="over-balls" aria-label="This over"></div>
-                </div>
+                <p id="bowler-toss-line" class="bowler-toss-line" hidden></p>
               </div>
             </div>
           </div>
