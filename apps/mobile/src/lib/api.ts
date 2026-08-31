@@ -385,6 +385,23 @@ async function hydrateAuthTokenFromStorage(): Promise<void> {
   await hydrateInFlight;
 }
 
+/**
+ * Resolve a Bearer token for authenticated API calls. Always prefers the in-memory
+ * token (kept in sync by AuthProvider); falls back to storage after HMR / race clears.
+ */
+async function resolveAuthTokenForRequest(): Promise<string | null> {
+  await hydrateAuthTokenFromStorage();
+  if (authToken) {
+    return authToken;
+  }
+  const stored = await loadTokens();
+  if (stored?.accessToken) {
+    setAuthToken(stored.accessToken);
+    return stored.accessToken;
+  }
+  return null;
+}
+
 async function refreshAccessTokenOnce(): Promise<boolean> {
   const stored = await loadTokens();
   if (!stored?.refreshToken) {
@@ -986,11 +1003,21 @@ export function getGuestDashboard(): Promise<GuestDashboard> {
 }
 
 export function signup(body: SignupRequest): Promise<AuthResponse> {
-  return apiFetch<AuthResponse>('/auth/signup', { method: 'POST', body });
+  return apiFetchInternal<AuthResponse>('/auth/signup', {
+    method: 'POST',
+    body,
+    skipAuthHeader: true,
+    skipAuthRetry: true,
+  });
 }
 
 export function login(body: LoginRequest): Promise<AuthResponse> {
-  return apiFetch<AuthResponse>('/auth/login', { method: 'POST', body });
+  return apiFetchInternal<AuthResponse>('/auth/login', {
+    method: 'POST',
+    body,
+    skipAuthHeader: true,
+    skipAuthRetry: true,
+  });
 }
 
 export function logout(): Promise<void> {

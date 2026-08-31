@@ -11,7 +11,7 @@ import { KeyboardAwareFormScrollView } from '../src/components/ui/KeyboardAwareF
 import { PasswordToggle } from '../src/components/ui/PasswordToggle';
 import { Text } from '../src/components/ui/Text';
 import { TextInput } from '../src/components/ui/TextInput';
-import { ApiRequestError } from '../src/lib/api';
+import { ApiRequestError, SessionExpiredError } from '../src/lib/api';
 import { useAuth } from '../src/lib/auth-context';
 import {
   LOGIN_MESSAGES,
@@ -26,7 +26,13 @@ import {
 } from '../src/lib/remember-me';
 
 function mapLoginApiError(err: unknown): string {
+  if (err instanceof SessionExpiredError) {
+    return LOGIN_MESSAGES.genericError;
+  }
   if (!(err instanceof ApiRequestError)) {
+    if (err instanceof Error && err.message.includes('Network request failed')) {
+      return 'Could not reach the server. Check your connection and try again.';
+    }
     return LOGIN_MESSAGES.genericError;
   }
   if (err.status === 429 || err.error.code === AuthErrorCode.TooManyAttempts) {
