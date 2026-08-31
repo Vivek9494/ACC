@@ -123,17 +123,6 @@ function deliveryCountsAsLegalBall(
   );
 }
 
-/** Delivery types that consume a legal ball (count toward the over) — matches engine fold. */
-function deliveryCountsAsLegalBall(
-  body: Omit<RecordDeliveryRequest, 'expectedVersion'>,
-): boolean {
-  return (
-    body.type === DeliveryType.Legal ||
-    body.type === DeliveryType.Bye ||
-    body.type === DeliveryType.LegBye
-  );
-}
-
 function buildNoBallDelivery(
   selection: NoBallSelection,
 ): Omit<RecordDeliveryRequest, 'expectedVersion'> {
