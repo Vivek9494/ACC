@@ -66,6 +66,7 @@ export * from './video';
 export * from './storage';
 export * from './scorecard';
 export * from './scoring';
+export * from './boundary-highlight';
 export * from './wagon-wheel';
 export * from './live-innings-stats';
 export * from './leather-tournament-access';

@@ -5,6 +5,7 @@
  * over the event stream — never stored as mutable counters.
  */
 
+import type { DeliveryHighlightMarker } from './boundary-highlight';
 import type { BallType } from './rbac';
 
 /** Type of a scoring event (spec §12.1). */
@@ -348,6 +349,11 @@ export interface TimelineEntry {
    */
   shotX?: number | null;
   shotY?: number | null;
+  /**
+   * v0 boundary highlight marker (4/6). Mark-only — no clip URL yet.
+   * Null / omitted when the ball is not a marked boundary.
+   */
+  highlightMarker?: DeliveryHighlightMarker | null;
   dismissal?: {
     type: DismissalType;
     dismissedId: string;
@@ -482,6 +488,12 @@ export interface ScorecardResponse {
   result: MatchResultView;
   /** Resolved team and player display names — always present on API responses. */
   display: ScorecardDisplayContext;
+  /**
+   * Match-level list of v0 boundary highlight markers (all innings, chronological).
+   * Input for a future clip worker / human editor — no video attached yet.
+   * Optional for older cached live snapshots; treat missing as [].
+   */
+  boundaryHighlights?: DeliveryHighlightMarker[];
 }
 
 /** Which crease slot the scorer is filling on the Select Batsman screen. */

@@ -1,10 +1,12 @@
 import {
   type InningsScorecard,
+  buildDeliveryHighlightMarker,
   DeliveryType,
   InningsType,
   type ScorecardResponse,
   type TimelineEntry,
   type DismissalType,
+  type DeliveryHighlightMarker,
 } from '@acc/types';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import type { Delivery, Match } from '@prisma/client';
@@ -19,6 +21,30 @@ import {
   ScorecardDisplayBuilder,
   type MatchContext,
 } from './scorecard-display.builder';
+
+function participantId(
+  userId: string | null | undefined,
+  externalId: string | null | undefined,
+): string | null {
+  return userId ?? externalId ?? null;
+}
+
+function markerFromDelivery(row: Delivery): DeliveryHighlightMarker | null {
+  return buildDeliveryHighlightMarker({
+    deliveryId: row.id,
+    inningsId: row.inningsId,
+    sequence: row.sequence,
+    isBoundary: row.isBoundary,
+    runsBat: row.runsBat,
+    createdAt: row.createdAt,
+    highlightMarkedAt: row.highlightMarkedAt,
+    highlightBoundaryRuns: row.highlightBoundaryRuns,
+    overNumber: row.overNumber,
+    ballNumber: row.ballNumber,
+    strikerId: participantId(row.strikerUserId, row.strikerExternalId),
+    bowlerId: participantId(row.bowlerUserId, row.bowlerExternalId),
+  });
+}
 
 /**
  * Builds the derived {@link ScorecardResponse} for a match by folding over the
@@ -112,6 +138,14 @@ export class ScorecardReader {
     });
 
     const result = deriveMatchResult(cards);
+    const boundaryHighlights = innings
+      .flatMap((inn) => inn.deliveries.map((d) => markerFromDelivery(d)))
+      .filter((m): m is DeliveryHighlightMarker => m != null)
+      .sort(
+        (a, b) =>
+          a.markedAt.localeCompare(b.markedAt) || a.sequence - b.sequence,
+      );
+
     const core = {
       matchId: match.id,
       version: match.scorecardVersion,
@@ -120,6 +154,7 @@ export class ScorecardReader {
       effectiveTarget,
       innings: cards,
       result: { ...result, isNoResult: match.isNoResult || result.isNoResult },
+      boundaryHighlights,
     };
 
     const display = this.displayBuilder.build(matchContext, core, innings);
@@ -175,6 +210,7 @@ export class ScorecardReader {
           return entry;
         }
         const dismissedId = row.dismissedUserId ?? row.dismissedExternalId ?? null;
+        const highlightMarker = markerFromDelivery(row);
         return {
           ...entry,
           deliveryId: row.id,
@@ -186,6 +222,7 @@ export class ScorecardReader {
           isBoundary: row.isBoundary,
           shotX: row.shotX,
           shotY: row.shotY,
+          highlightMarker,
           ...(row.dismissalType && dismissedId
             ? {
                 dismissal: {

@@ -13,6 +13,7 @@ import {
   resolveMatchWinnerDisplayName,
   isScorecardLocked,
   type RecordDeliveryRequest,
+  resolveBoundaryHighlightRuns,
   ScorecardAuditAction,
   type ScorecardResponse,
   type SetDlsTargetRequest,
@@ -92,6 +93,9 @@ interface DeliveryDraft {
   fielder2Id: string | null;
   shotX?: number | null;
   shotY?: number | null;
+  /** Set when scoring a boundary (4/6) — v0 highlight marker. */
+  highlightMarkedAt?: Date | null;
+  highlightBoundaryRuns?: number | null;
   createdByUserId: string;
   revision?: number;
 }
@@ -201,6 +205,9 @@ export class ScoringService {
     const freeHitNext = deriveInnings(events).freeHitNext;
     const nextSequence = await this.nextSequence(inningsId);
 
+    const runsBat = req.runsBat ?? 0;
+    const isBoundary = req.isBoundary ?? false;
+    const highlight = this.highlightMarkerFields(isBoundary, runsBat);
     const data = await this.buildDeliveryData(matchId, {
       inningsId,
       type: req.type,
@@ -210,12 +217,12 @@ export class ScoringService {
       strikerId: req.strikerId ?? null,
       nonStrikerId: req.nonStrikerId ?? null,
       bowlerId: req.bowlerId ?? null,
-      runsBat: req.runsBat ?? 0,
+      runsBat,
       extraRuns: req.extraRuns ?? 0,
       noBallByeRuns: req.noBallByeRuns ?? 0,
       noBallLegByeRuns: req.noBallLegByeRuns ?? 0,
       penaltyBeneficiaryTeamId: req.penaltyBeneficiaryTeamId ?? null,
-      isBoundary: req.isBoundary ?? false,
+      isBoundary,
       isFreeHit: slot && req.type === 'LEGAL' ? freeHitNext : false,
       dismissalType:
         req.type === DeliveryType.RetiredHurt ? null : (req.dismissal?.type ?? null),
@@ -224,6 +231,7 @@ export class ScoringService {
       fielder2Id: req.dismissal?.fielder2Id ?? null,
       shotX: req.shotX ?? null,
       shotY: req.shotY ?? null,
+      ...highlight,
       createdByUserId: user.id,
     });
 
@@ -389,6 +397,9 @@ export class ScoringService {
     }
 
     const nextSequence = await this.nextSequence(innings.id);
+    const runsBat = req.runsBat ?? 0;
+    const isBoundary = req.isBoundary ?? false;
+    const highlight = this.highlightMarkerFields(isBoundary, runsBat);
     const data = await this.buildDeliveryData(matchId, {
       inningsId: innings.id,
       type: req.type,
@@ -399,12 +410,12 @@ export class ScoringService {
       strikerId: req.strikerId ?? null,
       nonStrikerId: req.nonStrikerId ?? null,
       bowlerId: req.bowlerId ?? null,
-      runsBat: req.runsBat ?? 0,
+      runsBat,
       extraRuns: req.extraRuns ?? 0,
       noBallByeRuns: req.noBallByeRuns ?? 0,
       noBallLegByeRuns: req.noBallLegByeRuns ?? 0,
       penaltyBeneficiaryTeamId: req.penaltyBeneficiaryTeamId ?? null,
-      isBoundary: req.isBoundary ?? false,
+      isBoundary,
       isFreeHit: target.isFreeHit,
       dismissalType: req.dismissal?.type ?? null,
       dismissedId: req.dismissal?.dismissedId ?? null,
@@ -412,6 +423,7 @@ export class ScoringService {
       fielder2Id: req.dismissal?.fielder2Id ?? null,
       shotX: req.shotX ?? target.shotX ?? null,
       shotY: req.shotY ?? target.shotY ?? null,
+      ...highlight,
       createdByUserId: user.id,
       revision: target.revision + 1,
     });
@@ -1191,6 +1203,18 @@ export class ScoringService {
 
   // --- Mapping helpers -----------------------------------------------------
 
+  /** v0: mark boundary deliveries for a future clip worker (no video yet). */
+  private highlightMarkerFields(
+    isBoundary: boolean,
+    runsBat: number,
+  ): { highlightMarkedAt: Date | null; highlightBoundaryRuns: number | null } {
+    const boundaryRuns = resolveBoundaryHighlightRuns(isBoundary, runsBat);
+    if (boundaryRuns == null) {
+      return { highlightMarkedAt: null, highlightBoundaryRuns: null };
+    }
+    return { highlightMarkedAt: new Date(), highlightBoundaryRuns: boundaryRuns };
+  }
+
   /**
    * Resolves each opaque participant id to either a system user column or an
    * external-player column (ACC opponents are external — §9.5) and produces a
@@ -1230,6 +1254,8 @@ export class ScoringService {
       fielder2ExternalId: extCol(draft.fielder2Id),
       shotX: draft.shotX ?? null,
       shotY: draft.shotY ?? null,
+      highlightMarkedAt: draft.highlightMarkedAt ?? null,
+      highlightBoundaryRuns: draft.highlightBoundaryRuns ?? null,
       revision: draft.revision ?? 1,
       createdByUserId: draft.createdByUserId,
     };

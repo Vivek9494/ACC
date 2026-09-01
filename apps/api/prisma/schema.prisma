@@ -1145,11 +1145,18 @@ model Delivery {
   shotX Float?
   shotY Float?
 
+  /// v0 boundary highlight marker — set when scored as a 4/6 (no clip yet).
+  /// Timestamp the future clip worker uses as event time (≈ score tap / createdAt).
+  highlightMarkedAt DateTime?
+  /// Boundary type for the marker: 4 or 6. Null when not a highlight.
+  highlightBoundaryRuns Int?
+
   createdAt DateTime @default(now())
 
   @@index([inningsId])
   @@index([inningsId, sequence])
   @@index([inningsId, overNumber, ballNumber])
+  @@index([inningsId, highlightMarkedAt])
 }
 
 // ---------------------------------------------------------------------------

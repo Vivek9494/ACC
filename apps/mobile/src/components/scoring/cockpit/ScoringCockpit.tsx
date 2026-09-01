@@ -256,7 +256,11 @@ export function ScoringCockpit({
             />
           </View>
           <View style={BALLS_COL}>
-            <BallByBallPanel innings={innings} nameOf={nameOf} />
+            <BallByBallPanel
+              innings={innings}
+              nameOf={nameOf}
+              boundaryHighlights={(live.state ?? card).boundaryHighlights ?? []}
+            />
           </View>
           <View style={SCOREBOARD_COL}>
             <OverlayScoreboardPanel youtubeUrl={match.youtubeUrl} />
