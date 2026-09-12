@@ -1691,6 +1691,17 @@ export function createMatch(
   return apiFetch<MatchDetail>(`/tournaments/${tournamentId}/matches`, { method: 'POST', body });
 }
 
+/** Admin-only past ACC fixture — suppresses live side effects; uses normal scoring afterward. */
+export function createBackfillMatch(
+  tournamentId: string,
+  body: CreateMatchRequest,
+): Promise<MatchDetail> {
+  return apiFetch<MatchDetail>(`/tournaments/${tournamentId}/matches/backfill`, {
+    method: 'POST',
+    body,
+  });
+}
+
 export function updateMatch(matchId: string, body: UpdateMatchRequest): Promise<MatchDetail> {
   return apiFetch<MatchDetail>(`/matches/${matchId}`, { method: 'PATCH', body });
 }

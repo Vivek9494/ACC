@@ -2,6 +2,7 @@ import {
   BallType,
   MatchSchedulingFormat,
   MATCH_LIST_GROUP_FILTER,
+  UserRole,
   canViewAdminUsersDirectory,
   canViewCancelledMatchDetails,
   filterMatchList,
@@ -147,6 +148,9 @@ export function TournamentMatchesTab({
   const canManageGroups = canScheduleTournamentMatchesAsOrganizer(user);
   const canCreateTeam = canCreateTournamentTeam(user);
   const canManageMatches = canManageUpcomingMatchSchedule(user);
+  /** Client hint only — create is gated by Permission.BACKFILL_MATCH on the server. */
+  const canBackfillPastMatch =
+    user?.role === UserRole.Admin && ballType === BallType.Leather;
   const showLiveMatchDetails = user != null && canViewAdminUsersDirectory(user.role);
   const showCancelledMatchDetails =
     user != null &&
@@ -182,8 +186,17 @@ export function TournamentMatchesTab({
     );
   }
 
+  function handleBackfillPress(): void {
+    router.push(tournamentSubpathHref(user, tournamentId, 'backfill-match'));
+  }
+
   function renderKnockoutAndScheduleActions(): React.ReactNode {
-    if (!showKnockoutChartEntry && !showKnockoutBracketEntry && !canSchedule) {
+    if (
+      !showKnockoutChartEntry &&
+      !showKnockoutBracketEntry &&
+      !canSchedule &&
+      !canBackfillPastMatch
+    ) {
       return null;
     }
     return (
@@ -211,6 +224,15 @@ export function TournamentMatchesTab({
             label="Schedule Matches"
             variant="amber"
             onPress={handleSchedulePress}
+            className="h-12 w-full"
+          />
+        ) : null}
+
+        {canBackfillPastMatch ? (
+          <Button
+            label="Backfill past match"
+            variant="outline"
+            onPress={handleBackfillPress}
             className="h-12 w-full"
           />
         ) : null}
@@ -397,7 +419,10 @@ export function TournamentMatchesTab({
           <TournamentMatchesEmptyState
             canSchedule={false}
             message={
-              showKnockoutChartEntry || showKnockoutBracketEntry || canSchedule
+              showKnockoutChartEntry ||
+              showKnockoutBracketEntry ||
+              canSchedule ||
+              canBackfillPastMatch
                 ? null
                 : 'No matches scheduled yet.'
             }

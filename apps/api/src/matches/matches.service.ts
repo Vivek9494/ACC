@@ -263,8 +263,62 @@ export class MatchesService {
 
   // --- Creation & reads ----------------------------------------------------
 
-  async create(actor: AuthUser, tournamentId: string, dto: CreateMatchDto): Promise<MatchDetail> {
+  /**
+   * Admin-only historical ACC backfill: past-dated external-opponent fixture with
+   * live side effects suppressed. Scoring uses the normal ball-by-ball path.
+   */
+  async createBackfill(
+    actor: AuthUser,
+    tournamentId: string,
+    dto: CreateMatchDto,
+  ): Promise<MatchDetail> {
+    const allowed = await this.permissions.check(Permission.BACKFILL_MATCH, actor, {
+      tournamentId,
+    });
+    if (!allowed) {
+      throw new ForbiddenException({
+        message: 'Only an Admin can backfill a past match',
+        error: 'FORBIDDEN',
+      });
+    }
+    return this.create(actor, tournamentId, dto, { backfill: true });
+  }
+
+  async create(
+    actor: AuthUser,
+    tournamentId: string,
+    dto: CreateMatchDto,
+    options?: { backfill?: boolean },
+  ): Promise<MatchDetail> {
+    const backfill = options?.backfill === true;
     const tournament = await this.requireTournamentRecord(tournamentId);
+
+    if (backfill) {
+      if (tournament.ballType !== BallType.Leather) {
+        throw new BadRequestException({
+          message: 'Past-match backfill is only available for Leather (ACC) tournaments',
+          error: 'BACKFILL_LEATHER_ONLY',
+        });
+      }
+      if (!dto.externalOpponentName?.trim() || dto.awayTeamId) {
+        throw new BadRequestException({
+          message: 'Backfill requires ACC Team A and an external opponent name',
+          error: 'BACKFILL_EXTERNAL_REQUIRED',
+          fields: {
+            externalOpponentName: 'Enter the opponent team name',
+          },
+        });
+      }
+      const timeZone = serverVenueTimezone(tournament.timezone);
+      const todayOnly = formatTodayDateOnlyInZone(timeZone);
+      if (dto.matchDate && compareIsoDateOnly(dto.matchDate, todayOnly) >= 0) {
+        throw new BadRequestException({
+          message: 'Backfill match date must be in the past',
+          error: 'BACKFILL_DATE_NOT_PAST',
+          fields: { matchDate: 'Choose a date before today' },
+        });
+      }
+    }
 
     if (!dto.homeTeamId) {
       throw new BadRequestException({ message: 'Team A is required', error: 'HOME_TEAM_REQUIRED' });
@@ -282,13 +336,15 @@ export class MatchesService {
       });
     }
 
-    await assertCanCreateMatchFixture(
-      this.permissions,
-      this.prisma,
-      actor,
-      { id: tournament.id, ballType: tournament.ballType as BallType },
-      dto.homeTeamId,
-    );
+    if (!backfill) {
+      await assertCanCreateMatchFixture(
+        this.permissions,
+        this.prisma,
+        actor,
+        { id: tournament.id, ballType: tournament.ballType as BallType },
+        dto.homeTeamId,
+      );
+    }
     if (dto.awayTeamId && dto.homeTeamId === dto.awayTeamId) {
       throw new BadRequestException({
         message: 'Team A and Team B must be different teams',
@@ -440,7 +496,9 @@ export class MatchesService {
         fields: { matchDate: 'Match date is required' },
       });
     }
-    await this.assertMatchDateAllowed(tournamentId, dto.matchDate);
+    await this.assertMatchDateAllowed(tournamentId, dto.matchDate, {
+      allowPastDates: backfill,
+    });
 
     if (!dto.startTime) {
       throw new BadRequestException({
@@ -497,6 +555,7 @@ export class MatchesService {
           battingPowerplayOvers: isTennisBall ? (dto.battingPowerplayOvers ?? null) : null,
           homeAway: dto.homeAway ?? null,
           youtubeUrl: dto.youtubeUrl ?? null,
+          suppressLiveSideEffects: backfill,
         },
       });
     } catch (error) {
@@ -516,13 +575,26 @@ export class MatchesService {
       throw error;
     }
 
-    await this.notifyMatchScheduleAudience({
-      matchId: match.id,
-      homeTeamId: match.homeTeamId,
-      awayTeamId: match.awayTeamId,
-      startTime: match.startTime,
-      reschedule: false,
-    });
+    if (!backfill) {
+      await this.notifyMatchScheduleAudience({
+        matchId: match.id,
+        homeTeamId: match.homeTeamId,
+        awayTeamId: match.awayTeamId,
+        startTime: match.startTime,
+        reschedule: false,
+      });
+    } else {
+      // Admin scores via the normal SCORE_BALL path (scorer grant).
+      await this.scorerGrants.assignOrSwitch(match.id, actor.id, actor.id);
+      await this.audit.record({
+        action: 'MATCH_SCORER_ASSIGNED',
+        actorUserId: actor.id,
+        targetUserId: actor.id,
+        targetEntityType: 'match',
+        targetEntityId: match.id,
+        after: { backfill: true, suppressLiveSideEffects: true },
+      });
+    }
 
     return this.getDetail(match.id, actor);
   }
@@ -541,6 +613,13 @@ export class MatchesService {
     reschedule: boolean;
   }): Promise<void> {
     try {
+      const row = await this.prisma.match.findUnique({
+        where: { id: input.matchId },
+        select: { suppressLiveSideEffects: true },
+      });
+      if (row?.suppressLiveSideEffects) {
+        return;
+      }
       const teamIds = [input.homeTeamId, input.awayTeamId].filter(
         (id): id is string => id != null,
       );
@@ -1193,6 +1272,7 @@ export class MatchesService {
       const match = await this.prisma.match.findUnique({
         where: { id: matchId },
         select: {
+          suppressLiveSideEffects: true,
           homeTeamId: true,
           awayTeamId: true,
           externalOpponentName: true,
@@ -1201,6 +1281,9 @@ export class MatchesService {
           awayTeam: { select: { name: true } },
         },
       });
+      if (match?.suppressLiveSideEffects) {
+        return;
+      }
       const opponentName =
         match == null
           ? 'your opponent'
@@ -2351,6 +2434,13 @@ export class MatchesService {
    */
   private async notifyScorerAssigned(matchId: string, scorerUserId: string): Promise<void> {
     try {
+      const match = await this.prisma.match.findUnique({
+        where: { id: matchId },
+        select: { suppressLiveSideEffects: true },
+      });
+      if (match?.suppressLiveSideEffects) {
+        return;
+      }
       await this.notifications.sendToAudience([scorerUserId], {
         triggerKey: NotificationTrigger.ScorerAssigned,
         dedupeKey: `${NotificationTrigger.ScorerAssigned}:${matchId}:${scorerUserId}`,
@@ -2398,6 +2488,7 @@ export class MatchesService {
     locationAddress: string | null;
     latitude: number | null;
     longitude: number | null;
+    timezone: string | null;
   }> {
     const tournament = await this.prisma.tournament.findUnique({
       where: { id: tournamentId },
@@ -2409,6 +2500,7 @@ export class MatchesService {
         locationAddress: true,
         latitude: true,
         longitude: true,
+        timezone: true,
         isDeleted: true,
       },
     });
@@ -2421,6 +2513,7 @@ export class MatchesService {
       locationAddress: tournament.locationAddress,
       latitude: tournament.latitude,
       longitude: tournament.longitude,
+      timezone: tournament.timezone,
     };
   }
 
@@ -2491,7 +2584,7 @@ export class MatchesService {
   private async assertMatchDateAllowed(
     tournamentId: string,
     matchDate: string,
-    options?: { existingMatchDateIso?: string | null },
+    options?: { existingMatchDateIso?: string | null; allowPastDates?: boolean },
   ): Promise<void> {
     const tournament = await this.prisma.tournament.findUnique({
       where: { id: tournamentId },
@@ -2515,7 +2608,11 @@ export class MatchesService {
       matchDate === existingDateOnly &&
       compareIsoDateOnly(matchDate, todayOnly) < 0;
 
-    if (compareIsoDateOnly(matchDate, todayOnly) < 0 && !isUnchangedPastDate) {
+    if (
+      !options?.allowPastDates &&
+      compareIsoDateOnly(matchDate, todayOnly) < 0 &&
+      !isUnchangedPastDate
+    ) {
       throw new BadRequestException({
         message: 'Match date cannot be in the past',
         error: 'MATCH_DATE_IN_PAST',

@@ -135,7 +135,11 @@ export class ScoringService {
   /** Builds the scorecard, pushes it to live subscribers, and returns it. */
   private async publishAndReturn(match: Match): Promise<ScorecardResponse> {
     const card = await this.reader.build(match);
-    await this.live.publish(card);
+    // Historical backfill: score via the normal engine but do not warm Redis /
+    // socket rooms used by live overlay and guest live views.
+    if (!match.suppressLiveSideEffects) {
+      await this.live.publish(card);
+    }
     return card;
   }
 

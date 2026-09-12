@@ -123,6 +123,7 @@ export class NotificationTimedJobsService {
     const matches = await this.prisma.match.findMany({
       where: {
         isDeleted: false,
+        suppressLiveSideEffects: false,
         state: { in: PRE_LIVE_MATCH_STATES },
         OR: [
           { startTime: { gte: windowStart, lte: windowEnd } },

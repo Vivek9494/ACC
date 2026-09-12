@@ -168,6 +168,18 @@ export default function OpponentPlayersScreen(): React.ReactElement {
               No opponent players added yet.
             </Text>
           )}
+
+          {atCapacity ? (
+            <Button
+              label="Continue to match"
+              onPress={() => {
+                if (matchId) {
+                  router.replace(`/matches/${matchId}`);
+                }
+              }}
+              className="mt-4 h-12 w-full"
+            />
+          ) : null}
         </KeyboardAwareFormScrollView>
       )}
     </SafeAreaView>

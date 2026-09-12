@@ -80,6 +80,12 @@ export class DashboardFeaturedMatchesService {
     const rows = await this.prisma.match.findMany({
       where: withDashboardMatchVisibility({
         state: { in: [...LIVE_STATES, ...UPCOMING_STATES, ...PLAYED_STATES] },
+        // Hide in-progress/upcoming backfills from live dashboard surfaces; completed
+        // fixtures still appear like any other match (flag is never user-visible).
+        OR: [
+          { suppressLiveSideEffects: false },
+          { state: { in: PLAYED_STATES } },
+        ],
         ...activeTournamentRelationWhere,
       }),
       include: FEATURED_MATCH_INCLUDE,
@@ -100,6 +106,7 @@ export class DashboardFeaturedMatchesService {
   async loadGuestLiveMatch(): Promise<CaptainFeaturedMatchSummary | null> {
     const row = await this.prisma.match.findFirst({
       where: withDashboardMatchVisibility({
+        suppressLiveSideEffects: false,
         state: { in: LIVE_STATES },
         ...guestVisibleTournamentRelationWhere,
       }),

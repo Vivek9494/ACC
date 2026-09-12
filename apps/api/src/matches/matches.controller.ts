@@ -63,6 +63,19 @@ export class MatchesController {
     return this.matches.create(user, tournamentId, dto);
   }
 
+  /** Admin-only: past-dated ACC fixture with live side effects suppressed. */
+  @Post('tournaments/:tournamentId/matches/backfill')
+  @HttpCode(HttpStatus.CREATED)
+  @UseGuards(PermissionGuard)
+  @RequirePermission(Permission.BACKFILL_MATCH)
+  createBackfill(
+    @CurrentUser() user: AuthUser,
+    @Param('tournamentId') tournamentId: string,
+    @Body() dto: CreateMatchDto,
+  ): Promise<MatchDetail> {
+    return this.matches.createBackfill(user, tournamentId, dto);
+  }
+
   @Get('tournaments/:tournamentId/matches/round-robin-setup')
   roundRobinSetup(
     @Param('tournamentId') tournamentId: string,

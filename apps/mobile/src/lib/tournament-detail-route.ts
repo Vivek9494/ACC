@@ -50,6 +50,7 @@ export type TournamentSubpath =
   | 'add-team'
   | 'create-group'
   | 'match-setup'
+  | 'backfill-match'
   | 'knockout-bracket'
   | 'knockout-chart'
   | 'schedule-matches'

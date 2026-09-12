@@ -291,10 +291,12 @@ function TeamPicker({
 }
 
 export default function VerifyPlayingXiScreen(): React.ReactElement {
-  const { matchId, teamId, teamName } = useLocalSearchParams<{
+  const { matchId, teamId, teamName, backfillNext } = useLocalSearchParams<{
     matchId: string;
     teamId?: string;
     teamName?: string;
+    /** When `opponent`, continue Admin backfill into external-player entry. */
+    backfillNext?: string;
   }>();
   const router = useRouter();
   const singleTeamMode = Boolean(teamId);
@@ -408,6 +410,10 @@ export default function VerifyPlayingXiScreen(): React.ReactElement {
           impactCandidates: impactEnabled ? singleDraft.impact : undefined,
           activeImpactUserId: impactEnabled ? singleDraft.activeImpact : undefined,
         });
+        if (backfillNext === 'opponent') {
+          router.replace(`/matches/${matchId}/opponent-players`);
+          return;
+        }
         router.back();
       } catch (err) {
         setError(err instanceof ApiRequestError ? err.message : 'Could not confirm the Playing 11.');

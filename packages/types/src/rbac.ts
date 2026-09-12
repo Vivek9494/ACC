@@ -44,6 +44,8 @@ export const Permission = {
   APPROVE_CENTER_MIGRATION: 'APPROVE_CENTER_MIGRATION',
   MANAGE_PROVINCES: 'MANAGE_PROVINCES',
   MANAGE_CENTERS: 'MANAGE_CENTERS',
+  /** Admin-only: schedule a past ACC fixture and score it manually (no live side effects). */
+  BACKFILL_MATCH: 'BACKFILL_MATCH',
   // B. Tournament Creation & Lifecycle
   CREATE_ACC_TOURNAMENT: 'CREATE_ACC_TOURNAMENT',
   CREATE_APL_TOURNAMENT: 'CREATE_APL_TOURNAMENT',
@@ -224,6 +226,10 @@ export const PERMISSION_MATRIX: Record<Permission, PermissionRule> = {
     grants: [{ subject: R.Admin }],
   },
   [Permission.MANAGE_CENTERS]: {
+    grants: [{ subject: R.Admin }],
+  },
+  [Permission.BACKFILL_MATCH]: {
+    // Admin-only historical ACC fixture + manual scoring path.
     grants: [{ subject: R.Admin }],
   },
 

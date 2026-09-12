@@ -900,6 +900,11 @@ model Match {
   /// Sorted `teamId:teamId` for round-robin duplicate guard; null for non-RR / external fixtures.
   roundRobinPairKey   String?
 
+  /// INTERNAL ONLY — never expose on MatchDetail / UI. When true, skip live-only
+  /// side effects (schedule / XI / scorer push notifications). Used for Admin
+  /// historical backfill; resulting scorecards still look like live matches.
+  suppressLiveSideEffects Boolean @default(false)
+
   /// Knockout bracket placement and advancement (GROUP_STAGE_KNOCKOUT).
   bracketId          String?
   bracket            KnockoutBracket? @relation(fields: [bracketId], references: [id], onDelete: SetNull)
