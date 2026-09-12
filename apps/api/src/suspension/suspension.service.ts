@@ -403,6 +403,135 @@ export class SuspensionService {
     );
   }
 
+  /**
+   * Releases suspension / late-arrival rows that point at a soft-deleted match so
+   * no player keeps an obligation created by a fixture that no longer exists.
+   *
+   * - Triggered by the deleted match → cancelled (the cause is gone).
+   * - Due to be served at the deleted match → detached (`servingMatchId: null`),
+   *   so the row reattaches to the next fixture on sync.
+   * - Already `Served` / `Cancelled` rows are left untouched: the obligation is
+   *   discharged and reopening it would re-punish the player.
+   */
+  async releaseDependentsOnMatchDeleted(matchId: string, actorUserId: string): Promise<void> {
+    const triggered = await this.prisma.suspension.findMany({
+      where: {
+        triggeredByMatchId: matchId,
+        status: { in: [...PENALTY_TAB_STATUSES] },
+      },
+      select: { id: true, userId: true },
+    });
+    for (const row of triggered) {
+      await this.prisma.suspension.update({
+        where: { id: row.id },
+        data: {
+          status: SuspensionStatus.Cancelled,
+          cancelledByUserId: actorUserId,
+          cancelledAt: new Date(),
+        },
+      });
+      await this.audit.record({
+        action: 'SUSPENSION_CANCELLED_MATCH_DELETED',
+        actorUserId,
+        targetEntityType: 'suspension',
+        targetEntityId: row.id,
+        after: { userId: row.userId, triggeredByMatchId: matchId },
+      });
+    }
+
+    const cancelledIds = new Set(triggered.map((row) => row.id));
+    const serving = await this.prisma.suspension.findMany({
+      where: {
+        servingMatchId: matchId,
+        status: { in: [...PENALTY_TAB_STATUSES] },
+        ...(cancelledIds.size > 0 ? { id: { notIn: [...cancelledIds] } } : {}),
+      },
+      select: { id: true, userId: true },
+    });
+    for (const row of serving) {
+      await this.prisma.suspension.update({
+        where: { id: row.id },
+        data: { status: SuspensionStatus.Pending, servingMatchId: null },
+      });
+      await this.audit.record({
+        action: 'SUSPENSION_DETACHED_MATCH_DELETED',
+        actorUserId,
+        targetEntityType: 'suspension',
+        targetEntityId: row.id,
+        after: { userId: row.userId, fromServingMatchId: matchId },
+      });
+    }
+
+    // Breadcrumb only — clear so no active row points at a deleted fixture.
+    await this.prisma.suspension.updateMany({
+      where: { actionedAtMatchId: matchId, status: { in: [...PENALTY_TAB_STATUSES] } },
+      data: { actionedAtMatchId: null },
+    });
+
+    await this.releaseLateArrivalPenaltiesOnMatchDeleted(matchId, actorUserId);
+  }
+
+  /** Penalty half of {@link releaseDependentsOnMatchDeleted}. */
+  private async releaseLateArrivalPenaltiesOnMatchDeleted(
+    matchId: string,
+    actorUserId: string,
+  ): Promise<void> {
+    const originated = await this.prisma.lateArrivalPenalty.findMany({
+      where: {
+        originMatchId: matchId,
+        state: { in: [LateArrivalPenaltyState.Owed, LateArrivalPenaltyState.Assigned] },
+      },
+      select: { id: true, state: true, playerId: true },
+    });
+    for (const penalty of originated) {
+      await this.prisma.lateArrivalPenalty.update({
+        where: { id: penalty.id },
+        data: {
+          state: LateArrivalPenaltyState.Cancelled,
+          assignedServeMatchId: null,
+          cancelledByUserId: actorUserId,
+          cancelledAt: new Date(),
+        },
+      });
+      await this.prisma.lateArrivalPenaltyTransition.create({
+        data: {
+          penaltyId: penalty.id,
+          fromState: penalty.state,
+          toState: LateArrivalPenaltyState.Cancelled,
+          actorUserId,
+          contextMatchId: matchId,
+          reason: 'Origin match deleted',
+        },
+      });
+    }
+
+    const originatedIds = new Set(originated.map((row) => row.id));
+    const assigned = await this.prisma.lateArrivalPenalty.findMany({
+      where: {
+        assignedServeMatchId: matchId,
+        state: LateArrivalPenaltyState.Assigned,
+        ...(originatedIds.size > 0 ? { id: { notIn: [...originatedIds] } } : {}),
+      },
+      select: { id: true },
+    });
+    for (const penalty of assigned) {
+      await this.prisma.lateArrivalPenalty.update({
+        where: { id: penalty.id },
+        data: { state: LateArrivalPenaltyState.Owed, assignedServeMatchId: null },
+      });
+      await this.prisma.lateArrivalPenaltyTransition.create({
+        data: {
+          penaltyId: penalty.id,
+          fromState: LateArrivalPenaltyState.Assigned,
+          toState: LateArrivalPenaltyState.Owed,
+          actorUserId,
+          contextMatchId: matchId,
+          reason: 'Assigned serve match deleted',
+        },
+      });
+    }
+  }
+
   /** §17: captain penalty actions notify Club Managers. Best-effort. */
   private async notifyClubManagersOfCaptainAction(
     triggerKey:
@@ -834,10 +963,15 @@ export class SuspensionService {
         tournamentId: true,
         startTime: true,
         matchDate: true,
+        isDeleted: true,
         tournament: { select: { ballType: true } },
       },
     });
-    if (!servingMatch || servingMatch.tournament.ballType !== BallType.Leather) {
+    if (
+      !servingMatch ||
+      servingMatch.isDeleted ||
+      servingMatch.tournament.ballType !== BallType.Leather
+    ) {
       return;
     }
 
@@ -1165,9 +1299,15 @@ export class SuspensionService {
   private async requireServingMatch(matchId: string) {
     const match = await this.prisma.match.findUnique({
       where: { id: matchId },
-      select: { id: true, startTime: true, matchDate: true, tournamentId: true },
+      select: {
+        id: true,
+        startTime: true,
+        matchDate: true,
+        tournamentId: true,
+        isDeleted: true,
+      },
     });
-    if (!match) {
+    if (!match || match.isDeleted) {
       throw new NotFoundException({ message: 'Match not found', error: 'MATCH_NOT_FOUND' });
     }
     return match;

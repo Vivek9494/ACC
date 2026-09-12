@@ -13,6 +13,7 @@ import { Injectable } from '@nestjs/common';
 
 import { PrismaService } from '../prisma/prisma.service';
 import { ScorecardReader } from '../scoring/scorecard-reader';
+import { activeTournamentWhere } from '../tournaments/tournament-query';
 import {
   applyMatchToPlayerStats,
   buildPlayerProfileCareerStats,
@@ -77,7 +78,7 @@ export class PlayerStatsService {
           match: {
             isDeleted: false,
             state: { in: PROFILE_MATCH_STATES },
-            tournament: { ballType },
+            tournament: { ...activeTournamentWhere, ballType },
           },
         },
       },

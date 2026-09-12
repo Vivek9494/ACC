@@ -1,6 +1,7 @@
 import {
   AttendancePunchStatus,
   BallType,
+  LateArrivalPenaltyState,
   MatchState,
   SuspensionReason,
   SuspensionStatus,
@@ -27,6 +28,7 @@ describe('SuspensionService', () => {
     },
     lateArrivalPenalty: {
       findFirst: jest.fn(),
+      findMany: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
     },
@@ -40,6 +42,7 @@ describe('SuspensionService', () => {
     prismaMock.match.findFirst.mockResolvedValue(null);
     prismaMock.availabilityPoll.findUnique.mockResolvedValue(null);
     prismaMock.lateArrivalPenalty.findFirst.mockResolvedValue(null);
+    prismaMock.lateArrivalPenalty.findMany.mockResolvedValue([]);
     prismaMock.lateArrivalPenalty.create.mockResolvedValue({ id: 'penalty-1' });
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -469,5 +472,114 @@ describe('SuspensionService', () => {
     await service.generateForCompletedMatch('match-1');
 
     expect(prismaMock.suspension.create).not.toHaveBeenCalled();
+  });
+
+  describe('releaseDependentsOnMatchDeleted', () => {
+    it('cancels suspensions triggered by the deleted match', async () => {
+      prismaMock.suspension.findMany
+        .mockResolvedValueOnce([{ id: 'susp-1', userId: 'player-1' }])
+        .mockResolvedValueOnce([]);
+      prismaMock.suspension.updateMany.mockResolvedValue({ count: 0 });
+
+      await service.releaseDependentsOnMatchDeleted('match-1', 'admin-1');
+
+      expect(prismaMock.suspension.update).toHaveBeenCalledWith({
+        where: { id: 'susp-1' },
+        data: expect.objectContaining({
+          status: SuspensionStatus.Cancelled,
+          cancelledByUserId: 'admin-1',
+        }),
+      });
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'SUSPENSION_CANCELLED_MATCH_DELETED' }),
+      );
+    });
+
+    it('detaches suspensions that were due to be served at the deleted match', async () => {
+      prismaMock.suspension.findMany
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([{ id: 'susp-2', userId: 'player-2' }]);
+      prismaMock.suspension.updateMany.mockResolvedValue({ count: 0 });
+
+      await service.releaseDependentsOnMatchDeleted('match-1', 'admin-1');
+
+      expect(prismaMock.suspension.update).toHaveBeenCalledWith({
+        where: { id: 'susp-2' },
+        data: { status: SuspensionStatus.Pending, servingMatchId: null },
+      });
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'SUSPENSION_DETACHED_MATCH_DELETED' }),
+      );
+    });
+
+    it('cancels penalties that originated at the deleted match', async () => {
+      prismaMock.suspension.findMany.mockResolvedValue([]);
+      prismaMock.suspension.updateMany.mockResolvedValue({ count: 0 });
+      prismaMock.lateArrivalPenalty.findMany
+        .mockResolvedValueOnce([
+          { id: 'pen-1', state: LateArrivalPenaltyState.Owed, playerId: 'player-1' },
+        ])
+        .mockResolvedValueOnce([]);
+
+      await service.releaseDependentsOnMatchDeleted('match-1', 'admin-1');
+
+      expect(prismaMock.lateArrivalPenalty.update).toHaveBeenCalledWith({
+        where: { id: 'pen-1' },
+        data: expect.objectContaining({
+          state: LateArrivalPenaltyState.Cancelled,
+          assignedServeMatchId: null,
+          cancelledByUserId: 'admin-1',
+        }),
+      });
+      expect(prismaMock.lateArrivalPenaltyTransition.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          penaltyId: 'pen-1',
+          toState: LateArrivalPenaltyState.Cancelled,
+          reason: 'Origin match deleted',
+        }),
+      });
+    });
+
+    it('returns penalties assigned to the deleted match to Owed', async () => {
+      prismaMock.suspension.findMany.mockResolvedValue([]);
+      prismaMock.suspension.updateMany.mockResolvedValue({ count: 0 });
+      prismaMock.lateArrivalPenalty.findMany
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([{ id: 'pen-2' }]);
+
+      await service.releaseDependentsOnMatchDeleted('match-1', 'admin-1');
+
+      expect(prismaMock.lateArrivalPenalty.update).toHaveBeenCalledWith({
+        where: { id: 'pen-2' },
+        data: { state: LateArrivalPenaltyState.Owed, assignedServeMatchId: null },
+      });
+      expect(prismaMock.lateArrivalPenaltyTransition.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          penaltyId: 'pen-2',
+          fromState: LateArrivalPenaltyState.Assigned,
+          toState: LateArrivalPenaltyState.Owed,
+          reason: 'Assigned serve match deleted',
+        }),
+      });
+    });
+
+    it('leaves served and cancelled rows untouched', async () => {
+      prismaMock.suspension.findMany.mockResolvedValue([]);
+      prismaMock.suspension.updateMany.mockResolvedValue({ count: 0 });
+
+      await service.releaseDependentsOnMatchDeleted('match-1', 'admin-1');
+
+      expect(prismaMock.suspension.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            status: {
+              in: [SuspensionStatus.Pending, SuspensionStatus.CarriedForward],
+            },
+          }),
+        }),
+      );
+      expect(prismaMock.suspension.update).not.toHaveBeenCalled();
+      expect(prismaMock.lateArrivalPenalty.update).not.toHaveBeenCalled();
+    });
   });
 });

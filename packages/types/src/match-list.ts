@@ -223,6 +223,7 @@ export interface MatchListItem {
   deletedByName?: string | null;
   /** Server-resolved: Admin / Club Manager on upcoming fixtures only. */
   canEdit?: boolean;
+  /** Server-resolved: upcoming or finished fixtures; never knockout. */
   canDelete?: boolean;
   /** Group-stage fixture group; null for knockout bracket matches and non-group formats. */
   groupId: string | null;
@@ -242,6 +243,25 @@ const COMPLETED_STATES: MatchStateType[] = [
 ];
 
 const LIVE_STATES: MatchStateType[] = LIVE_MATCH_STATES;
+
+/**
+ * States a fixture may be soft-deleted from: the pre-live Scheduled bucket plus
+ * finished results. `SCORECARD_LOCKED` is excluded because a confirmed scorecard is
+ * only correctable under §13.2, and Live / Rain Interrupted are excluded because
+ * deleting mid-session has no defined scorer/overlay teardown.
+ */
+export function isDeletableMatchState(state: MatchStateType): boolean {
+  return (
+    isUpcomingMatchForScheduleManagement(state) ||
+    state === MatchState.Completed ||
+    state === MatchState.NoResult
+  );
+}
+
+/** True when a delete needs the stats-impact warning (a scorecard exists). */
+export function isScoredMatchState(state: MatchStateType): boolean {
+  return state === MatchState.Completed || state === MatchState.NoResult;
+}
 
 /** Chronological sort key: `startTime` when set, otherwise noon UTC on `matchDate`. */
 export function parseMatchSortInstant(

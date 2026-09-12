@@ -1,6 +1,8 @@
 import {
   MatchCardDisplayState,
   MatchSchedulingFormat,
+  isDeletableMatchState,
+  isScoredMatchState,
   type AuthUser,
   type MatchListItem,
 } from '@acc/types';
@@ -26,13 +28,9 @@ export function buildMatchMenuActions(
   if (!options?.canManage || match.isDeleted) {
     return [];
   }
-  if (match.displayState !== MatchCardDisplayState.Scheduled) {
-    return [];
-  }
-
   const actions: OverflowMenuAction[] = [];
 
-  if (match.canEdit !== false) {
+  if (match.displayState === MatchCardDisplayState.Scheduled && match.canEdit !== false) {
     actions.push({
       key: 'edit-match',
       label: 'Edit',
@@ -48,7 +46,7 @@ export function buildMatchMenuActions(
     });
   }
 
-  if (match.canDelete !== false) {
+  if (isDeletableMatchState(match.state) && match.canDelete !== false) {
     actions.push({
       key: 'delete-match',
       label: 'Delete',
@@ -57,7 +55,9 @@ export function buildMatchMenuActions(
       onPress: () => {
         confirmDestructiveDeleteAlert({
           title: 'Delete this match?',
-          message: "This can't be undone.",
+          message: isScoredMatchState(match.state)
+            ? "This match has a full scorecard. Deleting it removes its runs, wickets and result from player career stats, leaderboards and the points table — including other teams' net run rate. The record is kept and stays visible to Admins."
+            : 'It will be removed from match lists. The record is kept and stays visible to Admins.',
           onConfirm: async () => {
             try {
               await deleteMatch(match.id);

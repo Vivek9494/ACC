@@ -381,6 +381,7 @@ export class CaptainService {
         state: { in: [MatchState.Completed, MatchState.ScorecardLocked] },
         manOfTheMatchUserId: null,
         winningTeamId: { in: teamIds },
+        isDeleted: false,
         ...activeTournamentRelationWhere,
       },
       orderBy: [{ completedAt: 'desc' }, { createdAt: 'desc' }],

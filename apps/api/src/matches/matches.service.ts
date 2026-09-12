@@ -59,7 +59,9 @@ import {
   ScorerRevokedReason,
   buildMatchPlayingXiFinalizationStatus,
   countPlayingXiStarters,
+  isDeletableMatchState,
   isExternalOpponentMatch,
+  isScoredMatchState,
   type ExternalPlayerView,
   type FinalizeBothPlayingXiRequest,
   type RoundRobinMatchSetupContext,
@@ -793,7 +795,11 @@ export class MatchesService {
     return this.getDetail(matchId, actor);
   }
 
-  /** Soft-delete an upcoming fixture (Admin / Club Manager only). */
+  /**
+   * Soft-delete a fixture (Admin / Club Manager only). Upcoming fixtures carry no
+   * scoring data; Completed / No Result fixtures do, so the audit entry snapshots
+   * the final scorecard and dependent suspensions/penalties are released.
+   */
   async remove(actor: AuthUser, matchId: string): Promise<void> {
     const existing = await this.requireActiveMatchRow(matchId);
     await assertCanManageUpcomingMatch(
@@ -803,12 +809,20 @@ export class MatchesService {
         id: existing.id,
         tournamentId: existing.tournamentId,
         state: existing.state as MatchState,
+        bracketId: existing.bracketId,
       },
       Permission.DELETE_MATCH,
     );
 
     const deletedAt = new Date();
     const beforeSnapshot = this.fixtureAuditSnapshot(existing);
+    const scored = isScoredMatchState(existing.state as MatchState);
+    // Captured before the flag flips — the reader refuses deleted matches.
+    const scorecardSnapshot = scored ? await this.scorecardAuditSnapshot(matchId) : null;
+
+    // Released before the flag flips: if this fails the fixture stays live and the
+    // admin can retry, rather than leaving players tied to a match that is gone.
+    await this.suspensions.releaseDependentsOnMatchDeleted(matchId, actor.id);
 
     await this.prisma.match.update({
       where: { id: matchId },
@@ -825,8 +839,40 @@ export class MatchesService {
       targetEntityType: 'match',
       targetEntityId: matchId,
       before: beforeSnapshot,
-      after: { isDeleted: true, deletedAt: deletedAt.toISOString(), deletedById: actor.id },
+      after: {
+        isDeleted: true,
+        deletedAt: deletedAt.toISOString(),
+        deletedById: actor.id,
+        ...(scorecardSnapshot ? { scorecard: scorecardSnapshot } : {}),
+      },
     });
+  }
+
+  /**
+   * Final innings totals for the audit trail, so a deleted result stays
+   * reconstructable while there is no restore path. Best-effort — never blocks
+   * the delete.
+   */
+  private async scorecardAuditSnapshot(matchId: string): Promise<Prisma.InputJsonValue | null> {
+    try {
+      const card = await this.scorecardReader.byMatchId(matchId);
+      return {
+        resultNote: card.result?.note ?? null,
+        innings: card.innings.map((inn) => ({
+          sequence: inn.sequence,
+          battingTeamId: inn.battingTeamId,
+          runs: inn.runs,
+          wickets: inn.wickets,
+          oversText: inn.oversText,
+        })),
+      };
+    } catch (err) {
+      this.logger.error(
+        `Failed to snapshot scorecard for deleted match ${matchId}`,
+        err as Error,
+      );
+      return null;
+    }
   }
 
   async list(
@@ -862,7 +908,10 @@ export class MatchesService {
         rows.map((row) => this.toListItem(row, deleterNames.get(row.deletedById ?? '') ?? null)),
       ),
     );
-    return this.attachMatchListPermissions(items, viewer);
+    const knockoutMatchIds = new Set(
+      rows.filter((row) => row.bracketId != null).map((row) => row.id),
+    );
+    return this.attachMatchListPermissions(items, knockoutMatchIds, viewer);
   }
 
   private async toListItem(
@@ -989,6 +1038,7 @@ export class MatchesService {
 
   private async attachMatchListPermissions(
     items: MatchListItem[],
+    knockoutMatchIds: ReadonlySet<string>,
     viewer?: AuthUser | null,
   ): Promise<MatchListItem[]> {
     if (!viewer) {
@@ -997,7 +1047,7 @@ export class MatchesService {
     return Promise.all(
       items.map(async (item) => ({
         ...item,
-        ...(await this.resolveMatchListPermissions(viewer, item)),
+        ...(await this.resolveMatchListPermissions(viewer, item, knockoutMatchIds.has(item.id))),
       })),
     );
   }
@@ -1005,6 +1055,7 @@ export class MatchesService {
   private async resolveMatchListPermissions(
     viewer: AuthUser,
     item: MatchListItem,
+    isKnockout: boolean,
   ): Promise<{ canEdit: boolean; canDelete: boolean }> {
     const refs = { tournamentId: item.tournamentId, matchId: item.id };
     const [canEdit, canDelete] = await Promise.all([
@@ -1016,10 +1067,9 @@ export class MatchesService {
         canEdit &&
         !item.isDeleted &&
         item.displayState === MatchCardDisplayState.Scheduled,
+      // Delete also covers finished results, but never a knockout fixture.
       canDelete:
-        canDelete &&
-        !item.isDeleted &&
-        item.displayState === MatchCardDisplayState.Scheduled,
+        canDelete && !item.isDeleted && !isKnockout && isDeletableMatchState(item.state),
     };
   }
 
@@ -3242,6 +3292,7 @@ export class MatchesService {
         homeAway: true;
         youtubeUrl: true;
         roundRobinPairKey: true;
+        bracketId: true;
         isDeleted: true;
       };
     }>
@@ -3271,6 +3322,7 @@ export class MatchesService {
         homeAway: true,
         youtubeUrl: true,
         roundRobinPairKey: true,
+        bracketId: true,
         isDeleted: true,
       },
     });
