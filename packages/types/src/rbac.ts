@@ -485,13 +485,21 @@ export const PERMISSION_MATRIX: Record<Permission, PermissionRule> = {
     ],
   },
   // Playing 11 lock + substitutions: the "Playing 11 Locked" state (§5.2) is
-  // universal, so this is not ACC-only. Club Manager is the §31 #1 fallback when
-  // both the Captain and Vice Captain are suspended for the match.
+  // universal, so this is not ACC-only. Admin always; Club Manager is the §31 #1
+  // fallback when both the Captain and Vice Captain are suspended for the match.
   [Permission.SELECT_PLAYING_11]: {
-    grants: [...captainAndDeputy(), { subject: R.ClubManager, requiresLeadersSuspended: true }],
+    grants: [
+      { subject: R.Admin },
+      ...captainAndDeputy(),
+      { subject: R.ClubManager, requiresLeadersSuspended: true },
+    ],
   },
   [Permission.SWAP_SUBSTITUTE]: {
-    grants: [...captainAndDeputy(), { subject: R.ClubManager, requiresLeadersSuspended: true }],
+    grants: [
+      { subject: R.Admin },
+      ...captainAndDeputy(),
+      { subject: R.ClubManager, requiresLeadersSuspended: true },
+    ],
   },
 
   // G. Geofence Attendance & Suspension (ACC only)

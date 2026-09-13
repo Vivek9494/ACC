@@ -574,6 +574,14 @@ describe('PermissionService', () => {
       );
       expect(result).toBe(false);
     });
+
+    it('grants Playing 11 selection to Admin without captaincy or suspension', () => {
+      const result = service.evaluate(
+        Permission.SELECT_PLAYING_11,
+        ctx({ subjects: [UserRole.Admin], tournamentType: TournamentType.ACC }),
+      );
+      expect(result).toBe(true);
+    });
   });
 
   describe('MANAGE_BROADCAST', () => {
