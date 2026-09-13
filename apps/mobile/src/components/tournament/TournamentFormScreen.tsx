@@ -253,9 +253,10 @@ export function TournamentFormScreen({
   const isTennisBall = ballType === BallType.Tennis;
   const isLeatherBall = ballType === BallType.Leather;
   const venueTimezone = resolveVenueDisplayTimezone(tournamentTimezone).timezone;
+  /** Edit may set a historical span; create still floors the picker at venue-local today. */
   const leatherDateMinimum = useMemo(
-    () => startOfTodayForDatePicker(venueTimezone),
-    [venueTimezone],
+    () => (isEditMode ? new Date(1900, 0, 1) : startOfTodayForDatePicker(venueTimezone)),
+    [isEditMode, venueTimezone],
   );
 
   function datesForSubmit(): string[] {

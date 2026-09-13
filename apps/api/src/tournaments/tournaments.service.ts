@@ -681,6 +681,7 @@ export class TournamentsService {
         this.validateLeatherTournamentSpan(dto.dates, {
           timezone: existing.timezone,
           existingSpanDates: existingDates,
+          allowPastDates: true,
         });
         normalizedDates = normalizeTournamentDates(dto.dates);
         const spanStart = normalizedDates[0] as string;
@@ -1170,6 +1171,8 @@ export class TournamentsService {
     options?: {
       timezone?: string | null;
       existingSpanDates?: string[];
+      /** Edit: past span boundaries are allowed; create keeps today-or-later. */
+      allowPastDates?: boolean;
     },
   ): void {
     if (!dates || dates.length === 0) {
@@ -1183,6 +1186,7 @@ export class TournamentsService {
     const timeZone = serverVenueTimezone(options?.timezone);
     const todayOnly = formatTodayDateOnlyInZone(timeZone);
     const unchangedDates = new Set(options?.existingSpanDates ?? []);
+    const allowPastDates = options?.allowPastDates === true;
 
     for (const raw of dates) {
       if (!isIsoDateOnly(raw)) {
@@ -1191,6 +1195,9 @@ export class TournamentsService {
           error: 'INVALID_TOURNAMENT_DATE',
           fields: { tournamentDates: TOURNAMENT_FORM_MESSAGES.tournamentDates.leatherFromRequired },
         });
+      }
+      if (allowPastDates) {
+        continue;
       }
       const isUnchanged = unchangedDates.has(raw);
       if (compareIsoDateOnly(raw, todayOnly) < 0 && !isUnchanged) {

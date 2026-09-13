@@ -371,7 +371,10 @@ export interface UpdateTournamentFormInput extends CreateTournamentFormInput {
   hasKnockoutBracket: boolean;
   /** Venue IANA timezone for today comparisons (edit mode). */
   venueTimezone?: string;
-  /** Saved span boundaries — unchanged past dates remain valid on edit. */
+  /**
+   * Saved span boundaries — used when past dates are still blocked (create /
+   * legacy callers). Edit validation allows any past span via `allowPastDates`.
+   */
   initialLeatherFromDate?: string;
   initialLeatherEndDate?: string;
   /** Saved upload window start date — unchanged past dates remain valid on edit. */
@@ -397,6 +400,9 @@ function appendLeatherSpanDateErrors(
   values: Pick<CreateTournamentFormInput, 'leatherFromDate' | 'leatherEndDate'>,
   options: {
     timeZone: string;
+    /** When true (edit), past from/end dates are allowed; only End >= From is required. */
+    allowPastDates?: boolean;
+    /** Create / legacy edit: unchanged past boundaries stay valid when past is otherwise blocked. */
     initialLeatherFromDate?: string;
     initialLeatherEndDate?: string;
   },
@@ -416,6 +422,10 @@ function appendLeatherSpanDateErrors(
   }
   if (compareIsoDateOnly(endDate, fromDate) < 0) {
     errors.leatherEndDate = messages.endBeforeFrom;
+    return;
+  }
+
+  if (options.allowPastDates) {
     return;
   }
 
@@ -467,8 +477,7 @@ export function validateUpdateTournamentForm(
     delete errors.tournamentLocation;
     appendLeatherSpanDateErrors(errors, values, {
       timeZone,
-      initialLeatherFromDate: values.initialLeatherFromDate,
-      initialLeatherEndDate: values.initialLeatherEndDate,
+      allowPastDates: true,
     });
 
     if (

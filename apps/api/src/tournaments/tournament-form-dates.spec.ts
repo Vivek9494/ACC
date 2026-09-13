@@ -59,6 +59,83 @@ describe('tournament form dates', () => {
     expect(errors.tournamentDates).toBeUndefined();
   });
 
+  it('accepts newly chosen past leather from and end dates on edit', () => {
+    const errors = validateUpdateTournamentForm({
+      hasPoster: true,
+      name: 'ACC 2025',
+      year: '2025',
+      tournamentDates: [],
+      leatherFromDate: '2025-06-01',
+      leatherEndDate: '2025-08-15',
+      ballType: BallType.Leather,
+      citySelection: null,
+      tournamentProvinceId: 'province-1',
+      selectedCenterIds: [],
+      numberOfTeams: '4',
+      playersPerTeam: '',
+      hasRegistrationWindow: false,
+      registrationOpenDate: '',
+      registrationOpenTime: '',
+      registrationCloseDate: '',
+      registrationCloseTime: '',
+      hasAuctionDate: false,
+      auctionDate: '',
+      videoRequired: false,
+      videoUploadStartDate: '',
+      videoUploadStartTime: '',
+      videoUploadEndDate: '',
+      videoUploadEndTime: '',
+      venueTimezone: 'America/Toronto',
+      initialLeatherFromDate: '2026-07-03',
+      initialLeatherEndDate: '2026-10-29',
+      minTeamCount: 0,
+      datesWithMatches: [],
+      tournamentType: TournamentType.ACC,
+      groupCount: 0,
+      knockoutTeamCount: null,
+      hasKnockoutBracket: false,
+    });
+
+    expect(errors.leatherFromDate).toBeUndefined();
+    expect(errors.leatherEndDate).toBeUndefined();
+    expect(errors.tournamentDates).toBeUndefined();
+  });
+
+  it('rejects past leather from date on create', () => {
+    const errors = validateCreateTournamentForm({
+      hasPoster: true,
+      name: 'ACC 2025',
+      year: '2025',
+      tournamentDates: [],
+      leatherFromDate: '2020-06-01',
+      leatherEndDate: '2020-08-15',
+      ballType: BallType.Leather,
+      citySelection: null,
+      tournamentProvinceId: 'province-1',
+      selectedCenterIds: [],
+      numberOfTeams: '4',
+      playersPerTeam: '',
+      hasRegistrationWindow: false,
+      registrationOpenDate: '',
+      registrationOpenTime: '',
+      registrationCloseDate: '',
+      registrationCloseTime: '',
+      hasAuctionDate: false,
+      auctionDate: '',
+      videoRequired: false,
+      videoUploadStartDate: '',
+      videoUploadStartTime: '',
+      videoUploadEndDate: '',
+      videoUploadEndTime: '',
+      venueTimezone: 'America/Toronto',
+      locationAddress: '',
+      latitude: null,
+      longitude: null,
+    });
+
+    expect(errors.leatherFromDate).toBe('Choose today or a future date');
+  });
+
   it('accepts unchanged past leather from date on edit when end date is future', () => {
     const errors = validateUpdateTournamentForm({
       hasPoster: true,

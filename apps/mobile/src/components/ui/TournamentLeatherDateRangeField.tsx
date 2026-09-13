@@ -11,7 +11,7 @@ export interface TournamentLeatherDateRangeFieldProps {
   endDate: string;
   onFromDateChange: (value: string) => void;
   onEndDateChange: (value: string) => void;
-  /** Start-of-today in venue local tz for the native date picker floor. */
+  /** Floor for the From Date picker (create: venue-local today; edit: wide past). */
   minimumFromDate: Date;
   fromError?: string | null;
   endError?: string | null;
@@ -40,6 +40,7 @@ export function TournamentLeatherDateRangeField({
     if (!match) {
       return minimumFromDate;
     }
+    // End date must be on or after From Date (ordering), not clamped to "today".
     const fromLocal = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
     return isBeforeCalendarDay(fromLocal, minimumFromDate) ? minimumFromDate : fromLocal;
   }, [fromDate, minimumFromDate]);
