@@ -360,7 +360,9 @@ export class MatchesService {
     const isRoundRobin =
       tournament.matchSchedulingFormat === MatchSchedulingFormat.RoundRobin;
 
-    if (isRoundRobin) {
+    // Backfill is always ACC vs an external opponent — skip round-robin's
+    // two-registered-teams rule (ACC tournaments often use Round Robin format).
+    if (isRoundRobin && !backfill) {
       if (dto.groupId) {
         throw new BadRequestException({
           message: 'Group is not used for round-robin fixtures',
@@ -389,7 +391,7 @@ export class MatchesService {
       );
     }
 
-    if (isLeatherBall && !isRoundRobin) {
+    if (isLeatherBall && (!isRoundRobin || backfill)) {
       if (dto.externalOpponentName && !dto.externalOpponentName.trim()) {
         throw new BadRequestException({
           message: 'External opponent name cannot be blank',
@@ -422,7 +424,7 @@ export class MatchesService {
     // Knockout rounds pair teams across groups — group is optional and the
     // belong-to-group constraint is skipped for them.
     const isKnockout = isKnockoutMatchType(dto.matchType);
-    if (isGroupStage && !isKnockout) {
+    if (isGroupStage && !isKnockout && !backfill) {
       if (!dto.groupId) {
         throw new BadRequestException({
           message: 'Group is required for group-stage fixtures',
