@@ -38,6 +38,7 @@ import { generateSecureTemporaryPassword } from '../auth/password.util';
 import { AuditService } from '../audit/audit.service';
 import { PlayerStatsService } from '../player-stats/player-stats.service';
 import { DashboardFeaturedMatchesService } from '../matches/dashboard-featured-matches.service';
+import { ScorerDashboardMatchService } from '../matches/scorer-dashboard-match.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import { MediaUrlResolver } from '../storage/media-url.resolver';
@@ -62,6 +63,7 @@ export class AdminService {
     private readonly redis: RedisService,
     private readonly mediaUrls: MediaUrlResolver,
     private readonly dashboardFeaturedMatches: DashboardFeaturedMatchesService,
+    private readonly scorerDashboardMatch: ScorerDashboardMatchService,
   ) {}
 
   async listUsers(actor: AuthUser, query: ListAdminUsersDto): Promise<AdminUsersPage> {
@@ -757,7 +759,7 @@ export class AdminService {
     return age;
   }
 
-  async getOverview(): Promise<AdminOverview> {
+  async getOverview(actor: AuthUser): Promise<AdminOverview> {
     const todayStart = new Date();
     todayStart.setUTCHours(0, 0, 0, 0);
     const todayEnd = new Date(todayStart);
@@ -771,7 +773,8 @@ export class AdminService {
       tournamentCount,
       matchesTodayCount,
       pendingApprovalsCount,
-      featuredMatches,
+      featuredMatchesRaw,
+      scorerMatch,
     ] = await Promise.all([
       this.prisma.province.count({ where: { isActive: true } }),
       this.prisma.center.count({ where: { isActive: true } }),
@@ -790,7 +793,12 @@ export class AdminService {
         where: { status: RegistrationStatus.InWaitlist },
       }),
       this.dashboardFeaturedMatches.loadTodayMatches(),
+      this.scorerDashboardMatch.loadStartableMatch(actor.id),
     ]);
+
+    const featuredMatches = scorerMatch
+      ? featuredMatchesRaw.filter((match) => match.matchId !== scorerMatch.matchId)
+      : featuredMatchesRaw;
 
     return {
       provinceCount,
@@ -801,6 +809,7 @@ export class AdminService {
       matchesTodayCount,
       pendingApprovalsCount,
       featuredMatches,
+      scorerMatch,
     };
   }
 }

@@ -44,8 +44,8 @@ export class AdminController {
   @Get('overview')
   @UseGuards(PermissionGuard)
   @RequirePermission(Permission.VIEW_ADMIN_OVERVIEW)
-  overview(): Promise<AdminOverview> {
-    return this.admin.getOverview();
+  overview(@CurrentUser() user: AuthUser): Promise<AdminOverview> {
+    return this.admin.getOverview(user);
   }
 
   @Post('users')

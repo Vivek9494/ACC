@@ -50,8 +50,10 @@ export function isScorerMatchDayToday(
 
 /**
  * Whether an assigned scorer's dashboard card should surface for this fixture.
- * Hidden when the scheduled calendar day is strictly before today (venue tz) — including
- * live/in-progress fixtures (§11.1). Pure SCHEDULED fixtures also wait until match day.
+ * In-progress (Live / Rain Interrupted) always surfaces so scoring can be resumed
+ * after app kill or leaving the score screen — including past-dated historical
+ * backfills. Pre-live states are hidden once the scheduled calendar day is
+ * strictly before today (venue tz). Pure SCHEDULED fixtures also wait until match day.
  */
 export function isDashboardScorerCardVisible(
   state: string,
@@ -59,12 +61,13 @@ export function isDashboardScorerCardVisible(
   tournamentTimezone: string | null | undefined = null,
   now: Date = new Date(),
 ): boolean {
+  // Resume path: never hide an in-progress scoring session by calendar day.
+  if ((SCORER_IN_PROGRESS_MATCH_STATES as readonly string[]).includes(state)) {
+    return true;
+  }
   const timeZone = serverVenueTimezone(tournamentTimezone);
   if (isMatchScheduledDateBeforeTodayInZone(match, timeZone, now)) {
     return false;
-  }
-  if ((SCORER_IN_PROGRESS_MATCH_STATES as readonly string[]).includes(state)) {
-    return true;
   }
   if (!(SCORER_STARTABLE_MATCH_STATES as readonly string[]).includes(state)) {
     return false;

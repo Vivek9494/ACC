@@ -223,8 +223,15 @@ export default function MatchDetailScreen(): React.ReactElement {
     return null;
   })();
 
+  const isAssignedScorer =
+    user != null && match.activeScorers.some((scorer) => scorer.userId === user.id);
+  const canContinueScoring =
+    isAssignedScorer && (state === 'LIVE' || state === 'RAIN_INTERRUPTED');
+
   const showPunchTime = canViewMatchPlayersPunchTimeButton(user, match);
-  const punchAndScoreSideBySide = showPunchTime && scoreViewAction != null;
+  const primaryActionCount =
+    (showPunchTime ? 1 : 0) + (scoreViewAction ? 1 : 0) + (canContinueScoring ? 1 : 0);
+  const punchAndScoreSideBySide = primaryActionCount === 2;
 
   function resolvePlayingXiRoute(team: { id: string; name: string }): string {
     if (match.ballType === BallType.Leather) {
@@ -264,8 +271,15 @@ export default function MatchDetailScreen(): React.ReactElement {
           </View>
         ) : null}
 
-        {showPunchTime || scoreViewAction ? (
-          <View className={punchAndScoreSideBySide ? 'flex-row gap-3' : undefined}>
+        {showPunchTime || scoreViewAction || canContinueScoring ? (
+          <View className={punchAndScoreSideBySide ? 'flex-row flex-wrap gap-3' : 'gap-3'}>
+            {canContinueScoring ? (
+              <Button
+                onPress={() => router.push(`/matches/${match.id}/score`)}
+                className={punchAndScoreSideBySide ? 'h-12 min-w-0 flex-1' : 'h-12'}
+                label="Continue Scoring"
+              />
+            ) : null}
             {showPunchTime ? (
               <Button
                 onPress={() => router.push(`/matches/${match.id}/punch-time`)}

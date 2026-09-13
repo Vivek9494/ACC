@@ -21,10 +21,10 @@ describe('isDashboardScorerCardVisible', () => {
     startTime: new Date('2026-07-01T22:00:00.000Z'),
   };
 
-  it('hides live fixtures on a past scheduled calendar day', () => {
+  it('shows live fixtures on a past scheduled calendar day so scoring can be resumed', () => {
     expect(
       isDashboardScorerCardVisible(MatchState.Live, pastMatch, toronto, referenceNow),
-    ).toBe(false);
+    ).toBe(true);
   });
 
   it('hides in-progress XI-locked fixtures on a past scheduled calendar day', () => {

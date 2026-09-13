@@ -65,6 +65,9 @@ describe('AdminService user management', () => {
     const dashboardFeaturedMatches = {
       loadTodayMatches: jest.fn().mockResolvedValue([]),
     };
+    const scorerDashboardMatch = {
+      loadStartableMatch: jest.fn().mockResolvedValue(null),
+    };
     service = new AdminService(
       prisma as unknown as PrismaService,
       audit as unknown as AuditService,
@@ -72,6 +75,7 @@ describe('AdminService user management', () => {
       redis as never,
       mediaUrls as never,
       dashboardFeaturedMatches as unknown as DashboardFeaturedMatchesService,
+      scorerDashboardMatch as never,
     );
   });
 

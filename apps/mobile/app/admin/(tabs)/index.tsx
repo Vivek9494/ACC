@@ -6,6 +6,7 @@ import { View } from 'react-native';
 import { buildCaptainFeaturedMatchSections } from '../../../src/components/dashboard/buildDashboardFeaturedMatchSections';
 import { buildTournamentMenuActions } from '../../../src/components/dashboard/buildTournamentMenuActions';
 import { DashboardScaffold } from '../../../src/components/dashboard/DashboardScaffold';
+import { ScorerStartMatchCard } from '../../../src/components/dashboard/ScorerStartMatchCard';
 import { Card } from '../../../src/components/ui/Card';
 import { CircularAddButton } from '../../../src/components/ui/CircularAddButton';
 import { StatTile } from '../../../src/components/ui/StatTile';
@@ -15,6 +16,10 @@ import { getAdminOverview, listTournamentDashboardEntries } from '../../../src/l
 import { prependBroadcastSection } from '../../../src/lib/dashboard-broadcast';
 import { dashboardFetchError, logFetchError } from '../../../src/lib/fetch-error';
 import { useAuth } from '../../../src/lib/auth-context';
+import {
+  handleScorerDashboardPress,
+  scorerDashboardButtonLabel,
+} from '../../../src/lib/scorer-dashboard';
 import { tournamentDetailHref, tournamentNewHref } from '../../../src/lib/tournament-detail-route';
 import { useActiveBroadcast } from '../../../src/hooks/useActiveBroadcast';
 
@@ -86,6 +91,16 @@ export default function AdminDashboardScreen(): React.ReactElement {
     }
 
     return [
+      overview.scorerMatch ? (
+        <ScorerStartMatchCard
+          key="scorer-match"
+          match={overview.scorerMatch}
+          buttonLabel={scorerDashboardButtonLabel(overview.scorerMatch)}
+          onPress={() =>
+            handleScorerDashboardPress(overview.scorerMatch!, router)
+          }
+        />
+      ) : null,
       ...buildCaptainFeaturedMatchSections(overview.featuredMatches, router),
       <Card accent key="system-overview">
         <Text className="mb-4 font-sans-bold text-lg text-on-surface">System Overview</Text>

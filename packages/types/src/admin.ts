@@ -11,6 +11,7 @@ import type {
   PlayerProfileTournamentSummary,
   PlayerProfileYearSummary,
 } from './player-profile';
+import type { ScorerStartableMatch } from './player';
 
 /** Admin dashboard aggregate counts (GET /admin/overview). */
 export interface AdminOverview {
@@ -23,6 +24,11 @@ export interface AdminOverview {
   pendingApprovalsCount: number;
   /** App-wide fixtures scheduled today (venue-local), same set as other role dashboards. */
   featuredMatches: CaptainFeaturedMatchSummary[];
+  /**
+   * Active per-match Scorer grant for this Admin (e.g. historical backfill).
+   * Same resume card Player/Captain dashboards use.
+   */
+  scorerMatch: ScorerStartableMatch | null;
 }
 
 /** Display labels for platform / scoped roles on admin user screens. */
