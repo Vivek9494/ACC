@@ -120,7 +120,11 @@ export default function BackfillPastMatchScreen(): React.ReactElement {
   );
 
   const oversOptions: SelectOption[] = useMemo(
-    () => MATCH_OVERS_PER_INNINGS_OPTIONS.map((n) => ({ value: String(n), label: String(n) })),
+    () =>
+      MATCH_OVERS_PER_INNINGS_OPTIONS.map((option) => ({
+        value: String(option.value),
+        label: option.label,
+      })),
     [],
   );
 
@@ -310,10 +314,11 @@ export default function BackfillPastMatchScreen(): React.ReactElement {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-background" edges={['bottom']}>
+    <SafeAreaView className="flex-1 bg-background" edges={['top']}>
       <ScreenHeader title="Backfill past match" showBack />
       <KeyboardAwareFormScrollView
-        contentContainerClassName="gap-5 px-4 pb-8 pt-4"
+        contentContainerClassName="gap-4 px-4 pt-2"
+        extraBottomPadding={32}
         footer={
           <SafeAreaView edges={['bottom']} className="border-t border-outline-variant px-4 py-3">
             {submitError ? (
