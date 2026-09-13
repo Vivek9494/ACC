@@ -30,6 +30,9 @@ import {
   getSquadCandidates,
   lockPlayingXi,
 } from '../../../src/lib/api';
+import { useAuth } from '../../../src/lib/auth-context';
+import { tournamentDetailHref } from '../../../src/lib/tournament-detail-route';
+import { TOURNAMENT_DETAIL_TAB } from '../../../src/lib/tournament-detail-tabs';
 
 type Bucket = 'XI' | 'SUB' | 'IMP';
 
@@ -291,14 +294,17 @@ function TeamPicker({
 }
 
 export default function VerifyPlayingXiScreen(): React.ReactElement {
-  const { matchId, teamId, teamName, backfillNext } = useLocalSearchParams<{
+  const { matchId, teamId, teamName, backfillNext, tournamentId } = useLocalSearchParams<{
     matchId: string;
     teamId?: string;
     teamName?: string;
     /** When `opponent`, continue Admin backfill into external-player entry. */
     backfillNext?: string;
+    /** Tournament to return to when back-stack is empty (Admin backfill). */
+    tournamentId?: string;
   }>();
   const router = useRouter();
+  const { user } = useAuth();
   const singleTeamMode = Boolean(teamId);
 
   const [loading, setLoading] = useState(true);
@@ -411,7 +417,13 @@ export default function VerifyPlayingXiScreen(): React.ReactElement {
           activeImpactUserId: impactEnabled ? singleDraft.activeImpact : undefined,
         });
         if (backfillNext === 'opponent') {
-          router.replace(`/matches/${matchId}/opponent-players`);
+          router.push(
+            tournamentId
+              ? `/matches/${matchId}/opponent-players?tournamentId=${encodeURIComponent(
+                  tournamentId,
+                )}&fromBackfill=1`
+              : `/matches/${matchId}/opponent-players`,
+          );
           return;
         }
         router.back();
@@ -488,9 +500,23 @@ export default function VerifyPlayingXiScreen(): React.ReactElement {
     : 'Verify Playing 11';
   const headerSubtitle = singleTeamMode ? 'Playing 11' : 'Both teams';
 
+  function handleBack(): void {
+    // Backfill leaves the create form via push into the root matches stack; prefer
+    // returning to the tournament Matches tab instead of a dead back() no-op.
+    if (backfillNext === 'opponent' && tournamentId) {
+      router.replace(
+        tournamentDetailHref(user, tournamentId, TOURNAMENT_DETAIL_TAB.TournamentMatches),
+      );
+      return;
+    }
+    if (router.canGoBack()) {
+      router.back();
+    }
+  }
+
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
-      <ScreenHeader title={headerTitle} subtitle={headerSubtitle} onBack={() => router.back()} />
+      <ScreenHeader title={headerTitle} subtitle={headerSubtitle} onBack={handleBack} />
 
       {!singleTeamMode ? (
         <View className="flex-row gap-2 px-6 pt-2">

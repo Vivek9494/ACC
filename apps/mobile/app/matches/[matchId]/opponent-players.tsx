@@ -12,11 +12,19 @@ import { TextInput } from '../../../src/components/ui/TextInput';
 import { Text } from '../../../src/components/ui/Text';
 import { FIELD_ORANGE } from '../../../src/components/ui/fieldStyles';
 import { addOpponentPlayer, ApiRequestError, getMatch, removeOpponentPlayer } from '../../../src/lib/api';
+import { useAuth } from '../../../src/lib/auth-context';
+import { tournamentDetailHref } from '../../../src/lib/tournament-detail-route';
+import { TOURNAMENT_DETAIL_TAB } from '../../../src/lib/tournament-detail-tabs';
 
 /** Pre-match manual roster for an external opponent (ACC §9.5). */
 export default function OpponentPlayersScreen(): React.ReactElement {
   const router = useRouter();
-  const { matchId } = useLocalSearchParams<{ matchId: string }>();
+  const { user } = useAuth();
+  const { matchId, tournamentId, fromBackfill } = useLocalSearchParams<{
+    matchId: string;
+    tournamentId?: string;
+    fromBackfill?: string;
+  }>();
   const [opponentName, setOpponentName] = useState('');
   const [players, setPlayers] = useState<ExternalPlayerView[]>([]);
   const [externalTeamLabel, setExternalTeamLabel] = useState('Opponent');
@@ -24,6 +32,18 @@ export default function OpponentPlayersScreen(): React.ReactElement {
   const [adding, setAdding] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  function handleBack(): void {
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+    if (fromBackfill === '1' && tournamentId) {
+      router.replace(
+        tournamentDetailHref(user, tournamentId, TOURNAMENT_DETAIL_TAB.TournamentMatches),
+      );
+    }
+  }
 
   const load = useCallback(async () => {
     if (!matchId) {
@@ -101,7 +121,7 @@ export default function OpponentPlayersScreen(): React.ReactElement {
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
-      <ScreenHeader title="Opponent Players" onBack={() => router.back()} />
+      <ScreenHeader title="Opponent Players" onBack={handleBack} />
 
       {loading ? (
         <View className="flex-1 items-center justify-center">

@@ -31,6 +31,8 @@ import { TimeField } from '../../../../src/components/ui/TimeField';
 import { TournamentLocationField } from '../../../../src/components/ui/TournamentLocationField';
 import { ApiRequestError, createBackfillMatch, getTournament } from '../../../../src/lib/api';
 import { useAuth } from '../../../../src/lib/auth-context';
+import { tournamentDetailHref } from '../../../../src/lib/tournament-detail-route';
+import { TOURNAMENT_DETAIL_TAB } from '../../../../src/lib/tournament-detail-tabs';
 import type { SelectOption } from '../../../../src/components/ui/Select';
 
 function combineMatchStartIso(matchDate: string, matchTime: string): string {
@@ -256,11 +258,16 @@ export default function BackfillPastMatchScreen(): React.ReactElement {
         powerplayOvers: powerplayOvers ?? null,
         homeAway,
       });
-      // Existing flow: ACC XI → opponent names → match hub (toss / score).
-      router.replace(
+      // Push (not replace) so Back still works across the admin tab stack → root matches stack.
+      // Carry tournamentId for a fallback when the history stack is empty.
+      if (!tournamentId) {
+        setSubmitError('Tournament not found.');
+        return;
+      }
+      router.push(
         `/matches/${match.id}/verify-playing-xi?teamId=${teamAId}&teamName=${encodeURIComponent(
           tournament.teams.find((t) => t.id === teamAId)?.name ?? 'ACC',
-        )}&backfillNext=opponent`,
+        )}&backfillNext=opponent&tournamentId=${encodeURIComponent(tournamentId)}`,
       );
     } catch (err) {
       if (err instanceof ApiRequestError) {
@@ -276,10 +283,22 @@ export default function BackfillPastMatchScreen(): React.ReactElement {
     }
   }
 
+  function handleBack(): void {
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+    if (tournamentId) {
+      router.replace(
+        tournamentDetailHref(user, tournamentId, TOURNAMENT_DETAIL_TAB.TournamentMatches),
+      );
+    }
+  }
+
   if (!isAdmin) {
     return (
       <SafeAreaView className="flex-1 bg-background">
-        <ScreenHeader title="Backfill past match" showBack />
+        <ScreenHeader title="Backfill past match" showBack onBack={handleBack} />
         <View className="flex-1 items-center justify-center px-6">
           <Text className="text-center font-sans text-base text-on-surface-variant">
             Only an Admin can backfill a past match.
@@ -292,7 +311,7 @@ export default function BackfillPastMatchScreen(): React.ReactElement {
   if (loading) {
     return (
       <SafeAreaView className="flex-1 bg-background">
-        <ScreenHeader title="Backfill past match" showBack />
+        <ScreenHeader title="Backfill past match" showBack onBack={handleBack} />
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator />
         </View>
@@ -303,7 +322,7 @@ export default function BackfillPastMatchScreen(): React.ReactElement {
   if (loadError || !tournament) {
     return (
       <SafeAreaView className="flex-1 bg-background">
-        <ScreenHeader title="Backfill past match" showBack />
+        <ScreenHeader title="Backfill past match" showBack onBack={handleBack} />
         <View className="flex-1 items-center justify-center px-6">
           <Text className="text-center font-sans text-base text-on-surface-variant">
             {loadError ?? 'Tournament not found.'}
@@ -315,7 +334,7 @@ export default function BackfillPastMatchScreen(): React.ReactElement {
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
-      <ScreenHeader title="Backfill past match" showBack />
+      <ScreenHeader title="Backfill past match" showBack onBack={handleBack} />
       <KeyboardAwareFormScrollView
         contentContainerClassName="gap-4 px-4 pt-2"
         extraBottomPadding={32}

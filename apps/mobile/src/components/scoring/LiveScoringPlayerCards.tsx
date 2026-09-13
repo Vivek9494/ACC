@@ -16,10 +16,12 @@ import { Text } from '../ui/Text';
 import { FIELD_ORANGE, INPUT_SHADOW_STYLE } from '../ui/fieldStyles';
 import { colors } from '@/theme/colors';
 
-/** Fixed stat column widths — keeps each batter on one row on narrow screens. */
-const LIVE_BATTING_RUNS_COL_WIDTH = 46;
-const LIVE_BATTING_BOUNDARY_COL_WIDTH = 24;
-const LIVE_BATTING_SR_COL_WIDTH = 34;
+/** Fixed stat column widths — sized to headers/values; name takes remaining flex space. */
+const LIVE_BATTING_RUNS_COL_WIDTH = 54;
+const LIVE_BATTING_BOUNDARY_COL_WIDTH = 32;
+const LIVE_BATTING_SR_COL_WIDTH = 42;
+/** Keep short names readable without letting the name column collapse under the stats. */
+const LIVE_BATTING_NAME_MIN_WIDTH = 96;
 
 const BATTING_HEADER_LABEL_CLASS =
   'font-sans-semibold text-xs uppercase tracking-wide text-on-surface-variant';
@@ -44,10 +46,12 @@ function BatterTableRow({
 }): React.ReactElement {
   return (
     <View
-      className={`flex-row items-center pl-2 pr-0.5 ${rowClassName}`}
+      className={`flex-row items-center gap-2 pl-2 pr-1 ${rowClassName}`}
       style={rowStyle}
     >
-      <View className="min-w-0 flex-1">{cells.name}</View>
+      <View className="min-w-0 flex-1" style={{ minWidth: LIVE_BATTING_NAME_MIN_WIDTH }}>
+        {cells.name}
+      </View>
       <View style={{ width: LIVE_BATTING_RUNS_COL_WIDTH }} className="shrink-0 items-end">
         {cells.runs}
       </View>
