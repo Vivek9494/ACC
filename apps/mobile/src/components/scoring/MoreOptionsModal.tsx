@@ -9,7 +9,12 @@ import { colors } from '@/theme/colors';
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
 
-export type MoreOptionsAction = 'END_INNINGS' | 'PENALTY' | 'CHANGE_TARGET' | 'CHANGE_OVERS';
+export type MoreOptionsAction =
+  | 'END_INNINGS'
+  | 'PENALTY'
+  | 'CHANGE_TARGET'
+  | 'CHANGE_OVERS'
+  | 'SHORT_RUN';
 
 export interface MoreOptionsModalProps {
   visible: boolean;
@@ -18,6 +23,7 @@ export interface MoreOptionsModalProps {
 }
 
 const ROWS: readonly { action: MoreOptionsAction; label: string; icon: IoniconName }[] = [
+  { action: 'SHORT_RUN', label: 'Short Run', icon: 'git-compare-outline' },
   { action: 'END_INNINGS', label: 'End Inning', icon: 'flag-outline' },
   { action: 'PENALTY', label: 'Penalty 5', icon: 'warning-outline' },
   { action: 'CHANGE_TARGET', label: 'Change Target', icon: 'locate-outline' },

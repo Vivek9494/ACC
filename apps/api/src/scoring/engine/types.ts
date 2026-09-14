@@ -29,6 +29,11 @@ export interface ScoringEvent {
   eventSortMs: number;
   /** 4/6 off the bat — boundaries never rotate strike (§32). */
   isBoundary: boolean;
+  /**
+   * Short runs deducted by the umpire. Credited run fields are already net of
+   * shorts; physical crossings for strike = credited crossings + runsShort.
+   */
+  runsShort: number;
   isFreeHit: boolean;
   dismissalType: DismissalType | null;
   dismissedId: string | null;

@@ -32,6 +32,7 @@ import { CatchDropFielderPicker } from '../../../src/components/scoring/CatchDro
 import { DroppedCatchCardSection } from '../../../src/components/scoring/DroppedCatchCardSection';
 import { MoreOptionsModal, type MoreOptionsAction } from '../../../src/components/scoring/MoreOptionsModal';
 import { PenaltyRunsDialog } from '../../../src/components/scoring/PenaltyRunsDialog';
+import { ShortRunDialog } from '../../../src/components/scoring/ShortRunDialog';
 import {
   ChangeOversDialog,
   ChangeTargetBlockedDialog,
@@ -1819,6 +1820,19 @@ export default function LiveScoringScreen(): React.ReactElement {
             type: DeliveryType.PenaltyRuns,
             extraRuns: STANDARD_MATCH_PENALTY_RUNS,
             penaltyBeneficiaryTeamId: teamId,
+          });
+        }}
+      />
+
+      <ShortRunDialog
+        visible={moreAction === 'SHORT_RUN'}
+        onCancel={closeMoreFlows}
+        onConfirm={({ runsRun, runsShort }) => {
+          closeMoreFlows();
+          void record({
+            type: DeliveryType.Legal,
+            runsBat: runsRun - runsShort,
+            runsShort,
           });
         }}
       />

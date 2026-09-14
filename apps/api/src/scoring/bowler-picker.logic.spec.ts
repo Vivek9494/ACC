@@ -39,6 +39,7 @@ describe('bowler picker eligibility', () => {
       noBallByeRuns: 0,
       noBallLegByeRuns: 0,
       isBoundary: false,
+      runsShort: 0,
       isFreeHit: false,
       dismissalType: null,
       dismissedId: null,

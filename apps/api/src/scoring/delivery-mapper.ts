@@ -25,6 +25,7 @@ export function toScoringEvent(d: Delivery): ScoringEvent {
     penaltyBeneficiaryTeamId: d.penaltyBeneficiaryTeamId,
     eventSortMs: d.createdAt?.getTime() ?? d.sequence,
     isBoundary: d.isBoundary,
+    runsShort: d.runsShort,
     isFreeHit: d.isFreeHit,
     dismissalType: d.dismissalType,
     dismissedId: d.dismissedUserId ?? d.dismissedExternalId ?? null,

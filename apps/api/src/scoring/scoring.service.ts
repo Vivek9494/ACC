@@ -86,6 +86,7 @@ interface DeliveryDraft {
   noBallLegByeRuns: number;
   penaltyBeneficiaryTeamId: string | null;
   isBoundary: boolean;
+  runsShort: number;
   isFreeHit: boolean;
   dismissalType: DismissalType | null;
   dismissedId: string | null;
@@ -227,6 +228,7 @@ export class ScoringService {
       noBallLegByeRuns: req.noBallLegByeRuns ?? 0,
       penaltyBeneficiaryTeamId: req.penaltyBeneficiaryTeamId ?? null,
       isBoundary,
+      runsShort: req.runsShort ?? 0,
       isFreeHit: slot && req.type === 'LEGAL' ? freeHitNext : false,
       dismissalType:
         req.type === DeliveryType.RetiredHurt ? null : (req.dismissal?.type ?? null),
@@ -420,6 +422,7 @@ export class ScoringService {
       noBallLegByeRuns: req.noBallLegByeRuns ?? 0,
       penaltyBeneficiaryTeamId: req.penaltyBeneficiaryTeamId ?? null,
       isBoundary,
+      runsShort: req.runsShort ?? 0,
       isFreeHit: target.isFreeHit,
       dismissalType: req.dismissal?.type ?? null,
       dismissedId: req.dismissal?.dismissedId ?? null,
@@ -726,6 +729,7 @@ export class ScoringService {
         noBallLegByeRuns: 0,
         penaltyBeneficiaryTeamId: null,
         isBoundary: false,
+        runsShort: 0,
         isFreeHit: false,
         dismissalType: null,
         dismissedId: null,
@@ -1179,6 +1183,34 @@ export class ScoringService {
         }
       }
 
+      const runsShort = req.runsShort ?? 0;
+      if (runsShort < 0) {
+        throw new BadRequestException({
+          message: 'Short runs cannot be negative',
+          error: 'INVALID_SHORT_RUNS',
+        });
+      }
+      if (runsShort > 0 && (req.isBoundary ?? false)) {
+        throw new BadRequestException({
+          message: 'A boundary cannot also be scored as a short run',
+          error: 'INVALID_SHORT_RUNS',
+        });
+      }
+      if (runsShort > 0) {
+        const canHaveCrossings =
+          req.type === DeliveryType.Legal ||
+          req.type === DeliveryType.Bye ||
+          req.type === DeliveryType.LegBye ||
+          req.type === DeliveryType.Wide ||
+          req.type === DeliveryType.NoBall;
+        if (!canHaveCrossings) {
+          throw new BadRequestException({
+            message: 'Short runs only apply to deliveries with completed running',
+            error: 'INVALID_SHORT_RUNS',
+          });
+        }
+      }
+
       if (!req.strikerId || !req.nonStrikerId || !req.bowlerId) {
         throw new BadRequestException({
           message: 'Striker, non-striker, and bowler must be set before scoring',
@@ -1248,6 +1280,7 @@ export class ScoringService {
       noBallLegByeRuns: draft.noBallLegByeRuns,
       penaltyBeneficiaryTeamId: draft.penaltyBeneficiaryTeamId,
       isBoundary: draft.isBoundary,
+      runsShort: draft.runsShort,
       isFreeHit: draft.isFreeHit,
       dismissalType: draft.dismissalType,
       dismissedUserId: userCol(draft.dismissedId),
@@ -1316,6 +1349,7 @@ export class ScoringService {
       type: d.type,
       runsBat: d.runsBat,
       extraRuns: d.extraRuns,
+      runsShort: d.runsShort,
       isBoundary: d.isBoundary,
       dismissalType: d.dismissalType,
     };

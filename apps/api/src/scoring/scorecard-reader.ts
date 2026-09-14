@@ -219,6 +219,7 @@ export class ScorecardReader {
           extraRuns: row.extraRuns,
           noBallByeRuns: row.noBallByeRuns,
           noBallLegByeRuns: row.noBallLegByeRuns,
+          runsShort: row.runsShort,
           isBoundary: row.isBoundary,
           shotX: row.shotX,
           shotY: row.shotY,

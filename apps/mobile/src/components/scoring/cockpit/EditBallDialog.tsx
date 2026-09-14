@@ -100,10 +100,13 @@ export function EditBallDialog({
     switch (baseBody.type) {
       case DeliveryType.Legal: {
         const { dismissal, ...legalBase } = baseBody;
+        const runsChanged = legalRuns !== baseBody.runsBat;
         body = {
           ...legalBase,
           runsBat: legalRuns,
           isBoundary: legalRuns === 4 || legalRuns === 6,
+          // Simple run editor states credited runs; clear shorts if the total changed.
+          runsShort: runsChanged ? 0 : (baseBody.runsShort ?? 0),
         };
         if (removeWicket) {
           break;

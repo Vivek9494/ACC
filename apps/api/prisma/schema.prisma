@@ -1123,6 +1123,10 @@ model Delivery {
   /// True for a 4/6 off the bat. Boundaries never rotate strike (§32), so this
   /// is required to derive rotation correctly when overthrows inflate runsBat.
   isBoundary Boolean @default(false)
+  /// Short runs deducted by the umpire. Credited runs (runsBat / extraRuns /
+  /// no-ball completed extras) are already net of shorts; physical crossings
+  /// for strike rotation = credited crossings + runsShort.
+  runsShort Int @default(0)
   /// Set after any no-ball; the next legal delivery is a free hit (§12.1).
   isFreeHit Boolean @default(false)
 

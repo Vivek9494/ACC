@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; script-src 'self'" />
+  <title>ASC Broadcast</title>
+  <link rel="stylesheet" href="shell.css" />
+</head>
+<body>
+  <header class="chrome">
+    <div class="chrome-row">
+      <div class="brand">
+        <strong>ASC Broadcast</strong>
+        <span id="match-label" class="match-label">No match loaded</span>
+      </div>
+      <div class="obs-status">
+        <span id="conn-dot" class="dot disconnected" aria-hidden="true"></span>
+        <span id="conn-label">Disconnected</span>
+        <span class="sep">·</span>
+        <span id="stream-label">Stream idle</span>
+      </div>
+      <div class="chrome-actions">
+        <button type="button" id="btn-settings" class="btn ghost">Settings</button>
+        <button type="button" id="btn-connect" class="btn ghost">Connect</button>
+        <button type="button" id="btn-disconnect" class="btn ghost" hidden>Disconnect</button>
+        <button type="button" id="btn-start" class="btn primary" disabled>Start Streaming</button>
+        <button type="button" id="btn-stop" class="btn danger" disabled>Stop Streaming</button>
+        <button type="button" id="btn-replay" class="btn ghost" hidden>Start Replay Buffer</button>
+      </div>
+    </div>
+    <p id="obs-error" class="obs-error" hidden></p>
+  </header>
+
+  <main id="match-view" class="match-view">
+    <section class="card">
+      <h1>Load control panel</h1>
+      <p>Enter a Match ID to open the live scoring control panel. OBS launches in the background when this app opens — save the websocket password in Settings if Connect fails.</p>
+      <form id="load-form">
+        <label for="match-id">Match ID</label>
+        <input id="match-id" name="matchId" type="text" autocomplete="off" spellcheck="false" placeholder="e.g. clxy…" />
+        <div class="actions">
+          <button type="submit" class="btn primary">Load</button>
+        </div>
+        <p id="match-error" class="field-error" hidden>Enter a Match ID to continue.</p>
+      </form>
+    </section>
+  </main>
+
+  <div id="settings-modal" class="modal" hidden>
+    <div class="modal-card">
+      <h2>OBS connection</h2>
+      <p>obs-websocket v5. Default port 4455. Path defaults to /Applications/OBS.app. Stored only on this Mac.</p>
+      <form id="settings-form">
+        <label for="obs-host">Host</label>
+        <input id="obs-host" type="text" autocomplete="off" spellcheck="false" />
+        <label for="obs-port">Port</label>
+        <input id="obs-port" type="number" min="1" max="65535" />
+        <label for="obs-password">Password</label>
+        <input id="obs-password" type="password" autocomplete="off" />
+        <label for="obs-app-path">OBS app path</label>
+        <input id="obs-app-path" type="text" autocomplete="off" spellcheck="false" />
+        <label for="obs-collection">Scene collection (optional)</label>
+        <input id="obs-collection" type="text" autocomplete="off" spellcheck="false" placeholder="Leave blank for OBS default" />
+        <label for="obs-profile">Profile (optional)</label>
+        <input id="obs-profile" type="text" autocomplete="off" spellcheck="false" placeholder="Leave blank for OBS default" />
+        <div class="actions">
+          <button type="button" id="btn-settings-cancel" class="btn ghost">Cancel</button>
+          <button type="submit" class="btn primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="shell.js"></script>
+</body>
+</html>

@@ -13,6 +13,8 @@ allowBuilds:
   '@prisma/engines': true
   bcrypt: true
   dtrace-provider: true
+  electron: true
+  electron-winstaller: true
   esbuild: true
   msgpackr-extract: false
   prisma: true

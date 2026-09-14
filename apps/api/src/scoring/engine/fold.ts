@@ -66,8 +66,11 @@ function noBallCompletedRuns(e: ScoringEvent): number {
   return e.noBallByeRuns + e.noBallLegByeRuns;
 }
 
-/** Runs that cause the batters to physically cross (drives odd-run rotation). */
-function runsRunForRotation(e: ScoringEvent): number {
+/**
+ * Credited completed crossings (excludes wide/no-ball penalties that are not run).
+ * Short runs are layered on top — see {@link runsRunForRotation}.
+ */
+function creditedCrossings(e: ScoringEvent): number {
   switch (e.type) {
     case DeliveryType.Legal:
     case DeliveryType.NoBall:
@@ -81,6 +84,15 @@ function runsRunForRotation(e: ScoringEvent): number {
     default:
       return 0;
   }
+}
+
+/**
+ * Physical crossings that drive odd-run strike rotation (§32).
+ * Credited score can be lower when the umpire signals short run(s); rotation
+ * still follows what was actually run (credited crossings + runsShort).
+ */
+function runsRunForRotation(e: ScoringEvent): number {
+  return creditedCrossings(e) + Math.max(0, e.runsShort);
 }
 
 function penaltyCountsForInnings(e: ScoringEvent, battingTeamId: string | null | undefined): boolean {

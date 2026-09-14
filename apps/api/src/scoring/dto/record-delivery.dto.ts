@@ -82,6 +82,11 @@ export class RecordDeliveryDto implements RecordDeliveryRequest {
   isBoundary?: boolean;
 
   @IsOptional()
+  @IsInt()
+  @Min(0)
+  runsShort?: number;
+
+  @IsOptional()
   @ValidateNested()
   @Type(() => DismissalInputDto)
   dismissal?: DismissalInputDto | null;

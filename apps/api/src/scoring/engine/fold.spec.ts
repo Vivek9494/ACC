@@ -37,6 +37,7 @@ function innings(specs: Spec[], openers: [string, string] = ['A', 'B']): Scoring
       penaltyBeneficiaryTeamId: s.penaltyBeneficiaryTeamId ?? null,
       eventSortMs: s.eventSortMs ?? s.sequence ?? 0,
       isBoundary: s.isBoundary ?? false,
+      runsShort: s.runsShort ?? 0,
       isFreeHit: s.isFreeHit ?? false,
       dismissalType: s.dismissalType ?? null,
       dismissedId: s.dismissedId ?? null,
@@ -408,6 +409,40 @@ describe('Scoring engine — strike rotation (§32)', () => {
 
   it('does not swap on an even run', () => {
     expect(deriveInnings(innings([{ type: DeliveryType.Legal, runsBat: 2 }])).currentStrikerId).toBe('A');
+  });
+
+  it('keeps strike when batters ran 2 but 1 was short (credit 1, physical even)', () => {
+    const card = deriveInnings(
+      innings([{ type: DeliveryType.Legal, runsBat: 1, runsShort: 1 }]),
+    );
+    expect(card.runs).toBe(1);
+    expect(card.batters.find((b) => b.playerId === 'A')?.runs).toBe(1);
+    expect(card.currentStrikerId).toBe('A');
+  });
+
+  it('swaps when batters ran 3 but 1 was short (credit 2, physical odd)', () => {
+    const card = deriveInnings(
+      innings([{ type: DeliveryType.Legal, runsBat: 2, runsShort: 1 }]),
+    );
+    expect(card.runs).toBe(2);
+    expect(card.currentStrikerId).toBe('B');
+  });
+
+  it('swaps when batters ran 1 but 1 was short (credit 0, physical odd)', () => {
+    const card = deriveInnings(
+      innings([{ type: DeliveryType.Legal, runsBat: 0, runsShort: 1 }]),
+    );
+    expect(card.runs).toBe(0);
+    expect(card.currentStrikerId).toBe('B');
+  });
+
+  it('rotates bye short runs on physical crossings, not credited byes', () => {
+    const card = deriveInnings(
+      innings([{ type: DeliveryType.Bye, extraRuns: 1, runsShort: 1 }]),
+    );
+    expect(card.runs).toBe(1);
+    expect(card.extras.byes).toBe(1);
+    expect(card.currentStrikerId).toBe('A'); // ran 2 physically
   });
 
   it('does not swap on a boundary', () => {

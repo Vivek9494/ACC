@@ -166,6 +166,13 @@ export interface RecordDeliveryRequest {
   noBallLegByeRuns?: number;
   /** True for a 4/6 off the bat — boundaries never rotate strike (§32). */
   isBoundary?: boolean;
+  /**
+   * Short runs signalled by the umpire: number of completed crossings that
+   * were disallowed. Credited runs stay in {@link runsBat} / {@link extraRuns}
+   * (already net of shorts). Strike rotation uses physical crossings =
+   * credited crossings + {@link runsShort} (§32 / Laws short run).
+   */
+  runsShort?: number;
   dismissal?: DismissalInput | null;
   /**
    * Metadata events (e.g. CATCH_DROP): the fielding-side player who dropped the catch.
@@ -343,6 +350,8 @@ export interface TimelineEntry {
   extraRuns?: number;
   noBallByeRuns?: number;
   noBallLegByeRuns?: number;
+  /** Short runs deducted from physical crossings (0 when none). */
+  runsShort?: number;
   /**
    * Normalized ground coordinates [-1, 1] relative to field centre.
    * Optional per-ball analysis metadata — region labels are derived, not stored.
@@ -669,6 +678,33 @@ export function groupTimelineByOver(timeline: TimelineEntry[]): OverSummary[] {
     }
   }
   return [...overMap.values()].sort((a, b) => a.overNumber - b.overNumber);
+}
+
+/**
+ * Rebuild a delivery write body from a timeline entry for scorer ball edits.
+ * Includes {@link TimelineEntry.runsShort} so short-run strike state survives edits.
+ */
+export function buildEditDeliveryBodyFromTimeline(
+  entry: TimelineEntry,
+): Omit<EditDeliveryRequest, 'deliveryId' | 'expectedVersion'> | null {
+  if (entry.deliveryType == null) {
+    return null;
+  }
+  return {
+    type: entry.deliveryType,
+    strikerId: entry.strikerId,
+    nonStrikerId: entry.nonStrikerId,
+    bowlerId: entry.bowlerId,
+    runsBat: entry.runsBat ?? 0,
+    extraRuns: entry.extraRuns ?? 0,
+    noBallByeRuns: entry.noBallByeRuns ?? 0,
+    noBallLegByeRuns: entry.noBallLegByeRuns ?? 0,
+    runsShort: entry.runsShort ?? 0,
+    isBoundary: entry.isBoundary,
+    dismissal: entry.dismissal ?? null,
+    shotX: entry.shotX ?? null,
+    shotY: entry.shotY ?? null,
+  };
 }
 
 /** Compact fall-of-wickets line — e.g. "3-45 (Saurabh Patel, 6.2)". */

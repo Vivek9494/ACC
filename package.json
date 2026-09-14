@@ -11,6 +11,7 @@
     "dev:api": "pnpm --filter @acc/api dev",
     "dev:mobile": "pnpm --filter @acc/types build && pnpm --filter @acc/mobile dev",
     "dev:overlay": "pnpm --filter @acc/scoring-overlay dev",
+    "dev:broadcast": "pnpm --filter @acc/broadcast-desktop dev",
     "build": "pnpm -r --if-present build",
     "typecheck": "pnpm -r --if-present typecheck",
     "lint": "eslint .",

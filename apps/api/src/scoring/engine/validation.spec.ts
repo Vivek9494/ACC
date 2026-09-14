@@ -19,6 +19,7 @@ function event(partial: Partial<ScoringEvent> & Pick<ScoringEvent, 'type'>): Sco
     penaltyBeneficiaryTeamId: partial.penaltyBeneficiaryTeamId ?? null,
     eventSortMs: partial.eventSortMs ?? 0,
     isBoundary: partial.isBoundary ?? false,
+    runsShort: partial.runsShort ?? 0,
     isFreeHit: partial.isFreeHit ?? false,
     dismissalType: partial.dismissalType ?? null,
     dismissedId: partial.dismissedId ?? null,

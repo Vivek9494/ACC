@@ -1,0 +1,41 @@
+{
+  "name": "@acc/broadcast-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "author": "ASC",
+  "description": "ASC Broadcast — macOS Electron shell for the ASC scoring control panel",
+  "main": "src/main.js",
+  "scripts": {
+    "dev": "electron .",
+    "start": "electron .",
+    "pack:mac": "electron-builder --mac dir",
+    "dist:mac": "electron-builder --mac dmg dir"
+  },
+  "dependencies": {
+    "obs-websocket-js": "^5.0.8"
+  },
+  "build": {
+    "appId": "ca.asc.broadcast",
+    "productName": "ASC Broadcast",
+    "copyright": "Copyright © ASC",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "mac": {
+      "category": "public.app-category.sports",
+      "target": [
+        "dir",
+        "dmg"
+      ],
+      "identity": null
+    }
+  },
+  "devDependencies": {
+    "electron": "^35.1.2",
+    "electron-builder": "^26.0.12"
+  }
+}
