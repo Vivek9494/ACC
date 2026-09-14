@@ -1,5 +1,5 @@
 /**
- * Persist OBS connection + launch settings in app userData.
+ * Persist OBS connection + launch + instant-replay settings in app userData.
  * Password is stored locally for the operator — never hardcoded.
  */
 
@@ -13,6 +13,12 @@ const DEFAULTS = Object.freeze({
   obsAppPath: '/Applications/OBS.app',
   sceneCollection: '',
   profile: '',
+  /** Program scene used for live broadcast (Instant Replay returns here). */
+  liveSceneName: 'Scene',
+  /** Full-screen scene that plays the saved replay clip. */
+  replaySceneName: 'Replay',
+  /** ffmpeg media source inside the replay scene (file left blank in OBS). */
+  replayMediaSourceName: 'Replay Media',
 });
 
 /** @param {string} userDataDir */
@@ -43,6 +49,17 @@ function obsAppExists(appPath) {
 }
 
 /**
+ * @param {unknown} value
+ * @param {string} fallback
+ */
+function stringOrDefault(value, fallback) {
+  if (typeof value === 'string' && value.trim()) {
+    return value.trim();
+  }
+  return fallback;
+}
+
+/**
  * @param {unknown} raw
  * @returns {{
  *   host: string,
@@ -51,6 +68,9 @@ function obsAppExists(appPath) {
  *   obsAppPath: string,
  *   sceneCollection: string,
  *   profile: string,
+ *   liveSceneName: string,
+ *   replaySceneName: string,
+ *   replayMediaSourceName: string,
  * }}
  */
 function normalizeConfig(raw) {
@@ -71,7 +91,20 @@ function normalizeConfig(raw) {
   const sceneCollection =
     typeof source.sceneCollection === 'string' ? source.sceneCollection.trim() : '';
   const profile = typeof source.profile === 'string' ? source.profile.trim() : '';
-  return { host, port, password, obsAppPath, sceneCollection, profile };
+  return {
+    host,
+    port,
+    password,
+    obsAppPath,
+    sceneCollection,
+    profile,
+    liveSceneName: stringOrDefault(source.liveSceneName, DEFAULTS.liveSceneName),
+    replaySceneName: stringOrDefault(source.replaySceneName, DEFAULTS.replaySceneName),
+    replayMediaSourceName: stringOrDefault(
+      source.replayMediaSourceName,
+      DEFAULTS.replayMediaSourceName,
+    ),
+  };
 }
 
 /** @param {string} userDataDir */

@@ -36,6 +36,12 @@ contextBridge.exposeInMainWorld('ascBroadcast', {
   startReplayBuffer() {
     return ipcRenderer.invoke('asc:obs-start-replay-buffer');
   },
+  startInstantReplay() {
+    return ipcRenderer.invoke('asc:obs-instant-replay');
+  },
+  returnToLive() {
+    return ipcRenderer.invoke('asc:obs-return-to-live');
+  },
   setSettingsOpen(open) {
     ipcRenderer.send('asc:settings-open', open);
   },

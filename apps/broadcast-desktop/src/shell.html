@@ -27,6 +27,8 @@
         <button type="button" id="btn-start" class="btn primary" disabled>Start Streaming</button>
         <button type="button" id="btn-stop" class="btn danger" disabled>Stop Streaming</button>
         <button type="button" id="btn-replay" class="btn ghost" hidden>Start Replay Buffer</button>
+        <button type="button" id="btn-instant-replay" class="btn primary" hidden disabled>Instant Replay</button>
+        <button type="button" id="btn-back-live" class="btn ghost" hidden>Back to Live</button>
       </div>
     </div>
     <p id="obs-error" class="obs-error" hidden></p>
@@ -64,6 +66,12 @@
         <input id="obs-collection" type="text" autocomplete="off" spellcheck="false" placeholder="Leave blank for OBS default" />
         <label for="obs-profile">Profile (optional)</label>
         <input id="obs-profile" type="text" autocomplete="off" spellcheck="false" placeholder="Leave blank for OBS default" />
+        <label for="obs-live-scene">Live scene</label>
+        <input id="obs-live-scene" type="text" autocomplete="off" spellcheck="false" placeholder="Scene" />
+        <label for="obs-replay-scene">Replay scene</label>
+        <input id="obs-replay-scene" type="text" autocomplete="off" spellcheck="false" placeholder="Replay" />
+        <label for="obs-replay-media">Replay media source</label>
+        <input id="obs-replay-media" type="text" autocomplete="off" spellcheck="false" placeholder="Replay Media" />
         <div class="actions">
           <button type="button" id="btn-settings-cancel" class="btn ghost">Cancel</button>
           <button type="submit" class="btn primary">Save</button>

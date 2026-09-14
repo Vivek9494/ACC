@@ -2,7 +2,8 @@
  * ASC Broadcast — Electron main process.
  * Step 1: hosted control panel. Step 2: obs-websocket v5 control.
  * Step 3: OBS lifecycle (background launch / auto-connect / clean quit).
- * Not in this step: clip bridge, scene control.
+ * Instant Replay: save buffer → Replay scene → auto/manual return to live.
+ * Not in this step: clip tagging bridge, Studio Mode transitions.
  */
 
 const { app, BrowserWindow, BrowserView, Menu, shell, ipcMain } = require('electron');
@@ -16,8 +17,8 @@ const CONTROL_PANEL_BASE =
   process.env.ASC_CONTROL_PANEL_URL?.replace(/\/$/, '') ||
   'https://acc-overlay.netlify.app';
 
-/** Must match `header` height in shell.html */
-const SHELL_CHROME_HEIGHT = 118;
+/** Must match `header` height in shell.html / shell.css */
+const SHELL_CHROME_HEIGHT = 132;
 
 const LAST_MATCH_ID_PATH = path.join(app.getPath('userData'), 'last-match-id.txt');
 
@@ -319,7 +320,11 @@ function registerIpc() {
   });
 
   ipcMain.handle('asc:obs-get-config', () => readObsConfig(userDataDir()));
-  ipcMain.handle('asc:obs-save-config', (_event, raw) => writeObsConfig(userDataDir(), raw));
+  ipcMain.handle('asc:obs-save-config', (_event, raw) => {
+    const config = writeObsConfig(userDataDir(), raw);
+    obs.applyReplaySceneConfig(config);
+    return config;
+  });
   ipcMain.handle('asc:obs-get-status', () => lifecycle.snapshot());
 
   ipcMain.handle('asc:obs-connect', async () => {
@@ -352,6 +357,14 @@ function registerIpc() {
     } finally {
       lifecycle.emit();
     }
+    return lifecycle.snapshot();
+  });
+  ipcMain.handle('asc:obs-instant-replay', async () => {
+    await obs.startInstantReplay();
+    return lifecycle.snapshot();
+  });
+  ipcMain.handle('asc:obs-return-to-live', async () => {
+    await obs.returnToLive({ reason: 'manual' });
     return lifecycle.snapshot();
   });
 

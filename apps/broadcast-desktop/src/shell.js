@@ -17,6 +17,8 @@ const btnDisconnect = document.getElementById('btn-disconnect');
 const btnStart = document.getElementById('btn-start');
 const btnStop = document.getElementById('btn-stop');
 const btnReplay = document.getElementById('btn-replay');
+const btnInstantReplay = document.getElementById('btn-instant-replay');
+const btnBackLive = document.getElementById('btn-back-live');
 
 const settingsModal = document.getElementById('settings-modal');
 const settingsForm = document.getElementById('settings-form');
@@ -26,9 +28,12 @@ const obsPassword = document.getElementById('obs-password');
 const obsAppPath = document.getElementById('obs-app-path');
 const obsCollection = document.getElementById('obs-collection');
 const obsProfile = document.getElementById('obs-profile');
+const obsLiveScene = document.getElementById('obs-live-scene');
+const obsReplayScene = document.getElementById('obs-replay-scene');
+const obsReplayMedia = document.getElementById('obs-replay-media');
 const btnSettingsCancel = document.getElementById('btn-settings-cancel');
 
-/** @type {{ connection: string, error: string, stream: { outputActive: boolean, outputReconnecting: boolean, outputTimecode: string, outputState: string } } | null} */
+/** @type {Record<string, unknown> | null} */
 let lastStatus = null;
 let busy = false;
 
@@ -68,24 +73,33 @@ function renderStatus(status) {
     status.lifecycle === 'waiting';
   const starting = status.stream.outputState === 'OBS_WEBSOCKET_OUTPUT_STARTING';
   const stopping = status.stream.outputState === 'OBS_WEBSOCKET_OUTPUT_STOPPING';
+  const isReplaying = Boolean(status.isReplaying);
+  const instantPhase = status.instantReplayPhase || 'idle';
+  const savingReplay = instantPhase === 'saving';
 
-  const dotState = connecting ? 'connecting' : status.connection;
+  const dotState = connecting || savingReplay ? 'connecting' : isReplaying ? 'connecting' : status.connection;
   connDot.className = `dot ${dotState}`;
   connLabel.textContent = connectionLabel(status);
   let streamText = 'Stream idle';
   if (connected) {
-    streamText = streamStateLabel(status);
-    if (status.replayBufferState === 'active' || status.replayBufferActive) {
-      streamText += ' · Replay ready';
-    } else if (status.replayBufferState === 'inactive') {
-      streamText += ' · Replay off';
-    } else if (status.replayBufferState === 'unavailable') {
-      streamText += ' · Replay unavailable';
+    if (isReplaying || instantPhase === 'playing') {
+      streamText = 'Instant replay playing';
+    } else if (savingReplay) {
+      streamText = 'Saving replay…';
+    } else {
+      streamText = streamStateLabel(status);
+      if (status.replayBufferState === 'active' || status.replayBufferActive) {
+        streamText += ' · Replay ready';
+      } else if (status.replayBufferState === 'inactive') {
+        streamText += ' · Replay off';
+      } else if (status.replayBufferState === 'unavailable') {
+        streamText += ' · Replay unavailable';
+      }
     }
   }
   streamLabel.textContent = streamText;
 
-  const errorText = status.error || status.replayBufferWarning || '';
+  const errorText = status.error || status.replayBufferWarning || status.studioModeWarning || '';
   if (errorText) {
     obsError.hidden = false;
     obsError.textContent = errorText;
@@ -99,18 +113,28 @@ function renderStatus(status) {
   btnConnect.textContent =
     status.connection === 'error' || status.lifecycle === 'error' ? 'Reconnect' : 'Start OBS';
   btnDisconnect.hidden = !connected;
-  btnDisconnect.disabled = busy;
+  btnDisconnect.disabled = busy || isReplaying || savingReplay;
 
-  btnStart.disabled = busy || !connected || status.stream.outputActive || starting || stopping;
+  btnStart.disabled = busy || !connected || status.stream.outputActive || starting || stopping || isReplaying;
   btnStop.disabled = busy || !connected || (!status.stream.outputActive && !starting) || stopping;
 
   const replayActive = status.replayBufferState === 'active' || status.replayBufferActive;
   const needsReplayStart =
-    connected && !replayActive && (status.replayBufferState === 'inactive' || status.replayBufferState === 'unavailable' || status.replayBufferWarning);
+    connected &&
+    !replayActive &&
+    !isReplaying &&
+    (status.replayBufferState === 'inactive' ||
+      status.replayBufferState === 'unavailable' ||
+      status.replayBufferWarning);
   btnReplay.hidden = !needsReplayStart;
   btnReplay.disabled = busy || !connected;
-  btnReplay.textContent =
-    status.replayBufferState === 'unavailable' ? 'Retry Replay Buffer' : 'Start Replay Buffer';
+
+  btnInstantReplay.hidden = !(connected && replayActive);
+  btnInstantReplay.disabled = busy || !connected || !replayActive || isReplaying || savingReplay;
+  btnInstantReplay.textContent = savingReplay ? 'Saving…' : isReplaying ? 'Replaying…' : 'Instant Replay';
+
+  btnBackLive.hidden = !(connected && (isReplaying || instantPhase === 'playing'));
+  btnBackLive.disabled = busy || !connected;
 }
 
 async function withBusy(fn) {
@@ -152,6 +176,9 @@ async function openSettings() {
   obsAppPath.value = config.obsAppPath;
   obsCollection.value = config.sceneCollection || '';
   obsProfile.value = config.profile || '';
+  obsLiveScene.value = config.liveSceneName || 'Scene';
+  obsReplayScene.value = config.replaySceneName || 'Replay';
+  obsReplayMedia.value = config.replayMediaSourceName || 'Replay Media';
   settingsModal.hidden = false;
   api.setSettingsOpen(true);
   obsHost.focus();
@@ -194,6 +221,14 @@ btnReplay.addEventListener('click', () => {
   void withBusy(() => api.startReplayBuffer());
 });
 
+btnInstantReplay.addEventListener('click', () => {
+  void withBusy(() => api.startInstantReplay());
+});
+
+btnBackLive.addEventListener('click', () => {
+  void withBusy(() => api.returnToLive());
+});
+
 btnSettings.addEventListener('click', () => {
   void openSettings();
 });
@@ -212,6 +247,9 @@ settingsForm.addEventListener('submit', (event) => {
       obsAppPath: obsAppPath.value,
       sceneCollection: obsCollection.value,
       profile: obsProfile.value,
+      liveSceneName: obsLiveScene.value,
+      replaySceneName: obsReplayScene.value,
+      replayMediaSourceName: obsReplayMedia.value,
     });
     closeSettings();
   })();
