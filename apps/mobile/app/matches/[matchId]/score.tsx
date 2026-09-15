@@ -50,6 +50,11 @@ import { LiveScoringPlayerCards } from '../../../src/components/scoring/LiveScor
 import { LiveScoringScorecardTab } from '../../../src/components/scoring/LiveScoringScorecardTab';
 import { ScoringCockpit } from '../../../src/components/scoring/cockpit/ScoringCockpit';
 import {
+  canCaptureBoundaryClips,
+  findLatestBoundaryDeliveryId,
+  scheduleBoundaryClipCapture,
+} from '../../../src/components/scoring/cockpit/boundary-clip-capture';
+import {
   CockpitSettingsHeaderButton,
   CockpitSettingsModal,
 } from '../../../src/components/scoring/cockpit/CockpitSettingsModal';
@@ -1110,17 +1115,20 @@ export default function LiveScoringScreen(): React.ReactElement {
   async function applyMutation(
     action: () => Promise<ScorecardResponse>,
     opts: { promptBowlers?: boolean } = {},
-  ): Promise<void> {
-    if (!matchId || !card || !inn?.inningsId) return;
+  ): Promise<ScorecardResponse | null> {
+    if (!matchId || !card || !inn?.inningsId) return null;
     setWorking(true);
     setError(null);
     try {
-      syncFromCard(await action(), opts);
+      const updated = await action();
+      syncFromCard(updated, opts);
+      return updated;
     } catch (err) {
       reportWriteError(err, 'Could not update the scorecard.');
       if (err instanceof ApiRequestError && err.status === 409) {
         syncFromCard(await getScorecard(matchId), opts);
       }
+      return null;
     } finally {
       setWorking(false);
     }
@@ -1129,30 +1137,30 @@ export default function LiveScoringScreen(): React.ReactElement {
   async function record(
     body: Omit<RecordDeliveryRequest, 'expectedVersion'>,
     opts: { promptBowlers?: boolean } = {},
-  ): Promise<void> {
+  ): Promise<ScorecardResponse | null> {
     const isPenalty = body.type === DeliveryType.PenaltyRuns;
     const isCatchDrop = body.type === DeliveryType.CatchDrop;
     if (needsIncomingBatter) {
       setError('Select the incoming batter before scoring.');
       openBatsmanPicker('incoming');
-      return;
+      return null;
     }
     if (!battersReady) {
       setError('Select both batters before scoring.');
-      return;
+      return null;
     }
     if (!isPenalty && !bowlerId) {
       setError('Select the bowler for this over before scoring.');
       openBowlerPicker();
-      return;
+      return null;
     }
     if (isCatchDrop && !body.fielderId) {
       setError('Select the fielder who dropped the catch.');
-      return;
+      return null;
     }
-    if (!matchId || !card || !inn) return;
+    if (!matchId || !card || !inn) return null;
     const inningsId = inn.inningsId;
-    if (!inningsId) return;
+    if (!inningsId) return null;
 
     // Desktop: 6th legal ball only opens end-over Dialog 1 — do not commit yet.
     if (
@@ -1164,7 +1172,7 @@ export default function LiveScoringScreen(): React.ReactElement {
     ) {
       if (!isMatchScoringAllowed(match)) {
         showScoringBlocked();
-        return;
+        return null;
       }
       setError(null);
       setEndOverPending({
@@ -1175,10 +1183,10 @@ export default function LiveScoringScreen(): React.ReactElement {
         legalBalls: inn.legalBalls,
       });
       setEndOverStep('confirm');
-      return;
+      return null;
     }
 
-    await applyMutation(
+    const updated = await applyMutation(
       () =>
         recordDelivery(matchId, inningsId, {
           ...body,
@@ -1189,6 +1197,25 @@ export default function LiveScoringScreen(): React.ReactElement {
         }),
       isPenalty ? { promptBowlers: false, ...opts } : opts,
     );
+
+    if (
+      updated &&
+      body.isBoundary &&
+      (body.runsBat === 4 || body.runsBat === 6) &&
+      canCaptureBoundaryClips()
+    ) {
+      const deliveryId = findLatestBoundaryDeliveryId(updated, body.runsBat);
+      if (deliveryId) {
+        scheduleBoundaryClipCapture({
+          matchId,
+          inningsId,
+          deliveryId,
+          getExpectedVersion: () => cardRef.current?.version ?? updated.version,
+        });
+      }
+    }
+
+    return updated;
   }
 
   async function commitEndOverWithBowler(nextBowlerId: string): Promise<void> {
@@ -1216,6 +1243,22 @@ export default function LiveScoringScreen(): React.ReactElement {
         version = afterBall.version;
         syncFromCard(afterBall, { promptBowlers: false });
         liveAfterBall = afterBall.innings.at(-1) ?? inn;
+
+        if (
+          pending.body.isBoundary &&
+          (pending.body.runsBat === 4 || pending.body.runsBat === 6) &&
+          canCaptureBoundaryClips()
+        ) {
+          const deliveryId = findLatestBoundaryDeliveryId(afterBall, pending.body.runsBat);
+          if (deliveryId) {
+            scheduleBoundaryClipCapture({
+              matchId,
+              inningsId,
+              deliveryId,
+              getExpectedVersion: () => cardRef.current?.version ?? afterBall.version,
+            });
+          }
+        }
       }
       // Innings may have closed on the 6th ball — no next-over bowler to assign.
       if (liveAfterBall.closed || !needsBowlerSelection(liveAfterBall, liveAfterBall.currentBowlerId)) {

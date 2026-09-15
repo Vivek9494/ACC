@@ -29,6 +29,12 @@ contextBridge.exposeInMainWorld('ascBroadcast', {
     startInstantReplay() {
       return ipcRenderer.invoke('asc:obs-instant-replay');
     },
+    saveBoundaryClip(deliveryId) {
+      return ipcRenderer.invoke('asc:obs-save-boundary-clip', deliveryId);
+    },
+    playDeliveryClip(payload) {
+      return ipcRenderer.invoke('asc:obs-play-delivery-clip', payload);
+    },
     returnToLive() {
       return ipcRenderer.invoke('asc:obs-return-to-live');
     },

@@ -506,6 +506,44 @@ export class ScoringService {
     return this.publishAndReturn(updated);
   }
 
+  /** Attach a boundary clip path to a delivery (local OBS path or future S3 URL). */
+  async attachDeliveryVideo(
+    user: AuthUser,
+    matchId: string,
+    inningsId: string,
+    deliveryId: string,
+    req: import('@acc/types').AttachDeliveryVideoRequest,
+  ): Promise<ScorecardResponse> {
+    void user;
+    const match = await this.requireMatch(matchId);
+    this.assertVersion(match, req.expectedVersion);
+    this.assertEditable(match, {});
+
+    await this.requireInnings(matchId, inningsId);
+
+    const videoPath = req.videoPath.trim();
+    if (!videoPath) {
+      throw new BadRequestException({
+        message: 'videoPath is required',
+        error: 'VIDEO_PATH_REQUIRED',
+      });
+    }
+
+    const target = await this.prisma.delivery.findUnique({ where: { id: deliveryId } });
+    if (!target || target.isVoided || target.inningsId !== inningsId) {
+      throw new NotFoundException({ message: 'Delivery not found', error: 'DELIVERY_NOT_FOUND' });
+    }
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      await tx.delivery.update({
+        where: { id: target.id },
+        data: { videoPath },
+      });
+      return this.bumpVersion(tx, matchId);
+    });
+    return this.publishAndReturn(updated);
+  }
+
   // --- DLS & overs revision ------------------------------------------------
 
   async setDlsTarget(

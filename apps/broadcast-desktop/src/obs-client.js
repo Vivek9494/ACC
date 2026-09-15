@@ -38,6 +38,17 @@ const OBS_EVENT_SUBSCRIPTIONS =
 /** @typedef {'disconnected' | 'connecting' | 'connected' | 'error'} ConnectionState */
 /** @typedef {'unknown' | 'unavailable' | 'inactive' | 'active'} ReplayBufferState */
 /** @typedef {'idle' | 'saving' | 'playing'} InstantReplayPhase */
+/** @typedef {'instant_replay' | 'boundary'} ReplaySavePurpose */
+/**
+ * @typedef {{
+ *   purpose: ReplaySavePurpose,
+ *   deliveryId: string | null,
+ *   resolve: (path: string) => void,
+ *   reject: (err: Error) => void,
+ *   timeoutTimer: ReturnType<typeof setTimeout> | null,
+ *   fallbackTimer: ReturnType<typeof setTimeout> | null,
+ * }} PendingReplaySave
+ */
 
 function emptyStreamStatus() {
   return {
@@ -147,10 +158,9 @@ class ObsController {
     this.liveSceneBeforeReplay = null;
     /** @type {ReturnType<typeof setTimeout> | null} */
     this.watchdogTimer = null;
-    /** @type {((path: string) => void) | null} */
-    this.pendingSaveResolve = null;
-    /** @type {((err: Error) => void) | null} */
-    this.pendingSaveReject = null;
+    /** Purpose-tagged FIFO of in-flight SaveReplayBuffer waits. */
+    /** @type {PendingReplaySave[]} */
+    this.pendingSaves = [];
     /** @type {Set<(snapshot: ReturnType<ObsController['snapshot']>) => void>} */
     this.listeners = new Set();
     /** @type {ReturnType<typeof setInterval> | null} */
@@ -208,7 +218,7 @@ class ObsController {
     this.obs.on('ConnectionClosed', (err) => {
       this.stopStatusPoll();
       this.clearWatchdog();
-      this.rejectPendingSave(new Error('OBS connection closed while saving the replay.'));
+      this.rejectAllPendingSaves(new Error('OBS connection closed while saving the replay.'));
       this.isReplaying = false;
       this.instantReplayPhase = 'idle';
       this.liveSceneBeforeReplay = null;
@@ -226,7 +236,7 @@ class ObsController {
     this.obs.on('ConnectionError', (err) => {
       this.stopStatusPoll();
       this.clearWatchdog();
-      this.rejectPendingSave(new Error(describeObsError(err)));
+      this.rejectAllPendingSaves(new Error(describeObsError(err)));
       this.isReplaying = false;
       this.instantReplayPhase = 'idle';
       this.liveSceneBeforeReplay = null;
@@ -260,12 +270,7 @@ class ObsController {
       if (!savedPath) {
         return;
       }
-      if (this.pendingSaveResolve) {
-        const resolve = this.pendingSaveResolve;
-        this.pendingSaveResolve = null;
-        this.pendingSaveReject = null;
-        resolve(savedPath);
-      }
+      this.resolveOldestPendingSave(savedPath);
     });
 
     this.obs.on('MediaInputPlaybackEnded', (event) => {
@@ -301,14 +306,154 @@ class ObsController {
     }
   }
 
-  /** @param {Error} err */
-  rejectPendingSave(err) {
-    if (this.pendingSaveReject) {
-      const reject = this.pendingSaveReject;
-      this.pendingSaveResolve = null;
-      this.pendingSaveReject = null;
-      reject(err);
+  /**
+   * @param {PendingReplaySave} entry
+   */
+  clearPendingTimers(entry) {
+    if (entry.timeoutTimer) {
+      clearTimeout(entry.timeoutTimer);
+      entry.timeoutTimer = null;
     }
+    if (entry.fallbackTimer) {
+      clearTimeout(entry.fallbackTimer);
+      entry.fallbackTimer = null;
+    }
+  }
+
+  /**
+   * @param {PendingReplaySave} entry
+   */
+  removePendingSave(entry) {
+    const idx = this.pendingSaves.indexOf(entry);
+    if (idx >= 0) {
+      this.pendingSaves.splice(idx, 1);
+    }
+    this.clearPendingTimers(entry);
+  }
+
+  /**
+   * @param {string} path
+   */
+  resolveOldestPendingSave(path) {
+    const entry = this.pendingSaves.shift();
+    if (!entry) {
+      return;
+    }
+    this.clearPendingTimers(entry);
+    entry.resolve(path);
+  }
+
+  /**
+   * @param {Error} err
+   */
+  rejectAllPendingSaves(err) {
+    const pending = this.pendingSaves.splice(0, this.pendingSaves.length);
+    for (const entry of pending) {
+      this.clearPendingTimers(entry);
+      entry.reject(err);
+    }
+  }
+
+  /**
+   * Enqueue a purpose-tagged wait for the next ReplayBufferSaved (FIFO).
+   * @param {ReplaySavePurpose} purpose
+   * @param {string | null} [deliveryId]
+   * @returns {Promise<string>}
+   */
+  enqueuePendingSave(purpose, deliveryId = null) {
+    return new Promise((resolve, reject) => {
+      /** @type {PendingReplaySave} */
+      const entry = {
+        purpose,
+        deliveryId: deliveryId && deliveryId.trim() ? deliveryId.trim() : null,
+        resolve,
+        reject,
+        timeoutTimer: null,
+        fallbackTimer: null,
+      };
+
+      entry.fallbackTimer = setTimeout(() => {
+        void (async () => {
+          if (!this.pendingSaves.includes(entry)) {
+            return;
+          }
+          // Only the oldest waiter may consume GetLast — avoids stealing a later save.
+          if (this.pendingSaves[0] !== entry) {
+            return;
+          }
+          try {
+            const result = await this.obs.call('GetLastReplayBufferReplay');
+            const path =
+              typeof result?.savedReplayPath === 'string' ? result.savedReplayPath.trim() : '';
+            if (path && this.pendingSaves[0] === entry) {
+              this.resolveOldestPendingSave(path);
+            }
+          } catch {
+            // Keep waiting for the event until timeout.
+          }
+        })();
+      }, SAVE_FALLBACK_DELAY_MS);
+
+      entry.timeoutTimer = setTimeout(() => {
+        if (!this.pendingSaves.includes(entry)) {
+          return;
+        }
+        this.removePendingSave(entry);
+        const label =
+          purpose === 'boundary'
+            ? `boundary clip${entry.deliveryId ? ` (${entry.deliveryId})` : ''}`
+            : 'instant replay';
+        console.warn(`[OBS] Timed out waiting for ReplayBufferSaved for ${label}`);
+        reject(new Error(`Timed out waiting for the replay buffer save path from OBS (${purpose}).`));
+      }, SAVE_EVENT_WAIT_MS);
+
+      this.pendingSaves.push(entry);
+    });
+  }
+
+  /**
+   * Save the replay buffer and resolve with path for a tagged purpose.
+   * @param {ReplaySavePurpose} purpose
+   * @param {string | null} [deliveryId]
+   * @returns {Promise<string>}
+   */
+  async saveReplayBuffer(purpose, deliveryId = null) {
+    if (this.connection !== 'connected') {
+      throw new Error('Not connected to OBS.');
+    }
+    if (!this.replayBufferActive) {
+      throw new Error('Replay buffer is not active. Start the replay buffer first.');
+    }
+    const pathPromise = this.enqueuePendingSave(purpose, deliveryId);
+    try {
+      await this.obs.call('SaveReplayBuffer');
+    } catch (err) {
+      // Fail the entry we just enqueued (last in queue).
+      const entry = this.pendingSaves[this.pendingSaves.length - 1];
+      if (entry && entry.purpose === purpose && entry.deliveryId === (deliveryId?.trim() || null)) {
+        this.removePendingSave(entry);
+        entry.reject(new Error(describeObsError(err)));
+      }
+      throw new Error(describeObsError(err));
+    }
+    return pathPromise;
+  }
+
+  /**
+   * Boundary auto-clip: save buffer only — never switch scenes.
+   * @param {string} deliveryId
+   * @returns {Promise<{ deliveryId: string, videoPath: string }>}
+   */
+  async saveBoundaryClip(deliveryId) {
+    const id = typeof deliveryId === 'string' ? deliveryId.trim() : '';
+    if (!id) {
+      throw new Error('deliveryId is required for a boundary clip.');
+    }
+    const videoPath = await this.saveReplayBuffer('boundary', id);
+    if (!videoPath) {
+      throw new Error('OBS saved the replay buffer but did not return a file path.');
+    }
+    return { deliveryId: id, videoPath };
   }
 
   async refreshStreamStatus() {
@@ -397,7 +542,7 @@ class ObsController {
   async disconnect(opts = {}) {
     this.stopStatusPoll();
     this.clearWatchdog();
-    this.rejectPendingSave(new Error('Disconnected from OBS.'));
+    this.rejectAllPendingSaves(new Error('Disconnected from OBS.'));
     this.isReplaying = false;
     this.instantReplayPhase = 'idle';
     this.liveSceneBeforeReplay = null;
@@ -503,72 +648,6 @@ class ObsController {
     }
   }
 
-  /**
-   * Wait for ReplayBufferSaved; fall back to GetLastReplayBufferReplay once.
-   * @returns {Promise<string>}
-   */
-  waitForSavedReplayPath() {
-    return new Promise((resolve, reject) => {
-      let settled = false;
-      /** @type {ReturnType<typeof setTimeout> | null} */
-      let fallbackTimer = null;
-      /** @type {ReturnType<typeof setTimeout> | null} */
-      let timeoutTimer = null;
-
-      const cleanup = () => {
-        if (fallbackTimer) clearTimeout(fallbackTimer);
-        if (timeoutTimer) clearTimeout(timeoutTimer);
-        if (this.pendingSaveResolve === onEvent) {
-          this.pendingSaveResolve = null;
-          this.pendingSaveReject = null;
-        }
-      };
-
-      /** @param {string} path */
-      const finish = (path) => {
-        if (settled) return;
-        settled = true;
-        cleanup();
-        resolve(path);
-      };
-
-      /** @param {Error} err */
-      const fail = (err) => {
-        if (settled) return;
-        settled = true;
-        cleanup();
-        reject(err);
-      };
-
-      const onEvent = (path) => {
-        finish(path);
-      };
-
-      this.pendingSaveResolve = onEvent;
-      this.pendingSaveReject = fail;
-
-      fallbackTimer = setTimeout(() => {
-        void (async () => {
-          if (settled) return;
-          try {
-            const result = await this.obs.call('GetLastReplayBufferReplay');
-            const path =
-              typeof result?.savedReplayPath === 'string' ? result.savedReplayPath.trim() : '';
-            if (path) {
-              finish(path);
-            }
-          } catch {
-            // Keep waiting for the event until timeout.
-          }
-        })();
-      }, SAVE_FALLBACK_DELAY_MS);
-
-      timeoutTimer = setTimeout(() => {
-        fail(new Error('Timed out waiting for the replay buffer save path from OBS.'));
-      }, SAVE_EVENT_WAIT_MS);
-    });
-  }
-
   async getCurrentProgramSceneName() {
     try {
       const result = await this.obs.call('GetCurrentProgramScene');
@@ -582,41 +661,50 @@ class ObsController {
     }
   }
 
+  /** True while Instant Replay is saving or any clip owns the Replay scene. */
+  isOnAirReplayBusy() {
+    return this.isReplaying || this.instantReplayPhase !== 'idle';
+  }
+
   /**
-   * Instant Replay: save buffer → load clip into Replay Media → switch scene → restart.
+   * Shared on-air engine: load a local file into Replay Media, cut to Replay, restart from
+   * the start, auto-return on MediaInputPlaybackEnded (matching source) or watchdog.
+   * Sets/clears the shared isReplaying lock. Does NOT save the replay buffer.
+   * @param {string} filePath
+   * @param {{ liveSceneName?: string | null, continueFromSave?: boolean }} [opts]
    */
-  async startInstantReplay() {
+  async playFileOnAir(filePath, opts = {}) {
     if (this.connection !== 'connected') {
       throw new Error('Not connected to OBS.');
     }
-    if (this.isReplaying || this.instantReplayPhase !== 'idle') {
-      return;
+    const path = typeof filePath === 'string' ? filePath.trim() : '';
+    if (!path) {
+      throw new Error('A local clip path is required to play on air.');
     }
-    if (!this.replayBufferActive) {
-      throw new Error('Replay buffer is not active. Start the replay buffer first.');
+    // Instant Replay holds phase=saving across SaveReplayBuffer; allow that handoff only.
+    if (opts.continueFromSave) {
+      if (this.isReplaying || this.instantReplayPhase !== 'saving') {
+        throw new Error('A replay is already on air. Return to live before playing another clip.');
+      }
+    } else if (this.isOnAirReplayBusy()) {
+      throw new Error('A replay is already on air. Return to live before playing another clip.');
     }
 
     await this.refreshStudioModeWarning();
 
     const { replaySceneName, replayMediaSourceName, liveSceneName } = this.replayScenes;
+    const liveScene =
+      (typeof opts.liveSceneName === 'string' && opts.liveSceneName.trim()) ||
+      (await this.getCurrentProgramSceneName());
+
     this.error = '';
-    this.instantReplayPhase = 'saving';
-    this.emit();
-
     let switchedToReplay = false;
+
     try {
-      const liveScene = await this.getCurrentProgramSceneName();
-
-      await this.obs.call('SaveReplayBuffer');
-      const savedPath = await this.waitForSavedReplayPath();
-      if (!savedPath) {
-        throw new Error('OBS saved the replay buffer but did not return a file path.');
-      }
-
       try {
         await this.obs.call('SetInputSettings', {
           inputName: replayMediaSourceName,
-          inputSettings: { local_file: savedPath },
+          inputSettings: { local_file: path },
           overlay: true,
         });
       } catch (err) {
@@ -668,6 +756,69 @@ class ObsController {
     } catch (err) {
       this.instantReplayPhase = 'idle';
       if (switchedToReplay || this.isReplaying) {
+        await this.forceReturnToLiveAfterFailure();
+      }
+      this.isReplaying = false;
+      this.liveSceneBeforeReplay = null;
+      this.error = err instanceof Error ? err.message : describeObsError(err);
+      this.emit();
+      throw new Error(this.error);
+    }
+  }
+
+  /**
+   * Play an already-captured delivery clip on air (no SaveReplayBuffer).
+   * @param {{ videoPath?: string, deliveryId?: string }} payload
+   */
+  async playDeliveryClip(payload = {}) {
+    const videoPath =
+      typeof payload.videoPath === 'string' ? payload.videoPath.trim() : '';
+    if (!videoPath) {
+      throw new Error('videoPath is required to play a delivery clip.');
+    }
+    if (this.isOnAirReplayBusy()) {
+      throw new Error('A replay is already on air. Return to live before playing another clip.');
+    }
+    void payload.deliveryId;
+    await this.playFileOnAir(videoPath);
+  }
+
+  /**
+   * Instant Replay: save buffer → playFileOnAir(savedPath).
+   */
+  async startInstantReplay() {
+    if (this.connection !== 'connected') {
+      throw new Error('Not connected to OBS.');
+    }
+    if (this.isOnAirReplayBusy()) {
+      return;
+    }
+    if (!this.replayBufferActive) {
+      throw new Error('Replay buffer is not active. Start the replay buffer first.');
+    }
+
+    await this.refreshStudioModeWarning();
+
+    this.error = '';
+    this.instantReplayPhase = 'saving';
+    this.emit();
+
+    try {
+      const liveScene = await this.getCurrentProgramSceneName();
+
+      const savedPath = await this.saveReplayBuffer('instant_replay');
+      if (!savedPath) {
+        throw new Error('OBS saved the replay buffer but did not return a file path.');
+      }
+
+      // Handoff under the same lock (phase stays 'saving' until playFileOnAir latches playing).
+      await this.playFileOnAir(savedPath, {
+        liveSceneName: liveScene,
+        continueFromSave: true,
+      });
+    } catch (err) {
+      this.instantReplayPhase = 'idle';
+      if (this.isReplaying) {
         await this.forceReturnToLiveAfterFailure();
       }
       this.isReplaying = false;

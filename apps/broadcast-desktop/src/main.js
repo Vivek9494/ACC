@@ -382,6 +382,13 @@ function registerIpc() {
     await obs.startInstantReplay();
     return lifecycle.snapshot();
   });
+  ipcMain.handle('asc:obs-save-boundary-clip', async (_event, deliveryId) => {
+    return obs.saveBoundaryClip(deliveryId);
+  });
+  ipcMain.handle('asc:obs-play-delivery-clip', async (_event, payload) => {
+    await obs.playDeliveryClip(payload ?? {});
+    return lifecycle.snapshot();
+  });
   ipcMain.handle('asc:obs-return-to-live', async () => {
     await obs.returnToLive({ reason: 'manual' });
     return lifecycle.snapshot();

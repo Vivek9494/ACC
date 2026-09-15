@@ -1160,6 +1160,9 @@ model Delivery {
   /// Boundary type for the marker: 4 or 6. Null when not a highlight.
   highlightBoundaryRuns Int?
 
+  /// Boundary clip path — local OBS replay file for now; S3 URL later (same field).
+  videoPath String?
+
   createdAt DateTime @default(now())
 
   @@index([inningsId])

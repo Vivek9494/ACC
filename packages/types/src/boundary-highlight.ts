@@ -6,8 +6,8 @@
 /** Boundary type stored on the delivery highlight marker. */
 export type BoundaryHighlightRuns = 4 | 6;
 
-/** Marker status — v0 is always MARKED; v1 may add CLIP_PENDING / CLIP_READY. */
-export type BoundaryHighlightStatus = 'MARKED';
+/** Marker status — MARKED until a clip path is attached; CLIP_READY when videoPath is set. */
+export type BoundaryHighlightStatus = 'MARKED' | 'CLIP_READY';
 
 /**
  * Per-delivery highlight marker exposed on the scorecard timeline and match list.
@@ -30,6 +30,11 @@ export interface DeliveryHighlightMarker {
   /** Boundary type for clipping: 4 or 6. */
   boundaryRuns: BoundaryHighlightRuns;
   status: BoundaryHighlightStatus;
+  /**
+   * Clip location when status is CLIP_READY — local OBS path now, S3 URL later.
+   * Null/omitted while only marked.
+   */
+  videoPath?: string | null;
 }
 
 /** Resolve 4 vs 6 for a boundary delivery; null when not a boundary. */
@@ -53,7 +58,7 @@ export function formatBoundaryBallLabel(
   return `${overNumber}.${ballNumber}`;
 }
 
-/** Build a v0 marker payload from persisted delivery fields (or isBoundary fallback). */
+/** Build a highlight marker from persisted delivery fields (or isBoundary fallback). */
 export function buildDeliveryHighlightMarker(input: {
   deliveryId: string;
   inningsId: string;
@@ -67,6 +72,7 @@ export function buildDeliveryHighlightMarker(input: {
   ballNumber: number | null;
   strikerId: string | null;
   bowlerId: string | null;
+  videoPath?: string | null;
 }): DeliveryHighlightMarker | null {
   const boundaryRuns: BoundaryHighlightRuns | null =
     input.highlightBoundaryRuns === 4 || input.highlightBoundaryRuns === 6
@@ -82,6 +88,11 @@ export function buildDeliveryHighlightMarker(input: {
       ? markedSource.toISOString()
       : new Date(markedSource).toISOString();
 
+  const videoPath =
+    typeof input.videoPath === 'string' && input.videoPath.trim()
+      ? input.videoPath.trim()
+      : null;
+
   return {
     deliveryId: input.deliveryId,
     inningsId: input.inningsId,
@@ -94,6 +105,7 @@ export function buildDeliveryHighlightMarker(input: {
     bowlerId: input.bowlerId,
     runsBat: input.runsBat,
     boundaryRuns,
-    status: 'MARKED',
+    status: videoPath ? 'CLIP_READY' : 'MARKED',
+    ...(videoPath ? { videoPath } : {}),
   };
 }

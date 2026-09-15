@@ -45,6 +45,11 @@ export interface AscObsBridge {
   stopStream: () => Promise<AscObsStatus>;
   startReplayBuffer: () => Promise<AscObsStatus>;
   startInstantReplay: () => Promise<AscObsStatus>;
+  saveBoundaryClip: (deliveryId: string) => Promise<{ deliveryId: string; videoPath: string }>;
+  playDeliveryClip: (payload: {
+    videoPath: string;
+    deliveryId?: string;
+  }) => Promise<AscObsStatus>;
   returnToLive: () => Promise<AscObsStatus>;
   getConfig: () => Promise<AscObsConfig>;
   saveConfig: (config: AscObsConfig) => Promise<AscObsConfig>;

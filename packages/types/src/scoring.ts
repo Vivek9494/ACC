@@ -203,6 +203,12 @@ export interface SetDeliveryShotPlacementRequest {
   expectedVersion: number;
 }
 
+/** Attach a boundary clip path (local OBS file or future S3 URL) to a delivery. */
+export interface AttachDeliveryVideoRequest {
+  videoPath: string;
+  expectedVersion: number;
+}
+
 /** Edit an existing ball within the scorer edit window (§12.2). */
 export interface EditDeliveryRequest extends RecordDeliveryRequest {
   deliveryId: string;
@@ -359,10 +365,15 @@ export interface TimelineEntry {
   shotX?: number | null;
   shotY?: number | null;
   /**
-   * v0 boundary highlight marker (4/6). Mark-only — no clip URL yet.
+   * v0 boundary highlight marker (4/6). Mark-only until videoPath is attached.
    * Null / omitted when the ball is not a marked boundary.
    */
   highlightMarker?: DeliveryHighlightMarker | null;
+  /**
+   * Boundary clip path when attached (local OBS path now, S3 URL later).
+   * Also mirrored on highlightMarker.videoPath when status is CLIP_READY.
+   */
+  videoPath?: string | null;
   dismissal?: {
     type: DismissalType;
     dismissedId: string;

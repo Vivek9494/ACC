@@ -1,9 +1,14 @@
 import { groupTimelineByOver, type DeliveryHighlightMarker, type InningsScorecard, type TimelineEntry } from '@acc/types';
-import { createElement, type CSSProperties, type ReactNode } from 'react';
+import { createElement, useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import type { ViewStyle } from 'react-native';
 import { View } from 'react-native';
 
+import type { AscObsStatus } from '../../../types/asc-broadcast';
 import { CockpitPanel } from './CockpitPanel';
+import {
+  canPlayBoundaryClips,
+  isOnAirReplayBusy,
+} from './boundary-clip-capture';
 import { extrasTypeFromCode, isExtraCode } from './cockpit-stats';
 
 /**
@@ -179,6 +184,29 @@ const VIDEO_MARKED: CSSProperties = {
   whiteSpace: 'nowrap',
 };
 
+const PLAY_BTN: CSSProperties = {
+  display: 'inline-block',
+  padding: '0 8px',
+  margin: 0,
+  border: 'none',
+  borderRadius: 4,
+  background: 'var(--color-primary, #ff6b00)',
+  color: '#fff',
+  fontSize: 10,
+  fontWeight: 700,
+  lineHeight: '18px',
+  letterSpacing: '0.02em',
+  textTransform: 'uppercase',
+  cursor: 'pointer',
+  whiteSpace: 'nowrap',
+};
+
+const PLAY_BTN_DISABLED: CSSProperties = {
+  ...PLAY_BTN,
+  opacity: 0.4,
+  cursor: 'default',
+};
+
 const MARKERS_WRAP: CSSProperties = {
   borderTop: '1px solid var(--color-outline-variant, #e7e5e4)',
   padding: '6px 8px',
@@ -228,27 +256,72 @@ function Colgroup(): ReactNode {
   );
 }
 
-/** Per-ball video cell — shows highlight marker when a 4/6 was marked (no clip yet). */
+/** Per-ball video cell — Play (OBS on air) / Marked / —. */
 function VideoCell({
   ballId,
+  deliveryId,
   highlightMarker,
+  videoPath,
+  canPlayOnAir,
+  replayBusy,
+  onPlay,
 }: {
   ballId: string;
+  deliveryId?: string | null;
   highlightMarker: TimelineEntry['highlightMarker'];
+  videoPath?: string | null;
+  canPlayOnAir: boolean;
+  replayBusy: boolean;
+  onPlay: (opts: { videoPath: string; deliveryId?: string }) => void;
 }): ReactNode {
-  if (highlightMarker) {
+  const clipPath =
+    (typeof videoPath === 'string' && videoPath.trim()) ||
+    (typeof highlightMarker?.videoPath === 'string' && highlightMarker.videoPath.trim()) ||
+    null;
+
+  if (clipPath && canPlayOnAir) {
+    const disabled = replayBusy;
+    return createElement(
+      'button',
+      {
+        type: 'button',
+        'data-ball-id': ballId,
+        'data-highlight-status': 'CLIP_READY',
+        disabled,
+        title: disabled
+          ? 'Replay on air — return to live before playing another clip'
+          : `Play boundary clip on air${clipPath ? `\n${clipPath}` : ''}`,
+        'aria-label': `Play ball ${ballId} boundary clip on air`,
+        style: disabled ? PLAY_BTN_DISABLED : PLAY_BTN,
+        onClick: () => {
+          if (disabled) return;
+          onPlay({
+            videoPath: clipPath,
+            ...(deliveryId ? { deliveryId } : {}),
+          });
+        },
+      },
+      'Play',
+    );
+  }
+
+  if (highlightMarker || clipPath) {
+    // No OBS bridge (plain Chrome) or mark-only — never browser-play the local path.
     return createElement(
       'span',
       {
         'data-ball-id': ballId,
-        'data-highlight-status': highlightMarker.status,
-        title: `${highlightMarker.boundaryRuns} marked @ ${highlightMarker.markedAt}`,
-        'aria-label': `Boundary ${highlightMarker.boundaryRuns} highlight marked`,
+        'data-highlight-status': highlightMarker?.status ?? 'MARKED',
+        title: highlightMarker
+          ? `${highlightMarker.boundaryRuns} marked @ ${highlightMarker.markedAt}`
+          : 'Boundary marked',
+        'aria-label': 'Boundary highlight marked',
         style: VIDEO_MARKED,
       },
       'Marked',
     );
   }
+
   return createElement(
     'button',
     {
@@ -261,6 +334,37 @@ function VideoCell({
     },
     '—',
   );
+}
+
+function useObsReplayLock(): { canPlayOnAir: boolean; replayBusy: boolean } {
+  const canPlayOnAir = canPlayBoundaryClips();
+  const [status, setStatus] = useState<AscObsStatus | null>(null);
+
+  useEffect(() => {
+    if (!canPlayOnAir || typeof window === 'undefined') {
+      return;
+    }
+    const obs = window.ascBroadcast?.obs;
+    if (!obs?.onStatus || !obs.getStatus) {
+      return;
+    }
+    let cancelled = false;
+    void obs.getStatus().then((s) => {
+      if (!cancelled) setStatus(s);
+    });
+    const unsub = obs.onStatus((s) => {
+      setStatus(s);
+    });
+    return () => {
+      cancelled = true;
+      unsub();
+    };
+  }, [canPlayOnAir]);
+
+  return {
+    canPlayOnAir,
+    replayBusy: isOnAirReplayBusy(status),
+  };
 }
 
 function formatMarkerTime(iso: string): string {
@@ -286,6 +390,18 @@ export function BallByBallPanel({
   const inningsMarkers = boundaryHighlights.filter(
     (m) => m.inningsId === innings.inningsId,
   );
+  const { canPlayOnAir, replayBusy } = useObsReplayLock();
+
+  const playClip = (opts: { videoPath: string; deliveryId?: string }) => {
+    const obs = window.ascBroadcast?.obs;
+    if (!obs?.playDeliveryClip) {
+      return;
+    }
+    void obs.playDeliveryClip(opts).catch((err: unknown) => {
+      const message = err instanceof Error ? err.message : String(err);
+      console.warn('[boundary-clip] play on air failed:', message);
+    });
+  };
 
   const header = createElement(
     'thead',
@@ -359,7 +475,15 @@ export function BallByBallPanel({
             createElement(
               'td',
               { style: TD_CENTER },
-              VideoCell({ ballId, highlightMarker: entry.highlightMarker }),
+              VideoCell({
+                ballId,
+                deliveryId: entry.deliveryId,
+                highlightMarker: entry.highlightMarker,
+                videoPath: entry.videoPath,
+                canPlayOnAir,
+                replayBusy,
+                onPlay: playClip,
+              }),
             ),
           ),
         );

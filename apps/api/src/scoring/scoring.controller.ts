@@ -15,6 +15,7 @@ import { RenameExternalPlayerDto } from './dto/rename-external-player.dto';
 import { SetDlsTargetDto, SetInningsParticipantsDto, StartInningsDto, UpdateOversAllottedDto, EndInningsDto } from './dto/innings.dto';
 import { UndoDeliveryDto } from './dto/undo-delivery.dto';
 import { SetDeliveryShotPlacementDto } from './dto/set-delivery-shot-placement.dto';
+import { AttachDeliveryVideoDto } from './dto/attach-delivery-video.dto';
 import { BatsmanPickerService } from './batsman-picker.service';
 import { BowlerPickerService } from './bowler-picker.service';
 import { FielderPickerService } from './fielder-picker.service';
@@ -229,6 +230,19 @@ export class ScoringController {
     @Body() dto: SetDeliveryShotPlacementDto,
   ): Promise<ScorecardResponse> {
     return this.scoring.setDeliveryShotPlacement(user, matchId, inningsId, dto);
+  }
+
+  @Patch('innings/:inningsId/deliveries/:deliveryId/video')
+  @RequirePermission(Permission.SCORE_BALL)
+  @UseGuards(JwtAuthGuard, PermissionGuard)
+  attachDeliveryVideo(
+    @CurrentUser() user: AuthUser,
+    @Param('matchId') matchId: string,
+    @Param('inningsId') inningsId: string,
+    @Param('deliveryId') deliveryId: string,
+    @Body() dto: AttachDeliveryVideoDto,
+  ): Promise<ScorecardResponse> {
+    return this.scoring.attachDeliveryVideo(user, matchId, inningsId, deliveryId, dto);
   }
 
   // --- §13.2 post-confirmation corrections (Admin / ACC Club Manager) -------

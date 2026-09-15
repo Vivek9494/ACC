@@ -54,7 +54,7 @@ function statusLine(status: AscObsStatus): string {
   let detail = 'Stream idle';
   if (connected) {
     if (isReplaying || instantPhase === 'playing') {
-      detail = 'Instant replay playing';
+      detail = 'Replay on air';
     } else if (savingReplay) {
       detail = 'Saving replay…';
     } else {
@@ -188,11 +188,12 @@ export function BroadcastObsPanel(): React.ReactElement | null {
   const isReplaying = Boolean(status?.isReplaying);
   const instantPhase = status?.instantReplayPhase || 'idle';
   const savingReplay = instantPhase === 'saving';
+  const replayBusy = isReplaying || instantPhase !== 'idle';
   const replayActive = status?.replayBufferState === 'active' || status?.replayBufferActive;
   const needsReplayStart =
     Boolean(connected) &&
     !replayActive &&
-    !isReplaying &&
+    !replayBusy &&
     (status?.replayBufferState === 'inactive' ||
       status?.replayBufferState === 'unavailable' ||
       Boolean(status?.replayBufferWarning));
@@ -234,7 +235,7 @@ export function BroadcastObsPanel(): React.ReactElement | null {
               <ObsButton
                 label="Disconnect"
                 variant="ghost"
-                disabled={busy || isReplaying || savingReplay}
+                disabled={busy || isReplaying || savingReplay || replayBusy}
                 onPress={() => void run(() => bridge.disconnect())}
               />
             )}
@@ -247,7 +248,7 @@ export function BroadcastObsPanel(): React.ReactElement | null {
                 Boolean(status?.stream.outputActive) ||
                 Boolean(starting) ||
                 Boolean(stopping) ||
-                isReplaying
+                replayBusy
               }
               onPress={() => void run(() => bridge.startStream())}
             />
@@ -274,11 +275,11 @@ export function BroadcastObsPanel(): React.ReactElement | null {
               <ObsButton
                 label={savingReplay ? 'Saving…' : isReplaying ? 'Replaying…' : 'Instant Replay'}
                 variant="primary"
-                disabled={busy || !connected || !replayActive || isReplaying || savingReplay}
+                disabled={busy || !connected || !replayActive || replayBusy}
                 onPress={() => void run(() => bridge.startInstantReplay())}
               />
             ) : null}
-            {connected && (isReplaying || instantPhase === 'playing') ? (
+            {connected && replayBusy && instantPhase !== 'saving' ? (
               <ObsButton
                 label="Back to Live"
                 variant="ghost"

@@ -2005,6 +2005,19 @@ export function setDeliveryShotPlacement(
   );
 }
 
+/** Attach a boundary clip path (local OBS file or future S3 URL) to a delivery. */
+export function attachDeliveryVideo(
+  matchId: string,
+  inningsId: string,
+  deliveryId: string,
+  body: import('@acc/types').AttachDeliveryVideoRequest,
+): Promise<ScorecardResponse> {
+  return apiFetch<ScorecardResponse>(
+    `/matches/${matchId}/innings/${inningsId}/deliveries/${deliveryId}/video`,
+    { method: 'PATCH', body },
+  );
+}
+
 /** Persist at-crease batters and/or the current-over bowler before the next delivery. */
 export function setInningsParticipants(
   matchId: string,

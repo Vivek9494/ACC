@@ -48,6 +48,26 @@ describe('boundary-highlight (v0 markers)', () => {
     });
   });
 
+  it('sets CLIP_READY when videoPath is attached', () => {
+    const marker = buildDeliveryHighlightMarker({
+      deliveryId: 'd1',
+      inningsId: 'i1',
+      sequence: 9,
+      isBoundary: true,
+      runsBat: 4,
+      createdAt: '2026-08-31T12:00:00.000Z',
+      highlightMarkedAt: '2026-08-31T12:00:01.000Z',
+      highlightBoundaryRuns: 4,
+      overNumber: 3,
+      ballNumber: 2,
+      strikerId: 'bat',
+      bowlerId: 'bowl',
+      videoPath: '/tmp/replay.mkv',
+    });
+    expect(marker?.status).toBe('CLIP_READY');
+    expect(marker?.videoPath).toBe('/tmp/replay.mkv');
+  });
+
   it('falls back to isBoundary + createdAt when columns are unset (legacy rows)', () => {
     const marker = buildDeliveryHighlightMarker({
       deliveryId: 'd2',

@@ -43,6 +43,7 @@ function markerFromDelivery(row: Delivery): DeliveryHighlightMarker | null {
     ballNumber: row.ballNumber,
     strikerId: participantId(row.strikerUserId, row.strikerExternalId),
     bowlerId: participantId(row.bowlerUserId, row.bowlerExternalId),
+    videoPath: row.videoPath,
   });
 }
 
@@ -223,6 +224,7 @@ export class ScorecardReader {
           isBoundary: row.isBoundary,
           shotX: row.shotX,
           shotY: row.shotY,
+          videoPath: row.videoPath,
           highlightMarker,
           ...(row.dismissalType && dismissedId
             ? {
