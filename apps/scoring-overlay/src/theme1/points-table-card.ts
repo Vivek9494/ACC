@@ -1,7 +1,6 @@
 import './points-table-card.css';
+import { concealGraphic, revealGraphic } from '../graphic-visibility';
 import type { TeamStandingRowView, TournamentStandingsView } from '../types';
-
-const ANIM_MS = 280;
 
 function formatNrr(nrr: number): string {
   const rounded = Math.round(nrr * 1000) / 1000;
@@ -69,17 +68,12 @@ export function mountPointsTableCard(host: HTMLElement): PointsTableCardControll
 
   const hideNode = (): void => {
     onAir = false;
-    host.classList.remove('is-visible');
-    window.setTimeout(() => {
-      if (!onAir) {
-        host.hidden = true;
-      }
-    }, ANIM_MS);
+    concealGraphic(host);
   };
 
   const showNode = (): void => {
-    host.hidden = false;
-    requestAnimationFrame(() => host.classList.add('is-visible'));
+    onAir = true;
+    revealGraphic(host);
   };
 
   const paint = (standings: TournamentStandingsView): boolean => {

@@ -2,6 +2,7 @@ import {
   combineCareerBowlingWithLive,
   formatStat,
 } from '../../graphics-format';
+import { concealGraphic, revealGraphic } from '../../graphic-visibility';
 import type {
   BroadcastPlayerStatsView,
   ScorecardResponse,
@@ -257,15 +258,11 @@ export function createTheme1ScoreStripHost(): ScoreStripHost {
     },
 
     revealCareerCard(): void {
-      const node = el<HTMLDivElement>('career-wrap');
-      node.hidden = false;
-      requestAnimationFrame(() => node.classList.add('is-visible'));
+      revealGraphic(el<HTMLDivElement>('career-wrap'));
     },
 
-    hideCareerCard(onHidden: () => void, animMs: number): void {
-      const node = el<HTMLDivElement>('career-wrap');
-      node.classList.remove('is-visible');
-      window.setTimeout(onHidden, animMs);
+    hideCareerCard(onHidden: () => void, _animMs: number): void {
+      concealGraphic(el<HTMLDivElement>('career-wrap'), onHidden);
     },
   };
 }

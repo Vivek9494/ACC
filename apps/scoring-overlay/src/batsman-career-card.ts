@@ -7,6 +7,7 @@
 
 import './batsman-career-card.css';
 import { fetchBroadcastPlayerStats } from './broadcast-fetch';
+import { concealGraphic, revealGraphic } from './graphic-visibility';
 import {
   formatHighestScoreMeta,
   formatStat,
@@ -15,8 +16,6 @@ import {
   isUuid,
 } from './graphics-format';
 import type { BallType, BroadcastPlayerStatsView } from './types';
-
-const ANIM_MS = 280;
 
 export interface BatsmanCareerShowOptions {
   apiBase: string;
@@ -326,19 +325,13 @@ export function mountBatsmanCareerCard(
   const cache = new Map<string, BroadcastPlayerStatsView | null>();
 
   const showHost = (): void => {
-    host.hidden = false;
-    requestAnimationFrame(() => host.classList.add('is-visible'));
     onAir = true;
+    revealGraphic(host);
   };
 
   const hideHost = (): void => {
     onAir = false;
-    host.classList.remove('is-visible');
-    window.setTimeout(() => {
-      if (!onAir) {
-        host.hidden = true;
-      }
-    }, ANIM_MS);
+    concealGraphic(host);
   };
 
   return {

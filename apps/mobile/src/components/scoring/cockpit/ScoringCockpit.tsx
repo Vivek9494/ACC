@@ -13,7 +13,7 @@ import type { ViewStyle } from 'react-native';
 import { View } from 'react-native';
 
 import { useScoringKeyboardShortcuts } from '../../../hooks/useScoringKeyboardShortcuts';
-import { useLiveScore } from '../../../lib/live-socket';
+import { freshestScorecard, useLiveScore } from '../../../lib/live-socket';
 import { Text } from '../../ui/Text';
 import { BallByBallPanel } from './BallByBallPanel';
 import { BroadcastObsPanel, hasAscObsBridge } from './BroadcastObsPanel';
@@ -138,6 +138,8 @@ export interface ScoringCockpitProps {
   keyboardEnabled: boolean;
   error: string | null;
   prompt: string | null;
+  /** Match result when decided — under Toss + same value as top prompt on completion. */
+  resultLine?: string | null;
   onRuns: (runs: number, isBoundary: boolean) => void;
   onWide: (ranPortion: number) => void;
   onNoBall: (runsBat: number) => void;
@@ -181,6 +183,7 @@ export function ScoringCockpit({
   keyboardEnabled,
   error,
   prompt,
+  resultLine = null,
   onRuns,
   onWide,
   onNoBall,
@@ -199,6 +202,9 @@ export function ScoringCockpit({
   onSetShotPlacement,
 }: ScoringCockpitProps): React.ReactElement {
   const live = useLiveScore(matchId, card);
+  /** Never prefer a stale socket frame over a newer REST card (or vice versa). */
+  const displayCard = freshestScorecard(card, live.state) ?? card;
+  const displayInnings = displayCard.innings.at(-1) ?? innings;
   const toss = formatMatchTossSummaryLine(match);
   const playState = MATCH_STATE_LABELS[match.state] ?? match.state;
   const showObs = hasAscObsBridge();
@@ -235,7 +241,7 @@ export function ScoringCockpit({
             <ScoreSummaryPanel
               matchId={matchId}
               match={match}
-              innings={innings}
+              innings={displayInnings}
               battingTeamName={battingTeamName}
               bowlingTeamName={bowlingTeamName}
               nameOf={nameOf}
@@ -250,6 +256,7 @@ export function ScoringCockpit({
               onSelectBowler={onSelectBowler}
               onUndo={onUndo}
               working={working}
+              resultLine={resultLine}
             />
             <ScoringInputPanel
               disabled={keypadDisabled}
@@ -267,13 +274,14 @@ export function ScoringCockpit({
           </View>
           <View style={BALLS_COL}>
             <BallByBallPanel
-              innings={innings}
+              innings={displayInnings}
               nameOf={nameOf}
-              boundaryHighlights={(live.state ?? card).boundaryHighlights ?? []}
             />
           </View>
           <View style={SCOREBOARD_COL}>
-            {showObs ? <BroadcastObsPanel /> : null}
+            {showObs ? (
+              <BroadcastObsPanel matchId={matchId} card={displayCard} matchState={match.state} />
+            ) : null}
             <View style={showObs ? SCOREBOARD_PREVIEW_WITH_OBS : { flex: 1, minHeight: 0 }}>
               <OverlayScoreboardPanel youtubeUrl={match.youtubeUrl} />
             </View>
@@ -285,14 +293,14 @@ export function ScoringCockpit({
             <OverlayControlPanel
               matchId={matchId}
               match={match}
-              card={live.state ?? card}
-              innings={innings}
+              card={displayCard}
+              innings={displayInnings}
               nameOf={nameOf}
             />
           </View>
           <View style={WAGON_COL}>
             <WagonWheelPanel
-              innings={innings}
+              innings={displayInnings}
               nameOf={nameOf}
               working={working}
               onSetShotPlacement={onSetShotPlacement}
@@ -300,8 +308,8 @@ export function ScoringCockpit({
           </View>
           <View style={SCORECARD_COL}>
             <ScorecardDockPanel
-              card={card}
-              innings={innings}
+              card={displayCard}
+              innings={displayInnings}
               battingXi={battingXi}
               nameOf={nameOf}
             />

@@ -49,6 +49,8 @@ export interface ScoreSummaryPanelProps {
   /** Live undo last delivery (same as keyboard Backspace). */
   onUndo: () => void;
   working?: boolean;
+  /** Match result when decided — shown under Toss (same string as cockpit prompt). */
+  resultLine?: string | null;
 }
 
 const SUMMARY_TOP: ViewStyle = {
@@ -380,8 +382,10 @@ export function ScoreSummaryPanel({
   onSelectBowler,
   onUndo,
   working,
+  resultLine = null,
 }: ScoreSummaryPanelProps): React.ReactElement {
   const toss = formatMatchTossSummaryLine(match);
+  const result = resultLine?.trim() || null;
   const strikerName = strikerId ? nameOf(strikerId) : 'Select striker';
   const nonStrikerName = nonStrikerId ? nameOf(nonStrikerId) : 'Select non-striker';
   const bowlerName = bowlerId ? nameOf(bowlerId) : 'Select bowler';
@@ -419,6 +423,14 @@ export function ScoreSummaryPanel({
           {toss ? (
             <Text className="mt-0.5 font-sans text-xs text-on-surface-variant" numberOfLines={1}>
               Toss: {toss}
+            </Text>
+          ) : null}
+          {result ? (
+            <Text
+              className="mt-0.5 font-sans-semibold text-xs text-primary"
+              numberOfLines={2}
+            >
+              {result}
             </Text>
           ) : null}
         </View>

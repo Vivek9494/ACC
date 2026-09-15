@@ -11,6 +11,8 @@ export interface TournamentStatsAccumulators {
   fifers: number;
   playerFours: Map<string, number>;
   playerSixes: Map<string, number>;
+  /** Tournament batting runs per member (tie-break for boundary boards). */
+  playerRuns: Map<string, number>;
 }
 
 export function createTournamentStatsAccumulators(): TournamentStatsAccumulators {
@@ -24,6 +26,7 @@ export function createTournamentStatsAccumulators(): TournamentStatsAccumulators
     fifers: 0,
     playerFours: new Map(),
     playerSixes: new Map(),
+    playerRuns: new Map(),
   };
 }
 
@@ -72,6 +75,10 @@ export function foldScorecardIntoTournamentStats(
           batter.playerId,
           (acc.playerSixes.get(batter.playerId) ?? 0) + batter.sixes,
         );
+        acc.playerRuns.set(
+          batter.playerId,
+          (acc.playerRuns.get(batter.playerId) ?? 0) + batter.runs,
+        );
       }
     }
 
@@ -93,12 +100,14 @@ export interface BuildBoundaryLeaderboardPlayerInput {
   teamId: string;
   teamName: string;
   count: number;
+  /** Tournament batting runs — secondary sort after count. */
+  runs: number;
 }
 
-/** Top N by boundary count; tie-break alphabetically by name. */
+/** Top N by boundary count; tie-break runs desc, then name. */
 export function buildBoundaryLeaderboardEntries(
   players: BuildBoundaryLeaderboardPlayerInput[],
-  limit = 5,
+  limit = 10,
 ): TournamentBoundaryLeaderboardEntry[] {
   const sorted = [...players]
     .filter((player) => player.count > 0)
@@ -106,6 +115,10 @@ export function buildBoundaryLeaderboardEntries(
       const countDiff = right.count - left.count;
       if (countDiff !== 0) {
         return countDiff;
+      }
+      const runsDiff = right.runs - left.runs;
+      if (runsDiff !== 0) {
+        return runsDiff;
       }
       const leftName = `${left.lastName} ${left.firstName}`.trim();
       const rightName = `${right.lastName} ${right.firstName}`.trim();

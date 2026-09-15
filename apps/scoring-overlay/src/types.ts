@@ -70,6 +70,8 @@ export type GraphicsKind =
   | 'tournament_top_bowlers'
   | 'tournament_fours'
   | 'tournament_sixes'
+  | 'most_sixes'
+  | 'most_fours'
   | 'hello';
 
 /** Tournament-scoped full-screen graphics (aggregates across all tournament matches). */
@@ -78,7 +80,9 @@ export type TournamentGraphicKind =
   | 'tournament_top_batsmen'
   | 'tournament_top_bowlers'
   | 'tournament_fours'
-  | 'tournament_sixes';
+  | 'tournament_sixes'
+  | 'most_sixes'
+  | 'most_fours';
 
 export interface TeamStandingRowView {
   teamId: string;
@@ -125,6 +129,14 @@ export interface TournamentLeaderboardView {
   bowling: { entries: BowlingLeaderboardEntryView[] };
 }
 
+export interface TournamentBoundaryLeaderboardEntryView {
+  rank: number;
+  firstName: string;
+  lastName: string;
+  teamName: string;
+  count: number;
+}
+
 export interface TournamentStatsView {
   tournamentId: string;
   hasRecords: boolean;
@@ -132,6 +144,8 @@ export interface TournamentStatsView {
     fours: number;
     sixes: number;
   };
+  mostSixes: TournamentBoundaryLeaderboardEntryView[];
+  mostFours: TournamentBoundaryLeaderboardEntryView[];
 }
 
 export interface GraphicsCommandMessage {

@@ -316,6 +316,7 @@ export class LeaderboardService {
       resolvedPlayers.map((player) => ({
         ...player,
         count: acc.playerSixes.get(player.userId) ?? 0,
+        runs: acc.playerRuns.get(player.userId) ?? 0,
       })),
     );
 
@@ -323,6 +324,7 @@ export class LeaderboardService {
       resolvedPlayers.map((player) => ({
         ...player,
         count: acc.playerFours.get(player.userId) ?? 0,
+        runs: acc.playerRuns.get(player.userId) ?? 0,
       })),
     );
 

@@ -361,7 +361,9 @@ export const OVERLAY_TOURNAMENT_ACTIONS: {
     | 'tournament_top_batsmen'
     | 'tournament_top_bowlers'
     | 'tournament_fours'
-    | 'tournament_sixes';
+    | 'tournament_sixes'
+    | 'most_sixes'
+    | 'most_fours';
   label: string;
 }[] = [
   { graphic: 'points_table', label: 'Point Table' },
@@ -369,6 +371,8 @@ export const OVERLAY_TOURNAMENT_ACTIONS: {
   { graphic: 'tournament_top_bowlers', label: 'Top 5 Bowlers' },
   { graphic: 'tournament_fours', label: 'Tournament Fours' },
   { graphic: 'tournament_sixes', label: 'Tournament Sixes' },
+  { graphic: 'most_sixes', label: 'Most Sixes' },
+  { graphic: 'most_fours', label: 'Most Fours' },
 ];
 
 export type OverlayTournamentGraphic =

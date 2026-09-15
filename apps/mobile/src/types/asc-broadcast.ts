@@ -37,6 +37,15 @@ export interface AscObsConfig {
   replayMediaSourceName: string;
 }
 
+export interface AscInningsHighlightResult {
+  highlightPath: string | null;
+  clipCount?: number;
+  skipped?: number;
+  status: 'ready' | 'empty' | 'error' | string;
+  kind?: 'innings-1' | 'full-match' | string;
+  error?: string;
+}
+
 export interface AscObsBridge {
   getStatus: () => Promise<AscObsStatus>;
   connect: () => Promise<AscObsStatus>;
@@ -50,6 +59,24 @@ export interface AscObsBridge {
     videoPath: string;
     deliveryId?: string;
   }) => Promise<AscObsStatus>;
+  /** Play any local media file on air via the shared Replay engine. */
+  playFileOnAir: (filePath: string) => Promise<AscObsStatus>;
+  buildHighlight: (payload: {
+    matchId: string;
+    clipPaths: string[];
+    kind: 'innings-1' | 'full-match';
+  }) => Promise<AscInningsHighlightResult>;
+  getHighlight: (payload: {
+    matchId: string;
+    kind: 'innings-1' | 'full-match';
+  }) => Promise<AscInningsHighlightResult>;
+  /** @deprecated Prefer buildHighlight({ kind: 'innings-1' }). */
+  buildInningsHighlight?: (payload: {
+    matchId: string;
+    clipPaths: string[];
+  }) => Promise<AscInningsHighlightResult>;
+  /** @deprecated Prefer getHighlight({ kind: 'innings-1' }). */
+  getInningsHighlight?: (matchId: string) => Promise<AscInningsHighlightResult>;
   returnToLive: () => Promise<AscObsStatus>;
   getConfig: () => Promise<AscObsConfig>;
   saveConfig: (config: AscObsConfig) => Promise<AscObsConfig>;

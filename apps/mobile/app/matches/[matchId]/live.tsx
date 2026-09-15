@@ -13,7 +13,7 @@ import { Text } from '../../../src/components/ui/Text';
 import { FIELD_ORANGE } from '../../../src/components/ui/fieldStyles';
 import { useScorecardResolvers } from '../../../src/hooks/useMatchResolvers';
 import { ApiRequestError, getMatch, getScorecard } from '../../../src/lib/api';
-import { useLiveScore } from '../../../src/lib/live-socket';
+import { freshestScorecard, useLiveScore } from '../../../src/lib/live-socket';
 import {
   defaultInningsTabIndex,
   INNINGS_TAB_COUNT,
@@ -58,7 +58,10 @@ export default function LiveViewScreen(): React.ReactElement {
   }, [matchId]);
 
   const { state, status } = useLiveScore(matchId, seed);
-  const { nameOf, teamNameOf, battingTeamLabel } = useScorecardResolvers(state ?? seed, match);
+  const { nameOf, teamNameOf, battingTeamLabel } = useScorecardResolvers(
+    freshestScorecard(state, seed) ?? seed,
+    match,
+  );
 
   useEffect(() => {
     if (!state) {
@@ -73,7 +76,7 @@ export default function LiveViewScreen(): React.ReactElement {
   }, [state?.innings.length, state?.version]);
 
   const isLive = match?.state === 'LIVE' || match?.state === 'RAIN_INTERRUPTED';
-  const card = state ?? seed;
+  const card = freshestScorecard(state, seed);
 
   if (loading) {
     return (

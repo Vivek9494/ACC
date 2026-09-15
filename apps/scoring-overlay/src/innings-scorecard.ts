@@ -27,8 +27,7 @@ import type {
   ScorecardViewSource,
 } from './types';
 import { parseInningsBreakView, parseScorecardViewSource } from './types';
-
-const ANIM_MS = 280;
+import { concealGraphic, revealGraphic } from './graphic-visibility';
 
 export type InningsScorecardView = InningsBreakView;
 export type InningsXiStatus = 'full' | 'no_squad' | 'loading';
@@ -440,17 +439,12 @@ export function mountInningsScorecard(
   const hideNode = (): void => {
     onAir = false;
     xiStatus = null;
-    host.classList.remove('is-visible');
-    window.setTimeout(() => {
-      if (!onAir) {
-        host.hidden = true;
-      }
-    }, ANIM_MS);
+    concealGraphic(host);
   };
 
   const showNode = (): void => {
-    host.hidden = false;
-    requestAnimationFrame(() => host.classList.add('is-visible'));
+    onAir = true;
+    revealGraphic(host);
   };
 
   const setViewUi = (): void => {

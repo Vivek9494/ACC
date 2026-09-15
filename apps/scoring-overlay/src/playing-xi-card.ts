@@ -4,10 +4,10 @@
  */
 
 import './playing-xi-card.css';
+import { concealGraphic, revealGraphic } from './graphic-visibility';
 import type { MatchContext, MatchSquadContext, MatchSquadPlayer } from './types';
 import { teamInitials } from './view-model';
 
-const ANIM_MS = 280;
 const EMPTY_NOTE = 'Squad not available';
 
 export type PlayingXiVariant = 'both' | 'single' | 'lineup';
@@ -327,17 +327,12 @@ export function mountPlayingXiCard(host: HTMLElement): PlayingXiCardController {
 
   const hideNode = (): void => {
     onAir = false;
-    host.classList.remove('is-visible');
-    window.setTimeout(() => {
-      if (!onAir) {
-        host.hidden = true;
-      }
-    }, ANIM_MS);
+    concealGraphic(host);
   };
 
   const showNode = (): void => {
-    host.hidden = false;
-    requestAnimationFrame(() => host.classList.add('is-visible'));
+    onAir = true;
+    revealGraphic(host);
   };
 
   const paint = (

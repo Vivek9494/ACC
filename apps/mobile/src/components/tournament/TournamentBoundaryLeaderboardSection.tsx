@@ -11,7 +11,7 @@ export interface TournamentBoundaryLeaderboardSectionProps {
   emptyMessage?: string;
 }
 
-/** Top-five Most Sixes / Most Fours list for the tournament Stats tab. */
+/** Top Most Sixes / Most Fours list for the tournament Stats tab. */
 export function TournamentBoundaryLeaderboardSection({
   title,
   unitLabel,

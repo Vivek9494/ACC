@@ -14,15 +14,18 @@
   pointer-events: none;
   z-index: 20;
   opacity: 0;
-  transform: scale(0.94);
+  transform: translateY(28px);
   transition:
-    opacity 0.28s ease,
-    transform 0.28s ease;
+    opacity 0.4s ease-in,
+    transform 0.4s ease-in;
 }
 
 .batsman-career-layer.is-visible {
   opacity: 1;
-  transform: scale(1);
+  transform: translateY(0);
+  transition:
+    opacity 0.4s ease-out,
+    transform 0.4s ease-out;
 }
 
 .batsman-career-graphic {

@@ -150,6 +150,10 @@ export const GraphicsKind = {
   TournamentFours: 'tournament_fours',
   /** Total sixes hit across the tournament. */
   TournamentSixes: 'tournament_sixes',
+  /** Top batsmen by sixes across the tournament. */
+  MostSixes: 'most_sixes',
+  /** Top batsmen by fours across the tournament. */
+  MostFours: 'most_fours',
   /** Phase A validation only — remove once real graphics ship. */
   Hello: 'hello',
 } as const;

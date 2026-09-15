@@ -26,9 +26,9 @@ import {
   type ScorecardResponse,
 } from './types';
 import { deliveryProgressKey } from './view-model';
+import { GRAPHIC_ANIM_MS } from './graphic-visibility';
 
 const DEFAULT_API_BASE = 'https://acc-api-production.up.railway.app';
-const CAREER_ANIM_MS = 280;
 /** Safety net if no ball is bowled while boundaries is flashing. */
 const BOUNDARIES_FLASH_MS = 6000;
 
@@ -174,7 +174,7 @@ async function start(): Promise<void> {
       if (!careerOnAir) {
         scoreStrip.careerWrapElement().hidden = true;
       }
-    }, CAREER_ANIM_MS);
+    }, GRAPHIC_ANIM_MS);
   };
 
   const showCareerCard = async (playerId: string): Promise<void> => {

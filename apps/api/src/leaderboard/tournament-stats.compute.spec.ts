@@ -209,7 +209,7 @@ describe('tournament-stats.compute', () => {
     expect(bowlingAcc.playerSixes.size).toBe(0);
   });
 
-  it('ranks boundary leaders with tie-break by name', () => {
+  it('ranks boundary leaders with tie-break by runs then name', () => {
     const entries = buildBoundaryLeaderboardEntries([
       {
         userId: 'u1',
@@ -219,6 +219,7 @@ describe('tournament-stats.compute', () => {
         teamId: 't1',
         teamName: 'Team A',
         count: 6,
+        runs: 40,
       },
       {
         userId: 'u2',
@@ -228,6 +229,7 @@ describe('tournament-stats.compute', () => {
         teamId: 't2',
         teamName: 'Team B',
         count: 8,
+        runs: 10,
       },
       {
         userId: 'u3',
@@ -237,10 +239,22 @@ describe('tournament-stats.compute', () => {
         teamId: 't1',
         teamName: 'Team A',
         count: 6,
+        runs: 55,
+      },
+      {
+        userId: 'u4',
+        firstName: 'Cal',
+        lastName: 'Alpha',
+        profilePhotoUrl: null,
+        teamId: 't1',
+        teamName: 'Team A',
+        count: 6,
+        runs: 40,
       },
     ]);
 
-    expect(entries.map((entry) => entry.userId)).toEqual(['u2', 'u3', 'u1']);
+    // count 8 first; then count 6 with runs 55; then count 6 runs 40 by name (Cal before Zed)
+    expect(entries.map((entry) => entry.userId)).toEqual(['u2', 'u3', 'u4', 'u1']);
     expect(entries[1]?.rank).toBe(2);
   });
 });

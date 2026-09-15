@@ -25,9 +25,28 @@ export interface UseLiveScoreResult {
 }
 
 /**
+ * Prefer the scorecard with the higher optimistic-concurrency version.
+ * Never prefer a non-null stale socket frame over a newer REST snapshot.
+ */
+export function freshestScorecard(
+  a: ScorecardResponse | null | undefined,
+  b: ScorecardResponse | null | undefined,
+): ScorecardResponse | null {
+  if (!a) {
+    return b ?? null;
+  }
+  if (!b) {
+    return a;
+  }
+  return b.version >= a.version ? b : a;
+}
+
+/**
  * Subscribes to a match's live state. Returns the latest scorecard frame and a
  * coarse connection status for the "LIVE" indicator. `seed` lets a caller paint
- * an initial REST snapshot before the socket frame arrives.
+ * an initial REST snapshot before the socket frame arrives; when `seed` advances
+ * (higher version), it is adopted so scorer REST updates are not stuck behind a
+ * stale socket snapshot.
  */
 export function useLiveScore(
   matchId: string | undefined,
@@ -36,6 +55,14 @@ export function useLiveScore(
   const [state, setState] = useState<ScorecardResponse | null>(seed);
   const [status, setStatus] = useState<LiveConnectionStatus>('connecting');
   const socketRef = useRef<Socket | null>(null);
+
+  // Adopt a newer REST seed so `live.state ?? card` consumers are not one event behind.
+  useEffect(() => {
+    if (!seed) {
+      return;
+    }
+    setState((prev) => freshestScorecard(prev, seed));
+  }, [seed?.matchId, seed?.version]);
 
   useEffect(() => {
     if (!matchId) {
@@ -61,7 +88,7 @@ export function useLiveScore(
     socket.io.on('reconnect', subscribe);
     socket.on(LiveEvent.State, (frame: LiveStateMessage) => {
       if (frame.matchId === matchId && frame.state) {
-        setState(frame.state);
+        setState((prev) => freshestScorecard(prev, frame.state));
       }
     });
 

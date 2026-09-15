@@ -1,6 +1,5 @@
 import './tournament-stat-card.css';
-
-const ANIM_MS = 280;
+import { concealGraphic, revealGraphic } from '../graphic-visibility';
 
 export type TournamentStatKind = 'fours' | 'sixes';
 
@@ -42,17 +41,12 @@ export function mountTournamentStatCard(host: HTMLElement): TournamentStatCardCo
 
   const hideNode = (): void => {
     onAir = false;
-    host.classList.remove('is-visible');
-    window.setTimeout(() => {
-      if (!onAir) {
-        host.hidden = true;
-      }
-    }, ANIM_MS);
+    concealGraphic(host);
   };
 
   const showNode = (): void => {
-    host.hidden = false;
-    requestAnimationFrame(() => host.classList.add('is-visible'));
+    onAir = true;
+    revealGraphic(host);
   };
 
   const paint = (kind: TournamentStatKind, total: number): boolean => {

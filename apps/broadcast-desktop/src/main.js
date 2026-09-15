@@ -10,6 +10,10 @@ const path = require('node:path');
 const { readObsConfig, writeObsConfig } = require('./obs-config');
 const { ObsController } = require('./obs-client');
 const { ObsLifecycle } = require('./obs-lifecycle');
+const {
+  buildHighlight,
+  readExistingHighlightPath,
+} = require('./innings-highlight');
 
 /** Scoring cockpit origin (Expo web). Deployable URL swapped via env later. */
 const COCKPIT_BASE =
@@ -388,6 +392,59 @@ function registerIpc() {
   ipcMain.handle('asc:obs-play-delivery-clip', async (_event, payload) => {
     await obs.playDeliveryClip(payload ?? {});
     return lifecycle.snapshot();
+  });
+  ipcMain.handle('asc:obs-play-file', async (_event, filePath) => {
+    await obs.playFileOnAir(typeof filePath === 'string' ? filePath : '');
+    return lifecycle.snapshot();
+  });
+  ipcMain.handle('asc:build-highlight', async (_event, payload) => {
+    const matchId = payload && typeof payload.matchId === 'string' ? payload.matchId : '';
+    const clipPaths = payload && Array.isArray(payload.clipPaths) ? payload.clipPaths : [];
+    const kind = payload && payload.kind === 'full-match' ? 'full-match' : 'innings-1';
+    return buildHighlight({
+      matchId,
+      clipPaths,
+      kind,
+      userDataDir: userDataDir(),
+    });
+  });
+  // Back-compat alias for older preloads.
+  ipcMain.handle('asc:build-innings-highlight', async (_event, payload) => {
+    const matchId = payload && typeof payload.matchId === 'string' ? payload.matchId : '';
+    const clipPaths = payload && Array.isArray(payload.clipPaths) ? payload.clipPaths : [];
+    return buildHighlight({
+      matchId,
+      clipPaths,
+      kind: 'innings-1',
+      userDataDir: userDataDir(),
+    });
+  });
+  ipcMain.handle('asc:get-highlight', async (_event, payload) => {
+    const matchId =
+      typeof payload === 'string'
+        ? payload
+        : payload && typeof payload.matchId === 'string'
+          ? payload.matchId
+          : '';
+    const kind =
+      payload && typeof payload === 'object' && payload.kind === 'full-match'
+        ? 'full-match'
+        : 'innings-1';
+    const highlightPath = readExistingHighlightPath(userDataDir(), matchId, kind);
+    return {
+      highlightPath,
+      status: highlightPath ? 'ready' : 'empty',
+      kind,
+    };
+  });
+  ipcMain.handle('asc:get-innings-highlight', async (_event, matchId) => {
+    const id = typeof matchId === 'string' ? matchId : '';
+    const highlightPath = readExistingHighlightPath(userDataDir(), id, 'innings-1');
+    return {
+      highlightPath,
+      status: highlightPath ? 'ready' : 'empty',
+      kind: 'innings-1',
+    };
   });
   ipcMain.handle('asc:obs-return-to-live', async () => {
     await obs.returnToLive({ reason: 'manual' });

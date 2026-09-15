@@ -65,6 +65,8 @@ const COMMON_LABELS: Record<
     | 'tournament_top_bowlers'
     | 'tournament_fours'
     | 'tournament_sixes'
+    | 'most_sixes'
+    | 'most_fours'
   >,
   string
 > = {

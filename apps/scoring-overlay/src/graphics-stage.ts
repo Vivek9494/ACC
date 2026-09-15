@@ -6,6 +6,7 @@
 import './graphics.css';
 import { ensureMatchContext, fetchMatchContext } from './broadcast-fetch';
 import { mountBatsmanCareerCard } from './batsman-career-card';
+import { concealGraphic, revealGraphic } from './graphic-visibility';
 import { mountInningsScorecard } from './innings-scorecard';
 import {
   deriveBatterDotBalls,
@@ -40,8 +41,6 @@ import type {
 import { parseInningsBreakView, parseScorecardViewSource } from './types';
 import type { ScorecardViewSource } from './types';
 
-const ANIM_MS = 280;
-
 /** Strip page owns these — stage ignores them. */
 export type StripOwnedKind = 'toss' | 'chase' | 'boundaries' | 'bowler_career';
 /** Known command kinds with no stage panel yet (control may still emit). */
@@ -52,7 +51,9 @@ export type TournamentOverlayKind =
   | 'tournament_top_batsmen'
   | 'tournament_top_bowlers'
   | 'tournament_fours'
-  | 'tournament_sixes';
+  | 'tournament_sixes'
+  | 'most_sixes'
+  | 'most_fours';
 export type OverlayKind = Exclude<
   GraphicsKind,
   StripOwnedKind | PendingOverlayKind | TournamentOverlayKind
@@ -89,7 +90,9 @@ export function isTournamentOverlayKind(kind: GraphicsKind): kind is TournamentO
     kind === 'tournament_top_batsmen' ||
     kind === 'tournament_top_bowlers' ||
     kind === 'tournament_fours' ||
-    kind === 'tournament_sixes'
+    kind === 'tournament_sixes' ||
+    kind === 'most_sixes' ||
+    kind === 'most_fours'
   );
 }
 
@@ -318,20 +321,11 @@ export function createGraphicsStage(
     kind === 'innings_break';
 
   const hideNode = (node: HTMLElement): void => {
-    node.classList.remove('is-visible');
-    window.setTimeout(() => {
-      if (!node.classList.contains('is-visible')) {
-        node.hidden = true;
-      }
-    }, ANIM_MS);
+    concealGraphic(node);
   };
 
   const showNode = (node: HTMLElement | null): void => {
-    if (!node) {
-      return;
-    }
-    node.hidden = false;
-    requestAnimationFrame(() => node.classList.add('is-visible'));
+    revealGraphic(node);
   };
 
   const hideAllGraphics = (): void => {

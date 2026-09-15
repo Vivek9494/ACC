@@ -35,6 +35,29 @@ contextBridge.exposeInMainWorld('ascBroadcast', {
     playDeliveryClip(payload) {
       return ipcRenderer.invoke('asc:obs-play-delivery-clip', payload);
     },
+    playFileOnAir(filePath) {
+      return ipcRenderer.invoke('asc:obs-play-file', filePath);
+    },
+    buildHighlight(payload) {
+      return ipcRenderer.invoke('asc:build-highlight', payload);
+    },
+    getHighlight(payload) {
+      return ipcRenderer.invoke('asc:get-highlight', payload);
+    },
+    /** @deprecated Prefer buildHighlight({ kind: 'innings-1' }). */
+    buildInningsHighlight(payload) {
+      return ipcRenderer.invoke('asc:build-highlight', {
+        ...(payload || {}),
+        kind: 'innings-1',
+      });
+    },
+    /** @deprecated Prefer getHighlight({ kind: 'innings-1' }). */
+    getInningsHighlight(matchId) {
+      return ipcRenderer.invoke('asc:get-highlight', {
+        matchId,
+        kind: 'innings-1',
+      });
+    },
     returnToLive() {
       return ipcRenderer.invoke('asc:obs-return-to-live');
     },

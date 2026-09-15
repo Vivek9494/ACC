@@ -1,9 +1,7 @@
 import './leaderboard-card.css';
+import { concealGraphic, revealGraphic } from '../graphic-visibility';
 
-const ANIM_MS = 280;
-const TOP_N = 5;
-
-export type LeaderboardCardMode = 'batting' | 'bowling';
+export type LeaderboardCardMode = 'batting' | 'bowling' | 'sixes' | 'fours';
 
 export interface LeaderboardRowView {
   rank: number;
@@ -20,11 +18,33 @@ export interface LeaderboardCardController {
 }
 
 function titleFor(mode: LeaderboardCardMode): string {
-  return mode === 'batting' ? 'Most Runs' : 'Most Wickets';
+  switch (mode) {
+    case 'batting':
+      return 'Most Runs';
+    case 'bowling':
+      return 'Most Wickets';
+    case 'sixes':
+      return 'Most Sixes';
+    case 'fours':
+      return 'Most Fours';
+  }
 }
 
 function statLabel(mode: LeaderboardCardMode): string {
-  return mode === 'batting' ? 'Runs' : 'Wickets';
+  switch (mode) {
+    case 'batting':
+      return 'Runs';
+    case 'bowling':
+      return 'Wickets';
+    case 'sixes':
+      return 'Sixes';
+    case 'fours':
+      return 'Fours';
+  }
+}
+
+function topNFor(mode: LeaderboardCardMode): number {
+  return mode === 'sixes' || mode === 'fours' ? 10 : 5;
 }
 
 function buildMarkup(): string {
@@ -51,17 +71,12 @@ export function mountLeaderboardCard(host: HTMLElement): LeaderboardCardControll
 
   const hideNode = (): void => {
     onAir = false;
-    host.classList.remove('is-visible');
-    window.setTimeout(() => {
-      if (!onAir) {
-        host.hidden = true;
-      }
-    }, ANIM_MS);
+    concealGraphic(host);
   };
 
   const showNode = (): void => {
-    host.hidden = false;
-    requestAnimationFrame(() => host.classList.add('is-visible'));
+    onAir = true;
+    revealGraphic(host);
   };
 
   const paint = (mode: LeaderboardCardMode, rows: LeaderboardRowView[]): boolean => {
@@ -76,13 +91,14 @@ export function mountLeaderboardCard(host: HTMLElement): LeaderboardCardControll
     title.textContent = titleFor(mode);
     list.setAttribute('aria-label', statLabel(mode));
 
-    const top = rows.slice(0, TOP_N);
+    const top = rows.slice(0, topNFor(mode));
     if (top.length === 0) {
       list.replaceChildren();
       if (empty instanceof HTMLElement) {
         empty.hidden = false;
       }
-      return false;
+      // Keep on-air with empty state for boundary boards; hide for runs/wickets.
+      return mode === 'sixes' || mode === 'fours';
     }
 
     if (empty instanceof HTMLElement) {

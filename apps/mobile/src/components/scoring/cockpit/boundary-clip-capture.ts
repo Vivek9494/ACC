@@ -1,10 +1,13 @@
-import type { ScorecardResponse } from '@acc/types';
+import { DeliveryType, type RecordDeliveryRequest, type ScorecardResponse } from '@acc/types';
 
 import { attachDeliveryVideo, getScorecard } from '../../../lib/api';
 import type { AscObsBridge, AscObsStatus } from '../../../types/asc-broadcast';
 
-/** Delay after a boundary tap before SaveReplayBuffer (lets the shot finish in the clip). */
+/** Delay after a capture-worthy tap before SaveReplayBuffer (lets the play finish in the clip). */
 export const BOUNDARY_CLIP_SAVE_DELAY_MS = 3_000;
+
+/** Body shape used by cockpit `record()` (version filled in at call time). */
+export type AutoClipDeliveryBody = Omit<RecordDeliveryRequest, 'expectedVersion'>;
 
 function getObsBridge(): AscObsBridge | undefined {
   if (typeof window === 'undefined') {
@@ -41,41 +44,58 @@ export function isOnAirReplayBusy(status: AscObsStatus | null | undefined): bool
 }
 
 /**
- * Find the deliveryId for the most recent boundary (4/6) on the active innings.
- * Prefer matching runsBat when known.
+ * Capture-worthy once per successful record: 4/6 (incl. nb+4/nb+6), wicket,
+ * Catch/Drop. Plain Nb and RetiredHurt do not trigger. Evaluating once per
+ * record de-dups overlapping meanings on the same delivery (e.g. caught wicket).
  */
-export function findLatestBoundaryDeliveryId(
-  card: ScorecardResponse,
-  runsBat?: number,
-): string | null {
+export function isAutoClipWorthy(body: AutoClipDeliveryBody): boolean {
+  if (body.type === DeliveryType.CatchDrop) {
+    return true;
+  }
+  if (body.type === DeliveryType.RetiredOut || body.type === DeliveryType.Mankad) {
+    return true;
+  }
+  if (body.dismissal != null) {
+    return true;
+  }
+  const runsBat = body.runsBat ?? 0;
+  if (body.isBoundary && (runsBat === 4 || runsBat === 6)) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * DeliveryId for the ball just recorded — last timeline row with an id.
+ * Append-only scorecard: the successful record is always the newest entry.
+ */
+export function findLatestAutoClipDeliveryId(card: ScorecardResponse): string | null {
   const innings = card.innings.at(-1);
   if (!innings) {
     return null;
   }
   for (let i = innings.timeline.length - 1; i >= 0; i -= 1) {
-    const entry = innings.timeline[i];
-    if (!entry?.isBoundary || !entry.deliveryId) {
-      continue;
+    const id = innings.timeline[i]?.deliveryId;
+    if (id) {
+      return id;
     }
-    if (runsBat != null && entry.runsBat != null && entry.runsBat !== runsBat) {
-      continue;
-    }
-    return entry.deliveryId;
   }
   return null;
 }
 
 /**
- * After a successful boundary record: delay, save OBS replay buffer, attach path.
+ * After a successful capture-worthy record: delay, save OBS replay buffer, attach path.
  * No-ops when the OBS bridge is absent (plain Chrome). Failures are warned only —
- * the ball stays "Marked".
+ * the ball gets no clip.
  */
 export function scheduleBoundaryClipCapture(opts: {
   matchId: string;
   inningsId: string;
   deliveryId: string;
-  /** Scorecard version after the boundary was recorded (optimistic concurrency). */
+  /** Scorecard version after the event was recorded (optimistic concurrency). */
   getExpectedVersion: () => number;
+  /** Apply attach response so Ball By Ball upgrades to Play without waiting. */
+  onAttached?: (card: ScorecardResponse) => void;
   delayMs?: number;
 }): void {
   const bridge = getObsBridge();
@@ -84,29 +104,31 @@ export function scheduleBoundaryClipCapture(opts: {
   }
 
   const delayMs = opts.delayMs ?? BOUNDARY_CLIP_SAVE_DELAY_MS;
-  const { matchId, inningsId, deliveryId, getExpectedVersion } = opts;
+  const { matchId, inningsId, deliveryId, getExpectedVersion, onAttached } = opts;
 
   window.setTimeout(() => {
     void (async () => {
       try {
         const { videoPath } = await bridge.saveBoundaryClip(deliveryId);
+        let attached: ScorecardResponse;
         try {
-          await attachDeliveryVideo(matchId, inningsId, deliveryId, {
+          attached = await attachDeliveryVideo(matchId, inningsId, deliveryId, {
             videoPath,
             expectedVersion: getExpectedVersion(),
           });
         } catch {
           // Concurrent scoring may bump version during the 3s delay — retry once.
           const fresh = await getScorecard(matchId);
-          await attachDeliveryVideo(matchId, inningsId, deliveryId, {
+          attached = await attachDeliveryVideo(matchId, inningsId, deliveryId, {
             videoPath,
             expectedVersion: fresh.version,
           });
         }
+        onAttached?.(attached);
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         console.warn(
-          `[boundary-clip] capture failed for delivery ${deliveryId} — ball stays Marked:`,
+          `[auto-clip] capture failed for delivery ${deliveryId} — no Play button:`,
           message,
         );
       }

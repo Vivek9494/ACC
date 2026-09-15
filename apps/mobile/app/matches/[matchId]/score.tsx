@@ -51,9 +51,11 @@ import { LiveScoringScorecardTab } from '../../../src/components/scoring/LiveSco
 import { ScoringCockpit } from '../../../src/components/scoring/cockpit/ScoringCockpit';
 import {
   canCaptureBoundaryClips,
-  findLatestBoundaryDeliveryId,
+  findLatestAutoClipDeliveryId,
+  isAutoClipWorthy,
   scheduleBoundaryClipCapture,
 } from '../../../src/components/scoring/cockpit/boundary-clip-capture';
+import { hasAscObsBridge } from '../../../src/components/scoring/cockpit/BroadcastObsPanel';
 import {
   CockpitSettingsHeaderButton,
   CockpitSettingsModal,
@@ -1072,9 +1074,14 @@ export default function LiveScoringScreen(): React.ReactElement {
       const updated = await endInnings(matchId, inningsId, { expectedVersion: card.version });
       const refreshedMatch = await getMatch(matchId);
 
-      // Final contest decided → leave live scoring; first innings / super-over stay put.
+      // Final contest decided → leave live scoring (plain Chrome).
+      // ASC Broadcast stays on the cockpit so Full Match Highlight can build + play.
       if (refreshedMatch.state === MatchState.Completed) {
-        router.replace(`/matches/${matchId}/scorecard`);
+        syncFromCard(updated, { promptBowlers: false });
+        setMatch(refreshedMatch);
+        if (!hasAscObsBridge()) {
+          router.replace(`/matches/${matchId}/scorecard`);
+        }
         return;
       }
 
@@ -1198,19 +1205,20 @@ export default function LiveScoringScreen(): React.ReactElement {
       isPenalty ? { promptBowlers: false, ...opts } : opts,
     );
 
-    if (
-      updated &&
-      body.isBoundary &&
-      (body.runsBat === 4 || body.runsBat === 6) &&
-      canCaptureBoundaryClips()
-    ) {
-      const deliveryId = findLatestBoundaryDeliveryId(updated, body.runsBat);
+    if (updated && isAutoClipWorthy(body) && canCaptureBoundaryClips()) {
+      const deliveryId = findLatestAutoClipDeliveryId(updated);
       if (deliveryId) {
         scheduleBoundaryClipCapture({
           matchId,
           inningsId,
           deliveryId,
           getExpectedVersion: () => cardRef.current?.version ?? updated.version,
+          onAttached: (attached) => {
+            const current = cardRef.current;
+            if (!current || attached.version >= current.version) {
+              syncFromCard(attached, { promptBowlers: false });
+            }
+          },
         });
       }
     }
@@ -1244,18 +1252,20 @@ export default function LiveScoringScreen(): React.ReactElement {
         syncFromCard(afterBall, { promptBowlers: false });
         liveAfterBall = afterBall.innings.at(-1) ?? inn;
 
-        if (
-          pending.body.isBoundary &&
-          (pending.body.runsBat === 4 || pending.body.runsBat === 6) &&
-          canCaptureBoundaryClips()
-        ) {
-          const deliveryId = findLatestBoundaryDeliveryId(afterBall, pending.body.runsBat);
+        if (isAutoClipWorthy(pending.body) && canCaptureBoundaryClips()) {
+          const deliveryId = findLatestAutoClipDeliveryId(afterBall);
           if (deliveryId) {
             scheduleBoundaryClipCapture({
               matchId,
               inningsId,
               deliveryId,
               getExpectedVersion: () => cardRef.current?.version ?? afterBall.version,
+              onAttached: (attached) => {
+                const current = cardRef.current;
+                if (!current || attached.version >= current.version) {
+                  syncFromCard(attached, { promptBowlers: false });
+                }
+              },
             });
           }
         }
@@ -1416,27 +1426,29 @@ export default function LiveScoringScreen(): React.ReactElement {
     match?.externalOpponentName ??
     'Bowling';
 
-  const cockpitPrompt = !inn
-    ? null
-    : inn.inningsType === InningsType.SuperOver && !openersReady && !inn.closed
-      ? 'Super Over — select batters and bowler (2 wickets ends the innings)'
-      : inn.inningsType === InningsType.Normal &&
-          inn.sequence === 1 &&
-          !openersReady &&
-          !inn.closed
-        ? 'Select opening batters and bowler to start scoring'
+  const cockpitPrompt = completedResultLine
+    ? completedResultLine
+    : !inn
+      ? null
+      : inn.inningsType === InningsType.SuperOver && !openersReady && !inn.closed
+        ? 'Super Over — select batters and bowler (2 wickets ends the innings)'
         : inn.inningsType === InningsType.Normal &&
-            inn.sequence > 1 &&
+            inn.sequence === 1 &&
             !openersReady &&
             !inn.closed
-          ? 'Select opening batters and bowler for the chase'
-          : needsIncomingBatter
-            ? 'Select incoming batter'
-            : inningsAllOut
-              ? `All out (${WICKETS_FOR_ALL_OUT} wickets)`
-              : needsBowlerForNewOver
-                ? 'Select next bowler'
-                : null;
+          ? 'Select opening batters and bowler to start scoring'
+          : inn.inningsType === InningsType.Normal &&
+              inn.sequence > 1 &&
+              !openersReady &&
+              !inn.closed
+            ? 'Select opening batters and bowler for the chase'
+            : needsIncomingBatter
+              ? 'Select incoming batter'
+              : inningsAllOut
+                ? `All out (${WICKETS_FOR_ALL_OUT} wickets)`
+                : needsBowlerForNewOver
+                  ? 'Select next bowler'
+                  : null;
 
   const dialogOpen =
     showWicket ||
@@ -1497,6 +1509,7 @@ export default function LiveScoringScreen(): React.ReactElement {
           keyboardEnabled={!keypadDisabled && !dialogOpen}
           error={error && !isScoringNotAllowedMessage(error) ? error : null}
           prompt={cockpitPrompt}
+          resultLine={completedResultLine}
           onRuns={(runs, isBoundary) => {
             void record({ type: DeliveryType.Legal, runsBat: runs, isBoundary });
           }}

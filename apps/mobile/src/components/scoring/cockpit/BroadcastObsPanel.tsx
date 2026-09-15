@@ -1,10 +1,24 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, View, type ViewStyle } from 'react-native';
 
+import type { ScorecardResponse } from '@acc/types';
+
 import { Text } from '../../ui/Text';
+import type {
+  AscInningsHighlightResult,
+  AscObsBridge,
+  AscObsStatus,
+} from '../../../types/asc-broadcast';
 import { CockpitPanel } from './CockpitPanel';
 import { ObsConnectionSettingsModal } from './ObsConnectionSettingsModal';
-import type { AscObsStatus } from '../../../types/asc-broadcast';
+import {
+  HIGHLIGHT_BUILD_DELAY_MS,
+  collectFirstInningsClipPaths,
+  collectFullMatchClipPaths,
+  isFirstInningsClosed,
+  isMatchCompleted,
+  type HighlightKind,
+} from './first-innings-highlight';
 
 function getObsBridge() {
   if (typeof window === 'undefined') {
@@ -114,16 +128,65 @@ function ObsButton({
   );
 }
 
+function buildHighlightViaBridge(
+  bridge: AscObsBridge,
+  payload: { matchId: string; clipPaths: string[]; kind: HighlightKind },
+): Promise<AscInningsHighlightResult> {
+  if (typeof bridge.buildHighlight === 'function') {
+    return bridge.buildHighlight(payload);
+  }
+  if (payload.kind === 'innings-1' && typeof bridge.buildInningsHighlight === 'function') {
+    return bridge.buildInningsHighlight(payload);
+  }
+  return Promise.reject(new Error('Highlight build is not available in this bridge.'));
+}
+
+function getHighlightViaBridge(
+  bridge: AscObsBridge,
+  matchId: string,
+  kind: HighlightKind,
+): Promise<AscInningsHighlightResult> {
+  if (typeof bridge.getHighlight === 'function') {
+    return bridge.getHighlight({ matchId, kind });
+  }
+  if (kind === 'innings-1' && typeof bridge.getInningsHighlight === 'function') {
+    return bridge.getInningsHighlight(matchId);
+  }
+  return Promise.resolve({ highlightPath: null, status: 'empty', kind });
+}
+
+type HighlightSlotState = {
+  path: string | null;
+  note: string;
+  building: boolean;
+};
+
+const EMPTY_SLOT: HighlightSlotState = { path: null, note: '', building: false };
+
 /**
  * Broadcast / OBS controls — Electron BrowserView only.
  * Uses existing IPC via window.ascBroadcast.obs (including Settings).
  */
-export function BroadcastObsPanel(): React.ReactElement | null {
+export function BroadcastObsPanel({
+  matchId,
+  card,
+  matchState,
+}: {
+  matchId: string;
+  card: ScorecardResponse;
+  matchState: string;
+}): React.ReactElement | null {
   const bridge = getObsBridge();
   const [status, setStatus] = useState<AscObsStatus | null>(null);
   const [busy, setBusy] = useState(false);
   const [localError, setLocalError] = useState('');
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [innings1, setInnings1] = useState<HighlightSlotState>(EMPTY_SLOT);
+  const [fullMatch, setFullMatch] = useState<HighlightSlotState>(EMPTY_SLOT);
+  const innings1ReadyKeyRef = useRef<string | null>(null);
+  const innings1BuildKeyRef = useRef<string | null>(null);
+  const fullMatchReadyKeyRef = useRef<string | null>(null);
+  const fullMatchBuildKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!bridge) {
@@ -148,6 +211,166 @@ export function BroadcastObsPanel(): React.ReactElement | null {
       unsubSettings();
     };
   }, [bridge]);
+
+  // Restore previously built highlights for this match.
+  useEffect(() => {
+    if (!bridge || !matchId) {
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const [i1, full] = await Promise.all([
+        getHighlightViaBridge(bridge, matchId, 'innings-1'),
+        getHighlightViaBridge(bridge, matchId, 'full-match'),
+      ]);
+      if (cancelled) return;
+      if (i1.status === 'ready' && i1.highlightPath) {
+        setInnings1({ path: i1.highlightPath, note: '', building: false });
+      }
+      if (full.status === 'ready' && full.highlightPath) {
+        setFullMatch({ path: full.highlightPath, note: '', building: false });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [bridge, matchId]);
+
+  // Auto-build innings-1 highlight when innings 1 closes.
+  useEffect(() => {
+    if (!bridge || !matchId || !isFirstInningsClosed(card)) {
+      return;
+    }
+    const clipPaths = collectFirstInningsClipPaths(card);
+    const attemptKey = `innings-1:${matchId}:${clipPaths.join('\0')}`;
+    if (innings1ReadyKeyRef.current === attemptKey) {
+      return;
+    }
+    if (innings1BuildKeyRef.current === attemptKey && innings1.building) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        const paths = collectFirstInningsClipPaths(card);
+        const key = `innings-1:${matchId}:${paths.join('\0')}`;
+        innings1BuildKeyRef.current = key;
+        setInnings1((prev) => ({
+          ...prev,
+          building: true,
+          note: paths.length === 0 ? 'No clips to merge' : 'Building highlight…',
+        }));
+        try {
+          const result = await buildHighlightViaBridge(bridge, {
+            matchId,
+            clipPaths: paths,
+            kind: 'innings-1',
+          });
+          if (result.status === 'ready' && result.highlightPath) {
+            innings1ReadyKeyRef.current = key;
+            const skipped =
+              typeof result.skipped === 'number' && result.skipped > 0
+                ? ` · skipped ${result.skipped} missing`
+                : '';
+            setInnings1({
+              path: result.highlightPath,
+              building: false,
+              note: `Ready · ${result.clipCount ?? paths.length} clip${
+                (result.clipCount ?? paths.length) === 1 ? '' : 's'
+              }${skipped}`,
+            });
+          } else if (result.status === 'empty') {
+            innings1ReadyKeyRef.current = key;
+            setInnings1({ path: null, building: false, note: 'No clips for first innings' });
+          } else {
+            setInnings1({
+              path: null,
+              building: false,
+              note: result.error || 'Highlight build failed',
+            });
+          }
+        } catch (err) {
+          setInnings1({
+            path: null,
+            building: false,
+            note: err instanceof Error ? err.message : 'Highlight build failed',
+          });
+        }
+      })();
+    }, HIGHLIGHT_BUILD_DELAY_MS);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [bridge, matchId, card, innings1.building]);
+
+  // Auto-build full-match highlight when the match is completed.
+  useEffect(() => {
+    if (!bridge || !matchId || !isMatchCompleted(matchState)) {
+      return;
+    }
+    const clipPaths = collectFullMatchClipPaths(card);
+    const attemptKey = `full-match:${matchId}:${clipPaths.join('\0')}`;
+    if (fullMatchReadyKeyRef.current === attemptKey) {
+      return;
+    }
+    if (fullMatchBuildKeyRef.current === attemptKey && fullMatch.building) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        const paths = collectFullMatchClipPaths(card);
+        const key = `full-match:${matchId}:${paths.join('\0')}`;
+        fullMatchBuildKeyRef.current = key;
+        setFullMatch((prev) => ({
+          ...prev,
+          building: true,
+          note: paths.length === 0 ? 'No clips to merge' : 'Building highlight…',
+        }));
+        try {
+          const result = await buildHighlightViaBridge(bridge, {
+            matchId,
+            clipPaths: paths,
+            kind: 'full-match',
+          });
+          if (result.status === 'ready' && result.highlightPath) {
+            fullMatchReadyKeyRef.current = key;
+            const skipped =
+              typeof result.skipped === 'number' && result.skipped > 0
+                ? ` · skipped ${result.skipped} missing`
+                : '';
+            setFullMatch({
+              path: result.highlightPath,
+              building: false,
+              note: `Ready · ${result.clipCount ?? paths.length} clip${
+                (result.clipCount ?? paths.length) === 1 ? '' : 's'
+              }${skipped}`,
+            });
+          } else if (result.status === 'empty') {
+            fullMatchReadyKeyRef.current = key;
+            setFullMatch({ path: null, building: false, note: 'No clips for this match' });
+          } else {
+            setFullMatch({
+              path: null,
+              building: false,
+              note: result.error || 'Highlight build failed',
+            });
+          }
+        } catch (err) {
+          setFullMatch({
+            path: null,
+            building: false,
+            note: err instanceof Error ? err.message : 'Highlight build failed',
+          });
+        }
+      })();
+    }, HIGHLIGHT_BUILD_DELAY_MS);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [bridge, matchId, card, matchState, fullMatch.building]);
 
   const run = useCallback(
     async (fn: () => Promise<AscObsStatus>) => {
@@ -197,6 +420,13 @@ export function BroadcastObsPanel(): React.ReactElement | null {
     (status?.replayBufferState === 'inactive' ||
       status?.replayBufferState === 'unavailable' ||
       Boolean(status?.replayBufferWarning));
+  const canPlayInnings1 =
+    typeof bridge.playFileOnAir === 'function' && Boolean(innings1.path) && !innings1.building;
+  const canPlayFullMatch =
+    typeof bridge.playFileOnAir === 'function' && Boolean(fullMatch.path) && !fullMatch.building;
+  const showInnings1Note = isFirstInningsClosed(card) || Boolean(innings1.path) || innings1.building;
+  const showFullMatchNote =
+    isMatchCompleted(matchState) || Boolean(fullMatch.path) || fullMatch.building;
 
   const errorText =
     localError || status?.error || status?.replayBufferWarning || status?.studioModeWarning || '';
@@ -211,6 +441,16 @@ export function BroadcastObsPanel(): React.ReactElement | null {
           {errorText ? (
             <Text className="font-sans text-[10px] text-primary" numberOfLines={3}>
               {errorText}
+            </Text>
+          ) : null}
+          {showInnings1Note && innings1.note ? (
+            <Text className="font-sans text-[10px] text-on-surface-variant" numberOfLines={2}>
+              1st innings highlight: {innings1.note}
+            </Text>
+          ) : null}
+          {showFullMatchNote && fullMatch.note ? (
+            <Text className="font-sans text-[10px] text-on-surface-variant" numberOfLines={2}>
+              Full match highlight: {fullMatch.note}
             </Text>
           ) : null}
           <View style={ROW}>
@@ -277,6 +517,30 @@ export function BroadcastObsPanel(): React.ReactElement | null {
                 variant="primary"
                 disabled={busy || !connected || !replayActive || replayBusy}
                 onPress={() => void run(() => bridge.startInstantReplay())}
+              />
+            ) : null}
+            {canPlayInnings1 ? (
+              <ObsButton
+                label="First Innings Highlight"
+                variant="primary"
+                disabled={busy || !connected || replayBusy || !innings1.path}
+                onPress={() => {
+                  const path = innings1.path;
+                  if (!path || !bridge.playFileOnAir) return;
+                  void run(() => bridge.playFileOnAir(path));
+                }}
+              />
+            ) : null}
+            {canPlayFullMatch ? (
+              <ObsButton
+                label="Full Match Highlight"
+                variant="primary"
+                disabled={busy || !connected || replayBusy || !fullMatch.path}
+                onPress={() => {
+                  const path = fullMatch.path;
+                  if (!path || !bridge.playFileOnAir) return;
+                  void run(() => bridge.playFileOnAir(path));
+                }}
               />
             ) : null}
             {connected && replayBusy && instantPhase !== 'saving' ? (

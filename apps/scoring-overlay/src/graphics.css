@@ -17,30 +17,34 @@ body {
   pointer-events: none;
 }
 
+/* Shared slide + fade for all stage graphics (~400ms; ease-out in / ease-in out). */
 .graphic {
   position: absolute;
   left: 50%;
   top: 40%;
-  transform: translate(-50%, -36%) scale(0.94);
+  transform: translate(-50%, calc(-50% + 28px));
   opacity: 0;
   transition:
-    opacity 0.28s ease,
-    transform 0.28s ease;
+    opacity 0.4s ease-in,
+    transform 0.4s ease-in;
 }
 
 .graphic.is-visible {
   opacity: 1;
-  transform: translate(-50%, -50%) scale(1);
+  transform: translate(-50%, -50%);
+  transition:
+    opacity 0.4s ease-out,
+    transform 0.4s ease-out;
 }
 
 .graphic-bottom {
   top: auto;
   bottom: 48px;
-  transform: translate(-50%, 12px) scale(0.96);
+  transform: translate(-50%, 28px);
 }
 
 .graphic-bottom.is-visible {
-  transform: translate(-50%, 0) scale(1);
+  transform: translate(-50%, 0);
 }
 
 .panel {

@@ -1,4 +1,4 @@
-import { groupTimelineByOver, type DeliveryHighlightMarker, type InningsScorecard, type TimelineEntry } from '@acc/types';
+import { groupTimelineByOver, type InningsScorecard, type TimelineEntry } from '@acc/types';
 import { createElement, useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import type { ViewStyle } from 'react-native';
 import { View } from 'react-native';
@@ -207,41 +207,6 @@ const PLAY_BTN_DISABLED: CSSProperties = {
   cursor: 'default',
 };
 
-const MARKERS_WRAP: CSSProperties = {
-  borderTop: '1px solid var(--color-outline-variant, #e7e5e4)',
-  padding: '6px 8px',
-  backgroundColor: 'var(--color-surface-container-low, #f5f5f4)',
-  maxHeight: 96,
-  overflow: 'auto',
-};
-
-const MARKERS_TITLE: CSSProperties = {
-  margin: '0 0 4px',
-  fontSize: 10,
-  fontWeight: 700,
-  textTransform: 'uppercase',
-  letterSpacing: '0.04em',
-  color: 'var(--color-on-surface-variant, #78716c)',
-};
-
-const MARKERS_LIST: CSSProperties = {
-  margin: 0,
-  padding: 0,
-  listStyle: 'none',
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 2,
-};
-
-const MARKER_ROW: CSSProperties = {
-  fontSize: 11,
-  color: 'var(--color-on-surface, #1c1917)',
-  fontVariantNumeric: 'tabular-nums',
-  whiteSpace: 'nowrap',
-  overflow: 'hidden',
-  textOverflow: 'ellipsis',
-};
-
 function Colgroup(): ReactNode {
   return createElement(
     'colgroup',
@@ -367,29 +332,15 @@ function useObsReplayLock(): { canPlayOnAir: boolean; replayBusy: boolean } {
   };
 }
 
-function formatMarkerTime(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) {
-    return iso;
-  }
-  return d.toISOString().slice(11, 19) + 'Z';
-}
-
 export function BallByBallPanel({
   innings,
   nameOf,
-  boundaryHighlights = [],
 }: {
   innings: InningsScorecard;
   nameOf: (id: string | null) => string;
-  /** Match-level boundary markers (all innings) for editor / future worker. */
-  boundaryHighlights?: DeliveryHighlightMarker[];
 }): React.ReactElement {
   const overs = groupEntriesByOver(innings.timeline);
   const colCount = 7;
-  const inningsMarkers = boundaryHighlights.filter(
-    (m) => m.inningsId === innings.inningsId,
-  );
   const { canPlayOnAir, replayBusy } = useObsReplayLock();
 
   const playClip = (opts: { videoPath: string; deliveryId?: string }) => {
@@ -499,35 +450,10 @@ export function BallByBallPanel({
     createElement('tbody', null, ...bodyRows),
   );
 
-  const markersPanel =
-    inningsMarkers.length > 0
-      ? createElement(
-          'div',
-          { style: MARKERS_WRAP, 'aria-label': 'Boundary highlight markers' },
-          createElement(
-            'p',
-            { style: MARKERS_TITLE },
-            `Boundary markers (${inningsMarkers.length}) — mark only, no clip`,
-          ),
-          createElement(
-            'ul',
-            { style: MARKERS_LIST },
-            ...inningsMarkers.map((m) =>
-              createElement(
-                'li',
-                { key: m.deliveryId, style: MARKER_ROW, title: m.markedAt },
-                `${formatMarkerTime(m.markedAt)} · ${m.ballLabel || `#${m.sequence}`} · ${m.boundaryRuns} · ${ballParticipantLabel(m.strikerId, nameOf)} / ${ballParticipantLabel(m.bowlerId, nameOf)}`,
-              ),
-            ),
-          ),
-        )
-      : null;
-
   return (
     <CockpitPanel title="Ball by Ball" live bodyNoPad bodyAbsolute>
       <View style={{ flex: 1, minHeight: 0 }}>
         <View style={SCROLL_BODY}>{table}</View>
-        {markersPanel}
       </View>
     </CockpitPanel>
   );
