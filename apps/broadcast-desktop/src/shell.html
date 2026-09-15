@@ -8,40 +8,15 @@
   <link rel="stylesheet" href="shell.css" />
 </head>
 <body>
-  <header class="chrome">
-    <div class="chrome-row">
-      <div class="brand">
-        <strong>ASC Broadcast</strong>
-        <span id="match-label" class="match-label">No match loaded</span>
-      </div>
-      <div class="obs-status">
-        <span id="conn-dot" class="dot disconnected" aria-hidden="true"></span>
-        <span id="conn-label">Disconnected</span>
-        <span class="sep">·</span>
-        <span id="stream-label">Stream idle</span>
-      </div>
-      <div class="chrome-actions">
-        <button type="button" id="btn-settings" class="btn ghost">Settings</button>
-        <button type="button" id="btn-connect" class="btn ghost">Connect</button>
-        <button type="button" id="btn-disconnect" class="btn ghost" hidden>Disconnect</button>
-        <button type="button" id="btn-start" class="btn primary" disabled>Start Streaming</button>
-        <button type="button" id="btn-stop" class="btn danger" disabled>Stop Streaming</button>
-        <button type="button" id="btn-replay" class="btn ghost" hidden>Start Replay Buffer</button>
-        <button type="button" id="btn-instant-replay" class="btn primary" hidden disabled>Instant Replay</button>
-        <button type="button" id="btn-back-live" class="btn ghost" hidden>Back to Live</button>
-      </div>
-    </div>
-    <p id="obs-error" class="obs-error" hidden></p>
-  </header>
-
   <main id="match-view" class="match-view">
     <section class="card">
-      <h1>Load control panel</h1>
-      <p>Enter a Match ID to open the live scoring control panel. OBS launches in the background when this app opens — save the websocket password in Settings if Connect fails.</p>
+      <h1>ASC Broadcast</h1>
+      <p>Enter a Match ID to open the scoring cockpit. OBS launches in the background — use Settings if the websocket password is needed.</p>
       <form id="load-form">
         <label for="match-id">Match ID</label>
         <input id="match-id" name="matchId" type="text" autocomplete="off" spellcheck="false" placeholder="e.g. clxy…" />
         <div class="actions">
+          <button type="button" id="btn-settings" class="btn ghost">Settings</button>
           <button type="submit" class="btn primary">Load</button>
         </div>
         <p id="match-error" class="field-error" hidden>Enter a Match ID to continue.</p>

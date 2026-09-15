@@ -6,8 +6,6 @@
   --card: #ffffff;
   --border: #e0d5cb;
   --danger: #b42318;
-  --ok: #2f7d32;
-  --chrome: 132px;
 }
 
 * { box-sizing: border-box; }
@@ -22,74 +20,69 @@ html, body {
     linear-gradient(165deg, #f7f2eb 0%, #ebe3d8 100%);
 }
 
-.chrome {
-  height: var(--chrome);
-  padding: 12px 16px 10px;
-  border-bottom: 1px solid var(--border);
-  background: #fffdf9;
-  overflow: hidden;
+.match-view {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 32px 16px;
 }
 
-.chrome-row {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  min-height: 64px;
+.match-view[hidden] {
+  display: none;
 }
 
-.brand {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 180px;
+.card {
+  width: min(420px, calc(100vw - 48px));
+  padding: 32px 28px 28px;
+  border-radius: 16px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  box-shadow: 0 18px 40px rgba(28, 20, 16, 0.08);
 }
 
-.brand strong {
-  font-size: 1.05rem;
+.card h1 {
+  margin: 0 0 8px;
+  font-size: 1.35rem;
   letter-spacing: -0.02em;
 }
 
-.match-label {
+.card p {
+  margin: 0 0 20px;
   color: var(--muted);
-  font-size: 0.8rem;
-}
-
-.obs-status {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  gap: 8px;
   font-size: 0.92rem;
+  line-height: 1.45;
 }
 
-.sep { color: var(--border); }
-
-.dot {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: #9a8b82;
+label {
+  display: block;
+  margin: 0 0 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--muted);
 }
 
-.dot.connected { background: var(--ok); }
-.dot.connecting { background: #d4a017; }
-.dot.error { background: var(--danger); }
-.dot.disconnected { background: #9a8b82; }
+input {
+  width: 100%;
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.95rem;
+  background: #fff;
+  color: var(--ink);
+}
 
-.chrome-actions {
+.actions {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  gap: 10px;
   justify-content: flex-end;
+  margin-top: 8px;
 }
 
-.obs-error {
-  margin: 6px 0 0;
+.field-error {
+  margin: 10px 0 0;
   color: var(--danger);
-  font-size: 0.82rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  font-size: 0.85rem;
 }
 
 .btn {
@@ -114,103 +107,39 @@ html, body {
   border-color: var(--border);
 }
 
-.btn.danger {
-  background: var(--danger);
-}
-
-.match-view {
-  min-height: calc(100vh - var(--chrome));
-  display: grid;
-  place-items: center;
-  padding: 32px 16px;
-}
-
-.match-view[hidden] {
-  display: none;
-}
-
-.card {
-  width: min(420px, calc(100vw - 48px));
-  padding: 32px 28px 28px;
-  border-radius: 16px;
-  background: var(--card);
-  border: 1px solid var(--border);
-  box-shadow: 0 18px 40px rgba(28, 20, 16, 0.08);
-}
-
-h1, h2 {
-  margin: 0 0 6px;
-  letter-spacing: -0.02em;
-}
-
-h1 { font-size: 1.55rem; }
-h2 { font-size: 1.25rem; }
-
-p {
-  margin: 0 0 18px;
-  color: var(--muted);
-  font-size: 0.95rem;
-  line-height: 1.45;
-}
-
-label {
-  display: block;
-  margin: 12px 0 6px;
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-input {
-  width: 100%;
-  padding: 12px 14px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  font-size: 1rem;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  background: #faf8f5;
-  color: var(--ink);
-}
-
-input:focus {
-  outline: 2px solid rgba(196, 92, 38, 0.35);
-  border-color: var(--accent);
-}
-
-.actions {
-  display: flex;
-  gap: 10px;
-  margin-top: 18px;
-}
-
-.actions .btn { flex: 1; }
-
-.field-error {
-  margin-top: 12px;
-  color: var(--danger);
-  font-size: 0.88rem;
-}
-
 .modal {
   position: fixed;
   inset: 0;
-  background: rgba(28, 20, 16, 0.35);
   display: grid;
   place-items: center;
   padding: 24px;
+  background: rgba(28, 20, 16, 0.45);
   z-index: 20;
 }
 
-.modal[hidden] { display: none; }
+.modal[hidden] {
+  display: none;
+}
 
 .modal-card {
-  width: min(440px, 100%);
-  max-height: min(88vh, 720px);
+  width: min(440px, calc(100vw - 48px));
+  max-height: calc(100vh - 48px);
   overflow: auto;
-  padding: 28px;
+  padding: 24px 22px 18px;
   border-radius: 16px;
-  background: #fff;
+  background: var(--card);
   border: 1px solid var(--border);
+  box-shadow: 0 18px 40px rgba(28, 20, 16, 0.12);
+}
+
+.modal-card h2 {
+  margin: 0 0 6px;
+  font-size: 1.15rem;
+}
+
+.modal-card > p {
+  margin: 0 0 16px;
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.4;
 }

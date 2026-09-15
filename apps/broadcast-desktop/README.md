@@ -1,36 +1,42 @@
 # ASC Broadcast (desktop)
 
-macOS Electron shell that hosts the existing ASC scoring **control panel**
-(`https://acc-overlay.netlify.app/control.html?matchId=…`) and drives OBS
-via **obs-websocket v5**. The app launches OBS in the background.
+macOS Electron shell that embeds the ASC **scoring cockpit** (Expo web:
+`/matches/:id/score`) and drives OBS via **obs-websocket v5**. OBS controls
+live in the shell chrome and (inside Electron only) in a **Broadcast / OBS**
+block above Main Scoreboard on the cockpit page.
 
-Scope: shell + control panel + OBS connect / start-stop stream +
-**OBS lifecycle** (launch, hide, auto-connect, clean quit) + **Instant Replay**
-(chrome one-button: save buffer → Replay scene → return to live).  
-**Not in v1:** clip tagging bridge, Studio Mode / custom transition APIs,
-OBS control from the hosted `control.html`.
+Scope: match-ID entry + full-window cockpit embed + OBS connect / start-stop
+stream + **OBS lifecycle** + **Instant Replay**. OBS controls and Settings live
+in the cockpit **Broadcast / OBS** block (Electron only).  
+The graphics-only `control.html` is unchanged and unused by the operator embed.
+**Not in v1:** clip tagging bridge, Studio Mode / custom transition APIs.
 
 ## Dev
 
-From the monorepo root:
+Prerequisites: API + Expo web (cockpit) running, e.g.:
+
+```bash
+pnpm db:up
+pnpm dev:api
+pnpm --filter @acc/mobile web   # or pnpm dev:mobile then press w — port 8081
+```
+
+Broadcast app:
 
 ```bash
 pnpm install --filter @acc/broadcast-desktop...
 pnpm dev:broadcast
 ```
 
-Or from this package:
+Cockpit origin override (default `http://localhost:8081`):
 
 ```bash
-pnpm install
-pnpm dev
+ASC_COCKPIT_URL=http://localhost:8081 pnpm dev:broadcast
 ```
 
-Optional overlay URL override:
-
-```bash
-ASC_CONTROL_PANEL_URL=http://localhost:5179 pnpm dev
-```
+Load a Match ID → embeds `{ASC_COCKPIT_URL}/matches/{id}/score`. Sign in inside
+the BrowserView when prompted. Keep the window ≥1024px wide so the desktop
+cockpit layout (and OBS block) appears.
 
 ## Package (.app)
 
@@ -46,16 +52,14 @@ Unsigned (`identity: null`) for local use.
 1. App opens → Match ID form + OBS chrome.
 2. **Auto-launch OBS** in the background (`open -g -j`), wait for websocket,
    auto-connect. If OBS is already running, connect to that instance.
-3. **Settings** (`⌘,`) — host / port / password, OBS app path
-   (default `/Applications/OBS.app`), optional scene collection + profile,
-   and Instant Replay scene/source names (`Scene` / `Replay` / `Replay Media`).
-   Stored in userData (`obs-connection.json`).
-4. **Start Streaming** / **Stop Streaming** against the connected OBS.
-5. **Instant Replay** (when replay buffer is active) → save clip, cut to Replay
-   scene, play from start; **Back to Live** or auto-return when playback ends
-   (watchdog ~45s if the end event is missed).
-6. **Load** → hosted `control.html?matchId=…` under the chrome.
-7. On **Quit**, stop an active stream, then quit only an OBS **this app
+3. **Settings** (`⌘,` or Broadcast/OBS → Settings) — host / port / password, OBS
+   app path, optional scene collection + profile, Instant Replay scene/source
+   names. Stored in userData (`obs-connection.json`). Same form on the Match ID
+   entry screen before load.
+4. **Start Streaming** / **Stop Streaming** / **Instant Replay** from the
+   in-cockpit Broadcast/OBS block.
+5. **Load** → scoring cockpit fills the window (no shell control bar).
+6. On **Quit**, stop an active stream, then quit only an OBS **this app
    launched**. A pre-existing OBS is left running.
 
 ## Replay buffer

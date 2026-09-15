@@ -42,9 +42,6 @@ contextBridge.exposeInMainWorld('ascBroadcast', {
   returnToLive() {
     return ipcRenderer.invoke('asc:obs-return-to-live');
   },
-  setSettingsOpen(open) {
-    ipcRenderer.send('asc:settings-open', open);
-  },
   onObsStatus(callback) {
     const listener = (_event, status) => {
       callback(status);

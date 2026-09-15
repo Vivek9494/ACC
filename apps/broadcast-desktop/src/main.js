@@ -1,9 +1,7 @@
 /**
  * ASC Broadcast — Electron main process.
- * Step 1: hosted control panel. Step 2: obs-websocket v5 control.
- * Step 3: OBS lifecycle (background launch / auto-connect / clean quit).
- * Instant Replay: save buffer → Replay scene → auto/manual return to live.
- * Not in this step: clip tagging bridge, Studio Mode transitions.
+ * Match-ID entry shell + full-window BrowserView scoring cockpit.
+ * OBS via IPC → ObsController (in-cockpit Broadcast/OBS block + Settings).
  */
 
 const { app, BrowserWindow, BrowserView, Menu, shell, ipcMain } = require('electron');
@@ -13,12 +11,12 @@ const { readObsConfig, writeObsConfig } = require('./obs-config');
 const { ObsController } = require('./obs-client');
 const { ObsLifecycle } = require('./obs-lifecycle');
 
-const CONTROL_PANEL_BASE =
-  process.env.ASC_CONTROL_PANEL_URL?.replace(/\/$/, '') ||
-  'https://acc-overlay.netlify.app';
+/** Scoring cockpit origin (Expo web). Deployable URL swapped via env later. */
+const COCKPIT_BASE =
+  process.env.ASC_COCKPIT_URL?.replace(/\/$/, '') || 'http://localhost:8081';
 
-/** Must match `header` height in shell.html / shell.css */
-const SHELL_CHROME_HEIGHT = 132;
+/** No in-app chrome bar — BrowserView fills the content area. */
+const SHELL_CHROME_HEIGHT = 0;
 
 const LAST_MATCH_ID_PATH = path.join(app.getPath('userData'), 'last-match-id.txt');
 
@@ -27,7 +25,6 @@ let mainWindow = null;
 /** @type {BrowserView | null} */
 let panelView = null;
 let panelVisible = false;
-let settingsOpen = false;
 
 const obs = new ObsController();
 const lifecycle = new ObsLifecycle(obs, () => readObsConfig(userDataDir()));
@@ -62,8 +59,17 @@ function sendToShell(channel, payload) {
   mainWindow.webContents.send(channel, payload);
 }
 
+function sendToPanel(channel, payload) {
+  if (!panelView || panelView.webContents.isDestroyed()) {
+    return;
+  }
+  panelView.webContents.send(channel, payload);
+}
+
 function pushObsStatus() {
-  sendToShell('asc:obs-status', lifecycle.snapshot());
+  const snapshot = lifecycle.snapshot();
+  sendToShell('asc:obs-status', snapshot);
+  sendToPanel('asc:obs-status', snapshot);
 }
 
 lifecycle.onChange(() => {
@@ -89,6 +95,7 @@ function ensurePanelView() {
   }
   panelView = new BrowserView({
     webPreferences: {
+      preload: path.join(__dirname, 'panel-preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
@@ -100,11 +107,14 @@ function ensurePanelView() {
     }
     return { action: 'deny' };
   });
+  panelView.webContents.on('did-finish-load', () => {
+    pushObsStatus();
+  });
   return panelView;
 }
 
 function layoutPanelView() {
-  if (!mainWindow || !panelView || !panelVisible || settingsOpen) {
+  if (!mainWindow || !panelView || !panelVisible) {
     return;
   }
   panelView.setBounds(contentBounds());
@@ -119,11 +129,19 @@ function hidePanelView() {
 }
 
 function showPanelView() {
-  if (!mainWindow || !panelView || !panelVisible || settingsOpen) {
+  if (!mainWindow || !panelView || !panelVisible) {
     return;
   }
   mainWindow.setBrowserView(panelView);
   layoutPanelView();
+}
+
+function openObsSettings() {
+  if (panelVisible && panelView && !panelView.webContents.isDestroyed()) {
+    sendToPanel('asc:open-obs-settings');
+    return;
+  }
+  sendToShell('asc:open-obs-settings');
 }
 
 function showMatchIdEntry() {
@@ -139,6 +157,7 @@ function showMatchIdEntry() {
 }
 
 /**
+ * Embed the scoring cockpit for this match (graphics + scoring + in-page OBS).
  * @param {string} matchId
  */
 function loadControlPanel(matchId) {
@@ -147,7 +166,7 @@ function loadControlPanel(matchId) {
     return;
   }
   writeLastMatchId(trimmed);
-  const url = `${CONTROL_PANEL_BASE}/control.html?matchId=${encodeURIComponent(trimmed)}`;
+  const url = `${COCKPIT_BASE}/matches/${encodeURIComponent(trimmed)}/score`;
   const view = ensurePanelView();
   panelVisible = true;
   void view.webContents.loadURL(url);
@@ -221,7 +240,7 @@ function buildAppMenu() {
               {
                 label: 'OBS Settings…',
                 accelerator: 'CmdOrCtrl+,',
-                click: () => sendToShell('asc:open-obs-settings'),
+                click: () => openObsSettings(),
               },
               { type: 'separator' },
               { role: 'services' },
@@ -265,7 +284,7 @@ function buildAppMenu() {
               {
                 label: 'OBS Settings…',
                 accelerator: 'CmdOrCtrl+,',
-                click: () => sendToShell('asc:open-obs-settings'),
+                click: () => openObsSettings(),
               },
             ]
           : []),
@@ -366,15 +385,6 @@ function registerIpc() {
   ipcMain.handle('asc:obs-return-to-live', async () => {
     await obs.returnToLive({ reason: 'manual' });
     return lifecycle.snapshot();
-  });
-
-  ipcMain.on('asc:settings-open', (_event, open) => {
-    settingsOpen = Boolean(open);
-    if (settingsOpen) {
-      hidePanelView();
-    } else {
-      showPanelView();
-    }
   });
 }
 

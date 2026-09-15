@@ -252,16 +252,30 @@ export function createGraphicsStage(
     root.innerHTML = buildGraphicsStageMarkup();
   }
 
-  const el = <T extends HTMLElement>(id: string): T => {
+  const missingMountWarned = new Set<string>();
+
+  const warnMissingMount = (id: string): void => {
+    if (missingMountWarned.has(id)) {
+      return;
+    }
+    missingMountWarned.add(id);
+    console.warn(`[graphics] Missing #${id} in graphics stage — graphic disabled`);
+  };
+
+  const queryEl = <T extends HTMLElement>(id: string): T | null => {
     const node = root.querySelector(`#${CSS.escape(id)}`);
     if (!node) {
-      throw new Error(`Missing #${id} in graphics stage`);
+      warnMissingMount(id);
+      return null;
     }
     return node as T;
   };
 
   const setText = (id: string, text: string): void => {
-    const node = el(id);
+    const node = queryEl(id);
+    if (!node) {
+      return;
+    }
     if (node.textContent !== text) {
       node.textContent = text;
     }
@@ -280,12 +294,22 @@ export function createGraphicsStage(
   };
   let playingXiCmd: PlayingXiShowOptions = { variant: 'both' };
   let fowInningsId: string | null = null;
-  const batsmanCareer = mountBatsmanCareerCard(el('g-batsman-career'));
-  const tossResult = mountTossResultCard(el('g-toss-result'));
-  const playingXi = mountPlayingXiCard(el('g-playing-xi'));
-  const inningsCard = mountInningsScorecard(el('g-innings'));
 
-  const graphicNode = (kind: OverlayKind): HTMLElement => el(GRAPHIC_IDS[kind]);
+  const mountOrNull = <T>(id: string, mount: (host: HTMLElement) => T): T | null => {
+    const node = queryEl(id);
+    if (!node) {
+      return null;
+    }
+    return mount(node);
+  };
+
+  const batsmanCareer = mountOrNull('g-batsman-career', mountBatsmanCareerCard);
+  const tossResult = mountOrNull('g-toss-result', mountTossResultCard);
+  const playingXi = mountOrNull('g-playing-xi', mountPlayingXiCard);
+  const inningsCard = mountOrNull('g-innings', mountInningsScorecard);
+
+  const graphicNode = (kind: OverlayKind): HTMLElement | null =>
+    queryEl(GRAPHIC_IDS[kind]);
 
   const isMountManaged = (kind: OverlayKind): boolean =>
     kind === 'batsman_career' ||
@@ -302,7 +326,10 @@ export function createGraphicsStage(
     }, ANIM_MS);
   };
 
-  const showNode = (node: HTMLElement): void => {
+  const showNode = (node: HTMLElement | null): void => {
+    if (!node) {
+      return;
+    }
     node.hidden = false;
     requestAnimationFrame(() => node.classList.add('is-visible'));
   };
@@ -311,15 +338,18 @@ export function createGraphicsStage(
     activeKind = null;
     activePlayerId = null;
     inningsEnsureToken += 1;
-    batsmanCareer.hide();
-    tossResult.hide();
-    playingXi.hide();
-    inningsCard.hide();
+    batsmanCareer?.hide();
+    tossResult?.hide();
+    playingXi?.hide();
+    inningsCard?.hide();
     for (const kind of Object.keys(GRAPHIC_IDS) as OverlayKind[]) {
       if (isMountManaged(kind)) {
         continue;
       }
-      hideNode(graphicNode(kind));
+      const node = graphicNode(kind);
+      if (node) {
+        hideNode(node);
+      }
     }
   };
 
@@ -338,26 +368,32 @@ export function createGraphicsStage(
       activePlayerId = null;
     }
     if (kind === 'batsman_career') {
-      batsmanCareer.hide();
+      batsmanCareer?.hide();
       return;
     }
     if (kind === 'toss_result') {
-      tossResult.hide();
+      tossResult?.hide();
       return;
     }
     if (kind === 'playing_xi') {
-      playingXi.hide();
+      playingXi?.hide();
       return;
     }
     if (kind === 'innings_break') {
       inningsEnsureToken += 1;
-      inningsCard.hide();
+      inningsCard?.hide();
       return;
     }
-    hideNode(graphicNode(kind));
+    const node = graphicNode(kind);
+    if (node) {
+      hideNode(node);
+    }
   };
 
   const showTossResult = (): boolean => {
+    if (!tossResult) {
+      return false;
+    }
     try {
       return tossResult.show(matchCtx);
     } catch (err) {
@@ -370,6 +406,9 @@ export function createGraphicsStage(
   const showPlayingXi = async (
     xiOptions: PlayingXiShowOptions = playingXiCmd,
   ): Promise<boolean> => {
+    if (!playingXi) {
+      return false;
+    }
     try {
       const matchId = options.matchId?.trim() ?? '';
       if (matchId) {
@@ -389,6 +428,9 @@ export function createGraphicsStage(
   const showInningsBreak = async (
     view: InningsBreakView = inningsCmd.view,
   ): Promise<boolean> => {
+    if (!inningsCard) {
+      return false;
+    }
     const token = ++inningsEnsureToken;
     try {
       const card = scorecard;
@@ -558,23 +600,26 @@ export function createGraphicsStage(
 
   const hideManagedGraphic = (kind: OverlayKind): void => {
     if (kind === 'batsman_career') {
-      batsmanCareer.hide();
+      batsmanCareer?.hide();
       return;
     }
     if (kind === 'toss_result') {
-      tossResult.hide();
+      tossResult?.hide();
       return;
     }
     if (kind === 'playing_xi') {
-      playingXi.hide();
+      playingXi?.hide();
       return;
     }
     if (kind === 'innings_break') {
       inningsEnsureToken += 1;
-      inningsCard.hide();
+      inningsCard?.hide();
       return;
     }
-    hideNode(graphicNode(kind));
+    const node = graphicNode(kind);
+    if (node) {
+      hideNode(node);
+    }
   };
 
   const resolveBatsmanId = (
@@ -654,6 +699,13 @@ export function createGraphicsStage(
   };
 
   const showBatsmanCareer = async (playerId: string): Promise<void> => {
+    if (!batsmanCareer) {
+      if (activeKind === 'batsman_career') {
+        activeKind = null;
+        activePlayerId = null;
+      }
+      return;
+    }
     try {
       const placeholderName = scorecard
         ? playerName(scorecard.display, playerId)
@@ -697,7 +749,7 @@ export function createGraphicsStage(
         }
         break;
       case 'innings_break':
-        if (inningsCard.xiStatus() === 'loading') {
+        if (!inningsCard || inningsCard.xiStatus() === 'loading') {
           break;
         }
         {
@@ -858,7 +910,7 @@ export function createGraphicsStage(
           activeKind = null;
           activePlayerId = null;
         }
-        if (activeKind === 'playing_xi' && !playingXi.show(matchCtx, playingXiCmd)) {
+        if (activeKind === 'playing_xi' && !playingXi?.show(matchCtx, playingXiCmd)) {
           activeKind = null;
           activePlayerId = null;
         }
@@ -880,10 +932,10 @@ export function createGraphicsStage(
     hideAll: hideAllGraphics,
     isOnAir: () =>
       activeKind != null ||
-      batsmanCareer.isOnAir() ||
-      tossResult.isOnAir() ||
-      playingXi.isOnAir() ||
-      inningsCard.isOnAir(),
+      Boolean(batsmanCareer?.isOnAir()) ||
+      Boolean(tossResult?.isOnAir()) ||
+      Boolean(playingXi?.isOnAir()) ||
+      Boolean(inningsCard?.isOnAir()),
     activeKind: () => activeKind,
     applyCommand(cmd) {
       try {

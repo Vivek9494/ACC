@@ -61,33 +61,51 @@ export function mountTournamentGraphics(
 ): TournamentGraphicsController {
   let activeKind: TournamentGraphicKind | null = null;
   let showToken = 0;
+  const missingWarned = new Set<string>();
 
-  const host = (kind: TournamentGraphicKind): HTMLElement => {
+  const hostOrNull = (kind: TournamentGraphicKind): HTMLElement | null => {
     const id = TOURNAMENT_GRAPHIC_IDS[kind];
     const node = root.querySelector(`#${CSS.escape(id)}`);
     if (!node) {
-      throw new Error(`Missing #${id} in graphics stage`);
+      if (!missingWarned.has(id)) {
+        missingWarned.add(id);
+        console.warn(
+          `[tournament-graphics] Missing #${id} in graphics stage — graphic disabled`,
+        );
+      }
+      return null;
     }
     return node as HTMLElement;
   };
 
-  const pointsTable = mountPointsTableCard(host('points_table'));
-  const topBatsmen = mountLeaderboardCard(host('tournament_top_batsmen'));
-  const topBowlers = mountLeaderboardCard(host('tournament_top_bowlers'));
-  const foursCard = mountTournamentStatCard(host('tournament_fours'));
-  const sixesCard = mountTournamentStatCard(host('tournament_sixes'));
+  const mountCard = <T>(
+    kind: TournamentGraphicKind,
+    mount: (el: HTMLElement) => T,
+  ): T | null => {
+    const node = hostOrNull(kind);
+    if (!node) {
+      return null;
+    }
+    return mount(node);
+  };
+
+  const pointsTable = mountCard('points_table', mountPointsTableCard);
+  const topBatsmen = mountCard('tournament_top_batsmen', mountLeaderboardCard);
+  const topBowlers = mountCard('tournament_top_bowlers', mountLeaderboardCard);
+  const foursCard = mountCard('tournament_fours', mountTournamentStatCard);
+  const sixesCard = mountCard('tournament_sixes', mountTournamentStatCard);
 
   const hideCard = (kind: TournamentGraphicKind): void => {
     if (kind === 'points_table') {
-      pointsTable.hide();
+      pointsTable?.hide();
     } else if (kind === 'tournament_top_batsmen') {
-      topBatsmen.hide();
+      topBatsmen?.hide();
     } else if (kind === 'tournament_top_bowlers') {
-      topBowlers.hide();
+      topBowlers?.hide();
     } else if (kind === 'tournament_fours') {
-      foursCard.hide();
+      foursCard?.hide();
     } else if (kind === 'tournament_sixes') {
-      sixesCard.hide();
+      sixesCard?.hide();
     }
   };
 
@@ -137,6 +155,9 @@ export function mountTournamentGraphics(
     token: number,
   ): Promise<boolean> => {
     if (kind === 'points_table') {
+      if (!pointsTable) {
+        return false;
+      }
       const standings = await fetchTournamentStandings(apiBase, tournamentId);
       if (token !== showToken || activeKind !== kind) {
         return false;
@@ -145,6 +166,10 @@ export function mountTournamentGraphics(
     }
 
     if (kind === 'tournament_top_batsmen' || kind === 'tournament_top_bowlers') {
+      const card = kind === 'tournament_top_batsmen' ? topBatsmen : topBowlers;
+      if (!card) {
+        return false;
+      }
       const leaderboard = await fetchTournamentLeaderboard(apiBase, tournamentId);
       if (token !== showToken || activeKind !== kind) {
         return false;
@@ -153,11 +178,15 @@ export function mountTournamentGraphics(
         return false;
       }
       if (kind === 'tournament_top_batsmen') {
-        return topBatsmen.show('batting', battingRows(leaderboard.batting.entries));
+        return card.show('batting', battingRows(leaderboard.batting.entries));
       }
-      return topBowlers.show('bowling', bowlingRows(leaderboard.bowling.entries));
+      return card.show('bowling', bowlingRows(leaderboard.bowling.entries));
     }
 
+    const card = kind === 'tournament_fours' ? foursCard : sixesCard;
+    if (!card) {
+      return false;
+    }
     const stats = await fetchTournamentStats(apiBase, tournamentId);
     if (token !== showToken || activeKind !== kind) {
       return false;
@@ -168,7 +197,6 @@ export function mountTournamentGraphics(
     const statKind: TournamentStatKind =
       kind === 'tournament_fours' ? 'fours' : 'sixes';
     const total = statKind === 'fours' ? stats.aggregates.fours : stats.aggregates.sixes;
-    const card = statKind === 'fours' ? foursCard : sixesCard;
     return card.show(statKind, total);
   };
 

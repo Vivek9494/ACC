@@ -15,11 +15,12 @@ export function createTheme1GraphicsStage(
   root: HTMLElement,
   options: GraphicsStageOptions,
 ): GraphicsStageController {
+  // Base stage may replace root.innerHTML when injectMarkup is true — inject
+  // tournament hosts AFTER that so they are not wiped.
+  const base = createGraphicsStage(root, { ...options, injectMarkup: options.injectMarkup });
   if (options.injectMarkup) {
     root.insertAdjacentHTML('beforeend', buildTournamentGraphicsMarkup());
   }
-
-  const base = createGraphicsStage(root, { ...options, injectMarkup: options.injectMarkup });
   const tournament = mountTournamentGraphics(root, options.apiBase);
   let tournamentId: string | null = null;
 

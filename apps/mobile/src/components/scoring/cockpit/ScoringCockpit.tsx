@@ -16,6 +16,7 @@ import { useScoringKeyboardShortcuts } from '../../../hooks/useScoringKeyboardSh
 import { useLiveScore } from '../../../lib/live-socket';
 import { Text } from '../../ui/Text';
 import { BallByBallPanel } from './BallByBallPanel';
+import { BroadcastObsPanel, hasAscObsBridge } from './BroadcastObsPanel';
 import { OverlayControlPanel } from './OverlayControlPanel';
 import { OverlayScoreboardPanel } from './OverlayScoreboardPanel';
 import { ScorecardDockPanel } from './ScorecardDockPanel';
@@ -73,7 +74,15 @@ const SCOREBOARD_COL: ViewStyle = {
   alignSelf: 'stretch',
   display: 'flex',
   flexDirection: 'column',
+  gap: 7,
 } as ViewStyle;
+
+/** When Broadcast/OBS is present, cap the stream preview so OBS controls fit. */
+const SCOREBOARD_PREVIEW_WITH_OBS: ViewStyle = {
+  flex: 1,
+  minHeight: 0,
+  maxHeight: 220,
+};
 
 const BOTTOM_BAND: ViewStyle = {
   display: 'grid' as unknown as ViewStyle['display'],
@@ -192,6 +201,7 @@ export function ScoringCockpit({
   const live = useLiveScore(matchId, card);
   const toss = formatMatchTossSummaryLine(match);
   const playState = MATCH_STATE_LABELS[match.state] ?? match.state;
+  const showObs = hasAscObsBridge();
 
   useScoringKeyboardShortcuts({
     enabled: keyboardEnabled,
@@ -263,7 +273,10 @@ export function ScoringCockpit({
             />
           </View>
           <View style={SCOREBOARD_COL}>
-            <OverlayScoreboardPanel youtubeUrl={match.youtubeUrl} />
+            {showObs ? <BroadcastObsPanel /> : null}
+            <View style={showObs ? SCOREBOARD_PREVIEW_WITH_OBS : { flex: 1, minHeight: 0 }}>
+              <OverlayScoreboardPanel youtubeUrl={match.youtubeUrl} />
+            </View>
           </View>
         </View>
 

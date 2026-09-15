@@ -8,7 +8,7 @@ import {
   fetchScorecard,
 } from './broadcast-fetch';
 import { hasBowlerCareerStats } from './graphics-format';
-import { isStripOwnedKind } from './graphics-stage';
+import { isStripOwnedKind, type GraphicsStageController } from './graphics-stage';
 import {
   DEFAULT_OVERLAY_THEME,
   resolveOverlayTheme,
@@ -82,11 +82,29 @@ async function start(): Promise<void> {
   let socket: Socket | null = null;
 
   const scoreStrip = theme.createScoreStripHost();
-  const graphicsStage = theme.createGraphicsStage(el('graphics-stage'), {
-    apiBase,
-    matchId,
-    injectMarkup: true,
-  });
+  /** No-op stage if factory fails — strip + live socket must still run. */
+  const noopGraphicsStage: GraphicsStageController = {
+    setScorecard() {},
+    setMatchContext() {},
+    setBallType() {},
+    applyCommand() {},
+    hideAll() {},
+    isOnAir: () => false,
+    activeKind: () => null,
+  };
+  let graphicsStage = noopGraphicsStage;
+  try {
+    graphicsStage = theme.createGraphicsStage(el('graphics-stage'), {
+      apiBase,
+      matchId,
+      injectMarkup: true,
+    });
+  } catch (err) {
+    console.warn(
+      '[overlay] graphics stage failed to initialize — strip continues without full-screen graphics',
+      err,
+    );
+  }
 
   const clearBoundariesFlash = (): void => {
     boundariesArmedKey = null;
