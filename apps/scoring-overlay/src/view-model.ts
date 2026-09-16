@@ -28,8 +28,12 @@ export interface StripViewModel {
   /** Compact batting-side label for the center notch (e.g. MCC / initials). */
   teamShort: string;
   batsmen: StripBatterVm[];
-  /** runs-wickets, e.g. "120-3". */
+  /** runs / wickets, e.g. "120 / 3". */
   scoreLine: string;
+  /** Current overs only, e.g. "8.0" (no allotted suffix). */
+  oversCurrent: string;
+  /** Numeric RR only, e.g. "8.50". */
+  rrValue: string;
   /** Current run rate, e.g. "CRR 8.50". */
   runRateLine: string;
   /** Required run rate when chasing, e.g. "RRR 9.20", or null. */
@@ -49,10 +53,12 @@ export interface StripViewModel {
   oversRemainingLine: string | null;
   /** Overs display, e.g. "8.0/10" or "8.0". */
   oversLine: string;
+  /** Top-bar center message, e.g. "1ST INNINGS • 25 OVERS". */
+  inningsBanner: string;
   showPowerplay: boolean;
   subtitle: string | null;
   bowlerName: string;
-  /** wickets-runs (broadcast convention), e.g. "1-15". */
+  /** wickets / runs, e.g. "1 / 15". */
   bowlerFigs: string;
   bowlerOvers: string;
   overTracker: CurrentOverTracker;
@@ -310,6 +316,30 @@ function formatOversLine(innings: InningsScorecard): string {
   return current;
 }
 
+function formatRrValue(innings: InningsScorecard): string {
+  if (innings.legalBalls <= 0) {
+    return '0.00';
+  }
+  const rr = (innings.runs * BALLS_PER_OVER) / innings.legalBalls;
+  return Number.isFinite(rr) ? rr.toFixed(2) : '0.00';
+}
+
+function formatInningsBanner(innings: InningsScorecard): string {
+  const n = innings.sequence;
+  let ordinal = `${n}TH INNINGS`;
+  if (n === 1) {
+    ordinal = '1ST INNINGS';
+  } else if (n === 2) {
+    ordinal = '2ND INNINGS';
+  } else if (n === 3) {
+    ordinal = '3RD INNINGS';
+  }
+  if (innings.oversAllotted != null && innings.oversAllotted > 0) {
+    return `${ordinal} • ${innings.oversAllotted} OVERS`;
+  }
+  return ordinal;
+}
+
 /** e.g. "ACC 3 won the toss and chose to bat" — null until toss is recorded. */
 export function formatTossLine(ctx: MatchContext | null): string | null {
   if (!ctx?.tossWinner || !ctx.tossDecision) {
@@ -479,7 +509,9 @@ export function buildStripViewModel(
     bowling: teamVm(bowlingName, bowlingId, ctx),
     teamShort: shortTeamLabel(battingName),
     batsmen,
-    scoreLine: `${innings.runs}-${innings.wickets}`,
+    scoreLine: `${innings.runs} / ${innings.wickets}`,
+    oversCurrent: innings.oversText || '0.0',
+    rrValue: formatRrValue(innings),
     runRateLine: formatCurrentRunRate(innings),
     requiredRunRateLine: formatRequiredRunRate(card, innings),
     ratesLine: formatRatesLine(card, innings),
@@ -489,12 +521,13 @@ export function buildStripViewModel(
       formatRunsToWinLine(card) ?? formatRatesLine(card, innings),
     oversRemainingLine: formatOversRemaining(innings),
     oversLine: formatOversLine(innings),
+    inningsBanner: formatInningsBanner(innings),
     showPowerplay: inPowerplay(innings, ctx),
     subtitle: buildSubtitle(card, innings, ctx),
     bowlerName,
     bowlerFigs: bowlRow
-      ? `${bowlRow.wickets}-${bowlRow.runsConceded}`
-      : '0-0',
+      ? `${bowlRow.wickets} / ${bowlRow.runsConceded}`
+      : '0 / 0',
     bowlerOvers: bowlRow?.oversText ?? '0.0',
     overTracker: buildCurrentOverTracker(innings),
   };

@@ -48,42 +48,6 @@ function setText(id: string, text: string): void {
   }
 }
 
-function setLogoPuck(
-  imgId: string,
-  monoRootId: string,
-  abbrId: string,
-  fallbackText: string,
-  logoUrl: string | null,
-): void {
-  const mono = el<HTMLElement>(monoRootId);
-  const abbr = el<HTMLElement>(abbrId);
-  const img = el<HTMLImageElement>(imgId);
-  if (!mono || !abbr || !img) {
-    return;
-  }
-  abbr.textContent = fallbackText;
-  if (logoUrl) {
-    img.onload = () => {
-      img.hidden = false;
-      mono.hidden = true;
-    };
-    img.onerror = () => {
-      img.hidden = true;
-      mono.hidden = false;
-      img.removeAttribute('src');
-    };
-    if (img.getAttribute('src') !== logoUrl) {
-      img.hidden = true;
-      mono.hidden = false;
-      img.src = logoUrl;
-    }
-  } else {
-    img.hidden = true;
-    mono.hidden = false;
-    img.removeAttribute('src');
-  }
-}
-
 function renderOverTracker(vm: StripViewModel): void {
   const tracker = el<HTMLDivElement>('over-tracker');
   const empty = el<HTMLElement>('over-empty');
@@ -144,6 +108,7 @@ function renderBatters(vm: StripViewModel): void {
     };
     const strike = el<HTMLSpanElement>(`batter-${i}-strike`);
     if (strike) {
+      // Faint diamond immediately LEFT of runs — striker only.
       strike.hidden = !batter.onStrike;
     }
     setText(`batter-${i}-name`, batter.name);
@@ -167,15 +132,11 @@ function renderSubLine(
     text = formatRunsToWinLine(card) ?? vm.needOffLine;
   } else if (crrMode === 'boundaries') {
     text = vm.boundariesLine;
-  } else if (crrMode === 'toss') {
-    // Toss replaces bowler panel; keep score sub on auto chase/CRR.
-    text = vm.autoSubLine;
   } else {
-    // Default: only show NEED (or result) in sub — CRR already in #rr-line.
     text = vm.needOffLine;
   }
 
-  if (text && text !== vm.runRateLine && text !== vm.ratesLine) {
+  if (text) {
     sub.hidden = false;
     if (sub.textContent !== text) {
       sub.textContent = text;
@@ -217,7 +178,7 @@ function renderBowlerPanel(
   tossLine.textContent = '';
   setText('bowler-name', vm.bowlerName);
   setText('bowler-figs', vm.bowlerFigs);
-  setText('bowler-overs', vm.bowlerOvers);
+  setText('bowler-overs', `(${vm.bowlerOvers} ov)`);
   renderOverTracker(vm);
 }
 
@@ -247,7 +208,7 @@ function runEntranceOnce(strip: HTMLElement): void {
       if (index === sections.length - 1) {
         window.setTimeout(() => {
           strip.classList.remove('is-entering');
-        }, 560);
+        }, 520);
       }
     }, index * ENTRANCE_STAGGER_MS);
   });
@@ -307,41 +268,28 @@ export function createTheme1ScoreStripHost(): ScoreStripHost {
       idle.hidden = true;
       wrap.hidden = hideStrip;
 
-      // Logos: batting LEFT, bowling RIGHT (swap with innings via VM).
-      setLogoPuck(
-        'bat-logo',
-        'bat-fallback',
-        'bat-initials',
-        vm.batting.initials,
-        vm.batting.logoUrl,
-      );
-      setLogoPuck(
-        'bowl-logo',
-        'bowl-fallback',
-        'bowl-initials',
-        vm.bowling.initials,
-        vm.bowling.logoUrl,
-      );
+      // Monogram shields only (reference) — batting LEFT, bowling RIGHT.
+      setText('bat-initials', vm.batting.initials);
+      setText('bowl-initials', vm.bowling.initials);
 
+      setText('strip-banner', vm.inningsBanner);
       setText(
-        'strip-id-line',
-        `${vm.batting.name} v ${vm.bowling.name} · ${vm.oversLine}`,
+        'strip-matchup',
+        `${vm.batting.name} v ${vm.bowling.name}`.toUpperCase(),
       );
-      setText('team-line', vm.teamShort);
+      setText('team-line', vm.batting.initials);
       setText('score-line', vm.scoreLine);
-      setText('overs-line', vm.oversLine);
-      setText('rr-line', vm.runRateLine);
+      setText('overs-line', vm.oversCurrent);
+      setText('rr-line', `RR ${vm.rrValue}`);
 
       renderBatters(vm);
       renderSubLine(vm, card, crrMode);
       renderBowlerPanel(vm, ctx, crrMode);
 
-      // One-time entrance when the strip first appears (not on ball updates).
       if (!hideStrip && strip && (wasHidden || strip.dataset.entered !== '1')) {
         runEntranceOnce(strip);
       }
       if (hideStrip && strip) {
-        // Allow a fresh entrance next time the strip returns.
         strip.dataset.entered = '';
         strip.classList.remove('is-entering');
         for (const s of strip.querySelectorAll('.t1-strip-section')) {
