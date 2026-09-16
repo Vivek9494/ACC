@@ -16,7 +16,14 @@ import {
 import type { ScoreStripHost, ScoreStripRenderParams } from '../types';
 
 const ENTRANCE_STAGGER_MS = 48;
+const BOWLER_SLOT_SWAP_MS = 360;
 const warnedMissing = new Set<string>();
+
+type BowlerSlotMode = 'bowler' | 'toss';
+
+let bowlerSlotMode: BowlerSlotMode = 'bowler';
+let bowlerSwapGen = 0;
+let bowlerSwapTimer: number | null = null;
 
 function prefersReducedMotion(): boolean {
   return (
@@ -147,6 +154,123 @@ function renderSubLine(
   }
 }
 
+function clearBowlerSwapTimer(): void {
+  if (bowlerSwapTimer != null) {
+    window.clearTimeout(bowlerSwapTimer);
+    bowlerSwapTimer = null;
+  }
+}
+
+function clearBowlerLayerMotion(layer: HTMLElement): void {
+  layer.classList.remove('is-slot-exit-left', 'is-slot-prep-right', 'is-slot-in');
+  layer.style.transition = '';
+  layer.style.opacity = '';
+  layer.style.transform = '';
+}
+
+function settleBowlerSlot(
+  mode: BowlerSlotMode,
+  stack: HTMLElement,
+  normal: HTMLElement,
+  tossLine: HTMLElement,
+): void {
+  clearBowlerLayerMotion(normal);
+  clearBowlerLayerMotion(tossLine);
+  stack.classList.remove('is-swapping');
+
+  if (mode === 'toss') {
+    stack.classList.add('is-toss');
+    normal.hidden = true;
+    normal.setAttribute('aria-hidden', 'true');
+    tossLine.hidden = false;
+    tossLine.setAttribute('aria-hidden', 'false');
+  } else {
+    stack.classList.remove('is-toss');
+    normal.hidden = false;
+    normal.setAttribute('aria-hidden', 'false');
+    tossLine.hidden = true;
+    tossLine.setAttribute('aria-hidden', 'true');
+    tossLine.textContent = '';
+  }
+  bowlerSlotMode = mode;
+}
+
+/**
+ * Local slide+fade swap inside the bowler slot only.
+ * Out ← / in → ; rapid calls cancel prior transition via bowlerSwapGen.
+ */
+function swapBowlerSlot(
+  target: BowlerSlotMode,
+  stack: HTMLElement,
+  normal: HTMLElement,
+  tossLine: HTMLElement,
+): void {
+  if (prefersReducedMotion()) {
+    bowlerSwapGen += 1;
+    clearBowlerSwapTimer();
+    settleBowlerSlot(target, stack, normal, tossLine);
+    return;
+  }
+
+  const from = bowlerSlotMode;
+  bowlerSwapGen += 1;
+  const gen = bowlerSwapGen;
+  clearBowlerSwapTimer();
+  bowlerSlotMode = target;
+
+  const outgoing = from === 'toss' ? tossLine : normal;
+  const incoming = target === 'toss' ? tossLine : normal;
+
+  normal.hidden = false;
+  tossLine.hidden = false;
+  stack.classList.add('is-swapping');
+  if (target === 'toss') {
+    stack.classList.add('is-toss');
+  } else {
+    stack.classList.remove('is-toss');
+  }
+
+  clearBowlerLayerMotion(normal);
+  clearBowlerLayerMotion(tossLine);
+
+  // Prep: incoming off-canvas right (no transition), outgoing visible.
+  incoming.style.transition = 'none';
+  incoming.style.opacity = '0';
+  incoming.style.transform = 'translateX(14px)';
+  incoming.classList.add('is-slot-prep-right');
+  outgoing.style.opacity = '1';
+  outgoing.style.transform = 'translateX(0)';
+  void stack.offsetWidth;
+
+  incoming.style.transition = '';
+  outgoing.style.transition = '';
+  void stack.offsetWidth;
+
+  // Animate: outgoing exits left; incoming settles in place.
+  outgoing.classList.add('is-slot-exit-left');
+  incoming.classList.remove('is-slot-prep-right');
+  incoming.classList.add('is-slot-in');
+  incoming.style.opacity = '';
+  incoming.style.transform = '';
+  incoming.setAttribute('aria-hidden', 'false');
+  outgoing.setAttribute('aria-hidden', 'true');
+
+  bowlerSwapTimer = window.setTimeout(() => {
+    if (gen !== bowlerSwapGen) {
+      return;
+    }
+    bowlerSwapTimer = null;
+    settleBowlerSlot(target, stack, normal, tossLine);
+  }, BOWLER_SLOT_SWAP_MS);
+}
+
+function paintBowlerFigures(vm: StripViewModel): void {
+  setText('bowler-name', vm.bowlerName);
+  setText('bowler-figs', vm.bowlerFigs);
+  setText('bowler-overs', `(${vm.bowlerOvers} ov)`);
+  renderOverTracker(vm);
+}
+
 function renderBowlerPanel(
   vm: StripViewModel,
   ctx: ScoreStripRenderParams['ctx'],
@@ -159,27 +283,30 @@ function renderBowlerPanel(
     return;
   }
 
-  if (crrMode === 'toss') {
-    const text = formatTossLine(ctx);
-    if (text) {
-      stack.classList.add('is-toss');
-      normal.hidden = true;
-      tossLine.hidden = false;
-      if (tossLine.textContent !== text) {
-        tossLine.textContent = text;
-      }
-      return;
-    }
+  const wantToss = crrMode === 'toss';
+  const tossText = wantToss ? formatTossLine(ctx) : null;
+  const target: BowlerSlotMode = wantToss && tossText ? 'toss' : 'bowler';
+
+  paintBowlerFigures(vm);
+  if (target === 'toss' && tossText && tossLine.textContent !== tossText) {
+    tossLine.textContent = tossText;
   }
 
-  stack.classList.remove('is-toss');
-  normal.hidden = false;
-  tossLine.hidden = true;
-  tossLine.textContent = '';
-  setText('bowler-name', vm.bowlerName);
-  setText('bowler-figs', vm.bowlerFigs);
-  setText('bowler-overs', `(${vm.bowlerOvers} ov)`);
-  renderOverTracker(vm);
+  // Same mode: refresh content only — never restart mid-swap or settled state.
+  if (target === bowlerSlotMode) {
+    if (bowlerSwapTimer == null) {
+      settleBowlerSlot(target, stack, normal, tossLine);
+      if (target === 'toss' && tossText) {
+        tossLine.textContent = tossText;
+      }
+    }
+    return;
+  }
+
+  if (target === 'toss' && tossText) {
+    tossLine.textContent = tossText;
+  }
+  swapBowlerSlot(target, stack, normal, tossLine);
 }
 
 function runEntranceOnce(strip: HTMLElement): void {

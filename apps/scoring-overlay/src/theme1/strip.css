@@ -379,26 +379,62 @@
   justify-self: start;
 }
 
-/* Bowler */
+/* Bowler — stacked layers so toss can slide+fade into this slot only */
 .t1-bowler-block {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: center;
   min-width: 0;
   padding: 6px 8px 6px 4px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 2px;
+  overflow: hidden;
+}
+
+.t1-bowler-normal,
+.t1-bowler-toss {
+  grid-area: 1 / 1;
+  min-width: 0;
+  transition:
+    opacity 360ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 360ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .t1-bowler-normal {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  min-width: 0;
 }
 
 .t1-bowler-normal[hidden],
 .t1-bowler-toss[hidden] {
-  display: none;
+  display: none !important;
+}
+
+.t1-bowler-normal.is-slot-exit-left,
+.t1-bowler-toss.is-slot-exit-left {
+  opacity: 0;
+  transform: translateX(-14px);
+  pointer-events: none;
+}
+
+.t1-bowler-normal.is-slot-prep-right,
+.t1-bowler-toss.is-slot-prep-right {
+  opacity: 0;
+  transform: translateX(14px);
+  pointer-events: none;
+}
+
+.t1-bowler-normal.is-slot-in,
+.t1-bowler-toss.is-slot-in {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .t1-bowler-normal,
+  .t1-bowler-toss {
+    transition: none !important;
+  }
 }
 
 .t1-bowler-head {
