@@ -1,0 +1,408 @@
+/* Premium broadcast bowling scorecard — matches batting card palette / motion. */
+
+.bowling-card-graphic {
+  /* Positioned by .graphic / .graphic-centered. */
+}
+
+.panel-bowling-card {
+  --bowl-navy: #081a30;
+  --bowl-navy-dark: #061323;
+  --bowl-blue: #218bff;
+  --bowl-gold: #ffaf38;
+  --bowl-row-a: #f2f5f8;
+  --bowl-row-b: #e5ecf2;
+  --bowl-text: #13283d;
+  --bowl-text-muted: rgba(19, 40, 61, 0.72);
+  --bowl-econ: #51657a;
+
+  display: flex;
+  flex-direction: column;
+  min-width: min(94vw, 780px);
+  max-width: min(96vw, 920px);
+  max-height: 92vh;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--bowl-navy);
+  color: #f2f5f8;
+  box-shadow:
+    0 22px 56px rgba(0, 0, 0, 0.55),
+    0 0 0 1px rgba(33, 139, 255, 0.18);
+  pointer-events: none;
+  font-family: 'Barlow', 'Montserrat', system-ui, sans-serif;
+}
+
+.bowl-section {
+  opacity: 0;
+  transform: translateX(-70px) scaleX(0.96);
+  transition:
+    opacity 650ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 650ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.panel-bowling-card.bowl-entering .bowl-section.bowl-section-visible {
+  opacity: 1;
+  transform: translateX(0) scaleX(1);
+}
+
+.panel-bowling-card.bowl-exiting .bowl-section {
+  opacity: 0;
+  transform: translateX(65px);
+  transition:
+    opacity 320ms ease-in,
+    transform 320ms ease-in;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bowl-section {
+    transform: none;
+    transition: opacity 120ms ease;
+  }
+
+  .panel-bowling-card.bowl-exiting .bowl-section {
+    transform: none;
+  }
+
+  .bowl-header-sweep {
+    animation: none !important;
+  }
+}
+
+.bowl-id-strip {
+  background: var(--bowl-navy-dark);
+  padding: 8px 18px;
+  border-bottom: 2px solid var(--bowl-blue);
+}
+
+.bowl-id-line {
+  margin: 0;
+  font-family: 'Barlow Condensed', 'Barlow', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  text-align: center;
+  color: var(--bowl-gold);
+}
+
+.bowl-header {
+  position: relative;
+  background: linear-gradient(135deg, var(--bowl-navy) 0%, #0c2545 100%);
+  padding: 14px 18px 12px;
+  overflow: hidden;
+}
+
+.bowl-header-inner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.bowl-monogram {
+  flex-shrink: 0;
+  width: 52px;
+  height: 52px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--bowl-navy-dark);
+  background: linear-gradient(145deg, var(--bowl-gold) 0%, #e89a20 100%);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+
+.bowl-header-copy {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.bowl-kicker {
+  margin: 0 0 2px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(242, 245, 248, 0.55);
+}
+
+.bowl-team-name {
+  margin: 0;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: 0.02em;
+  color: #fff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bowl-vs-line {
+  margin: 3px 0 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(242, 245, 248, 0.78);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bowl-innings-label {
+  margin: 4px 0 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--bowl-blue);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.bowl-total-block {
+  flex-shrink: 0;
+  text-align: right;
+}
+
+.bowl-total-badge {
+  margin: 0;
+  padding: 8px 14px;
+  border-radius: 8px;
+  background: rgba(33, 139, 255, 0.15);
+  border: 1px solid rgba(33, 139, 255, 0.45);
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 28px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--bowl-gold);
+  line-height: 1;
+}
+
+.bowl-opp-meta {
+  margin: 6px 0 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: rgba(242, 245, 248, 0.7);
+  font-variant-numeric: tabular-nums;
+}
+
+.bowl-header-sweep {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    105deg,
+    transparent 0%,
+    transparent 42%,
+    rgba(255, 255, 255, 0.06) 50%,
+    transparent 58%,
+    transparent 100%
+  );
+  transform: translateX(-120%);
+  animation: bowl-header-sweep 7s ease-in-out 1.2s infinite;
+}
+
+@keyframes bowl-header-sweep {
+  0% {
+    transform: translateX(-120%);
+  }
+  40%,
+  100% {
+    transform: translateX(120%);
+  }
+}
+
+.bowl-columns {
+  background: var(--bowl-navy-dark);
+  padding: 6px 12px;
+}
+
+.bowl-col-grid {
+  display: grid;
+  grid-template-columns:
+    minmax(0, 1.8fr) repeat(4, minmax(0, 0.45fr)) minmax(0, 0.65fr)
+    repeat(2, minmax(0, 0.45fr));
+  gap: 6px;
+  align-items: baseline;
+}
+
+.bowl-col-head {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(242, 245, 248, 0.65);
+}
+
+.bowl-col-head .bowl-col-num {
+  text-align: right;
+}
+
+.bowl-rows-wrap {
+  background: var(--bowl-row-a);
+  max-height: min(42vh, 360px);
+  overflow: auto;
+  opacity: 1 !important;
+  transform: none !important;
+}
+
+.bowl-rows {
+  display: flex;
+  flex-direction: column;
+}
+
+.bowl-row {
+  padding: 7px 12px;
+  color: var(--bowl-text);
+  font-size: 14px;
+  font-weight: 600;
+  border-bottom: 1px solid rgba(19, 40, 61, 0.08);
+  background: var(--bowl-row-a);
+}
+
+.bowl-row-alt-a {
+  background: var(--bowl-row-a);
+}
+
+.bowl-row-alt-b {
+  background: var(--bowl-row-b);
+}
+
+.bowl-row.is-current {
+  background: #ffffff;
+  box-shadow: inset 5px 0 0 var(--bowl-blue);
+}
+
+.bowl-row .bowl-col-name {
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bowl-row .bowl-col-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.bowl-row .bowl-col-econ {
+  color: var(--bowl-econ);
+  font-weight: 600;
+}
+
+.bowl-empty {
+  margin: 0;
+  padding: 16px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--bowl-text-muted);
+}
+
+.bowl-extras {
+  background: var(--bowl-navy);
+  padding: 10px 14px 12px;
+  border-top: 1px solid rgba(33, 139, 255, 0.25);
+}
+
+.bowl-extras-line {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(242, 245, 248, 0.75);
+}
+
+.bowl-extras-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.bowl-extra-cell {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: rgba(6, 19, 35, 0.55);
+  border: 1px solid rgba(33, 139, 255, 0.2);
+}
+
+.bowl-extra-k {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--bowl-blue);
+}
+
+.bowl-extra-v {
+  font-size: 16px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--bowl-gold);
+}
+
+.bowl-analysis {
+  background: #0a2038;
+  padding: 10px 14px;
+  border-top: 1px solid rgba(255, 175, 56, 0.25);
+}
+
+.bowl-analysis-line {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.45;
+  color: rgba(242, 245, 248, 0.88);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.bowl-footer {
+  background: var(--bowl-navy-dark);
+  padding: 10px 14px 12px;
+}
+
+.bowl-footer-line {
+  margin: 0;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #fff;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-height: 720px), (max-width: 720px) {
+  .panel-bowling-card {
+    min-width: min(96vw, 640px);
+  }
+
+  .bowl-team-name {
+    font-size: 20px;
+  }
+
+  .bowl-total-badge {
+    font-size: 22px;
+    padding: 6px 10px;
+  }
+
+  .bowl-row {
+    font-size: 12px;
+    padding: 5px 8px;
+  }
+
+  .bowl-col-grid {
+    gap: 4px;
+  }
+}

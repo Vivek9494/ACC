@@ -38,6 +38,7 @@ export type GraphicsKind =
   | 'toss_result'
   | 'playing_xi'
   | 'batting_card'
+  | 'bowling_card'
   | 'wagon_wheel'
   | 'points_table'
   | 'tournament_top_batsmen'

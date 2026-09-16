@@ -141,6 +141,11 @@ export const GraphicsKind = {
    */
   BattingCard: 'batting_card',
   /**
+   * Centered bowling scorecard for one team's fielding innings (O/M/R/W/Econ/WD/NB).
+   * Team from control tab; header = opposition batting totals; rows = this team's bowlers.
+   */
+  BowlingCard: 'bowling_card',
+  /**
    * Full-screen wagon wheel (shot placement from saved shotX/shotY).
    * Match-level; subject + filter select which shots to draw.
    */

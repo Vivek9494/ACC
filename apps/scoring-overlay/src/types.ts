@@ -65,6 +65,7 @@ export type GraphicsKind =
   | 'toss_result'
   | 'playing_xi'
   | 'batting_card'
+  | 'bowling_card'
   | 'wagon_wheel'
   | 'points_table'
   | 'tournament_top_batsmen'
@@ -224,6 +225,10 @@ export interface BowlerCard {
   wickets: number;
   maidens: number;
   dotBalls: number;
+  wides?: number;
+  noBalls?: number;
+  fours?: number;
+  sixes?: number;
   economy: number;
 }
 

@@ -499,9 +499,11 @@ export function OverlayControlPanel({
           ? 'playing_xi'
           : action === 'batting_lineup'
             ? 'batting_card'
-            : action === 'bowling' || action === 'partnerships'
-              ? 'innings_break'
-              : action;
+            : action === 'bowling'
+              ? 'bowling_card'
+              : action === 'partnerships'
+                ? 'innings_break'
+                : action;
       hideGraphic(graphic);
       return;
     }
@@ -518,8 +520,12 @@ export function OverlayControlPanel({
       return;
     }
     emit(cmd);
-    if (action === 'bowling' || action === 'partnerships') {
+    if (action === 'partnerships') {
       setLocalOnAir('innings_break', teamSide, action, 'both', 'scorecard');
+      return;
+    }
+    if (action === 'bowling') {
+      setLocalOnAir('bowling_card', teamSide, action);
       return;
     }
     if (action === 'playing_xi') {

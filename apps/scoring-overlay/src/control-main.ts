@@ -21,6 +21,7 @@ import {
 import {
   buildTeamShowCommand,
   findBattingInningsForTeam,
+  findBowlingInningsForTeam,
   previewTeamLastWicket,
   resolveTeamSection,
   teamActionToInningsView,
@@ -79,6 +80,7 @@ const COMMON_LABELS: Record<
   toss_result: 'Toss Result',
   playing_xi: 'Playing XI',
   batting_card: 'Batting card',
+  bowling_card: 'Bowling scorecard',
   wagon_wheel: 'Wagon Wheel',
   partnership: 'Current Partnership',
 };
@@ -553,7 +555,11 @@ function start(): void {
             enabled = hasXi;
             break;
           case 'batting_lineup':
+            enabled = battingInnings != null;
+            break;
           case 'bowling':
+            enabled = findBowlingInningsForTeam(scorecard, team) != null;
+            break;
           case 'partnerships':
             enabled = battingInnings != null;
             break;
@@ -642,8 +648,10 @@ function start(): void {
             live = playingXiVariant === 'single';
           } else if (action === 'batting_lineup' && onAirGraphic === 'batting_card') {
             live = true;
+          } else if (action === 'bowling' && onAirGraphic === 'bowling_card') {
+            live = true;
           } else if (
-            (action === 'bowling' || action === 'partnerships') &&
+            action === 'partnerships' &&
             onAirGraphic === 'innings_break'
           ) {
             live = inningsSource === 'scorecard';
@@ -772,7 +780,7 @@ function start(): void {
     onAirTeamAction = teamAction;
     playingXiVariant = xiVariant;
     if (kind !== 'innings_break') {
-      if (teamAction !== 'bowling' && teamAction !== 'partnerships') {
+      if (teamAction !== 'partnerships') {
         inningsSource = 'break';
         scorecardOnAirView = null;
       }
@@ -904,6 +912,10 @@ function start(): void {
       setOnAir('batting_card', side, action, 'both');
       return;
     }
+    if (action === 'bowling') {
+      setOnAir('bowling_card', side, action, 'both');
+      return;
+    }
     if (
       action === 'fow' ||
       action === 'batsman' ||
@@ -1004,6 +1016,7 @@ function start(): void {
           cmd.graphic === 'toss_result' ||
           cmd.graphic === 'partnership' ||
           cmd.graphic === 'batting_card' ||
+          cmd.graphic === 'bowling_card' ||
           cmd.graphic === 'wagon_wheel'
         ) {
           setOnAir(cmd.graphic);

@@ -745,6 +745,21 @@ export function battingTeamLabel(
   return name && name.length > 0 ? name : 'Batting';
 }
 
+export function bowlingTeamLabel(
+  card: ScorecardResponse,
+  innings: InningsScorecard,
+): string {
+  const labels = card.display.innings.find(
+    (row) =>
+      (innings.inningsId != null && row.inningsId === innings.inningsId) ||
+      (row.bowlingTeamId != null &&
+        innings.bowlingTeamId != null &&
+        row.bowlingTeamId === innings.bowlingTeamId),
+  );
+  const name = labels?.bowlingTeamName?.trim();
+  return name && name.length > 0 ? name : 'Bowling';
+}
+
 export function partnershipBatterRuns(
   partnership: Pick<Partnership, 'batterRuns'>,
   playerId: string,

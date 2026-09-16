@@ -7,6 +7,7 @@ import './graphics.css';
 import { ensureMatchContext, fetchMatchContext } from './broadcast-fetch';
 import { mountBatsmanCareerCard } from './batsman-career-card';
 import { mountBattingCard } from './batting-card';
+import { mountBowlingCard } from './bowling-card';
 import { concealGraphic, revealGraphic } from './graphic-visibility';
 import { mountInningsScorecard } from './innings-scorecard';
 import {
@@ -70,6 +71,7 @@ const GRAPHIC_IDS: Record<OverlayKind, string> = {
   toss_result: 'g-toss-result',
   playing_xi: 'g-playing-xi',
   batting_card: 'g-batting-card',
+  bowling_card: 'g-bowling-card',
   hello: 'g-hello',
 };
 
@@ -189,6 +191,8 @@ export function buildGraphicsStageMarkup(): string {
 
       <div id="g-batting-card" class="graphic graphic-centered batting-card-graphic" hidden></div>
 
+      <div id="g-bowling-card" class="graphic graphic-centered bowling-card-graphic" hidden></div>
+
       <div id="g-bowler" class="graphic panel panel-batsman-live" hidden>
         <div class="panel-accent"></div>
         <div class="bat-live-body">
@@ -295,6 +299,7 @@ export function createGraphicsStage(
   let activePlayerId: string | null = null;
   let inningsEnsureToken = 0;
   let battingCardEnsureToken = 0;
+  let bowlingCardEnsureToken = 0;
   let inningsCmd = {
     view: 'batting' as InningsBreakView,
     inningsId: null as string | null,
@@ -302,6 +307,7 @@ export function createGraphicsStage(
   };
   let playingXiCmd: PlayingXiShowOptions = { variant: 'both' };
   let battingCardInningsId: string | null = null;
+  let bowlingCardInningsId: string | null = null;
   let fowInningsId: string | null = null;
 
   const mountOrNull = <T>(id: string, mount: (host: HTMLElement) => T): T | null => {
@@ -316,6 +322,7 @@ export function createGraphicsStage(
   const tossResult = mountOrNull('g-toss-result', mountTossResultCard);
   const playingXi = mountOrNull('g-playing-xi', mountPlayingXiCard);
   const battingCard = mountOrNull('g-batting-card', mountBattingCard);
+  const bowlingCard = mountOrNull('g-bowling-card', mountBowlingCard);
   const inningsCard = mountOrNull('g-innings', mountInningsScorecard);
 
   const graphicNode = (kind: OverlayKind): HTMLElement | null =>
@@ -326,6 +333,7 @@ export function createGraphicsStage(
     kind === 'toss_result' ||
     kind === 'playing_xi' ||
     kind === 'batting_card' ||
+    kind === 'bowling_card' ||
     kind === 'innings_break';
 
   const hideNode = (node: HTMLElement): void => {
@@ -341,10 +349,12 @@ export function createGraphicsStage(
     activePlayerId = null;
     inningsEnsureToken += 1;
     battingCardEnsureToken += 1;
+    bowlingCardEnsureToken += 1;
     batsmanCareer?.hide();
     tossResult?.hide();
     playingXi?.hide();
     battingCard?.hide();
+    bowlingCard?.hide();
     inningsCard?.hide();
     for (const kind of Object.keys(GRAPHIC_IDS) as OverlayKind[]) {
       if (isMountManaged(kind)) {
@@ -386,6 +396,11 @@ export function createGraphicsStage(
     if (kind === 'batting_card') {
       battingCardEnsureToken += 1;
       battingCard?.hide();
+      return;
+    }
+    if (kind === 'bowling_card') {
+      bowlingCardEnsureToken += 1;
+      bowlingCard?.hide();
       return;
     }
     if (kind === 'innings_break') {
@@ -592,6 +607,25 @@ export function createGraphicsStage(
     }
   };
 
+  const showBowlingCard = (animate: boolean): boolean => {
+    if (!bowlingCard) {
+      return false;
+    }
+    try {
+      const card = scorecard;
+      if (!card) {
+        return false;
+      }
+      if (animate) {
+        return bowlingCard.show(card, bowlingCardInningsId, { animate: true });
+      }
+      return bowlingCard.update(card, bowlingCardInningsId);
+    } catch (err) {
+      console.warn('[graphics] bowling card failed', err);
+      return false;
+    }
+  };
+
   const nameOf = (id: string | null): string => {
     if (!scorecard) {
       return '—';
@@ -680,6 +714,11 @@ export function createGraphicsStage(
     if (kind === 'batting_card') {
       battingCardEnsureToken += 1;
       battingCard?.hide();
+      return;
+    }
+    if (kind === 'bowling_card') {
+      bowlingCardEnsureToken += 1;
+      bowlingCard?.hide();
       return;
     }
     if (kind === 'innings_break') {
@@ -859,6 +898,11 @@ export function createGraphicsStage(
           }
         });
         break;
+      case 'bowling_card':
+        if (!showBowlingCard(false) && activeKind === 'bowling_card') {
+          hideGraphic('bowling_card');
+        }
+        break;
       default:
         break;
     }
@@ -928,6 +972,13 @@ export function createGraphicsStage(
         (battingCardInningsId
           ? findInningsByKey(scorecard, battingCardInningsId) != null
           : scorecard.innings.length > 0);
+    } else if (kind === 'bowling_card') {
+      bowlingCardInningsId = payload?.inningsId?.trim() || null;
+      ok =
+        scorecard != null &&
+        (bowlingCardInningsId
+          ? findInningsByKey(scorecard, bowlingCardInningsId) != null
+          : scorecard.innings.length > 0);
     }
 
     if (!ok) {
@@ -966,6 +1017,11 @@ export function createGraphicsStage(
     } else if (kind === 'batting_card') {
       const painted = await showBattingCard(true);
       if (!painted && activeKind === 'batting_card') {
+        activeKind = null;
+        activePlayerId = null;
+      }
+    } else if (kind === 'bowling_card') {
+      if (!showBowlingCard(true) && activeKind === 'bowling_card') {
         activeKind = null;
         activePlayerId = null;
       }
@@ -1035,6 +1091,7 @@ export function createGraphicsStage(
       Boolean(tossResult?.isOnAir()) ||
       Boolean(playingXi?.isOnAir()) ||
       Boolean(battingCard?.isOnAir()) ||
+      Boolean(bowlingCard?.isOnAir()) ||
       Boolean(inningsCard?.isOnAir()),
     activeKind: () => activeKind,
     applyCommand(cmd) {

@@ -105,6 +105,25 @@ function findBattingInnings(
   return null;
 }
 
+/** First innings where this team is bowling (fielding) — for bowling scorecard. */
+function findBowlingInnings(
+  card: ScorecardResponse,
+  team: OverlayTeamBinding,
+): InningsScorecard | null {
+  for (const inn of card.innings) {
+    if (team.isExternal) {
+      if (inn.bowlingIsExternal) {
+        return inn;
+      }
+      continue;
+    }
+    if (team.teamId && normTeamId(inn.bowlingTeamId) === team.teamId) {
+      return inn;
+    }
+  }
+  return null;
+}
+
 function teamHasPlayingXi(match: MatchDetail, team: OverlayTeamBinding): boolean {
   if (team.isExternal) {
     return match.externalPlayers.length > 0;
@@ -149,18 +168,14 @@ export function buildOverlayTeamShowCommand(
       };
     }
     case 'bowling': {
-      const innings = findBattingInnings(card, team);
+      const innings = findBowlingInnings(card, team);
       if (!innings) {
         return null;
       }
       return {
         action: 'show',
-        graphic: 'innings_break',
-        payload: {
-          view: 'bowling',
-          inningsId: inningsKey(innings),
-          source: 'scorecard',
-        },
+        graphic: 'bowling_card',
+        payload: { inningsId: inningsKey(innings) },
       };
     }
     case 'partnerships': {
@@ -395,6 +410,8 @@ export const OVERLAY_TOURNAMENT_ACTIONS: {
 export type OverlayTournamentGraphic =
   (typeof OVERLAY_TOURNAMENT_ACTIONS)[number]['graphic'];
 
+export type OverlayWagonWheelFilter = '4s' | '6s' | '4s6s' | 'all';
+
 export type OverlayWagonWheelOption = {
   key: string;
   label: string;
@@ -493,7 +510,10 @@ export function isTeamActionOnAir(
   if (action === 'batting_lineup') {
     return state.graphic === 'batting_card';
   }
-  if (action === 'bowling' || action === 'partnerships') {
+  if (action === 'bowling') {
+    return state.graphic === 'bowling_card';
+  }
+  if (action === 'partnerships') {
     return state.graphic === 'innings_break' && state.inningsSource === 'scorecard';
   }
   if (action === 'fow') {
@@ -563,6 +583,9 @@ export function overlayOnAirLabel(
   }
   if (state.graphic === 'partnership') {
     return 'ON AIR: Current partnership';
+  }
+  if (state.graphic === 'bowling_card' && !state.teamAction) {
+    return 'ON AIR: Bowling scorecard';
   }
   if (state.teamSide && state.teamAction) {
     const team = resolveOverlayTeam(match, state.teamSide);

@@ -87,10 +87,16 @@ export function findBowlingInningsForTeam(
   card: ScorecardResponse | null,
   team: TeamSectionBinding,
 ): InningsScorecard | null {
-  if (!card || team.isExternal) {
+  if (!card) {
     return null;
   }
   for (const inn of card.innings) {
+    if (team.isExternal) {
+      if (inn.bowlingIsExternal === true) {
+        return inn;
+      }
+      continue;
+    }
     if (team.teamId && normTeamId(inn.bowlingTeamId) === team.teamId) {
       return inn;
     }
@@ -166,9 +172,6 @@ export function teamMatchesInningsBowling(
 export function teamActionToInningsView(
   action: TeamControlAction,
 ): InningsBreakView | null {
-  if (action === 'bowling') {
-    return 'bowling';
-  }
   if (action === 'partnerships') {
     return 'partnerships';
   }
@@ -209,17 +212,15 @@ export function buildTeamShowCommand(
       };
     }
     case 'bowling': {
-      const innings = findBattingInningsForTeam(card, team);
+      const innings = findBowlingInningsForTeam(card, team);
       if (!innings) {
         return null;
       }
       return {
         action: 'show',
-        graphic: 'innings_break',
+        graphic: 'bowling_card',
         payload: {
-          view: 'bowling',
           inningsId: inningsKey(innings),
-          source: 'scorecard',
         },
       };
     }
