@@ -61,6 +61,7 @@
   font-family: 'Barlow', 'Montserrat', system-ui, sans-serif;
 }
 
+/* Same package motion as batting card (−60px / 650ms / 45ms stagger). */
 .isc-section {
   opacity: 0;
   transform: translateX(-60px);
@@ -80,6 +81,13 @@
   transition:
     opacity 320ms ease-in,
     transform 320ms ease-in;
+}
+
+/* Content host stays put so tab-body rows can stagger independently. */
+.panel-innings-break .isc-content.isc-section {
+  opacity: 1;
+  transform: none;
+  transition: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -315,15 +323,7 @@
   display: none;
 }
 
-/* Embedded premium card bodies — no second chrome / no card entrance opacity */
-.isc-embed .bc-section,
-.isc-embed .bowl-section,
-.isc-embed .tp-section {
-  opacity: 1 !important;
-  transform: none !important;
-  transition: none !important;
-}
-
+/* Partnership bars: full width (no wipe — match batting/bowling row motion only). */
 .isc-embed .tp-bar-fill {
   width: 100% !important;
   transition: none !important;

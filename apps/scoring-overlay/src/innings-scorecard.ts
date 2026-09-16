@@ -39,10 +39,20 @@ import type {
 import { parseInningsBreakView, parseScorecardViewSource } from './types';
 import { teamInitials } from './view-model';
 
+/** Match batting card row stagger (bowling uses 48ms — package standard is 45). */
 const SECTION_STAGGER_MS = 45;
 const EXIT_MS = 320;
 const TAB_FADE_MS = 180;
 const MAX_STANDS = 10;
+
+/** Absolute shell delays aligned with batting-card DELAY. */
+const DELAY = {
+  id: 0,
+  header: 65,
+  tabs: 110,
+  content0: 155,
+  rowStep: 45,
+} as const;
 
 export type InningsScorecardView = InningsBreakView;
 export type InningsXiStatus = 'full' | 'no_squad' | 'loading';
@@ -385,7 +395,7 @@ function buildCardMarkup(): string {
         <p data-isc-loading class="isc-loading" hidden>Loading playing XI…</p>
         <div data-isc-pane-stage class="isc-pane-stage">
           <div data-isc-pane="batting" class="isc-pane isc-embed isc-embed-batting">
-            <div class="bc-columns">
+            <div class="isc-section bc-columns" data-isc-motion="columns">
               <div class="bc-col-grid bc-col-head" role="row">
                 <span class="bc-col-name">Batter</span>
                 <span class="bc-col-how">How out</span>
@@ -398,9 +408,9 @@ function buildCardMarkup(): string {
             </div>
             <div class="bc-rows-wrap">
               <div data-isc-bat-rows class="bc-rows"></div>
-              <p data-isc-bat-empty class="bc-empty" hidden>No batters yet</p>
+              <p data-isc-bat-empty class="isc-section bc-empty" data-isc-motion="empty" hidden>No batters yet</p>
             </div>
-            <div class="bc-extras">
+            <div class="isc-section bc-extras" data-isc-motion="extras">
               <p data-isc-bat-extras class="bc-extras-line">Extras</p>
               <div class="bc-extras-grid">
                 <div class="bc-extra-cell"><span class="bc-extra-k">B</span><span data-isc-ex-b class="bc-extra-v">0</span></div>
@@ -409,14 +419,14 @@ function buildCardMarkup(): string {
                 <div class="bc-extra-cell"><span class="bc-extra-k">NB</span><span data-isc-ex-nb class="bc-extra-v">0</span></div>
               </div>
             </div>
-            <div data-isc-ytb class="bc-ytb" hidden>
+            <div data-isc-ytb class="isc-section bc-ytb" data-isc-motion="ytb" hidden>
               <p data-isc-ytb-label class="bc-ytb-label">Yet to bat</p>
               <p data-isc-ytb-names class="bc-ytb-names"></p>
             </div>
-            <p data-isc-note class="isc-note" hidden></p>
+            <p data-isc-note class="isc-section isc-note" data-isc-motion="note" hidden></p>
           </div>
           <div data-isc-pane="bowling" class="isc-pane isc-embed isc-embed-bowling" hidden>
-            <div class="bowl-columns">
+            <div class="isc-section bowl-columns" data-isc-motion="columns">
               <div class="bowl-col-grid bowl-col-head" role="row">
                 <span class="bowl-col-name">Bowler</span>
                 <span class="bowl-col-num">O</span>
@@ -430,9 +440,9 @@ function buildCardMarkup(): string {
             </div>
             <div class="bowl-rows-wrap">
               <div data-isc-bowl-rows class="bowl-rows"></div>
-              <p data-isc-bowl-empty class="bowl-empty" hidden>No bowlers yet</p>
+              <p data-isc-bowl-empty class="isc-section bowl-empty" data-isc-motion="empty" hidden>No bowlers yet</p>
             </div>
-            <div class="bowl-extras">
+            <div class="isc-section bowl-extras" data-isc-motion="extras">
               <p data-isc-bowl-extras class="bowl-extras-line">Extras</p>
               <div class="bowl-extras-grid">
                 <div class="bowl-extra-cell"><span class="bowl-extra-k">B</span><span data-isc-bowl-ex-b class="bowl-extra-v">0</span></div>
@@ -443,17 +453,17 @@ function buildCardMarkup(): string {
             </div>
           </div>
           <div data-isc-pane="fow" class="isc-pane" hidden>
-            <div class="isc-fow-heads" data-isc-fow-heads>
+            <div class="isc-section isc-fow-heads" data-isc-fow-heads data-isc-motion="columns">
               <span>Wicket</span>
               <span>Batter</span>
               <span>Score</span>
               <span>Over</span>
             </div>
             <div data-isc-fow-list class="isc-fow-list"></div>
-            <p data-isc-fow-empty class="isc-empty" hidden>No wickets fell</p>
+            <p data-isc-fow-empty class="isc-section isc-empty" data-isc-motion="empty" hidden>No wickets fell</p>
           </div>
           <div data-isc-pane="partnerships" class="isc-pane isc-embed isc-embed-ps" hidden>
-            <section class="tp-col-heads" data-isc-ps-cols>
+            <section class="isc-section tp-col-heads" data-isc-ps-cols data-isc-motion="columns">
               <span>Wicket</span>
               <span>Batter</span>
               <span>Contribution</span>
@@ -462,8 +472,8 @@ function buildCardMarkup(): string {
               <span>Balls</span>
             </section>
             <div data-isc-ps-rows class="tp-rows"></div>
-            <p data-isc-ps-empty class="tp-empty" hidden>No partnerships</p>
-            <section class="tp-legend" data-isc-ps-legend>
+            <p data-isc-ps-empty class="isc-section tp-empty" data-isc-motion="empty" hidden>No partnerships</p>
+            <section class="isc-section tp-legend" data-isc-ps-legend data-isc-motion="legend">
               <span class="tp-legend-item">
                 <span class="tp-swatch is-left"></span> Batter A
               </span>
@@ -475,7 +485,7 @@ function buildCardMarkup(): string {
               </span>
               <span class="tp-legend-item">* Current stand</span>
             </section>
-            <section class="tp-summary" data-isc-ps-summary>
+            <section class="isc-section tp-summary" data-isc-ps-summary data-isc-motion="summary">
               <div class="tp-summary-cell">
                 <p class="tp-summary-label">Highest stand</p>
                 <p data-isc-ps-highest class="tp-summary-value">0</p>
@@ -487,12 +497,12 @@ function buildCardMarkup(): string {
             </section>
           </div>
           <div data-isc-pane="overs" class="isc-pane" hidden>
-            <div data-isc-overs-chart class="isc-overs-chart"></div>
-            <div data-isc-overs-legend class="isc-overs-legend" hidden>
+            <div data-isc-overs-chart class="isc-section isc-overs-chart" data-isc-motion="chart"></div>
+            <div data-isc-overs-legend class="isc-section isc-overs-legend" data-isc-motion="legend" hidden>
               <span><span class="isc-overs-legend-swatch is-runs"></span>Runs</span>
               <span><span class="isc-overs-legend-swatch is-wicket"></span>Wicket</span>
             </div>
-            <p data-isc-overs-empty class="isc-empty" hidden>No overs recorded</p>
+            <p data-isc-overs-empty class="isc-section isc-empty" data-isc-motion="empty" hidden>No overs recorded</p>
           </div>
         </div>
       </section>
@@ -582,6 +592,53 @@ export function mountInningsScorecard(
     panel()?.classList.toggle('is-loading-xi', loading);
   };
 
+  /** Shell chrome + active-tab body pieces, batting/bowling order. */
+  const motionSequence = (
+    p: HTMLElement,
+  ): { shell: HTMLElement[]; body: HTMLElement[]; footer: HTMLElement | null } => {
+    const shell = [
+      ...p.querySelectorAll<HTMLElement>(
+        '[data-isc-section="id"], [data-isc-section="header"], [data-isc-section="tabs"]',
+      ),
+    ].filter((el) => !el.hidden);
+
+    const pane = p.querySelector<HTMLElement>(
+      `[data-isc-pane="${view}"]:not([hidden])`,
+    );
+    const body: HTMLElement[] = [];
+    if (pane) {
+      const columns = pane.querySelectorAll<HTMLElement>(
+        '[data-isc-motion="columns"]',
+      );
+      const rows = pane.querySelectorAll<HTMLElement>(
+        '.bc-row, .bowl-row, .isc-fow-row, .tp-row',
+      );
+      const after = pane.querySelectorAll<HTMLElement>(
+        '[data-isc-motion="extras"], [data-isc-motion="ytb"], [data-isc-motion="note"], [data-isc-motion="legend"], [data-isc-motion="summary"], [data-isc-motion="chart"], [data-isc-motion="empty"]',
+      );
+      for (const el of columns) {
+        if (!el.hidden) {
+          body.push(el);
+        }
+      }
+      for (const el of rows) {
+        body.push(el);
+      }
+      for (const el of after) {
+        if (!el.hidden) {
+          body.push(el);
+        }
+      }
+    }
+
+    const footer = p.querySelector<HTMLElement>('[data-isc-section="footer"]');
+    return {
+      shell,
+      body,
+      footer: footer && !footer.hidden ? footer : null,
+    };
+  };
+
   const runEntrance = (): void => {
     cancelEntrance();
     cancelTabTransition();
@@ -590,30 +647,46 @@ export function mountInningsScorecard(
       return;
     }
     const gen = motionGen;
-    const sections = [...p.querySelectorAll<HTMLElement>('.isc-section')].filter(
-      (el) => !el.hidden,
-    );
+    const { shell, body, footer } = motionSequence(p);
+    const sequence = [...shell, ...body, ...(footer ? [footer] : [])];
+
     if (prefersReducedMotion()) {
       p.classList.add('isc-entering');
-      for (const section of sections) {
-        section.classList.add('isc-section-visible');
+      for (const section of p.querySelectorAll('.isc-section')) {
+        if (!(section as HTMLElement).hidden) {
+          section.classList.add('isc-section-visible');
+        }
       }
       return;
     }
+
     p.classList.remove('isc-exiting');
     p.classList.add('isc-entering');
-    for (const section of sections) {
+    for (const section of p.querySelectorAll('.isc-section')) {
       section.classList.remove('isc-section-visible');
     }
-    sections.forEach((section, index) => {
+
+    // Content host stays visible so body rows can stagger (like bowl-rows-wrap).
+    const content = p.querySelector<HTMLElement>('[data-isc-section="content"]');
+    content?.classList.add('isc-section-visible');
+
+    const shellDelays = [DELAY.id, DELAY.header, DELAY.tabs];
+    sequence.forEach((section, index) => {
+      let delay: number;
+      if (index < shell.length) {
+        delay = shellDelays[index] ?? index * SECTION_STAGGER_MS;
+      } else {
+        delay = DELAY.content0 + (index - shell.length) * DELAY.rowStep;
+      }
       const timer = window.setTimeout(() => {
         if (gen !== motionGen) {
           return;
         }
         section.classList.add('isc-section-visible');
-      }, index * SECTION_STAGGER_MS);
+      }, delay);
       entranceTimers.push(timer);
     });
+
     const sweep = p.querySelector<HTMLElement>('.isc-header-sweep');
     if (sweep) {
       sweep.style.animation = 'none';
@@ -640,6 +713,7 @@ export function mountInningsScorecard(
     const stage = qs<HTMLElement>('[data-isc-pane-stage]');
     if (!stage || prefersReducedMotion()) {
       applyView();
+      ensureSectionsVisible();
       return;
     }
     const gen = ++tabGen;
@@ -650,6 +724,7 @@ export function mountInningsScorecard(
         return;
       }
       applyView();
+      ensureSectionsVisible();
       stage.classList.remove('is-tab-out');
       stage.classList.add('is-tab-in');
       void stage.offsetWidth;
@@ -709,7 +784,7 @@ export function mountInningsScorecard(
         !batter.isOut && batter.playerId === innings.currentStrikerId;
 
       const row = document.createElement('div');
-      row.className = 'bc-row bc-col-grid';
+      row.className = 'isc-section bc-row bc-col-grid';
       if (index % 2 === 0) {
         row.classList.add('bc-row-alt-a');
       } else {
@@ -790,7 +865,7 @@ export function mountInningsScorecard(
       const current =
         !innings.closed && bowler.playerId === innings.currentBowlerId;
       const row = document.createElement('div');
-      row.className = 'bowl-row bowl-col-grid';
+      row.className = 'isc-section bowl-row bowl-col-grid';
       if (index % 2 === 0) {
         row.classList.add('bowl-row-alt-a');
       } else {
@@ -848,7 +923,7 @@ export function mountInningsScorecard(
 
     for (const fow of falls) {
       const row = document.createElement('div');
-      row.className = 'isc-fow-row';
+      row.className = 'isc-section isc-fow-row';
 
       const wicket = document.createElement('span');
       wicket.className = 'isc-fow-wicket';
@@ -935,7 +1010,7 @@ export function mountInningsScorecard(
       extrasSum += extras;
 
       const el = document.createElement('div');
-      el.className = `tp-row${row.isCurrent ? ' is-current' : ''}`;
+      el.className = `isc-section tp-row${row.isCurrent ? ' is-current' : ''}`;
 
       const wicket = document.createElement('span');
       wicket.className = 'tp-wicket';
