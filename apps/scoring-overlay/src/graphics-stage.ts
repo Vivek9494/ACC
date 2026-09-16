@@ -6,7 +6,9 @@
 import './graphics.css';
 import { ensureMatchContext, fetchMatchContext } from './broadcast-fetch';
 import { mountBatsmanCareerCard } from './batsman-career-card';
+import { mountBatsmanMatchCard } from './batsman-match-card';
 import { mountBowlerCareerCard } from './bowler-career-card';
+import { mountBowlerMatchCard } from './bowler-match-card';
 import { mountBattingCard } from './batting-card';
 import { mountBowlingCard } from './bowling-card';
 import { concealGraphic, revealGraphic } from './graphic-visibility';
@@ -16,10 +18,7 @@ import { mountPartnershipCard } from './partnership-card';
 import { mountTeamPartnershipsCard } from './team-partnerships-card';
 import {
   careerTeamLabelForPlayer,
-  deriveBatterDotBalls,
   findInningsByKey,
-  formatBatterInningsScore,
-  formatStat,
   latestFallOfWicket,
   playerName,
   resolveActiveInnings,
@@ -107,37 +106,7 @@ export function buildGraphicsStageMarkup(): string {
 
       <div id="g-fow" class="graphic graphic-centered last-wicket-graphic" hidden></div>
 
-      <div id="g-batsman" class="graphic panel panel-batsman-live" hidden>
-        <div class="panel-accent"></div>
-        <div class="bat-live-body">
-          <div class="bat-live-stripe">
-            <p id="bat-name" class="bat-live-name">—</p>
-            <p id="bat-match" class="bat-live-score">0 (0)</p>
-          </div>
-          <div class="bat-live-stats" role="group" aria-label="This innings batting">
-            <div class="bat-live-stat">
-              <span class="bat-live-stat-label">Dot Balls</span>
-              <span id="bat-dots" class="bat-live-stat-value">0</span>
-            </div>
-            <div class="bat-live-stat">
-              <span class="bat-live-stat-label">2s</span>
-              <span id="bat-twos" class="bat-live-stat-value">0</span>
-            </div>
-            <div class="bat-live-stat">
-              <span class="bat-live-stat-label">4s</span>
-              <span id="bat-fours" class="bat-live-stat-value">0</span>
-            </div>
-            <div class="bat-live-stat">
-              <span class="bat-live-stat-label">6s</span>
-              <span id="bat-sixes" class="bat-live-stat-value">0</span>
-            </div>
-            <div class="bat-live-stat">
-              <span class="bat-live-stat-label">SR</span>
-              <span id="bat-sr" class="bat-live-stat-value">0.00</span>
-            </div>
-          </div>
-        </div>
-      </div>
+      <div id="g-batsman" class="graphic graphic-centered batsman-match-graphic" hidden></div>
 
       <div id="g-batsman-career" class="graphic graphic-centered batsman-career-graphic" hidden></div>
 
@@ -153,40 +122,7 @@ export function buildGraphicsStageMarkup(): string {
 
       <div id="g-team-partnerships" class="graphic graphic-centered team-partnerships-graphic" hidden></div>
 
-      <div id="g-bowler" class="graphic panel panel-batsman-live" hidden>
-        <div class="panel-accent"></div>
-        <div class="bat-live-body">
-          <div class="bat-live-stripe">
-            <p id="bowl-name" class="bat-live-name">—</p>
-          </div>
-          <div class="bat-live-stats" role="group" aria-label="This innings bowling">
-            <div class="bat-live-stat">
-              <span class="bat-live-stat-label">Overs</span>
-              <span id="bowl-overs" class="bat-live-stat-value">0.0</span>
-            </div>
-            <div class="bat-live-stat">
-              <span class="bat-live-stat-label">Maidens</span>
-              <span id="bowl-maidens" class="bat-live-stat-value">0</span>
-            </div>
-            <div class="bat-live-stat">
-              <span class="bat-live-stat-label">Dots</span>
-              <span id="bowl-dots" class="bat-live-stat-value">0</span>
-            </div>
-            <div class="bat-live-stat">
-              <span class="bat-live-stat-label">Wickets</span>
-              <span id="bowl-wickets" class="bat-live-stat-value">0</span>
-            </div>
-            <div class="bat-live-stat">
-              <span class="bat-live-stat-label">Runs</span>
-              <span id="bowl-runs" class="bat-live-stat-value">0</span>
-            </div>
-            <div class="bat-live-stat">
-              <span class="bat-live-stat-label">Economy</span>
-              <span id="bowl-economy" class="bat-live-stat-value">0.00</span>
-            </div>
-          </div>
-        </div>
-      </div>
+      <div id="g-bowler" class="graphic graphic-centered bowler-match-graphic" hidden></div>
 
       <div id="g-innings" class="graphic graphic-centered innings-scorecard-graphic" hidden></div>
 
@@ -242,16 +178,6 @@ export function createGraphicsStage(
     return node as T;
   };
 
-  const setText = (id: string, text: string): void => {
-    const node = queryEl(id);
-    if (!node) {
-      return;
-    }
-    if (node.textContent !== text) {
-      node.textContent = text;
-    }
-  };
-
   let scorecard: ScorecardResponse | null = null;
   let matchCtx: MatchContext | null = null;
   let ballType: BallType = 'TENNIS';
@@ -279,6 +205,8 @@ export function createGraphicsStage(
     return mount(node);
   };
 
+  const batsmanMatch = mountOrNull('g-batsman', mountBatsmanMatchCard);
+  const bowlerMatch = mountOrNull('g-bowler', mountBowlerMatchCard);
   const batsmanCareer = mountOrNull('g-batsman-career', mountBatsmanCareerCard);
   const bowlerCareer = mountOrNull('g-bowler-career', mountBowlerCareerCard);
   const tossResult = mountOrNull('g-toss-result', mountTossResultCard);
@@ -297,6 +225,8 @@ export function createGraphicsStage(
     queryEl(GRAPHIC_IDS[kind]);
 
   const isMountManaged = (kind: OverlayKind): boolean =>
+    kind === 'batsman' ||
+    kind === 'bowler' ||
     kind === 'batsman_career' ||
     kind === 'bowler_career' ||
     kind === 'toss_result' ||
@@ -322,6 +252,8 @@ export function createGraphicsStage(
     inningsEnsureToken += 1;
     battingCardEnsureToken += 1;
     bowlingCardEnsureToken += 1;
+    batsmanMatch?.hide();
+    bowlerMatch?.hide();
     batsmanCareer?.hide();
     bowlerCareer?.hide();
     tossResult?.hide();
@@ -356,6 +288,14 @@ export function createGraphicsStage(
     if (activeKind === kind) {
       activeKind = null;
       activePlayerId = null;
+    }
+    if (kind === 'batsman') {
+      batsmanMatch?.hide();
+      return;
+    }
+    if (kind === 'bowler') {
+      bowlerMatch?.hide();
+      return;
     }
     if (kind === 'batsman_career') {
       batsmanCareer?.hide();
@@ -682,6 +622,14 @@ export function createGraphicsStage(
   ): InningsBreakView => parseInningsBreakView(payload?.view);
 
   const hideManagedGraphic = (kind: OverlayKind): void => {
+    if (kind === 'batsman') {
+      batsmanMatch?.hide();
+      return;
+    }
+    if (kind === 'bowler') {
+      bowlerMatch?.hide();
+      return;
+    }
     if (kind === 'batsman_career') {
       batsmanCareer?.hide();
       return;
@@ -755,55 +703,47 @@ export function createGraphicsStage(
     return resolveActiveInnings(scorecard)?.currentBowlerId ?? null;
   };
 
-  const fillBatsmanMatch = (playerId: string): void => {
+  const showBatsmanMatch = (
+    playerId: string,
+    animate: boolean,
+  ): boolean => {
+    if (!batsmanMatch) {
+      return false;
+    }
     try {
-      if (!scorecard) {
-        return;
+      if (animate) {
+        return batsmanMatch.show(scorecard, { playerId, animate: true });
       }
-      const innings = resolveActiveInnings(scorecard);
-      const batter = innings?.batters.find((b) => b.playerId === playerId);
-      const full = playerName(scorecard.display, playerId);
-      setText('bat-name', full === '—' ? '—' : full);
-      setText('bat-match', formatBatterInningsScore(batter));
-      setText('bat-dots', String(deriveBatterDotBalls(batter)));
-      setText('bat-twos', String(batter?.twos ?? 0));
-      setText('bat-fours', String(batter?.fours ?? 0));
-      setText('bat-sixes', String(batter?.sixes ?? 0));
-      const sr =
-        batter && Number.isFinite(batter.strikeRate)
-          ? batter.strikeRate
-          : batter && batter.balls > 0
-            ? (batter.runs / batter.balls) * 100
-            : 0;
-      setText('bat-sr', formatStat(sr, 2));
+      if (batsmanMatch.isOnAir()) {
+        return batsmanMatch.update(scorecard, { playerId });
+      }
+      return batsmanMatch.show(scorecard, { playerId, animate: false });
     } catch (err) {
-      console.warn('[graphics] fill batsman failed', err);
+      console.warn('[graphics] batsman match failed', err);
+      batsmanMatch.hide();
+      return false;
     }
   };
 
-  const fillBowlerMatch = (playerId: string): void => {
+  const showBowlerMatch = (
+    playerId: string,
+    animate: boolean,
+  ): boolean => {
+    if (!bowlerMatch) {
+      return false;
+    }
     try {
-      if (!scorecard) {
-        return;
+      if (animate) {
+        return bowlerMatch.show(scorecard, { playerId, animate: true });
       }
-      const innings = resolveActiveInnings(scorecard);
-      const bowler = innings?.bowlers.find((b) => b.playerId === playerId);
-      const full = playerName(scorecard.display, playerId);
-      setText('bowl-name', full === '—' ? '—' : full);
-      setText('bowl-overs', bowler?.oversText?.trim() || '0.0');
-      setText('bowl-maidens', String(bowler?.maidens ?? 0));
-      setText('bowl-dots', String(bowler?.dotBalls ?? 0));
-      setText('bowl-wickets', String(bowler?.wickets ?? 0));
-      setText('bowl-runs', String(bowler?.runsConceded ?? 0));
-      const economy =
-        bowler && Number.isFinite(bowler.economy)
-          ? bowler.economy
-          : bowler && bowler.legalBalls > 0
-            ? (bowler.runsConceded / (bowler.legalBalls / 6))
-            : 0;
-      setText('bowl-economy', formatStat(economy, 2));
+      if (bowlerMatch.isOnAir()) {
+        return bowlerMatch.update(scorecard, { playerId });
+      }
+      return bowlerMatch.show(scorecard, { playerId, animate: false });
     } catch (err) {
-      console.warn('[graphics] fill bowler failed', err);
+      console.warn('[graphics] bowler match failed', err);
+      bowlerMatch.hide();
+      return false;
     }
   };
 
@@ -923,13 +863,19 @@ export function createGraphicsStage(
         }
         break;
       case 'batsman':
-        if (activePlayerId) {
-          fillBatsmanMatch(activePlayerId);
+        if (
+          !activePlayerId ||
+          (!showBatsmanMatch(activePlayerId, false) && activeKind === 'batsman')
+        ) {
+          hideGraphic('batsman');
         }
         break;
       case 'bowler':
-        if (activePlayerId) {
-          fillBowlerMatch(activePlayerId);
+        if (
+          !activePlayerId ||
+          (!showBowlerMatch(activePlayerId, false) && activeKind === 'bowler')
+        ) {
+          hideGraphic('bowler');
         }
         break;
       case 'batting_card':
@@ -1065,11 +1011,15 @@ export function createGraphicsStage(
     activePlayerId = playerId;
 
     if (kind === 'batsman' && playerId) {
-      fillBatsmanMatch(playerId);
-      showNode(graphicNode(kind));
+      if (!showBatsmanMatch(playerId, true) && activeKind === 'batsman') {
+        activeKind = null;
+        activePlayerId = null;
+      }
     } else if (kind === 'bowler' && playerId) {
-      fillBowlerMatch(playerId);
-      showNode(graphicNode(kind));
+      if (!showBowlerMatch(playerId, true) && activeKind === 'bowler') {
+        activeKind = null;
+        activePlayerId = null;
+      }
     } else if (kind === 'batsman_career' && playerId) {
       void showBatsmanCareer(playerId);
     } else if (kind === 'bowler_career' && playerId) {
@@ -1176,6 +1126,8 @@ export function createGraphicsStage(
     hideAll: hideAllGraphics,
     isOnAir: () =>
       activeKind != null ||
+      Boolean(batsmanMatch?.isOnAir()) ||
+      Boolean(bowlerMatch?.isOnAir()) ||
       Boolean(batsmanCareer?.isOnAir()) ||
       Boolean(bowlerCareer?.isOnAir()) ||
       Boolean(tossResult?.isOnAir()) ||

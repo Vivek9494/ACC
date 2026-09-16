@@ -43,12 +43,12 @@ export const theme1Definition: OverlayThemeDefinition = {
     batsman: {
       status: 'implemented',
       host: 'graphics_stage',
-      componentId: 'theme1/graphics-stage:inline-batsman',
+      componentId: 'theme1/batsman-match-card',
     },
     bowler: {
       status: 'implemented',
       host: 'graphics_stage',
-      componentId: 'theme1/graphics-stage:inline-bowler',
+      componentId: 'theme1/bowler-match-card',
     },
     batsman_career: {
       status: 'implemented',
