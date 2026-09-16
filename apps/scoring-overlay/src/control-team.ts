@@ -195,18 +195,19 @@ export function buildTeamShowCommand(
           variant: 'single',
         },
       };
-    case 'batting_lineup':
-      if (!teamHasPlayingXi(ctx, team)) {
+    case 'batting_lineup': {
+      const innings = findBattingInningsForTeam(card, team);
+      if (!innings) {
         return null;
       }
       return {
         action: 'show',
-        graphic: 'playing_xi',
+        graphic: 'batting_card',
         payload: {
-          teamId: team.teamId,
-          variant: 'lineup',
+          inningsId: inningsKey(innings),
         },
       };
+    }
     case 'bowling': {
       const innings = findBattingInningsForTeam(card, team);
       if (!innings) {

@@ -54,7 +54,15 @@ export interface AscObsBridge {
   stopStream: () => Promise<AscObsStatus>;
   startReplayBuffer: () => Promise<AscObsStatus>;
   startInstantReplay: () => Promise<AscObsStatus>;
-  saveBoundaryClip: (deliveryId: string) => Promise<{ deliveryId: string; videoPath: string }>;
+  saveBoundaryClip: (payload: {
+    deliveryId: string;
+    matchId: string;
+    matchFolderStamp: string;
+    battingTeamId: string | null;
+    overNumber: number | null;
+    ballNumber: number | null;
+    sequence: number | null;
+  }) => Promise<{ deliveryId: string; videoPath: string }>;
   playDeliveryClip: (payload: {
     videoPath: string;
     deliveryId?: string;
@@ -63,16 +71,19 @@ export interface AscObsBridge {
   playFileOnAir: (filePath: string) => Promise<AscObsStatus>;
   buildHighlight: (payload: {
     matchId: string;
+    matchFolderStamp: string;
     clipPaths: string[];
     kind: 'innings-1' | 'full-match';
   }) => Promise<AscInningsHighlightResult>;
   getHighlight: (payload: {
     matchId: string;
+    matchFolderStamp: string;
     kind: 'innings-1' | 'full-match';
   }) => Promise<AscInningsHighlightResult>;
   /** @deprecated Prefer buildHighlight({ kind: 'innings-1' }). */
   buildInningsHighlight?: (payload: {
     matchId: string;
+    matchFolderStamp: string;
     clipPaths: string[];
   }) => Promise<AscInningsHighlightResult>;
   /** @deprecated Prefer getHighlight({ kind: 'innings-1' }). */
@@ -86,6 +97,8 @@ export interface AscObsBridge {
 
 export interface AscBroadcastApi {
   capabilities?: { obs?: boolean };
+  /** Hide cockpit and show ASC Broadcast Match-ID entry (Electron panel only). */
+  returnToBroadcastHome?: () => void;
   obs?: AscObsBridge;
 }
 

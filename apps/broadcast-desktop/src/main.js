@@ -386,8 +386,8 @@ function registerIpc() {
     await obs.startInstantReplay();
     return lifecycle.snapshot();
   });
-  ipcMain.handle('asc:obs-save-boundary-clip', async (_event, deliveryId) => {
-    return obs.saveBoundaryClip(deliveryId);
+  ipcMain.handle('asc:obs-save-boundary-clip', async (_event, payload) => {
+    return obs.saveBoundaryClip(payload, userDataDir());
   });
   ipcMain.handle('asc:obs-play-delivery-clip', async (_event, payload) => {
     await obs.playDeliveryClip(payload ?? {});
@@ -399,10 +399,13 @@ function registerIpc() {
   });
   ipcMain.handle('asc:build-highlight', async (_event, payload) => {
     const matchId = payload && typeof payload.matchId === 'string' ? payload.matchId : '';
+    const matchFolderStamp =
+      payload && typeof payload.matchFolderStamp === 'string' ? payload.matchFolderStamp : '';
     const clipPaths = payload && Array.isArray(payload.clipPaths) ? payload.clipPaths : [];
     const kind = payload && payload.kind === 'full-match' ? 'full-match' : 'innings-1';
     return buildHighlight({
       matchId,
+      matchFolderStamp,
       clipPaths,
       kind,
       userDataDir: userDataDir(),
@@ -411,9 +414,12 @@ function registerIpc() {
   // Back-compat alias for older preloads.
   ipcMain.handle('asc:build-innings-highlight', async (_event, payload) => {
     const matchId = payload && typeof payload.matchId === 'string' ? payload.matchId : '';
+    const matchFolderStamp =
+      payload && typeof payload.matchFolderStamp === 'string' ? payload.matchFolderStamp : '';
     const clipPaths = payload && Array.isArray(payload.clipPaths) ? payload.clipPaths : [];
     return buildHighlight({
       matchId,
+      matchFolderStamp,
       clipPaths,
       kind: 'innings-1',
       userDataDir: userDataDir(),
@@ -426,11 +432,20 @@ function registerIpc() {
         : payload && typeof payload.matchId === 'string'
           ? payload.matchId
           : '';
+    const matchFolderStamp =
+      payload && typeof payload === 'object' && typeof payload.matchFolderStamp === 'string'
+        ? payload.matchFolderStamp
+        : '';
     const kind =
       payload && typeof payload === 'object' && payload.kind === 'full-match'
         ? 'full-match'
         : 'innings-1';
-    const highlightPath = readExistingHighlightPath(userDataDir(), matchId, kind);
+    const highlightPath = readExistingHighlightPath(
+      userDataDir(),
+      matchId,
+      matchFolderStamp,
+      kind,
+    );
     return {
       highlightPath,
       status: highlightPath ? 'ready' : 'empty',
@@ -439,7 +454,7 @@ function registerIpc() {
   });
   ipcMain.handle('asc:get-innings-highlight', async (_event, matchId) => {
     const id = typeof matchId === 'string' ? matchId : '';
-    const highlightPath = readExistingHighlightPath(userDataDir(), id, 'innings-1');
+    const highlightPath = readExistingHighlightPath(userDataDir(), id, '', 'innings-1');
     return {
       highlightPath,
       status: highlightPath ? 'ready' : 'empty',

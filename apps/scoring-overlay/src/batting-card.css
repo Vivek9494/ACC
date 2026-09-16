@@ -1,0 +1,167 @@
+/* Centered batting scorecard card (live crease batters). */
+
+.batting-card-graphic {
+  /* Positioned by .graphic / .graphic-centered. */
+}
+
+.panel-batting-card {
+  display: flex;
+  flex-direction: column;
+  min-width: min(92vw, 720px);
+  max-width: min(96vw, 880px);
+  max-height: 92vh;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #294c74;
+  color: #e7e1db;
+  box-shadow: 0 14px 44px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+}
+
+.panel-batting-card .panel-accent {
+  flex-shrink: 0;
+  height: 6px;
+  background: #ff6b00;
+}
+
+.bc-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 14px 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.bc-eyebrow {
+  margin: 0;
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #ff6b00;
+  text-align: center;
+}
+
+.bc-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.bc-team {
+  margin: 0;
+  min-width: 0;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+  color: #e7e1db;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bc-total {
+  margin: 0;
+  flex-shrink: 0;
+  font-size: 20px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: #ff6b00;
+}
+
+.bc-table-wrap {
+  min-height: 0;
+  overflow: auto;
+}
+
+.bc-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.bc-table th,
+.bc-table td {
+  padding: 5px 6px;
+  text-align: left;
+  vertical-align: baseline;
+  font-variant-numeric: tabular-nums;
+}
+
+.bc-table thead th {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(231, 225, 219, 0.65);
+  border-bottom: 1px solid rgba(231, 225, 219, 0.22);
+}
+
+.bc-table tbody td {
+  font-size: 14px;
+  font-weight: 700;
+  color: #e7e1db;
+  border-bottom: 1px solid rgba(231, 225, 219, 0.1);
+}
+
+.bc-table tbody tr.is-crease td.bc-col-name {
+  color: #ff6b00;
+}
+
+.bc-col-name {
+  width: 28%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bc-col-how {
+  width: 32%;
+  font-weight: 600;
+  color: rgba(231, 225, 219, 0.78);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bc-col-num {
+  width: 8%;
+  text-align: right;
+}
+
+.bc-empty {
+  margin: 8px 0 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: rgba(231, 225, 219, 0.7);
+  text-align: center;
+}
+
+@media (max-height: 720px), (max-width: 720px) {
+  .bc-body {
+    padding: 10px 12px 12px;
+    gap: 8px;
+  }
+
+  .bc-team {
+    font-size: 15px;
+  }
+
+  .bc-total {
+    font-size: 17px;
+  }
+
+  .bc-table tbody td {
+    font-size: 12px;
+    padding: 4px 4px;
+  }
+
+  .bc-table thead th {
+    font-size: 10px;
+  }
+}

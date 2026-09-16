@@ -60,6 +60,9 @@ const TABLE_MIN_WIDTH = 506;
 const SCROLL_BODY: ViewStyle = {
   flex: 1,
   minHeight: 0,
+  minWidth: 0,
+  width: '100%',
+  // Contain table overflow inside the panel (never clip at the viewport).
   overflow: 'auto' as unknown as ViewStyle['overflow'],
 };
 
@@ -452,7 +455,7 @@ export function BallByBallPanel({
 
   return (
     <CockpitPanel title="Ball by Ball" live bodyNoPad bodyAbsolute>
-      <View style={{ flex: 1, minHeight: 0 }}>
+      <View style={{ flex: 1, minHeight: 0, minWidth: 0, width: '100%' }}>
         <View style={SCROLL_BODY}>{table}</View>
       </View>
     </CockpitPanel>

@@ -3,6 +3,28 @@ import { isMediaStorageKey } from '@acc/types';
 import { API_BASE_URL } from './api';
 
 /**
+ * Stable object identity for a media URL or storage key — path without signed
+ * query params. Used to avoid remounting <Image> when only the presign changes.
+ */
+export function mediaUrlStorageKey(url: string | null | undefined): string | null {
+  const trimmed = url?.trim();
+  if (!trimmed) {
+    return null;
+  }
+  if (isMediaStorageKey(trimmed)) {
+    return trimmed;
+  }
+  try {
+    const parsed = new URL(trimmed, API_BASE_URL);
+    const path = decodeURIComponent(parsed.pathname).replace(/^\//, '');
+    return path.length > 0 ? path : null;
+  } catch {
+    const withoutQuery = trimmed.split('?')[0]?.trim();
+    return withoutQuery && withoutQuery.length > 0 ? withoutQuery : null;
+  }
+}
+
+/**
  * Dev uploads use PUBLIC_API_URL (often localhost). Rewrite to EXPO_PUBLIC_API_URL so
  * physical devices on the LAN load the same path from the reachable API host.
  */

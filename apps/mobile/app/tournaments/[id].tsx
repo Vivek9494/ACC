@@ -10,7 +10,7 @@ import {
   formatTournamentFeeCad,
 } from '@acc/types';
 import { Redirect, useLocalSearchParams, usePathname, useRouter, useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState, type ReactElement } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/theme/colors';
@@ -29,6 +29,7 @@ import { TournamentVenueCardContent } from '../../src/components/ui/TournamentVe
 import { FIELD_ORANGE } from '../../src/components/ui/fieldStyles';
 import { ApiRequestError, getMyRegistration, getRegistrationVerificationQueue, getTournament, isSessionExpiredError } from '../../src/lib/api';
 import { useAuth } from '../../src/lib/auth-context';
+import { mediaUrlStorageKey } from '../../src/lib/media-url';
 import {
   formatRegistrationOpensLabel,
   formatTournamentCalendarDate,
@@ -110,6 +111,13 @@ export default function TournamentDetailScreen(): React.ReactElement {
   const [verifyActionCount, setVerifyActionCount] = useState(0);
   const [verifyQueueChecked, setVerifyQueueChecked] = useState(false);
 
+  /** Silent vs first load — must not put `tournament` in effect deps (re-fetch loop). */
+  const hasLoadedRef = useRef(false);
+  const loadedTournamentIdRef = useRef<string | null>(null);
+  /** Keep `load` identity stable; read latest user inside the callback. */
+  const userRef = useRef(user);
+  userRef.current = user;
+
   const showVerifyPlayers =
     status === 'authenticated' &&
     tournament
@@ -121,8 +129,20 @@ export default function TournamentDetailScreen(): React.ReactElement {
   const showFeesTracker =
     status === 'authenticated' && tournament ? canShowTournamentFeesTracker(user, tournament) : false;
 
+  useEffect(() => {
+    hasLoadedRef.current = false;
+    loadedTournamentIdRef.current = null;
+  }, [id]);
+
   const load = useCallback(async (options?: { silent?: boolean }) => {
     if (!id) {
+      setError('Tournament not found.');
+      setLoading(false);
+      return;
+    }
+
+    const tournamentId = Array.isArray(id) ? id[0] : id;
+    if (!tournamentId) {
       setError('Tournament not found.');
       setLoading(false);
       return;
@@ -141,10 +161,11 @@ export default function TournamentDetailScreen(): React.ReactElement {
       setLoading(true);
     }
     setError(null);
+    const currentUser = userRef.current;
     try {
       let detail: TournamentDetail;
       try {
-        detail = await getTournament(id);
+        detail = await getTournament(tournamentId);
       } catch (firstErr) {
         // One automatic retry for transient network / not-yet-ready races.
         const isAuthSignInPrompt =
@@ -158,22 +179,31 @@ export default function TournamentDetailScreen(): React.ReactElement {
         if (!isTransient) {
           throw firstErr;
         }
-        detail = await getTournament(id);
+        detail = await getTournament(tournamentId);
       }
-      setTournament(detail);
+      setTournament((previous) => {
+        const prevKey = mediaUrlStorageKey(previous?.posterUrl);
+        const nextKey = mediaUrlStorageKey(detail.posterUrl);
+        if (previous?.posterUrl && detail.posterUrl && prevKey != null && prevKey === nextKey) {
+          return { ...detail, posterUrl: previous.posterUrl };
+        }
+        return detail;
+      });
+      hasLoadedRef.current = true;
+      loadedTournamentIdRef.current = tournamentId;
 
       const playerRegistrationPromise =
         status === 'authenticated'
-          ? getMyRegistration(id).catch(() => null)
+          ? getMyRegistration(tournamentId).catch(() => null)
           : Promise.resolve(null);
 
       const verificationQueuePromise =
         status === 'authenticated' &&
-        canShowRegistrationVerificationQueue(user, {
+        canShowRegistrationVerificationQueue(currentUser, {
           ballType: detail.ballType,
           hasRegistrationWindow: detail.hasRegistrationWindow,
         })
-          ? getRegistrationVerificationQueue(id).catch(() => null)
+          ? getRegistrationVerificationQueue(tournamentId).catch(() => null)
           : Promise.resolve(null);
 
       const [mine, verificationQueue] = await Promise.all([
@@ -187,6 +217,8 @@ export default function TournamentDetailScreen(): React.ReactElement {
       setTournament(null);
       setMyRegistration(null);
       setVerifyActionCount(0);
+      hasLoadedRef.current = false;
+      loadedTournamentIdRef.current = null;
       if (isSessionExpiredError(err)) {
         setError(null);
       } else {
@@ -199,7 +231,7 @@ export default function TournamentDetailScreen(): React.ReactElement {
       setRegistrationChecked(true);
       setVerifyQueueChecked(true);
     }
-  }, [id, status, user]);
+  }, [id, status]);
 
   const visibleTabs = useMemo(
     () =>
@@ -240,23 +272,28 @@ export default function TournamentDetailScreen(): React.ReactElement {
       if (!id || status === 'loading') {
         return;
       }
-      void load(tournament ? { silent: true } : undefined);
-    }, [id, load, status, tournament]),
+      const tournamentId = Array.isArray(id) ? id[0] : id;
+      const silent =
+        hasLoadedRef.current && loadedTournamentIdRef.current === tournamentId;
+      void load(silent ? { silent: true } : undefined);
+    }, [id, load, status]),
   );
 
   useEffect(() => {
+    const tournamentId = Array.isArray(id) ? id[0] : id;
     if (
       status === 'loading' ||
       (tab !== TOURNAMENT_DETAIL_TAB.TournamentMatches &&
         tab !== TOURNAMENT_DETAIL_TAB.Teams &&
         tab !== TOURNAMENT_DETAIL_TAB.Groups) ||
-      !id ||
-      !tournament
+      !tournamentId ||
+      !hasLoadedRef.current ||
+      loadedTournamentIdRef.current !== tournamentId
     ) {
       return;
     }
     void load({ silent: true });
-  }, [tab, id, load, status, tournament]);
+  }, [tab, id, load, status]);
 
   function selectTab(nextTab: TournamentDetailTab): void {
     setTab(nextTab);

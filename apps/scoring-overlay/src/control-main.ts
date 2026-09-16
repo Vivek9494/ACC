@@ -78,12 +78,13 @@ const COMMON_LABELS: Record<
   innings_break: 'Innings break',
   toss_result: 'Toss Result',
   playing_xi: 'Playing XI',
+  batting_card: 'Batting card',
   wagon_wheel: 'Wagon Wheel',
 };
 
 const TEAM_ACTION_LABELS: Record<TeamControlAction, string> = {
   playing_xi: 'Playing XI',
-  batting_lineup: 'Batting line-up',
+  batting_lineup: 'Batting card',
   bowling: 'Bowling',
   partnerships: 'Partnership',
   fow: 'Last wicket',
@@ -547,9 +548,9 @@ function start(): void {
         let enabled = false;
         switch (action) {
           case 'playing_xi':
-          case 'batting_lineup':
             enabled = hasXi;
             break;
+          case 'batting_lineup':
           case 'bowling':
           case 'partnerships':
             enabled = battingInnings != null;
@@ -627,8 +628,8 @@ function start(): void {
         if (onAirTeamSide === side && onAirTeamAction === action) {
           if (action === 'playing_xi' && onAirGraphic === 'playing_xi') {
             live = playingXiVariant === 'single';
-          } else if (action === 'batting_lineup' && onAirGraphic === 'playing_xi') {
-            live = playingXiVariant === 'lineup';
+          } else if (action === 'batting_lineup' && onAirGraphic === 'batting_card') {
+            live = true;
           } else if (
             (action === 'bowling' || action === 'partnerships') &&
             onAirGraphic === 'innings_break'
@@ -702,7 +703,7 @@ function start(): void {
       return;
     }
     if (onAirGraphic === 'playing_xi' && onAirTeamSide && playingXiVariant !== 'both') {
-      onAir.textContent = `ON AIR: ${teamBinding(onAirTeamSide).name} · ${playingXiVariant === 'lineup' ? 'Batting line-up' : 'Playing XI'}`;
+      onAir.textContent = `ON AIR: ${teamBinding(onAirTeamSide).name} · Playing XI`;
       onAirDetail.textContent = onAirDetailText;
       return;
     }
@@ -877,7 +878,7 @@ function start(): void {
       return;
     }
     if (action === 'batting_lineup') {
-      setOnAir('playing_xi', side, action, 'lineup');
+      setOnAir('batting_card', side, action, 'both');
       return;
     }
     if (

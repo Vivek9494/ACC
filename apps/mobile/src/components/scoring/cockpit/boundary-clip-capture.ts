@@ -1,7 +1,13 @@
-import { DeliveryType, type RecordDeliveryRequest, type ScorecardResponse } from '@acc/types';
+import {
+  DeliveryType,
+  type MatchDetail,
+  type RecordDeliveryRequest,
+  type ScorecardResponse,
+} from '@acc/types';
 
 import { attachDeliveryVideo, getScorecard } from '../../../lib/api';
 import type { AscObsBridge, AscObsStatus } from '../../../types/asc-broadcast';
+import { resolveBoundaryClipSavePayload } from './clip-storage-paths';
 
 /** Delay after a capture-worthy tap before SaveReplayBuffer (lets the play finish in the clip). */
 export const BOUNDARY_CLIP_SAVE_DELAY_MS = 3_000;
@@ -84,12 +90,14 @@ export function findLatestAutoClipDeliveryId(card: ScorecardResponse): string | 
 }
 
 /**
- * After a successful capture-worthy record: delay, save OBS replay buffer, attach path.
- * No-ops when the OBS bridge is absent (plain Chrome). Failures are warned only —
- * the ball gets no clip.
+ * After a successful capture-worthy record: delay, save OBS replay buffer, relocate
+ * into nested match/team folder, attach path. No-ops when the OBS bridge is absent.
  */
 export function scheduleBoundaryClipCapture(opts: {
   matchId: string;
+  match: Pick<MatchDetail, 'startTime' | 'matchDate'> | null | undefined;
+  /** Scorecard immediately after the recorded delivery (for over/ball/team). */
+  card: ScorecardResponse;
   inningsId: string;
   deliveryId: string;
   /** Scorecard version after the event was recorded (optimistic concurrency). */
@@ -104,12 +112,23 @@ export function scheduleBoundaryClipCapture(opts: {
   }
 
   const delayMs = opts.delayMs ?? BOUNDARY_CLIP_SAVE_DELAY_MS;
-  const { matchId, inningsId, deliveryId, getExpectedVersion, onAttached } = opts;
+  const { matchId, match, card, inningsId, deliveryId, getExpectedVersion, onAttached } =
+    opts;
+
+  const savePayload = resolveBoundaryClipSavePayload({
+    matchId,
+    match,
+    card,
+    deliveryId,
+  });
+  if (!savePayload) {
+    return;
+  }
 
   window.setTimeout(() => {
     void (async () => {
       try {
-        const { videoPath } = await bridge.saveBoundaryClip(deliveryId);
+        const { videoPath } = await bridge.saveBoundaryClip(savePayload);
         let attached: ScorecardResponse;
         try {
           attached = await attachDeliveryVideo(matchId, inningsId, deliveryId, {

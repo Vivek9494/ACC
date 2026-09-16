@@ -440,19 +440,56 @@ class ObsController {
   }
 
   /**
-   * Boundary auto-clip: save buffer only — never switch scenes.
-   * @param {string} deliveryId
+   * Boundary auto-clip: save buffer, relocate into nested match/team folder.
+   * @param {{
+   *   deliveryId?: string,
+   *   matchId?: string,
+   *   matchFolderStamp?: string,
+   *   battingTeamId?: string | null,
+   *   overNumber?: number | null,
+   *   ballNumber?: number | null,
+   *   sequence?: number | null,
+   * } | string} payload  string = legacy deliveryId-only
+   * @param {string} [userDataDir]
    * @returns {Promise<{ deliveryId: string, videoPath: string }>}
    */
-  async saveBoundaryClip(deliveryId) {
-    const id = typeof deliveryId === 'string' ? deliveryId.trim() : '';
+  async saveBoundaryClip(payload, userDataDir) {
+    const meta =
+      typeof payload === 'string'
+        ? { deliveryId: payload }
+        : payload && typeof payload === 'object'
+          ? payload
+          : {};
+    const id = typeof meta.deliveryId === 'string' ? meta.deliveryId.trim() : '';
     if (!id) {
       throw new Error('deliveryId is required for a boundary clip.');
     }
-    const videoPath = await this.saveReplayBuffer('boundary', id);
-    if (!videoPath) {
+    const savedPath = await this.saveReplayBuffer('boundary', id);
+    if (!savedPath) {
       throw new Error('OBS saved the replay buffer but did not return a file path.');
     }
+
+    const matchId = typeof meta.matchId === 'string' ? meta.matchId.trim() : '';
+    const matchFolderStamp =
+      typeof meta.matchFolderStamp === 'string' ? meta.matchFolderStamp.trim() : '';
+    const dataDir = typeof userDataDir === 'string' ? userDataDir.trim() : '';
+
+    // Without folder context, leave the OBS path as-is (legacy / miswired callers).
+    if (!matchId || !matchFolderStamp || !dataDir) {
+      return { deliveryId: id, videoPath: savedPath };
+    }
+
+    const { relocateSavedClip } = require('./clip-storage');
+    const videoPath = relocateSavedClip({
+      userDataDir: dataDir,
+      savedPath,
+      matchId,
+      matchFolderStamp,
+      battingTeamId: meta.battingTeamId ?? null,
+      overNumber: meta.overNumber ?? null,
+      ballNumber: meta.ballNumber ?? null,
+      sequence: meta.sequence ?? null,
+    });
     return { deliveryId: id, videoPath };
   }
 

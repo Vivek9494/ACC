@@ -492,11 +492,13 @@ export function OverlayControlPanel({
   function showTeamAction(action: OverlayTeamAction): void {
     if (isTeamActionOnAir(onAir, teamSide, action)) {
       const graphic =
-        action === 'playing_xi' || action === 'batting_lineup'
+        action === 'playing_xi'
           ? 'playing_xi'
-          : action === 'bowling' || action === 'partnerships'
-            ? 'innings_break'
-            : action;
+          : action === 'batting_lineup'
+            ? 'batting_card'
+            : action === 'bowling' || action === 'partnerships'
+              ? 'innings_break'
+              : action;
       hideGraphic(graphic);
       return;
     }
@@ -522,7 +524,7 @@ export function OverlayControlPanel({
       return;
     }
     if (action === 'batting_lineup') {
-      setLocalOnAir('playing_xi', teamSide, action, 'lineup');
+      setLocalOnAir('batting_card', teamSide, action);
       return;
     }
     setLocalOnAir(action, teamSide, action);

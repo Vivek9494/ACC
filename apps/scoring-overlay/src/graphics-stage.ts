@@ -6,6 +6,7 @@
 import './graphics.css';
 import { ensureMatchContext, fetchMatchContext } from './broadcast-fetch';
 import { mountBatsmanCareerCard } from './batsman-career-card';
+import { mountBattingCard } from './batting-card';
 import { concealGraphic, revealGraphic } from './graphic-visibility';
 import { mountInningsScorecard } from './innings-scorecard';
 import {
@@ -68,6 +69,7 @@ const GRAPHIC_IDS: Record<OverlayKind, string> = {
   innings_break: 'g-innings',
   toss_result: 'g-toss-result',
   playing_xi: 'g-playing-xi',
+  batting_card: 'g-batting-card',
   hello: 'g-hello',
 };
 
@@ -185,6 +187,8 @@ export function buildGraphicsStageMarkup(): string {
 
       <div id="g-playing-xi" class="graphic graphic-centered playing-xi-graphic" hidden></div>
 
+      <div id="g-batting-card" class="graphic graphic-centered batting-card-graphic" hidden></div>
+
       <div id="g-bowler" class="graphic panel panel-batsman-live" hidden>
         <div class="panel-accent"></div>
         <div class="bat-live-body">
@@ -296,6 +300,7 @@ export function createGraphicsStage(
     source: 'break' as ScorecardViewSource,
   };
   let playingXiCmd: PlayingXiShowOptions = { variant: 'both' };
+  let battingCardInningsId: string | null = null;
   let fowInningsId: string | null = null;
 
   const mountOrNull = <T>(id: string, mount: (host: HTMLElement) => T): T | null => {
@@ -309,6 +314,7 @@ export function createGraphicsStage(
   const batsmanCareer = mountOrNull('g-batsman-career', mountBatsmanCareerCard);
   const tossResult = mountOrNull('g-toss-result', mountTossResultCard);
   const playingXi = mountOrNull('g-playing-xi', mountPlayingXiCard);
+  const battingCard = mountOrNull('g-batting-card', mountBattingCard);
   const inningsCard = mountOrNull('g-innings', mountInningsScorecard);
 
   const graphicNode = (kind: OverlayKind): HTMLElement | null =>
@@ -318,6 +324,7 @@ export function createGraphicsStage(
     kind === 'batsman_career' ||
     kind === 'toss_result' ||
     kind === 'playing_xi' ||
+    kind === 'batting_card' ||
     kind === 'innings_break';
 
   const hideNode = (node: HTMLElement): void => {
@@ -335,6 +342,7 @@ export function createGraphicsStage(
     batsmanCareer?.hide();
     tossResult?.hide();
     playingXi?.hide();
+    battingCard?.hide();
     inningsCard?.hide();
     for (const kind of Object.keys(GRAPHIC_IDS) as OverlayKind[]) {
       if (isMountManaged(kind)) {
@@ -371,6 +379,10 @@ export function createGraphicsStage(
     }
     if (kind === 'playing_xi') {
       playingXi?.hide();
+      return;
+    }
+    if (kind === 'batting_card') {
+      battingCard?.hide();
       return;
     }
     if (kind === 'innings_break') {
@@ -605,6 +617,10 @@ export function createGraphicsStage(
       playingXi?.hide();
       return;
     }
+    if (kind === 'batting_card') {
+      battingCard?.hide();
+      return;
+    }
     if (kind === 'innings_break') {
       inningsEnsureToken += 1;
       inningsCard?.hide();
@@ -775,6 +791,11 @@ export function createGraphicsStage(
           fillBowlerMatch(activePlayerId);
         }
         break;
+      case 'batting_card':
+        if (!battingCard?.show(scorecard, battingCardInningsId)) {
+          hideGraphic('batting_card');
+        }
+        break;
       default:
         break;
     }
@@ -837,6 +858,13 @@ export function createGraphicsStage(
         formatPlayingXiPreview(matchCtx) != null ||
         Boolean(options.matchId?.trim()) ||
         playingXiCmd.variant !== 'both';
+    } else if (kind === 'batting_card') {
+      battingCardInningsId = payload?.inningsId?.trim() || null;
+      ok =
+        scorecard != null &&
+        (battingCardInningsId
+          ? findInningsByKey(scorecard, battingCardInningsId) != null
+          : scorecard.innings.length > 0);
     }
 
     if (!ok) {
@@ -869,6 +897,11 @@ export function createGraphicsStage(
     } else if (kind === 'playing_xi') {
       const painted = await showPlayingXi(playingXiCmd);
       if (!painted && activeKind === 'playing_xi') {
+        activeKind = null;
+        activePlayerId = null;
+      }
+    } else if (kind === 'batting_card') {
+      if (!battingCard?.show(scorecard, battingCardInningsId)) {
         activeKind = null;
         activePlayerId = null;
       }
@@ -929,6 +962,7 @@ export function createGraphicsStage(
       Boolean(batsmanCareer?.isOnAir()) ||
       Boolean(tossResult?.isOnAir()) ||
       Boolean(playingXi?.isOnAir()) ||
+      Boolean(battingCard?.isOnAir()) ||
       Boolean(inningsCard?.isOnAir()),
     activeKind: () => activeKind,
     applyCommand(cmd) {

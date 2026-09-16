@@ -1,26 +1,17 @@
 /**
  * Shared highlight concat: ordered local clips → one file via ffmpeg.
  * Kinds: innings-1 | full-match. Runs in the Electron main process only.
+ * Output: match-folder root
+ *   <matchId>-1stinning.mp4 | <matchId>-fullhighlight.mp4
  */
 
 const { spawn } = require('node:child_process');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const { highlightOutputPath } = require('./clip-storage');
 
 /** @typedef {'innings-1' | 'full-match'} HighlightKind */
-
-/**
- * @param {string} userDataDir
- * @param {string} matchId
- * @param {HighlightKind} kind
- * @returns {string}
- */
-function highlightOutputPath(userDataDir, matchId, kind = 'innings-1') {
-  const safeId = String(matchId || 'match').replace(/[^a-zA-Z0-9_-]/g, '_');
-  const suffix = kind === 'full-match' ? 'full-match' : 'innings-1';
-  return path.join(userDataDir, 'highlights', `${safeId}-${suffix}.mkv`);
-}
 
 /**
  * Escape a path for ffmpeg concat demuxer file list.
@@ -79,9 +70,10 @@ function runFfmpeg(ffmpegBin, args) {
  *
  * @param {{
  *   matchId: string,
+ *   matchFolderStamp: string,
  *   clipPaths: string[],
- *   userDataDir: string,
  *   kind?: HighlightKind,
+ *   userDataDir: string,
  * }} opts
  * @returns {Promise<{
  *   highlightPath: string | null,
@@ -94,6 +86,8 @@ function runFfmpeg(ffmpegBin, args) {
  */
 async function buildHighlight(opts) {
   const matchId = typeof opts.matchId === 'string' ? opts.matchId.trim() : '';
+  const matchFolderStamp =
+    typeof opts.matchFolderStamp === 'string' ? opts.matchFolderStamp.trim() : '';
   const userDataDir = opts.userDataDir;
   const kind = opts.kind === 'full-match' ? 'full-match' : 'innings-1';
   const rawPaths = Array.isArray(opts.clipPaths) ? opts.clipPaths : [];
@@ -107,6 +101,16 @@ async function buildHighlight(opts) {
       status: 'error',
       kind,
       error: 'matchId is required',
+    };
+  }
+  if (!matchFolderStamp) {
+    return {
+      highlightPath: null,
+      clipCount: 0,
+      skipped: 0,
+      status: 'error',
+      kind,
+      error: 'matchFolderStamp is required',
     };
   }
 
@@ -126,17 +130,13 @@ async function buildHighlight(opts) {
     }
   }
 
-  const outPath = highlightOutputPath(userDataDir, matchId, kind);
+  const outPath = highlightOutputPath(userDataDir, matchId, matchFolderStamp, kind);
   fs.mkdirSync(path.dirname(outPath), { recursive: true });
 
   if (existing.length === 0) {
     try {
       if (fs.existsSync(outPath)) {
         fs.unlinkSync(outPath);
-      }
-      const mp4 = outPath.replace(/\.mkv$/i, '.mp4');
-      if (fs.existsSync(mp4)) {
-        fs.unlinkSync(mp4);
       }
     } catch {
       // ignore
@@ -169,7 +169,6 @@ async function buildHighlight(opts) {
     fs.writeFileSync(listPath, existing.map(concatListLine).join('\n'), 'utf8');
 
     const ffmpegBin = resolveFfmpegPath();
-    let finalPath = outPath;
     try {
       await runFfmpeg(ffmpegBin, [
         '-y',
@@ -188,7 +187,6 @@ async function buildHighlight(opts) {
         `[${logTag}] concat -c copy failed, re-encoding:`,
         copyErr instanceof Error ? copyErr.message : copyErr,
       );
-      finalPath = outPath.replace(/\.mkv$/i, '.mp4');
       await runFfmpeg(ffmpegBin, [
         '-y',
         '-f',
@@ -207,7 +205,7 @@ async function buildHighlight(opts) {
         'aac',
         '-movflags',
         '+faststart',
-        finalPath,
+        outPath,
       ]);
     }
 
@@ -218,7 +216,7 @@ async function buildHighlight(opts) {
     }
 
     return {
-      highlightPath: finalPath,
+      highlightPath: outPath,
       clipCount: existing.length,
       skipped,
       status: 'ready',
@@ -246,17 +244,17 @@ async function buildInningsHighlight(opts) {
 /**
  * @param {string} userDataDir
  * @param {string} matchId
+ * @param {string} matchFolderStamp
  * @param {HighlightKind} [kind]
  * @returns {string | null}
  */
-function readExistingHighlightPath(userDataDir, matchId, kind = 'innings-1') {
-  const mkv = highlightOutputPath(userDataDir, matchId, kind);
-  if (fs.existsSync(mkv)) {
-    return mkv;
+function readExistingHighlightPath(userDataDir, matchId, matchFolderStamp, kind = 'innings-1') {
+  if (!matchFolderStamp) {
+    return null;
   }
-  const mp4 = mkv.replace(/\.mkv$/i, '.mp4');
-  if (fs.existsSync(mp4)) {
-    return mp4;
+  const outPath = highlightOutputPath(userDataDir, matchId, matchFolderStamp, kind);
+  if (fs.existsSync(outPath)) {
+    return outPath;
   }
   return null;
 }

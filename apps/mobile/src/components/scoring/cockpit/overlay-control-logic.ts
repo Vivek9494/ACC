@@ -27,7 +27,7 @@ export type OverlayTeamAction =
 export const OVERLAY_TEAM_ACTIONS: { action: OverlayTeamAction; label: string; needsPicker?: boolean }[] =
   [
     { action: 'playing_xi', label: 'Playing XI' },
-    { action: 'batting_lineup', label: 'Batting line-up' },
+    { action: 'batting_lineup', label: 'Batting card' },
     { action: 'bowling', label: 'Bowling' },
     { action: 'partnerships', label: 'Partnership' },
     { action: 'fow', label: 'Last wicket' },
@@ -137,15 +137,17 @@ export function buildOverlayTeamShowCommand(
         graphic: 'playing_xi',
         payload: { teamId: team.teamId, variant: 'single' },
       };
-    case 'batting_lineup':
-      if (!teamHasPlayingXi(match, team)) {
+    case 'batting_lineup': {
+      const innings = findBattingInnings(card, team);
+      if (!innings) {
         return null;
       }
       return {
         action: 'show',
-        graphic: 'playing_xi',
-        payload: { teamId: team.teamId, variant: 'lineup' },
+        graphic: 'batting_card',
+        payload: { inningsId: inningsKey(innings) },
       };
+    }
     case 'bowling': {
       const innings = findBattingInnings(card, team);
       if (!innings) {
@@ -474,7 +476,7 @@ export function isTeamActionOnAir(
     return state.graphic === 'playing_xi' && state.playingXiVariant === 'single';
   }
   if (action === 'batting_lineup') {
-    return state.graphic === 'playing_xi' && state.playingXiVariant === 'lineup';
+    return state.graphic === 'batting_card';
   }
   if (action === 'bowling' || action === 'partnerships') {
     return state.graphic === 'innings_break' && state.inningsSource === 'scorecard';

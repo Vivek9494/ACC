@@ -37,6 +37,7 @@ export type GraphicsKind =
   | 'batsman_career'
   | 'toss_result'
   | 'playing_xi'
+  | 'batting_card'
   | 'wagon_wheel'
   | 'points_table'
   | 'tournament_top_batsmen'

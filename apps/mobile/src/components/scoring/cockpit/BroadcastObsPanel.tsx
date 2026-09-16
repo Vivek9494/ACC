@@ -90,6 +90,9 @@ const ROW: ViewStyle = {
   flexWrap: 'wrap',
   gap: 6,
   alignItems: 'center',
+  minWidth: 0,
+  width: '100%',
+  maxWidth: '100%',
 };
 
 const BTN_BASE =
@@ -130,7 +133,12 @@ function ObsButton({
 
 function buildHighlightViaBridge(
   bridge: AscObsBridge,
-  payload: { matchId: string; clipPaths: string[]; kind: HighlightKind },
+  payload: {
+    matchId: string;
+    matchFolderStamp: string;
+    clipPaths: string[];
+    kind: HighlightKind;
+  },
 ): Promise<AscInningsHighlightResult> {
   if (typeof bridge.buildHighlight === 'function') {
     return bridge.buildHighlight(payload);
@@ -144,10 +152,11 @@ function buildHighlightViaBridge(
 function getHighlightViaBridge(
   bridge: AscObsBridge,
   matchId: string,
+  matchFolderStamp: string,
   kind: HighlightKind,
 ): Promise<AscInningsHighlightResult> {
   if (typeof bridge.getHighlight === 'function') {
-    return bridge.getHighlight({ matchId, kind });
+    return bridge.getHighlight({ matchId, matchFolderStamp, kind });
   }
   if (kind === 'innings-1' && typeof bridge.getInningsHighlight === 'function') {
     return bridge.getInningsHighlight(matchId);
@@ -169,10 +178,13 @@ const EMPTY_SLOT: HighlightSlotState = { path: null, note: '', building: false }
  */
 export function BroadcastObsPanel({
   matchId,
+  matchFolderStamp,
   card,
   matchState,
 }: {
   matchId: string;
+  /** Stable YYYYMMDD-HHMMSS for the match clips folder. */
+  matchFolderStamp: string;
   card: ScorecardResponse;
   matchState: string;
 }): React.ReactElement | null {
@@ -214,14 +226,14 @@ export function BroadcastObsPanel({
 
   // Restore previously built highlights for this match.
   useEffect(() => {
-    if (!bridge || !matchId) {
+    if (!bridge || !matchId || !matchFolderStamp) {
       return;
     }
     let cancelled = false;
     void (async () => {
       const [i1, full] = await Promise.all([
-        getHighlightViaBridge(bridge, matchId, 'innings-1'),
-        getHighlightViaBridge(bridge, matchId, 'full-match'),
+        getHighlightViaBridge(bridge, matchId, matchFolderStamp, 'innings-1'),
+        getHighlightViaBridge(bridge, matchId, matchFolderStamp, 'full-match'),
       ]);
       if (cancelled) return;
       if (i1.status === 'ready' && i1.highlightPath) {
@@ -234,11 +246,11 @@ export function BroadcastObsPanel({
     return () => {
       cancelled = true;
     };
-  }, [bridge, matchId]);
+  }, [bridge, matchId, matchFolderStamp]);
 
   // Auto-build innings-1 highlight when innings 1 closes.
   useEffect(() => {
-    if (!bridge || !matchId || !isFirstInningsClosed(card)) {
+    if (!bridge || !matchId || !matchFolderStamp || !isFirstInningsClosed(card)) {
       return;
     }
     const clipPaths = collectFirstInningsClipPaths(card);
@@ -263,6 +275,7 @@ export function BroadcastObsPanel({
         try {
           const result = await buildHighlightViaBridge(bridge, {
             matchId,
+            matchFolderStamp,
             clipPaths: paths,
             kind: 'innings-1',
           });
@@ -302,11 +315,11 @@ export function BroadcastObsPanel({
     return () => {
       window.clearTimeout(timer);
     };
-  }, [bridge, matchId, card, innings1.building]);
+  }, [bridge, matchId, matchFolderStamp, card, innings1.building]);
 
   // Auto-build full-match highlight when the match is completed.
   useEffect(() => {
-    if (!bridge || !matchId || !isMatchCompleted(matchState)) {
+    if (!bridge || !matchId || !matchFolderStamp || !isMatchCompleted(matchState)) {
       return;
     }
     const clipPaths = collectFullMatchClipPaths(card);
@@ -331,6 +344,7 @@ export function BroadcastObsPanel({
         try {
           const result = await buildHighlightViaBridge(bridge, {
             matchId,
+            matchFolderStamp,
             clipPaths: paths,
             kind: 'full-match',
           });
@@ -370,7 +384,7 @@ export function BroadcastObsPanel({
     return () => {
       window.clearTimeout(timer);
     };
-  }, [bridge, matchId, card, matchState, fullMatch.building]);
+  }, [bridge, matchId, matchFolderStamp, card, matchState, fullMatch.building]);
 
   const run = useCallback(
     async (fn: () => Promise<AscObsStatus>) => {
@@ -434,7 +448,7 @@ export function BroadcastObsPanel({
   return (
     <>
       <CockpitPanel title="Broadcast / OBS" live={Boolean(connected)} fitContent>
-        <View className="gap-2">
+        <View className="min-w-0 gap-2" style={{ width: '100%', maxWidth: '100%' }}>
           <Text className="font-sans text-[11px] text-on-surface-variant" numberOfLines={2}>
             {status ? statusLine(status) : 'Connecting…'}
           </Text>

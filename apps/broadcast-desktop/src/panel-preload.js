@@ -1,12 +1,16 @@
 /**
  * Preload bridge for the BrowserView (scoring cockpit).
- * OBS control + config — never expose shell match-entry channels or raw ipcRenderer.
+ * OBS control + config + return-to-match-entry — never expose loadControlPanel or raw ipcRenderer.
  */
 
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('ascBroadcast', {
   capabilities: Object.freeze({ obs: true }),
+  /** Hide cockpit BrowserView and show ASC Broadcast Match-ID entry (shell). */
+  returnToBroadcastHome() {
+    ipcRenderer.send('asc:show-match-entry');
+  },
   obs: {
     getStatus() {
       return ipcRenderer.invoke('asc:obs-get-status');
@@ -29,8 +33,8 @@ contextBridge.exposeInMainWorld('ascBroadcast', {
     startInstantReplay() {
       return ipcRenderer.invoke('asc:obs-instant-replay');
     },
-    saveBoundaryClip(deliveryId) {
-      return ipcRenderer.invoke('asc:obs-save-boundary-clip', deliveryId);
+    saveBoundaryClip(payload) {
+      return ipcRenderer.invoke('asc:obs-save-boundary-clip', payload);
     },
     playDeliveryClip(payload) {
       return ipcRenderer.invoke('asc:obs-play-delivery-clip', payload);

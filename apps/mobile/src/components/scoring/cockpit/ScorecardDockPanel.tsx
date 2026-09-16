@@ -16,7 +16,7 @@ import {
   type TimelineEntry,
   DeliveryType,
 } from '@acc/types';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { useMemo, useState } from 'react';
 import type { TextStyle, ViewStyle } from 'react-native';
 
@@ -551,7 +551,7 @@ export function ScorecardDockPanel({
 
   return (
     <CockpitPanel title="Scorecard" live bodyNoPad>
-      <View className="min-w-0 flex-1" style={{ width: '100%' }}>
+      <View className="min-h-0 min-w-0 flex-1" style={{ width: '100%' }}>
         <View className="flex-row border-b border-outline-variant bg-surface-container-low">
           {TABS.map((item) => {
             const active = tab === item.id;
@@ -575,17 +575,17 @@ export function ScorecardDockPanel({
           })}
         </View>
 
-        <ScrollView
-          className="min-w-0 flex-1"
-          style={{ width: '100%' }}
-          contentContainerStyle={{
+        {/* Contained overflow — horizontal scroll stays inside the panel. */}
+        <View
+          className="min-h-0 min-w-0 flex-1"
+          style={{
             width: '100%',
-            alignSelf: 'stretch',
+            overflow: 'auto' as ViewStyle['overflow'],
             paddingBottom: 12,
           }}
         >
           {tab === 'scorecard' ? (
-            <View>
+            <View style={{ minWidth: Math.max(STATS_WIDTH + 280, 0) }}>
               <View style={HEADER_ROW}>
                 <Text className="min-w-0 flex-1 font-sans-semibold text-[10px] uppercase text-on-surface-variant">
                   Batter
@@ -838,7 +838,7 @@ export function ScorecardDockPanel({
               )}
             </View>
           ) : null}
-        </ScrollView>
+        </View>
       </View>
     </CockpitPanel>
   );

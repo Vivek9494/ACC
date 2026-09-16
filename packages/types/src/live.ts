@@ -136,6 +136,11 @@ export const GraphicsKind = {
    */
   PlayingXi: 'playing_xi',
   /**
+   * Centered batting scorecard for one team's innings (R/B/4s/6s/SR/how-out).
+   * Team from control tab; data from live ScorecardResponse.innings[].batters.
+   */
+  BattingCard: 'batting_card',
+  /**
    * Full-screen wagon wheel (shot placement from saved shotX/shotY).
    * Match-level; subject + filter select which shots to draw.
    */

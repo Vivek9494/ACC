@@ -34,8 +34,8 @@ export function CockpitPanel({
   style?: object;
 }): React.ReactElement {
   const rootStyle: ViewStyle = fitContent
-    ? { flexGrow: 0, flexShrink: 0, alignSelf: 'stretch' }
-    : { flex: 1, height: '100%' };
+    ? { flexGrow: 0, flexShrink: 0, alignSelf: 'stretch', minWidth: 0, maxWidth: '100%' }
+    : { flex: 1, height: '100%', minWidth: 0, maxWidth: '100%' };
 
   const bodyStyle: ViewStyle = bodyAbsolute
     ? {

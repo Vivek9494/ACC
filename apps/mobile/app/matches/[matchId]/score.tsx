@@ -414,6 +414,18 @@ export default function LiveScoringScreen(): React.ReactElement {
     router.replace(homeRouteForUser(user));
   }, [router, user]);
 
+  /** Deep-linked score has no history. Electron → Match-ID entry; browser → role home. */
+  const goToRoleHome = useCallback(() => {
+    if (
+      hasAscObsBridge() &&
+      typeof window.ascBroadcast?.returnToBroadcastHome === 'function'
+    ) {
+      window.ascBroadcast.returnToBroadcastHome();
+      return;
+    }
+    router.replace(homeRouteForUser(user));
+  }, [router, user]);
+
   useMatchScorerRevokeListener(matchId, user?.id, handleScorerRevoked);
 
   const inn = card?.innings.at(-1) ?? null;
@@ -1210,6 +1222,8 @@ export default function LiveScoringScreen(): React.ReactElement {
       if (deliveryId) {
         scheduleBoundaryClipCapture({
           matchId,
+          match,
+          card: updated,
           inningsId,
           deliveryId,
           getExpectedVersion: () => cardRef.current?.version ?? updated.version,
@@ -1257,6 +1271,8 @@ export default function LiveScoringScreen(): React.ReactElement {
           if (deliveryId) {
             scheduleBoundaryClipCapture({
               matchId,
+              match,
+              card: afterBall,
               inningsId,
               deliveryId,
               getExpectedVersion: () => cardRef.current?.version ?? afterBall.version,
@@ -1384,7 +1400,7 @@ export default function LiveScoringScreen(): React.ReactElement {
   if (loading) {
     return (
       <SafeAreaView className="flex-1 bg-background" edges={['top', 'bottom']}>
-        <ScreenHeader compact showProfileMenu={false} />
+        <ScreenHeader compact showProfileMenu={false} onBack={goToRoleHome} />
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator color={FIELD_ORANGE} />
         </View>
@@ -1395,12 +1411,12 @@ export default function LiveScoringScreen(): React.ReactElement {
   if (sessionBlocked) {
     return (
       <SafeAreaView className="flex-1 bg-background" edges={['top', 'bottom']}>
-        <ScreenHeader compact showProfileMenu={false} />
+        <ScreenHeader compact showProfileMenu={false} onBack={goToRoleHome} />
         <View className="flex-1 justify-center gap-4 px-4">
           <View className="rounded-control border border-outline-variant bg-surface-container-lowest p-4">
             <Text className="font-sans text-sm text-on-surface">{sessionBlocked}</Text>
           </View>
-          <Button className="h-12" label="Go Back" onPress={() => router.back()} />
+          <Button className="h-12" label="Go Back" onPress={goToRoleHome} />
         </View>
       </SafeAreaView>
     );
@@ -1485,6 +1501,7 @@ export default function LiveScoringScreen(): React.ReactElement {
       <ScreenHeader
         compact
         showProfileMenu={false}
+        onBack={goToRoleHome}
         trailing={cockpitHeaderTrailing ?? scoringViewToggle}
       />
       {useCockpit && inn && match && matchId ? (
@@ -1580,7 +1597,7 @@ export default function LiveScoringScreen(): React.ReactElement {
                 onPress={() => void completeScoringSetup()}
               />
             ) : (
-              <Button className="h-12" label="Go Back" onPress={() => router.back()} />
+              <Button className="h-12" label="Go Back" onPress={goToRoleHome} />
             )}
           </View>
         ) : (
