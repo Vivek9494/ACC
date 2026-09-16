@@ -1,11 +1,14 @@
-/* Shared batsman career profile card (root strip + graphics.html). */
+/* Premium BATTER CAREER PROFILE — navy / blue / gold package. */
+
+.batsman-career-graphic {
+  /* Positioned by .graphic / .graphic-centered. */
+}
 
 .batsman-career-layer {
   position: absolute;
   left: 0;
   right: 0;
   top: 0;
-  /* Keep clear of the bottom score strip (~110px bar + 28px inset). */
   bottom: 150px;
   display: flex;
   align-items: center;
@@ -13,203 +16,333 @@
   padding: 24px;
   pointer-events: none;
   z-index: 20;
-  opacity: 0;
-  transform: translateY(28px);
-  transition:
-    opacity 0.4s ease-in,
-    transform 0.4s ease-in;
-}
-
-.batsman-career-layer.is-visible {
-  opacity: 1;
-  transform: translateY(0);
-  transition:
-    opacity 0.4s ease-out,
-    transform 0.4s ease-out;
-}
-
-.batsman-career-graphic {
-  /* Positioned by .graphic on graphics.html; card styles on inner panel. */
 }
 
 .panel-batsman-career {
-  min-width: min(92vw, 720px);
-  max-width: min(94vw, 820px);
-  border-radius: 8px;
-  overflow: hidden;
-  background: #294c74;
-  color: #e7e1db;
-  box-shadow: 0 14px 44px rgba(0, 0, 0, 0.45);
-  pointer-events: none;
-}
+  --bc-navy: #081a30;
+  --bc-navy-dark: #061323;
+  --bc-blue: #218bff;
+  --bc-gold: #ffaf38;
+  --bc-panel: #f2f5f8;
+  --bc-panel-alt: #e5ecf2;
+  --bc-text: #13283d;
+  --bc-muted: rgba(19, 40, 61, 0.72);
 
-.panel-batsman-career .panel-accent {
-  height: 6px;
-  background: #ff6b00;
-}
-
-.bc-career-layout {
-  display: flex;
-  align-items: stretch;
-  gap: 0;
-  min-height: 320px;
-}
-
-.bc-career-photo {
-  position: relative;
-  flex: 0 0 240px;
-  width: 240px;
-  background: #1f3a58;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-}
-
-.bc-career-img {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.bc-career-initials {
-  font-size: 64px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  color: #e7e1db;
-}
-
-.bc-career-copy {
-  flex: 1;
-  min-width: 0;
-  padding: 22px 28px 24px;
   display: flex;
   flex-direction: column;
+  min-width: min(92vw, 920px);
+  max-width: min(96vw, 1020px);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--bc-navy);
+  color: #f2f5f8;
+  box-shadow:
+    0 22px 56px rgba(0, 0, 0, 0.55),
+    0 0 0 1px rgba(33, 139, 255, 0.18);
+  pointer-events: none;
+  font-family: 'Barlow', 'Montserrat', system-ui, sans-serif;
 }
 
-.bc-career-format {
-  margin: 0 0 6px;
+.bc-section {
+  opacity: 0;
+  transform: translateX(-60px);
+  transition:
+    opacity 650ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 650ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.panel-batsman-career.bc-entering .bc-section.bc-section-visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.panel-batsman-career.bc-exiting .bc-section {
+  opacity: 0;
+  transform: translateX(48px);
+  transition:
+    opacity 320ms ease-in,
+    transform 320ms ease-in;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bc-section {
+    transform: none;
+    transition: opacity 120ms ease;
+  }
+
+  .panel-batsman-career.bc-exiting .bc-section {
+    transform: none;
+  }
+
+  .bc-header-sweep {
+    animation: none !important;
+  }
+}
+
+.bc-id-strip {
+  background: var(--bc-navy-dark);
+  padding: 8px 18px;
+  border-bottom: 2px solid var(--bc-blue);
+}
+
+.bc-id-line {
+  margin: 0;
+  font-family: 'Barlow Condensed', 'Barlow', sans-serif;
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: #ff6b00;
+  text-align: center;
+  color: var(--bc-gold);
 }
 
-.bc-career-name {
-  margin: 0 0 16px;
-  font-size: clamp(28px, 3vw, 40px);
-  line-height: 1.1;
-  letter-spacing: 0.02em;
+.bc-header {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px 20px;
+  align-items: center;
+  padding: 16px 18px 14px;
+  background: linear-gradient(135deg, var(--bc-navy) 0%, #0c2545 100%);
+  overflow: hidden;
+}
+
+.bc-header-copy {
+  min-width: 0;
+}
+
+.bc-kicker {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--bc-gold);
+}
+
+.bc-title {
+  margin: 2px 0 0;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: #fff;
 }
 
-.bc-career-given {
-  font-weight: 500;
-}
-
-.bc-career-family {
-  font-weight: 800;
-}
-
-.bc-career-rows {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  flex: 1 1 auto;
-}
-
-.bc-career-row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 8px 12px;
-}
-
-.bc-career-row:nth-child(odd) {
-  background: rgba(0, 0, 0, 0.18);
-}
-
-.bc-career-row:nth-child(even) {
-  background: rgba(255, 255, 255, 0.04);
-}
-
-.bc-career-label {
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: rgba(231, 225, 219, 0.72);
-}
-
-.bc-career-value {
-  font-size: 22px;
+.bc-player-name {
+  margin: 8px 0 0;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 34px;
   font-weight: 800;
   letter-spacing: 0.02em;
+  line-height: 1.05;
   color: #fff;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.bc-career-hs {
-  margin-top: 14px;
-  padding-top: 14px;
-  border-top: 1px solid rgba(231, 225, 219, 0.22);
+.bc-meta-line {
+  margin: 6px 0 0;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: rgba(242, 245, 248, 0.7);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.bc-career-hs-label {
-  margin: 0 0 4px;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: #ff6b00;
+.bc-header-aside {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
-.bc-career-hs-value {
+.bc-runs-block {
+  text-align: right;
+}
+
+.bc-runs-label {
   margin: 0;
-  font-size: clamp(36px, 4vw, 52px);
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--bc-gold);
+}
+
+.bc-runs-value {
+  margin: 2px 0 0;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 42px;
   font-weight: 800;
-  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
   line-height: 1;
   color: #fff;
 }
 
-.bc-career-hs-meta {
-  margin: 6px 0 0;
-  font-size: 15px;
-  font-weight: 700;
-  color: rgba(231, 225, 219, 0.78);
+.bc-format-badge {
+  margin: 0;
+  padding: 5px 10px;
+  border: 1px solid rgba(255, 175, 56, 0.45);
+  border-radius: 4px;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--bc-gold);
 }
 
-.panel-batsman-career [hidden] {
-  display: none !important;
+.bc-header-sweep {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 35%,
+    rgba(255, 175, 56, 0.14) 50%,
+    transparent 65%
+  );
+  transform: translateX(-120%);
+  pointer-events: none;
+}
+
+.panel-batsman-career.bc-entering .bc-header-sweep {
+  animation: bc-sweep 900ms cubic-bezier(0.22, 1, 0.36, 1) 80ms both;
+}
+
+@keyframes bc-sweep {
+  from {
+    transform: translateX(-120%);
+  }
+  to {
+    transform: translateX(120%);
+  }
+}
+
+.bc-stats-row {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 2px;
+  padding: 2px 2px 0;
+  background: var(--bc-navy-dark);
+}
+
+.bc-stats-row.is-second {
+  padding: 0 2px 2px;
+}
+
+.bc-cell {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 14px 12px;
+  background: var(--bc-panel);
+  color: var(--bc-text);
+}
+
+.bc-cell.is-alt {
+  background: var(--bc-panel-alt);
+}
+
+.bc-cell.is-accent {
+  background: #fff;
+  box-shadow: inset 0 0 0 1px rgba(33, 139, 255, 0.25);
+}
+
+.bc-cell.is-edge {
+  border-left: 4px solid var(--bc-blue);
+}
+
+.bc-cell.is-gold-edge {
+  border-right: 4px solid var(--bc-gold);
+}
+
+.bc-cell-label {
+  margin: 0;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--bc-muted);
+}
+
+.bc-cell-value {
+  margin: 0;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 28px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  color: var(--bc-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bc-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 18px;
+  background: var(--bc-navy-dark);
+  border-top: 1px solid rgba(33, 139, 255, 0.28);
+}
+
+.bc-footer-mark {
+  margin: 0;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--bc-gold);
+}
+
+.bc-footer-note {
+  margin: 0;
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: rgba(242, 245, 248, 0.62);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: right;
 }
 
 @media (max-width: 720px) {
-  .panel-batsman-career {
-    min-width: 0;
-    width: min(92vw, 560px);
+  .bc-header {
+    grid-template-columns: 1fr;
   }
 
-  .bc-career-photo {
-    flex-basis: 120px;
-    width: 120px;
+  .bc-header-aside {
+    align-items: flex-start;
   }
 
-  .bc-career-layout {
-    min-height: 0;
+  .bc-runs-block {
+    text-align: left;
   }
 
-  .bc-career-initials {
-    font-size: 40px;
+  .bc-player-name {
+    font-size: 28px;
   }
 
-  .batsman-career-layer {
-    bottom: 130px;
-    padding: 12px;
+  .bc-runs-value {
+    font-size: 34px;
+  }
+
+  .bc-cell-value {
+    font-size: 22px;
   }
 }

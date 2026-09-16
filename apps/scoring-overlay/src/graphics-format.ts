@@ -193,6 +193,37 @@ export function hasBatsmanCareerStats(
   );
 }
 
+/** Current-match team name for career-card chrome (not career-scoped). */
+export function careerTeamLabelForPlayer(
+  ctx: MatchContext | null | undefined,
+  playerId: string | null | undefined,
+): string | null {
+  if (!ctx || !playerId) {
+    return null;
+  }
+  for (const squad of ctx.squads) {
+    if (!squad.players.some((p) => p.userId === playerId)) {
+      continue;
+    }
+    if (ctx.homeTeamId && squad.teamId === ctx.homeTeamId) {
+      return ctx.homeTeamName?.trim() || null;
+    }
+    if (ctx.awayTeamId && squad.teamId === ctx.awayTeamId) {
+      return ctx.awayTeamName?.trim() || null;
+    }
+    return (
+      ctx.homeTeamName?.trim() ||
+      ctx.awayTeamName?.trim() ||
+      ctx.externalOpponentName?.trim() ||
+      null
+    );
+  }
+  if (ctx.externalPlayers.some((p) => p.id === playerId)) {
+    return ctx.externalOpponentName?.trim() || null;
+  }
+  return null;
+}
+
 /** Highest-score footer: `v Opponent, venue, year` when parts exist. */
 export function formatHighestScoreMeta(
   stats: BroadcastPlayerStatsView | null | undefined,

@@ -11,6 +11,8 @@ export interface BroadcastPlayerStatsView {
   lastName: string;
   /** Resolved media read URL, or null. */
   profilePhotoUrl: string | null;
+  /** Registration batting hand (RHB / LHB), when known. */
+  battingStyle: string | null;
   ballType: BallType;
   matches: number;
   /** Batting innings count (distinct from matches). */
@@ -23,10 +25,16 @@ export interface BroadcastPlayerStatsView {
   highestScoreOpponent: string | null;
   /** Venue/year line for highest score, when available. */
   highestScoreContext: string | null;
-  /** Innings scoring 30–49 (does not overlap with fifties). */
+  /** Innings scoring 30–49 (does not overlap with fifties/hundreds). */
   thirties: number;
   /** Half-centuries (50–99). */
   fifties: number;
+  /** Centuries (100+). */
+  hundreds: number;
+  fours: number;
+  sixes: number;
+  /** Batting innings finished not out. */
+  notOuts: number;
   wickets: number;
   /** Bowling average (runs conceded ÷ wickets). */
   bowlingAverage: number | null;

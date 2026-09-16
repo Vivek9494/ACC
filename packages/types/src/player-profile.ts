@@ -14,10 +14,14 @@ export interface PlayerProfilePeriodStats {
   highestScoreOpponent: string | null;
   highestScoreContext: string | null;
   strikeRate: number | null;
-  /** Innings scoring 30–49 (does not overlap with fifties). */
+  /** Innings scoring 30–49 (does not overlap with fifties/hundreds). */
   thirties: number;
   /** Half-centuries (50–99 inclusive). */
   fifties: number;
+  /** Centuries (100+). */
+  hundreds: number;
+  /** Batting innings finished not out (innings − dismissals). */
+  notOuts: number;
   wickets: number;
   /** Bowling average (runs conceded ÷ wickets); null when no wickets. */
   bowlingAverage: number | null;

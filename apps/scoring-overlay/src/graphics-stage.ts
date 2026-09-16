@@ -14,6 +14,7 @@ import { mountLastWicketCard } from './last-wicket-card';
 import { mountPartnershipCard } from './partnership-card';
 import { mountTeamPartnershipsCard } from './team-partnerships-card';
 import {
+  careerTeamLabelForPlayer,
   deriveBatterDotBalls,
   findInningsByKey,
   formatBatterInningsScore,
@@ -812,6 +813,7 @@ export function createGraphicsStage(
         apiBase: options.apiBase,
         ballType,
         placeholderName,
+        teamName: careerTeamLabelForPlayer(matchCtx, playerId),
       });
       if (
         !ok &&

@@ -406,6 +406,7 @@ export interface BroadcastPlayerStatsView {
   firstName: string;
   lastName: string;
   profilePhotoUrl: string | null;
+  battingStyle: string | null;
   ballType: BallType;
   matches: number;
   battingInnings: number;
@@ -417,6 +418,10 @@ export interface BroadcastPlayerStatsView {
   highestScoreContext: string | null;
   thirties: number;
   fifties: number;
+  hundreds: number;
+  fours: number;
+  sixes: number;
+  notOuts: number;
   wickets: number;
   bowlingAverage: number | null;
   economy: number | null;

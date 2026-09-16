@@ -60,6 +60,8 @@ const emptyCareerStats = {
   strikeRate: null,
   thirties: 0,
   fifties: 0,
+  hundreds: 0,
+  notOuts: 0,
   wickets: 0,
   bowlingAverage: null,
   economy: null,

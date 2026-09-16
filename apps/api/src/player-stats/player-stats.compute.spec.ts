@@ -233,8 +233,79 @@ describe('player-stats.compute', () => {
 
     expect(acc.thirties).toBe(2);
     expect(acc.fifties).toBe(2);
+    expect(acc.hundreds).toBe(1);
     expect(buildPlayerProfilePeriodStats(acc).thirties).toBe(2);
     expect(buildPlayerProfilePeriodStats(acc).fifties).toBe(2);
+    expect(buildPlayerProfilePeriodStats(acc).hundreds).toBe(1);
+    expect(buildPlayerProfilePeriodStats(acc).notOuts).toBe(0);
+  });
+
+  it('counts not-outs as innings minus dismissals', () => {
+    const acc = createPlayerStatsAccumulator();
+    const batter = (
+      playerId: string,
+      runs: number,
+      isOut: boolean,
+    ): ScorecardResponse['innings'][number]['batters'][number] => ({
+      playerId,
+      runs,
+      balls: 20,
+      ones: 0,
+      twos: 0,
+      threes: 0,
+      fours: 0,
+      sixes: 0,
+      strikeRate: 100,
+      isOut,
+      dismissalType: isOut ? DismissalType.Bowled : null,
+      bowlerId: isOut ? 'bowler-1' : null,
+      fielderId: null,
+      fielder2Id: null,
+      retiredHurt: false,
+      isMankad: false,
+    });
+
+    applyMatchToPlayerStats(acc, 'player-1', context, {
+      ...emptyScorecard,
+      innings: [
+        {
+          inningsId: 'inn-1',
+          sequence: 1,
+          inningsType: InningsType.Normal,
+          battingTeamId: 'team-a',
+          bowlingTeamId: 'team-b',
+          runs: 100,
+          wickets: 1,
+          legalBalls: 60,
+          oversText: '10.0',
+          oversAllotted: 20,
+          extras: { wides: 0, noBalls: 0, byes: 0, legByes: 0, penalties: 0, total: 0 },
+          batters: [
+            batter('player-1', 40, true),
+            batter('player-1', 55, false),
+          ],
+          bowlers: [],
+          fallOfWickets: [],
+          recentOvers: [],
+          timeline: [],
+          partnership: null,
+          partnerships: [],
+          currentStrikerId: null,
+          currentNonStrikerId: null,
+          currentBowlerId: null,
+          freeHitNext: false,
+          closed: true,
+          closeReason: InningsCloseReason.AllOut,
+          target: null,
+          droppedCatches: [],
+          droppedCatchEvents: [],
+        },
+      ],
+    });
+
+    expect(acc.battingInnings).toBe(2);
+    expect(acc.dismissals).toBe(1);
+    expect(buildPlayerProfilePeriodStats(acc).notOuts).toBe(1);
   });
 
   it('accumulates dropped catches from innings metadata', () => {

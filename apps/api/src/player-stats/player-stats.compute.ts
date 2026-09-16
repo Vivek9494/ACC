@@ -37,6 +37,8 @@ export interface PlayerStatsAccumulator {
   sixes: number;
   thirties: number;
   fifties: number;
+  /** Centuries (100+). Mutually exclusive with thirties/fifties buckets. */
+  hundreds: number;
   wickets: number;
   bowlingRunsConceded: number;
   bowlingLegalBalls: number;
@@ -61,6 +63,7 @@ export function createPlayerStatsAccumulator(): PlayerStatsAccumulator {
     sixes: 0,
     thirties: 0,
     fifties: 0,
+    hundreds: 0,
     wickets: 0,
     bowlingRunsConceded: 0,
     bowlingLegalBalls: 0,
@@ -166,6 +169,8 @@ export function applyMatchToPlayerStats(
           acc.thirties += 1;
         } else if (batter.runs >= 50 && batter.runs < 100) {
           acc.fifties += 1;
+        } else if (batter.runs >= 100) {
+          acc.hundreds += 1;
         }
 
         if (batter.runs > 0 || batter.balls > 0 || batter.isOut) {
@@ -248,6 +253,8 @@ export function buildPlayerProfilePeriodStats(acc: PlayerStatsAccumulator): Play
     strikeRate: computeStrikeRate(acc.runs, acc.balls),
     thirties: acc.thirties,
     fifties: acc.fifties,
+    hundreds: acc.hundreds,
+    notOuts: Math.max(0, acc.battingInnings - acc.dismissals),
     wickets: acc.wickets,
     bowlingAverage: computeBowlingAverage(acc.bowlingRunsConceded, acc.wickets),
     economy: computeEconomyRate(acc.bowlingRunsConceded, acc.bowlingLegalBalls),

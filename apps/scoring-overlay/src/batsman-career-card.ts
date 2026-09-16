@@ -1,8 +1,8 @@
 /**
- * Shared batsman career profile card for the root strip page and graphics.html.
+ * Premium BATTER CAREER PROFILE — career aggregates from broadcast-stats.
  *
- * Isolation: all fetch/render paths are try/catch'd. Failures clear the card
- * silently (console.warn only) so a graphics error never breaks the strip.
+ * Isolation: fetch/render paths are try/catch'd so a graphics error never
+ * breaks the strip.
  */
 
 import './batsman-career-card.css';
@@ -12,20 +12,23 @@ import {
   formatHighestScoreMeta,
   formatStat,
   hasBatsmanCareerStats,
-  initialsFromName,
   isUuid,
 } from './graphics-format';
 import type { BallType, BroadcastPlayerStatsView } from './types';
 
+const SECTION_STAGGER_MS = 45;
+const EXIT_MS = 320;
+
 export interface BatsmanCareerShowOptions {
   apiBase: string;
   ballType: BallType;
-  /** Optional display name while stats load (e.g. from scorecard). */
+  /** Optional display name while / if stats load (e.g. from scorecard). */
   placeholderName?: string;
+  /** Current-match team label for header chrome (not career-scoped). */
+  teamName?: string | null;
 }
 
 export interface BatsmanCareerCardController {
-  /** Animated host element (layer or graphic shell). */
   readonly host: HTMLElement;
   isOnAir(): boolean;
   hide(): void;
@@ -36,154 +39,15 @@ export interface BatsmanCareerCardController {
   show(playerId: string, opts: BatsmanCareerShowOptions): Promise<boolean>;
 }
 
-type StatRowKey = 'innings' | 'runs' | 'avg' | 'sr' | 'thirties' | 'fifties';
-
 function warnGraphics(err: unknown): void {
   console.warn('[batsman-career]', err);
 }
 
-function qs<T extends HTMLElement>(
-  root: ParentNode,
-  selector: string,
-): T | null {
-  return root.querySelector(selector) as T | null;
-}
-
-function setText(root: ParentNode, selector: string, text: string): void {
-  const node = qs<HTMLElement>(root, selector);
-  if (!node) {
-    return;
-  }
-  if (node.textContent !== text) {
-    node.textContent = text;
-  }
-}
-
-function setRowVisible(
-  root: ParentNode,
-  key: StatRowKey,
-  visible: boolean,
-): void {
-  const row = qs<HTMLElement>(root, `[data-bc-row="${key}"]`);
-  if (!row) {
-    return;
-  }
-  row.hidden = !visible;
-}
-
-function setRowValue(
-  root: ParentNode,
-  key: StatRowKey,
-  value: string | null,
-): void {
-  if (value == null) {
-    setRowVisible(root, key, false);
-    return;
-  }
-  setRowVisible(root, key, true);
-  setText(root, `[data-bc="${key}"]`, value);
-}
-
-function isPresentNumber(value: unknown): value is number {
-  return typeof value === 'number' && Number.isFinite(value);
-}
-
-function setAvatar(
-  root: ParentNode,
-  name: string,
-  photoUrl: string | null,
-): void {
-  const initials = qs<HTMLSpanElement>(root, '[data-bc="initials"]');
-  const img = qs<HTMLImageElement>(root, '[data-bc="img"]');
-  if (!initials || !img) {
-    return;
-  }
-  initials.textContent = initialsFromName(name);
-  if (photoUrl) {
-    img.onload = () => {
-      img.hidden = false;
-      initials.hidden = true;
-    };
-    img.onerror = () => {
-      img.hidden = true;
-      initials.hidden = false;
-      img.removeAttribute('src');
-    };
-    if (img.getAttribute('src') !== photoUrl) {
-      img.hidden = true;
-      initials.hidden = false;
-      img.src = photoUrl;
-    }
-  } else {
-    img.hidden = true;
-    initials.hidden = false;
-    img.removeAttribute('src');
-  }
-}
-
-function buildCardMarkup(): string {
-  return `
-    <div class="panel panel-batsman-career">
-      <div class="panel-accent"></div>
-      <div class="bc-career-layout">
-        <div class="bc-career-photo" aria-hidden="true">
-          <span data-bc="initials" class="bc-career-initials">?</span>
-          <img data-bc="img" class="bc-career-img" alt="" hidden />
-        </div>
-        <div class="bc-career-copy">
-          <p data-bc="format" class="bc-career-format">—</p>
-          <p class="bc-career-name">
-            <span data-bc="given" class="bc-career-given"></span><span data-bc="family" class="bc-career-family">—</span>
-          </p>
-          <div class="bc-career-rows" role="table" aria-label="Batting career stats">
-            <div class="bc-career-row" data-bc-row="innings" role="row">
-              <span class="bc-career-label">Innings</span>
-              <span data-bc="innings" class="bc-career-value">—</span>
-            </div>
-            <div class="bc-career-row" data-bc-row="runs" role="row">
-              <span class="bc-career-label">Runs</span>
-              <span data-bc="runs" class="bc-career-value">—</span>
-            </div>
-            <div class="bc-career-row" data-bc-row="avg" role="row">
-              <span class="bc-career-label">Average</span>
-              <span data-bc="avg" class="bc-career-value">—</span>
-            </div>
-            <div class="bc-career-row" data-bc-row="sr" role="row">
-              <span class="bc-career-label">Strike Rate</span>
-              <span data-bc="sr" class="bc-career-value">—</span>
-            </div>
-            <div class="bc-career-row" data-bc-row="thirties" role="row">
-              <span class="bc-career-label">30s</span>
-              <span data-bc="thirties" class="bc-career-value">—</span>
-            </div>
-            <div class="bc-career-row" data-bc-row="fifties" role="row">
-              <span class="bc-career-label">50s</span>
-              <span data-bc="fifties" class="bc-career-value">—</span>
-            </div>
-          </div>
-          <div class="bc-career-hs" data-bc="hs-block">
-            <p class="bc-career-hs-label">Highest Score</p>
-            <p data-bc="hs" class="bc-career-hs-value">—</p>
-            <p data-bc="hs-meta" class="bc-career-hs-meta" hidden></p>
-          </div>
-        </div>
-      </div>
-    </div>
-  `.trim();
-}
-
-function splitName(full: string): { given: string; family: string } {
-  const parts = full.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) {
-    return { given: '', family: '—' };
-  }
-  if (parts.length === 1) {
-    return { given: '', family: parts[0] ?? '—' };
-  }
-  return {
-    given: `${parts.slice(0, -1).join(' ')} `,
-    family: parts[parts.length - 1] ?? '—',
-  };
+function prefersReducedMotion(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  );
 }
 
 function formatLabel(ballType: BallType | string | null | undefined): string {
@@ -196,116 +60,141 @@ function formatLabel(ballType: BallType | string | null | undefined): string {
   return 'CAREER';
 }
 
-function fillPlaceholder(
-  root: ParentNode,
-  ballType: BallType,
-  displayName: string,
-): void {
-  const { given, family } = splitName(displayName);
-  const givenEl = qs<HTMLSpanElement>(root, '[data-bc="given"]');
-  const familyEl = qs<HTMLSpanElement>(root, '[data-bc="family"]');
-  if (givenEl) {
-    givenEl.textContent = given;
+function formatBadgeText(ballType: BallType | string | null | undefined): string {
+  if (ballType === 'LEATHER') {
+    return 'LEATHER';
   }
-  if (familyEl) {
-    familyEl.textContent = family;
+  if (ballType === 'TENNIS') {
+    return 'TENNIS';
   }
-  setText(root, '[data-bc="format"]', formatLabel(ballType));
-  for (const key of [
-    'innings',
-    'runs',
-    'avg',
-    'sr',
-    'thirties',
-    'fifties',
-  ] as const) {
-    setRowVisible(root, key, true);
-    setText(root, `[data-bc="${key}"]`, '—');
-  }
-  const hsBlock = qs<HTMLElement>(root, '[data-bc="hs-block"]');
-  if (hsBlock) {
-    hsBlock.hidden = false;
-  }
-  setText(root, '[data-bc="hs"]', '—');
-  const meta = qs<HTMLParagraphElement>(root, '[data-bc="hs-meta"]');
-  if (meta) {
-    meta.hidden = true;
-    meta.textContent = '';
-  }
-  setAvatar(root, displayName || '—', null);
+  return 'CAREER';
 }
 
-function applyStats(root: ParentNode, stats: BroadcastPlayerStatsView): void {
-  const given = stats.firstName?.trim() ? `${stats.firstName.trim()} ` : '';
-  const family = stats.lastName?.trim() || '—';
-  const givenEl = qs<HTMLSpanElement>(root, '[data-bc="given"]');
-  const familyEl = qs<HTMLSpanElement>(root, '[data-bc="family"]');
-  if (givenEl) {
-    givenEl.textContent = given;
+function battingStyleLabel(style: string | null | undefined): string | null {
+  if (style === 'RHB') {
+    return 'Right Hand Batsman';
   }
-  if (familyEl) {
-    familyEl.textContent = family;
+  if (style === 'LHB') {
+    return 'Left Hand Batsman';
   }
-  setText(root, '[data-bc="format"]', formatLabel(stats.ballType));
+  const trimmed = style?.trim();
+  return trimmed || null;
+}
 
-  setRowValue(
-    root,
-    'innings',
-    isPresentNumber(stats.battingInnings) ? String(stats.battingInnings) : null,
-  );
-  setRowValue(
-    root,
-    'runs',
-    isPresentNumber(stats.runs) ? String(stats.runs) : null,
-  );
-  setRowValue(
-    root,
-    'avg',
-    isPresentNumber(stats.average) ? formatStat(stats.average, 2) : null,
-  );
-  setRowValue(
-    root,
-    'sr',
-    isPresentNumber(stats.strikeRate) ? formatStat(stats.strikeRate, 1) : null,
-  );
-  setRowValue(
-    root,
-    'thirties',
-    isPresentNumber(stats.thirties) ? String(stats.thirties) : null,
-  );
-  setRowValue(
-    root,
-    'fifties',
-    isPresentNumber(stats.fifties) ? String(stats.fifties) : null,
-  );
+function playerDisplayName(stats: BroadcastPlayerStatsView): string {
+  return `${stats.firstName ?? ''} ${stats.lastName ?? ''}`.trim() || '—';
+}
 
-  const hs = stats.highestScore?.trim() || null;
-  const hsBlock = qs<HTMLElement>(root, '[data-bc="hs-block"]');
-  if (hsBlock) {
-    hsBlock.hidden = !hs;
-  }
-  if (hs) {
-    setText(root, '[data-bc="hs"]', hs);
-    const metaLine = formatHighestScoreMeta(stats);
-    const meta = qs<HTMLParagraphElement>(root, '[data-bc="hs-meta"]');
-    if (meta) {
-      if (metaLine) {
-        meta.hidden = false;
-        meta.textContent = metaLine;
-      } else {
-        meta.hidden = true;
-        meta.textContent = '';
-      }
-    }
-  }
+function countText(value: number | null | undefined): string {
+  return typeof value === 'number' && Number.isFinite(value)
+    ? String(value)
+    : '—';
+}
 
-  const full =
-    `${stats.firstName ?? ''} ${stats.lastName ?? ''}`.trim() || '—';
-  setAvatar(root, full, stats.profilePhotoUrl ?? null);
+function avgText(value: number | null | undefined): string {
+  return typeof value === 'number' && Number.isFinite(value)
+    ? formatStat(value, 2)
+    : '—';
+}
+
+function srText(value: number | null | undefined): string {
+  return typeof value === 'number' && Number.isFinite(value)
+    ? formatStat(value, 1)
+    : '—';
+}
+
+function hsText(value: string | null | undefined): string {
+  const trimmed = value?.trim();
+  return trimmed || '—';
+}
+
+function buildCardMarkup(): string {
+  return `
+    <div class="panel panel-batsman-career">
+      <section class="bc-section bc-id-strip" data-bc-section="id">
+        <p data-bc="id-line" class="bc-id-line">BATTER CAREER PROFILE</p>
+      </section>
+      <section class="bc-section bc-header" data-bc-section="header">
+        <div class="bc-header-copy">
+          <p class="bc-kicker">Career profile</p>
+          <p class="bc-title">Batter Career Profile</p>
+          <p data-bc="name" class="bc-player-name">—</p>
+          <p data-bc="meta" class="bc-meta-line">—</p>
+        </div>
+        <div class="bc-header-aside">
+          <div class="bc-runs-block">
+            <p class="bc-runs-label">Career runs</p>
+            <p data-bc="career-runs" class="bc-runs-value">—</p>
+          </div>
+          <p data-bc="format-badge" class="bc-format-badge">—</p>
+        </div>
+        <div class="bc-header-sweep" aria-hidden="true"></div>
+      </section>
+      <div class="bc-stats-row" role="group" aria-label="Career batting summary">
+        <section class="bc-section bc-cell is-edge" data-bc-section="matches">
+          <p class="bc-cell-label">Matches</p>
+          <p data-bc="matches" class="bc-cell-value">—</p>
+        </section>
+        <section class="bc-section bc-cell is-alt" data-bc-section="innings">
+          <p class="bc-cell-label">Innings</p>
+          <p data-bc="innings" class="bc-cell-value">—</p>
+        </section>
+        <section class="bc-section bc-cell is-accent" data-bc-section="hs">
+          <p class="bc-cell-label">Highest score</p>
+          <p data-bc="hs" class="bc-cell-value">—</p>
+        </section>
+        <section class="bc-section bc-cell is-alt" data-bc-section="avg">
+          <p class="bc-cell-label">Average</p>
+          <p data-bc="avg" class="bc-cell-value">—</p>
+        </section>
+        <section class="bc-section bc-cell is-gold-edge" data-bc-section="sr">
+          <p class="bc-cell-label">Strike rate</p>
+          <p data-bc="sr" class="bc-cell-value">—</p>
+        </section>
+      </div>
+      <div class="bc-stats-row is-second" role="group" aria-label="Career milestones">
+        <section class="bc-section bc-cell is-edge" data-bc-section="hundreds">
+          <p class="bc-cell-label">Hundreds</p>
+          <p data-bc="hundreds" class="bc-cell-value">—</p>
+        </section>
+        <section class="bc-section bc-cell is-alt" data-bc-section="fifties">
+          <p class="bc-cell-label">Fifties</p>
+          <p data-bc="fifties" class="bc-cell-value">—</p>
+        </section>
+        <section class="bc-section bc-cell" data-bc-section="fours">
+          <p class="bc-cell-label">Fours</p>
+          <p data-bc="fours" class="bc-cell-value">—</p>
+        </section>
+        <section class="bc-section bc-cell is-alt" data-bc-section="sixes">
+          <p class="bc-cell-label">Sixes</p>
+          <p data-bc="sixes" class="bc-cell-value">—</p>
+        </section>
+        <section class="bc-section bc-cell is-gold-edge" data-bc-section="not-outs">
+          <p class="bc-cell-label">Not outs</p>
+          <p data-bc="not-outs" class="bc-cell-value">—</p>
+        </section>
+      </div>
+      <section class="bc-section bc-footer" data-bc-section="footer">
+        <p class="bc-footer-mark">ASC</p>
+        <p data-bc="footer-note" class="bc-footer-note"></p>
+      </section>
+    </div>
+  `.trim();
+}
+
+function metaLine(
+  teamName: string | null | undefined,
+  battingStyle: string | null | undefined,
+): string {
+  const parts = [
+    teamName?.trim() || null,
+    battingStyleLabel(battingStyle),
+  ].filter((part): part is string => Boolean(part));
+  return parts.length > 0 ? parts.join(' · ') : '—';
 }
 
 /**
- * Mount the batsman career card into `host` (clears existing children).
+ * Mount the batsman career card into `host`.
  * Root strip: host should use `.batsman-career-layer`.
  * graphics.html: host should use `.graphic.batsman-career-graphic`.
  */
@@ -322,16 +211,184 @@ export function mountBatsmanCareerCard(
 
   let onAir = false;
   let token = 0;
+  let motionGen = 0;
+  let exitTimer: number | null = null;
+  const entranceTimers: number[] = [];
   const cache = new Map<string, BroadcastPlayerStatsView | null>();
+  let lastTeamName: string | null = null;
 
-  const showHost = (): void => {
-    onAir = true;
-    revealGraphic(host);
+  const qs = <T extends HTMLElement>(selector: string): T | null =>
+    host.querySelector(selector) as T | null;
+
+  const panel = (): HTMLElement | null =>
+    host.querySelector('.panel-batsman-career');
+
+  const ensureMarkup = (): void => {
+    if (!host.querySelector('.panel-batsman-career')) {
+      host.innerHTML = buildCardMarkup();
+    }
   };
 
-  const hideHost = (): void => {
+  const cancelMotion = (): void => {
+    motionGen += 1;
+    for (const t of entranceTimers) {
+      window.clearTimeout(t);
+    }
+    entranceTimers.length = 0;
+    if (exitTimer != null) {
+      window.clearTimeout(exitTimer);
+      exitTimer = null;
+    }
+    const p = panel();
+    if (p) {
+      p.classList.remove('bc-exiting', 'bc-entering');
+      for (const section of p.querySelectorAll('.bc-section')) {
+        section.classList.remove('bc-section-visible');
+      }
+    }
+  };
+
+  const runEntrance = (): void => {
+    cancelMotion();
+    const p = panel();
+    if (!p) {
+      return;
+    }
+    const gen = motionGen;
+    const sections = [...p.querySelectorAll<HTMLElement>('.bc-section')];
+    if (prefersReducedMotion()) {
+      p.classList.add('bc-entering');
+      for (const section of sections) {
+        section.classList.add('bc-section-visible');
+      }
+      return;
+    }
+    p.classList.remove('bc-exiting');
+    p.classList.add('bc-entering');
+    for (const section of sections) {
+      section.classList.remove('bc-section-visible');
+    }
+    sections.forEach((section, index) => {
+      const delay = index * SECTION_STAGGER_MS;
+      const timer = window.setTimeout(() => {
+        if (gen !== motionGen) {
+          return;
+        }
+        section.classList.add('bc-section-visible');
+      }, delay);
+      entranceTimers.push(timer);
+    });
+    const sweep = p.querySelector<HTMLElement>('.bc-header-sweep');
+    if (sweep) {
+      sweep.style.animation = 'none';
+      void sweep.offsetWidth;
+      sweep.style.animation = '';
+    }
+  };
+
+  const paint = (
+    stats: BroadcastPlayerStatsView,
+    teamName: string | null | undefined,
+  ): boolean => {
+    ensureMarkup();
+    const idLine = qs<HTMLElement>('[data-bc="id-line"]');
+    const name = qs<HTMLElement>('[data-bc="name"]');
+    const meta = qs<HTMLElement>('[data-bc="meta"]');
+    const careerRuns = qs<HTMLElement>('[data-bc="career-runs"]');
+    const formatBadge = qs<HTMLElement>('[data-bc="format-badge"]');
+    const matches = qs<HTMLElement>('[data-bc="matches"]');
+    const innings = qs<HTMLElement>('[data-bc="innings"]');
+    const hs = qs<HTMLElement>('[data-bc="hs"]');
+    const avg = qs<HTMLElement>('[data-bc="avg"]');
+    const sr = qs<HTMLElement>('[data-bc="sr"]');
+    const hundreds = qs<HTMLElement>('[data-bc="hundreds"]');
+    const fifties = qs<HTMLElement>('[data-bc="fifties"]');
+    const fours = qs<HTMLElement>('[data-bc="fours"]');
+    const sixes = qs<HTMLElement>('[data-bc="sixes"]');
+    const notOuts = qs<HTMLElement>('[data-bc="not-outs"]');
+    const footerNote = qs<HTMLElement>('[data-bc="footer-note"]');
+
+    if (
+      !idLine ||
+      !name ||
+      !meta ||
+      !careerRuns ||
+      !formatBadge ||
+      !matches ||
+      !innings ||
+      !hs ||
+      !avg ||
+      !sr ||
+      !hundreds ||
+      !fifties ||
+      !fours ||
+      !sixes ||
+      !notOuts ||
+      !footerNote
+    ) {
+      return false;
+    }
+
+    const display = playerDisplayName(stats);
+    idLine.textContent = `${formatLabel(stats.ballType)} · ${display.toUpperCase()}`;
+    name.textContent = display;
+    meta.textContent = metaLine(teamName, stats.battingStyle);
+    careerRuns.textContent = countText(stats.runs);
+    formatBadge.textContent = formatBadgeText(stats.ballType);
+
+    matches.textContent = countText(stats.matches);
+    innings.textContent = countText(stats.battingInnings);
+    hs.textContent = hsText(stats.highestScore);
+    avg.textContent = avgText(stats.average);
+    sr.textContent = srText(stats.strikeRate);
+    hundreds.textContent = countText(stats.hundreds);
+    fifties.textContent = countText(stats.fifties);
+    fours.textContent = countText(stats.fours);
+    sixes.textContent = countText(stats.sixes);
+    notOuts.textContent = countText(stats.notOuts);
+
+    const hsMeta = formatHighestScoreMeta(stats);
+    footerNote.textContent = hsMeta
+      ? `Highest ${hsText(stats.highestScore)} · ${hsMeta}`
+      : formatLabel(stats.ballType);
+    return true;
+  };
+
+  const hideNode = (): void => {
+    cancelMotion();
     onAir = false;
-    concealGraphic(host);
+    const p = panel();
+    const reduced = prefersReducedMotion();
+    const ms = reduced ? 0 : EXIT_MS;
+
+    if (p && !reduced) {
+      p.classList.add('bc-exiting');
+      p.classList.remove('bc-entering');
+      for (const section of p.querySelectorAll('.bc-section')) {
+        section.classList.remove('bc-section-visible');
+      }
+    }
+
+    host.classList.remove('is-visible');
+    exitTimer = window.setTimeout(() => {
+      exitTimer = null;
+      concealGraphic(host);
+    }, ms);
+  };
+
+  const reveal = (animate: boolean): void => {
+    revealGraphic(host);
+    if (animate) {
+      requestAnimationFrame(() => runEntrance());
+      return;
+    }
+    const p = panel();
+    if (p) {
+      p.classList.add('bc-entering');
+      for (const section of p.querySelectorAll('.bc-section')) {
+        section.classList.add('bc-section-visible');
+      }
+    }
   };
 
   return {
@@ -340,7 +397,7 @@ export function mountBatsmanCareerCard(
     hide: () => {
       try {
         token += 1;
-        hideHost();
+        hideNode();
       } catch (err) {
         warnGraphics(err);
         onAir = false;
@@ -351,14 +408,11 @@ export function mountBatsmanCareerCard(
     async show(playerId, opts) {
       try {
         if (!isUuid(playerId)) {
-          hideHost();
+          hideNode();
           return false;
         }
 
-        const displayName = opts.placeholderName?.trim() || '—';
-        fillPlaceholder(host, opts.ballType, displayName);
-        showHost();
-
+        lastTeamName = opts.teamName?.trim() || null;
         const request = ++token;
         const key = `${playerId}:${opts.ballType}`;
         let stats: BroadcastPlayerStatsView | null;
@@ -381,17 +435,17 @@ export function mountBatsmanCareerCard(
         if (request !== token) {
           return false;
         }
-        if (!stats || !hasBatsmanCareerStats(stats)) {
-          hideHost();
+        if (!stats || !hasBatsmanCareerStats(stats) || !paint(stats, lastTeamName)) {
+          hideNode();
           return false;
         }
-        applyStats(host, stats);
         onAir = true;
+        reveal(true);
         return true;
       } catch (err) {
         warnGraphics(err);
         try {
-          hideHost();
+          hideNode();
         } catch (hideErr) {
           warnGraphics(hideErr);
           onAir = false;

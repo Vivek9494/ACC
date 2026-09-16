@@ -51,13 +51,25 @@ export class BroadcastPlayerStatsController {
     }
 
     const ballType = query.ballType ?? BallType.Tennis;
-    const { career } = await this.playerStats.buildCareerStats(userId, ballType);
+    const [{ career }, registration] = await Promise.all([
+      this.playerStats.buildCareerStats(userId, ballType),
+      this.prisma.registration.findFirst({
+        where: {
+          userId,
+          battingStyle: { not: null },
+          tournament: { ballType },
+        },
+        orderBy: { updatedAt: 'desc' },
+        select: { battingStyle: true },
+      }),
+    ]);
 
     return {
       userId: user.id,
       firstName: user.firstName,
       lastName: user.lastName,
       profilePhotoUrl: await this.mediaUrls.resolveReadUrl(user.profilePhotoUrl),
+      battingStyle: registration?.battingStyle ?? null,
       ballType,
       matches: career.matches,
       battingInnings: career.battingInnings,
@@ -69,6 +81,10 @@ export class BroadcastPlayerStatsController {
       highestScoreContext: career.highestScoreContext,
       thirties: career.thirties,
       fifties: career.fifties,
+      hundreds: career.hundreds,
+      fours: career.fours,
+      sixes: career.sixes,
+      notOuts: career.notOuts,
       wickets: career.wickets,
       bowlingAverage: career.bowlingAverage,
       economy: career.economy,
