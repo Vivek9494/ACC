@@ -32,20 +32,20 @@
 
 .bc-section {
   opacity: 0;
-  transform: translateX(-70px) scaleX(0.98);
+  transform: translateX(-60px);
   transition:
-    opacity 650ms cubic-bezier(0.22, 1, 0.36, 1),
-    transform 650ms cubic-bezier(0.22, 1, 0.36, 1);
+    opacity 650ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 650ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .panel-batting-card.bc-entering .bc-section.bc-section-visible {
   opacity: 1;
-  transform: translateX(0) scaleX(1);
+  transform: translateX(0);
 }
 
 .panel-batting-card.bc-exiting .bc-section {
   opacity: 0;
-  transform: translateX(65px);
+  transform: translateX(48px);
   transition:
     opacity 320ms ease-in,
     transform 320ms ease-in;

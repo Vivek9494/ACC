@@ -25,8 +25,16 @@ import { teamInitials } from './view-model';
 import './batting-card.css';
 
 const BALLS_PER_OVER = 6;
-const SECTION_STAGGER_MS = 48;
 const EXIT_MS = 320;
+
+/** Same absolute timeline model as Playing XI. */
+const DELAY = {
+  id: 0,
+  header: 65,
+  columns: 180,
+  row0: 225,
+  rowStep: 45,
+} as const;
 
 export interface BattingCardShowOptions {
   /** When false, repaint live data without replaying section entrance. */
@@ -189,10 +197,18 @@ function yetToBatNames(
 function buildMarkup(): string {
   return `
     <div class="panel panel-batting-card">
-      <section class="bc-section bc-id-strip" data-bc-section="id">
+      <section
+        class="bc-section bc-id-strip"
+        data-bc-section="id"
+        data-bc-delay="${DELAY.id}"
+      >
         <p data-bc-id-line class="bc-id-line">BATTING SCORECARD</p>
       </section>
-      <section class="bc-section bc-header" data-bc-section="header">
+      <section
+        class="bc-section bc-header"
+        data-bc-section="header"
+        data-bc-delay="${DELAY.header}"
+      >
         <div class="bc-header-inner">
           <div data-bc-monogram class="bc-monogram" aria-hidden="true">—</div>
           <div class="bc-header-copy">
@@ -204,7 +220,11 @@ function buildMarkup(): string {
         </div>
         <div class="bc-header-sweep" aria-hidden="true"></div>
       </section>
-      <section class="bc-section bc-columns" data-bc-section="columns">
+      <section
+        class="bc-section bc-columns"
+        data-bc-section="columns"
+        data-bc-delay="${DELAY.columns}"
+      >
         <div class="bc-col-grid bc-col-head" role="row">
           <span class="bc-col-name">Batter</span>
           <span class="bc-col-how">How out</span>
@@ -215,11 +235,21 @@ function buildMarkup(): string {
           <span class="bc-col-num">SR</span>
         </div>
       </section>
-      <section class="bc-section bc-rows-wrap" data-bc-section="rows">
+      <div class="bc-rows-wrap">
         <div data-bc-rows class="bc-rows"></div>
-        <p data-bc-empty class="bc-empty" hidden>No batters yet</p>
-      </section>
-      <section class="bc-section bc-extras" data-bc-section="extras">
+        <p
+          data-bc-empty
+          class="bc-section bc-empty"
+          data-bc-section="empty"
+          data-bc-delay="${DELAY.row0}"
+          hidden
+        >No batters yet</p>
+      </div>
+      <section
+        class="bc-section bc-extras"
+        data-bc-section="extras"
+        data-bc-delay="720"
+      >
         <p data-bc-extras class="bc-extras-line">Extras</p>
         <div class="bc-extras-grid">
           <div class="bc-extra-cell"><span class="bc-extra-k">B</span><span data-bc-ex-b class="bc-extra-v">0</span></div>
@@ -228,11 +258,20 @@ function buildMarkup(): string {
           <div class="bc-extra-cell"><span class="bc-extra-k">NB</span><span data-bc-ex-nb class="bc-extra-v">0</span></div>
         </div>
       </section>
-      <section class="bc-section bc-ytb" data-bc-section="ytb" hidden>
+      <section
+        class="bc-section bc-ytb"
+        data-bc-section="ytb"
+        data-bc-delay="765"
+        hidden
+      >
         <p data-bc-ytb-label class="bc-ytb-label">Yet to bat</p>
         <p data-bc-ytb-names class="bc-ytb-names"></p>
       </section>
-      <section class="bc-section bc-footer" data-bc-section="footer">
+      <section
+        class="bc-section bc-footer"
+        data-bc-section="footer"
+        data-bc-delay="810"
+      >
         <p data-bc-footer class="bc-footer-line">—</p>
       </section>
     </div>
@@ -292,31 +331,32 @@ export function mountBattingCard(host: HTMLElement): BattingCardController {
       return;
     }
     const gen = motionGen;
+    const sections = [...p.querySelectorAll<HTMLElement>('.bc-section')].filter(
+      (el) => !el.hidden,
+    );
     if (prefersReducedMotion()) {
       p.classList.add('bc-entering');
-      for (const section of p.querySelectorAll('.bc-section')) {
+      for (const section of sections) {
         section.classList.add('bc-section-visible');
       }
       return;
     }
     p.classList.remove('bc-exiting');
     p.classList.add('bc-entering');
-    const sections = [...p.querySelectorAll<HTMLElement>('.bc-section')].filter(
-      (el) => !el.hidden,
-    );
     for (const section of sections) {
       section.classList.remove('bc-section-visible');
     }
-    sections.forEach((section, index) => {
-      const delay = index * SECTION_STAGGER_MS;
+    for (const section of sections) {
+      const raw = section.getAttribute('data-bc-delay');
+      const delay = raw != null ? Number(raw) : 0;
       const timer = window.setTimeout(() => {
         if (gen !== motionGen) {
           return;
         }
         section.classList.add('bc-section-visible');
-      }, delay);
+      }, Number.isFinite(delay) ? delay : 0);
       entranceTimers.push(timer);
-    });
+    }
     const sweep = p.querySelector<HTMLElement>('.bc-header-sweep');
     if (sweep) {
       sweep.style.animation = 'none';
@@ -389,7 +429,12 @@ export function mountBattingCard(host: HTMLElement): BattingCardController {
         !batter.isOut && batter.playerId === innings.currentStrikerId;
 
       const row = document.createElement('div');
-      row.className = 'bc-row bc-col-grid';
+      row.className = 'bc-section bc-row bc-col-grid';
+      row.setAttribute('data-bc-section', 'row');
+      row.setAttribute(
+        'data-bc-delay',
+        String(DELAY.row0 + index * DELAY.rowStep),
+      );
       if (index % 2 === 0) {
         row.classList.add('bc-row-alt-a');
       } else {
@@ -426,6 +471,20 @@ export function mountBattingCard(host: HTMLElement): BattingCardController {
       rowsHost.appendChild(row);
     });
 
+    const waiting = yetToBatNames(card, innings, ctx);
+    const waitingWillShow = waiting.length > 0;
+
+    const rowCount = batters.length > 0 ? batters.length : empty.hidden ? 0 : 1;
+    const afterRows = DELAY.row0 + rowCount * DELAY.rowStep;
+    const extrasSection = qs<HTMLElement>('[data-bc-section="extras"]');
+    const footerSection = qs<HTMLElement>('[data-bc-section="footer"]');
+    extrasSection?.setAttribute('data-bc-delay', String(afterRows));
+    ytbSection.setAttribute('data-bc-delay', String(afterRows + DELAY.rowStep));
+    footerSection?.setAttribute(
+      'data-bc-delay',
+      String(afterRows + DELAY.rowStep * (waitingWillShow ? 2 : 1)),
+    );
+
     const extras = normalizeExtras(innings);
     exB.textContent = String(extras.byes);
     exLb.textContent = String(extras.legByes);
@@ -433,8 +492,7 @@ export function mountBattingCard(host: HTMLElement): BattingCardController {
     exNb.textContent = String(extras.noBalls);
     extrasLine.textContent = formatExtrasSummary(extras);
 
-    const waiting = yetToBatNames(card, innings, ctx);
-    if (waiting.length > 0) {
+    if (waitingWillShow) {
       ytbSection.hidden = false;
       ytbLabel.textContent = innings.closed ? 'Did not bat' : 'Yet to bat';
       ytbNames.textContent = waiting.join(', ');
