@@ -136,13 +136,9 @@ function buildCardMarkup(): string {
           <p class="bwc-cell-label">Wickets</p>
           <p data-bwc="wickets" class="bwc-cell-value">—</p>
         </section>
-        <section class="bwc-section bwc-cell is-alt" data-bwc-section="best">
+        <section class="bwc-section bwc-cell is-gold-edge" data-bwc-section="best">
           <p class="bwc-cell-label">Best</p>
           <p data-bwc="best" class="bwc-cell-value">—</p>
-        </section>
-        <section class="bwc-section bwc-cell is-gold-edge" data-bwc-section="avg">
-          <p class="bwc-cell-label">Average</p>
-          <p data-bwc="avg" class="bwc-cell-value">—</p>
         </section>
       </div>
       <div class="bwc-stats-row is-second" role="group" aria-label="Career bowling rates">
@@ -150,15 +146,11 @@ function buildCardMarkup(): string {
           <p class="bwc-cell-label">Economy</p>
           <p data-bwc="econ" class="bwc-cell-value">—</p>
         </section>
-        <section class="bwc-section bwc-cell is-alt" data-bwc-section="sr">
-          <p class="bwc-cell-label">Strike rate</p>
-          <p data-bwc="sr" class="bwc-cell-value">—</p>
-        </section>
-        <section class="bwc-section bwc-cell" data-bwc-section="three-wkt">
+        <section class="bwc-section bwc-cell is-alt" data-bwc-section="three-wkt">
           <p class="bwc-cell-label">3-Wkt</p>
           <p data-bwc="three-wkt" class="bwc-cell-value">—</p>
         </section>
-        <section class="bwc-section bwc-cell is-alt" data-bwc-section="five-wkt">
+        <section class="bwc-section bwc-cell" data-bwc-section="five-wkt">
           <p class="bwc-cell-label">5-Wkt</p>
           <p data-bwc="five-wkt" class="bwc-cell-value">—</p>
         </section>
@@ -292,9 +284,7 @@ export function mountBowlerCareerCard(
     const innings = qs<HTMLElement>('[data-bwc="innings"]');
     const wickets = qs<HTMLElement>('[data-bwc="wickets"]');
     const best = qs<HTMLElement>('[data-bwc="best"]');
-    const avg = qs<HTMLElement>('[data-bwc="avg"]');
     const econ = qs<HTMLElement>('[data-bwc="econ"]');
-    const sr = qs<HTMLElement>('[data-bwc="sr"]');
     const threeWkt = qs<HTMLElement>('[data-bwc="three-wkt"]');
     const fiveWkt = qs<HTMLElement>('[data-bwc="five-wkt"]');
     const runs = qs<HTMLElement>('[data-bwc="runs"]');
@@ -310,9 +300,7 @@ export function mountBowlerCareerCard(
       !innings ||
       !wickets ||
       !best ||
-      !avg ||
       !econ ||
-      !sr ||
       !threeWkt ||
       !fiveWkt ||
       !runs ||
@@ -332,9 +320,7 @@ export function mountBowlerCareerCard(
     innings.textContent = countText(stats.bowlingInnings);
     wickets.textContent = countText(stats.wickets);
     best.textContent = bestText(stats.bestBowling);
-    avg.textContent = avgText(stats.bowlingAverage);
     econ.textContent = avgText(stats.economy);
-    sr.textContent = avgText(stats.bowlingStrikeRate);
     threeWkt.textContent = countText(stats.threeWicketHauls);
     fiveWkt.textContent = countText(stats.fiveWicketHauls);
     runs.textContent = countText(stats.bowlingRunsConceded);
