@@ -10,6 +10,7 @@ import { mountBattingCard } from './batting-card';
 import { mountBowlingCard } from './bowling-card';
 import { concealGraphic, revealGraphic } from './graphic-visibility';
 import { mountInningsScorecard } from './innings-scorecard';
+import { mountPartnershipCard } from './partnership-card';
 import {
   deriveBatterDotBalls,
   findInningsByKey,
@@ -17,7 +18,6 @@ import {
   formatDismissalShort,
   formatStat,
   latestFallOfWicket,
-  partnershipBatterRuns,
   playerName,
   resolveActiveInnings,
   resolveBattingSide,
@@ -103,24 +103,7 @@ export function isTournamentOverlayKind(kind: GraphicsKind): kind is TournamentO
 /** Markup for panels inside the stage (IDs are unique within the stage root). */
 export function buildGraphicsStageMarkup(): string {
   return `
-      <div id="g-partnership" class="graphic panel panel-wide" hidden>
-        <div class="panel-accent"></div>
-        <div class="panel-body">
-          <p class="eyebrow">Partnership</p>
-          <p id="ps-total" class="hero-stat">0 (0)</p>
-          <div class="pair-row">
-            <div class="pair-batter">
-              <p id="ps-a-name" class="pair-name">—</p>
-              <p id="ps-a-runs" class="pair-runs">0</p>
-            </div>
-            <div class="pair-sep" aria-hidden="true">&</div>
-            <div class="pair-batter">
-              <p id="ps-b-name" class="pair-name">—</p>
-              <p id="ps-b-runs" class="pair-runs">0</p>
-            </div>
-          </div>
-        </div>
-      </div>
+      <div id="g-partnership" class="graphic graphic-centered partnership-graphic" hidden></div>
 
       <div id="g-fow" class="graphic panel panel-batsman-live" hidden>
         <div class="panel-accent"></div>
@@ -323,6 +306,7 @@ export function createGraphicsStage(
   const playingXi = mountOrNull('g-playing-xi', mountPlayingXiCard);
   const battingCard = mountOrNull('g-batting-card', mountBattingCard);
   const bowlingCard = mountOrNull('g-bowling-card', mountBowlingCard);
+  const partnershipCard = mountOrNull('g-partnership', mountPartnershipCard);
   const inningsCard = mountOrNull('g-innings', mountInningsScorecard);
 
   const graphicNode = (kind: OverlayKind): HTMLElement | null =>
@@ -334,6 +318,7 @@ export function createGraphicsStage(
     kind === 'playing_xi' ||
     kind === 'batting_card' ||
     kind === 'bowling_card' ||
+    kind === 'partnership' ||
     kind === 'innings_break';
 
   const hideNode = (node: HTMLElement): void => {
@@ -355,6 +340,7 @@ export function createGraphicsStage(
     playingXi?.hide();
     battingCard?.hide();
     bowlingCard?.hide();
+    partnershipCard?.hide();
     inningsCard?.hide();
     for (const kind of Object.keys(GRAPHIC_IDS) as OverlayKind[]) {
       if (isMountManaged(kind)) {
@@ -403,6 +389,10 @@ export function createGraphicsStage(
       bowlingCard?.hide();
       return;
     }
+    if (kind === 'partnership') {
+      partnershipCard?.hide();
+      return;
+    }
     if (kind === 'innings_break') {
       inningsEnsureToken += 1;
       inningsCard?.hide();
@@ -411,6 +401,25 @@ export function createGraphicsStage(
     const node = graphicNode(kind);
     if (node) {
       hideNode(node);
+    }
+  };
+
+  const showPartnership = (animate: boolean): boolean => {
+    if (!partnershipCard) {
+      return false;
+    }
+    try {
+      if (animate) {
+        return partnershipCard.show(scorecard, { animate: true });
+      }
+      if (partnershipCard.isOnAir()) {
+        return partnershipCard.update(scorecard);
+      }
+      return partnershipCard.show(scorecard, { animate: false });
+    } catch (err) {
+      console.warn('[graphics] partnership failed', err);
+      partnershipCard.hide();
+      return false;
     }
   };
 
@@ -633,29 +642,6 @@ export function createGraphicsStage(
     return shortName(playerName(scorecard.display, id));
   };
 
-  const fillPartnership = (): boolean => {
-    try {
-      if (!scorecard) {
-        return false;
-      }
-      const innings = resolveActiveInnings(scorecard);
-      const ps = innings?.partnership ?? null;
-      if (!ps || ps.batterIds.length < 2) {
-        return false;
-      }
-      const [aId, bId] = ps.batterIds;
-      setText('ps-total', `${ps.runs} (${ps.balls})`);
-      setText('ps-a-name', nameOf(aId ?? null));
-      setText('ps-b-name', nameOf(bId ?? null));
-      setText('ps-a-runs', String(partnershipBatterRuns(ps, aId ?? '')));
-      setText('ps-b-runs', String(partnershipBatterRuns(ps, bId ?? '')));
-      return true;
-    } catch (err) {
-      console.warn('[graphics] fill partnership failed', err);
-      return false;
-    }
-  };
-
   const fillFow = (): boolean => {
     try {
       if (!scorecard) {
@@ -719,6 +705,10 @@ export function createGraphicsStage(
     if (kind === 'bowling_card') {
       bowlingCardEnsureToken += 1;
       bowlingCard?.hide();
+      return;
+    }
+    if (kind === 'partnership') {
+      partnershipCard?.hide();
       return;
     }
     if (kind === 'innings_break') {
@@ -849,7 +839,7 @@ export function createGraphicsStage(
     }
     switch (activeKind) {
       case 'partnership':
-        if (!fillPartnership()) {
+        if (!showPartnership(false) && activeKind === 'partnership') {
           hideGraphic('partnership');
         }
         break;
@@ -939,7 +929,13 @@ export function createGraphicsStage(
     let playerId: string | null = null;
 
     if (kind === 'partnership') {
-      ok = fillPartnership();
+      ok =
+        scorecard != null &&
+        (() => {
+          const innings = resolveActiveInnings(scorecard);
+          const ps = innings?.partnership ?? null;
+          return ps != null && ps.batterIds.length >= 2;
+        })();
     } else if (kind === 'fow') {
       fowInningsId = payload?.inningsId?.trim() || null;
       ok = fillFow();
@@ -1022,6 +1018,11 @@ export function createGraphicsStage(
       }
     } else if (kind === 'bowling_card') {
       if (!showBowlingCard(true) && activeKind === 'bowling_card') {
+        activeKind = null;
+        activePlayerId = null;
+      }
+    } else if (kind === 'partnership') {
+      if (!showPartnership(true) && activeKind === 'partnership') {
         activeKind = null;
         activePlayerId = null;
       }

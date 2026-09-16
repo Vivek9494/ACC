@@ -33,7 +33,7 @@ export const theme1Definition: OverlayThemeDefinition = {
     partnership: {
       status: 'implemented',
       host: 'graphics_stage',
-      componentId: 'theme1/graphics-stage:inline-partnership',
+      componentId: 'theme1/graphics-stage:partnership-card',
     },
     fow: {
       status: 'implemented',

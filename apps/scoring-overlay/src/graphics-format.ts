@@ -767,6 +767,75 @@ export function partnershipBatterRuns(
   return partnership.batterRuns.find((r) => r.playerId === playerId)?.runs ?? 0;
 }
 
+/** Extras in a stand = team stand runs minus off-bat batterRuns. */
+export function partnershipExtras(
+  partnership: Pick<Partnership, 'runs' | 'batterRuns'>,
+): number {
+  const offBat = partnership.batterRuns.reduce((sum, row) => sum + row.runs, 0);
+  return Math.max(0, partnership.runs - offBat);
+}
+
+/** Partnership run rate (runs per over) from legal balls in the stand. */
+export function partnershipRunRate(runs: number, balls: number): number {
+  if (balls <= 0) {
+    return 0;
+  }
+  return (runs * 6) / balls;
+}
+
+function timelineEntryCountsAsFaced(entry: TimelineEntry): boolean {
+  const { code } = entry;
+  if (code.startsWith('Wd') || code.startsWith('pen') || code === 'RH' || code === 'IMP') {
+    return false;
+  }
+  if (code === 'Drop' || code === 'End' || code === 'Mk') {
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Per-batter balls faced within a stand (legal / bye / LB / no-ball), derived
+ * from the timeline between wicket boundaries. Mirrors cockpit Partnerships tab.
+ */
+export function partnershipBatterBalls(
+  timeline: readonly TimelineEntry[] | undefined,
+  standIndex: number,
+  batterId: string,
+): number {
+  const entries = timeline ?? [];
+  const wicketAt: number[] = [];
+  for (let i = 0; i < entries.length; i += 1) {
+    if (entries[i]?.isWicket) {
+      wicketAt.push(i);
+    }
+  }
+  const start = standIndex === 0 ? 0 : (wicketAt[standIndex - 1] ?? -1) + 1;
+  const endExclusive =
+    standIndex < wicketAt.length
+      ? (wicketAt[standIndex] ?? entries.length) + 1
+      : entries.length;
+
+  let balls = 0;
+  for (let i = start; i < endExclusive; i += 1) {
+    const entry = entries[i];
+    if (!entry) {
+      continue;
+    }
+    if (entry.strikerId === batterId && timelineEntryCountsAsFaced(entry)) {
+      balls += 1;
+    }
+  }
+  return balls;
+}
+
+/** 1-based wicket ordinal for the current unbroken stand (1st … 10th). */
+export function currentPartnershipWicketNumber(
+  innings: Pick<InningsScorecard, 'wickets'>,
+): number {
+  return Math.max(1, innings.wickets + 1);
+}
+
 /**
  * All stands for the innings-break partnerships tab: closed wickets plus the
  * unbroken last pair. Do not drop the trailing stand on a closed innings
