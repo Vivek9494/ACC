@@ -381,6 +381,10 @@ export interface MatchSquadPlayer {
   lastName: string;
   role: string;
   battingOrder: number | null;
+  /** Registration primary cricket role when known. */
+  playerRole: 'BATSMAN' | 'BOWLER' | 'ALL_ROUNDER' | null;
+  isCaptain: boolean;
+  isWicketKeeper: boolean;
 }
 
 export interface MatchSquadContext {

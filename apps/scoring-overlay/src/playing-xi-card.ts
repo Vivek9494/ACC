@@ -1,5 +1,5 @@
 /**
- * Centered PLAYING XI card — both squads side by side (home left / away right).
+ * Premium PLAYING XI card — both squads side by side (or single-team).
  * Match-level; independent of innings. Isolation: show/hide are try/catch'd.
  */
 
@@ -8,20 +8,41 @@ import { concealGraphic, revealGraphic } from './graphic-visibility';
 import type { MatchContext, MatchSquadContext, MatchSquadPlayer } from './types';
 import { teamInitials } from './view-model';
 
-const EMPTY_NOTE = 'Squad not available';
+const XI_SLOTS = 11;
+const EXIT_MS = 320;
+
+/** Spec timeline delays (ms) for synchronized section reveal. */
+const DELAY = {
+  id: 0,
+  title: 65,
+  headers: 130,
+  colHeads: 180,
+  row0: 225,
+  rowStep: 45,
+  legend: 750,
+  footer: 795,
+} as const;
 
 export type PlayingXiVariant = 'both' | 'single' | 'lineup';
 
 export interface PlayingXiShowOptions {
   teamId?: string | null;
   variant?: PlayingXiVariant;
+  /** When false, repaint without replaying entrance (live context refresh). */
+  animate?: boolean;
+}
+
+export interface PlayingXiPlayerRow {
+  name: string;
+  roleLabel: string;
+  isCaptain: boolean;
+  isWicketKeeper: boolean;
 }
 
 export interface PlayingXiSide {
   name: string;
-  logoUrl: string | null;
   initials: string;
-  players: string[];
+  players: PlayingXiPlayerRow[];
 }
 
 export interface PlayingXiCardController {
@@ -36,6 +57,13 @@ function warnGraphics(err: unknown): void {
   console.warn('[playing-xi]', err);
 }
 
+function prefersReducedMotion(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  );
+}
+
 function qs<T extends HTMLElement>(
   root: ParentNode,
   selector: string,
@@ -47,21 +75,27 @@ function fullName(player: MatchSquadPlayer): string {
   return `${player.firstName} ${player.lastName}`.trim();
 }
 
-function squadLineup(squad: MatchSquadContext | null | undefined): string[] {
-  if (!squad) {
-    return [];
+function roleLabel(player: MatchSquadPlayer): string {
+  if (player.isWicketKeeper && !player.playerRole) {
+    return 'WK';
   }
-  return squad.players
-    .filter((p) => p.role === 'PLAYING_XI')
-    .map((p) => fullName(p))
-    .filter((name) => name.length > 0);
+  if (player.playerRole === 'BATSMAN') {
+    return 'Batter';
+  }
+  if (player.playerRole === 'BOWLER') {
+    return 'Bowler';
+  }
+  if (player.playerRole === 'ALL_ROUNDER') {
+    return 'All-rounder';
+  }
+  if (player.isWicketKeeper) {
+    return 'WK';
+  }
+  return '—';
 }
 
-function squadXi(squad: MatchSquadContext | null | undefined): string[] {
-  if (!squad) {
-    return [];
-  }
-  return [...squad.players]
+function sortXiPlayers(players: MatchSquadPlayer[]): MatchSquadPlayer[] {
+  return [...players]
     .filter((p) => p.role === 'PLAYING_XI')
     .sort((a, b) => {
       const ao = a.battingOrder;
@@ -75,17 +109,79 @@ function squadXi(squad: MatchSquadContext | null | undefined): string[] {
       if (ao == null && bo != null) {
         return 1;
       }
-      return 0;
-    })
-    .map((p) => fullName(p))
-    .filter((name) => name.length > 0);
+      return fullName(a).localeCompare(fullName(b));
+    });
 }
 
-function externalXi(ctx: MatchContext): string[] {
+function toRows(players: MatchSquadPlayer[]): PlayingXiPlayerRow[] {
+  return sortXiPlayers(players)
+    .map((p) => {
+      const name = fullName(p);
+      if (!name) {
+        return null;
+      }
+      return {
+        name,
+        roleLabel: roleLabel(p),
+        isCaptain: p.isCaptain === true,
+        isWicketKeeper: p.isWicketKeeper === true,
+      };
+    })
+    .filter((row): row is PlayingXiPlayerRow => row != null);
+}
+
+function padRows(rows: PlayingXiPlayerRow[]): Array<PlayingXiPlayerRow | null> {
+  const out: Array<PlayingXiPlayerRow | null> = rows.slice(0, XI_SLOTS);
+  while (out.length < XI_SLOTS) {
+    out.push(null);
+  }
+  return out;
+}
+
+function squadLineup(squad: MatchSquadContext | null | undefined): PlayingXiPlayerRow[] {
+  if (!squad) {
+    return [];
+  }
+  return squad.players
+    .filter((p) => p.role === 'PLAYING_XI')
+    .map((p) => {
+      const name = fullName(p);
+      if (!name) {
+        return null;
+      }
+      return {
+        name,
+        roleLabel: roleLabel(p),
+        isCaptain: p.isCaptain === true,
+        isWicketKeeper: p.isWicketKeeper === true,
+      };
+    })
+    .filter((row): row is PlayingXiPlayerRow => row != null);
+}
+
+function squadXi(squad: MatchSquadContext | null | undefined): PlayingXiPlayerRow[] {
+  if (!squad) {
+    return [];
+  }
+  return toRows(squad.players);
+}
+
+function externalXi(ctx: MatchContext): PlayingXiPlayerRow[] {
   return [...ctx.externalPlayers]
     .sort((a, b) => a.slot - b.slot)
-    .map((p) => p.name.trim())
-    .filter((name) => name.length > 0);
+    .map((p) => {
+      const name = p.name.trim();
+      if (!name) {
+        return null;
+      }
+      return {
+        name,
+        roleLabel: '—',
+        isCaptain: false,
+        isWicketKeeper: false,
+      };
+    })
+    .filter((row): row is PlayingXiPlayerRow => row != null);
 }
 
 function pickSquad(
@@ -107,18 +203,10 @@ export function resolvePlayingXiSides(ctx: MatchContext): {
   b: PlayingXiSide;
 } {
   const nameA = ctx.homeTeamName?.trim() || 'Home';
-  const logoA =
-    ctx.homeTeamId && ctx.logosByTeamId[ctx.homeTeamId]
-      ? ctx.logosByTeamId[ctx.homeTeamId]
-      : null;
   const nameB =
     ctx.awayTeamName?.trim() ||
     ctx.externalOpponentName?.trim() ||
     'Away';
-  const logoB =
-    ctx.awayTeamId && ctx.logosByTeamId[ctx.awayTeamId]
-      ? ctx.logosByTeamId[ctx.awayTeamId]
-      : null;
 
   const used = new Set<string>();
   const squadA = pickSquad(ctx, ctx.homeTeamId, used);
@@ -126,25 +214,22 @@ export function resolvePlayingXiSides(ctx: MatchContext): {
     used.add(squadA.teamId);
   }
 
-  let playersB: string[];
+  let playersB: PlayingXiPlayerRow[];
   if (ctx.awayTeamId) {
     const squadB = pickSquad(ctx, ctx.awayTeamId, used);
     playersB = squadXi(squadB);
   } else {
-    const ext = externalXi(ctx);
-    playersB = ext.length > 0 ? ext : [];
+    playersB = externalXi(ctx);
   }
 
   return {
     a: {
       name: nameA,
-      logoUrl: logoA,
       initials: teamInitials(nameA),
       players: squadXi(squadA),
     },
     b: {
       name: nameB,
-      logoUrl: logoB,
       initials: teamInitials(nameB),
       players: playersB,
     },
@@ -167,14 +252,10 @@ export function resolveTeamPlayingXiSide(
       ctx.awayTeamName?.trim() ||
       ctx.externalOpponentName?.trim() ||
       'Away';
-    const players = externalXi(ctx);
     return {
       name,
-      logoUrl: awayId && ctx.logosByTeamId[awayId]
-        ? ctx.logosByTeamId[awayId]
-        : null,
       initials: teamInitials(name),
-      players,
+      players: externalXi(ctx),
     };
   }
 
@@ -183,7 +264,6 @@ export function resolveTeamPlayingXiSide(
     const squad = ctx.squads.find((s) => s.teamId === teamId) ?? null;
     return {
       name,
-      logoUrl: ctx.logosByTeamId[teamId] ?? null,
       initials: teamInitials(name),
       players: pickPlayers(squad),
     };
@@ -197,7 +277,6 @@ export function resolveTeamPlayingXiSide(
       'Team';
     return {
       name,
-      logoUrl: ctx.logosByTeamId[teamId] ?? null,
       initials: teamInitials(name),
       players: pickPlayers(squad),
     };
@@ -218,99 +297,188 @@ export function formatPlayingXiPreview(ctx: MatchContext | null): string | null 
   return `${a || 'Home'} vs ${b || 'Away'}`;
 }
 
-function setLogo(
-  root: ParentNode,
-  side: 'a' | 'b',
-  logoUrl: string | null,
-  initials: string,
-): void {
-  const initialsEl = qs<HTMLSpanElement>(root, `[data-pxi-initials="${side}"]`);
-  const img = qs<HTMLImageElement>(root, `[data-pxi-logo="${side}"]`);
-  if (!initialsEl || !img) {
-    return;
-  }
-  initialsEl.textContent = initials;
-  if (logoUrl) {
-    img.onload = () => {
-      img.hidden = false;
-      initialsEl.hidden = true;
-    };
-    img.onerror = () => {
-      img.hidden = true;
-      initialsEl.hidden = false;
-      img.removeAttribute('src');
-    };
-    if (img.getAttribute('src') !== logoUrl) {
-      img.hidden = true;
-      initialsEl.hidden = false;
-      img.src = logoUrl;
-    }
-  } else {
-    img.hidden = true;
-    initialsEl.hidden = false;
-    img.removeAttribute('src');
+function setShield(root: ParentNode, side: 'a' | 'b', initials: string): void {
+  const abbr = qs<HTMLSpanElement>(root, `[data-pxi-abbr="${side}"]`);
+  if (abbr) {
+    abbr.textContent = initials || '—';
   }
 }
 
-function paintList(host: HTMLElement, side: 'a' | 'b', players: string[]): void {
-  const list = qs<HTMLOListElement>(host, `[data-pxi-list="${side}"]`);
-  const empty = qs<HTMLParagraphElement>(host, `[data-pxi-empty="${side}"]`);
-  if (!list || !empty) {
+function paintCell(
+  cell: HTMLElement,
+  slot: number,
+  row: PlayingXiPlayerRow | null,
+): void {
+  const num = qs<HTMLElement>(cell, '.pxi-num');
+  const name = qs<HTMLElement>(cell, '.pxi-name');
+  const role = qs<HTMLElement>(cell, '.pxi-role');
+  const badges = qs<HTMLElement>(cell, '.pxi-badges');
+  if (!num || !name || !role || !badges) {
     return;
   }
-  list.replaceChildren();
-  if (players.length === 0) {
-    list.hidden = true;
-    empty.hidden = false;
-    empty.textContent = EMPTY_NOTE;
+
+  num.textContent = String(slot).padStart(2, '0');
+  cell.classList.toggle('is-blank', row == null);
+  cell.classList.toggle('is-captain', row?.isCaptain === true);
+
+  if (!row) {
+    name.textContent = '';
+    role.textContent = '';
+    badges.replaceChildren();
     return;
   }
-  empty.hidden = true;
-  list.hidden = false;
-  for (let i = 0; i < players.length; i += 1) {
-    const li = document.createElement('li');
-    li.className = 'pxi-row';
-    const num = document.createElement('span');
-    num.className = 'pxi-num';
-    num.textContent = String(i + 1);
-    const name = document.createElement('span');
-    name.className = 'pxi-name';
-    name.textContent = players[i] ?? '';
-    li.append(num, name);
-    list.appendChild(li);
+
+  name.textContent = row.name;
+  role.textContent = row.roleLabel;
+  badges.replaceChildren();
+  if (row.isCaptain) {
+    const c = document.createElement('span');
+    c.className = 'pxi-badge pxi-badge-c';
+    c.textContent = 'C';
+    badges.appendChild(c);
   }
+  if (row.isWicketKeeper) {
+    const wk = document.createElement('span');
+    wk.className = 'pxi-badge pxi-badge-wk';
+    wk.textContent = 'WK';
+    badges.appendChild(wk);
+  }
+}
+
+function paintSide(
+  host: HTMLElement,
+  side: 'a' | 'b',
+  players: PlayingXiPlayerRow[],
+): void {
+  const padded = padRows(players);
+  for (let i = 0; i < XI_SLOTS; i += 1) {
+    const cell = qs<HTMLElement>(
+      host,
+      `[data-pxi-cell="${side}"][data-pxi-slot="${i}"]`,
+    );
+    if (cell) {
+      paintCell(cell, i + 1, padded[i] ?? null);
+    }
+  }
+}
+
+function buildCellMarkup(side: 'a' | 'b', slot: number): string {
+  return `
+    <div
+      class="pxi-cell is-blank"
+      data-pxi-cell="${side}"
+      data-pxi-side="${side}"
+      data-pxi-slot="${slot}"
+    >
+      <span class="pxi-num"></span>
+      <div class="pxi-player">
+        <span class="pxi-name"></span>
+        <span class="pxi-badges" aria-hidden="true"></span>
+      </div>
+      <span class="pxi-role"></span>
+    </div>
+  `.trim();
+}
+
+function buildRowPairsMarkup(): string {
+  const rows: string[] = [];
+  for (let i = 0; i < XI_SLOTS; i += 1) {
+    const delay = DELAY.row0 + i * DELAY.rowStep;
+    rows.push(`
+      <div
+        class="pxi-row-pair pxi-section"
+        data-pxi-section="row"
+        data-pxi-delay="${delay}"
+      >
+        ${buildCellMarkup('a', i)}
+        ${buildCellMarkup('b', i)}
+      </div>
+    `);
+  }
+  return rows.join('');
 }
 
 function buildCardMarkup(): string {
   return `
     <div class="panel panel-playing-xi">
-      <div class="panel-accent"></div>
-      <div class="pxi-body">
-        <p class="pxi-eyebrow">Playing XI</p>
-        <div class="pxi-cols">
-          <section class="pxi-col" data-pxi-col="a" aria-label="Team A">
-            <div class="pxi-head">
-              <div class="pxi-logo" aria-hidden="true">
-                <span data-pxi-initials="a" class="pxi-initials">—</span>
-                <img data-pxi-logo="a" class="pxi-logo-img" alt="" hidden />
-              </div>
-              <p data-pxi-team="a" class="pxi-team">—</p>
-            </div>
-            <ol data-pxi-list="a" class="pxi-list"></ol>
-            <p data-pxi-empty="a" class="pxi-empty" hidden>${EMPTY_NOTE}</p>
-          </section>
-          <section class="pxi-col" data-pxi-col="b" aria-label="Team B">
-            <div class="pxi-head">
-              <div class="pxi-logo" aria-hidden="true">
-                <span data-pxi-initials="b" class="pxi-initials">—</span>
-                <img data-pxi-logo="b" class="pxi-logo-img" alt="" hidden />
-              </div>
-              <p data-pxi-team="b" class="pxi-team">—</p>
-            </div>
-            <ol data-pxi-list="b" class="pxi-list"></ol>
-            <p data-pxi-empty="b" class="pxi-empty" hidden>${EMPTY_NOTE}</p>
-          </section>
+      <div
+        class="pxi-id-strip pxi-section"
+        data-pxi-section="id"
+        data-pxi-delay="${DELAY.id}"
+      >
+        <p data-pxi-id-line class="pxi-id-line">ASC LIVE</p>
+      </div>
+      <div
+        class="pxi-title-bar pxi-section"
+        data-pxi-section="title"
+        data-pxi-delay="${DELAY.title}"
+      >
+        <p data-pxi-title class="pxi-title">Playing XI</p>
+        <div class="pxi-title-sweep" aria-hidden="true"></div>
+      </div>
+      <div
+        class="pxi-team-headers pxi-section"
+        data-pxi-section="headers"
+        data-pxi-delay="${DELAY.headers}"
+      >
+        <header class="pxi-team-head" data-pxi-side="a" aria-label="Team A">
+          <div class="pxi-mono-shield" aria-hidden="true">
+            <span class="pxi-mono-star">★</span>
+            <span data-pxi-abbr="a" class="pxi-mono-abbr">—</span>
+            <span class="pxi-mono-stripe"></span>
+          </div>
+          <div class="pxi-team-copy">
+            <p data-pxi-team="a" class="pxi-team-name">—</p>
+            <p class="pxi-team-sub">Playing XI</p>
+          </div>
+        </header>
+        <header class="pxi-team-head" data-pxi-side="b" aria-label="Team B">
+          <div class="pxi-mono-shield" aria-hidden="true">
+            <span class="pxi-mono-star">★</span>
+            <span data-pxi-abbr="b" class="pxi-mono-abbr">—</span>
+            <span class="pxi-mono-stripe"></span>
+          </div>
+          <div class="pxi-team-copy">
+            <p data-pxi-team="b" class="pxi-team-name">—</p>
+            <p class="pxi-team-sub">Playing XI</p>
+          </div>
+        </header>
+      </div>
+      <div
+        class="pxi-col-heads pxi-section"
+        data-pxi-section="col-heads"
+        data-pxi-delay="${DELAY.colHeads}"
+      >
+        <div class="pxi-col-head" data-pxi-side="a">
+          <span>No.</span><span>Player</span><span>Role</span>
         </div>
+        <div class="pxi-col-head" data-pxi-side="b">
+          <span>No.</span><span>Player</span><span>Role</span>
+        </div>
+      </div>
+      <div class="pxi-rows" data-pxi-rows>
+        ${buildRowPairsMarkup()}
+      </div>
+      <div
+        class="pxi-legend pxi-section"
+        data-pxi-section="legend"
+        data-pxi-delay="${DELAY.legend}"
+      >
+        <span class="pxi-legend-item">
+          <span class="pxi-badge pxi-badge-c">C</span> Captain
+        </span>
+        <span class="pxi-legend-item">
+          <span class="pxi-badge pxi-badge-wk">WK</span> Wicketkeeper
+        </span>
+        <span class="pxi-legend-item">White row = captain</span>
+      </div>
+      <div
+        class="pxi-footer pxi-section"
+        data-pxi-section="footer"
+        data-pxi-delay="${DELAY.footer}"
+      >
+        <p class="pxi-footer-mark">ASC</p>
+        <p data-pxi-footer-note class="pxi-footer-note"></p>
       </div>
     </div>
   `.trim();
@@ -318,6 +486,12 @@ function buildCardMarkup(): string {
 
 export function mountPlayingXiCard(host: HTMLElement): PlayingXiCardController {
   let onAir = false;
+  let motionGen = 0;
+  let exitTimer: number | null = null;
+  const entranceTimers: number[] = [];
+
+  const panel = (): HTMLElement | null =>
+    host.querySelector('.panel-playing-xi');
 
   const ensureMarkup = (): void => {
     if (!host.querySelector('.panel-playing-xi')) {
@@ -325,14 +499,99 @@ export function mountPlayingXiCard(host: HTMLElement): PlayingXiCardController {
     }
   };
 
-  const hideNode = (): void => {
-    onAir = false;
-    concealGraphic(host);
+  const cancelMotion = (): void => {
+    motionGen += 1;
+    for (const t of entranceTimers) {
+      window.clearTimeout(t);
+    }
+    entranceTimers.length = 0;
+    if (exitTimer != null) {
+      window.clearTimeout(exitTimer);
+      exitTimer = null;
+    }
+    const p = panel();
+    if (p) {
+      p.classList.remove('pxi-exiting', 'pxi-entering');
+      for (const section of p.querySelectorAll('.pxi-section')) {
+        section.classList.remove('pxi-section-visible');
+      }
+    }
   };
 
-  const showNode = (): void => {
-    onAir = true;
+  const runEntrance = (): void => {
+    cancelMotion();
+    const p = panel();
+    if (!p) {
+      return;
+    }
+    const gen = motionGen;
+    const sections = [...p.querySelectorAll<HTMLElement>('.pxi-section')];
+    if (prefersReducedMotion()) {
+      p.classList.add('pxi-entering');
+      for (const section of sections) {
+        section.classList.add('pxi-section-visible');
+      }
+      return;
+    }
+    p.classList.remove('pxi-exiting');
+    p.classList.add('pxi-entering');
+    for (const section of sections) {
+      section.classList.remove('pxi-section-visible');
+    }
+    for (const section of sections) {
+      const raw = section.getAttribute('data-pxi-delay');
+      const delay = raw != null ? Number(raw) : 0;
+      const timer = window.setTimeout(() => {
+        if (gen !== motionGen) {
+          return;
+        }
+        section.classList.add('pxi-section-visible');
+      }, Number.isFinite(delay) ? delay : 0);
+      entranceTimers.push(timer);
+    }
+    const sweep = p.querySelector<HTMLElement>('.pxi-title-sweep');
+    if (sweep) {
+      sweep.style.animation = 'none';
+      void sweep.offsetWidth;
+      sweep.style.animation = '';
+    }
+  };
+
+  const hideNode = (): void => {
+    cancelMotion();
+    onAir = false;
+    const p = panel();
+    const reduced = prefersReducedMotion();
+    const ms = reduced ? 0 : EXIT_MS;
+
+    if (p && !reduced) {
+      p.classList.add('pxi-exiting');
+      p.classList.remove('pxi-entering');
+      for (const section of p.querySelectorAll('.pxi-section')) {
+        section.classList.remove('pxi-section-visible');
+      }
+    }
+
+    host.classList.remove('is-visible');
+    exitTimer = window.setTimeout(() => {
+      exitTimer = null;
+      concealGraphic(host);
+    }, ms);
+  };
+
+  const reveal = (animate: boolean): void => {
     revealGraphic(host);
+    if (animate) {
+      requestAnimationFrame(() => runEntrance());
+      return;
+    }
+    const p = panel();
+    if (p) {
+      p.classList.add('pxi-entering');
+      for (const section of p.querySelectorAll('.pxi-section')) {
+        section.classList.add('pxi-section-visible');
+      }
+    }
   };
 
   const paint = (
@@ -340,37 +599,39 @@ export function mountPlayingXiCard(host: HTMLElement): PlayingXiCardController {
     options?: PlayingXiShowOptions,
   ): boolean => {
     ensureMarkup();
-    const variant = options?.variant ?? 'both';
-    const cols = qs<HTMLElement>(host, '.pxi-cols');
-    const eyebrow = qs<HTMLElement>(host, '.pxi-eyebrow');
-    const colA = qs<HTMLElement>(host, '[data-pxi-col="a"]');
-    const colB = qs<HTMLElement>(host, '[data-pxi-col="b"]');
+    const p = panel();
+    const title = qs<HTMLElement>(host, '[data-pxi-title]');
+    const idLine = qs<HTMLElement>(host, '[data-pxi-id-line]');
     const nameA = qs<HTMLElement>(host, '[data-pxi-team="a"]');
     const nameB = qs<HTMLElement>(host, '[data-pxi-team="b"]');
-    if (!cols || !eyebrow || !colA || !colB || !nameA || !nameB) {
+    const footerNote = qs<HTMLElement>(host, '[data-pxi-footer-note]');
+    if (!p || !title || !idLine || !nameA || !nameB || !footerNote) {
       return false;
     }
 
+    const variant = options?.variant ?? 'both';
     if (variant === 'lineup') {
-      eyebrow.textContent = 'Batting line-up';
+      title.textContent = 'Batting line-up';
     } else {
-      eyebrow.textContent = 'Playing XI';
+      title.textContent = 'Playing XI';
     }
 
+    const preview = formatPlayingXiPreview(ctx);
+    idLine.textContent = preview ? preview.toUpperCase() : 'ASC LIVE';
+    footerNote.textContent = preview ?? '';
+
     if (variant === 'both') {
-      if (!formatPlayingXiPreview(ctx)) {
+      if (!preview) {
         return false;
       }
-      cols.classList.remove('is-single');
-      colA.hidden = false;
-      colB.hidden = false;
+      p.classList.remove('is-single');
       const sides = resolvePlayingXiSides(ctx);
       nameA.textContent = sides.a.name;
       nameB.textContent = sides.b.name;
-      setLogo(host, 'a', sides.a.logoUrl, sides.a.initials);
-      setLogo(host, 'b', sides.b.logoUrl, sides.b.initials);
-      paintList(host, 'a', sides.a.players);
-      paintList(host, 'b', sides.b.players);
+      setShield(host, 'a', sides.a.initials);
+      setShield(host, 'b', sides.b.initials);
+      paintSide(host, 'a', sides.a.players);
+      paintSide(host, 'b', sides.b.players);
       return true;
     }
 
@@ -383,12 +644,13 @@ export function mountPlayingXiCard(host: HTMLElement): PlayingXiCardController {
     if (!side) {
       return false;
     }
-    cols.classList.add('is-single');
-    colA.hidden = false;
-    colB.hidden = true;
+    p.classList.add('is-single');
     nameA.textContent = side.name;
-    setLogo(host, 'a', side.logoUrl, side.initials);
-    paintList(host, 'a', side.players);
+    nameB.textContent = '';
+    setShield(host, 'a', side.initials);
+    setShield(host, 'b', '—');
+    paintSide(host, 'a', side.players);
+    paintSide(host, 'b', []);
     return true;
   };
 
@@ -412,7 +674,7 @@ export function mountPlayingXiCard(host: HTMLElement): PlayingXiCardController {
           return false;
         }
         onAir = true;
-        showNode();
+        reveal(options?.animate !== false);
         return true;
       } catch (err) {
         warnGraphics(err);

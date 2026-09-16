@@ -1057,7 +1057,10 @@ export function createGraphicsStage(
           activeKind = null;
           activePlayerId = null;
         }
-        if (activeKind === 'playing_xi' && !playingXi?.show(matchCtx, playingXiCmd)) {
+        if (activeKind === 'playing_xi' && !playingXi?.show(matchCtx, {
+          ...playingXiCmd,
+          animate: false,
+        })) {
           activeKind = null;
           activePlayerId = null;
         }

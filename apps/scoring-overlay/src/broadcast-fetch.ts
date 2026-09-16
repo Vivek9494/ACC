@@ -108,6 +108,9 @@ export async function fetchMatchContext(
           lastName?: string;
           role?: string;
           battingOrder?: number | null;
+          playerRole?: 'BATSMAN' | 'BOWLER' | 'ALL_ROUNDER' | null;
+          isCaptain?: boolean;
+          isWicketKeeper?: boolean;
         }>;
       }>;
       externalPlayers?: Array<{
@@ -180,6 +183,14 @@ export async function fetchMatchContext(
                   role: p.role?.trim() || 'PLAYING_XI',
                   battingOrder:
                     typeof p.battingOrder === 'number' ? p.battingOrder : null,
+                  playerRole:
+                    p.playerRole === 'BATSMAN' ||
+                    p.playerRole === 'BOWLER' ||
+                    p.playerRole === 'ALL_ROUNDER'
+                      ? p.playerRole
+                      : null,
+                  isCaptain: p.isCaptain === true,
+                  isWicketKeeper: p.isWicketKeeper === true,
                 };
               })
               .filter((p): p is NonNullable<typeof p> => p != null),

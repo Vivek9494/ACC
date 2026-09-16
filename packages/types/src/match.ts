@@ -6,7 +6,10 @@
 
 import { APP_SHORT_NAME } from './app-branding';
 
-import type { RegistrationPlayerType } from './registration';
+import type {
+  PlayerRegistrationRole,
+  RegistrationPlayerType,
+} from './registration';
 import { type AuthUser, UserRole } from './auth';
 import { BallType } from './rbac';
 import type { MatchTennisScorerView } from './tournament-scorers';
@@ -379,6 +382,12 @@ export interface SquadPlayerView {
   role: MatchSquadRole;
   isActiveImpact: boolean;
   battingOrder: number | null;
+  /** Registration primary cricket role when known (broadcast ROLE column). */
+  playerRole: PlayerRegistrationRole | null;
+  /** Team captain for this tournament team (RoleAssignment). */
+  isCaptain: boolean;
+  /** Registration fielding position is Wicketkeeper. */
+  isWicketKeeper: boolean;
 }
 
 import type { PenaltyServingPlayerView } from './suspension';

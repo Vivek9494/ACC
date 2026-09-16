@@ -893,6 +893,9 @@ export default function LiveScoringScreen(): React.ReactElement {
           role: MatchSquadRole.PlayingXi,
           isActiveImpact: false,
           battingOrder: player.slot,
+          playerRole: null,
+          isCaptain: false,
+          isWicketKeeper: false,
         }));
     }
     const players =
@@ -924,6 +927,9 @@ export default function LiveScoringScreen(): React.ReactElement {
           role: MatchSquadRole.PlayingXi,
           isActiveImpact: false,
           battingOrder: player.slot,
+          playerRole: null,
+          isCaptain: false,
+          isWicketKeeper: false,
         }));
     }
     return (

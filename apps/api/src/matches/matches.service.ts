@@ -1143,6 +1143,7 @@ export class MatchesService {
       ...squad,
       penaltyServing: penaltyByTeam.get(squad.teamId) ?? [],
     }));
+    await this.enrichSquadBroadcastMeta(row.tournamentId, detail.squads);
     if (row.tournament.ballType === BallType.Tennis) {
       detail.tennisScorer = await this.tournamentScorers.buildMatchTennisScorerView(
         viewer,
@@ -1152,6 +1153,54 @@ export class MatchesService {
       );
     }
     return detail;
+  }
+
+  /**
+   * Attach registration cricket role + WK + team captain for broadcast Playing XI.
+   * Mutates squad player rows in place (MatchDetail only).
+   */
+  private async enrichSquadBroadcastMeta(
+    tournamentId: string,
+    squads: SquadView[],
+  ): Promise<void> {
+    const userIds = [
+      ...new Set(squads.flatMap((squad) => squad.players.map((p) => p.userId))),
+    ];
+    if (userIds.length === 0) {
+      return;
+    }
+    const teamIds = squads.map((squad) => squad.teamId);
+    const [registrations, captainAssignments] = await Promise.all([
+      this.prisma.registration.findMany({
+        where: { tournamentId, userId: { in: userIds } },
+        select: { userId: true, playerRole: true, fieldingPosition: true },
+      }),
+      this.prisma.roleAssignment.findMany({
+        where: {
+          tournamentId,
+          teamId: { in: teamIds },
+          role: UserRole.Captain,
+        },
+        select: { userId: true, teamId: true },
+      }),
+    ]);
+    const regByUser = new Map(
+      registrations.map((row) => [row.userId, row] as const),
+    );
+    const captainByTeam = new Map(
+      captainAssignments
+        .filter((row): row is { userId: string; teamId: string } => row.teamId != null)
+        .map((row) => [row.teamId, row.userId] as const),
+    );
+    for (const squad of squads) {
+      const captainUserId = captainByTeam.get(squad.teamId) ?? null;
+      for (const player of squad.players) {
+        const reg = regByUser.get(player.userId);
+        player.playerRole = reg?.playerRole ?? null;
+        player.isWicketKeeper = reg?.fieldingPosition === 'Wicketkeeper';
+        player.isCaptain = captainUserId != null && captainUserId === player.userId;
+      }
+    }
   }
 
   private async namesFor(userIds: string[]): Promise<NameMap> {
@@ -3198,6 +3247,9 @@ export class MatchesService {
         role: p.role as MatchSquadRole,
         isActiveImpact: p.isActiveImpact,
         battingOrder: p.battingOrder,
+        playerRole: null,
+        isCaptain: false,
+        isWicketKeeper: false,
       })),
       penaltyServing: [],
     }));
