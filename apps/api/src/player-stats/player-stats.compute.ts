@@ -3,6 +3,7 @@ import {
   DismissalType,
   computeBattingAverage,
   computeBowlingAverage,
+  computeBowlingStrikeRate,
   computeEconomyRate,
   computeStrikeRate,
   computeStrikeRateBarPercent,
@@ -40,8 +41,11 @@ export interface PlayerStatsAccumulator {
   /** Centuries (100+). Mutually exclusive with thirties/fifties buckets. */
   hundreds: number;
   wickets: number;
+  bowlingInnings: number;
   bowlingRunsConceded: number;
   bowlingLegalBalls: number;
+  threeWicketHauls: number;
+  fiveWicketHauls: number;
   catches: number;
   droppedCatches: number;
   stumpings: number;
@@ -65,8 +69,11 @@ export function createPlayerStatsAccumulator(): PlayerStatsAccumulator {
     fifties: 0,
     hundreds: 0,
     wickets: 0,
+    bowlingInnings: 0,
     bowlingRunsConceded: 0,
     bowlingLegalBalls: 0,
+    threeWicketHauls: 0,
+    fiveWicketHauls: 0,
     catches: 0,
     droppedCatches: 0,
     stumpings: 0,
@@ -205,6 +212,13 @@ export function applyMatchToPlayerStats(
       acc.bowlingLegalBalls += bowler.legalBalls ?? 0;
 
       if (bowler.wickets > 0 || bowler.legalBalls > 0) {
+        acc.bowlingInnings += 1;
+        if (bowler.wickets >= 3) {
+          acc.threeWicketHauls += 1;
+        }
+        if (bowler.wickets >= 5) {
+          acc.fiveWicketHauls += 1;
+        }
         const candidate: BestBowlingRecord = {
           wickets: bowler.wickets,
           runsConceded: bowler.runsConceded,
@@ -256,14 +270,18 @@ export function buildPlayerProfilePeriodStats(acc: PlayerStatsAccumulator): Play
     hundreds: acc.hundreds,
     notOuts: Math.max(0, acc.battingInnings - acc.dismissals),
     wickets: acc.wickets,
+    bowlingInnings: acc.bowlingInnings,
     bowlingAverage: computeBowlingAverage(acc.bowlingRunsConceded, acc.wickets),
     economy: computeEconomyRate(acc.bowlingRunsConceded, acc.bowlingLegalBalls),
+    bowlingStrikeRate: computeBowlingStrikeRate(acc.bowlingLegalBalls, acc.wickets),
     bowlingRunsConceded: acc.bowlingRunsConceded,
     bowlingLegalBalls: acc.bowlingLegalBalls,
     bestBowling: bbi ? formatPlayerProfileBestBowling(bbi.wickets, bbi.runsConceded) : null,
     bestBowlingWickets: bbi ? bbi.wickets : null,
     bestBowlingRunsConceded: bbi ? bbi.runsConceded : null,
     bestBowlingContext: formatBestBowlingContext(bbi),
+    threeWicketHauls: acc.threeWicketHauls,
+    fiveWicketHauls: acc.fiveWicketHauls,
     catches: acc.catches,
     droppedCatches: acc.droppedCatches,
     stumpings: acc.stumpings,

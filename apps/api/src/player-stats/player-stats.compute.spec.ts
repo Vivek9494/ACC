@@ -138,6 +138,9 @@ describe('player-stats.compute', () => {
     expect(acc.fours).toBe(8);
     expect(acc.sixes).toBe(3);
     expect(acc.wickets).toBe(2);
+    expect(acc.bowlingInnings).toBe(1);
+    expect(acc.threeWicketHauls).toBe(0);
+    expect(acc.fiveWicketHauls).toBe(0);
     expect(acc.catches).toBe(1);
     expect(acc.highestScore).toEqual({
       runs: 82,
@@ -306,6 +309,75 @@ describe('player-stats.compute', () => {
     expect(acc.battingInnings).toBe(2);
     expect(acc.dismissals).toBe(1);
     expect(buildPlayerProfilePeriodStats(acc).notOuts).toBe(1);
+  });
+
+  it('counts cumulative 3-wicket and 5-wicket hauls per bowling innings', () => {
+    const acc = createPlayerStatsAccumulator();
+    const bowler = (
+      playerId: string,
+      wickets: number,
+    ): ScorecardResponse['innings'][number]['bowlers'][number] => ({
+      playerId,
+      legalBalls: 24,
+      oversText: '4.0',
+      runsConceded: 20,
+      wickets,
+      maidens: 0,
+      dotBalls: 8,
+      wides: 0,
+      noBalls: 0,
+      fours: 1,
+      sixes: 0,
+      economy: 5,
+    });
+
+    applyMatchToPlayerStats(acc, 'player-1', context, {
+      ...emptyScorecard,
+      innings: [
+        {
+          inningsId: 'inn-1',
+          sequence: 1,
+          inningsType: InningsType.Normal,
+          battingTeamId: 'team-a',
+          bowlingTeamId: 'team-b',
+          runs: 100,
+          wickets: 8,
+          legalBalls: 120,
+          oversText: '20.0',
+          oversAllotted: 20,
+          extras: { wides: 0, noBalls: 0, byes: 0, legByes: 0, penalties: 0, total: 0 },
+          batters: [],
+          bowlers: [
+            bowler('player-1', 2),
+            bowler('player-1', 3),
+            bowler('player-1', 5),
+          ],
+          fallOfWickets: [],
+          recentOvers: [],
+          timeline: [],
+          partnership: null,
+          partnerships: [],
+          currentStrikerId: null,
+          currentNonStrikerId: null,
+          currentBowlerId: null,
+          freeHitNext: false,
+          closed: true,
+          closeReason: InningsCloseReason.AllOut,
+          target: null,
+          droppedCatches: [],
+          droppedCatchEvents: [],
+        },
+      ],
+    });
+
+    expect(acc.bowlingInnings).toBe(3);
+    expect(acc.wickets).toBe(10);
+    expect(acc.threeWicketHauls).toBe(2);
+    expect(acc.fiveWicketHauls).toBe(1);
+    const period = buildPlayerProfilePeriodStats(acc);
+    expect(period.threeWicketHauls).toBe(2);
+    expect(period.fiveWicketHauls).toBe(1);
+    expect(period.bowlingStrikeRate).toBe(7.2);
   });
 
   it('accumulates dropped catches from innings metadata', () => {

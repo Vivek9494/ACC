@@ -1,13 +1,11 @@
 import { io, type Socket } from 'socket.io-client';
 
 import {
-  fetchBroadcastPlayerStats,
   ensureMatchContext,
   fetchMatchBallType,
   fetchMatchOverlayTheme,
   fetchScorecard,
 } from './broadcast-fetch';
-import { hasBowlerCareerStats } from './graphics-format';
 import { isStripOwnedKind, type GraphicsStageController } from './graphics-stage';
 import {
   DEFAULT_OVERLAY_THEME,
@@ -16,8 +14,6 @@ import {
 import {
   LIVE_NAMESPACE,
   LiveEvent,
-  type BallType,
-  type BroadcastPlayerStatsView,
   type ConnectionStatus,
   type GraphicsCommandMessage,
   type LiveStateMessage,
@@ -26,7 +22,6 @@ import {
   type ScorecardResponse,
 } from './types';
 import { deliveryProgressKey } from './view-model';
-import { GRAPHIC_ANIM_MS } from './graphic-visibility';
 
 const DEFAULT_API_BASE = 'https://acc-api-production.up.railway.app';
 /** Safety net if no ball is bowled while boundaries is flashing. */
@@ -70,12 +65,7 @@ async function start(): Promise<void> {
   let matchCtx: MatchContext | null = null;
   let status: ConnectionStatus = 'connecting';
   let crrMode: StripCrrMode = 'default';
-  let ballType: BallType = 'TENNIS';
-  let careerOnAir = false;
   let inningsBreakOnAir = false;
-  let careerPlayerId: string | null = null;
-  let careerBase: BroadcastPlayerStatsView | null = null;
-  let careerToken = 0;
   let boundariesArmedKey: string | null = null;
   let boundariesTimer: number | null = null;
   let tossArmedKey: string | null = null;
@@ -159,50 +149,6 @@ async function start(): Promise<void> {
     }
   };
 
-  const paintCareerNumbers = (): void => {
-    if (!careerOnAir || !careerPlayerId || !careerBase) {
-      return;
-    }
-    scoreStrip.fillCareerCard(careerPlayerId, latest, careerBase);
-  };
-
-  const hideCareerCard = (): void => {
-    careerOnAir = false;
-    careerPlayerId = null;
-    careerBase = null;
-    scoreStrip.hideCareerCard(() => {
-      if (!careerOnAir) {
-        scoreStrip.careerWrapElement().hidden = true;
-      }
-    }, GRAPHIC_ANIM_MS);
-  };
-
-  const showCareerCard = async (playerId: string): Promise<void> => {
-    try {
-      graphicsStage.hideAll();
-      const token = ++careerToken;
-      const stats = await fetchBroadcastPlayerStats(apiBase, playerId, ballType);
-      if (token !== careerToken) {
-        return;
-      }
-      if (!hasBowlerCareerStats(stats) || !stats) {
-        hideCareerCard();
-        paint();
-        return;
-      }
-      careerBase = stats;
-      careerPlayerId = playerId;
-      scoreStrip.fillCareerCard(playerId, latest, stats);
-      careerOnAir = true;
-      scoreStrip.revealCareerCard();
-      paint();
-    } catch (err) {
-      console.warn('[overlay graphics] show bowler career failed', err);
-      hideCareerCard();
-      paint();
-    }
-  };
-
   const paint = (): void => {
     scoreStrip.render({
       card: latest,
@@ -212,9 +158,6 @@ async function start(): Promise<void> {
       crrMode,
       hideStrip: inningsBreakOnAir,
     });
-    if (careerOnAir) {
-      paintCareerNumbers();
-    }
   };
 
   paint();
@@ -229,7 +172,6 @@ async function start(): Promise<void> {
       ensureMatchContext(apiBase, matchId),
       fetchMatchBallType(apiBase, matchId),
     ]);
-    ballType = bt;
     graphicsStage.setBallType(bt);
     if (ctx) {
       matchCtx = ctx;
@@ -306,23 +248,8 @@ async function start(): Promise<void> {
         clearTossOnAir();
         crrMode = 'default';
         inningsBreakOnAir = false;
-        hideCareerCard();
         graphicsStage.hideAll();
         paint();
-        return;
-      }
-      if (cmd.graphic === 'bowler_career') {
-        inningsBreakOnAir = false;
-        if (cmd.action === 'show') {
-          graphicsStage.hideAll();
-          const playerId = cmd.payload?.playerId?.trim() || null;
-          if (playerId) {
-            void showCareerCard(playerId);
-          }
-        } else if (cmd.action === 'hide') {
-          hideCareerCard();
-          paint();
-        }
         return;
       }
       if (cmd.graphic === 'toss') {
@@ -355,10 +282,8 @@ async function start(): Promise<void> {
         return;
       }
       if (cmd.graphic && !isStripOwnedKind(cmd.graphic)) {
-        if (cmd.action === 'show' && careerOnAir) {
-          hideCareerCard();
-        }
-        inningsBreakOnAir = cmd.action === 'show' && cmd.graphic === 'innings_break';
+        inningsBreakOnAir =
+          cmd.action === 'show' && cmd.graphic === 'innings_break';
         graphicsStage.applyCommand(cmd);
         paint();
       }
@@ -374,7 +299,9 @@ async function start(): Promise<void> {
 
   window.addEventListener('beforeunload', () => {
     if (socket) {
-      socket.emit(LiveEvent.Unsubscribe, { matchId } satisfies LiveSubscribeMessage);
+      socket.emit(LiveEvent.Unsubscribe, {
+        matchId,
+      } satisfies LiveSubscribeMessage);
       socket.removeAllListeners();
       socket.disconnect();
       socket = null;

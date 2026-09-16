@@ -56,11 +56,10 @@ export class BroadcastPlayerStatsController {
       this.prisma.registration.findFirst({
         where: {
           userId,
-          battingStyle: { not: null },
           tournament: { ballType },
         },
         orderBy: { updatedAt: 'desc' },
-        select: { battingStyle: true },
+        select: { battingStyle: true, bowlingStyle: true },
       }),
     ]);
 
@@ -70,6 +69,7 @@ export class BroadcastPlayerStatsController {
       lastName: user.lastName,
       profilePhotoUrl: await this.mediaUrls.resolveReadUrl(user.profilePhotoUrl),
       battingStyle: registration?.battingStyle ?? null,
+      bowlingStyle: registration?.bowlingStyle ?? null,
       ballType,
       matches: career.matches,
       battingInnings: career.battingInnings,
@@ -86,13 +86,17 @@ export class BroadcastPlayerStatsController {
       sixes: career.sixes,
       notOuts: career.notOuts,
       wickets: career.wickets,
+      bowlingInnings: career.bowlingInnings,
       bowlingAverage: career.bowlingAverage,
       economy: career.economy,
+      bowlingStrikeRate: career.bowlingStrikeRate,
       bowlingRunsConceded: career.bowlingRunsConceded,
       bowlingLegalBalls: career.bowlingLegalBalls,
       bestBowling: career.bestBowling,
       bestBowlingWickets: career.bestBowlingWickets,
       bestBowlingRunsConceded: career.bestBowlingRunsConceded,
+      threeWicketHauls: career.threeWicketHauls,
+      fiveWicketHauls: career.fiveWicketHauls,
     };
   }
 }

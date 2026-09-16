@@ -57,8 +57,8 @@ export const theme1Definition: OverlayThemeDefinition = {
     },
     bowler_career: {
       status: 'implemented',
-      host: 'score_strip',
-      componentId: 'theme1/career-wrap',
+      host: 'graphics_stage',
+      componentId: 'theme1/bowler-career-card',
     },
     innings_break: {
       status: 'implemented',

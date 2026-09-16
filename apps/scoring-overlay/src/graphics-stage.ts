@@ -6,6 +6,7 @@
 import './graphics.css';
 import { ensureMatchContext, fetchMatchContext } from './broadcast-fetch';
 import { mountBatsmanCareerCard } from './batsman-career-card';
+import { mountBowlerCareerCard } from './bowler-career-card';
 import { mountBattingCard } from './batting-card';
 import { mountBowlingCard } from './bowling-card';
 import { concealGraphic, revealGraphic } from './graphic-visibility';
@@ -46,7 +47,7 @@ import { parseInningsBreakView, parseScorecardViewSource } from './types';
 import type { ScorecardViewSource } from './types';
 
 /** Strip page owns these — stage ignores them. */
-export type StripOwnedKind = 'toss' | 'chase' | 'boundaries' | 'bowler_career';
+export type StripOwnedKind = 'toss' | 'chase' | 'boundaries';
 /** Known command kinds with no stage panel yet (control may still emit). */
 export type PendingOverlayKind = 'wagon_wheel';
 /** Tournament aggregates — handled by Theme 1 tournament graphics module. */
@@ -68,6 +69,7 @@ const GRAPHIC_IDS: Record<OverlayKind, string> = {
   fow: 'g-fow',
   batsman: 'g-batsman',
   batsman_career: 'g-batsman-career',
+  bowler_career: 'g-bowler-career',
   bowler: 'g-bowler',
   innings_break: 'g-innings',
   toss_result: 'g-toss-result',
@@ -79,12 +81,7 @@ const GRAPHIC_IDS: Record<OverlayKind, string> = {
 };
 
 export function isStripOwnedKind(kind: GraphicsKind): kind is StripOwnedKind {
-  return (
-    kind === 'toss' ||
-    kind === 'chase' ||
-    kind === 'boundaries' ||
-    kind === 'bowler_career'
-  );
+  return kind === 'toss' || kind === 'chase' || kind === 'boundaries';
 }
 
 export function isPendingOverlayKind(kind: GraphicsKind): kind is PendingOverlayKind {
@@ -143,6 +140,8 @@ export function buildGraphicsStageMarkup(): string {
       </div>
 
       <div id="g-batsman-career" class="graphic graphic-centered batsman-career-graphic" hidden></div>
+
+      <div id="g-bowler-career" class="graphic graphic-centered bowler-career-graphic" hidden></div>
 
       <div id="g-toss-result" class="graphic graphic-centered toss-result-graphic" hidden></div>
 
@@ -281,6 +280,7 @@ export function createGraphicsStage(
   };
 
   const batsmanCareer = mountOrNull('g-batsman-career', mountBatsmanCareerCard);
+  const bowlerCareer = mountOrNull('g-bowler-career', mountBowlerCareerCard);
   const tossResult = mountOrNull('g-toss-result', mountTossResultCard);
   const playingXi = mountOrNull('g-playing-xi', mountPlayingXiCard);
   const battingCard = mountOrNull('g-batting-card', mountBattingCard);
@@ -298,6 +298,7 @@ export function createGraphicsStage(
 
   const isMountManaged = (kind: OverlayKind): boolean =>
     kind === 'batsman_career' ||
+    kind === 'bowler_career' ||
     kind === 'toss_result' ||
     kind === 'playing_xi' ||
     kind === 'batting_card' ||
@@ -322,6 +323,7 @@ export function createGraphicsStage(
     battingCardEnsureToken += 1;
     bowlingCardEnsureToken += 1;
     batsmanCareer?.hide();
+    bowlerCareer?.hide();
     tossResult?.hide();
     playingXi?.hide();
     battingCard?.hide();
@@ -357,6 +359,10 @@ export function createGraphicsStage(
     }
     if (kind === 'batsman_career') {
       batsmanCareer?.hide();
+      return;
+    }
+    if (kind === 'bowler_career') {
+      bowlerCareer?.hide();
       return;
     }
     if (kind === 'toss_result') {
@@ -680,6 +686,10 @@ export function createGraphicsStage(
       batsmanCareer?.hide();
       return;
     }
+    if (kind === 'bowler_career') {
+      bowlerCareer?.hide();
+      return;
+    }
     if (kind === 'toss_result') {
       tossResult?.hide();
       return;
@@ -833,6 +843,42 @@ export function createGraphicsStage(
     }
   };
 
+  const showBowlerCareer = async (playerId: string): Promise<void> => {
+    if (!bowlerCareer) {
+      if (activeKind === 'bowler_career') {
+        activeKind = null;
+        activePlayerId = null;
+      }
+      return;
+    }
+    try {
+      const placeholderName = scorecard
+        ? playerName(scorecard.display, playerId)
+        : undefined;
+      const ok = await bowlerCareer.show(playerId, {
+        apiBase: options.apiBase,
+        ballType,
+        placeholderName,
+        teamName: careerTeamLabelForPlayer(matchCtx, playerId),
+      });
+      if (
+        !ok &&
+        activeKind === 'bowler_career' &&
+        activePlayerId === playerId
+      ) {
+        activeKind = null;
+        activePlayerId = null;
+      }
+    } catch (err) {
+      console.warn('[graphics] bowler career failed', err);
+      bowlerCareer.hide();
+      if (activeKind === 'bowler_career') {
+        activeKind = null;
+        activePlayerId = null;
+      }
+    }
+  };
+
   const refreshActiveContent = (): void => {
     if (!activeKind) {
       return;
@@ -963,6 +1009,9 @@ export function createGraphicsStage(
     } else if (kind === 'batsman_career') {
       playerId = resolveBatsmanId(payload?.playerId);
       ok = playerId != null;
+    } else if (kind === 'bowler_career') {
+      playerId = resolveBowlerId(payload?.playerId);
+      ok = playerId != null;
     } else if (kind === 'toss_result') {
       ok = formatTossResultLine(matchCtx) != null;
     } else if (kind === 'playing_xi') {
@@ -1023,6 +1072,8 @@ export function createGraphicsStage(
       showNode(graphicNode(kind));
     } else if (kind === 'batsman_career' && playerId) {
       void showBatsmanCareer(playerId);
+    } else if (kind === 'bowler_career' && playerId) {
+      void showBowlerCareer(playerId);
     } else if (kind === 'toss_result') {
       if (!showTossResult()) {
         activeKind = null;
@@ -1126,6 +1177,7 @@ export function createGraphicsStage(
     isOnAir: () =>
       activeKind != null ||
       Boolean(batsmanCareer?.isOnAir()) ||
+      Boolean(bowlerCareer?.isOnAir()) ||
       Boolean(tossResult?.isOnAir()) ||
       Boolean(playingXi?.isOnAir()) ||
       Boolean(battingCard?.isOnAir()) ||

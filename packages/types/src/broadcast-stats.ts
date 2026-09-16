@@ -13,6 +13,8 @@ export interface BroadcastPlayerStatsView {
   profilePhotoUrl: string | null;
   /** Registration batting hand (RHB / LHB), when known. */
   battingStyle: string | null;
+  /** Registration bowling style (PACE / SPIN), when known. */
+  bowlingStyle: string | null;
   ballType: BallType;
   matches: number;
   /** Batting innings count (distinct from matches). */
@@ -36,10 +38,14 @@ export interface BroadcastPlayerStatsView {
   /** Batting innings finished not out. */
   notOuts: number;
   wickets: number;
+  /** Bowling innings (appearances with balls or wickets). */
+  bowlingInnings: number;
   /** Bowling average (runs conceded ÷ wickets). */
   bowlingAverage: number | null;
   /** Economy rate (runs conceded ÷ overs). */
   economy: number | null;
+  /** Bowling strike rate (legal balls ÷ wickets). */
+  bowlingStrikeRate: number | null;
   /** Career runs conceded while bowling (for live merge). */
   bowlingRunsConceded: number;
   /** Career legal balls bowled (for live merge). */
@@ -47,4 +53,8 @@ export interface BroadcastPlayerStatsView {
   bestBowling: string | null;
   bestBowlingWickets: number | null;
   bestBowlingRunsConceded: number | null;
+  /** Innings with ≥3 wickets (cumulative with five-wicket hauls). */
+  threeWicketHauls: number;
+  /** Innings with ≥5 wickets. */
+  fiveWicketHauls: number;
 }

@@ -407,6 +407,7 @@ export interface BroadcastPlayerStatsView {
   lastName: string;
   profilePhotoUrl: string | null;
   battingStyle: string | null;
+  bowlingStyle: string | null;
   ballType: BallType;
   matches: number;
   battingInnings: number;
@@ -423,13 +424,17 @@ export interface BroadcastPlayerStatsView {
   sixes: number;
   notOuts: number;
   wickets: number;
+  bowlingInnings: number;
   bowlingAverage: number | null;
   economy: number | null;
+  bowlingStrikeRate: number | null;
   bowlingRunsConceded: number;
   bowlingLegalBalls: number;
   bestBowling: string | null;
   bestBowlingWickets: number | null;
   bestBowlingRunsConceded: number | null;
+  threeWicketHauls: number;
+  fiveWicketHauls: number;
 }
 
 export type ConnectionStatus = 'connecting' | 'live' | 'offline';

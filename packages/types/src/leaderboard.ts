@@ -97,6 +97,17 @@ export function computeBowlingAverage(
   return Math.round((runsConceded / wickets) * 100) / 100;
 }
 
+/** Bowling strike rate = legal balls ÷ wickets; null when no wickets. */
+export function computeBowlingStrikeRate(
+  legalBalls: number,
+  wickets: number,
+): number | null {
+  if (wickets <= 0) {
+    return null;
+  }
+  return Math.round((legalBalls / wickets) * 100) / 100;
+}
+
 /** Strike rate = (runs ÷ balls) × 100; null when no balls faced. */
 export function computeStrikeRate(runs: number, balls: number): number | null {
   if (balls <= 0) {

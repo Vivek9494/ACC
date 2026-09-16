@@ -23,10 +23,14 @@ export interface PlayerProfilePeriodStats {
   /** Batting innings finished not out (innings − dismissals). */
   notOuts: number;
   wickets: number;
+  /** Bowling innings (scorecard bowler appearances with balls or wickets). */
+  bowlingInnings: number;
   /** Bowling average (runs conceded ÷ wickets); null when no wickets. */
   bowlingAverage: number | null;
   /** Economy (runs conceded ÷ overs); null when no legal balls bowled. */
   economy: number | null;
+  /** Bowling strike rate (legal balls ÷ wickets); null when no wickets. */
+  bowlingStrikeRate: number | null;
   /** Underlying bowling totals — required to merge live this-match figures. */
   bowlingRunsConceded: number;
   bowlingLegalBalls: number;
@@ -35,6 +39,10 @@ export interface PlayerProfilePeriodStats {
   bestBowlingWickets: number | null;
   bestBowlingRunsConceded: number | null;
   bestBowlingContext: string | null;
+  /** Innings with ≥3 wickets (cumulative with five-wicket hauls). */
+  threeWicketHauls: number;
+  /** Innings with ≥5 wickets. */
+  fiveWicketHauls: number;
   catches: number;
   /** Derived from CATCH_DROP events — available for profile display. */
   droppedCatches: number;
