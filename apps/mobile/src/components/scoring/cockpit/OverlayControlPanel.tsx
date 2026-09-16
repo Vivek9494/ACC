@@ -22,6 +22,7 @@ import {
   EMPTY_OVERLAY_ON_AIR,
   formatOverlayBoundariesLine,
   formatOverlayChaseLine,
+  formatOverlayCurrentPartnershipLine,
   formatOverlayInningsBreakPreview,
   formatOverlayPlayingXiPreview,
   formatOverlayTossLine,
@@ -401,6 +402,7 @@ export function OverlayControlPanel({
   const tossLine = formatOverlayTossLine(match);
   const chaseLine = formatOverlayChaseLine(card, innings);
   const boundariesLine = formatOverlayBoundariesLine(innings);
+  const partnershipLine = formatOverlayCurrentPartnershipLine(innings, nameOf);
   const xiPreview = formatOverlayPlayingXiPreview(match);
   const inningsBreakPreview = formatOverlayInningsBreakPreview(card);
   const inningsBreakLive = isInningsBreakOnAir(onAir);
@@ -409,6 +411,7 @@ export function OverlayControlPanel({
     [card, innings, nameOf],
   );
   const wagonLive = isCommonGraphicOnAir(onAir, 'wagon_wheel');
+  const partnershipLive = isCommonGraphicOnAir(onAir, 'partnership');
   const live = anythingOverlayOnAir(onAir);
   useEffect(() => {
     if (!obsLinkFeedback) {
@@ -959,6 +962,27 @@ export function OverlayControlPanel({
             >
               <Text className="font-sans text-[11px] text-on-surface-variant" numberOfLines={2}>
                 {boundariesLine} · flash then revert
+              </Text>
+            </ControlTile>
+
+            <ControlTile
+              title="Current Partnership"
+              onAir={partnershipLive}
+              enabled={partnershipLine != null}
+              onPress={() => {
+                if (partnershipLive) {
+                  hideGraphic('partnership');
+                  return;
+                }
+                if (!partnershipLine) {
+                  return;
+                }
+                emit({ action: 'show', graphic: 'partnership' });
+                setLocalOnAir('partnership', null, null);
+              }}
+            >
+              <Text className="font-sans text-[11px] text-on-surface-variant" numberOfLines={2}>
+                {partnershipLine ?? 'No live partnership yet'}
               </Text>
             </ControlTile>
 

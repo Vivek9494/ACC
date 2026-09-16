@@ -13,6 +13,7 @@ import {
   formatStat,
   hasBatsmanCareerStats,
   hasBowlerCareerStats,
+  partnershipBatterRuns,
   playerName,
   resolveActiveInnings,
   shortName,
@@ -59,7 +60,6 @@ const COMMON_LABELS: Record<
     | 'toss'
     | 'chase'
     | 'boundaries'
-    | 'partnership'
     | 'points_table'
     | 'tournament_top_batsmen'
     | 'tournament_top_bowlers'
@@ -80,6 +80,7 @@ const COMMON_LABELS: Record<
   playing_xi: 'Playing XI',
   batting_card: 'Batting card',
   wagon_wheel: 'Wagon Wheel',
+  partnership: 'Current Partnership',
 };
 
 const TEAM_ACTION_LABELS: Record<TeamControlAction, string> = {
@@ -159,6 +160,7 @@ function start(): void {
   const btnShowTossResult = el<HTMLButtonElement>('btn-show-toss-result');
   const btnShowPlayingXi = el<HTMLButtonElement>('btn-show-playing-xi');
   const btnShowChase = el<HTMLButtonElement>('btn-show-chase');
+  const btnShowPartnership = el<HTMLButtonElement>('btn-show-partnership');
 
   if (!matchId) {
     matchLabel.textContent = 'Missing matchId — add ?matchId=… to the URL';
@@ -598,6 +600,16 @@ function start(): void {
     return `${parts.join(' · ')}${target}`;
   }
 
+  function previewCurrentPartnership(): string | null {
+    const innings = scorecard ? resolveActiveInnings(scorecard) : null;
+    const ps = innings?.partnership ?? null;
+    if (!ps || ps.batterIds.length < 2) {
+      return null;
+    }
+    const [aId, bId] = ps.batterIds;
+    return `${nameOf(aId)} ${partnershipBatterRuns(ps, aId ?? '')} & ${nameOf(bId)} ${partnershipBatterRuns(ps, bId ?? '')} · ${ps.runs} (${ps.balls})`;
+  }
+
   function anythingLive(): boolean {
     return onAirGraphic != null || stripMode !== 'default';
   }
@@ -776,6 +788,8 @@ function start(): void {
       onAirDetailText = formatPlayingXiPreview(matchCtx) ?? '';
     } else if (kind === 'toss_result') {
       onAirDetailText = formatTossResultLine(matchCtx) ?? '';
+    } else if (kind === 'partnership') {
+      onAirDetailText = previewCurrentPartnership() ?? '';
     } else if (kind === 'innings_break' && inningsSource === 'break') {
       onAirDetailText = previewInnings() ?? '';
     } else {
@@ -812,6 +826,11 @@ function start(): void {
     el<HTMLParagraphElement>('preview-innings').textContent =
       inn ?? 'Waiting for innings…';
     setEnabled(btnShowInnings, inn != null);
+
+    const partnership = previewCurrentPartnership();
+    el<HTMLParagraphElement>('preview-partnership').textContent =
+      partnership ?? 'No live partnership yet';
+    setEnabled(btnShowPartnership, partnership != null);
   }
 
   function refreshPreviews(): void {
@@ -819,6 +838,10 @@ function start(): void {
     refreshTeamControls();
     if (onAirGraphic === 'innings_break' && inningsSource === 'break') {
       onAirDetailText = previewInnings() ?? '';
+      onAirDetail.textContent = onAirDetailText;
+    }
+    if (onAirGraphic === 'partnership') {
+      onAirDetailText = previewCurrentPartnership() ?? '';
       onAirDetail.textContent = onAirDetailText;
     }
     paintOnAirDock();
@@ -978,7 +1001,10 @@ function start(): void {
           cmd.graphic === 'bowler' ||
           cmd.graphic === 'batsman_career' ||
           cmd.graphic === 'bowler_career' ||
-          cmd.graphic === 'toss_result'
+          cmd.graphic === 'toss_result' ||
+          cmd.graphic === 'partnership' ||
+          cmd.graphic === 'batting_card' ||
+          cmd.graphic === 'wagon_wheel'
         ) {
           setOnAir(cmd.graphic);
         }
@@ -1056,6 +1082,14 @@ function start(): void {
   el<HTMLButtonElement>('btn-show-toss-result').addEventListener('click', () => {
     send({ action: 'show', graphic: 'toss_result' });
     setOnAir('toss_result');
+  });
+
+  el<HTMLButtonElement>('btn-show-partnership').addEventListener('click', () => {
+    if (!previewCurrentPartnership()) {
+      return;
+    }
+    send({ action: 'show', graphic: 'partnership' });
+    setOnAir('partnership');
   });
 
   el<HTMLButtonElement>('btn-show-playing-xi').addEventListener('click', () => {

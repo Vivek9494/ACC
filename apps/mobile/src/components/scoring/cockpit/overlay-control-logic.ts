@@ -266,6 +266,21 @@ export function formatOverlayBoundariesLine(innings: InningsScorecard): string {
   return `FOURS ${fours} | SIXES ${sixes}`;
 }
 
+/** Preview for the live unbroken stand (active innings `partnership`). */
+export function formatOverlayCurrentPartnershipLine(
+  innings: InningsScorecard,
+  nameOf: (id: string | null) => string,
+): string | null {
+  const ps = innings.partnership;
+  if (!ps || ps.batterIds.length < 2) {
+    return null;
+  }
+  const [aId, bId] = ps.batterIds;
+  const runsFor = (id: string | undefined): number =>
+    id ? (ps.batterRuns.find((r) => r.playerId === id)?.runs ?? 0) : 0;
+  return `${nameOf(aId ?? null)} ${runsFor(aId)} & ${nameOf(bId ?? null)} ${runsFor(bId)} · ${ps.runs} (${ps.balls})`;
+}
+
 /** Match-level innings-break card views (same payload.view values as scoring-overlay). */
 export type OverlayInningsBreakView =
   | 'batting'
@@ -502,6 +517,7 @@ export function isCommonGraphicOnAir(
     | 'toss_result'
     | 'innings_break'
     | 'wagon_wheel'
+    | 'partnership'
     | OverlayTournamentGraphic,
 ): boolean {
   if (graphic === 'toss') {
@@ -544,6 +560,9 @@ export function overlayOnAirLabel(
   }
   if (state.graphic === 'wagon_wheel') {
     return 'ON AIR: Wagon wheel';
+  }
+  if (state.graphic === 'partnership') {
+    return 'ON AIR: Current partnership';
   }
   if (state.teamSide && state.teamAction) {
     const team = resolveOverlayTeam(match, state.teamSide);
