@@ -136,27 +136,27 @@ function buildCardMarkup(): string {
           <p class="bwc-cell-label">Wickets</p>
           <p data-bwc="wickets" class="bwc-cell-value">—</p>
         </section>
+        <section class="bwc-section bwc-cell is-alt" data-bwc-section="runs">
+          <p class="bwc-cell-label">Runs</p>
+          <p data-bwc="runs" class="bwc-cell-value">—</p>
+        </section>
         <section class="bwc-section bwc-cell is-gold-edge" data-bwc-section="best">
           <p class="bwc-cell-label">Best</p>
           <p data-bwc="best" class="bwc-cell-value">—</p>
         </section>
       </div>
       <div class="bwc-stats-row is-second" role="group" aria-label="Career bowling rates">
-        <section class="bwc-section bwc-cell is-edge" data-bwc-section="econ">
-          <p class="bwc-cell-label">Economy</p>
-          <p data-bwc="econ" class="bwc-cell-value">—</p>
-        </section>
-        <section class="bwc-section bwc-cell is-alt" data-bwc-section="three-wkt">
+        <section class="bwc-section bwc-cell is-edge" data-bwc-section="three-wkt">
           <p class="bwc-cell-label">3-Wkt</p>
           <p data-bwc="three-wkt" class="bwc-cell-value">—</p>
         </section>
-        <section class="bwc-section bwc-cell" data-bwc-section="five-wkt">
+        <section class="bwc-section bwc-cell is-alt" data-bwc-section="five-wkt">
           <p class="bwc-cell-label">5-Wkt</p>
           <p data-bwc="five-wkt" class="bwc-cell-value">—</p>
         </section>
-        <section class="bwc-section bwc-cell is-gold-edge" data-bwc-section="runs">
-          <p class="bwc-cell-label">Runs</p>
-          <p data-bwc="runs" class="bwc-cell-value">—</p>
+        <section class="bwc-section bwc-cell is-gold-edge" data-bwc-section="econ">
+          <p class="bwc-cell-label">Economy</p>
+          <p data-bwc="econ" class="bwc-cell-value">—</p>
         </section>
       </div>
       <section class="bwc-section bwc-footer" data-bwc-section="footer">

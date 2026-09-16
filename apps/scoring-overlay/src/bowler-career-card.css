@@ -227,7 +227,7 @@
 
 .bwc-stats-row {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 2px;
   padding: 2px 2px 0;
   background: var(--bwc-navy-dark);
@@ -235,6 +235,7 @@
 
 .bwc-stats-row.is-second {
   padding: 0 2px 2px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .bwc-cell {
