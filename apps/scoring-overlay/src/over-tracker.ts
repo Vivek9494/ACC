@@ -10,7 +10,7 @@
 import type { InningsScorecard } from './types';
 
 export type OverBallSlot = {
-  /** Display glyph: W, ●, 1–6, wd, nb, etc. */
+  /** Display glyph: W, ●, 1–6, 2wd, nb, b1, lb2, etc. */
   label: string;
   isWicket: boolean;
   isBoundary: boolean;
@@ -30,7 +30,9 @@ function isExtraCode(code: string): boolean {
     c === 'Nb' ||
     c.startsWith('Nb') ||
     c.includes('+Nb') ||
-    c.endsWith('Nb')
+    c.endsWith('Nb') ||
+    /^B\d+$/i.test(c) ||
+    /^Lb\d+$/i.test(c)
   );
 }
 
@@ -57,16 +59,6 @@ function legalDisplay(code: string): Omit<OverBallSlot, 'isExtra'> {
   if (c === '4' || c === '6') {
     return { label: c, isWicket: false, isBoundary: true };
   }
-  const bye = /^B(\d+)$/i.exec(c);
-  if (bye) {
-    const n = bye[1] ?? '0';
-    return { label: n === '0' ? '●' : n, isWicket: false, isBoundary: false };
-  }
-  const lb = /^Lb(\d+)$/i.exec(c);
-  if (lb) {
-    const n = lb[1] ?? '0';
-    return { label: n === '0' ? '●' : n, isWicket: false, isBoundary: false };
-  }
   if (/^[1-6]$/.test(c)) {
     return { label: c, isWicket: false, isBoundary: c === '4' || c === '6' };
   }
@@ -75,13 +67,71 @@ function legalDisplay(code: string): Omit<OverBallSlot, 'isExtra'> {
 
 function extraDisplay(code: string): OverBallSlot {
   const c = code.trim();
-  let label = c.slice(0, 3).toLowerCase();
-  if (c === 'Wd' || c.startsWith('Wd')) {
-    label = 'wd';
-  } else if (c.includes('Nb') || c.startsWith('Nb')) {
-    label = 'nb';
+
+  const bye = /^B(\d+)$/i.exec(c);
+  if (bye) {
+    const n = bye[1] ?? '0';
+    return {
+      label: n === '0' || n === '1' ? 'b' : `b${n}`,
+      isWicket: false,
+      isBoundary: false,
+      isExtra: true,
+    };
   }
-  return { label, isWicket: false, isBoundary: false, isExtra: true };
+
+  const lb = /^Lb(\d+)$/i.exec(c);
+  if (lb) {
+    const n = lb[1] ?? '0';
+    return {
+      label: n === '0' || n === '1' ? 'lb' : `lb${n}`,
+      isWicket: false,
+      isBoundary: false,
+      isExtra: true,
+    };
+  }
+
+  // Wd / Wd+2 / 2Wd-style — preserve counted extras when present.
+  if (c === 'Wd' || c.startsWith('Wd')) {
+    const plus = /^Wd\+(\d+)$/i.exec(c);
+    if (plus && plus[1] && plus[1] !== '0') {
+      return {
+        label: `${plus[1]}wd`,
+        isWicket: false,
+        isBoundary: false,
+        isExtra: true,
+      };
+    }
+    return { label: 'wd', isWicket: false, isBoundary: false, isExtra: true };
+  }
+
+  if (c.includes('Nb') || c.startsWith('Nb')) {
+    const leading = /^(\d+)[Bb]?\+?Nb/i.exec(c);
+    const plus = /^Nb\+(\d+)$/i.exec(c);
+    if (leading && leading[1] && leading[1] !== '0') {
+      return {
+        label: `${leading[1]}nb`,
+        isWicket: false,
+        isBoundary: false,
+        isExtra: true,
+      };
+    }
+    if (plus && plus[1] && plus[1] !== '0') {
+      return {
+        label: `${plus[1]}nb`,
+        isWicket: false,
+        isBoundary: false,
+        isExtra: true,
+      };
+    }
+    return { label: 'nb', isWicket: false, isBoundary: false, isExtra: true };
+  }
+
+  return {
+    label: c.slice(0, 3).toLowerCase() || 'ex',
+    isWicket: false,
+    isBoundary: false,
+    isExtra: true,
+  };
 }
 
 function currentOverCodes(innings: InningsScorecard): string[] {

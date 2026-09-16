@@ -52,7 +52,7 @@ export interface StripViewModel {
   showPowerplay: boolean;
   subtitle: string | null;
   bowlerName: string;
-  /** runs-wickets (Theme 1 mockup), e.g. "15-1". */
+  /** wickets-runs (broadcast convention), e.g. "1-15". */
   bowlerFigs: string;
   bowlerOvers: string;
   overTracker: CurrentOverTracker;
@@ -493,7 +493,7 @@ export function buildStripViewModel(
     subtitle: buildSubtitle(card, innings, ctx),
     bowlerName,
     bowlerFigs: bowlRow
-      ? `${bowlRow.runsConceded}-${bowlRow.wickets}`
+      ? `${bowlRow.wickets}-${bowlRow.runsConceded}`
       : '0-0',
     bowlerOvers: bowlRow?.oversText ?? '0.0',
     overTracker: buildCurrentOverTracker(innings),

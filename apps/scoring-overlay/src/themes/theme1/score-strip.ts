@@ -15,16 +15,34 @@ import {
 } from '../../view-model';
 import type { ScoreStripHost, ScoreStripRenderParams } from '../types';
 
-function el<T extends HTMLElement>(id: string): T {
+const ENTRANCE_STAGGER_MS = 48;
+const warnedMissing = new Set<string>();
+
+function prefersReducedMotion(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  );
+}
+
+/** Soft lookup — always-on strip must not throw on a missing node. */
+function el<T extends HTMLElement>(id: string): T | null {
   const node = document.getElementById(id);
   if (!node) {
-    throw new Error(`Missing #${id}`);
+    if (!warnedMissing.has(id)) {
+      warnedMissing.add(id);
+      console.warn(`[strip] Missing #${id} — paint skipped for that node`);
+    }
+    return null;
   }
   return node as T;
 }
 
 function setText(id: string, text: string): void {
   const node = el(id);
+  if (!node) {
+    return;
+  }
   if (node.textContent !== text) {
     node.textContent = text;
   }
@@ -32,69 +50,88 @@ function setText(id: string, text: string): void {
 
 function setLogoPuck(
   imgId: string,
-  fallbackId: string,
+  monoRootId: string,
+  abbrId: string,
   fallbackText: string,
   logoUrl: string | null,
 ): void {
-  const fallback = el<HTMLSpanElement>(fallbackId);
+  const mono = el<HTMLElement>(monoRootId);
+  const abbr = el<HTMLElement>(abbrId);
   const img = el<HTMLImageElement>(imgId);
-  fallback.textContent = fallbackText;
+  if (!mono || !abbr || !img) {
+    return;
+  }
+  abbr.textContent = fallbackText;
   if (logoUrl) {
     img.onload = () => {
       img.hidden = false;
-      fallback.hidden = true;
+      mono.hidden = true;
     };
     img.onerror = () => {
       img.hidden = true;
-      fallback.hidden = false;
+      mono.hidden = false;
       img.removeAttribute('src');
     };
     if (img.getAttribute('src') !== logoUrl) {
       img.hidden = true;
-      fallback.hidden = false;
+      mono.hidden = false;
       img.src = logoUrl;
     }
   } else {
     img.hidden = true;
-    fallback.hidden = false;
+    mono.hidden = false;
     img.removeAttribute('src');
   }
 }
 
-function paintAscCrest(): void {
-  const params = new URLSearchParams(window.location.search);
-  const ascLogo = params.get('ascLogo')?.trim() || null;
-  setLogoPuck('asc-logo', 'asc-fallback', 'ASC', ascLogo);
-}
-
 function renderOverTracker(vm: StripViewModel): void {
   const tracker = el<HTMLDivElement>('over-tracker');
-  const signature = vm.overTracker.slots
-    .map((s) => `${s.label}:${s.isExtra ? 'e' : s.isWicket ? 'w' : 'r'}`)
+  const empty = el<HTMLElement>('over-empty');
+  if (!tracker) {
+    return;
+  }
+
+  const slots = vm.overTracker.slots;
+  const signature = slots
+    .map(
+      (s) =>
+        `${s.label}:${s.isExtra ? 'e' : s.isWicket ? 'w' : s.isBoundary ? 'b' : 'r'}`,
+    )
     .join('|');
   if (tracker.dataset.sig === signature) {
+    if (empty) {
+      empty.hidden = slots.length > 0;
+    }
     return;
   }
   tracker.dataset.sig = signature;
 
   tracker.replaceChildren();
-  for (const slot of vm.overTracker.slots) {
-    const node = document.createElement('span');
-    node.className = 'ob';
-    if (slot.isExtra) {
-      node.classList.add('extra');
-      node.textContent = slot.label;
-    } else if (slot.isWicket) {
-      node.classList.add('wicket');
-      node.textContent = slot.label;
-    } else if (slot.label === '●' || slot.label === '•') {
-      node.textContent = '•';
-    } else {
-      node.classList.add('run');
-      node.textContent = slot.label;
-    }
-    tracker.appendChild(node);
+  if (empty) {
+    empty.hidden = slots.length > 0;
   }
+
+  slots.forEach((slot, index) => {
+    const node = document.createElement('span');
+    node.className = 't1-ob';
+    if (slot.isExtra) {
+      node.classList.add('is-extra');
+    } else if (slot.isWicket) {
+      node.classList.add('is-wicket');
+    } else if (slot.isBoundary) {
+      node.classList.add('is-boundary');
+    } else if (slot.label === '●' || slot.label === '•') {
+      node.classList.add('is-dot');
+    } else {
+      node.classList.add('is-run');
+    }
+    if (index === slots.length - 1) {
+      node.classList.add('is-latest');
+    }
+    node.textContent =
+      slot.label === '●' || slot.label === '•' ? '•' : slot.label;
+    tracker.appendChild(node);
+  });
 }
 
 function renderBatters(vm: StripViewModel): void {
@@ -106,7 +143,9 @@ function renderBatters(vm: StripViewModel): void {
       onStrike: false,
     };
     const strike = el<HTMLSpanElement>(`batter-${i}-strike`);
-    strike.hidden = !batter.onStrike;
+    if (strike) {
+      strike.hidden = !batter.onStrike;
+    }
     setText(`batter-${i}-name`, batter.name);
     setText(`batter-${i}-runs`, batter.runs || '0');
     setText(`batter-${i}-balls`, batter.balls || '0');
@@ -119,17 +158,24 @@ function renderSubLine(
   crrMode: ScoreStripRenderParams['crrMode'],
 ): void {
   const sub = el<HTMLDivElement>('sub-line');
+  if (!sub) {
+    return;
+  }
   let text: string | null = null;
 
   if (crrMode === 'chase') {
     text = formatRunsToWinLine(card) ?? vm.needOffLine;
   } else if (crrMode === 'boundaries') {
     text = vm.boundariesLine;
-  } else {
+  } else if (crrMode === 'toss') {
+    // Toss replaces bowler panel; keep score sub on auto chase/CRR.
     text = vm.autoSubLine;
+  } else {
+    // Default: only show NEED (or result) in sub — CRR already in #rr-line.
+    text = vm.needOffLine;
   }
 
-  if (text) {
+  if (text && text !== vm.runRateLine && text !== vm.ratesLine) {
     sub.hidden = false;
     if (sub.textContent !== text) {
       sub.textContent = text;
@@ -148,6 +194,9 @@ function renderBowlerPanel(
   const stack = el<HTMLDivElement>('bowler-stack');
   const normal = el<HTMLDivElement>('bowler-normal');
   const tossLine = el<HTMLParagraphElement>('bowler-toss-line');
+  if (!stack || !normal || !tossLine) {
+    return;
+  }
 
   if (crrMode === 'toss') {
     const text = formatTossLine(ctx);
@@ -172,6 +221,38 @@ function renderBowlerPanel(
   renderOverTracker(vm);
 }
 
+function runEntranceOnce(strip: HTMLElement): void {
+  if (strip.dataset.entered === '1') {
+    return;
+  }
+  strip.dataset.entered = '1';
+
+  const sections = [
+    ...strip.querySelectorAll<HTMLElement>('[data-strip-section]'),
+  ];
+  if (prefersReducedMotion() || sections.length === 0) {
+    for (const s of sections) {
+      s.classList.add('is-visible');
+    }
+    return;
+  }
+
+  strip.classList.add('is-entering');
+  for (const s of sections) {
+    s.classList.remove('is-visible');
+  }
+  sections.forEach((section, index) => {
+    window.setTimeout(() => {
+      section.classList.add('is-visible');
+      if (index === sections.length - 1) {
+        window.setTimeout(() => {
+          strip.classList.remove('is-entering');
+        }, 560);
+      }
+    }, index * ENTRANCE_STAGGER_MS);
+  });
+}
+
 /** Theme 1 lower-third score strip controller. */
 export function createTheme1ScoreStripHost(): ScoreStripHost {
   return {
@@ -186,6 +267,10 @@ export function createTheme1ScoreStripHost(): ScoreStripHost {
       const wrap = el<HTMLDivElement>('strip-wrap');
       const idle = el<HTMLDivElement>('idle');
       const conn = el<HTMLDivElement>('conn');
+      const strip = el<HTMLElement>('strip');
+      if (!wrap || !idle) {
+        return;
+      }
 
       if (missingMatchId) {
         wrap.hidden = true;
@@ -194,13 +279,17 @@ export function createTheme1ScoreStripHost(): ScoreStripHost {
         return;
       }
 
-      conn.hidden = status !== 'offline' && status !== 'connecting';
-      conn.textContent = status === 'connecting' ? 'Connecting…' : 'Reconnecting…';
+      if (conn) {
+        conn.hidden = status !== 'offline' && status !== 'connecting';
+        conn.textContent =
+          status === 'connecting' ? 'Connecting…' : 'Reconnecting…';
+      }
 
       if (!card) {
         if (wrap.hidden) {
           idle.hidden = false;
-          idle.textContent = status === 'live' ? 'Waiting for live score…' : 'Connecting…';
+          idle.textContent =
+            status === 'live' ? 'Waiting for live score…' : 'Connecting…';
         }
         return;
       }
@@ -214,17 +303,51 @@ export function createTheme1ScoreStripHost(): ScoreStripHost {
         return;
       }
 
+      const wasHidden = wrap.hidden || hideStrip;
       idle.hidden = true;
       wrap.hidden = hideStrip;
 
-      paintAscCrest();
-      setLogoPuck('bowl-logo', 'bowl-initials', vm.bowling.initials, vm.bowling.logoUrl);
-      renderBatters(vm);
+      // Logos: batting LEFT, bowling RIGHT (swap with innings via VM).
+      setLogoPuck(
+        'bat-logo',
+        'bat-fallback',
+        'bat-initials',
+        vm.batting.initials,
+        vm.batting.logoUrl,
+      );
+      setLogoPuck(
+        'bowl-logo',
+        'bowl-fallback',
+        'bowl-initials',
+        vm.bowling.initials,
+        vm.bowling.logoUrl,
+      );
+
+      setText(
+        'strip-id-line',
+        `${vm.batting.name} v ${vm.bowling.name} · ${vm.oversLine}`,
+      );
       setText('team-line', vm.teamShort);
       setText('score-line', vm.scoreLine);
       setText('overs-line', vm.oversLine);
+      setText('rr-line', vm.runRateLine);
+
+      renderBatters(vm);
       renderSubLine(vm, card, crrMode);
       renderBowlerPanel(vm, ctx, crrMode);
+
+      // One-time entrance when the strip first appears (not on ball updates).
+      if (!hideStrip && strip && (wasHidden || strip.dataset.entered !== '1')) {
+        runEntranceOnce(strip);
+      }
+      if (hideStrip && strip) {
+        // Allow a fresh entrance next time the strip returns.
+        strip.dataset.entered = '';
+        strip.classList.remove('is-entering');
+        for (const s of strip.querySelectorAll('.t1-strip-section')) {
+          s.classList.remove('is-visible');
+        }
+      }
     },
 
     fillCareerCard(
@@ -240,6 +363,9 @@ export function createTheme1ScoreStripHost(): ScoreStripHost {
       const initialEl = el<HTMLSpanElement>('bc-name-initial');
       const surnameEl = el<HTMLSpanElement>('bc-name-surname');
       const nameRoot = el<HTMLParagraphElement>('bc-name');
+      if (!initialEl || !surnameEl || !nameRoot) {
+        return;
+      }
 
       initialEl.textContent = '';
       surnameEl.textContent = displayName;
@@ -254,7 +380,11 @@ export function createTheme1ScoreStripHost(): ScoreStripHost {
     },
 
     careerWrapElement(): HTMLDivElement {
-      return el<HTMLDivElement>('career-wrap');
+      const node = el<HTMLDivElement>('career-wrap');
+      if (!node) {
+        throw new Error('Missing #career-wrap');
+      }
+      return node;
     },
 
     revealCareerCard(): void {

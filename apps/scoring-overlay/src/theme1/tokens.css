@@ -41,7 +41,7 @@
 
   /* OBS canvas / lower-third geometry (shared by strip + floating cards) */
   --strip-bottom-inset: 28px;
-  --strip-height: 100px;
+  --strip-height: 118px;
   --t1-notch-width: min(320px, 22vw);
   /** Half notch + gap — keep side-panel figures clear of the center notch. */
   --t1-notch-clearance: calc(var(--t1-notch-width) / 2 + 20px);
