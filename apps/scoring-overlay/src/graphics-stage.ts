@@ -294,6 +294,7 @@ export function createGraphicsStage(
   let activeKind: OverlayKind | null = null;
   let activePlayerId: string | null = null;
   let inningsEnsureToken = 0;
+  let battingCardEnsureToken = 0;
   let inningsCmd = {
     view: 'batting' as InningsBreakView,
     inningsId: null as string | null,
@@ -339,6 +340,7 @@ export function createGraphicsStage(
     activeKind = null;
     activePlayerId = null;
     inningsEnsureToken += 1;
+    battingCardEnsureToken += 1;
     batsmanCareer?.hide();
     tossResult?.hide();
     playingXi?.hide();
@@ -382,6 +384,7 @@ export function createGraphicsStage(
       return;
     }
     if (kind === 'batting_card') {
+      battingCardEnsureToken += 1;
       battingCard?.hide();
       return;
     }
@@ -532,6 +535,63 @@ export function createGraphicsStage(
     }
   };
 
+  const showBattingCard = async (animate: boolean): Promise<boolean> => {
+    if (!battingCard) {
+      return false;
+    }
+    const token = ++battingCardEnsureToken;
+    try {
+      const card = scorecard;
+      if (!card) {
+        return false;
+      }
+      const innings = battingCardInningsId
+        ? findInningsByKey(card, battingCardInningsId)
+        : (card.innings.at(-1) ?? null);
+      if (!innings) {
+        return false;
+      }
+
+      const hasBattingXi = (ctx: MatchContext | null): boolean => {
+        const side = resolveBattingSide(card, innings, ctx);
+        return side != null && side.players.length > 0;
+      };
+
+      const paintWithCtx = (ctx: MatchContext | null): boolean => {
+        if (animate) {
+          return battingCard.show(card, battingCardInningsId, ctx, {
+            animate: true,
+          });
+        }
+        return battingCard.update(card, battingCardInningsId, ctx);
+      };
+
+      if (hasBattingXi(matchCtx)) {
+        return paintWithCtx(matchCtx);
+      }
+
+      const matchId = options.matchId?.trim() ?? '';
+      if (!matchId) {
+        return paintWithCtx(matchCtx);
+      }
+
+      const ctx = await ensureMatchContext(options.apiBase, matchId, {
+        requirementKey: `batting-card|${innings.inningsId ?? innings.sequence}`,
+        isSatisfied: hasBattingXi,
+      });
+      if (token !== battingCardEnsureToken || activeKind !== 'batting_card') {
+        return false;
+      }
+      if (ctx) {
+        matchCtx = ctx;
+      }
+      return paintWithCtx(matchCtx);
+    } catch (err) {
+      console.warn('[graphics] batting card failed', err);
+      return false;
+    }
+  };
+
   const nameOf = (id: string | null): string => {
     if (!scorecard) {
       return '—';
@@ -618,6 +678,7 @@ export function createGraphicsStage(
       return;
     }
     if (kind === 'batting_card') {
+      battingCardEnsureToken += 1;
       battingCard?.hide();
       return;
     }
@@ -792,9 +853,11 @@ export function createGraphicsStage(
         }
         break;
       case 'batting_card':
-        if (!battingCard?.show(scorecard, battingCardInningsId)) {
-          hideGraphic('batting_card');
-        }
+        void showBattingCard(false).then((ok) => {
+          if (!ok && activeKind === 'batting_card') {
+            hideGraphic('batting_card');
+          }
+        });
         break;
       default:
         break;
@@ -901,7 +964,8 @@ export function createGraphicsStage(
         activePlayerId = null;
       }
     } else if (kind === 'batting_card') {
-      if (!battingCard?.show(scorecard, battingCardInningsId)) {
+      const painted = await showBattingCard(true);
+      if (!painted && activeKind === 'batting_card') {
         activeKind = null;
         activePlayerId = null;
       }
@@ -944,6 +1008,14 @@ export function createGraphicsStage(
         if (activeKind === 'innings_break') {
           void showInningsBreak(inningsCmd.view).then((ok) => {
             if (!ok && activeKind === 'innings_break') {
+              activeKind = null;
+              activePlayerId = null;
+            }
+          });
+        }
+        if (activeKind === 'batting_card') {
+          void showBattingCard(false).then((ok) => {
+            if (!ok && activeKind === 'batting_card') {
               activeKind = null;
               activePlayerId = null;
             }
