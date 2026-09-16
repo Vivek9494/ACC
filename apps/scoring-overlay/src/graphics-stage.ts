@@ -442,11 +442,15 @@ export function createGraphicsStage(
 
   const showInningsBreak = async (
     view: InningsBreakView = inningsCmd.view,
+    motionOpts?: { replayContentMotion?: boolean },
   ): Promise<boolean> => {
     if (!inningsCard) {
       return false;
     }
     const token = ++inningsEnsureToken;
+    const motion = {
+      replayContentMotion: motionOpts?.replayContentMotion !== false,
+    };
     try {
       const card = scorecard;
       if (!card) {
@@ -478,6 +482,7 @@ export function createGraphicsStage(
             'full',
             innings,
             inningsCmd.source,
+            motion,
           );
         }
         return inningsCard.show(
@@ -487,6 +492,7 @@ export function createGraphicsStage(
           'no_squad',
           innings,
           inningsCmd.source,
+          motion,
         );
       };
 
@@ -502,10 +508,11 @@ export function createGraphicsStage(
           'no_squad',
           innings,
           inningsCmd.source,
+          motion,
         );
       }
 
-      inningsCard.showLoading(view, inningsCmd.source);
+      inningsCard.showLoading(view, inningsCmd.source, motion);
       const ctx = await ensureMatchContext(options.apiBase, matchId, {
         requirementKey: `batting-side|${innings.inningsId ?? innings.sequence}`,
         isSatisfied: hasBattingSide,
@@ -527,14 +534,15 @@ export function createGraphicsStage(
           'no_squad',
           innings,
           inningsCmd.source,
+          motion,
         );
       }
-      inningsCard.showLoading(view, inningsCmd.source);
+      inningsCard.showLoading(view, inningsCmd.source, motion);
       return true;
     } catch (err) {
       console.warn('[graphics] innings break failed', err);
       if (token === inningsEnsureToken && activeKind === 'innings_break') {
-        inningsCard.showLoading(view, inningsCmd.source);
+        inningsCard.showLoading(view, inningsCmd.source, motion);
         return true;
       }
       return false;
@@ -856,6 +864,7 @@ export function createGraphicsStage(
               inningsCard.xiStatus() === 'full' ? 'full' : 'no_squad',
               innings,
               inningsCmd.source,
+              { replayContentMotion: false },
             )
           ) {
             hideGraphic('innings_break');
@@ -1101,7 +1110,9 @@ export function createGraphicsStage(
           activePlayerId = null;
         }
         if (activeKind === 'innings_break') {
-          void showInningsBreak(inningsCmd.view).then((ok) => {
+          void showInningsBreak(inningsCmd.view, {
+            replayContentMotion: false,
+          }).then((ok) => {
             if (!ok && activeKind === 'innings_break') {
               activeKind = null;
               activePlayerId = null;

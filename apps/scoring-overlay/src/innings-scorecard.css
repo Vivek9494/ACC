@@ -103,10 +103,6 @@
   .isc-header-sweep {
     animation: none !important;
   }
-
-  .isc-pane-stage {
-    transition: none !important;
-  }
 }
 
 .isc-id-strip {
@@ -279,21 +275,6 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
-  opacity: 1;
-  transform: translateX(0);
-  transition:
-    opacity 200ms ease,
-    transform 200ms cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.isc-pane-stage.is-tab-out {
-  opacity: 0;
-  transform: translateX(18px);
-}
-
-.isc-pane-stage.is-tab-in {
-  opacity: 0;
-  transform: translateX(-18px);
 }
 
 .isc-loading {

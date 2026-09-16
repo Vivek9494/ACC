@@ -39,10 +39,8 @@ import type {
 import { parseInningsBreakView, parseScorecardViewSource } from './types';
 import { teamInitials } from './view-model';
 
-/** Match batting card row stagger (bowling uses 48ms — package standard is 45). */
 const SECTION_STAGGER_MS = 45;
 const EXIT_MS = 320;
-const TAB_FADE_MS = 180;
 const MAX_STANDS = 10;
 
 /** Absolute shell delays aligned with batting-card DELAY. */
@@ -57,6 +55,15 @@ const DELAY = {
 export type InningsScorecardView = InningsBreakView;
 export type InningsXiStatus = 'full' | 'no_squad' | 'loading';
 
+/** Motion for an already-on-air show (tab select vs live data refresh). */
+export interface InningsScorecardShowOptions {
+  /**
+   * When true (graphics:command / tab select), re-play the staggered content
+   * reveal even if the tab did not change. Live refresh should omit this.
+   */
+  replayContentMotion?: boolean;
+}
+
 export interface InningsScorecardController {
   readonly host: HTMLElement;
   isOnAir(): boolean;
@@ -66,6 +73,7 @@ export interface InningsScorecardController {
   showLoading(
     view?: InningsScorecardView,
     source?: ScorecardViewSource,
+    options?: InningsScorecardShowOptions,
   ): boolean;
   show(
     card: ScorecardResponse | null,
@@ -74,6 +82,7 @@ export interface InningsScorecardController {
     xiStatus?: InningsXiStatus,
     innings?: InningsScorecard | null,
     source?: ScorecardViewSource,
+    options?: InningsScorecardShowOptions,
   ): boolean;
 }
 
@@ -522,10 +531,8 @@ export function mountInningsScorecard(
   let chrome: ScorecardViewSource = 'break';
   let xiStatus: InningsXiStatus | null = null;
   let motionGen = 0;
-  let tabGen = 0;
   let exitTimer: number | null = null;
-  const entranceTimers: number[] = [];
-  let tabTimer: number | null = null;
+  const motionTimers: number[] = [];
 
   const qs = <T extends HTMLElement>(selector: string): T | null =>
     host.querySelector(selector) as T | null;
@@ -539,34 +546,108 @@ export function mountInningsScorecard(
     }
   };
 
-  const cancelEntrance = (): void => {
-    motionGen += 1;
-    for (const t of entranceTimers) {
+  const clearMotionTimers = (): void => {
+    for (const t of motionTimers) {
       window.clearTimeout(t);
     }
-    entranceTimers.length = 0;
-    if (exitTimer != null) {
-      window.clearTimeout(exitTimer);
-      exitTimer = null;
-    }
-    const p = panel();
-    if (p) {
-      p.classList.remove('isc-exiting', 'isc-entering');
-      for (const section of p.querySelectorAll('.isc-section')) {
+    motionTimers.length = 0;
+  };
+
+  const shellSelectors =
+    '[data-isc-section="id"], [data-isc-section="header"], [data-isc-section="tabs"], [data-isc-section="footer"], [data-isc-section="content"]';
+
+  const resetBodyVisibility = (p: HTMLElement): void => {
+    for (const pane of p.querySelectorAll<HTMLElement>('[data-isc-pane]')) {
+      for (const section of pane.querySelectorAll('.isc-section')) {
         section.classList.remove('isc-section-visible');
       }
     }
   };
 
-  const cancelTabTransition = (): void => {
-    tabGen += 1;
-    if (tabTimer != null) {
-      window.clearTimeout(tabTimer);
-      tabTimer = null;
+  const ensureShellVisible = (p: HTMLElement): void => {
+    for (const section of p.querySelectorAll<HTMLElement>(shellSelectors)) {
+      if (!section.hidden) {
+        section.classList.add('isc-section-visible');
+      }
     }
-    const stage = qs<HTMLElement>('[data-isc-pane-stage]');
-    if (stage) {
-      stage.classList.remove('is-tab-out', 'is-tab-in');
+  };
+
+  const collectBodyPieces = (p: HTMLElement): HTMLElement[] => {
+    const pane = p.querySelector<HTMLElement>(
+      `[data-isc-pane="${view}"]:not([hidden])`,
+    );
+    if (!pane) {
+      return [];
+    }
+    const body: HTMLElement[] = [];
+    for (const el of pane.querySelectorAll<HTMLElement>(
+      '[data-isc-motion="columns"]',
+    )) {
+      if (!el.hidden) {
+        body.push(el);
+      }
+    }
+    for (const el of pane.querySelectorAll<HTMLElement>(
+      '.bc-row, .bowl-row, .isc-fow-row, .tp-row',
+    )) {
+      body.push(el);
+    }
+    for (const el of pane.querySelectorAll<HTMLElement>(
+      '[data-isc-motion="extras"], [data-isc-motion="ytb"], [data-isc-motion="note"], [data-isc-motion="legend"], [data-isc-motion="summary"], [data-isc-motion="chart"], [data-isc-motion="empty"]',
+    )) {
+      if (!el.hidden) {
+        body.push(el);
+      }
+    }
+    return body;
+  };
+
+  const collectShellPieces = (p: HTMLElement): HTMLElement[] =>
+    [
+      ...p.querySelectorAll<HTMLElement>(
+        '[data-isc-section="id"], [data-isc-section="header"], [data-isc-section="tabs"]',
+      ),
+    ].filter((el) => !el.hidden);
+
+  const scheduleStagger = (
+    sequence: HTMLElement[],
+    delayForIndex: (index: number) => number,
+    gen: number,
+  ): void => {
+    sequence.forEach((section, index) => {
+      const timer = window.setTimeout(() => {
+        if (gen !== motionGen) {
+          return;
+        }
+        section.classList.add('isc-section-visible');
+      }, delayForIndex(index));
+      motionTimers.push(timer);
+    });
+  };
+
+  /** Cancel any in-flight staggered reveal (Show or tab). */
+  const cancelMotion = (opts: {
+    resetShell: boolean;
+    resetBody: boolean;
+  }): void => {
+    motionGen += 1;
+    clearMotionTimers();
+    if (exitTimer != null) {
+      window.clearTimeout(exitTimer);
+      exitTimer = null;
+    }
+    const p = panel();
+    if (!p) {
+      return;
+    }
+    if (opts.resetShell) {
+      p.classList.remove('isc-exiting', 'isc-entering');
+      for (const section of p.querySelectorAll<HTMLElement>(shellSelectors)) {
+        section.classList.remove('isc-section-visible');
+      }
+    }
+    if (opts.resetBody) {
+      resetBodyVisibility(p);
     }
   };
 
@@ -592,100 +673,51 @@ export function mountInningsScorecard(
     panel()?.classList.toggle('is-loading-xi', loading);
   };
 
-  /** Shell chrome + active-tab body pieces, batting/bowling order. */
-  const motionSequence = (
-    p: HTMLElement,
-  ): { shell: HTMLElement[]; body: HTMLElement[]; footer: HTMLElement | null } => {
-    const shell = [
-      ...p.querySelectorAll<HTMLElement>(
-        '[data-isc-section="id"], [data-isc-section="header"], [data-isc-section="tabs"]',
-      ),
-    ].filter((el) => !el.hidden);
-
-    const pane = p.querySelector<HTMLElement>(
-      `[data-isc-pane="${view}"]:not([hidden])`,
-    );
-    const body: HTMLElement[] = [];
-    if (pane) {
-      const columns = pane.querySelectorAll<HTMLElement>(
-        '[data-isc-motion="columns"]',
-      );
-      const rows = pane.querySelectorAll<HTMLElement>(
-        '.bc-row, .bowl-row, .isc-fow-row, .tp-row',
-      );
-      const after = pane.querySelectorAll<HTMLElement>(
-        '[data-isc-motion="extras"], [data-isc-motion="ytb"], [data-isc-motion="note"], [data-isc-motion="legend"], [data-isc-motion="summary"], [data-isc-motion="chart"], [data-isc-motion="empty"]',
-      );
-      for (const el of columns) {
-        if (!el.hidden) {
-          body.push(el);
-        }
-      }
-      for (const el of rows) {
-        body.push(el);
-      }
-      for (const el of after) {
-        if (!el.hidden) {
-          body.push(el);
-        }
-      }
-    }
-
-    const footer = p.querySelector<HTMLElement>('[data-isc-section="footer"]');
-    return {
-      shell,
-      body,
-      footer: footer && !footer.hidden ? footer : null,
-    };
-  };
-
+  /** Full graphic entrance (Show) — shell + active tab content. */
   const runEntrance = (): void => {
-    cancelEntrance();
-    cancelTabTransition();
+    cancelMotion({ resetShell: true, resetBody: true });
     const p = panel();
     if (!p) {
       return;
     }
     const gen = motionGen;
-    const { shell, body, footer } = motionSequence(p);
-    const sequence = [...shell, ...body, ...(footer ? [footer] : [])];
+    applyPaneVisibility();
+    const shell = collectShellPieces(p);
+    const body = collectBodyPieces(p);
+    const footer = p.querySelector<HTMLElement>('[data-isc-section="footer"]');
+    const sequence = [
+      ...shell,
+      ...body,
+      ...(footer && !footer.hidden ? [footer] : []),
+    ];
+
+    p.classList.remove('isc-exiting');
+    p.classList.add('isc-entering');
 
     if (prefersReducedMotion()) {
-      p.classList.add('isc-entering');
-      for (const section of p.querySelectorAll('.isc-section')) {
-        if (!(section as HTMLElement).hidden) {
+      for (const section of p.querySelectorAll<HTMLElement>('.isc-section')) {
+        if (!section.hidden) {
           section.classList.add('isc-section-visible');
         }
       }
       return;
     }
 
-    p.classList.remove('isc-exiting');
-    p.classList.add('isc-entering');
-    for (const section of p.querySelectorAll('.isc-section')) {
-      section.classList.remove('isc-section-visible');
-    }
-
-    // Content host stays visible so body rows can stagger (like bowl-rows-wrap).
-    const content = p.querySelector<HTMLElement>('[data-isc-section="content"]');
-    content?.classList.add('isc-section-visible');
+    p.querySelector<HTMLElement>('[data-isc-section="content"]')?.classList.add(
+      'isc-section-visible',
+    );
 
     const shellDelays = [DELAY.id, DELAY.header, DELAY.tabs];
-    sequence.forEach((section, index) => {
-      let delay: number;
-      if (index < shell.length) {
-        delay = shellDelays[index] ?? index * SECTION_STAGGER_MS;
-      } else {
-        delay = DELAY.content0 + (index - shell.length) * DELAY.rowStep;
-      }
-      const timer = window.setTimeout(() => {
-        if (gen !== motionGen) {
-          return;
+    scheduleStagger(
+      sequence,
+      (index) => {
+        if (index < shell.length) {
+          return shellDelays[index] ?? index * SECTION_STAGGER_MS;
         }
-        section.classList.add('isc-section-visible');
-      }, delay);
-      entranceTimers.push(timer);
-    });
+        return DELAY.content0 + (index - shell.length) * DELAY.rowStep;
+      },
+      gen,
+    );
 
     const sweep = p.querySelector<HTMLElement>('.isc-header-sweep');
     if (sweep) {
@@ -695,6 +727,49 @@ export function mountInningsScorecard(
     }
   };
 
+  /**
+   * Tab switch / tab re-select: cancel any in-progress reveal, keep header/tabs,
+   * re-stagger the selected tab's content from the beginning.
+   */
+  const runTabContentReveal = (): void => {
+    cancelMotion({ resetShell: false, resetBody: true });
+    const p = panel();
+    if (!p) {
+      return;
+    }
+    const gen = motionGen;
+    p.classList.remove('isc-exiting');
+    p.classList.add('isc-entering');
+    ensureShellVisible(p);
+    applyPaneVisibility();
+    const body = collectBodyPieces(p);
+
+    if (prefersReducedMotion()) {
+      for (const section of body) {
+        section.classList.add('isc-section-visible');
+      }
+      return;
+    }
+
+    // Hard-reset CSS so a mid-flight opacity doesn't stick / overlap.
+    for (const section of body) {
+      section.classList.remove('isc-section-visible');
+      section.style.transition = 'none';
+      section.style.opacity = '0';
+      section.style.transform = 'translateX(-60px)';
+    }
+    void p.offsetWidth;
+    for (const section of body) {
+      section.style.transition = '';
+      section.style.opacity = '';
+      section.style.transform = '';
+    }
+    void p.offsetWidth;
+
+    scheduleStagger(body, (index) => index * DELAY.rowStep, gen);
+  };
+
+  /** Live update path when idle: everything visible, no new stagger. */
   const ensureSectionsVisible = (): void => {
     const p = panel();
     if (!p) {
@@ -708,34 +783,27 @@ export function mountInningsScorecard(
     }
   };
 
-  const runTabContentTransition = (applyView: () => void): void => {
-    cancelTabTransition();
-    const stage = qs<HTMLElement>('[data-isc-pane-stage]');
-    if (!stage || prefersReducedMotion()) {
-      applyView();
-      ensureSectionsVisible();
+  const applyOnAirMotion = (
+    alreadyOnAir: boolean,
+    prevView: InningsScorecardView,
+    options?: InningsScorecardShowOptions,
+  ): void => {
+    if (!alreadyOnAir) {
+      requestAnimationFrame(() => runEntrance());
       return;
     }
-    const gen = ++tabGen;
-    stage.classList.remove('is-tab-in');
-    stage.classList.add('is-tab-out');
-    tabTimer = window.setTimeout(() => {
-      if (gen !== tabGen) {
-        return;
-      }
-      applyView();
-      ensureSectionsVisible();
-      stage.classList.remove('is-tab-out');
-      stage.classList.add('is-tab-in');
-      void stage.offsetWidth;
-      requestAnimationFrame(() => {
-        if (gen !== tabGen) {
-          return;
-        }
-        stage.classList.remove('is-tab-in');
-      });
-      tabTimer = null;
-    }, TAB_FADE_MS);
+    // Tab select (command): always re-play content stagger — including same tab.
+    if (options?.replayContentMotion || prevView !== view) {
+      runTabContentReveal();
+      return;
+    }
+    // Live refresh: don't kill an in-flight tab reveal; restart if paint replaced nodes.
+    applyPaneVisibility();
+    if (motionTimers.length > 0) {
+      runTabContentReveal();
+      return;
+    }
+    ensureSectionsVisible();
   };
 
   const paintBattingPane = (
@@ -1154,8 +1222,7 @@ export function mountInningsScorecard(
   };
 
   const hideNode = (): void => {
-    cancelEntrance();
-    cancelTabTransition();
+    cancelMotion({ resetShell: true, resetBody: true });
     onAir = false;
     xiStatus = null;
     const p = panel();
@@ -1192,7 +1259,11 @@ export function mountInningsScorecard(
         host.classList.remove('is-visible');
       }
     },
-    showLoading(nextView = 'batting', source: ScorecardViewSource = 'break'): boolean {
+    showLoading(
+      nextView = 'batting',
+      source: ScorecardViewSource = 'break',
+      options?: InningsScorecardShowOptions,
+    ): boolean {
       try {
         const alreadyOnAir = onAir;
         const prevView = view;
@@ -1201,19 +1272,9 @@ export function mountInningsScorecard(
         xiStatus = 'loading';
         ensureMarkup();
         setLoadingUi(true);
-        const viewChanged = alreadyOnAir && prevView !== view;
-        if (viewChanged) {
-          runTabContentTransition(() => applyPaneVisibility());
-        } else {
-          applyPaneVisibility();
-        }
         onAir = true;
         revealGraphic(host);
-        if (!alreadyOnAir) {
-          requestAnimationFrame(() => runEntrance());
-        } else {
-          ensureSectionsVisible();
-        }
+        applyOnAirMotion(alreadyOnAir, prevView, options);
         return true;
       } catch (err) {
         warnGraphics(err);
@@ -1232,6 +1293,7 @@ export function mountInningsScorecard(
       status = 'no_squad',
       inningsArg = null,
       source: ScorecardViewSource = 'break',
+      options?: InningsScorecardShowOptions,
     ): boolean {
       try {
         const alreadyOnAir = onAir;
@@ -1240,7 +1302,7 @@ export function mountInningsScorecard(
         chrome = parseScorecardViewSource(source);
 
         if (status === 'loading') {
-          return this.showLoading(view, chrome);
+          return this.showLoading(view, chrome, options);
         }
         if (!card) {
           hideNode();
@@ -1262,20 +1324,8 @@ export function mountInningsScorecard(
         }
         xiStatus = xi;
         onAir = true;
-
-        const viewChanged = alreadyOnAir && prevView !== view;
-        if (viewChanged) {
-          runTabContentTransition(() => applyPaneVisibility());
-        } else {
-          applyPaneVisibility();
-        }
-
         revealGraphic(host);
-        if (!alreadyOnAir) {
-          requestAnimationFrame(() => runEntrance());
-        } else {
-          ensureSectionsVisible();
-        }
+        applyOnAirMotion(alreadyOnAir, prevView, options);
         return true;
       } catch (err) {
         warnGraphics(err);
