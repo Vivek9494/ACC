@@ -61,19 +61,21 @@ export const THEME1_PAGE_MARKUP = `
             <div class="t1-vdiv" aria-hidden="true"></div>
 
             <div id="bowler-stack" class="t1-bowler-block">
-              <div id="bowler-normal" class="t1-bowler-normal">
-                <div class="t1-bowler-head">
-                  <span class="t1-bowler-role">BOWLING</span>
-                  <span id="bowler-overs" class="t1-bowler-ov">(0.0 ov)</span>
+              <div id="bowler-flip" class="t1-bowler-flip">
+                <div id="bowler-normal" class="t1-bowler-face t1-bowler-face-front t1-bowler-normal">
+                  <div class="t1-bowler-head">
+                    <span class="t1-bowler-role">BOWLING</span>
+                    <span id="bowler-overs" class="t1-bowler-ov">(0.0 ov)</span>
+                  </div>
+                  <div class="t1-bowler-main">
+                    <span id="bowler-name" class="t1-bowler-name">—</span>
+                    <span id="bowler-figs" class="t1-bowler-figs">0 / 0</span>
+                  </div>
+                  <div id="over-tracker" class="t1-over-balls" aria-label="This over"></div>
+                  <p id="over-empty" class="t1-over-empty" hidden>Awaiting first delivery</p>
                 </div>
-                <div class="t1-bowler-main">
-                  <span id="bowler-name" class="t1-bowler-name">—</span>
-                  <span id="bowler-figs" class="t1-bowler-figs">0 / 0</span>
-                </div>
-                <div id="over-tracker" class="t1-over-balls" aria-label="This over"></div>
-                <p id="over-empty" class="t1-over-empty" hidden>Awaiting first delivery</p>
+                <p id="bowler-toss-line" class="t1-bowler-face t1-bowler-face-back t1-bowler-toss" hidden></p>
               </div>
-              <p id="bowler-toss-line" class="t1-bowler-toss" hidden></p>
             </div>
 
             <div class="t1-end-panel t1-end-bowl">
