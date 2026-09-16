@@ -502,7 +502,7 @@ export function OverlayControlPanel({
             : action === 'bowling'
               ? 'bowling_card'
               : action === 'partnerships'
-                ? 'innings_break'
+                ? 'team_partnerships'
                 : action;
       hideGraphic(graphic);
       return;
@@ -521,7 +521,7 @@ export function OverlayControlPanel({
     }
     emit(cmd);
     if (action === 'partnerships') {
-      setLocalOnAir('innings_break', teamSide, action, 'both', 'scorecard');
+      setLocalOnAir('team_partnerships', teamSide, action);
       return;
     }
     if (action === 'bowling') {

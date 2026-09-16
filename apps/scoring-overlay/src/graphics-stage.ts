@@ -12,6 +12,7 @@ import { concealGraphic, revealGraphic } from './graphic-visibility';
 import { mountInningsScorecard } from './innings-scorecard';
 import { mountLastWicketCard } from './last-wicket-card';
 import { mountPartnershipCard } from './partnership-card';
+import { mountTeamPartnershipsCard } from './team-partnerships-card';
 import {
   deriveBatterDotBalls,
   findInningsByKey,
@@ -22,6 +23,7 @@ import {
   resolveActiveInnings,
   resolveBattingSide,
   resolveScorecardInnings,
+  teamPartnershipStandRows,
 } from './graphics-format';
 import type { GraphicsCommandMessage, GraphicsKind } from './live-client';
 import {
@@ -71,6 +73,7 @@ const GRAPHIC_IDS: Record<OverlayKind, string> = {
   playing_xi: 'g-playing-xi',
   batting_card: 'g-batting-card',
   bowling_card: 'g-bowling-card',
+  team_partnerships: 'g-team-partnerships',
   hello: 'g-hello',
 };
 
@@ -147,6 +150,8 @@ export function buildGraphicsStageMarkup(): string {
       <div id="g-batting-card" class="graphic graphic-centered batting-card-graphic" hidden></div>
 
       <div id="g-bowling-card" class="graphic graphic-centered bowling-card-graphic" hidden></div>
+
+      <div id="g-team-partnerships" class="graphic graphic-centered team-partnerships-graphic" hidden></div>
 
       <div id="g-bowler" class="graphic panel panel-batsman-live" hidden>
         <div class="panel-accent"></div>
@@ -263,6 +268,7 @@ export function createGraphicsStage(
   let playingXiCmd: PlayingXiShowOptions = { variant: 'both' };
   let battingCardInningsId: string | null = null;
   let bowlingCardInningsId: string | null = null;
+  let teamPartnershipsInningsId: string | null = null;
   let fowInningsId: string | null = null;
 
   const mountOrNull = <T>(id: string, mount: (host: HTMLElement) => T): T | null => {
@@ -279,6 +285,10 @@ export function createGraphicsStage(
   const battingCard = mountOrNull('g-batting-card', mountBattingCard);
   const bowlingCard = mountOrNull('g-bowling-card', mountBowlingCard);
   const partnershipCard = mountOrNull('g-partnership', mountPartnershipCard);
+  const teamPartnershipsCard = mountOrNull(
+    'g-team-partnerships',
+    mountTeamPartnershipsCard,
+  );
   const lastWicketCard = mountOrNull('g-fow', mountLastWicketCard);
   const inningsCard = mountOrNull('g-innings', mountInningsScorecard);
 
@@ -292,6 +302,7 @@ export function createGraphicsStage(
     kind === 'batting_card' ||
     kind === 'bowling_card' ||
     kind === 'partnership' ||
+    kind === 'team_partnerships' ||
     kind === 'fow' ||
     kind === 'innings_break';
 
@@ -315,6 +326,7 @@ export function createGraphicsStage(
     battingCard?.hide();
     bowlingCard?.hide();
     partnershipCard?.hide();
+    teamPartnershipsCard?.hide();
     lastWicketCard?.hide();
     inningsCard?.hide();
     for (const kind of Object.keys(GRAPHIC_IDS) as OverlayKind[]) {
@@ -368,6 +380,10 @@ export function createGraphicsStage(
       partnershipCard?.hide();
       return;
     }
+    if (kind === 'team_partnerships') {
+      teamPartnershipsCard?.hide();
+      return;
+    }
     if (kind === 'fow') {
       lastWicketCard?.hide();
       return;
@@ -398,6 +414,26 @@ export function createGraphicsStage(
     } catch (err) {
       console.warn('[graphics] partnership failed', err);
       partnershipCard.hide();
+      return false;
+    }
+  };
+
+  const showTeamPartnerships = (animate: boolean): boolean => {
+    if (!teamPartnershipsCard) {
+      return false;
+    }
+    try {
+      const opts = { inningsId: teamPartnershipsInningsId };
+      if (animate) {
+        return teamPartnershipsCard.show(scorecard, { ...opts, animate: true });
+      }
+      if (teamPartnershipsCard.isOnAir()) {
+        return teamPartnershipsCard.update(scorecard, opts);
+      }
+      return teamPartnershipsCard.show(scorecard, { ...opts, animate: false });
+    } catch (err) {
+      console.warn('[graphics] team partnerships failed', err);
+      teamPartnershipsCard.hide();
       return false;
     }
   };
@@ -665,6 +701,10 @@ export function createGraphicsStage(
       partnershipCard?.hide();
       return;
     }
+    if (kind === 'team_partnerships') {
+      teamPartnershipsCard?.hide();
+      return;
+    }
     if (kind === 'fow') {
       lastWicketCard?.hide();
       return;
@@ -799,6 +839,11 @@ export function createGraphicsStage(
       case 'partnership':
         if (!showPartnership(false) && activeKind === 'partnership') {
           hideGraphic('partnership');
+        }
+        break;
+      case 'team_partnerships':
+        if (!showTeamPartnerships(false) && activeKind === 'team_partnerships') {
+          hideGraphic('team_partnerships');
         }
         break;
       case 'fow':
@@ -941,6 +986,17 @@ export function createGraphicsStage(
         (bowlingCardInningsId
           ? findInningsByKey(scorecard, bowlingCardInningsId) != null
           : scorecard.innings.length > 0);
+    } else if (kind === 'team_partnerships') {
+      teamPartnershipsInningsId = payload?.inningsId?.trim() || null;
+      ok =
+        scorecard != null &&
+        (() => {
+          const innings =
+            (teamPartnershipsInningsId
+              ? findInningsByKey(scorecard, teamPartnershipsInningsId)
+              : null) ?? resolveActiveInnings(scorecard);
+          return innings != null && teamPartnershipStandRows(innings).length > 0;
+        })();
     }
 
     if (!ok) {
@@ -989,6 +1045,11 @@ export function createGraphicsStage(
       }
     } else if (kind === 'partnership') {
       if (!showPartnership(true) && activeKind === 'partnership') {
+        activeKind = null;
+        activePlayerId = null;
+      }
+    } else if (kind === 'team_partnerships') {
+      if (!showTeamPartnerships(true) && activeKind === 'team_partnerships') {
         activeKind = null;
         activePlayerId = null;
       }

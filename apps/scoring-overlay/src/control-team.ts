@@ -170,11 +170,8 @@ export function teamMatchesInningsBowling(
 }
 
 export function teamActionToInningsView(
-  action: TeamControlAction,
+  _action: TeamControlAction,
 ): InningsBreakView | null {
-  if (action === 'partnerships') {
-    return 'partnerships';
-  }
   return null;
 }
 
@@ -229,13 +226,21 @@ export function buildTeamShowCommand(
       if (!innings) {
         return null;
       }
+      let standCount = innings.partnerships?.length ?? 0;
+      if (innings.partnership) {
+        standCount += 1;
+      }
+      if (innings.closed && standCount > 0) {
+        standCount -= 1;
+      }
+      if (standCount <= 0) {
+        return null;
+      }
       return {
         action: 'show',
-        graphic: 'innings_break',
+        graphic: 'team_partnerships',
         payload: {
-          view: 'partnerships',
           inningsId: inningsKey(innings),
-          source: 'scorecard',
         },
       };
     }

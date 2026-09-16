@@ -29,7 +29,7 @@ export const OVERLAY_TEAM_ACTIONS: { action: OverlayTeamAction; label: string; n
     { action: 'playing_xi', label: 'Playing XI' },
     { action: 'batting_lineup', label: 'Batting card' },
     { action: 'bowling', label: 'Bowling' },
-    { action: 'partnerships', label: 'Partnership' },
+    { action: 'partnerships', label: 'Team Partnerships' },
     { action: 'fow', label: 'Last wicket' },
     { action: 'batsman', label: 'Batsman', needsPicker: true },
     { action: 'bowler', label: 'Bowler', needsPicker: true },
@@ -139,6 +139,18 @@ function inningsKey(innings: InningsScorecard): string | null {
   return innings.inningsId ?? null;
 }
 
+/** Mirrors overlay teamPartnershipStandRows length (enable Team Partnerships). */
+function teamPartnershipStandCount(innings: InningsScorecard): number {
+  let n = innings.partnerships.length;
+  if (innings.partnership) {
+    n += 1;
+  }
+  if (innings.closed && n > 0) {
+    n -= 1;
+  }
+  return n;
+}
+
 export function buildOverlayTeamShowCommand(
   action: OverlayTeamAction,
   team: OverlayTeamBinding,
@@ -180,17 +192,13 @@ export function buildOverlayTeamShowCommand(
     }
     case 'partnerships': {
       const innings = findBattingInnings(card, team);
-      if (!innings) {
+      if (!innings || teamPartnershipStandCount(innings) === 0) {
         return null;
       }
       return {
         action: 'show',
-        graphic: 'innings_break',
-        payload: {
-          view: 'partnerships',
-          inningsId: inningsKey(innings),
-          source: 'scorecard',
-        },
+        graphic: 'team_partnerships',
+        payload: { inningsId: inningsKey(innings) },
       };
     }
     case 'fow': {
@@ -514,7 +522,7 @@ export function isTeamActionOnAir(
     return state.graphic === 'bowling_card';
   }
   if (action === 'partnerships') {
-    return state.graphic === 'innings_break' && state.inningsSource === 'scorecard';
+    return state.graphic === 'team_partnerships';
   }
   if (action === 'fow') {
     return state.graphic === 'fow';
@@ -583,6 +591,9 @@ export function overlayOnAirLabel(
   }
   if (state.graphic === 'partnership') {
     return 'ON AIR: Current partnership';
+  }
+  if (state.graphic === 'team_partnerships') {
+    return 'ON AIR: Team partnerships';
   }
   if (state.graphic === 'bowling_card' && !state.teamAction) {
     return 'ON AIR: Bowling scorecard';

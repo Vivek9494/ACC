@@ -146,6 +146,11 @@ export const GraphicsKind = {
    */
   BowlingCard: 'bowling_card',
   /**
+   * Full-innings partnership table for one batting side (all stands + current).
+   * Distinct from single-stand `partnership` (Current Partnership).
+   */
+  TeamPartnerships: 'team_partnerships',
+  /**
    * Full-screen wagon wheel (shot placement from saved shotX/shotY).
    * Match-level; subject + filter select which shots to draw.
    */

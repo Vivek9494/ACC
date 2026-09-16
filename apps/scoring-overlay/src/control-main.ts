@@ -81,6 +81,7 @@ const COMMON_LABELS: Record<
   playing_xi: 'Playing XI',
   batting_card: 'Batting card',
   bowling_card: 'Bowling scorecard',
+  team_partnerships: 'Team Partnerships',
   wagon_wheel: 'Wagon Wheel',
   partnership: 'Current Partnership',
 };
@@ -89,7 +90,7 @@ const TEAM_ACTION_LABELS: Record<TeamControlAction, string> = {
   playing_xi: 'Playing XI',
   batting_lineup: 'Batting card',
   bowling: 'Bowling',
-  partnerships: 'Partnership',
+  partnerships: 'Team Partnerships',
   fow: 'Last wicket',
   batsman: 'Batsman',
   bowler: 'Bowler',
@@ -560,9 +561,21 @@ function start(): void {
           case 'bowling':
             enabled = findBowlingInningsForTeam(scorecard, team) != null;
             break;
-          case 'partnerships':
-            enabled = battingInnings != null;
+          case 'partnerships': {
+            if (!battingInnings) {
+              enabled = false;
+              break;
+            }
+            let standCount = battingInnings.partnerships?.length ?? 0;
+            if (battingInnings.partnership) {
+              standCount += 1;
+            }
+            if (battingInnings.closed && standCount > 0) {
+              standCount -= 1;
+            }
+            enabled = standCount > 0;
             break;
+          }
           case 'fow':
             enabled = previewTeamLastWicket(scorecard, team) != null;
             break;
@@ -652,9 +665,9 @@ function start(): void {
             live = true;
           } else if (
             action === 'partnerships' &&
-            onAirGraphic === 'innings_break'
+            onAirGraphic === 'team_partnerships'
           ) {
-            live = inningsSource === 'scorecard';
+            live = true;
           } else if (action === 'fow' && onAirGraphic === 'fow') {
             live = true;
           } else if (
@@ -916,6 +929,10 @@ function start(): void {
       setOnAir('bowling_card', side, action, 'both');
       return;
     }
+    if (action === 'partnerships') {
+      setOnAir('team_partnerships', side, action, 'both');
+      return;
+    }
     if (
       action === 'fow' ||
       action === 'batsman' ||
@@ -1015,6 +1032,7 @@ function start(): void {
           cmd.graphic === 'bowler_career' ||
           cmd.graphic === 'toss_result' ||
           cmd.graphic === 'partnership' ||
+          cmd.graphic === 'team_partnerships' ||
           cmd.graphic === 'batting_card' ||
           cmd.graphic === 'bowling_card' ||
           cmd.graphic === 'wagon_wheel'

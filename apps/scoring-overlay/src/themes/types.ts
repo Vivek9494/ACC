@@ -20,8 +20,11 @@ export type OverlayGraphicComponentKey =
   | 'innings_break'
   | 'toss_result'
   | 'playing_xi'
+  | 'batting_card'
+  | 'bowling_card'
   | 'leaderboard'
-  | 'points_table';
+  | 'points_table'
+  | 'team_partnerships';
 
 export type ThemeGraphicHost = 'score_strip' | 'graphics_stage' | 'standalone';
 

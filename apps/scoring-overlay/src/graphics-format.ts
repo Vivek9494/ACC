@@ -783,6 +783,48 @@ export function partnershipRunRate(runs: number, balls: number): number {
   return (runs * 6) / balls;
 }
 
+export interface TeamPartnershipStandRow {
+  stand: CompletedPartnership;
+  /** 1-based wicket / stand number for labels. */
+  standNumber: number;
+  /** True when this is the live unbroken stand. */
+  isCurrent: boolean;
+}
+
+/**
+ * Full-innings stands for Team Partnerships (cockpit Partnerships tab rules):
+ * completed wickets + current unbroken stand; drop trailing live stand when closed.
+ */
+export function teamPartnershipStandRows(
+  innings: InningsScorecard,
+): TeamPartnershipStandRow[] {
+  const rows: CompletedPartnership[] = [...(innings.partnerships ?? [])];
+  if (innings.partnership) {
+    rows.push({
+      batterIds: innings.partnership.batterIds,
+      batterRuns: innings.partnership.batterRuns,
+      runs: innings.partnership.runs,
+      balls: innings.partnership.balls,
+    });
+  }
+  if (innings.closed && rows.length > 0) {
+    const trimmed = rows.slice(0, -1);
+    return trimmed.map((stand, index) => ({
+      stand,
+      standNumber: index + 1,
+      isCurrent: false,
+    }));
+  }
+  const currentKey = innings.partnership?.batterIds.join('|') ?? null;
+  return rows.map((stand, index) => {
+    const isCurrent =
+      currentKey != null &&
+      index === rows.length - 1 &&
+      stand.batterIds.join('|') === currentKey;
+    return { stand, standNumber: index + 1, isCurrent };
+  });
+}
+
 function timelineEntryCountsAsFaced(entry: TimelineEntry): boolean {
   const { code } = entry;
   if (code.startsWith('Wd') || code.startsWith('pen') || code === 'RH' || code === 'IMP') {

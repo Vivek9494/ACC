@@ -75,6 +75,21 @@ export const theme1Definition: OverlayThemeDefinition = {
       host: 'graphics_stage',
       componentId: 'theme1/playing-xi-card',
     },
+    bowling_card: {
+      status: 'implemented',
+      host: 'graphics_stage',
+      componentId: 'theme1/graphics-stage:bowling-card',
+    },
+    batting_card: {
+      status: 'implemented',
+      host: 'graphics_stage',
+      componentId: 'theme1/graphics-stage:batting-card',
+    },
+    team_partnerships: {
+      status: 'implemented',
+      host: 'graphics_stage',
+      componentId: 'theme1/graphics-stage:team-partnerships-card',
+    },
     leaderboard: {
       status: 'implemented',
       host: 'graphics_stage',
