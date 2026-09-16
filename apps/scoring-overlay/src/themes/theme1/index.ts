@@ -38,7 +38,7 @@ export const theme1Definition: OverlayThemeDefinition = {
     fow: {
       status: 'implemented',
       host: 'graphics_stage',
-      componentId: 'theme1/graphics-stage:inline-fow',
+      componentId: 'theme1/graphics-stage:last-wicket-card',
     },
     batsman: {
       status: 'implemented',

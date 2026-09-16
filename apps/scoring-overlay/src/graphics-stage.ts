@@ -10,19 +10,18 @@ import { mountBattingCard } from './batting-card';
 import { mountBowlingCard } from './bowling-card';
 import { concealGraphic, revealGraphic } from './graphic-visibility';
 import { mountInningsScorecard } from './innings-scorecard';
+import { mountLastWicketCard } from './last-wicket-card';
 import { mountPartnershipCard } from './partnership-card';
 import {
   deriveBatterDotBalls,
   findInningsByKey,
   formatBatterInningsScore,
-  formatDismissalShort,
   formatStat,
   latestFallOfWicket,
   playerName,
   resolveActiveInnings,
   resolveBattingSide,
   resolveScorecardInnings,
-  shortName,
 } from './graphics-format';
 import type { GraphicsCommandMessage, GraphicsKind } from './live-client';
 import {
@@ -105,34 +104,7 @@ export function buildGraphicsStageMarkup(): string {
   return `
       <div id="g-partnership" class="graphic graphic-centered partnership-graphic" hidden></div>
 
-      <div id="g-fow" class="graphic panel panel-batsman-live" hidden>
-        <div class="panel-accent"></div>
-        <div class="bat-live-body">
-          <div class="bat-live-stripe">
-            <p id="fow-name" class="bat-live-name">—</p>
-            <p id="fow-score" class="bat-live-score">0 (0)</p>
-          </div>
-          <p id="fow-dismissal" class="fow-how-out">out</p>
-          <div class="bat-live-stats" role="group" aria-label="This innings batting">
-            <div class="bat-live-stat">
-              <span class="bat-live-stat-label">Dots</span>
-              <span id="fow-dots" class="bat-live-stat-value">0</span>
-            </div>
-            <div class="bat-live-stat">
-              <span class="bat-live-stat-label">4s</span>
-              <span id="fow-fours" class="bat-live-stat-value">0</span>
-            </div>
-            <div class="bat-live-stat">
-              <span class="bat-live-stat-label">6s</span>
-              <span id="fow-sixes" class="bat-live-stat-value">0</span>
-            </div>
-            <div class="bat-live-stat">
-              <span class="bat-live-stat-label">SR</span>
-              <span id="fow-sr" class="bat-live-stat-value">0.00</span>
-            </div>
-          </div>
-        </div>
-      </div>
+      <div id="g-fow" class="graphic graphic-centered last-wicket-graphic" hidden></div>
 
       <div id="g-batsman" class="graphic panel panel-batsman-live" hidden>
         <div class="panel-accent"></div>
@@ -307,6 +279,7 @@ export function createGraphicsStage(
   const battingCard = mountOrNull('g-batting-card', mountBattingCard);
   const bowlingCard = mountOrNull('g-bowling-card', mountBowlingCard);
   const partnershipCard = mountOrNull('g-partnership', mountPartnershipCard);
+  const lastWicketCard = mountOrNull('g-fow', mountLastWicketCard);
   const inningsCard = mountOrNull('g-innings', mountInningsScorecard);
 
   const graphicNode = (kind: OverlayKind): HTMLElement | null =>
@@ -319,6 +292,7 @@ export function createGraphicsStage(
     kind === 'batting_card' ||
     kind === 'bowling_card' ||
     kind === 'partnership' ||
+    kind === 'fow' ||
     kind === 'innings_break';
 
   const hideNode = (node: HTMLElement): void => {
@@ -341,6 +315,7 @@ export function createGraphicsStage(
     battingCard?.hide();
     bowlingCard?.hide();
     partnershipCard?.hide();
+    lastWicketCard?.hide();
     inningsCard?.hide();
     for (const kind of Object.keys(GRAPHIC_IDS) as OverlayKind[]) {
       if (isMountManaged(kind)) {
@@ -393,6 +368,10 @@ export function createGraphicsStage(
       partnershipCard?.hide();
       return;
     }
+    if (kind === 'fow') {
+      lastWicketCard?.hide();
+      return;
+    }
     if (kind === 'innings_break') {
       inningsEnsureToken += 1;
       inningsCard?.hide();
@@ -419,6 +398,26 @@ export function createGraphicsStage(
     } catch (err) {
       console.warn('[graphics] partnership failed', err);
       partnershipCard.hide();
+      return false;
+    }
+  };
+
+  const showLastWicket = (animate: boolean): boolean => {
+    if (!lastWicketCard) {
+      return false;
+    }
+    try {
+      const opts = { inningsId: fowInningsId };
+      if (animate) {
+        return lastWicketCard.show(scorecard, { ...opts, animate: true });
+      }
+      if (lastWicketCard.isOnAir()) {
+        return lastWicketCard.update(scorecard, opts);
+      }
+      return lastWicketCard.show(scorecard, { ...opts, animate: false });
+    } catch (err) {
+      console.warn('[graphics] last wicket failed', err);
+      lastWicketCard.hide();
       return false;
     }
   };
@@ -635,51 +634,6 @@ export function createGraphicsStage(
     }
   };
 
-  const nameOf = (id: string | null): string => {
-    if (!scorecard) {
-      return '—';
-    }
-    return shortName(playerName(scorecard.display, id));
-  };
-
-  const fillFow = (): boolean => {
-    try {
-      if (!scorecard) {
-        return false;
-      }
-      const innings =
-        (fowInningsId
-          ? findInningsByKey(scorecard, fowInningsId)
-          : null) ?? resolveActiveInnings(scorecard);
-      const fow = latestFallOfWicket(innings);
-      if (!fow || !innings) {
-        return false;
-      }
-      const batter = innings.batters.find((b) => b.playerId === fow.playerId);
-      const fullName = playerName(scorecard.display, fow.playerId);
-      setText('fow-name', fullName === '—' ? '—' : fullName);
-      setText('fow-score', formatBatterInningsScore(batter));
-      const dismissal = batter
-        ? formatDismissalShort(batter, (id) => nameOf(id)).trim()
-        : '';
-      setText('fow-dismissal', dismissal || 'out');
-      setText('fow-dots', String(deriveBatterDotBalls(batter)));
-      setText('fow-fours', String(batter?.fours ?? 0));
-      setText('fow-sixes', String(batter?.sixes ?? 0));
-      const sr =
-        batter && Number.isFinite(batter.strikeRate)
-          ? batter.strikeRate
-          : batter && batter.balls > 0
-            ? (batter.runs / batter.balls) * 100
-            : 0;
-      setText('fow-sr', formatStat(sr, 2));
-      return true;
-    } catch (err) {
-      console.warn('[graphics] fill fow failed', err);
-      return false;
-    }
-  };
-
   const parseInningsView = (
     payload?: GraphicsCommandMessage['payload'],
   ): InningsBreakView => parseInningsBreakView(payload?.view);
@@ -709,6 +663,10 @@ export function createGraphicsStage(
     }
     if (kind === 'partnership') {
       partnershipCard?.hide();
+      return;
+    }
+    if (kind === 'fow') {
+      lastWicketCard?.hide();
       return;
     }
     if (kind === 'innings_break') {
@@ -844,7 +802,7 @@ export function createGraphicsStage(
         }
         break;
       case 'fow':
-        if (!fillFow()) {
+        if (!showLastWicket(false) && activeKind === 'fow') {
           hideGraphic('fow');
         }
         break;
@@ -938,7 +896,15 @@ export function createGraphicsStage(
         })();
     } else if (kind === 'fow') {
       fowInningsId = payload?.inningsId?.trim() || null;
-      ok = fillFow();
+      ok =
+        scorecard != null &&
+        (() => {
+          const innings =
+            (fowInningsId
+              ? findInningsByKey(scorecard, fowInningsId)
+              : null) ?? resolveActiveInnings(scorecard);
+          return latestFallOfWicket(innings) != null;
+        })();
     } else if (kind === 'innings_break') {
       ok = scorecard != null && scorecard.innings.length > 0;
     } else if (kind === 'batsman') {
@@ -1023,6 +989,11 @@ export function createGraphicsStage(
       }
     } else if (kind === 'partnership') {
       if (!showPartnership(true) && activeKind === 'partnership') {
+        activeKind = null;
+        activePlayerId = null;
+      }
+    } else if (kind === 'fow') {
+      if (!showLastWicket(true) && activeKind === 'fow') {
         activeKind = null;
         activePlayerId = null;
       }
