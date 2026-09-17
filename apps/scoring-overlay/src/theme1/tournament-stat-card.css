@@ -1,5 +1,5 @@
 /**
- * Premium tournament Fours / Sixes — navy package, bottom-right, 4px above strip.
+ * Premium tournament Fours / Sixes — navy package, bottom-right above strip.
  */
 
 @import './tokens.css';
@@ -10,8 +10,7 @@
   left: auto;
   right: 28px;
   top: auto;
-  /* Strip top = inset + height; card bottom sits exactly 4px above that. */
-  bottom: calc(var(--strip-bottom-inset) + var(--strip-height) + 4px);
+  bottom: calc(var(--strip-bottom-inset) + var(--strip-height) + 25px);
   transform: translateX(45px);
   opacity: 0;
   transition:
