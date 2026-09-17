@@ -1,6 +1,7 @@
 import {
   combineCareerBowlingWithLive,
   formatStat,
+  matchBoundaryTotals,
 } from '../../graphics-format';
 import { concealGraphic, revealGraphic } from '../../graphic-visibility';
 import type {
@@ -349,7 +350,6 @@ function renderBowlerPanel(
   ctx: ScoreStripRenderParams['ctx'],
   card: ScorecardResponse,
   crrMode: ScoreStripRenderParams['crrMode'],
-  tournamentBoundaries: ScoreStripRenderParams['tournamentBoundaries'],
 ): void {
   const stack = el<HTMLDivElement>('bowler-stack');
   const normal = el<HTMLDivElement>('bowler-normal');
@@ -367,7 +367,7 @@ function renderBowlerPanel(
   );
 
   paintBowlerFigures(vm);
-  paintBoundariesFace(tournamentBoundaries);
+  paintBoundariesFace(matchBoundaryTotals(card));
   if (tossText && tossLine.textContent !== tossText) {
     tossLine.textContent = tossText;
   }
@@ -431,7 +431,6 @@ export function createTheme1ScoreStripHost(): ScoreStripHost {
       status,
       missingMatchId,
       crrMode,
-      tournamentBoundaries = null,
       hideStrip = false,
     }: ScoreStripRenderParams): void {
       const wrap = el<HTMLDivElement>('strip-wrap');
@@ -493,7 +492,7 @@ export function createTheme1ScoreStripHost(): ScoreStripHost {
 
       renderBatters(vm);
       renderSubLine(vm, crrMode);
-      renderBowlerPanel(vm, ctx, card, crrMode, tournamentBoundaries);
+      renderBowlerPanel(vm, ctx, card, crrMode);
 
       if (!hideStrip && strip && (wasHidden || strip.dataset.entered !== '1')) {
         runEntranceOnce(strip);

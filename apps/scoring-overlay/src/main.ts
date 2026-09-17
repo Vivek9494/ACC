@@ -5,7 +5,6 @@ import {
   fetchMatchBallType,
   fetchMatchOverlayTheme,
   fetchScorecard,
-  fetchTournamentStats,
 } from './broadcast-fetch';
 import { isStripOwnedKind, type GraphicsStageController } from './graphics-stage';
 import {
@@ -65,8 +64,6 @@ async function start(): Promise<void> {
   let status: ConnectionStatus = 'connecting';
   let crrMode: StripCrrMode = 'default';
   let inningsBreakOnAir = false;
-  let tournamentBoundaries: { fours: number; sixes: number } | null = null;
-  let boundariesFetchToken = 0;
   let tossArmedKey: string | null = null;
   let socket: Socket | null = null;
 
@@ -96,7 +93,6 @@ async function start(): Promise<void> {
   }
 
   const clearBoundariesOnAir = (): void => {
-    boundariesFetchToken += 1;
     if (crrMode === 'boundaries') {
       crrMode = 'default';
     }
@@ -104,24 +100,6 @@ async function start(): Promise<void> {
 
   const showBoundariesOnAir = (): void => {
     crrMode = 'boundaries';
-    const tid = matchCtx?.tournamentId?.trim() ?? '';
-    if (!tid) {
-      tournamentBoundaries = { fours: 0, sixes: 0 };
-      return;
-    }
-    const token = ++boundariesFetchToken;
-    void fetchTournamentStats(apiBase, tid).then((stats) => {
-      if (token !== boundariesFetchToken) {
-        return;
-      }
-      tournamentBoundaries = {
-        fours: stats?.aggregates.fours ?? 0,
-        sixes: stats?.aggregates.sixes ?? 0,
-      };
-      if (crrMode === 'boundaries') {
-        paint();
-      }
-    });
   };
 
   const clearTossOnAir = (): void => {
@@ -148,7 +126,6 @@ async function start(): Promise<void> {
       status,
       missingMatchId: !matchId,
       crrMode,
-      tournamentBoundaries,
       hideStrip: inningsBreakOnAir,
     });
   };

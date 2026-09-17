@@ -78,6 +78,11 @@ function nameOf(card: ScorecardResponse, id: string | null): string {
   return full === '—' ? '—' : shortName(full);
 }
 
+/** BATTER column — full first + surname (keeps disambiguators like "(PEI)"). */
+function batterColumnName(card: ScorecardResponse, id: string | null): string {
+  return playerName(card.display, id);
+}
+
 function howOutText(card: ScorecardResponse, batter: BatterCard): string {
   if (batter.retiredHurt && !batter.isOut) {
     return 'retired hurt';
@@ -475,7 +480,11 @@ export function mountBattingCard(host: HTMLElement): BattingCardController {
 
       const name = document.createElement('span');
       name.className = 'bc-col-name';
-      name.textContent = `${nameOf(card, batter.playerId)}${batting ? ' *' : ''}`;
+      const fullName = batterColumnName(card, batter.playerId);
+      name.textContent = `${fullName}${batting ? ' *' : ''}`;
+      if (fullName !== '—') {
+        name.title = fullName;
+      }
 
       const how = document.createElement('span');
       how.className = 'bc-col-how';

@@ -477,7 +477,8 @@ export function buildStripViewModel(
   if (strikerId) {
     const figs = batterRunsBalls(innings, strikerId);
     batsmen.push({
-      name: shortName(playerName(card.display, strikerId)),
+      // Full first + surname; CSS ellipsis truncates in the fixed name slot.
+      name: playerName(card.display, strikerId),
       runs: figs.runs,
       balls: figs.balls,
       onStrike: true,
@@ -486,7 +487,7 @@ export function buildStripViewModel(
   if (nonStrikerId) {
     const figs = batterRunsBalls(innings, nonStrikerId);
     batsmen.push({
-      name: shortName(playerName(card.display, nonStrikerId)),
+      name: playerName(card.display, nonStrikerId),
       runs: figs.runs,
       balls: figs.balls,
       onStrike: false,
@@ -497,9 +498,7 @@ export function buildStripViewModel(
   }
 
   const bowlerId = innings.currentBowlerId;
-  const bowlerName = bowlerId
-    ? shortName(playerName(card.display, bowlerId))
-    : '—';
+  const bowlerName = bowlerId ? playerName(card.display, bowlerId) : '—';
   const bowlRow = bowlerId
     ? innings.bowlers.find((b) => b.playerId === bowlerId)
     : undefined;

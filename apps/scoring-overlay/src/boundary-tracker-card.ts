@@ -4,9 +4,11 @@
  */
 
 import './boundary-tracker-card.css';
-import { resolveActiveInnings } from './graphics-format';
+import { inningsBoundaryTotals, resolveActiveInnings } from './graphics-format';
 import { concealGraphic, revealGraphic } from './graphic-visibility';
-import type { InningsScorecard, ScorecardResponse } from './types';
+import type { ScorecardResponse } from './types';
+
+export { inningsBoundaryTotals };
 
 export const BOUNDARY_TRACKER_AUTO_HIDE_MS = 7_000;
 const COUNT_REVEAL_DELAY_MS = 140;
@@ -42,20 +44,6 @@ function prefersReducedMotion(): boolean {
 function pad2(n: number): string {
   const v = Math.max(0, Math.floor(n));
   return v < 10 ? `0${v}` : String(v);
-}
-
-/** Sum of batter fours/sixes for one innings (strip uses the same). */
-export function inningsBoundaryTotals(innings: InningsScorecard): {
-  fours: number;
-  sixes: number;
-} {
-  let fours = 0;
-  let sixes = 0;
-  for (const b of innings.batters) {
-    fours += b.fours ?? 0;
-    sixes += b.sixes ?? 0;
-  }
-  return { fours, sixes };
 }
 
 /**

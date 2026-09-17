@@ -119,6 +119,8 @@
 
 .bowl-player-name {
   margin: 6px 0 0;
+  min-width: 0;
+  max-width: 100%;
   font-family: 'Barlow Condensed', sans-serif;
   font-size: 32px;
   font-weight: 800;

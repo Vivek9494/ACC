@@ -9,7 +9,6 @@ import {
   formatStat,
   playerName,
   resolveActiveInnings,
-  shortName,
 } from './graphics-format';
 import { concealGraphic, revealGraphic } from './graphic-visibility';
 import type {
@@ -53,11 +52,7 @@ function prefersReducedMotion(): boolean {
 }
 
 function nameOf(card: ScorecardResponse, id: string | null): string {
-  if (!id) {
-    return '—';
-  }
-  const full = playerName(card.display, id);
-  return full === '—' ? '—' : shortName(full);
+  return playerName(card.display, id);
 }
 
 function inningsHeading(innings: InningsScorecard): string {
@@ -261,6 +256,7 @@ export function mountBowlerMatchCard(
     const heading = inningsHeading(innings);
     idLine.textContent = `${bowlingName.toUpperCase()} · ${heading.toUpperCase()}`;
     name.textContent = nameOf(card, playerId);
+    name.title = name.textContent !== '—' ? name.textContent : '';
     vs.textContent = `${bowlingName} vs ${battingName}`;
 
     const w = bowler?.wickets ?? 0;

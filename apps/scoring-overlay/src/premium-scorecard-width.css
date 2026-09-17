@@ -1,0 +1,8 @@
+/**
+ * Shared premium scorecard shell width (batting / bowling / single-team Playing XI).
+ * Keep these cards edge-aligned by consuming the same tokens — do not hardcode.
+ */
+:root {
+  --premium-scorecard-min-width: min(94vw, 820px);
+  --premium-scorecard-max-width: min(96vw, 960px);
+}

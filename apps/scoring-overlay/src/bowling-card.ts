@@ -9,7 +9,6 @@ import {
   findInningsByKey,
   formatStat,
   playerName,
-  shortName,
 } from './graphics-format';
 import { concealGraphic, revealGraphic } from './graphic-visibility';
 import type {
@@ -60,12 +59,9 @@ function prefersReducedMotion(): boolean {
   );
 }
 
-function nameOf(card: ScorecardResponse, id: string | null): string {
-  if (!id) {
-    return '—';
-  }
-  const full = playerName(card.display, id);
-  return full === '—' ? '—' : shortName(full);
+/** BOWLER column — full first + surname (keeps disambiguators like "(PEI)"). */
+function bowlerColumnName(card: ScorecardResponse, id: string | null): string {
+  return playerName(card.display, id);
 }
 
 function inningsHeading(innings: InningsScorecard): string {
@@ -420,7 +416,11 @@ export function mountBowlingCard(host: HTMLElement): BowlingCardController {
 
       const name = document.createElement('span');
       name.className = 'bowl-col-name';
-      name.textContent = nameOf(card, bowler.playerId);
+      const fullName = bowlerColumnName(card, bowler.playerId);
+      name.textContent = fullName;
+      if (fullName !== '—') {
+        name.title = fullName;
+      }
       if (current) {
         name.classList.add('is-current-name');
         const star = document.createElement('span');

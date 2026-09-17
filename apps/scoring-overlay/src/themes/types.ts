@@ -46,8 +46,6 @@ export interface ScoreStripRenderParams {
   status: import('../types').ConnectionStatus;
   missingMatchId: boolean;
   crrMode: 'default' | 'toss' | 'chase' | 'boundaries';
-  /** Tournament-wide fours/sixes for the boundaries bowler-slot face. */
-  tournamentBoundaries?: { fours: number; sixes: number } | null;
   hideStrip?: boolean;
 }
 

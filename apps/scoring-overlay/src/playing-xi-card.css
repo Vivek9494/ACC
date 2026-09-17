@@ -1,5 +1,7 @@
 /* Premium Playing XI — package UI (single-team or both-teams). */
 
+@import './premium-scorecard-width.css';
+
 .playing-xi-graphic {
   /* Positioned by .graphic / .graphic-centered. */
 }
@@ -18,6 +20,7 @@
 
   display: flex;
   flex-direction: column;
+  /* Both-teams: original dual-column width. */
   min-width: min(94vw, 920px);
   max-width: min(98vw, 1040px);
   max-height: 94vh;
@@ -32,9 +35,10 @@
   font-family: 'Barlow', 'Montserrat', system-ui, sans-serif;
 }
 
+/* Single-team: locked to batting/bowling scorecard width tokens. */
 .panel-playing-xi.is-single {
-  min-width: min(72vw, 560px);
-  max-width: min(86vw, 640px);
+  min-width: var(--premium-scorecard-min-width);
+  max-width: var(--premium-scorecard-max-width);
 }
 
 .pxi-section {
@@ -368,6 +372,15 @@
 
 .panel-playing-xi.is-single .pxi-row-pair {
   grid-template-columns: 1fr;
+}
+
+/* Single-team at scorecard width: balanced num / name / role — avoid a stretched name gulf. */
+.panel-playing-xi.is-single .pxi-col-head,
+.panel-playing-xi.is-single .pxi-cell {
+  grid-template-columns: 2.6em minmax(0, 1fr) 9em;
+  column-gap: 14px;
+  padding-left: 22px;
+  padding-right: 22px;
 }
 
 .pxi-cell {

@@ -1,5 +1,7 @@
 /* Premium broadcast bowling scorecard — package layout (matches batting card). */
 
+@import './premium-scorecard-width.css';
+
 .bowling-card-graphic {
   /* Positioned by .graphic / .graphic-centered. */
 }
@@ -17,8 +19,8 @@
 
   display: flex;
   flex-direction: column;
-  min-width: min(94vw, 820px);
-  max-width: min(96vw, 960px);
+  min-width: var(--premium-scorecard-min-width);
+  max-width: var(--premium-scorecard-max-width);
   max-height: 92vh;
   border-radius: 0;
   overflow: hidden;
@@ -359,6 +361,7 @@
 }
 
 .bowl-row .bowl-col-name {
+  min-width: 0;
   font-weight: 700;
   overflow: hidden;
   text-overflow: ellipsis;

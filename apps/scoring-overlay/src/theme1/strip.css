@@ -336,6 +336,7 @@
 }
 
 .t1-batter-name {
+  min-width: 0;
   font-family: var(--s-cond);
   font-size: 17px;
   font-weight: 700;
@@ -353,6 +354,7 @@
   align-items: baseline;
   justify-items: end;
   column-gap: 3px;
+  flex-shrink: 0;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }

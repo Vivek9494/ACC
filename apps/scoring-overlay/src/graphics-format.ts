@@ -376,6 +376,35 @@ export function resolveActiveInnings(card: ScorecardResponse): InningsScorecard 
   return card.innings[card.innings.length - 1] ?? null;
 }
 
+/** Sum of batter fours/sixes for one innings. */
+export function inningsBoundaryTotals(innings: InningsScorecard): {
+  fours: number;
+  sixes: number;
+} {
+  let fours = 0;
+  let sixes = 0;
+  for (const b of innings.batters) {
+    fours += b.fours ?? 0;
+    sixes += b.sixes ?? 0;
+  }
+  return { fours, sixes };
+}
+
+/** Whole-match fours/sixes — both innings combined (Flag A). */
+export function matchBoundaryTotals(card: ScorecardResponse): {
+  fours: number;
+  sixes: number;
+} {
+  let fours = 0;
+  let sixes = 0;
+  for (const inn of card.innings) {
+    const part = inningsBoundaryTotals(inn);
+    fours += part.fours;
+    sixes += part.sixes;
+  }
+  return { fours, sixes };
+}
+
 export function firstInnings(card: ScorecardResponse): InningsScorecard | null {
   return card.innings[0] ?? null;
 }
