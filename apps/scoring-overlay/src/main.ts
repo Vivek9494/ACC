@@ -5,6 +5,7 @@ import {
   fetchMatchBallType,
   fetchMatchOverlayTheme,
   fetchScorecard,
+  fetchTournamentStats,
 } from './broadcast-fetch';
 import { isStripOwnedKind, type GraphicsStageController } from './graphics-stage';
 import {
@@ -24,8 +25,6 @@ import {
 import { deliveryProgressKey } from './view-model';
 
 const DEFAULT_API_BASE = 'https://acc-api-production.up.railway.app';
-/** Safety net if no ball is bowled while boundaries is flashing. */
-const BOUNDARIES_FLASH_MS = 6000;
 
 type StripCrrMode = 'default' | 'toss' | 'chase' | 'boundaries';
 
@@ -66,8 +65,8 @@ async function start(): Promise<void> {
   let status: ConnectionStatus = 'connecting';
   let crrMode: StripCrrMode = 'default';
   let inningsBreakOnAir = false;
-  let boundariesArmedKey: string | null = null;
-  let boundariesTimer: number | null = null;
+  let tournamentBoundaries: { fours: number; sixes: number } | null = null;
+  let boundariesFetchToken = 0;
   let tossArmedKey: string | null = null;
   let socket: Socket | null = null;
 
@@ -96,40 +95,33 @@ async function start(): Promise<void> {
     );
   }
 
-  const clearBoundariesFlash = (): void => {
-    boundariesArmedKey = null;
-    if (boundariesTimer != null) {
-      window.clearTimeout(boundariesTimer);
-      boundariesTimer = null;
-    }
+  const clearBoundariesOnAir = (): void => {
+    boundariesFetchToken += 1;
     if (crrMode === 'boundaries') {
       crrMode = 'default';
     }
   };
 
-  const armBoundariesFlash = (): void => {
+  const showBoundariesOnAir = (): void => {
     crrMode = 'boundaries';
-    boundariesArmedKey = deliveryProgressKey(latest);
-    if (boundariesTimer != null) {
-      window.clearTimeout(boundariesTimer);
-    }
-    boundariesTimer = window.setTimeout(() => {
-      boundariesTimer = null;
-      if (crrMode === 'boundaries') {
-        clearBoundariesFlash();
-        paint();
-      }
-    }, BOUNDARIES_FLASH_MS);
-  };
-
-  const maybeClearBoundariesOnDelivery = (card: ScorecardResponse): void => {
-    if (crrMode !== 'boundaries' || boundariesArmedKey == null) {
+    const tid = matchCtx?.tournamentId?.trim() ?? '';
+    if (!tid) {
+      tournamentBoundaries = { fours: 0, sixes: 0 };
       return;
     }
-    const nextKey = deliveryProgressKey(card);
-    if (nextKey !== boundariesArmedKey) {
-      clearBoundariesFlash();
-    }
+    const token = ++boundariesFetchToken;
+    void fetchTournamentStats(apiBase, tid).then((stats) => {
+      if (token !== boundariesFetchToken) {
+        return;
+      }
+      tournamentBoundaries = {
+        fours: stats?.aggregates.fours ?? 0,
+        sixes: stats?.aggregates.sixes ?? 0,
+      };
+      if (crrMode === 'boundaries') {
+        paint();
+      }
+    });
   };
 
   const clearTossOnAir = (): void => {
@@ -156,6 +148,7 @@ async function start(): Promise<void> {
       status,
       missingMatchId: !matchId,
       crrMode,
+      tournamentBoundaries,
       hideStrip: inningsBreakOnAir,
     });
   };
@@ -232,7 +225,6 @@ async function start(): Promise<void> {
       return;
     }
     latest = frame.state;
-    maybeClearBoundariesOnDelivery(frame.state);
     maybeClearTossOnDelivery(frame.state);
     graphicsStage.setScorecard(frame.state);
     paint();
@@ -244,7 +236,7 @@ async function start(): Promise<void> {
         return;
       }
       if (cmd.action === 'hide_all') {
-        clearBoundariesFlash();
+        clearBoundariesOnAir();
         clearTossOnAir();
         crrMode = 'default';
         inningsBreakOnAir = false;
@@ -273,10 +265,10 @@ async function start(): Promise<void> {
       }
       if (cmd.graphic === 'boundaries') {
         if (cmd.action === 'show') {
-          armBoundariesFlash();
+          showBoundariesOnAir();
           paint();
-        } else if (cmd.action === 'hide') {
-          clearBoundariesFlash();
+        } else if (cmd.action === 'hide' && crrMode === 'boundaries') {
+          clearBoundariesOnAir();
           paint();
         }
         return;

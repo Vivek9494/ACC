@@ -379,7 +379,7 @@ export type OverlayOnAirState = {
   teamAction: OverlayTeamAction | null;
   playingXiVariant: 'both' | 'single' | 'lineup';
   inningsSource: 'break' | 'scorecard';
-  stripMode: 'default' | 'toss' | 'chase';
+  stripMode: 'default' | 'toss' | 'chase' | 'boundaries';
 };
 
 export const EMPTY_OVERLAY_ON_AIR: OverlayOnAirState = {
@@ -442,27 +442,85 @@ export function orderAccFixedTeams<T extends { id: string; name: string }>(
 }
 
 /**
- * Default Top 5 Batsmen team for leather: current batting team when it is an
- * ACC side; otherwise home team, else first ACC option.
+ * Default ACC team for leather Top 5 dropdowns: preferred match side when it is
+ * an ACC team; otherwise home team, else first ACC option.
  */
-export function defaultAccTopBatsmenTeamId(
+export function defaultAccLeaderboardTeamId(
   options: Array<{ id: string }>,
-  battingTeamId: string | null | undefined,
+  preferredTeamId: string | null | undefined,
   homeTeamId: string | null | undefined,
 ): string {
   if (options.length === 0) {
     return '';
   }
   const ids = new Set(options.map((o) => o.id));
-  const bat = battingTeamId?.trim() || '';
-  if (bat && ids.has(bat)) {
-    return bat;
+  const preferred = preferredTeamId?.trim() || '';
+  if (preferred && ids.has(preferred)) {
+    return preferred;
   }
   const home = homeTeamId?.trim() || '';
   if (home && ids.has(home)) {
     return home;
   }
   return options[0]?.id ?? '';
+}
+
+/**
+ * Leather Top 5 Bowlers default:
+ * - ACC team(s) playing this match among ACC 3/6/9/0
+ * - If both sides are ACC → bowling team
+ * - If only one ACC side (e.g. ACC vs external) → that ACC team
+ */
+export function defaultAccTopBowlersTeamId(
+  options: Array<{ id: string }>,
+  homeTeamId: string | null | undefined,
+  awayTeamId: string | null | undefined,
+  bowlingTeamId: string | null | undefined,
+  bowlingIsExternal?: boolean,
+): string {
+  if (options.length === 0) {
+    return '';
+  }
+  const ids = new Set(options.map((o) => o.id));
+  const home = homeTeamId?.trim() || '';
+  const away = awayTeamId?.trim() || '';
+  const inMatchAcc: string[] = [];
+  if (home && ids.has(home)) {
+    inMatchAcc.push(home);
+  }
+  if (away && ids.has(away) && away !== home) {
+    inMatchAcc.push(away);
+  }
+
+  if (inMatchAcc.length === 1) {
+    return inMatchAcc[0] ?? '';
+  }
+  if (inMatchAcc.length >= 2) {
+    const bowl = bowlingIsExternal ? '' : bowlingTeamId?.trim() || '';
+    if (bowl && inMatchAcc.includes(bowl)) {
+      return bowl;
+    }
+    // Both ACC but bowling side unknown — prefer home if present.
+    if (home && inMatchAcc.includes(home)) {
+      return home;
+    }
+    return inMatchAcc[0] ?? '';
+  }
+
+  return defaultAccLeaderboardTeamId(
+    options,
+    bowlingIsExternal ? null : bowlingTeamId,
+    homeTeamId,
+  );
+}
+
+/** @deprecated Use {@link defaultAccLeaderboardTeamId} — kept as batting-side alias. */
+export function defaultAccTopBatsmenTeamId(
+  options: Array<{ id: string }>,
+  battingTeamId: string | null | undefined,
+  homeTeamId: string | null | undefined,
+): string {
+  return defaultAccLeaderboardTeamId(options, battingTeamId, homeTeamId);
 }
 
 export type OverlayTournamentGraphic =
@@ -591,6 +649,7 @@ export function isCommonGraphicOnAir(
   graphic:
     | 'toss'
     | 'chase'
+    | 'boundaries'
     | 'playing_xi'
     | 'toss_result'
     | 'innings_break'
@@ -603,6 +662,9 @@ export function isCommonGraphicOnAir(
   }
   if (graphic === 'chase') {
     return state.stripMode === 'chase';
+  }
+  if (graphic === 'boundaries') {
+    return state.stripMode === 'boundaries';
   }
   if (graphic === 'playing_xi') {
     return state.graphic === 'playing_xi' && state.playingXiVariant === 'both';
@@ -626,6 +688,9 @@ export function overlayOnAirLabel(
   }
   if (state.stripMode === 'chase') {
     return 'ON AIR: Runs to win (strip)';
+  }
+  if (state.stripMode === 'boundaries') {
+    return 'ON AIR: Boundaries (strip)';
   }
   if (!state.graphic) {
     return 'Nothing on air';

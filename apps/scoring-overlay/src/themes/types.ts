@@ -46,10 +46,12 @@ export interface ScoreStripRenderParams {
   status: import('../types').ConnectionStatus;
   missingMatchId: boolean;
   crrMode: 'default' | 'toss' | 'chase' | 'boundaries';
+  /** Tournament-wide fours/sixes for the boundaries bowler-slot face. */
+  tournamentBoundaries?: { fours: number; sixes: number } | null;
   hideStrip?: boolean;
 }
 
-/** Score strip + strip-owned graphics (career card, toss/chase/boundaries sub-line). */
+/** Score strip + strip-owned graphics (career card, toss/chase/boundaries slot). */
 export interface ScoreStripHost {
   render(params: ScoreStripRenderParams): void;
   fillCareerCard(

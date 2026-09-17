@@ -430,14 +430,23 @@ export async function fetchTournamentLeaderboard(
 export async function fetchTournamentStats(
   apiBase: string,
   tournamentId: string,
+  teamId?: string | null,
 ): Promise<TournamentStatsView | null> {
   try {
     const tid = tournamentId.trim();
     if (!tid) {
       return null;
     }
+    const params = new URLSearchParams();
+    const filterTeamId = teamId?.trim();
+    if (filterTeamId) {
+      params.set('teamId', filterTeamId);
+    }
+    const query = params.toString();
     const res = await fetch(
-      `${apiBase}/tournaments/${encodeURIComponent(tid)}/stats`,
+      `${apiBase}/tournaments/${encodeURIComponent(tid)}/stats${
+        query ? `?${query}` : ''
+      }`,
       { method: 'GET', headers: { Accept: 'application/json' } },
     );
     if (!res.ok) {

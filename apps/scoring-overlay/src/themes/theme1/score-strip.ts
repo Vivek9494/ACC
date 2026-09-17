@@ -19,7 +19,7 @@ const ENTRANCE_STAGGER_MS = 48;
 const BOWLER_SLOT_FLIP_MS = 400;
 const warnedMissing = new Set<string>();
 
-type BowlerSlotMode = 'bowler' | 'toss' | 'chase';
+type BowlerSlotMode = 'bowler' | 'toss' | 'chase' | 'boundaries';
 
 let bowlerSlotMode: BowlerSlotMode = 'bowler';
 let bowlerFlipGen = 0;
@@ -29,6 +29,7 @@ const FACE_CLASS: Record<BowlerSlotMode, string> = {
   bowler: 'is-face-bowler',
   toss: 'is-face-toss',
   chase: 'is-face-chase',
+  boundaries: 'is-face-boundaries',
 };
 
 function prefersReducedMotion(): boolean {
@@ -138,13 +139,11 @@ function renderSubLine(
   if (!sub) {
     return;
   }
-  // Operator chase/toss live in the bowler-slot flip — not the center sub-line.
-  let text: string | null = null;
-  if (crrMode === 'boundaries') {
-    text = vm.boundariesLine;
-  } else if (crrMode !== 'chase' && crrMode !== 'toss') {
-    text = vm.needOffLine;
-  }
+  // Operator toss / chase / boundaries live in the bowler-slot flip — not the sub-line.
+  const text =
+    crrMode === 'chase' || crrMode === 'toss' || crrMode === 'boundaries'
+      ? null
+      : vm.needOffLine;
 
   if (text) {
     sub.hidden = false;
@@ -169,13 +168,19 @@ function bowlerFlipEl(): HTMLElement | null {
 }
 
 function setFlipFaceClass(flip: HTMLElement, mode: BowlerSlotMode): void {
-  flip.classList.remove('is-face-bowler', 'is-face-toss', 'is-face-chase');
+  flip.classList.remove(
+    'is-face-bowler',
+    'is-face-toss',
+    'is-face-chase',
+    'is-face-boundaries',
+  );
   flip.classList.add(FACE_CLASS[mode]);
 }
 
 function applyStackModeClass(stack: HTMLElement, mode: BowlerSlotMode): void {
   stack.classList.toggle('is-toss', mode === 'toss');
   stack.classList.toggle('is-chase', mode === 'chase');
+  stack.classList.toggle('is-boundaries', mode === 'boundaries');
 }
 
 /** Snap to a face with no animation (settle / reduced-motion / cancel). */
@@ -185,6 +190,7 @@ function settleBowlerSlot(
   normal: HTMLElement,
   tossLine: HTMLElement,
   chaseLine: HTMLElement,
+  boundariesFace: HTMLElement,
 ): void {
   const flip = bowlerFlipEl();
   stack.classList.remove('is-flipping');
@@ -205,12 +211,25 @@ function settleBowlerSlot(
     chaseLine.hidden = true;
     chaseLine.setAttribute('aria-hidden', 'true');
     chaseLine.textContent = '';
+    boundariesFace.hidden = true;
+    boundariesFace.setAttribute('aria-hidden', 'true');
   } else if (mode === 'chase') {
     chaseLine.hidden = false;
     chaseLine.setAttribute('aria-hidden', 'false');
     tossLine.hidden = true;
     tossLine.setAttribute('aria-hidden', 'true');
     tossLine.textContent = '';
+    boundariesFace.hidden = true;
+    boundariesFace.setAttribute('aria-hidden', 'true');
+  } else if (mode === 'boundaries') {
+    boundariesFace.hidden = false;
+    boundariesFace.setAttribute('aria-hidden', 'false');
+    tossLine.hidden = true;
+    tossLine.setAttribute('aria-hidden', 'true');
+    tossLine.textContent = '';
+    chaseLine.hidden = true;
+    chaseLine.setAttribute('aria-hidden', 'true');
+    chaseLine.textContent = '';
   } else {
     tossLine.hidden = true;
     tossLine.setAttribute('aria-hidden', 'true');
@@ -218,12 +237,14 @@ function settleBowlerSlot(
     chaseLine.hidden = true;
     chaseLine.setAttribute('aria-hidden', 'true');
     chaseLine.textContent = '';
+    boundariesFace.hidden = true;
+    boundariesFace.setAttribute('aria-hidden', 'true');
   }
   bowlerSlotMode = mode;
 }
 
 /**
- * Vertical rotateX flip among bowler / toss / chase.
+ * Vertical rotateX flip among bowler / toss / chase / boundaries.
  * One state machine — direct overlay↔overlay; gen cancels rapid toggles.
  */
 function flipBowlerSlot(
@@ -232,17 +253,18 @@ function flipBowlerSlot(
   normal: HTMLElement,
   tossLine: HTMLElement,
   chaseLine: HTMLElement,
+  boundariesFace: HTMLElement,
 ): void {
   const flip = bowlerFlipEl();
   if (!flip) {
-    settleBowlerSlot(target, stack, normal, tossLine, chaseLine);
+    settleBowlerSlot(target, stack, normal, tossLine, chaseLine, boundariesFace);
     return;
   }
 
   if (prefersReducedMotion()) {
     bowlerFlipGen += 1;
     clearBowlerFlipTimer();
-    settleBowlerSlot(target, stack, normal, tossLine, chaseLine);
+    settleBowlerSlot(target, stack, normal, tossLine, chaseLine, boundariesFace);
     return;
   }
 
@@ -255,6 +277,7 @@ function flipBowlerSlot(
   normal.hidden = false;
   tossLine.hidden = false;
   chaseLine.hidden = false;
+  boundariesFace.hidden = false;
   stack.classList.add('is-flipping');
   applyStackModeClass(stack, target);
 
@@ -265,13 +288,17 @@ function flipBowlerSlot(
   normal.setAttribute('aria-hidden', target === 'bowler' ? 'false' : 'true');
   tossLine.setAttribute('aria-hidden', target === 'toss' ? 'false' : 'true');
   chaseLine.setAttribute('aria-hidden', target === 'chase' ? 'false' : 'true');
+  boundariesFace.setAttribute(
+    'aria-hidden',
+    target === 'boundaries' ? 'false' : 'true',
+  );
 
   bowlerFlipTimer = window.setTimeout(() => {
     if (gen !== bowlerFlipGen) {
       return;
     }
     bowlerFlipTimer = null;
-    settleBowlerSlot(target, stack, normal, tossLine, chaseLine);
+    settleBowlerSlot(target, stack, normal, tossLine, chaseLine, boundariesFace);
   }, BOWLER_SLOT_FLIP_MS);
 }
 
@@ -282,11 +309,22 @@ function paintBowlerFigures(vm: StripViewModel): void {
   renderOverTracker(vm);
 }
 
+function paintBoundariesFace(
+  totals: { fours: number; sixes: number } | null | undefined,
+): void {
+  setText('bowler-bound-fours', String(Math.max(0, totals?.fours ?? 0)));
+  setText('bowler-bound-sixes', String(Math.max(0, totals?.sixes ?? 0)));
+}
+
 function resolveBowlerSlotTarget(
   crrMode: ScoreStripRenderParams['crrMode'],
   ctx: ScoreStripRenderParams['ctx'],
   card: ScorecardResponse,
-): { target: BowlerSlotMode; tossText: string | null; chaseText: string | null } {
+): {
+  target: BowlerSlotMode;
+  tossText: string | null;
+  chaseText: string | null;
+} {
   if (crrMode === 'toss') {
     const tossText = formatTossLine(ctx);
     if (tossText) {
@@ -299,6 +337,9 @@ function resolveBowlerSlotTarget(
       return { target: 'chase', tossText: null, chaseText };
     }
   }
+  if (crrMode === 'boundaries') {
+    return { target: 'boundaries', tossText: null, chaseText: null };
+  }
   return { target: 'bowler', tossText: null, chaseText: null };
 }
 
@@ -307,12 +348,14 @@ function renderBowlerPanel(
   ctx: ScoreStripRenderParams['ctx'],
   card: ScorecardResponse,
   crrMode: ScoreStripRenderParams['crrMode'],
+  tournamentBoundaries: ScoreStripRenderParams['tournamentBoundaries'],
 ): void {
   const stack = el<HTMLDivElement>('bowler-stack');
   const normal = el<HTMLDivElement>('bowler-normal');
   const tossLine = el<HTMLParagraphElement>('bowler-toss-line');
   const chaseLine = el<HTMLParagraphElement>('bowler-chase-line');
-  if (!stack || !normal || !tossLine || !chaseLine) {
+  const boundariesFace = el<HTMLDivElement>('bowler-boundaries');
+  if (!stack || !normal || !tossLine || !chaseLine || !boundariesFace) {
     return;
   }
 
@@ -323,6 +366,7 @@ function renderBowlerPanel(
   );
 
   paintBowlerFigures(vm);
+  paintBoundariesFace(tournamentBoundaries);
   if (tossText && tossLine.textContent !== tossText) {
     tossLine.textContent = tossText;
   }
@@ -342,7 +386,7 @@ function renderBowlerPanel(
     return;
   }
 
-  flipBowlerSlot(target, stack, normal, tossLine, chaseLine);
+  flipBowlerSlot(target, stack, normal, tossLine, chaseLine, boundariesFace);
 }
 
 function runEntranceOnce(strip: HTMLElement): void {
@@ -386,6 +430,7 @@ export function createTheme1ScoreStripHost(): ScoreStripHost {
       status,
       missingMatchId,
       crrMode,
+      tournamentBoundaries = null,
       hideStrip = false,
     }: ScoreStripRenderParams): void {
       const wrap = el<HTMLDivElement>('strip-wrap');
@@ -447,7 +492,7 @@ export function createTheme1ScoreStripHost(): ScoreStripHost {
 
       renderBatters(vm);
       renderSubLine(vm, crrMode);
-      renderBowlerPanel(vm, ctx, card, crrMode);
+      renderBowlerPanel(vm, ctx, card, crrMode, tournamentBoundaries);
 
       if (!hideStrip && strip && (wasHidden || strip.dataset.entered !== '1')) {
         runEntranceOnce(strip);

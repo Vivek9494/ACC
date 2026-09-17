@@ -76,6 +76,21 @@ export const THEME1_PAGE_MARKUP = `
                 </div>
                 <p id="bowler-chase-line" class="t1-bowler-face t1-bowler-face-chase t1-bowler-chase" hidden></p>
                 <p id="bowler-toss-line" class="t1-bowler-face t1-bowler-face-toss t1-bowler-toss" hidden></p>
+                <div
+                  id="bowler-boundaries"
+                  class="t1-bowler-face t1-bowler-face-boundaries t1-bowler-boundaries"
+                  hidden
+                >
+                  <div class="t1-bowler-bound-pair">
+                    <span class="t1-bowler-bound-label">FOURS</span>
+                    <span id="bowler-bound-fours" class="t1-bowler-bound-num">0</span>
+                  </div>
+                  <div class="t1-bowler-bound-sep" aria-hidden="true"></div>
+                  <div class="t1-bowler-bound-pair">
+                    <span class="t1-bowler-bound-label">SIXES</span>
+                    <span id="bowler-bound-sixes" class="t1-bowler-bound-num">0</span>
+                  </div>
+                </div>
               </div>
             </div>
 

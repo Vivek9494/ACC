@@ -379,7 +379,7 @@
   justify-self: start;
 }
 
-/* Bowler — 3-face vertical flip (rotateX): bowler / chase / toss */
+/* Bowler — 4-face vertical flip (rotateX): bowler / chase / toss / boundaries */
 .t1-bowler-block {
   perspective: 1000px;
   min-width: 0;
@@ -405,6 +405,11 @@
   transform: rotateX(-180deg);
 }
 
+/* Opposite direction from chase so Show from default is a short +90° flip. */
+.t1-bowler-flip.is-face-boundaries {
+  transform: rotateX(90deg);
+}
+
 .t1-bowler-face {
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
@@ -417,11 +422,14 @@
 }
 
 .t1-bowler-face-chase,
-.t1-bowler-face-toss {
+.t1-bowler-face-toss,
+.t1-bowler-face-boundaries {
   position: absolute;
   inset: 0;
   display: flex;
   align-items: center;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .t1-bowler-face-chase {
@@ -432,6 +440,10 @@
   transform: rotateX(180deg);
 }
 
+.t1-bowler-face-boundaries {
+  transform: rotateX(-90deg);
+}
+
 .t1-bowler-normal {
   display: flex;
   flex-direction: column;
@@ -439,15 +451,25 @@
 }
 
 .t1-bowler-toss[hidden],
-.t1-bowler-chase[hidden] {
+.t1-bowler-chase[hidden],
+.t1-bowler-boundaries[hidden] {
   display: none !important;
 }
 
 /* Mid-flip / active overlay: keep faces painted for backface-visibility. */
-.t1-bowler-block.is-flipping .t1-bowler-toss,
 .t1-bowler-block.is-flipping .t1-bowler-chase,
-.t1-bowler-block.is-toss .t1-bowler-toss,
 .t1-bowler-block.is-chase .t1-bowler-chase {
+  display: flex !important;
+}
+
+.t1-bowler-block.is-flipping .t1-bowler-toss,
+.t1-bowler-block.is-toss .t1-bowler-toss {
+  /* Keep painted for flip; -webkit-box so long toss lines clamp in-slot. */
+  display: -webkit-box !important;
+}
+
+.t1-bowler-block.is-flipping .t1-bowler-boundaries,
+.t1-bowler-block.is-boundaries .t1-bowler-boundaries {
   display: flex !important;
 }
 
@@ -515,11 +537,74 @@
 .t1-bowler-toss,
 .t1-bowler-chase {
   margin: 0;
+  width: 100%;
+  min-width: 0;
   font-family: var(--s-cond);
-  font-size: 15px;
   font-weight: 700;
   line-height: 1.25;
   color: #fff;
+}
+
+/* Chase stays at the shared slot size. */
+.t1-bowler-chase {
+  font-size: 15px;
+}
+
+/* Toss-in-slot only — +5px vs prior 15px; clamp so long names stay in the bowler column. */
+.t1-bowler-toss {
+  font-size: 20px;
+  line-height: 1.2;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+/* Tournament boundaries face — numbers match team-score (.t1-total-score). */
+.t1-bowler-boundaries {
+  margin: 0;
+  width: 100%;
+  gap: 10px;
+  justify-content: space-evenly;
+  padding: 0 4px;
+}
+
+.t1-bowler-bound-pair {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+}
+
+.t1-bowler-bound-label {
+  font-family: var(--s-cond);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--s-gold);
+}
+
+.t1-bowler-bound-num {
+  font-family: var(--s-cond);
+  font-size: 40px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+  color: #fff;
+}
+
+.t1-bowler-bound-sep {
+  flex: 0 0 1px;
+  align-self: stretch;
+  width: 1px;
+  background: rgba(255, 175, 56, 0.35);
+  margin: 4px 0;
 }
 
 .t1-over-balls {
@@ -672,6 +757,10 @@
   }
 
   .t1-total-score {
+    font-size: 32px;
+  }
+
+  .t1-bowler-bound-num {
     font-size: 32px;
   }
 

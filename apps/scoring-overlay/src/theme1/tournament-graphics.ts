@@ -9,12 +9,9 @@ import {
   fetchTournamentStats,
 } from '../broadcast-fetch';
 import type { GraphicsCommandMessage, TournamentGraphicKind } from '../types';
-import {
-  mountLeaderboardCard,
-  type LeaderboardCardMode,
-  type LeaderboardRowView,
-} from './leaderboard-card';
-import { mountPointsTableCard } from './points-table-card';
+import { type LeaderboardRowView } from './leaderboard-card';
+import { mountPremiumLeaderboardCard } from './premium-leaderboard-card';
+import { mountPremiumPointsTableCard } from './premium-points-table-card';
 import {
   mountTournamentStatCard,
   type TournamentStatKind,
@@ -94,14 +91,13 @@ export function mountTournamentGraphics(
     return mount(node);
   };
 
-  const pointsTable = mountCard('points_table', mountPointsTableCard);
-  const topBatsmen = mountCard('tournament_top_batsmen', mountLeaderboardCard);
-  const topBowlers = mountCard('tournament_top_bowlers', mountLeaderboardCard);
+  const pointsTable = mountCard('points_table', mountPremiumPointsTableCard);
+  const topBatsmen = mountCard('tournament_top_batsmen', mountPremiumLeaderboardCard);
+  const topBowlers = mountCard('tournament_top_bowlers', mountPremiumLeaderboardCard);
   const foursCard = mountCard('tournament_fours', mountTournamentStatCard);
   const sixesCard = mountCard('tournament_sixes', mountTournamentStatCard);
-  /** Shared implementation — two hosts, parameterized by LeaderboardCardMode. */
-  const mostSixesCard = mountCard('most_sixes', mountLeaderboardCard);
-  const mostFoursCard = mountCard('most_fours', mountLeaderboardCard);
+  const mostSixesCard = mountCard('most_sixes', mountPremiumLeaderboardCard);
+  const mostFoursCard = mountCard('most_fours', mountPremiumLeaderboardCard);
 
   const hideCard = (kind: TournamentGraphicKind): void => {
     if (kind === 'points_table') {
@@ -181,24 +177,39 @@ export function mountTournamentGraphics(
     kind: 'most_sixes' | 'most_fours',
     tournamentId: string,
     token: number,
+    teamId?: string | null,
   ): Promise<boolean> => {
     const card = kind === 'most_sixes' ? mostSixesCard : mostFoursCard;
     if (!card) {
       return false;
     }
-    const mode: LeaderboardCardMode = kind === 'most_sixes' ? 'sixes' : 'fours';
-    const stats = await fetchTournamentStats(apiBase, tournamentId);
+    // Leather may pass teamId (top 5); non-leather omits it (top 10).
+    const filterTeamId = teamId?.trim() || null;
+    const stats = await fetchTournamentStats(apiBase, tournamentId, filterTeamId);
     if (token !== showToken || activeKind !== kind) {
       return false;
     }
     if (!stats) {
-      return card.show(mode, []);
+      return false;
     }
     const entries =
       kind === 'most_sixes'
         ? (stats.mostSixes ?? [])
         : (stats.mostFours ?? []);
-    return card.show(mode, boundaryRows(entries));
+    const mapped = boundaryRows(entries);
+    const filterCtx = filterTeamId
+      ? mapped.find((row) => row.teamName.trim())?.teamName.trim() || null
+      : null;
+    const rows = filterTeamId
+      ? mapped.map((row) => ({ ...row, teamName: '' }))
+      : mapped;
+    return card.show({
+      title: kind === 'most_sixes' ? 'Most Sixes' : 'Most Fours',
+      statLabel: kind === 'most_sixes' ? 'Sixes' : 'Fours',
+      topN: filterTeamId ? 5 : 10,
+      rows,
+      context: filterCtx,
+    });
   };
 
   const showKind = async (
@@ -219,13 +230,8 @@ export function mountTournamentGraphics(
     }
 
     if (kind === 'tournament_top_batsmen' || kind === 'tournament_top_bowlers') {
-      const card = kind === 'tournament_top_batsmen' ? topBatsmen : topBowlers;
-      if (!card) {
-        return false;
-      }
-      // Leather Top 5 Batsmen may pass teamId; bowlers / non-leather omit it.
-      const filterTeamId =
-        kind === 'tournament_top_batsmen' ? teamId?.trim() || null : null;
+      // Leather Top 5 may pass teamId; non-leather omits it.
+      const filterTeamId = teamId?.trim() || null;
       const leaderboard = await fetchTournamentLeaderboard(
         apiBase,
         tournamentId,
@@ -238,16 +244,45 @@ export function mountTournamentGraphics(
         return false;
       }
       if (kind === 'tournament_top_batsmen') {
-        const rows = battingRows(leaderboard.batting.entries).map((row) =>
-          filterTeamId ? { ...row, teamName: '' } : row,
-        );
-        return card.show('batting', rows);
+        if (!topBatsmen) {
+          return false;
+        }
+        const mapped = battingRows(leaderboard.batting.entries);
+        const filterCtx = filterTeamId
+          ? mapped.find((row) => row.teamName.trim())?.teamName.trim() || null
+          : null;
+        const rows = filterTeamId
+          ? mapped.map((row) => ({ ...row, teamName: '' }))
+          : mapped;
+        return topBatsmen.show({
+          title: 'Most Runs',
+          statLabel: 'Runs',
+          topN: 5,
+          rows,
+          context: filterCtx,
+        });
       }
-      return card.show('bowling', bowlingRows(leaderboard.bowling.entries));
+      if (!topBowlers) {
+        return false;
+      }
+      const mapped = bowlingRows(leaderboard.bowling.entries);
+      const filterCtx = filterTeamId
+        ? mapped.find((row) => row.teamName.trim())?.teamName.trim() || null
+        : null;
+      const rows = filterTeamId
+        ? mapped.map((row) => ({ ...row, teamName: '' }))
+        : mapped;
+      return topBowlers.show({
+        title: 'Most Wickets',
+        statLabel: 'Wickets',
+        topN: 5,
+        rows,
+        context: filterCtx,
+      });
     }
 
     if (kind === 'most_sixes' || kind === 'most_fours') {
-      return showBoundaryLeaderboard(kind, tournamentId, token);
+      return showBoundaryLeaderboard(kind, tournamentId, token, teamId);
     }
 
     const card = kind === 'tournament_fours' ? foursCard : sixesCard;

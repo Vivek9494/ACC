@@ -14,7 +14,8 @@ import { Text } from '../../ui/Text';
 import { CockpitPanel } from './CockpitPanel';
 import { ObsOverlayLinkButton } from './ObsOverlayLinkButton';
 import {
-  defaultAccTopBatsmenTeamId,
+  defaultAccLeaderboardTeamId,
+  defaultAccTopBowlersTeamId,
   OVERLAY_INNINGS_BREAK_VIEWS,
   OVERLAY_TEAM_ACTIONS,
   OVERLAY_TOURNAMENT_ACTIONS,
@@ -23,7 +24,6 @@ import {
   buildOverlayTeamShowCommand,
   buildOverlayWagonWheelOptions,
   EMPTY_OVERLAY_ON_AIR,
-  formatOverlayBoundariesLine,
   formatOverlayChaseLine,
   formatOverlayCurrentPartnershipLine,
   formatOverlayInningsBreakPreview,
@@ -108,8 +108,13 @@ function applyIncomingCommand(
     }
     return prev;
   }
-  // Momentary strip flash — never latch in cockpit on-air state.
   if (cmd.graphic === 'boundaries') {
+    if (cmd.action === 'show') {
+      return { ...prev, stripMode: 'boundaries' };
+    }
+    if (cmd.action === 'hide' && prev.stripMode === 'boundaries') {
+      return { ...prev, stripMode: 'default' };
+    }
     return prev;
   }
   if (cmd.action === 'show') {
@@ -286,6 +291,9 @@ export function OverlayControlPanel({
     Array<{ id: string; label: string }>
   >([]);
   const [topBatsmenTeamId, setTopBatsmenTeamId] = useState('');
+  const [topBowlersTeamId, setTopBowlersTeamId] = useState('');
+  const [mostFoursTeamId, setMostFoursTeamId] = useState('');
+  const [mostSixesTeamId, setMostSixesTeamId] = useState('');
 
   // Keep team toggle on the batting side when the innings batting side changes.
   useEffect(() => {
@@ -409,7 +417,6 @@ export function OverlayControlPanel({
 
   const tossLine = formatOverlayTossLine(match);
   const chaseLine = formatOverlayChaseLine(card, innings);
-  const boundariesLine = formatOverlayBoundariesLine(innings);
   const partnershipLine = formatOverlayCurrentPartnershipLine(innings, nameOf);
   const xiPreview = formatOverlayPlayingXiPreview(match);
   const inningsBreakPreview = formatOverlayInningsBreakPreview(card);
@@ -440,12 +447,18 @@ export function OverlayControlPanel({
   const tournamentEnabled = tournamentId.length > 0;
   const isLeather = match.ballType === BallType.Leather;
   const topBatsmenLive = isCommonGraphicOnAir(onAir, 'tournament_top_batsmen');
+  const topBowlersLive = isCommonGraphicOnAir(onAir, 'tournament_top_bowlers');
+  const mostFoursLive = isCommonGraphicOnAir(onAir, 'most_fours');
+  const mostSixesLive = isCommonGraphicOnAir(onAir, 'most_sixes');
 
-  // Leather Top 5 Batsmen: load ACC 3/6/9/0 for the team dropdown.
+  // Leather Top 5: load ACC 3/6/9/0 for the team dropdowns.
   useEffect(() => {
     if (!isLeather || !tournamentId) {
       setAccTeamOptions([]);
       setTopBatsmenTeamId('');
+      setTopBowlersTeamId('');
+      setMostFoursTeamId('');
+      setMostSixesTeamId('');
       return;
     }
     let cancelled = false;
@@ -472,18 +485,19 @@ export function OverlayControlPanel({
     };
   }, [isLeather, tournamentId]);
 
-  // Default Top 5 team to current batting ACC side (or home / first) when options load or bat changes.
+  // Default Top 5 Batsmen / Most Fours / Most Sixes to current batting ACC side.
   useEffect(() => {
     if (!isLeather || accTeamOptions.length === 0) {
       return;
     }
-    setTopBatsmenTeamId(
-      defaultAccTopBatsmenTeamId(
-        accTeamOptions,
-        innings.battingIsExternal ? null : innings.battingTeamId,
-        match.homeTeamId,
-      ),
+    const battingDefault = defaultAccLeaderboardTeamId(
+      accTeamOptions,
+      innings.battingIsExternal ? null : innings.battingTeamId,
+      match.homeTeamId,
     );
+    setTopBatsmenTeamId(battingDefault);
+    setMostFoursTeamId(battingDefault);
+    setMostSixesTeamId(battingDefault);
   }, [
     isLeather,
     accTeamOptions,
@@ -491,6 +505,30 @@ export function OverlayControlPanel({
     innings.battingIsExternal,
     innings.inningsId,
     match.homeTeamId,
+  ]);
+
+  // Flag A: default Top 5 Bowlers to match ACC side(s); if both ACC → bowling team.
+  useEffect(() => {
+    if (!isLeather || accTeamOptions.length === 0) {
+      return;
+    }
+    setTopBowlersTeamId(
+      defaultAccTopBowlersTeamId(
+        accTeamOptions,
+        match.homeTeamId,
+        match.awayTeamId,
+        innings.bowlingTeamId,
+        innings.bowlingIsExternal,
+      ),
+    );
+  }, [
+    isLeather,
+    accTeamOptions,
+    match.homeTeamId,
+    match.awayTeamId,
+    innings.bowlingTeamId,
+    innings.bowlingIsExternal,
+    innings.inningsId,
   ]);
 
   const connLabel =
@@ -533,6 +571,66 @@ export function OverlayControlPanel({
     setLocalOnAir('tournament_top_batsmen', null, null);
   }
 
+  function showTopBowlers(teamId: string): void {
+    if (!tournamentEnabled) {
+      return;
+    }
+    if (isLeather) {
+      const id = teamId.trim();
+      if (!id) {
+        return;
+      }
+      emit({
+        action: 'show',
+        graphic: 'tournament_top_bowlers',
+        payload: { teamId: id },
+      });
+    } else {
+      emit({ action: 'show', graphic: 'tournament_top_bowlers' });
+    }
+    setLocalOnAir('tournament_top_bowlers', null, null);
+  }
+
+  function showMostFours(teamId: string): void {
+    if (!tournamentEnabled) {
+      return;
+    }
+    if (isLeather) {
+      const id = teamId.trim();
+      if (!id) {
+        return;
+      }
+      emit({
+        action: 'show',
+        graphic: 'most_fours',
+        payload: { teamId: id },
+      });
+    } else {
+      emit({ action: 'show', graphic: 'most_fours' });
+    }
+    setLocalOnAir('most_fours', null, null);
+  }
+
+  function showMostSixes(teamId: string): void {
+    if (!tournamentEnabled) {
+      return;
+    }
+    if (isLeather) {
+      const id = teamId.trim();
+      if (!id) {
+        return;
+      }
+      emit({
+        action: 'show',
+        graphic: 'most_sixes',
+        payload: { teamId: id },
+      });
+    } else {
+      emit({ action: 'show', graphic: 'most_sixes' });
+    }
+    setLocalOnAir('most_sixes', null, null);
+  }
+
   function hideGraphic(graphic: GraphicsKind): void {
     emit({ action: 'hide', graphic });
     setOnAir((prev) => {
@@ -550,7 +648,7 @@ export function OverlayControlPanel({
     });
   }
 
-  function hideStrip(mode: 'toss' | 'chase'): void {
+  function hideStrip(mode: 'toss' | 'chase' | 'boundaries'): void {
     emit({ action: 'hide', graphic: mode });
     setOnAir((prev) =>
       prev.stripMode === mode ? { ...prev, stripMode: 'default' } : prev,
@@ -1041,15 +1139,24 @@ export function OverlayControlPanel({
 
             <ControlTile
               title="Boundaries"
-              onAir={false}
-              enabled
+              onAir={isCommonGraphicOnAir(onAir, 'boundaries')}
+              enabled={tournamentEnabled}
               onPress={() => {
-                // Momentary strip flash — never latches on-air / never becomes Hide.
+                if (isCommonGraphicOnAir(onAir, 'boundaries')) {
+                  hideStrip('boundaries');
+                  return;
+                }
+                if (!tournamentEnabled) {
+                  return;
+                }
                 emit({ action: 'show', graphic: 'boundaries' });
+                setOnAir((p) => ({ ...p, stripMode: 'boundaries' }));
               }}
             >
               <Text className="font-sans text-[11px] text-on-surface-variant" numberOfLines={2}>
-                {boundariesLine} · flash then revert
+                {tournamentEnabled
+                  ? 'Tournament fours + sixes'
+                  : 'No tournament linked'}
               </Text>
             </ControlTile>
 
@@ -1129,10 +1236,28 @@ export function OverlayControlPanel({
             {OVERLAY_TOURNAMENT_ACTIONS.map((row) => {
               const rowOnAir = isCommonGraphicOnAir(onAir, row.graphic);
               const isTopBatsmen = row.graphic === 'tournament_top_batsmen';
+              const isTopBowlers = row.graphic === 'tournament_top_bowlers';
+              const isMostFours = row.graphic === 'most_fours';
+              const isMostSixes = row.graphic === 'most_sixes';
               const leatherTopBatsmen = isTopBatsmen && isLeather;
+              const leatherTopBowlers = isTopBowlers && isLeather;
+              const leatherMostFours = isMostFours && isLeather;
+              const leatherMostSixes = isMostSixes && isLeather;
+              const leatherTeamPick =
+                leatherTopBatsmen ||
+                leatherTopBowlers ||
+                leatherMostFours ||
+                leatherMostSixes;
+              const leatherTeamId = leatherTopBatsmen
+                ? topBatsmenTeamId
+                : leatherTopBowlers
+                  ? topBowlersTeamId
+                  : leatherMostFours
+                    ? mostFoursTeamId
+                    : mostSixesTeamId;
               const leatherReady =
-                !leatherTopBatsmen ||
-                (accTeamOptions.length > 0 && topBatsmenTeamId.length > 0);
+                !leatherTeamPick ||
+                (accTeamOptions.length > 0 && leatherTeamId.length > 0);
               return (
                 <ControlTile
                   key={row.graphic}
@@ -1151,23 +1276,71 @@ export function OverlayControlPanel({
                       showTopBatsmen(topBatsmenTeamId);
                       return;
                     }
+                    if (isTopBowlers) {
+                      showTopBowlers(topBowlersTeamId);
+                      return;
+                    }
+                    if (isMostFours) {
+                      showMostFours(mostFoursTeamId);
+                      return;
+                    }
+                    if (isMostSixes) {
+                      showMostSixes(mostSixesTeamId);
+                      return;
+                    }
                     emit({ action: 'show', graphic: row.graphic });
                     setLocalOnAir(row.graphic, null, null);
                   }}
                 >
-                  {leatherTopBatsmen ? (
+                  {leatherTeamPick ? (
                     <PlayerSelect
                       options={accTeamOptions}
-                      value={topBatsmenTeamId}
+                      value={leatherTeamId}
                       onChange={(id) => {
-                        setTopBatsmenTeamId(id);
-                        if (topBatsmenLive && id.trim()) {
+                        if (leatherTopBatsmen) {
+                          setTopBatsmenTeamId(id);
+                          if (topBatsmenLive && id.trim()) {
+                            emit({
+                              action: 'show',
+                              graphic: 'tournament_top_batsmen',
+                              payload: { teamId: id },
+                            });
+                            setLocalOnAir('tournament_top_batsmen', null, null);
+                          }
+                          return;
+                        }
+                        if (leatherTopBowlers) {
+                          setTopBowlersTeamId(id);
+                          if (topBowlersLive && id.trim()) {
+                            emit({
+                              action: 'show',
+                              graphic: 'tournament_top_bowlers',
+                              payload: { teamId: id },
+                            });
+                            setLocalOnAir('tournament_top_bowlers', null, null);
+                          }
+                          return;
+                        }
+                        if (leatherMostFours) {
+                          setMostFoursTeamId(id);
+                          if (mostFoursLive && id.trim()) {
+                            emit({
+                              action: 'show',
+                              graphic: 'most_fours',
+                              payload: { teamId: id },
+                            });
+                            setLocalOnAir('most_fours', null, null);
+                          }
+                          return;
+                        }
+                        setMostSixesTeamId(id);
+                        if (mostSixesLive && id.trim()) {
                           emit({
                             action: 'show',
-                            graphic: 'tournament_top_batsmen',
+                            graphic: 'most_sixes',
                             payload: { teamId: id },
                           });
-                          setLocalOnAir('tournament_top_batsmen', null, null);
+                          setLocalOnAir('most_sixes', null, null);
                         }
                       }}
                       disabled={!tournamentEnabled || accTeamOptions.length === 0}

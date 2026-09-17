@@ -1,0 +1,317 @@
+/* Premium tournament leaderboard — navy / blue / gold package. */
+
+.panel-premium-lb {
+  --plb-navy: #081a30;
+  --plb-navy-dark: #061323;
+  --plb-blue: #218bff;
+  --plb-gold: #ffaf38;
+  --plb-row-a: #f2f5f8;
+  --plb-row-b: #e5ecf2;
+  --plb-text: #13283d;
+  --plb-muted: rgba(19, 40, 61, 0.72);
+
+  display: flex;
+  flex-direction: column;
+  min-width: min(88vw, 720px);
+  max-width: min(94vw, 880px);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--plb-navy);
+  color: #f2f5f8;
+  box-shadow:
+    0 22px 56px rgba(0, 0, 0, 0.55),
+    0 0 0 1px rgba(33, 139, 255, 0.18);
+  pointer-events: none;
+  font-family: 'Barlow', 'Montserrat', system-ui, sans-serif;
+}
+
+.plb-section {
+  opacity: 0;
+  transform: translateX(-60px);
+  transition:
+    opacity 650ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 650ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.panel-premium-lb.plb-entering .plb-section.plb-section-visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.panel-premium-lb.plb-exiting .plb-section {
+  opacity: 0;
+  transform: translateX(48px);
+  transition:
+    opacity 320ms ease-in,
+    transform 320ms ease-in;
+}
+
+.plb-id-strip {
+  background: var(--plb-navy-dark);
+  padding: 8px 18px;
+  border-bottom: 2px solid var(--plb-blue);
+}
+
+.plb-id-line {
+  margin: 0;
+  font-family: 'Barlow Condensed', 'Barlow', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  text-align: center;
+  color: var(--plb-gold);
+}
+
+.plb-title-bar {
+  position: relative;
+  padding: 14px 20px 12px;
+  background: linear-gradient(135deg, var(--plb-navy) 0%, #0c2545 100%);
+  overflow: hidden;
+  text-align: center;
+}
+
+.plb-title {
+  margin: 0;
+  font-family: 'Barlow Condensed', 'Barlow', sans-serif;
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #fff;
+}
+
+.plb-context {
+  margin: 4px 0 0;
+  font-family: 'Barlow Condensed', 'Barlow', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--plb-gold);
+}
+
+.plb-title-sweep {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 40%,
+    rgba(33, 139, 255, 0.18) 50%,
+    transparent 60%
+  );
+  transform: translateX(-120%);
+  pointer-events: none;
+}
+
+.panel-premium-lb.plb-entering .plb-title-sweep {
+  animation: plb-sweep 900ms cubic-bezier(0.16, 1, 0.3, 1) 80ms both;
+}
+
+@keyframes plb-sweep {
+  from {
+    transform: translateX(-120%);
+  }
+  to {
+    transform: translateX(120%);
+  }
+}
+
+.plb-col-heads {
+  display: grid;
+  grid-template-columns: 56px 1fr minmax(6em, 0.7fr) 5.5em;
+  gap: 10px;
+  padding: 10px 20px 8px;
+  background: var(--plb-navy-dark);
+  border-bottom: 1px solid rgba(33, 139, 255, 0.35);
+  font-family: 'Barlow Condensed', 'Barlow', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(242, 245, 248, 0.65);
+}
+
+.panel-premium-lb.plb-hide-team .plb-col-heads {
+  grid-template-columns: 56px 1fr 5.5em;
+}
+
+.plb-col-heads span:last-child {
+  text-align: right;
+}
+
+.plb-list-wrap {
+  background: #0a1f3a;
+}
+
+.plb-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.plb-row {
+  display: grid;
+  grid-template-columns: 56px 1fr minmax(6em, 0.7fr) 5.5em;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+  color: var(--plb-text);
+  opacity: 0;
+  transform: translateX(-60px);
+  transition:
+    opacity 650ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 650ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.plb-row--no-team {
+  grid-template-columns: 56px 1fr 5.5em;
+}
+
+.plb-row:nth-child(odd) {
+  background: var(--plb-row-a);
+}
+
+.plb-row:nth-child(even) {
+  background: var(--plb-row-b);
+}
+
+.panel-premium-lb.plb-entering .plb-row.plb-row-visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.panel-premium-lb.plb-exiting .plb-row {
+  opacity: 0;
+  transform: translateX(48px);
+  transition:
+    opacity 320ms ease-in,
+    transform 320ms ease-in;
+}
+
+.plb-rank {
+  font-family: 'Barlow Condensed', 'Barlow', sans-serif;
+  font-size: 26px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  color: var(--plb-navy);
+}
+
+.plb-name {
+  font-family: 'Barlow Condensed', 'Barlow', sans-serif;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--plb-navy);
+}
+
+.plb-team {
+  font-family: 'Barlow', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--plb-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: right;
+}
+
+.plb-stat {
+  font-family: 'Barlow Condensed', 'Barlow', sans-serif;
+  font-size: 28px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--plb-navy);
+}
+
+.plb-empty {
+  margin: 0;
+  padding: 28px 20px;
+  text-align: center;
+  font-family: 'Barlow', sans-serif;
+  font-size: 16px;
+  color: rgba(242, 245, 248, 0.7);
+}
+
+.plb-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 18px;
+  background: var(--plb-navy-dark);
+  border-top: 1px solid rgba(33, 139, 255, 0.25);
+}
+
+.plb-footer-mark {
+  margin: 0;
+  font-family: 'Barlow Condensed', 'Barlow', sans-serif;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: var(--plb-gold);
+}
+
+.plb-footer-note {
+  margin: 0;
+  font-family: 'Barlow', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(242, 245, 248, 0.55);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .plb-section,
+  .plb-row {
+    transform: none;
+    transition: opacity 120ms ease;
+  }
+
+  .panel-premium-lb.plb-exiting .plb-section,
+  .panel-premium-lb.plb-exiting .plb-row {
+    transform: none;
+  }
+
+  .plb-title-sweep {
+    animation: none !important;
+  }
+}
+
+@media (max-width: 720px) {
+  .plb-title {
+    font-size: 24px;
+  }
+
+  .plb-col-heads,
+  .plb-row {
+    grid-template-columns: 44px 1fr minmax(4.5em, 0.6fr) 4.5em;
+    padding-inline: 14px;
+    gap: 8px;
+  }
+
+  .panel-premium-lb.plb-hide-team .plb-col-heads,
+  .plb-row--no-team {
+    grid-template-columns: 44px 1fr 4.5em;
+  }
+
+  .plb-name {
+    font-size: 16px;
+  }
+
+  .plb-stat {
+    font-size: 22px;
+  }
+
+  .plb-rank {
+    font-size: 20px;
+  }
+}
