@@ -161,6 +161,25 @@ function showMatchIdEntry() {
 }
 
 /**
+ * Auth gate: load Expo /login in the BrowserView before match entry.
+ * After login, RootNavigator's Electron branch calls returnToBroadcastHome → match entry.
+ * If a session already exists, the same redirect fires immediately.
+ */
+function showLoginGate() {
+  if (!mainWindow) {
+    return;
+  }
+  const view = ensurePanelView();
+  panelVisible = true;
+  void view.webContents.loadURL(`${COCKPIT_BASE}/login`);
+  showPanelView();
+  sendToShell('asc:shell-state', {
+    view: 'panel',
+  });
+  mainWindow.setTitle('ASC Broadcast');
+}
+
+/**
  * Embed the scoring cockpit for this match (graphics + scoring + in-page OBS).
  * @param {string} matchId
  */
@@ -215,10 +234,8 @@ function createWindow() {
 
   void mainWindow.loadFile(path.join(__dirname, 'shell.html'));
   mainWindow.webContents.once('did-finish-load', () => {
-    sendToShell('asc:shell-state', {
-      view: 'match',
-      lastMatchId: readLastMatchId(),
-    });
+    // Login first (BrowserView). Authenticated sessions redirect to match entry.
+    showLoginGate();
     pushObsStatus();
     void lifecycle.ensureSession().catch(() => {
       // Status already pushed (wrong password / timeout / missing OBS).

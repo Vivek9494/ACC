@@ -19,6 +19,7 @@ import { Text } from '../src/components/ui/Text';
 import { TextInput } from '../src/components/ui/TextInput';
 import { FIELD_ORANGE } from '../src/components/ui/fieldStyles';
 import { ApiRequestError, completeForcedPasswordChange } from '../src/lib/api';
+import { hasAscObsBridge } from '../src/lib/asc-broadcast-bridge';
 import { useAuth } from '../src/lib/auth-context';
 import { homeRouteForUser } from '../src/lib/home-route';
 
@@ -64,6 +65,13 @@ export default function ForcedPasswordChangeScreen(): React.ReactElement {
     try {
       await completeForcedPasswordChange({ newPassword: password });
       clearMustChangePassword();
+      if (
+        hasAscObsBridge() &&
+        typeof window.ascBroadcast?.returnToBroadcastHome === 'function'
+      ) {
+        window.ascBroadcast.returnToBroadcastHome();
+        return;
+      }
       if (user) {
         router.replace(homeRouteForUser({ ...user, mustChangePassword: undefined }));
       } else {

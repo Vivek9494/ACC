@@ -20,20 +20,18 @@ import {
   type HighlightKind,
 } from './first-innings-highlight';
 
+import { hasAscObsBridge } from '../../../lib/asc-broadcast-bridge';
+
+export { hasAscObsBridge };
+
 function getObsBridge() {
   if (typeof window === 'undefined') {
     return undefined;
   }
-  const obs = window.ascBroadcast?.obs;
-  if (typeof obs?.getStatus !== 'function' || typeof obs?.getConfig !== 'function') {
+  if (!hasAscObsBridge()) {
     return undefined;
   }
-  return obs;
-}
-
-/** True only inside ASC Broadcast Electron (BrowserView preload present). */
-export function hasAscObsBridge(): boolean {
-  return getObsBridge() != null;
+  return window.ascBroadcast?.obs;
 }
 
 function connectionLabel(status: AscObsStatus): string {

@@ -18,6 +18,7 @@ import { buildNavTheme, colors } from '@/theme/colors';
 
 import { AuthProvider, useAuth } from '../src/lib/auth-context';
 import { GlobalAttendanceMonitor } from '../src/components/attendance/GlobalAttendanceMonitor';
+import { hasAscObsBridge } from '../src/lib/asc-broadcast-bridge';
 import { homeRouteForUser } from '../src/lib/home-route';
 // Geofence attendance: registers the background task at startup (see match-geofence-task.ts).
 import '../src/geofence/match-geofence-task';
@@ -74,6 +75,14 @@ function RootNavigator(): React.ReactElement {
       return;
     }
     if (status === 'authenticated' && onAuthRoute) {
+      // Electron BrowserView: return to ASC Broadcast match entry; web → role home.
+      if (
+        hasAscObsBridge() &&
+        typeof window.ascBroadcast?.returnToBroadcastHome === 'function'
+      ) {
+        window.ascBroadcast.returnToBroadcastHome();
+        return;
+      }
       router.replace(homeRouteForUser(user));
     } else if (status === 'unauthenticated' && !onAuthRoute && !guestRoute) {
       router.replace('/login');

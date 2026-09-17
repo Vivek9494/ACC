@@ -55,7 +55,7 @@ import {
   isAutoClipWorthy,
   scheduleBoundaryClipCapture,
 } from '../../../src/components/scoring/cockpit/boundary-clip-capture';
-import { hasAscObsBridge } from '../../../src/components/scoring/cockpit/BroadcastObsPanel';
+import { hasAscObsBridge } from '../../../src/lib/asc-broadcast-bridge';
 import {
   CockpitSettingsHeaderButton,
   CockpitSettingsModal,
@@ -397,7 +397,9 @@ export default function LiveScoringScreen(): React.ReactElement {
   }, [matchId]);
 
   useEffect(() => {
-    if (authStatus === 'loading') {
+    // Wait for a settled authenticated session — never call protected APIs while
+    // loading/unauthenticated (avoids forceSessionLogout during Electron login gate).
+    if (authStatus !== 'authenticated') {
       return;
     }
     void load();
