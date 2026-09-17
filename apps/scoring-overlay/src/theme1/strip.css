@@ -379,9 +379,9 @@
   justify-self: start;
 }
 
-/* Bowler — 3D flip card (bowler front / toss back); only one face visible */
+/* Bowler — 3-face vertical flip (rotateX): bowler / chase / toss */
 .t1-bowler-block {
-  perspective: 900px;
+  perspective: 1000px;
   min-width: 0;
   padding: 6px 8px 6px 4px;
 }
@@ -390,11 +390,19 @@
   position: relative;
   transform-style: preserve-3d;
   transition: transform 400ms cubic-bezier(0.16, 1, 0.3, 1);
-  transform: rotateY(0deg);
+  transform: rotateX(0deg);
 }
 
-.t1-bowler-flip.is-showing-toss {
-  transform: rotateY(180deg);
+.t1-bowler-flip.is-face-bowler {
+  transform: rotateX(0deg);
+}
+
+.t1-bowler-flip.is-face-chase {
+  transform: rotateX(-90deg);
+}
+
+.t1-bowler-flip.is-face-toss {
+  transform: rotateX(-180deg);
 }
 
 .t1-bowler-face {
@@ -403,17 +411,25 @@
   min-width: 0;
 }
 
-.t1-bowler-face-front {
+.t1-bowler-face-bowler {
   position: relative;
-  transform: rotateY(0deg);
+  transform: rotateX(0deg);
 }
 
-.t1-bowler-face-back {
+.t1-bowler-face-chase,
+.t1-bowler-face-toss {
   position: absolute;
   inset: 0;
   display: flex;
   align-items: center;
-  transform: rotateY(180deg);
+}
+
+.t1-bowler-face-chase {
+  transform: rotateX(90deg);
+}
+
+.t1-bowler-face-toss {
+  transform: rotateX(180deg);
 }
 
 .t1-bowler-normal {
@@ -422,13 +438,16 @@
   gap: 2px;
 }
 
-.t1-bowler-toss[hidden] {
+.t1-bowler-toss[hidden],
+.t1-bowler-chase[hidden] {
   display: none !important;
 }
 
-/* Mid-flip: keep toss face painted (override [hidden]) so backface works. */
-.t1-bowler-block.is-flipping .t1-bowler-toss[hidden],
-.t1-bowler-block.is-toss .t1-bowler-toss[hidden] {
+/* Mid-flip / active overlay: keep faces painted for backface-visibility. */
+.t1-bowler-block.is-flipping .t1-bowler-toss,
+.t1-bowler-block.is-flipping .t1-bowler-chase,
+.t1-bowler-block.is-toss .t1-bowler-toss,
+.t1-bowler-block.is-chase .t1-bowler-chase {
   display: flex !important;
 }
 
@@ -493,7 +512,8 @@
   color: #fff;
 }
 
-.t1-bowler-toss {
+.t1-bowler-toss,
+.t1-bowler-chase {
   margin: 0;
   font-family: var(--s-cond);
   font-size: 15px;

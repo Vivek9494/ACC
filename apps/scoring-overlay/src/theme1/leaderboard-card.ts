@@ -118,15 +118,19 @@ export function mountLeaderboardCard(host: HTMLElement): LeaderboardCardControll
       name.className = 't1-lb-name';
       name.textContent = row.name;
 
-      const team = document.createElement('span');
-      team.className = 't1-lb-team';
-      team.textContent = row.teamName;
-
       const stat = document.createElement('span');
       stat.className = 't1-lb-stat';
       stat.textContent = String(row.stat);
 
-      li.append(rank, name, team, stat);
+      if (row.teamName.trim()) {
+        const team = document.createElement('span');
+        team.className = 't1-lb-team';
+        team.textContent = row.teamName;
+        li.append(rank, name, team, stat);
+      } else {
+        li.classList.add('t1-lb-row--no-team');
+        li.append(rank, name, stat);
+      }
       list.appendChild(li);
     }
 

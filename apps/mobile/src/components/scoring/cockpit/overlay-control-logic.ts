@@ -415,6 +415,56 @@ export const OVERLAY_TOURNAMENT_ACTIONS: {
   { graphic: 'most_fours', label: 'Most Fours' },
 ];
 
+/** Fixed ACC leather team display names (IDs are per-tournament). */
+export const ACC_FIXED_TEAM_NAMES = ['ACC 3', 'ACC 6', 'ACC 9', 'ACC 0'] as const;
+
+/**
+ * Order tournament teams as ACC 3 / 6 / 9 / 0 for the leather Top 5 dropdown.
+ * Falls back to name sort when a name is missing from the fixed set.
+ */
+export function orderAccFixedTeams<T extends { id: string; name: string }>(
+  teams: T[],
+): T[] {
+  const byName = new Map(
+    teams.map((team) => [team.name.trim().toUpperCase(), team] as const),
+  );
+  const ordered: T[] = [];
+  for (const name of ACC_FIXED_TEAM_NAMES) {
+    const hit = byName.get(name.toUpperCase());
+    if (hit) {
+      ordered.push(hit);
+    }
+  }
+  if (ordered.length > 0) {
+    return ordered;
+  }
+  return [...teams].sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/**
+ * Default Top 5 Batsmen team for leather: current batting team when it is an
+ * ACC side; otherwise home team, else first ACC option.
+ */
+export function defaultAccTopBatsmenTeamId(
+  options: Array<{ id: string }>,
+  battingTeamId: string | null | undefined,
+  homeTeamId: string | null | undefined,
+): string {
+  if (options.length === 0) {
+    return '';
+  }
+  const ids = new Set(options.map((o) => o.id));
+  const bat = battingTeamId?.trim() || '';
+  if (bat && ids.has(bat)) {
+    return bat;
+  }
+  const home = homeTeamId?.trim() || '';
+  if (home && ids.has(home)) {
+    return home;
+  }
+  return options[0]?.id ?? '';
+}
+
 export type OverlayTournamentGraphic =
   (typeof OVERLAY_TOURNAMENT_ACTIONS)[number]['graphic'];
 

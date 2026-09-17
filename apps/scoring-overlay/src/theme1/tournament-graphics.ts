@@ -205,6 +205,7 @@ export function mountTournamentGraphics(
     kind: TournamentGraphicKind,
     tournamentId: string,
     token: number,
+    teamId?: string | null,
   ): Promise<boolean> => {
     if (kind === 'points_table') {
       if (!pointsTable) {
@@ -222,7 +223,14 @@ export function mountTournamentGraphics(
       if (!card) {
         return false;
       }
-      const leaderboard = await fetchTournamentLeaderboard(apiBase, tournamentId);
+      // Leather Top 5 Batsmen may pass teamId; bowlers / non-leather omit it.
+      const filterTeamId =
+        kind === 'tournament_top_batsmen' ? teamId?.trim() || null : null;
+      const leaderboard = await fetchTournamentLeaderboard(
+        apiBase,
+        tournamentId,
+        filterTeamId,
+      );
       if (token !== showToken || activeKind !== kind) {
         return false;
       }
@@ -230,7 +238,10 @@ export function mountTournamentGraphics(
         return false;
       }
       if (kind === 'tournament_top_batsmen') {
-        return card.show('batting', battingRows(leaderboard.batting.entries));
+        const rows = battingRows(leaderboard.batting.entries).map((row) =>
+          filterTeamId ? { ...row, teamName: '' } : row,
+        );
+        return card.show('batting', rows);
       }
       return card.show('bowling', bowlingRows(leaderboard.bowling.entries));
     }
@@ -293,7 +304,8 @@ export function mountTournamentGraphics(
 
       activeKind = kind;
       const token = ++showToken;
-      void showKind(kind, tid, token)
+      const teamId = cmd.payload?.teamId?.trim() || null;
+      void showKind(kind, tid, token, teamId)
         .then((ok) => {
           if (token !== showToken || activeKind !== kind) {
             return;

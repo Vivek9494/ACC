@@ -19,11 +19,17 @@ const ENTRANCE_STAGGER_MS = 48;
 const BOWLER_SLOT_FLIP_MS = 400;
 const warnedMissing = new Set<string>();
 
-type BowlerSlotMode = 'bowler' | 'toss';
+type BowlerSlotMode = 'bowler' | 'toss' | 'chase';
 
 let bowlerSlotMode: BowlerSlotMode = 'bowler';
 let bowlerFlipGen = 0;
 let bowlerFlipTimer: number | null = null;
+
+const FACE_CLASS: Record<BowlerSlotMode, string> = {
+  bowler: 'is-face-bowler',
+  toss: 'is-face-toss',
+  chase: 'is-face-chase',
+};
 
 function prefersReducedMotion(): boolean {
   return (
@@ -126,20 +132,17 @@ function renderBatters(vm: StripViewModel): void {
 
 function renderSubLine(
   vm: StripViewModel,
-  card: ScorecardResponse,
   crrMode: ScoreStripRenderParams['crrMode'],
 ): void {
   const sub = el<HTMLDivElement>('sub-line');
   if (!sub) {
     return;
   }
+  // Operator chase/toss live in the bowler-slot flip — not the center sub-line.
   let text: string | null = null;
-
-  if (crrMode === 'chase') {
-    text = formatRunsToWinLine(card) ?? vm.needOffLine;
-  } else if (crrMode === 'boundaries') {
+  if (crrMode === 'boundaries') {
     text = vm.boundariesLine;
-  } else {
+  } else if (crrMode !== 'chase' && crrMode !== 'toss') {
     text = vm.needOffLine;
   }
 
@@ -165,63 +168,81 @@ function bowlerFlipEl(): HTMLElement | null {
   return el<HTMLElement>('bowler-flip');
 }
 
+function setFlipFaceClass(flip: HTMLElement, mode: BowlerSlotMode): void {
+  flip.classList.remove('is-face-bowler', 'is-face-toss', 'is-face-chase');
+  flip.classList.add(FACE_CLASS[mode]);
+}
+
+function applyStackModeClass(stack: HTMLElement, mode: BowlerSlotMode): void {
+  stack.classList.toggle('is-toss', mode === 'toss');
+  stack.classList.toggle('is-chase', mode === 'chase');
+}
+
 /** Snap to a face with no animation (settle / reduced-motion / cancel). */
 function settleBowlerSlot(
   mode: BowlerSlotMode,
   stack: HTMLElement,
   normal: HTMLElement,
   tossLine: HTMLElement,
+  chaseLine: HTMLElement,
 ): void {
   const flip = bowlerFlipEl();
   stack.classList.remove('is-flipping');
+  applyStackModeClass(stack, mode);
   if (flip) {
     flip.style.transition = 'none';
-    if (mode === 'toss') {
-      flip.classList.add('is-showing-toss');
-    } else {
-      flip.classList.remove('is-showing-toss');
-    }
+    setFlipFaceClass(flip, mode);
     void flip.offsetWidth;
     flip.style.transition = '';
   }
 
+  normal.hidden = false;
+  normal.setAttribute('aria-hidden', mode === 'bowler' ? 'false' : 'true');
+
   if (mode === 'toss') {
-    stack.classList.add('is-toss');
-    normal.hidden = false;
-    normal.setAttribute('aria-hidden', 'true');
     tossLine.hidden = false;
     tossLine.setAttribute('aria-hidden', 'false');
-  } else {
-    stack.classList.remove('is-toss');
-    normal.hidden = false;
-    normal.setAttribute('aria-hidden', 'false');
+    chaseLine.hidden = true;
+    chaseLine.setAttribute('aria-hidden', 'true');
+    chaseLine.textContent = '';
+  } else if (mode === 'chase') {
+    chaseLine.hidden = false;
+    chaseLine.setAttribute('aria-hidden', 'false');
     tossLine.hidden = true;
     tossLine.setAttribute('aria-hidden', 'true');
     tossLine.textContent = '';
+  } else {
+    tossLine.hidden = true;
+    tossLine.setAttribute('aria-hidden', 'true');
+    tossLine.textContent = '';
+    chaseLine.hidden = true;
+    chaseLine.setAttribute('aria-hidden', 'true');
+    chaseLine.textContent = '';
   }
   bowlerSlotMode = mode;
 }
 
 /**
- * 3D rotateY flip of the bowler slot — only one face visible (backface-hidden).
- * Rapid toggles cancel via bowlerFlipGen and reverse/settle cleanly.
+ * Vertical rotateX flip among bowler / toss / chase.
+ * One state machine — direct overlay↔overlay; gen cancels rapid toggles.
  */
 function flipBowlerSlot(
   target: BowlerSlotMode,
   stack: HTMLElement,
   normal: HTMLElement,
   tossLine: HTMLElement,
+  chaseLine: HTMLElement,
 ): void {
   const flip = bowlerFlipEl();
   if (!flip) {
-    settleBowlerSlot(target, stack, normal, tossLine);
+    settleBowlerSlot(target, stack, normal, tossLine, chaseLine);
     return;
   }
 
   if (prefersReducedMotion()) {
     bowlerFlipGen += 1;
     clearBowlerFlipTimer();
-    settleBowlerSlot(target, stack, normal, tossLine);
+    settleBowlerSlot(target, stack, normal, tossLine, chaseLine);
     return;
   }
 
@@ -230,35 +251,27 @@ function flipBowlerSlot(
   clearBowlerFlipTimer();
   bowlerSlotMode = target;
 
-  // Both faces must be in the tree for backface-visibility mid-flip.
+  // All faces in the tree mid-flip for backface-visibility.
   normal.hidden = false;
   tossLine.hidden = false;
+  chaseLine.hidden = false;
   stack.classList.add('is-flipping');
-  if (target === 'toss') {
-    stack.classList.add('is-toss');
-  } else {
-    stack.classList.remove('is-toss');
-  }
+  applyStackModeClass(stack, target);
 
-  // Ensure transition is active, then set target rotation.
   flip.style.transition = '';
   void flip.offsetWidth;
-  if (target === 'toss') {
-    flip.classList.add('is-showing-toss');
-    tossLine.setAttribute('aria-hidden', 'false');
-    normal.setAttribute('aria-hidden', 'true');
-  } else {
-    flip.classList.remove('is-showing-toss');
-    tossLine.setAttribute('aria-hidden', 'true');
-    normal.setAttribute('aria-hidden', 'false');
-  }
+  setFlipFaceClass(flip, target);
+
+  normal.setAttribute('aria-hidden', target === 'bowler' ? 'false' : 'true');
+  tossLine.setAttribute('aria-hidden', target === 'toss' ? 'false' : 'true');
+  chaseLine.setAttribute('aria-hidden', target === 'chase' ? 'false' : 'true');
 
   bowlerFlipTimer = window.setTimeout(() => {
     if (gen !== bowlerFlipGen) {
       return;
     }
     bowlerFlipTimer = null;
-    settleBowlerSlot(target, stack, normal, tossLine);
+    settleBowlerSlot(target, stack, normal, tossLine, chaseLine);
   }, BOWLER_SLOT_FLIP_MS);
 }
 
@@ -269,39 +282,67 @@ function paintBowlerFigures(vm: StripViewModel): void {
   renderOverTracker(vm);
 }
 
+function resolveBowlerSlotTarget(
+  crrMode: ScoreStripRenderParams['crrMode'],
+  ctx: ScoreStripRenderParams['ctx'],
+  card: ScorecardResponse,
+): { target: BowlerSlotMode; tossText: string | null; chaseText: string | null } {
+  if (crrMode === 'toss') {
+    const tossText = formatTossLine(ctx);
+    if (tossText) {
+      return { target: 'toss', tossText, chaseText: null };
+    }
+  }
+  if (crrMode === 'chase') {
+    const chaseText = formatRunsToWinLine(card) ?? null;
+    if (chaseText) {
+      return { target: 'chase', tossText: null, chaseText };
+    }
+  }
+  return { target: 'bowler', tossText: null, chaseText: null };
+}
+
 function renderBowlerPanel(
   vm: StripViewModel,
   ctx: ScoreStripRenderParams['ctx'],
+  card: ScorecardResponse,
   crrMode: ScoreStripRenderParams['crrMode'],
 ): void {
   const stack = el<HTMLDivElement>('bowler-stack');
   const normal = el<HTMLDivElement>('bowler-normal');
   const tossLine = el<HTMLParagraphElement>('bowler-toss-line');
-  if (!stack || !normal || !tossLine) {
+  const chaseLine = el<HTMLParagraphElement>('bowler-chase-line');
+  if (!stack || !normal || !tossLine || !chaseLine) {
     return;
   }
 
-  const wantToss = crrMode === 'toss';
-  const tossText = wantToss ? formatTossLine(ctx) : null;
-  const target: BowlerSlotMode = wantToss && tossText ? 'toss' : 'bowler';
+  const { target, tossText, chaseText } = resolveBowlerSlotTarget(
+    crrMode,
+    ctx,
+    card,
+  );
 
   paintBowlerFigures(vm);
-  if (target === 'toss' && tossText && tossLine.textContent !== tossText) {
+  if (tossText && tossLine.textContent !== tossText) {
     tossLine.textContent = tossText;
+  }
+  if (chaseText && chaseLine.textContent !== chaseText) {
+    chaseLine.textContent = chaseText;
   }
 
   if (target === bowlerSlotMode) {
-    // Live refresh: update copy only — do not re-snap the flip every paint.
-    if (bowlerFlipTimer == null && target === 'toss' && tossText) {
-      tossLine.textContent = tossText;
+    if (bowlerFlipTimer == null) {
+      if (target === 'toss' && tossText) {
+        tossLine.textContent = tossText;
+      }
+      if (target === 'chase' && chaseText) {
+        chaseLine.textContent = chaseText;
+      }
     }
     return;
   }
 
-  if (target === 'toss' && tossText) {
-    tossLine.textContent = tossText;
-  }
-  flipBowlerSlot(target, stack, normal, tossLine);
+  flipBowlerSlot(target, stack, normal, tossLine, chaseLine);
 }
 
 function runEntranceOnce(strip: HTMLElement): void {
@@ -405,8 +446,8 @@ export function createTheme1ScoreStripHost(): ScoreStripHost {
       setText('rr-line', `RR ${vm.rrValue}`);
 
       renderBatters(vm);
-      renderSubLine(vm, card, crrMode);
-      renderBowlerPanel(vm, ctx, crrMode);
+      renderSubLine(vm, crrMode);
+      renderBowlerPanel(vm, ctx, card, crrMode);
 
       if (!hideStrip && strip && (wasHidden || strip.dataset.entered !== '1')) {
         runEntranceOnce(strip);

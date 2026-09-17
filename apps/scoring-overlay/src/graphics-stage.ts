@@ -11,6 +11,10 @@ import { mountBowlerCareerCard } from './bowler-career-card';
 import { mountBowlerMatchCard } from './bowler-match-card';
 import { mountBattingCard } from './batting-card';
 import { mountBowlingCard } from './bowling-card';
+import {
+  detectBoundaryAnnouncement,
+  mountBoundaryTrackerCard,
+} from './boundary-tracker-card';
 import { concealGraphic, revealGraphic } from './graphic-visibility';
 import { mountInningsScorecard } from './innings-scorecard';
 import { mountLastWicketCard } from './last-wicket-card';
@@ -126,6 +130,8 @@ export function buildGraphicsStageMarkup(): string {
 
       <div id="g-innings" class="graphic graphic-centered innings-scorecard-graphic" hidden></div>
 
+      <div id="g-boundary-tracker" class="graphic boundary-tracker-graphic" hidden></div>
+
       <div id="g-hello" class="graphic hello" hidden>
         <div class="hello-inner">HELLO</div>
       </div>
@@ -220,6 +226,9 @@ export function createGraphicsStage(
   );
   const lastWicketCard = mountOrNull('g-fow', mountLastWicketCard);
   const inningsCard = mountOrNull('g-innings', mountInningsScorecard);
+  const boundaryTracker = mountOrNull('g-boundary-tracker', mountBoundaryTrackerCard);
+  /** Prior scorecard for auto boundary-tracker delta detection. */
+  let boundaryPrevCard: ScorecardResponse | null = null;
 
   const graphicNode = (kind: OverlayKind): HTMLElement | null =>
     queryEl(GRAPHIC_IDS[kind]);
@@ -264,6 +273,7 @@ export function createGraphicsStage(
     teamPartnershipsCard?.hide();
     lastWicketCard?.hide();
     inningsCard?.hide();
+    boundaryTracker?.hide();
     for (const kind of Object.keys(GRAPHIC_IDS) as OverlayKind[]) {
       if (isMountManaged(kind)) {
         continue;
@@ -405,12 +415,12 @@ export function createGraphicsStage(
     }
   };
 
-  const showTossResult = (): boolean => {
+  const showTossResult = (animate = true): boolean => {
     if (!tossResult) {
       return false;
     }
     try {
-      return tossResult.show(matchCtx);
+      return tossResult.show(matchCtx, { animate });
     } catch (err) {
       console.warn('[graphics] toss result failed', err);
       tossResult.hide();
@@ -1088,6 +1098,15 @@ export function createGraphicsStage(
 
   return {
     setScorecard(card) {
+      try {
+        const hit = detectBoundaryAnnouncement(boundaryPrevCard, card);
+        if (hit) {
+          boundaryTracker?.show(hit);
+        }
+      } catch (err) {
+        console.warn('[graphics] boundary tracker failed', err);
+      }
+      boundaryPrevCard = card;
       scorecard = card;
       try {
         refreshActiveContent();
@@ -1098,7 +1117,7 @@ export function createGraphicsStage(
     setMatchContext(ctx) {
       matchCtx = ctx;
       try {
-        if (activeKind === 'toss_result' && !showTossResult()) {
+        if (activeKind === 'toss_result' && !showTossResult(false)) {
           activeKind = null;
           activePlayerId = null;
         }
@@ -1145,7 +1164,8 @@ export function createGraphicsStage(
       Boolean(playingXi?.isOnAir()) ||
       Boolean(battingCard?.isOnAir()) ||
       Boolean(bowlingCard?.isOnAir()) ||
-      Boolean(inningsCard?.isOnAir()),
+      Boolean(inningsCard?.isOnAir()) ||
+      Boolean(boundaryTracker?.isOnAir()),
     activeKind: () => activeKind,
     applyCommand(cmd) {
       try {

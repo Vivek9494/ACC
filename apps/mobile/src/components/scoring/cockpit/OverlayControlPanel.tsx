@@ -5,13 +5,16 @@ import type {
   MatchDetail,
   ScorecardResponse,
 } from '@acc/types';
+import { BallType } from '@acc/types';
 import { createElement, useEffect, useMemo, useState, type ChangeEvent } from 'react';
 import { Pressable, ScrollView, View, type ViewStyle } from 'react-native';
 
+import { listTeams } from '../../../lib/api';
 import { Text } from '../../ui/Text';
 import { CockpitPanel } from './CockpitPanel';
 import { ObsOverlayLinkButton } from './ObsOverlayLinkButton';
 import {
+  defaultAccTopBatsmenTeamId,
   OVERLAY_INNINGS_BREAK_VIEWS,
   OVERLAY_TEAM_ACTIONS,
   OVERLAY_TOURNAMENT_ACTIONS,
@@ -29,6 +32,7 @@ import {
   isCommonGraphicOnAir,
   isInningsBreakOnAir,
   isTeamActionOnAir,
+  orderAccFixedTeams,
   overlayOnAirLabel,
   parseOverlayWagonWheelKey,
   resolveOverlayTeam,
@@ -278,6 +282,10 @@ export function OverlayControlPanel({
     batsman_career: '',
     bowler_career: '',
   });
+  const [accTeamOptions, setAccTeamOptions] = useState<
+    Array<{ id: string; label: string }>
+  >([]);
+  const [topBatsmenTeamId, setTopBatsmenTeamId] = useState('');
 
   // Keep team toggle on the batting side when the innings batting side changes.
   useEffect(() => {
@@ -430,6 +438,60 @@ export function OverlayControlPanel({
 
   const tournamentId = match.tournamentId?.trim() ?? '';
   const tournamentEnabled = tournamentId.length > 0;
+  const isLeather = match.ballType === BallType.Leather;
+  const topBatsmenLive = isCommonGraphicOnAir(onAir, 'tournament_top_batsmen');
+
+  // Leather Top 5 Batsmen: load ACC 3/6/9/0 for the team dropdown.
+  useEffect(() => {
+    if (!isLeather || !tournamentId) {
+      setAccTeamOptions([]);
+      setTopBatsmenTeamId('');
+      return;
+    }
+    let cancelled = false;
+    void listTeams(tournamentId)
+      .then((teams) => {
+        if (cancelled) {
+          return;
+        }
+        const ordered = orderAccFixedTeams(teams);
+        setAccTeamOptions(
+          ordered.map((team) => ({
+            id: team.id,
+            label: team.name.trim() || 'Team',
+          })),
+        );
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setAccTeamOptions([]);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isLeather, tournamentId]);
+
+  // Default Top 5 team to current batting ACC side (or home / first) when options load or bat changes.
+  useEffect(() => {
+    if (!isLeather || accTeamOptions.length === 0) {
+      return;
+    }
+    setTopBatsmenTeamId(
+      defaultAccTopBatsmenTeamId(
+        accTeamOptions,
+        innings.battingIsExternal ? null : innings.battingTeamId,
+        match.homeTeamId,
+      ),
+    );
+  }, [
+    isLeather,
+    accTeamOptions,
+    innings.battingTeamId,
+    innings.battingIsExternal,
+    innings.inningsId,
+    match.homeTeamId,
+  ]);
 
   const connLabel =
     status === 'live' ? 'Relay live' : status === 'connecting' ? 'Connecting…' : 'Relay offline';
@@ -449,6 +511,26 @@ export function OverlayControlPanel({
       playingXiVariant: variant,
       inningsSource,
     }));
+  }
+
+  function showTopBatsmen(teamId: string): void {
+    if (!tournamentEnabled) {
+      return;
+    }
+    if (isLeather) {
+      const id = teamId.trim();
+      if (!id) {
+        return;
+      }
+      emit({
+        action: 'show',
+        graphic: 'tournament_top_batsmen',
+        payload: { teamId: id },
+      });
+    } else {
+      emit({ action: 'show', graphic: 'tournament_top_batsmen' });
+    }
+    setLocalOnAir('tournament_top_batsmen', null, null);
   }
 
   function hideGraphic(graphic: GraphicsKind): void {
@@ -1046,29 +1128,65 @@ export function OverlayControlPanel({
           <View style={TILE_GRID}>
             {OVERLAY_TOURNAMENT_ACTIONS.map((row) => {
               const rowOnAir = isCommonGraphicOnAir(onAir, row.graphic);
+              const isTopBatsmen = row.graphic === 'tournament_top_batsmen';
+              const leatherTopBatsmen = isTopBatsmen && isLeather;
+              const leatherReady =
+                !leatherTopBatsmen ||
+                (accTeamOptions.length > 0 && topBatsmenTeamId.length > 0);
               return (
                 <ControlTile
                   key={row.graphic}
                   title={row.label}
                   onAir={rowOnAir}
-                  enabled={tournamentEnabled}
+                  enabled={tournamentEnabled && leatherReady}
                   onPress={() => {
                     if (rowOnAir) {
                       hideGraphic(row.graphic);
                       return;
                     }
-                    if (!tournamentEnabled) {
+                    if (!tournamentEnabled || !leatherReady) {
+                      return;
+                    }
+                    if (isTopBatsmen) {
+                      showTopBatsmen(topBatsmenTeamId);
                       return;
                     }
                     emit({ action: 'show', graphic: row.graphic });
                     setLocalOnAir(row.graphic, null, null);
                   }}
                 >
-                  <Text className="font-sans text-[11px] text-on-surface-variant" numberOfLines={2}>
-                    {tournamentEnabled
-                      ? 'Tournament-wide aggregate'
-                      : 'No tournament linked'}
-                  </Text>
+                  {leatherTopBatsmen ? (
+                    <PlayerSelect
+                      options={accTeamOptions}
+                      value={topBatsmenTeamId}
+                      onChange={(id) => {
+                        setTopBatsmenTeamId(id);
+                        if (topBatsmenLive && id.trim()) {
+                          emit({
+                            action: 'show',
+                            graphic: 'tournament_top_batsmen',
+                            payload: { teamId: id },
+                          });
+                          setLocalOnAir('tournament_top_batsmen', null, null);
+                        }
+                      }}
+                      disabled={!tournamentEnabled || accTeamOptions.length === 0}
+                      placeholder={
+                        accTeamOptions.length === 0
+                          ? 'Loading teams…'
+                          : 'Select team…'
+                      }
+                    />
+                  ) : (
+                    <Text
+                      className="font-sans text-[11px] text-on-surface-variant"
+                      numberOfLines={2}
+                    >
+                      {tournamentEnabled
+                        ? 'Tournament-wide aggregate'
+                        : 'No tournament linked'}
+                    </Text>
+                  )}
                 </ControlTile>
               );
             })}

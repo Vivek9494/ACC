@@ -61,8 +61,8 @@ export const THEME1_PAGE_MARKUP = `
             <div class="t1-vdiv" aria-hidden="true"></div>
 
             <div id="bowler-stack" class="t1-bowler-block">
-              <div id="bowler-flip" class="t1-bowler-flip">
-                <div id="bowler-normal" class="t1-bowler-face t1-bowler-face-front t1-bowler-normal">
+              <div id="bowler-flip" class="t1-bowler-flip is-face-bowler">
+                <div id="bowler-normal" class="t1-bowler-face t1-bowler-face-bowler t1-bowler-normal">
                   <div class="t1-bowler-head">
                     <span class="t1-bowler-role">BOWLING</span>
                     <span id="bowler-overs" class="t1-bowler-ov">(0.0 ov)</span>
@@ -74,7 +74,8 @@ export const THEME1_PAGE_MARKUP = `
                   <div id="over-tracker" class="t1-over-balls" aria-label="This over"></div>
                   <p id="over-empty" class="t1-over-empty" hidden>Awaiting first delivery</p>
                 </div>
-                <p id="bowler-toss-line" class="t1-bowler-face t1-bowler-face-back t1-bowler-toss" hidden></p>
+                <p id="bowler-chase-line" class="t1-bowler-face t1-bowler-face-chase t1-bowler-chase" hidden></p>
+                <p id="bowler-toss-line" class="t1-bowler-face t1-bowler-face-toss t1-bowler-toss" hidden></p>
               </div>
             </div>
 

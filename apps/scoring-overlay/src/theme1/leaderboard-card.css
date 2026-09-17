@@ -51,6 +51,10 @@
   font-family: var(--t1-sans);
 }
 
+.t1-lb-row--no-team {
+  grid-template-columns: 48px 1fr auto;
+}
+
 .t1-lb-row:nth-child(even) {
   background: var(--t1-row-alt);
 }
