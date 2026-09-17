@@ -96,7 +96,7 @@ export default function AdminDashboardScreen(): React.ReactElement {
           key="scorer-match"
           match={overview.scorerMatch}
           buttonLabel={scorerDashboardButtonLabel(overview.scorerMatch)}
-          onPress={() =>
+          onStartPress={() =>
             handleScorerDashboardPress(overview.scorerMatch!, router)
           }
         />
