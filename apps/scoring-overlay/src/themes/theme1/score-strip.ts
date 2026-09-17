@@ -125,9 +125,10 @@ function renderBatters(vm: StripViewModel): void {
       // Faint diamond immediately LEFT of runs — striker only.
       strike.hidden = !batter.onStrike;
     }
-    setText(`batter-${i}-name`, batter.name);
-    setText(`batter-${i}-runs`, batter.runs || '0');
-    setText(`batter-${i}-balls`, batter.balls || '0');
+    const empty = !batter.name.trim() || batter.name.trim() === '—';
+    setText(`batter-${i}-name`, batter.name || '—');
+    setText(`batter-${i}-runs`, empty ? '—' : batter.runs || '0');
+    setText(`batter-${i}-balls`, empty ? '—' : batter.balls || '0');
   }
 }
 

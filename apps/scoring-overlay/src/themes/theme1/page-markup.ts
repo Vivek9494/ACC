@@ -5,7 +5,7 @@ export const THEME1_PAGE_MARKUP = `
           <div class="t1-id-bar t1-strip-section" data-strip-section="id">
             <div class="t1-id-left">
               <span class="t1-id-diamond" aria-hidden="true"></span>
-              <span class="t1-id-live">LIVE</span>
+              <span class="t1-id-live">ASC</span>
             </div>
             <p id="strip-banner" class="t1-id-center">—</p>
             <p id="strip-matchup" class="t1-id-right">—</p>
@@ -23,6 +23,7 @@ export const THEME1_PAGE_MARKUP = `
             <div class="t1-total-block">
               <div class="t1-total-head">
                 <span id="team-line" class="t1-total-abbr">—</span>
+                <span class="t1-total-sep" aria-hidden="true">·</span>
                 <span class="t1-total-role">BATTING</span>
               </div>
               <p id="score-line" class="t1-total-score">0 / 0</p>
@@ -106,8 +107,14 @@ export const THEME1_PAGE_MARKUP = `
           <div class="t1-footer-bar t1-strip-section" data-strip-section="footer">
             <p class="t1-footer-legend" aria-hidden="true">
               <span class="t1-leg">DOT <span class="t1-leg-dot">•</span></span>
-              <span class="t1-leg">BOUNDARY <span class="t1-leg-4">4</span> / <span class="t1-leg-6">6</span></span>
-              <span class="t1-leg t1-leg-wkt">WICKET W</span>
+              <span class="t1-leg"
+                >BOUNDARY <span class="t1-leg-4">4</span
+                ><span class="t1-leg-sep">/</span
+                ><span class="t1-leg-6">6</span></span
+              >
+              <span class="t1-leg"
+                >WICKET <span class="t1-leg-wkt-mark">W</span></span
+              >
               <span class="t1-leg">WIDE WD</span>
               <span class="t1-leg">NO-BALL NB</span>
             </p>

@@ -133,17 +133,17 @@
   display: grid;
   grid-template-columns:
     auto
-    minmax(120px, 0.95fr)
+    minmax(140px, 1fr)
     auto
     auto
-    auto
-    minmax(180px, 1.25fr)
     auto
     minmax(200px, 1.35fr)
+    auto
+    minmax(220px, 1.45fr)
     auto;
   align-items: center;
-  gap: 0 10px;
-  min-height: 78px;
+  gap: 0 12px;
+  min-height: 88px;
   padding: 0;
   background: linear-gradient(180deg, #0a1f38 0%, var(--s-navy) 55%, #071628 100%);
 }
@@ -153,8 +153,9 @@
   align-items: center;
   justify-content: center;
   align-self: stretch;
-  padding: 0 12px;
+  padding: 0 16px;
   background: rgba(6, 19, 35, 0.45);
+  min-width: 72px;
 }
 
 .t1-end-bat {
@@ -169,8 +170,8 @@
   position: relative;
   display: grid;
   place-items: center;
-  width: 46px;
-  height: 52px;
+  width: 56px;
+  height: 64px;
   clip-path: polygon(50% 0%, 100% 16%, 100% 70%, 50% 100%, 0% 70%, 0% 16%);
   background: var(--s-navy-dk);
   box-shadow: inset 0 0 0 1.5px var(--s-blue);
@@ -178,24 +179,24 @@
 
 .t1-mono-star {
   position: absolute;
-  top: 5px;
-  font-size: 8px;
+  top: 7px;
+  font-size: 9px;
   line-height: 1;
   color: var(--s-gold);
 }
 
 .t1-mono-abbr {
   font-family: var(--s-cond);
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 800;
   letter-spacing: 0.04em;
   color: #fff;
-  margin-top: 5px;
+  margin-top: 6px;
 }
 
 .t1-mono-stripe {
   position: absolute;
-  bottom: 8px;
+  bottom: 10px;
   left: 22%;
   right: 22%;
   height: 2.5px;
@@ -205,33 +206,40 @@
 .t1-vdiv {
   width: 1px;
   align-self: stretch;
-  margin: 10px 0;
+  margin: 12px 0;
   background: rgba(33, 139, 255, 0.28);
 }
 
 /* Total (batting) */
 .t1-total-block {
   min-width: 0;
-  padding: 6px 4px 6px 2px;
+  padding: 8px 6px 8px 4px;
   display: flex;
   flex-direction: column;
-  gap: 0;
+  gap: 1px;
 }
 
 .t1-total-head {
   display: flex;
   align-items: baseline;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
 }
 
 .t1-total-abbr {
   font-family: var(--s-cond);
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: #fff;
+}
+
+.t1-total-sep {
+  font-family: var(--s-cond);
+  font-size: 14px;
+  font-weight: 700;
+  color: rgba(242, 245, 248, 0.45);
 }
 
 .t1-total-role {
@@ -246,7 +254,7 @@
 .t1-total-score {
   margin: 0;
   font-family: var(--s-cond);
-  font-size: 40px;
+  font-size: 46px;
   font-weight: 800;
   line-height: 1;
   letter-spacing: 0.02em;
@@ -314,22 +322,22 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 3px;
+  gap: 5px;
   min-width: 0;
-  padding: 4px 6px;
+  padding: 6px 8px;
 }
 
 .t1-batter-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: baseline;
-  column-gap: 10px;
+  column-gap: 12px;
   min-width: 0;
 }
 
 .t1-batter-name {
   font-family: var(--s-cond);
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 700;
   letter-spacing: 0.02em;
   text-transform: uppercase;
@@ -344,7 +352,7 @@
   grid-template-columns: 10px minmax(2.4ch, auto) minmax(3.2ch, auto);
   align-items: baseline;
   justify-items: end;
-  column-gap: 2px;
+  column-gap: 3px;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -354,7 +362,7 @@
   height: 6px;
   margin-top: 1px;
   justify-self: center;
-  background: rgba(255, 175, 56, 0.55);
+  background: rgba(255, 175, 56, 0.7);
   transform: rotate(45deg);
 }
 
@@ -364,7 +372,7 @@
 
 .t1-batter-runs {
   font-family: var(--s-cond);
-  font-size: 28px;
+  font-size: 26px;
   font-weight: 800;
   line-height: 1;
   color: #fff;
@@ -373,7 +381,7 @@
 
 .t1-batter-balls {
   font-family: var(--s-cond);
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 600;
   color: var(--s-muted);
   justify-self: start;
@@ -383,7 +391,7 @@
 .t1-bowler-block {
   perspective: 1000px;
   min-width: 0;
-  padding: 6px 8px 6px 4px;
+  padding: 8px 10px 8px 6px;
 }
 
 .t1-bowler-flip {
@@ -447,7 +455,7 @@
 .t1-bowler-normal {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
 }
 
 .t1-bowler-toss[hidden],
@@ -515,7 +523,7 @@
   flex: 1 1 auto;
   min-width: 0;
   font-family: var(--s-cond);
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 800;
   letter-spacing: 0.02em;
   text-transform: uppercase;
@@ -528,7 +536,7 @@
 .t1-bowler-figs {
   flex-shrink: 0;
   font-family: var(--s-cond);
-  font-size: 26px;
+  font-size: 24px;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   color: #fff;
@@ -610,10 +618,10 @@
 .t1-over-balls {
   display: flex;
   flex-wrap: nowrap;
-  gap: 4px;
+  gap: 5px;
   align-items: center;
-  min-height: 20px;
-  margin-top: 2px;
+  min-height: 22px;
+  margin-top: 3px;
   overflow: hidden;
 }
 
@@ -631,33 +639,33 @@
 }
 
 .t1-ob {
-  min-width: 20px;
-  height: 20px;
-  padding: 0 4px;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 5px;
   border-radius: 2px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   font-family: var(--s-cond);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.02em;
   text-transform: uppercase;
-  background: rgba(255, 255, 255, 0.12);
-  color: rgba(8, 26, 48, 0.92);
+  background: rgba(242, 245, 248, 0.16);
+  color: rgba(242, 245, 248, 0.88);
   border: 1px solid transparent;
   box-sizing: border-box;
 }
 
 .t1-ob.is-dot {
-  background: rgba(255, 255, 255, 0.14);
-  color: rgba(242, 245, 248, 0.8);
+  background: rgba(242, 245, 248, 0.14);
+  color: rgba(242, 245, 248, 0.75);
 }
 
 .t1-ob.is-run {
-  background: rgba(255, 255, 255, 0.16);
-  color: #081a30;
+  background: rgba(242, 245, 248, 0.18);
+  color: #f2f5f8;
 }
 
 .t1-ob.is-boundary {
@@ -671,14 +679,14 @@
 }
 
 .t1-ob.is-extra {
-  background: rgba(33, 139, 255, 0.22);
-  color: rgba(242, 245, 248, 0.92);
+  background: rgba(242, 245, 248, 0.28);
+  color: rgba(8, 26, 48, 0.88);
   font-size: 9px;
   letter-spacing: 0;
 }
 
 .t1-ob.is-latest {
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.95);
+  box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.95);
 }
 
 /* —— Footer —— */
@@ -687,8 +695,8 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  min-height: 20px;
-  padding: 2px 14px 3px;
+  min-height: 22px;
+  padding: 3px 14px 4px;
   background: var(--s-navy-dk);
   border-bottom: 2px solid var(--s-blue);
 }
@@ -715,11 +723,16 @@
   color: var(--s-blue);
 }
 
+.t1-leg-sep {
+  color: var(--s-muted);
+  margin: 0 1px;
+}
+
 .t1-leg-6 {
   color: var(--s-gold);
 }
 
-.t1-leg-wkt {
+.t1-leg-wkt-mark {
   color: var(--s-gold);
 }
 
@@ -756,8 +769,13 @@
     gap: 0 6px;
   }
 
+  .t1-mono-shield {
+    width: 48px;
+    height: 54px;
+  }
+
   .t1-total-score {
-    font-size: 32px;
+    font-size: 36px;
   }
 
   .t1-bowler-bound-num {
@@ -765,15 +783,15 @@
   }
 
   .t1-batter-runs {
-    font-size: 24px;
+    font-size: 22px;
   }
 
   .t1-bowler-figs {
-    font-size: 22px;
+    font-size: 20px;
   }
 
   .t1-batter-name,
   .t1-bowler-name {
-    font-size: 16px;
+    font-size: 15px;
   }
 }

@@ -1,5 +1,6 @@
 /**
  * Batting card — premium broadcast batting scorecard for one team's innings.
+ * Layout matches the package reference (navy/blue/gold, shield, RUNS/WICKETS + OVERS header).
  */
 
 import {
@@ -82,7 +83,7 @@ function howOutText(card: ScorecardResponse, batter: BatterCard): string {
     return 'retired hurt';
   }
   if (!batter.isOut) {
-    return 'not out';
+    return 'batting';
   }
   return formatDismissalShort(batter, (id) => nameOf(card, id)).trim() || 'out';
 }
@@ -111,6 +112,10 @@ function inningsHeading(innings: InningsScorecard): string {
   return `${n}th Innings`;
 }
 
+function inningsHeadingShort(innings: InningsScorecard): string {
+  return inningsHeading(innings).toUpperCase();
+}
+
 function runRateText(innings: InningsScorecard): string {
   if (innings.legalBalls <= 0) {
     return '0.00';
@@ -131,25 +136,24 @@ function normalizeExtras(innings: InningsScorecard): ExtrasBreakdown {
   };
 }
 
-function formatExtrasSummary(extras: ExtrasBreakdown): string {
-  const parts: string[] = [];
-  if (extras.wides > 0) {
-    parts.push(`w ${extras.wides}`);
+function formatLine(innings: InningsScorecard): string {
+  const parts = [inningsHeadingShort(innings)];
+  if (innings.oversAllotted != null && innings.oversAllotted > 0) {
+    parts.push(`${innings.oversAllotted} OVERS`);
   }
-  if (extras.byes > 0) {
-    parts.push(`b ${extras.byes}`);
+  return parts.join(' · ');
+}
+
+function matchupLine(ctx: MatchContext | null): string {
+  if (!ctx) {
+    return 'ASC LIVE';
   }
-  if (extras.legByes > 0) {
-    parts.push(`lb ${extras.legByes}`);
+  const a = ctx.homeTeamName?.trim();
+  const b = ctx.awayTeamName?.trim() || ctx.externalOpponentName?.trim();
+  if (!a && !b) {
+    return 'ASC LIVE';
   }
-  if (extras.noBalls > 0) {
-    parts.push(`nb ${extras.noBalls}`);
-  }
-  if (extras.penalties > 0) {
-    parts.push(`p ${extras.penalties}`);
-  }
-  const breakdown = parts.length > 0 ? ` (${parts.join(', ')})` : '';
-  return `Extras${breakdown} = ${extras.total}`;
+  return `${a || 'Home'} vs ${b || 'Away'}`.toUpperCase();
 }
 
 function dnbInRosterOrder(
@@ -202,7 +206,9 @@ function buildMarkup(): string {
         data-bc-section="id"
         data-bc-delay="${DELAY.id}"
       >
-        <p data-bc-id-line class="bc-id-line">BATTING SCORECARD</p>
+        <p data-bc-id-left class="bc-id-left">ASC</p>
+        <p data-bc-id-center class="bc-id-center">ASC LIVE</p>
+        <p data-bc-id-right class="bc-id-right">—</p>
       </section>
       <section
         class="bc-section bc-header"
@@ -210,13 +216,24 @@ function buildMarkup(): string {
         data-bc-delay="${DELAY.header}"
       >
         <div class="bc-header-inner">
-          <div data-bc-monogram class="bc-monogram" aria-hidden="true">—</div>
-          <div class="bc-header-copy">
-            <p class="bc-kicker">Batting scorecard</p>
-            <p data-bc-team class="bc-team-name">—</p>
-            <p data-bc-innings-label class="bc-innings-label">—</p>
+          <div class="bc-mono-shield" aria-hidden="true">
+            <span class="bc-mono-star">★</span>
+            <span data-bc-abbr class="bc-mono-abbr">—</span>
+            <span class="bc-mono-stripe"></span>
           </div>
-          <p data-bc-total class="bc-total-badge">0/0</p>
+          <div class="bc-header-copy">
+            <p data-bc-team class="bc-team-name">—</p>
+          </div>
+          <div class="bc-score-block">
+            <span class="bc-score-label">Runs / Wickets</span>
+            <p data-bc-total class="bc-score-total">0 / 0</p>
+          </div>
+          <div class="bc-header-vdiv" aria-hidden="true"></div>
+          <div class="bc-overs-block">
+            <span class="bc-overs-label">Overs</span>
+            <p data-bc-overs class="bc-overs-value">0.0</p>
+            <p data-bc-rr class="bc-rr-value">RR 0.00</p>
+          </div>
         </div>
         <div class="bc-header-sweep" aria-hidden="true"></div>
       </section>
@@ -228,7 +245,7 @@ function buildMarkup(): string {
         <div class="bc-col-grid bc-col-head" role="row">
           <span class="bc-col-name">Batter</span>
           <span class="bc-col-how">How out</span>
-          <span class="bc-col-num">R</span>
+          <span class="bc-col-runs">Runs</span>
           <span class="bc-col-num">B</span>
           <span class="bc-col-num">4s</span>
           <span class="bc-col-num">6s</span>
@@ -250,13 +267,19 @@ function buildMarkup(): string {
         data-bc-section="extras"
         data-bc-delay="720"
       >
-        <p data-bc-extras class="bc-extras-line">Extras</p>
-        <div class="bc-extras-grid">
-          <div class="bc-extra-cell"><span class="bc-extra-k">B</span><span data-bc-ex-b class="bc-extra-v">0</span></div>
-          <div class="bc-extra-cell"><span class="bc-extra-k">LB</span><span data-bc-ex-lb class="bc-extra-v">0</span></div>
-          <div class="bc-extra-cell"><span class="bc-extra-k">WD</span><span data-bc-ex-wd class="bc-extra-v">0</span></div>
-          <div class="bc-extra-cell"><span class="bc-extra-k">NB</span><span data-bc-ex-nb class="bc-extra-v">0</span></div>
+        <div class="bc-extras-main">
+          <span data-bc-extras-total class="bc-extras-total">Extras 0</span>
+          <span class="bc-extras-parts">
+            <span class="bc-ex-part">B <span data-bc-ex-b>0</span></span>
+            <span class="bc-ex-part">LB <span data-bc-ex-lb>0</span></span>
+            <span class="bc-ex-part">WD <span data-bc-ex-wd>0</span></span>
+            <span class="bc-ex-part">NB <span data-bc-ex-nb>0</span></span>
+          </span>
         </div>
+        <span class="bc-not-out-legend">
+          <span class="bc-not-out-mark" aria-hidden="true"></span>
+          Not out
+        </span>
       </section>
       <section
         class="bc-section bc-ytb"
@@ -272,7 +295,8 @@ function buildMarkup(): string {
         data-bc-section="footer"
         data-bc-delay="810"
       >
-        <p data-bc-footer class="bc-footer-line">—</p>
+        <p data-bc-footer-format class="bc-footer-format">—</p>
+        <p class="bc-footer-brand">ASC</p>
       </section>
     </div>
   `.trim();
@@ -300,7 +324,8 @@ export function mountBattingCard(host: HTMLElement): BattingCardController {
   const panel = (): HTMLElement | null => host.querySelector('.panel-batting-card');
 
   const ensureMarkup = (): void => {
-    if (!host.querySelector('.panel-batting-card')) {
+    // Rebuild when upgrading from the prior gold-square / total-pill markup.
+    if (!host.querySelector('.panel-batting-card .bc-score-block')) {
       host.innerHTML = buildMarkup();
     }
   };
@@ -371,14 +396,17 @@ export function mountBattingCard(host: HTMLElement): BattingCardController {
     ctx: MatchContext | null,
   ): boolean => {
     ensureMarkup();
-    const idLine = qs<HTMLElement>('[data-bc-id-line]');
-    const monogram = qs<HTMLElement>('[data-bc-monogram]');
+    const idLeft = qs<HTMLElement>('[data-bc-id-left]');
+    const idCenter = qs<HTMLElement>('[data-bc-id-center]');
+    const idRight = qs<HTMLElement>('[data-bc-id-right]');
+    const abbr = qs<HTMLElement>('[data-bc-abbr]');
     const teamEl = qs<HTMLElement>('[data-bc-team]');
-    const inningsLabel = qs<HTMLElement>('[data-bc-innings-label]');
     const totalEl = qs<HTMLElement>('[data-bc-total]');
+    const oversEl = qs<HTMLElement>('[data-bc-overs]');
+    const rrEl = qs<HTMLElement>('[data-bc-rr]');
     const rowsHost = qs<HTMLElement>('[data-bc-rows]');
     const empty = qs<HTMLElement>('[data-bc-empty]');
-    const extrasLine = qs<HTMLElement>('[data-bc-extras]');
+    const extrasTotal = qs<HTMLElement>('[data-bc-extras-total]');
     const exB = qs<HTMLElement>('[data-bc-ex-b]');
     const exLb = qs<HTMLElement>('[data-bc-ex-lb]');
     const exWd = qs<HTMLElement>('[data-bc-ex-wd]');
@@ -386,17 +414,20 @@ export function mountBattingCard(host: HTMLElement): BattingCardController {
     const ytbSection = qs<HTMLElement>('[data-bc-section="ytb"]');
     const ytbLabel = qs<HTMLElement>('[data-bc-ytb-label]');
     const ytbNames = qs<HTMLElement>('[data-bc-ytb-names]');
-    const footer = qs<HTMLElement>('[data-bc-footer]');
+    const footerFormat = qs<HTMLElement>('[data-bc-footer-format]');
 
     if (
-      !idLine ||
-      !monogram ||
+      !idLeft ||
+      !idCenter ||
+      !idRight ||
+      !abbr ||
       !teamEl ||
-      !inningsLabel ||
       !totalEl ||
+      !oversEl ||
+      !rrEl ||
       !rowsHost ||
       !empty ||
-      !extrasLine ||
+      !extrasTotal ||
       !exB ||
       !exLb ||
       !exWd ||
@@ -404,29 +435,27 @@ export function mountBattingCard(host: HTMLElement): BattingCardController {
       !ytbSection ||
       !ytbLabel ||
       !ytbNames ||
-      !footer
+      !footerFormat
     ) {
       return false;
     }
 
     const teamName = battingTeamLabel(card, innings);
-    idLine.textContent = `BATTING SCORECARD · ${inningsHeading(innings)}`;
-    monogram.textContent = teamInitials(teamName);
+    idLeft.textContent = 'ASC';
+    idCenter.textContent = matchupLine(ctx);
+    idRight.textContent = inningsHeadingShort(innings);
+    abbr.textContent = teamInitials(teamName);
     teamEl.textContent = teamName;
-    inningsLabel.textContent = inningsHeading(innings);
-    totalEl.textContent = `${innings.runs}/${innings.wickets}`;
+    totalEl.textContent = `${innings.runs} / ${innings.wickets}`;
+    oversEl.textContent = innings.oversText || '0.0';
+    rrEl.textContent = `RR ${runRateText(innings)}`;
 
     rowsHost.replaceChildren();
     const batters = innings.batters;
     empty.hidden = batters.length > 0;
 
     batters.forEach((batter, index) => {
-      const atCrease =
-        !batter.isOut &&
-        (batter.playerId === innings.currentStrikerId ||
-          batter.playerId === innings.currentNonStrikerId);
-      const onStrike =
-        !batter.isOut && batter.playerId === innings.currentStrikerId;
+      const batting = !batter.isOut;
 
       const row = document.createElement('div');
       row.className = 'bc-section bc-row bc-col-grid';
@@ -440,28 +469,34 @@ export function mountBattingCard(host: HTMLElement): BattingCardController {
       } else {
         row.classList.add('bc-row-alt-b');
       }
-      if (atCrease) {
-        row.classList.add('is-crease');
+      if (batting) {
+        row.classList.add('is-batting');
       }
 
       const name = document.createElement('span');
       name.className = 'bc-col-name';
-      name.textContent = `${nameOf(card, batter.playerId)}${onStrike ? ' *' : ''}`;
+      name.textContent = `${nameOf(card, batter.playerId)}${batting ? ' *' : ''}`;
 
       const how = document.createElement('span');
       how.className = 'bc-col-how';
+      if (batting) {
+        how.classList.add('is-batting-how');
+      }
       how.textContent = howOutText(card, batter);
       how.title = how.textContent;
 
+      const runs = document.createElement('span');
+      runs.className = 'bc-col-runs';
+      runs.textContent = String(batter.runs);
+
       const cells: Array<[string, string]> = [
-        ['bc-col-num', String(batter.runs)],
         ['bc-col-num', String(batter.balls)],
         ['bc-col-num', String(batter.fours)],
         ['bc-col-num', String(batter.sixes)],
         ['bc-col-num', strikeRateText(batter)],
       ];
 
-      row.append(name, how);
+      row.append(name, how, runs);
       for (const [cls, text] of cells) {
         const span = document.createElement('span');
         span.className = cls;
@@ -486,11 +521,11 @@ export function mountBattingCard(host: HTMLElement): BattingCardController {
     );
 
     const extras = normalizeExtras(innings);
+    extrasTotal.textContent = `Extras ${extras.total}`;
     exB.textContent = String(extras.byes);
     exLb.textContent = String(extras.legByes);
     exWd.textContent = String(extras.wides);
     exNb.textContent = String(extras.noBalls);
-    extrasLine.textContent = formatExtrasSummary(extras);
 
     if (waitingWillShow) {
       ytbSection.hidden = false;
@@ -501,8 +536,7 @@ export function mountBattingCard(host: HTMLElement): BattingCardController {
       ytbNames.textContent = '';
     }
 
-    const overs = innings.oversText || '0.0';
-    footer.textContent = `Total ${innings.runs}/${innings.wickets} · ${overs} ov · RR ${runRateText(innings)}`;
+    footerFormat.textContent = formatLine(innings);
 
     return true;
   };

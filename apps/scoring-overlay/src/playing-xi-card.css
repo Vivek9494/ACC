@@ -1,4 +1,4 @@
-/* Premium both-teams Playing XI — navy / blue / gold package. */
+/* Premium Playing XI — package UI (single-team or both-teams). */
 
 .playing-xi-graphic {
   /* Positioned by .graphic / .graphic-centered. */
@@ -13,6 +13,7 @@
   --pxi-row-b: #e5ecf2;
   --pxi-text: #13283d;
   --pxi-text-muted: rgba(19, 40, 61, 0.72);
+  --pxi-num: #6b849c;
   --pxi-wk: #9ec9ff;
 
   display: flex;
@@ -20,7 +21,7 @@
   min-width: min(94vw, 920px);
   max-width: min(98vw, 1040px);
   max-height: 94vh;
-  border-radius: 10px;
+  border-radius: 0;
   overflow: hidden;
   background: var(--pxi-navy);
   color: #f2f5f8;
@@ -29,6 +30,11 @@
     0 0 0 1px rgba(33, 139, 255, 0.18);
   pointer-events: none;
   font-family: 'Barlow', 'Montserrat', system-ui, sans-serif;
+}
+
+.panel-playing-xi.is-single {
+  min-width: min(72vw, 560px);
+  max-width: min(86vw, 640px);
 }
 
 .pxi-section {
@@ -63,39 +69,120 @@
   }
 }
 
+/* —— Top ID strip (3-part) —— */
 .pxi-id-strip {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 12px;
+  padding: 7px 16px;
   background: var(--pxi-navy-dark);
-  padding: 8px 18px;
-  border-bottom: 2px solid var(--pxi-blue);
+  border-top: 2px solid var(--pxi-blue);
+  border-bottom: 1px solid rgba(33, 139, 255, 0.28);
 }
 
-.pxi-id-line {
+.pxi-id-left,
+.pxi-id-center,
+.pxi-id-right {
   margin: 0;
   font-family: 'Barlow Condensed', 'Barlow', sans-serif;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pxi-id-left {
+  justify-self: start;
   color: var(--pxi-gold);
 }
 
+.pxi-id-center {
+  justify-self: center;
+  text-align: center;
+  color: #f2f5f8;
+}
+
+.pxi-id-right {
+  justify-self: end;
+  text-align: right;
+  color: var(--pxi-gold);
+}
+
+/* —— Title bar —— */
 .pxi-title-bar {
   position: relative;
-  padding: 12px 18px 10px;
-  background: linear-gradient(135deg, var(--pxi-navy) 0%, #0c2545 100%);
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 18px 14px;
+  background: linear-gradient(180deg, #0a1f38 0%, var(--pxi-navy) 60%, #071628 100%);
   overflow: hidden;
+}
+
+.pxi-title-left {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.pxi-title-kicker {
+  margin: 0 0 2px;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(242, 245, 248, 0.55);
 }
 
 .pxi-title {
   margin: 0;
   font-family: 'Barlow Condensed', 'Barlow', sans-serif;
-  font-size: 28px;
+  font-size: 34px;
   font-weight: 800;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  text-align: center;
+  text-align: left;
+  line-height: 1;
+}
+
+.pxi-title-main {
   color: #fff;
+}
+
+.pxi-title-accent {
+  color: var(--pxi-gold);
+  margin-left: 0.18em;
+}
+
+.pxi-title-right {
+  flex-shrink: 0;
+  text-align: right;
+  padding-bottom: 2px;
+}
+
+.pxi-title-right-label {
+  margin: 0;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(242, 245, 248, 0.5);
+}
+
+.pxi-title-right-value {
+  margin: 2px 0 0;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--pxi-gold);
 }
 
 .pxi-title-sweep {
@@ -104,7 +191,7 @@
   background: linear-gradient(
     105deg,
     transparent 35%,
-    rgba(255, 175, 56, 0.14) 50%,
+    rgba(255, 175, 56, 0.12) 50%,
     transparent 65%
   );
   transform: translateX(-120%);
@@ -124,6 +211,7 @@
   }
 }
 
+/* —— Team headers —— */
 .pxi-team-headers {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -140,16 +228,16 @@
   align-items: center;
   gap: 12px;
   min-width: 0;
-  padding: 12px 16px;
-  border-bottom: 1px solid rgba(33, 139, 255, 0.28);
+  padding: 14px 16px;
+  background: linear-gradient(180deg, #0a1f38 0%, var(--pxi-navy-dark) 100%);
 }
 
 .pxi-team-head[data-pxi-side='a'] {
-  border-left: 4px solid var(--pxi-blue);
+  border-bottom: 3px solid var(--pxi-blue);
 }
 
 .pxi-team-head[data-pxi-side='b'] {
-  border-left: 4px solid var(--pxi-gold);
+  border-bottom: 3px solid var(--pxi-gold);
 }
 
 .panel-playing-xi.is-single .pxi-team-head[data-pxi-side='b'] {
@@ -161,11 +249,15 @@
   flex-shrink: 0;
   display: grid;
   place-items: center;
-  width: 44px;
-  height: 50px;
+  width: 48px;
+  height: 54px;
   clip-path: polygon(50% 0%, 100% 16%, 100% 70%, 50% 100%, 0% 70%, 0% 16%);
-  background: var(--pxi-navy-dark);
+  background: var(--pxi-navy);
   box-shadow: inset 0 0 0 1.5px var(--pxi-blue);
+}
+
+.pxi-team-head[data-pxi-side='b'] .pxi-mono-shield {
+  box-shadow: inset 0 0 0 1.5px var(--pxi-gold);
 }
 
 .pxi-mono-star {
@@ -178,7 +270,7 @@
 
 .pxi-mono-abbr {
   font-family: 'Barlow Condensed', sans-serif;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 800;
   letter-spacing: 0.04em;
   color: #fff;
@@ -202,7 +294,7 @@
 .pxi-team-name {
   margin: 0;
   font-family: 'Barlow Condensed', sans-serif;
-  font-size: 18px;
+  font-size: 28px;
   font-weight: 800;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -210,17 +302,31 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  line-height: 1.05;
 }
 
 .pxi-team-sub {
-  margin: 2px 0 0;
+  margin: 3px 0 0;
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: rgba(242, 245, 248, 0.55);
 }
 
+.pxi-team-code {
+  margin: 0;
+  flex-shrink: 0;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(242, 245, 248, 0.22);
+  line-height: 1;
+}
+
+/* —— Columns / rows —— */
 .pxi-col-heads {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -302,14 +408,14 @@
 .pxi-num {
   font-family: 'Barlow Condensed', sans-serif;
   font-size: 14px;
-  font-weight: 800;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
   text-align: right;
-  color: var(--pxi-blue);
+  color: var(--pxi-num);
 }
 
 .pxi-cell[data-pxi-side='b'] .pxi-num {
-  color: #c98618;
+  color: #8a7a62;
 }
 
 .pxi-player {
@@ -372,11 +478,13 @@
   white-space: nowrap;
 }
 
+/* —— Legend + footer —— */
 .pxi-legend {
   display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   flex-wrap: wrap;
-  justify-content: center;
-  gap: 14px 22px;
   padding: 9px 16px;
   background: var(--pxi-navy-dark);
   border-top: 1px solid rgba(33, 139, 255, 0.28);
@@ -387,10 +495,32 @@
   color: rgba(242, 245, 248, 0.7);
 }
 
+.pxi-legend-keys {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 18px;
+  min-width: 0;
+}
+
 .pxi-legend-item {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+}
+
+.pxi-legend-format {
+  margin: 0;
+  flex-shrink: 0;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(242, 245, 248, 0.45);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 45%;
 }
 
 .pxi-footer {
@@ -398,9 +528,10 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 10px 16px 12px;
+  padding: 10px 16px 11px;
   background: var(--pxi-navy);
   border-top: 1px solid rgba(33, 139, 255, 0.22);
+  border-bottom: 2px solid var(--pxi-blue);
 }
 
 .pxi-footer-mark {
@@ -413,24 +544,32 @@
   color: var(--pxi-gold);
 }
 
-.pxi-footer-note {
+.pxi-footer-brand {
   margin: 0;
+  font-family: 'Barlow Condensed', sans-serif;
   font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
   color: rgba(242, 245, 248, 0.55);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+}
+
+.pxi-footer-slash {
+  color: var(--pxi-blue);
+  margin: 0 2px;
 }
 
 @media (max-height: 720px), (max-width: 820px) {
   .pxi-title {
-    font-size: 22px;
+    font-size: 26px;
   }
 
   .pxi-team-name {
-    font-size: 15px;
+    font-size: 20px;
+  }
+
+  .pxi-team-code {
+    font-size: 16px;
   }
 
   .pxi-cell {

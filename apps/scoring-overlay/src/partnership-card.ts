@@ -72,6 +72,10 @@ function inningsHeading(innings: InningsScorecard): string {
   return `${n}th Innings`;
 }
 
+function inningsHeadingShort(innings: InningsScorecard): string {
+  return inningsHeading(innings).toUpperCase();
+}
+
 function wicketOrdinal(n: number): string {
   const mod100 = n % 100;
   if (mod100 >= 11 && mod100 <= 13) {
@@ -97,10 +101,6 @@ function strikeRateText(runs: number, balls: number): string {
   return ((runs / balls) * 100).toFixed(2);
 }
 
-function scoreText(runs: number, balls: number): string {
-  return `${runs}(${balls})`;
-}
-
 function pctText(part: number, total: number): string {
   if (total <= 0) {
     return '0.0%';
@@ -108,44 +108,72 @@ function pctText(part: number, total: number): string {
   return `${((part / total) * 100).toFixed(1)}%`;
 }
 
+function formatFooter(innings: InningsScorecard): string {
+  const parts = [inningsHeadingShort(innings)];
+  if (innings.oversAllotted != null && innings.oversAllotted > 0) {
+    parts.push(`${innings.oversAllotted} OVERS`);
+  }
+  return parts.join(' · ');
+}
+
+function buildBatterPanel(side: 'a' | 'b'): string {
+  return `
+    <div class="ps-batter" data-ps-side="${side === 'a' ? 'left' : 'right'}">
+      <p class="ps-batter-label">
+        <span class="ps-batter-mark" aria-hidden="true"></span>
+        Batter contribution
+      </p>
+      <p data-ps-${side}-name class="ps-batter-name">—</p>
+      <div class="ps-batter-runs-row">
+        <p data-ps-${side}-runs class="ps-batter-runs">0</p>
+        <div class="ps-batter-runs-meta">
+          <span class="ps-batter-runs-label">Runs</span>
+          <span data-ps-${side}-balls class="ps-batter-balls">0 BALLS</span>
+        </div>
+      </div>
+      <p data-ps-${side}-sr class="ps-batter-sr">Strike rate —</p>
+    </div>
+  `.trim();
+}
+
 function buildMarkup(): string {
   return `
     <div class="panel panel-partnership-card">
       <section class="ps-section ps-id-strip" data-ps-section="id">
-        <p data-ps-id-line class="ps-id-line">CURRENT PARTNERSHIP</p>
+        <p data-ps-id-left class="ps-id-left">ASC</p>
+        <p data-ps-id-center class="ps-id-center">ASC LIVE</p>
+        <p data-ps-id-right class="ps-id-right">—</p>
       </section>
       <section class="ps-section ps-header" data-ps-section="header">
+        <div class="ps-header-copy">
+          <p data-ps-matchup class="ps-matchup">—</p>
+          <p class="ps-title">
+            <span class="ps-title-main">Current</span>
+            <span class="ps-title-accent">Partnership</span>
+          </p>
+        </div>
         <div class="ps-mono-shield" aria-hidden="true">
           <span class="ps-mono-star">★</span>
           <span data-ps-abbr class="ps-mono-abbr">—</span>
           <span class="ps-mono-stripe"></span>
         </div>
-        <div class="ps-header-copy">
-          <p class="ps-kicker">Live stand</p>
-          <p class="ps-title">Current Partnership</p>
-          <p data-ps-vs class="ps-vs-line">—</p>
-        </div>
         <div class="ps-header-sweep" aria-hidden="true"></div>
       </section>
       <section class="ps-section ps-figures" data-ps-section="figures">
-        <div class="ps-batter" data-ps-side="left">
-          <p data-ps-a-name class="ps-batter-name">—</p>
-          <p data-ps-a-score class="ps-batter-score">0(0)</p>
-          <p data-ps-a-sr class="ps-batter-meta">SR —</p>
-        </div>
+        ${buildBatterPanel('a')}
         <div class="ps-center">
-          <p data-ps-wicket class="ps-wicket">1ST WICKET</p>
+          <p class="ps-center-label">Partnership runs</p>
           <p data-ps-total class="ps-total">0</p>
-          <p data-ps-center-meta class="ps-center-meta">0 balls · RR 0.00</p>
+          <p data-ps-from-balls class="ps-from-balls">From 0 balls</p>
+          <p data-ps-rr class="ps-rr">Run rate 0.00</p>
         </div>
-        <div class="ps-batter" data-ps-side="right">
-          <p data-ps-b-name class="ps-batter-name">—</p>
-          <p data-ps-b-score class="ps-batter-score">0(0)</p>
-          <p data-ps-b-sr class="ps-batter-meta">SR —</p>
-        </div>
+        ${buildBatterPanel('b')}
       </section>
       <section class="ps-section ps-share" data-ps-section="share">
-        <p class="ps-share-title">Share of partnership</p>
+        <div class="ps-share-head">
+          <p class="ps-share-title">Share of partnership</p>
+          <p data-ps-summary class="ps-share-summary">0 + 0 EXTRAS + 0</p>
+        </div>
         <div class="ps-bar-track" aria-hidden="true">
           <div data-ps-bar-fill class="ps-bar-fill">
             <div data-ps-bar-left class="ps-bar-seg is-left"></div>
@@ -155,14 +183,13 @@ function buildMarkup(): string {
         </div>
         <div class="ps-share-pcts">
           <span data-ps-pct-left>0.0%</span>
-          <span data-ps-pct-extras>0.0% extras</span>
+          <span data-ps-pct-extras>Extras 0</span>
           <span data-ps-pct-right>0.0%</span>
         </div>
-        <p data-ps-summary class="ps-share-summary">0 + 0 EXTRAS + 0</p>
       </section>
       <section class="ps-section ps-footer" data-ps-section="footer">
-        <p class="ps-footer-mark">ASC</p>
-        <p data-ps-footer-note class="ps-footer-note"></p>
+        <p data-ps-footer-format class="ps-footer-format">—</p>
+        <p class="ps-footer-brand">ASC</p>
       </section>
     </div>
   `.trim();
@@ -182,7 +209,8 @@ export function mountPartnershipCard(host: HTMLElement): PartnershipCardControll
     host.querySelector('.panel-partnership-card');
 
   const ensureMarkup = (): void => {
-    if (!host.querySelector('.panel-partnership-card')) {
+    // Rebuild when upgrading from the prior compact / centered-id markup.
+    if (!host.querySelector('.panel-partnership-card .ps-title-accent')) {
       host.innerHTML = buildMarkup();
     }
   };
@@ -285,21 +313,17 @@ export function mountPartnershipCard(host: HTMLElement): PartnershipCardControll
       return;
     }
 
-    const leftPct = total > 0 ? (leftRuns / total) * 100 : 0;
-    const extrasPct = total > 0 ? (extras / total) * 100 : 0;
-    const rightPct = total > 0 ? (rightRuns / total) * 100 : 0;
-
-    leftEl.style.flexGrow = String(leftRuns);
-    extrasEl.style.flexGrow = String(extras);
-    rightEl.style.flexGrow = String(rightRuns);
-    leftEl.style.flexBasis = leftPct > 0 ? '0' : '0';
-    extrasEl.style.flexBasis = extrasPct > 0 ? '0' : '0';
-    rightEl.style.flexBasis = rightPct > 0 ? '0' : '0';
+    leftEl.style.flexGrow = String(Math.max(leftRuns, 0));
+    extrasEl.style.flexGrow = String(Math.max(extras, 0));
+    rightEl.style.flexGrow = String(Math.max(rightRuns, 0));
+    leftEl.style.flexBasis = '0';
+    extrasEl.style.flexBasis = '0';
+    rightEl.style.flexBasis = '0';
     leftEl.style.display = leftRuns > 0 ? '' : 'none';
+    // Gray extras segment must render whenever extras > 0.
     extrasEl.style.display = extras > 0 ? '' : 'none';
     rightEl.style.display = rightRuns > 0 ? '' : 'none';
 
-    // When all zero, keep empty track (zero-width fill via no ready / empty flex).
     if (total <= 0) {
       leftEl.style.display = 'none';
       extrasEl.style.display = 'none';
@@ -307,86 +331,104 @@ export function mountPartnershipCard(host: HTMLElement): PartnershipCardControll
     }
 
     pctLeft.textContent = pctText(leftRuns, total);
-    pctExtras.textContent = `${pctText(extras, total)} extras`;
+    pctExtras.textContent = `Extras ${extras}`;
     pctRight.textContent = pctText(rightRuns, total);
     summary.textContent = `${leftRuns} + ${extras} EXTRAS + ${rightRuns}`;
   };
 
-  const paint = (card: ScorecardResponse, innings: InningsScorecard, ps: Partnership): boolean => {
+  const paint = (
+    card: ScorecardResponse,
+    innings: InningsScorecard,
+    ps: Partnership,
+  ): boolean => {
     ensureMarkup();
-    const idLine = qs<HTMLElement>('[data-ps-id-line]');
+    const idLeft = qs<HTMLElement>('[data-ps-id-left]');
+    const idCenter = qs<HTMLElement>('[data-ps-id-center]');
+    const idRight = qs<HTMLElement>('[data-ps-id-right]');
     const abbr = qs<HTMLElement>('[data-ps-abbr]');
-    const vs = qs<HTMLElement>('[data-ps-vs]');
+    const matchup = qs<HTMLElement>('[data-ps-matchup]');
     const aName = qs<HTMLElement>('[data-ps-a-name]');
-    const aScore = qs<HTMLElement>('[data-ps-a-score]');
+    const aRuns = qs<HTMLElement>('[data-ps-a-runs]');
+    const aBalls = qs<HTMLElement>('[data-ps-a-balls]');
     const aSr = qs<HTMLElement>('[data-ps-a-sr]');
     const bName = qs<HTMLElement>('[data-ps-b-name]');
-    const bScore = qs<HTMLElement>('[data-ps-b-score]');
+    const bRunsEl = qs<HTMLElement>('[data-ps-b-runs]');
+    const bBalls = qs<HTMLElement>('[data-ps-b-balls]');
     const bSr = qs<HTMLElement>('[data-ps-b-sr]');
-    const wicket = qs<HTMLElement>('[data-ps-wicket]');
     const total = qs<HTMLElement>('[data-ps-total]');
-    const centerMeta = qs<HTMLElement>('[data-ps-center-meta]');
-    const footerNote = qs<HTMLElement>('[data-ps-footer-note]');
+    const fromBalls = qs<HTMLElement>('[data-ps-from-balls]');
+    const rrEl = qs<HTMLElement>('[data-ps-rr]');
+    const footerFormat = qs<HTMLElement>('[data-ps-footer-format]');
 
     if (
-      !idLine ||
+      !idLeft ||
+      !idCenter ||
+      !idRight ||
       !abbr ||
-      !vs ||
+      !matchup ||
       !aName ||
-      !aScore ||
+      !aRuns ||
+      !aBalls ||
       !aSr ||
       !bName ||
-      !bScore ||
+      !bRunsEl ||
+      !bBalls ||
       !bSr ||
-      !wicket ||
       !total ||
-      !centerMeta ||
-      !footerNote
+      !fromBalls ||
+      !rrEl ||
+      !footerFormat
     ) {
       return false;
     }
 
     const battingName = battingTeamLabel(card, innings);
     const bowlingName = bowlingTeamLabel(card, innings);
-    const heading = inningsHeading(innings);
-    idLine.textContent = `${battingName.toUpperCase()} · ${heading.toUpperCase()}`;
+    const wicketNo = currentPartnershipWicketNumber(innings);
+
+    idLeft.textContent = 'ASC';
+    idCenter.textContent = `${battingName} v ${bowlingName}`.toUpperCase();
+    idRight.textContent = `${wicketOrdinal(wicketNo)} WICKET`;
+
     abbr.textContent = teamInitials(battingName);
-    vs.textContent = `vs ${bowlingName}`;
+    matchup.textContent = `${battingName} v ${bowlingName}`;
 
     const [aId, bId] = ps.batterIds;
     const standIndex = innings.partnerships?.length ?? 0;
-    const aRuns = partnershipBatterRuns(ps, aId ?? '');
-    const bRuns = partnershipBatterRuns(ps, bId ?? '');
-    const aBalls = aId
+    const leftRuns = partnershipBatterRuns(ps, aId ?? '');
+    const rightRuns = partnershipBatterRuns(ps, bId ?? '');
+    const leftBalls = aId
       ? partnershipBatterBalls(innings.timeline, standIndex, aId)
       : 0;
-    const bBalls = bId
+    const rightBalls = bId
       ? partnershipBatterBalls(innings.timeline, standIndex, bId)
       : 0;
     const extras = partnershipExtras(ps);
-    const wicketNo = currentPartnershipWicketNumber(innings);
     const awaiting = ps.runs <= 0;
 
     aName.textContent = nameOf(card, aId ?? null);
     bName.textContent = nameOf(card, bId ?? null);
-    aScore.textContent = scoreText(aRuns, aBalls);
-    bScore.textContent = scoreText(bRuns, bBalls);
-    aSr.textContent = `SR ${strikeRateText(aRuns, aBalls)}`;
-    bSr.textContent = `SR ${strikeRateText(bRuns, bBalls)}`;
+    aRuns.textContent = String(leftRuns);
+    bRunsEl.textContent = String(rightRuns);
+    aBalls.textContent = `${leftBalls} BALLS`;
+    bBalls.textContent = `${rightBalls} BALLS`;
+    aSr.textContent = `Strike rate ${strikeRateText(leftRuns, leftBalls)}`;
+    bSr.textContent = `Strike rate ${strikeRateText(rightRuns, rightBalls)}`;
 
-    wicket.textContent = `${wicketOrdinal(wicketNo)} WICKET`;
     total.classList.toggle('is-awaiting', awaiting);
     if (awaiting) {
-      total.textContent = 'AWAITING FIRST RUN';
-      centerMeta.textContent = `${ps.balls} balls · RR —`;
+      total.textContent = '—';
+      fromBalls.textContent = `From ${ps.balls} balls`;
+      rrEl.textContent = 'Run rate —';
     } else {
       total.textContent = String(ps.runs);
+      fromBalls.textContent = `From ${ps.balls} balls`;
       const rr = partnershipRunRate(ps.runs, ps.balls);
-      centerMeta.textContent = `${ps.balls} balls · RR ${rr.toFixed(2)}`;
+      rrEl.textContent = `Run rate ${rr.toFixed(2)}`;
     }
 
-    paintBar(aRuns, extras, bRuns);
-    footerNote.textContent = `${battingName} vs ${bowlingName}`;
+    paintBar(leftRuns, extras, rightRuns);
+    footerFormat.textContent = formatFooter(innings);
     return true;
   };
 

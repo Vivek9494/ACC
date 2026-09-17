@@ -302,6 +302,10 @@ function setShield(root: ParentNode, side: 'a' | 'b', initials: string): void {
   if (abbr) {
     abbr.textContent = initials || '—';
   }
+  const code = qs<HTMLElement>(root, `[data-pxi-team-code="${side}"]`);
+  if (code) {
+    code.textContent = initials || '';
+  }
 }
 
 function paintCell(
@@ -406,14 +410,26 @@ function buildCardMarkup(): string {
         data-pxi-section="id"
         data-pxi-delay="${DELAY.id}"
       >
-        <p data-pxi-id-line class="pxi-id-line">ASC LIVE</p>
+        <p data-pxi-id-left class="pxi-id-left">ASC</p>
+        <p data-pxi-id-center class="pxi-id-center">ASC LIVE</p>
+        <p data-pxi-id-right class="pxi-id-right">TEAM SHEET</p>
       </div>
       <div
         class="pxi-title-bar pxi-section"
         data-pxi-section="title"
         data-pxi-delay="${DELAY.title}"
       >
-        <p data-pxi-title class="pxi-title">Playing XI</p>
+        <div class="pxi-title-left">
+          <p data-pxi-title-kicker class="pxi-title-kicker">Lineups</p>
+          <p class="pxi-title" data-pxi-title>
+            <span data-pxi-title-main class="pxi-title-main">Playing</span>
+            <span data-pxi-title-accent class="pxi-title-accent">XI</span>
+          </p>
+        </div>
+        <div class="pxi-title-right">
+          <p data-pxi-title-right-label class="pxi-title-right-label">The lineup</p>
+          <p data-pxi-title-right-value class="pxi-title-right-value">11 players</p>
+        </div>
         <div class="pxi-title-sweep" aria-hidden="true"></div>
       </div>
       <div
@@ -431,6 +447,7 @@ function buildCardMarkup(): string {
             <p data-pxi-team="a" class="pxi-team-name">—</p>
             <p class="pxi-team-sub">Playing XI</p>
           </div>
+          <p data-pxi-team-code="a" class="pxi-team-code" aria-hidden="true"></p>
         </header>
         <header class="pxi-team-head" data-pxi-side="b" aria-label="Team B">
           <div class="pxi-mono-shield" aria-hidden="true">
@@ -442,6 +459,7 @@ function buildCardMarkup(): string {
             <p data-pxi-team="b" class="pxi-team-name">—</p>
             <p class="pxi-team-sub">Playing XI</p>
           </div>
+          <p data-pxi-team-code="b" class="pxi-team-code" aria-hidden="true"></p>
         </header>
       </div>
       <div
@@ -464,13 +482,16 @@ function buildCardMarkup(): string {
         data-pxi-section="legend"
         data-pxi-delay="${DELAY.legend}"
       >
-        <span class="pxi-legend-item">
-          <span class="pxi-badge pxi-badge-c">C</span> Captain
-        </span>
-        <span class="pxi-legend-item">
-          <span class="pxi-badge pxi-badge-wk">WK</span> Wicketkeeper
-        </span>
-        <span class="pxi-legend-item">White row = captain</span>
+        <div class="pxi-legend-keys">
+          <span class="pxi-legend-item">
+            <span class="pxi-badge pxi-badge-c">C</span> Captain
+          </span>
+          <span class="pxi-legend-item">
+            <span class="pxi-badge pxi-badge-wk">WK</span> Wicketkeeper
+          </span>
+          <span class="pxi-legend-item">White row = captain</span>
+        </div>
+        <p data-pxi-legend-format class="pxi-legend-format">Team sheet</p>
       </div>
       <div
         class="pxi-footer pxi-section"
@@ -478,7 +499,7 @@ function buildCardMarkup(): string {
         data-pxi-delay="${DELAY.footer}"
       >
         <p class="pxi-footer-mark">ASC</p>
-        <p data-pxi-footer-note class="pxi-footer-note"></p>
+        <p class="pxi-footer-brand">Cricket <span class="pxi-footer-slash">/</span> ASC</p>
       </div>
     </div>
   `.trim();
@@ -494,7 +515,8 @@ export function mountPlayingXiCard(host: HTMLElement): PlayingXiCardController {
     host.querySelector('.panel-playing-xi');
 
   const ensureMarkup = (): void => {
-    if (!host.querySelector('.panel-playing-xi')) {
+    // Rebuild when upgrading from the prior centered single-line title/ID strip.
+    if (!host.querySelector('.panel-playing-xi .pxi-title-accent')) {
       host.innerHTML = buildCardMarkup();
     }
   };
@@ -600,25 +622,52 @@ export function mountPlayingXiCard(host: HTMLElement): PlayingXiCardController {
   ): boolean => {
     ensureMarkup();
     const p = panel();
-    const title = qs<HTMLElement>(host, '[data-pxi-title]');
-    const idLine = qs<HTMLElement>(host, '[data-pxi-id-line]');
+    const titleMain = qs<HTMLElement>(host, '[data-pxi-title-main]');
+    const titleAccent = qs<HTMLElement>(host, '[data-pxi-title-accent]');
+    const titleKicker = qs<HTMLElement>(host, '[data-pxi-title-kicker]');
+    const titleRightLabel = qs<HTMLElement>(host, '[data-pxi-title-right-label]');
+    const titleRightValue = qs<HTMLElement>(host, '[data-pxi-title-right-value]');
+    const idLeft = qs<HTMLElement>(host, '[data-pxi-id-left]');
+    const idCenter = qs<HTMLElement>(host, '[data-pxi-id-center]');
+    const idRight = qs<HTMLElement>(host, '[data-pxi-id-right]');
     const nameA = qs<HTMLElement>(host, '[data-pxi-team="a"]');
     const nameB = qs<HTMLElement>(host, '[data-pxi-team="b"]');
-    const footerNote = qs<HTMLElement>(host, '[data-pxi-footer-note]');
-    if (!p || !title || !idLine || !nameA || !nameB || !footerNote) {
+    const legendFormat = qs<HTMLElement>(host, '[data-pxi-legend-format]');
+    if (
+      !p ||
+      !titleMain ||
+      !titleAccent ||
+      !titleKicker ||
+      !titleRightLabel ||
+      !titleRightValue ||
+      !idLeft ||
+      !idCenter ||
+      !idRight ||
+      !nameA ||
+      !nameB ||
+      !legendFormat
+    ) {
       return false;
     }
 
     const variant = options?.variant ?? 'both';
-    if (variant === 'lineup') {
-      title.textContent = 'Batting line-up';
-    } else {
-      title.textContent = 'Playing XI';
-    }
-
     const preview = formatPlayingXiPreview(ctx);
-    idLine.textContent = preview ? preview.toUpperCase() : 'ASC LIVE';
-    footerNote.textContent = preview ?? '';
+
+    idLeft.textContent = 'ASC';
+    idCenter.textContent = preview ? preview.toUpperCase() : 'ASC LIVE';
+    idRight.textContent = variant === 'lineup' ? 'BATTING ORDER' : 'TEAM SHEET';
+
+    if (variant === 'lineup') {
+      titleKicker.textContent = 'Batting order';
+      titleMain.textContent = 'Batting';
+      titleAccent.textContent = 'XI';
+      titleRightLabel.textContent = 'The lineup';
+    } else {
+      titleKicker.textContent = 'Lineups';
+      titleMain.textContent = 'Playing';
+      titleAccent.textContent = 'XI';
+      titleRightLabel.textContent = 'The lineup';
+    }
 
     if (variant === 'both') {
       if (!preview) {
@@ -632,6 +681,11 @@ export function mountPlayingXiCard(host: HTMLElement): PlayingXiCardController {
       setShield(host, 'b', sides.b.initials);
       paintSide(host, 'a', sides.a.players);
       paintSide(host, 'b', sides.b.players);
+      const count =
+        sides.a.players.filter((row) => row.name.trim()).length +
+        sides.b.players.filter((row) => row.name.trim()).length;
+      titleRightValue.textContent = `${count || 22} players`;
+      legendFormat.textContent = preview.toUpperCase();
       return true;
     }
 
@@ -651,6 +705,9 @@ export function mountPlayingXiCard(host: HTMLElement): PlayingXiCardController {
     setShield(host, 'b', '—');
     paintSide(host, 'a', side.players);
     paintSide(host, 'b', []);
+    const count = side.players.filter((row) => row.name.trim()).length;
+    titleRightValue.textContent = `${count || XI_SLOTS} players`;
+    legendFormat.textContent = side.name.toUpperCase();
     return true;
   };
 
