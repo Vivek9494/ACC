@@ -1,63 +1,251 @@
+/**
+ * Premium tournament Fours / Sixes — navy package, bottom-right, 5px above strip.
+ */
+
 @import './tokens.css';
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Barlow:wght@500;600;700;800&display=swap');
 
-.t1-stat-graphic {
-  /* Positioned by .graphic-centered on the stage. */
+/* Match `.graphics-stage-layer .graphic` specificity so BR placement wins over centered default. */
+.graphics-stage-layer .graphic.tournament-stat-graphic {
+  left: auto;
+  right: 28px;
+  top: auto;
+  /* Strip top = inset + height; card bottom sits exactly 5px above that. */
+  bottom: calc(var(--strip-bottom-inset) + var(--strip-height) + 5px);
+  transform: translateX(45px);
+  opacity: 0;
+  transition:
+    opacity 550ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 550ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.t1-stat-panel {
-  min-width: min(72vw, 420px);
-  max-width: min(80vw, 480px);
-  border-radius: 8px;
-  overflow: hidden;
-  background: var(--t1-primary);
-  color: var(--t1-white);
-  box-shadow: 0 14px 44px rgba(0, 0, 0, 0.45);
-  pointer-events: none;
-  text-align: center;
+.graphics-stage-layer .graphic.tournament-stat-graphic.is-visible {
+  opacity: 1;
+  transform: translateX(0);
 }
 
-.t1-stat-panel.t1-checker {
-  background-color: var(--t1-primary);
+.graphics-stage-layer .graphic.tournament-stat-graphic:not(.is-visible) {
+  opacity: 0;
+  transform: translateX(28px);
+  transition:
+    opacity 300ms ease-in,
+    transform 300ms ease-in;
 }
 
-.t1-stat-accent {
-  height: 6px;
-  background: #ff6b00;
-}
+.panel-tournament-stat {
+  --ts-navy: #081a30;
+  --ts-navy-dark: #061323;
+  --ts-blue: #218bff;
+  --ts-gold: #ffaf38;
+  --ts-text: #f2f5f8;
+  --ts-muted: rgba(242, 245, 248, 0.62);
 
-.t1-stat-body {
-  padding: 28px 32px 32px;
   display: flex;
   flex-direction: column;
+  min-width: 280px;
+  max-width: min(36vw, 360px);
+  border-radius: 0;
+  overflow: hidden;
+  background: var(--ts-navy);
+  color: var(--ts-text);
+  box-shadow:
+    0 18px 44px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(33, 139, 255, 0.18);
+  pointer-events: none;
+  font-family: 'Barlow', 'Montserrat', system-ui, sans-serif;
+}
+
+.ts-section {
+  opacity: 0;
+  transform: translateX(28px);
+  transition:
+    opacity 550ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 550ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.panel-tournament-stat.ts-entering .ts-section.ts-section-visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.panel-tournament-stat.ts-exiting .ts-section {
+  opacity: 0;
+  transform: translateX(20px);
+  transition:
+    opacity 280ms ease-in,
+    transform 280ms ease-in;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .graphics-stage-layer .graphic.tournament-stat-graphic,
+  .graphics-stage-layer .graphic.tournament-stat-graphic:not(.is-visible) {
+    transition: opacity 120ms ease !important;
+    transform: none !important;
+  }
+
+  .ts-section {
+    transform: none;
+    transition: opacity 120ms ease;
+  }
+
+  .panel-tournament-stat.ts-exiting .ts-section {
+    transform: none;
+  }
+
+  .ts-title-sweep {
+    animation: none !important;
+  }
+}
+
+/* —— ID strip —— */
+.ts-id-strip {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+  padding: 6px 14px;
+  background: var(--ts-navy-dark);
+  border-top: 2px solid var(--ts-blue);
 }
 
-.t1-stat-eyebrow {
+.panel-tournament-stat.is-sixes .ts-id-strip {
+  border-top-color: var(--ts-gold);
+}
+
+.ts-id-left,
+.ts-id-center,
+.ts-id-right {
   margin: 0;
-  font-family: var(--t1-cond);
-  font-weight: 800;
-  font-size: 22px;
-  letter-spacing: 0.1em;
+  font-family: 'Barlow Condensed', 'Barlow', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  opacity: 0.92;
+  color: var(--ts-gold);
 }
 
-.t1-stat-value {
+.ts-id-left {
+  justify-self: start;
+}
+
+.ts-id-center {
+  justify-self: center;
+  color: rgba(242, 245, 248, 0.7);
+}
+
+.ts-id-right {
+  justify-self: end;
+}
+
+/* —— Title —— */
+.ts-title-bar {
+  position: relative;
+  padding: 12px 16px 10px;
+  background: linear-gradient(180deg, #0a1f38 0%, var(--ts-navy) 60%, #071628 100%);
+  overflow: hidden;
+  text-align: left;
+}
+
+.ts-title {
   margin: 0;
-  font-family: var(--t1-cond);
+  font-family: 'Barlow Condensed', 'Barlow', sans-serif;
+  font-size: 22px;
   font-weight: 800;
-  font-size: 96px;
-  line-height: 1;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-align: left;
+  color: #fff;
+  line-height: 1.05;
+}
+
+.panel-tournament-stat.is-sixes .ts-title {
+  color: #fff;
+}
+
+.ts-title-sweep {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 40%,
+    rgba(33, 139, 255, 0.18) 50%,
+    transparent 60%
+  );
+  transform: translateX(-120%);
+  pointer-events: none;
+}
+
+.panel-tournament-stat.ts-entering .ts-title-sweep {
+  animation: ts-sweep 900ms cubic-bezier(0.22, 1, 0.36, 1) 60ms both;
+}
+
+@keyframes ts-sweep {
+  from {
+    transform: translateX(-120%);
+  }
+  to {
+    transform: translateX(120%);
+  }
+}
+
+/* —— Value —— */
+.ts-value-block {
+  padding: 10px 16px 18px;
+  background: var(--ts-navy);
+  text-align: left;
+}
+
+.ts-value {
+  margin: 0;
+  font-family: 'Barlow Condensed', 'Barlow', sans-serif;
+  font-size: 72px;
+  font-weight: 800;
+  line-height: 0.95;
   letter-spacing: 0.02em;
-  color: var(--t1-white);
+  font-variant-numeric: tabular-nums;
+  color: #fff;
 }
 
-.t1-stat-kind {
+.panel-tournament-stat.is-sixes .ts-value {
+  color: var(--ts-gold);
+}
+
+.panel-tournament-stat.is-fours .ts-value {
+  color: var(--ts-blue);
+}
+
+/* —— Footer —— */
+.ts-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 14px;
+  background: var(--ts-navy-dark);
+  border-top: 1px solid rgba(33, 139, 255, 0.28);
+  border-bottom: 2px solid var(--ts-blue);
+}
+
+.panel-tournament-stat.is-sixes .ts-footer {
+  border-bottom-color: var(--ts-gold);
+}
+
+.ts-footer-mark,
+.ts-footer-brand {
   margin: 0;
-  font-family: var(--t1-cond);
-  font-weight: 800;
-  font-size: 40px;
-  line-height: 1;
-  color: #ff6b00;
+  font-family: 'Barlow Condensed', 'Barlow', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ts-muted);
+}
+
+.ts-footer-mark {
+  color: var(--ts-gold);
+}
+
+.ts-footer-slash {
+  color: var(--ts-blue);
+  margin: 0 2px;
 }

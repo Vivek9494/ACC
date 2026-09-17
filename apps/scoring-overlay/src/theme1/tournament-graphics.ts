@@ -42,11 +42,14 @@ export function isTournamentGraphicKind(
 }
 
 export function buildTournamentGraphicsMarkup(): string {
-  return Object.values(TOURNAMENT_GRAPHIC_IDS)
-    .map(
-      (id) =>
-        `<div id="${id}" class="graphic graphic-centered t1-tournament-graphic" hidden></div>`,
-    )
+  return (Object.entries(TOURNAMENT_GRAPHIC_IDS) as [TournamentGraphicKind, string][])
+    .map(([kind, id]) => {
+      const isStat = kind === 'tournament_fours' || kind === 'tournament_sixes';
+      const cls = isStat
+        ? 'graphic tournament-stat-graphic t1-tournament-graphic'
+        : 'graphic graphic-centered t1-tournament-graphic';
+      return `<div id="${id}" class="${cls}" hidden></div>`;
+    })
     .join('\n');
 }
 

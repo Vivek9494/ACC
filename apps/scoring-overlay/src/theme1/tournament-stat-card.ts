@@ -1,3 +1,8 @@
+/**
+ * Premium tournament total Fours / Sixes — compact navy card, bottom-right above strip.
+ * Data: GET /tournaments/:id/stats aggregates (unchanged).
+ */
+
 import './tournament-stat-card.css';
 import { concealGraphic, revealGraphic } from '../graphic-visibility';
 
@@ -10,61 +15,155 @@ export interface TournamentStatCardController {
   show(kind: TournamentStatKind, total: number): boolean;
 }
 
-function labelsFor(kind: TournamentStatKind): { eyebrow: string; symbol: string } {
-  if (kind === 'fours') {
-    return { eyebrow: 'Tournament Fours', symbol: '4' };
-  }
-  return { eyebrow: 'Tournament Sixes', symbol: '6' };
+const SECTION_STAGGER_MS = 48;
+const EXIT_MS = 300;
+
+const DELAY = {
+  id: 0,
+  title: 48,
+  value: 96,
+  footer: 144,
+} as const;
+
+function warnGraphics(err: unknown): void {
+  console.warn('[tournament-stat]', err);
+}
+
+function prefersReducedMotion(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  );
+}
+
+function titleFor(kind: TournamentStatKind): string {
+  return kind === 'fours' ? 'Tournament Fours' : 'Tournament Sixes';
 }
 
 function buildMarkup(): string {
   return `
-    <div class="t1-stat-panel t1-checker">
-      <div class="t1-stat-accent"></div>
-      <div class="t1-stat-body">
-        <p class="t1-stat-eyebrow" data-stat-eyebrow>Tournament Fours</p>
-        <p class="t1-stat-kind" data-stat-kind aria-hidden="true">4</p>
-        <p class="t1-stat-value" data-stat-value>0</p>
-      </div>
+    <div class="panel panel-tournament-stat">
+      <section
+        class="ts-section ts-id-strip"
+        data-ts-section="id"
+        data-ts-delay="${DELAY.id}"
+      >
+        <p class="ts-id-left">ASC</p>
+        <p class="ts-id-center">ASC LIVE</p>
+        <p class="ts-id-right">TOURNAMENT</p>
+      </section>
+      <section
+        class="ts-section ts-title-bar"
+        data-ts-section="title"
+        data-ts-delay="${DELAY.title}"
+      >
+        <p data-ts-title class="ts-title">Tournament Fours</p>
+        <div class="ts-title-sweep" aria-hidden="true"></div>
+      </section>
+      <section
+        class="ts-section ts-value-block"
+        data-ts-section="value"
+        data-ts-delay="${DELAY.value}"
+      >
+        <p data-ts-value class="ts-value">0</p>
+      </section>
+      <section
+        class="ts-section ts-footer"
+        data-ts-section="footer"
+        data-ts-delay="${DELAY.footer}"
+      >
+        <p class="ts-footer-mark">ASC</p>
+        <p class="ts-footer-brand">Cricket <span class="ts-footer-slash">/</span> ASC</p>
+      </section>
     </div>
   `.trim();
 }
 
 export function mountTournamentStatCard(host: HTMLElement): TournamentStatCardController {
   let onAir = false;
+  let animTimers: number[] = [];
+  let exitTimer: number | null = null;
 
-  const ensureMarkup = (): void => {
-    if (!host.querySelector('.t1-stat-panel')) {
+  const clearAnimTimers = (): void => {
+    for (const id of animTimers) {
+      window.clearTimeout(id);
+    }
+    animTimers = [];
+    if (exitTimer != null) {
+      window.clearTimeout(exitTimer);
+      exitTimer = null;
+    }
+  };
+
+  const panel = (): HTMLElement | null =>
+    host.querySelector('.panel-tournament-stat');
+
+  const ensureMarkup = (): HTMLElement | null => {
+    // Sentinel: premium title (rebuilds legacy t1-stat-panel markup).
+    if (!host.querySelector('.panel-tournament-stat .ts-title')) {
       host.innerHTML = buildMarkup();
+    }
+    host.classList.add('tournament-stat-graphic');
+    host.classList.remove('graphic-centered');
+    return panel();
+  };
+
+  const runEntrance = (p: HTMLElement): void => {
+    clearAnimTimers();
+    const sections = [...p.querySelectorAll<HTMLElement>('.ts-section')];
+    if (prefersReducedMotion() || sections.length === 0) {
+      p.classList.add('ts-entering');
+      for (const section of sections) {
+        section.classList.add('ts-section-visible');
+      }
+      return;
+    }
+    p.classList.remove('ts-exiting');
+    p.classList.add('ts-entering');
+    for (const section of sections) {
+      section.classList.remove('ts-section-visible');
+    }
+    for (const section of sections) {
+      const raw = section.getAttribute('data-ts-delay');
+      const delay = raw != null ? Number(raw) : SECTION_STAGGER_MS;
+      const id = window.setTimeout(() => {
+        section.classList.add('ts-section-visible');
+      }, Number.isFinite(delay) ? delay : SECTION_STAGGER_MS);
+      animTimers.push(id);
     }
   };
 
   const hideNode = (): void => {
+    clearAnimTimers();
     onAir = false;
+    const p = panel();
+    if (p && !prefersReducedMotion()) {
+      p.classList.add('ts-exiting');
+      p.classList.remove('ts-entering');
+      for (const section of p.querySelectorAll('.ts-section')) {
+        section.classList.remove('ts-section-visible');
+      }
+      exitTimer = window.setTimeout(() => {
+        exitTimer = null;
+        concealGraphic(host);
+        p.classList.remove('ts-exiting');
+      }, EXIT_MS);
+      return;
+    }
     concealGraphic(host);
   };
 
-  const showNode = (): void => {
-    onAir = true;
-    revealGraphic(host);
-  };
-
   const paint = (kind: TournamentStatKind, total: number): boolean => {
-    ensureMarkup();
-    const { eyebrow, symbol } = labelsFor(kind);
-    const eyebrowEl = host.querySelector('[data-stat-eyebrow]');
-    const kindEl = host.querySelector('[data-stat-kind]');
-    const valueEl = host.querySelector('[data-stat-value]');
-    if (
-      !(eyebrowEl instanceof HTMLElement) ||
-      !(kindEl instanceof HTMLElement) ||
-      !(valueEl instanceof HTMLElement)
-    ) {
+    const p = ensureMarkup();
+    const titleEl = host.querySelector('[data-ts-title]');
+    const valueEl = host.querySelector('[data-ts-value]');
+    if (!(p instanceof HTMLElement) || !(titleEl instanceof HTMLElement) || !(valueEl instanceof HTMLElement)) {
       return false;
     }
-    eyebrowEl.textContent = eyebrow;
-    kindEl.textContent = symbol;
-    valueEl.textContent = String(total);
+    titleEl.textContent = titleFor(kind);
+    valueEl.textContent = String(Math.max(0, Math.floor(total)));
+    p.classList.toggle('is-sixes', kind === 'sixes');
+    p.classList.toggle('is-fours', kind === 'fours');
     return true;
   };
 
@@ -73,13 +172,26 @@ export function mountTournamentStatCard(host: HTMLElement): TournamentStatCardCo
     isOnAir: () => onAir,
     hide: hideNode,
     show(kind, total) {
-      if (!paint(kind, total)) {
+      try {
+        clearAnimTimers();
+        if (!paint(kind, total)) {
+          hideNode();
+          return false;
+        }
+        const p = panel();
+        if (!p) {
+          hideNode();
+          return false;
+        }
+        onAir = true;
+        revealGraphic(host);
+        runEntrance(p);
+        return true;
+      } catch (err) {
+        warnGraphics(err);
         hideNode();
         return false;
       }
-      onAir = true;
-      showNode();
-      return true;
     },
   };
 }
