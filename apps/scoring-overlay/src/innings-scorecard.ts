@@ -97,12 +97,18 @@ function prefersReducedMotion(): boolean {
   );
 }
 
-function nameOf(card: ScorecardResponse, id: string | null | undefined): string {
+/** Abbreviated name for dismissal strings (c … b …). */
+function shortNameOf(card: ScorecardResponse, id: string | null | undefined): string {
   if (!id) {
     return '—';
   }
   const full = playerName(card.display, id);
   return full === '—' ? '—' : shortName(full);
+}
+
+/** Full first + surname for pane name labels (keeps disambiguators). */
+function nameOf(card: ScorecardResponse, id: string | null | undefined): string {
+  return playerName(card.display, id);
 }
 
 function sidePlayerName(p: SidePlayer, card: ScorecardResponse): string {
@@ -167,7 +173,7 @@ function howOutText(card: ScorecardResponse, batter: BatterCard): string {
   if (!batter.isOut) {
     return 'not out';
   }
-  return formatDismissalShort(batter, (id) => nameOf(card, id)).trim() || 'out';
+  return formatDismissalShort(batter, (id) => shortNameOf(card, id)).trim() || 'out';
 }
 
 function strikeRateText(batter: BatterCard): string {
@@ -864,7 +870,11 @@ export function mountInningsScorecard(
 
       const name = document.createElement('span');
       name.className = 'bc-col-name';
-      name.textContent = `${nameOf(card, batter.playerId)}${onStrike ? ' *' : ''}`;
+      const fullName = nameOf(card, batter.playerId);
+      name.textContent = `${fullName}${onStrike ? ' *' : ''}`;
+      if (fullName !== '—') {
+        name.title = fullName;
+      }
 
       const how = document.createElement('span');
       how.className = 'bc-col-how';
@@ -945,7 +955,11 @@ export function mountInningsScorecard(
 
       const name = document.createElement('span');
       name.className = 'bowl-col-name';
-      name.textContent = `${nameOf(card, bowler.playerId)}${current ? ' *' : ''}`;
+      const fullName = nameOf(card, bowler.playerId);
+      name.textContent = `${fullName}${current ? ' *' : ''}`;
+      if (fullName !== '—') {
+        name.title = fullName;
+      }
       row.appendChild(name);
 
       const cells: Array<[string, string]> = [
@@ -1004,12 +1018,18 @@ export function mountInningsScorecard(
       if (batter != null) {
         batterEl.innerHTML = '';
         batterEl.appendChild(document.createTextNode(name));
+        if (name !== '—') {
+          batterEl.title = name;
+        }
         const meta = document.createElement('span');
         meta.className = 'isc-fow-batter-meta';
         meta.textContent = `  ${batter.runs} (${batter.balls})`;
         batterEl.appendChild(meta);
       } else {
         batterEl.textContent = name;
+        if (name !== '—') {
+          batterEl.title = name;
+        }
       }
 
       const score = document.createElement('span');

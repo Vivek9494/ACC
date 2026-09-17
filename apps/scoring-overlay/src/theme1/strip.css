@@ -476,6 +476,8 @@
 .t1-bowler-block.is-toss .t1-bowler-toss {
   /* Keep painted for flip; -webkit-box so long toss lines clamp in-slot. */
   display: -webkit-box !important;
+  -webkit-box-orient: vertical;
+  -webkit-box-pack: center;
 }
 
 .t1-bowler-block.is-flipping .t1-bowler-boundaries,
@@ -555,9 +557,16 @@
   color: #fff;
 }
 
-/* Chase stays at the shared slot size. */
+/* Runs-to-win — same team-score treatment as .t1-bowler-bound-num / .t1-total-score. */
 .t1-bowler-chase {
-  font-size: 15px;
+  font-size: 40px;
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Toss-in-slot only — +5px vs prior 15px; clamp so long names stay in the bowler column. */
@@ -567,6 +576,7 @@
   overflow: hidden;
   display: -webkit-box;
   -webkit-box-orient: vertical;
+  -webkit-box-pack: center;
   -webkit-line-clamp: 3;
   word-break: break-word;
   overflow-wrap: anywhere;
@@ -781,6 +791,10 @@
   }
 
   .t1-bowler-bound-num {
+    font-size: 32px;
+  }
+
+  .t1-bowler-chase {
     font-size: 32px;
   }
 

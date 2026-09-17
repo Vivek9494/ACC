@@ -407,6 +407,7 @@
 }
 
 .isc-fow-batter {
+  min-width: 0;
   font-size: 14px;
   font-weight: 700;
   overflow: hidden;

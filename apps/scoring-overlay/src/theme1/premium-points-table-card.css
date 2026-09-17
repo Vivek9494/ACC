@@ -68,7 +68,7 @@
   padding: 14px 20px 12px;
   background: linear-gradient(135deg, var(--ppt-navy) 0%, #0c2545 100%);
   overflow: hidden;
-  text-align: center;
+  text-align: left;
 }
 
 .ppt-title {
@@ -78,6 +78,7 @@
   font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;
+  text-align: left;
   color: #fff;
 }
 
