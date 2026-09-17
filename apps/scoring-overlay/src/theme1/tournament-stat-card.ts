@@ -99,11 +99,16 @@ export function mountTournamentStatCard(host: HTMLElement): TournamentStatCardCo
     host.querySelector('.panel-tournament-stat');
 
   const ensureMarkup = (): HTMLElement | null => {
-    // Sentinel: premium title (rebuilds legacy t1-stat-panel markup).
-    if (!host.querySelector('.panel-tournament-stat .ts-title')) {
+    // Rebuild legacy bright-blue t1-stat markup (or missing premium shell).
+    const needsRebuild =
+      host.querySelector('.t1-stat-panel') != null ||
+      host.querySelector('.t1-stat-kind') != null ||
+      host.querySelector('.panel-tournament-stat .ts-title') == null;
+    if (needsRebuild) {
       host.innerHTML = buildMarkup();
     }
-    host.classList.add('tournament-stat-graphic');
+    // Same BR placement as Fours — always force (covers pre-fix centered hosts).
+    host.classList.add('tournament-stat-graphic', 't1-tournament-graphic');
     host.classList.remove('graphic-centered');
     return panel();
   };
@@ -162,10 +167,11 @@ export function mountTournamentStatCard(host: HTMLElement): TournamentStatCardCo
     }
     titleEl.textContent = titleFor(kind);
     valueEl.textContent = String(Math.max(0, Math.floor(total)));
-    p.classList.toggle('is-sixes', kind === 'sixes');
-    p.classList.toggle('is-fours', kind === 'fours');
     return true;
   };
+
+  // Lock BR host classes at mount so Sixes matches Fours before first Show.
+  ensureMarkup();
 
   return {
     host,
