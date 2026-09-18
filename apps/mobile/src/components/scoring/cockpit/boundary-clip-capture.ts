@@ -128,7 +128,23 @@ export function scheduleBoundaryClipCapture(opts: {
   window.setTimeout(() => {
     void (async () => {
       try {
-        const { videoPath } = await bridge.saveBoundaryClip(savePayload);
+        // Skip quietly when OBS is disconnected / replay buffer off (common in local scoring).
+        if (typeof bridge.getStatus === 'function') {
+          const status = await bridge.getStatus();
+          if (status.connection !== 'connected' || !status.replayBufferActive) {
+            console.warn(
+              `[auto-clip] skipped delivery ${deliveryId} — OBS ${status.connection}` +
+                `${status.replayBufferActive ? '' : ', replay buffer inactive'}`,
+            );
+            return;
+          }
+        }
+
+        const saved = await bridge.saveBoundaryClip(savePayload);
+        if (!saved?.videoPath) {
+          return;
+        }
+        const { videoPath } = saved;
         let attached: ScorecardResponse;
         try {
           attached = await attachDeliveryVideo(matchId, inningsId, deliveryId, {

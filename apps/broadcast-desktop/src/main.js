@@ -404,6 +404,16 @@ function registerIpc() {
     return lifecycle.snapshot();
   });
   ipcMain.handle('asc:obs-save-boundary-clip', async (_event, payload) => {
+    // Soft-skip when OBS is down — auto-clip is best-effort; do not reject IPC
+    // (Electron logs "Error occurred in handler" for every rejected invoke).
+    if (obs.connection !== 'connected') {
+      console.warn('[OBS] Skipping boundary clip — not connected to OBS.');
+      return null;
+    }
+    if (!obs.replayBufferActive) {
+      console.warn('[OBS] Skipping boundary clip — replay buffer is not active.');
+      return null;
+    }
     return obs.saveBoundaryClip(payload, userDataDir());
   });
   ipcMain.handle('asc:obs-play-delivery-clip', async (_event, payload) => {

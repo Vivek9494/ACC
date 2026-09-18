@@ -54,6 +54,7 @@ export interface AscObsBridge {
   stopStream: () => Promise<AscObsStatus>;
   startReplayBuffer: () => Promise<AscObsStatus>;
   startInstantReplay: () => Promise<AscObsStatus>;
+  /** Null when OBS is disconnected or the replay buffer is inactive (soft skip). */
   saveBoundaryClip: (payload: {
     deliveryId: string;
     matchId: string;
@@ -62,7 +63,7 @@ export interface AscObsBridge {
     overNumber: number | null;
     ballNumber: number | null;
     sequence: number | null;
-  }) => Promise<{ deliveryId: string; videoPath: string }>;
+  }) => Promise<{ deliveryId: string; videoPath: string } | null>;
   playDeliveryClip: (payload: {
     videoPath: string;
     deliveryId?: string;
