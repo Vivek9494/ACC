@@ -5,7 +5,7 @@ import {
   unfinalizedTeamForScorerVerify,
   type ScorerStartableMatch,
 } from '@acc/types';
-import type { Router } from 'expo-router';
+import { router as rootRouter, type Router } from 'expo-router';
 
 export function scorerDashboardButtonLabel(match: ScorerStartableMatch): string {
   if (isScorerMatchResumable(match.state, match.hasScoringSession)) {
@@ -20,23 +20,24 @@ export function scorerDashboardButtonLabel(match: ScorerStartableMatch): string 
   });
 }
 
-function pushScoreCockpit(router: Router, matchId: string): void {
-  // Same destination as Match Details Continue Scoring — pathname form so nested
-  // role-tab routers resolve the root stack screen reliably.
-  router.push({
-    pathname: '/matches/[matchId]/score',
-    params: { matchId },
-  });
+/**
+ * Open the scoring cockpit from a role dashboard.
+ * Uses the root Expo Router singleton + the same string href as Match Details
+ * Continue Scoring — nested Admin/Captain tab routers on native can no-op when
+ * pushing a dynamic pathname object onto a different stack.
+ */
+function pushScoreCockpit(matchId: string): void {
+  rootRouter.push(`/matches/${matchId}/score`);
 }
 
 /** Dashboard card tap — verify XI, toss/setup, or live scoring. */
 export function handleScorerDashboardPress(
   match: ScorerStartableMatch,
-  router: Router,
+  _router: Router,
   onOpenMatchSetup?: (match: ScorerStartableMatch) => void,
 ): void {
   if (isScorerMatchResumable(match.state, match.hasScoringSession)) {
-    pushScoreCockpit(router, match.matchId);
+    pushScoreCockpit(match.matchId);
     return;
   }
   if (match.bothTeamsFinalized) {
@@ -47,7 +48,7 @@ export function handleScorerDashboardPress(
       onOpenMatchSetup(match);
       return;
     }
-    pushScoreCockpit(router, match.matchId);
+    pushScoreCockpit(match.matchId);
     return;
   }
 
@@ -58,15 +59,15 @@ export function handleScorerDashboardPress(
 
   if (!match.homeTeamFinalized && !match.awayTeamFinalized) {
     if (externalOpponent) {
-      router.push(`/matches/${match.matchId}`);
+      rootRouter.push(`/matches/${match.matchId}`);
       return;
     }
-    router.push(`/matches/${match.matchId}/verify-playing-xi`);
+    rootRouter.push(`/matches/${match.matchId}/verify-playing-xi`);
     return;
   }
 
   if (externalOpponent && !match.awayTeamFinalized) {
-    router.push(`/matches/${match.matchId}/opponent-players`);
+    rootRouter.push(`/matches/${match.matchId}/opponent-players`);
     return;
   }
 
@@ -84,7 +85,7 @@ export function handleScorerDashboardPress(
     return;
   }
 
-  router.push({
+  rootRouter.push({
     pathname: '/matches/[matchId]/verify-playing-xi',
     params: {
       matchId: match.matchId,
