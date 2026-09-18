@@ -160,17 +160,19 @@ export default function LoginScreen(): React.ReactElement {
 
   const formBody = (
     <>
-      <View className={`gap-2 ${isElectronShell ? '' : 'mt-8'}`}>
-        <Text className="font-sans-medium text-sm uppercase tracking-widest text-primary">
-          {APP_ORG_NAME}
-        </Text>
-        <Text className="font-sans-bold text-3xl text-on-surface">Welcome back</Text>
-        <Text className="font-sans text-base text-on-surface-variant">
-          Log in with your mobile number and password.
-        </Text>
-      </View>
+      {!isElectronShell ? (
+        <View className="mt-8 gap-2">
+          <Text className="font-sans-medium text-sm uppercase tracking-widest text-primary">
+            {APP_ORG_NAME}
+          </Text>
+          <Text className="font-sans-bold text-3xl text-on-surface">Welcome back</Text>
+          <Text className="font-sans text-base text-on-surface-variant">
+            Log in with your mobile number and password.
+          </Text>
+        </View>
+      ) : null}
 
-      <View className="mt-10 gap-5">
+      <View className={`gap-5 ${isElectronShell ? '' : 'mt-10'}`}>
         <TextInput
           label="Mobile number"
           value={mobileNumber}
@@ -196,13 +198,20 @@ export default function LoginScreen(): React.ReactElement {
           }
         />
 
-        <Checkbox checked={rememberMe} onChange={onRememberMeChange}>
-          <Text className="font-sans text-base text-on-surface">Remember Me</Text>
-        </Checkbox>
+        {!isElectronShell ? (
+          <>
+            <Checkbox checked={rememberMe} onChange={onRememberMeChange}>
+              <Text className="font-sans text-base text-on-surface">Remember Me</Text>
+            </Checkbox>
 
-        <Link href="/forgot-password" className="self-end font-sans-semibold text-sm text-primary">
-          Forgot password?
-        </Link>
+            <Link
+              href="/forgot-password"
+              className="self-end font-sans-semibold text-sm text-primary"
+            >
+              Forgot password?
+            </Link>
+          </>
+        ) : null}
 
         {formError ? (
           <View className="rounded-lg bg-primary-50 px-4 py-3">
@@ -220,24 +229,28 @@ export default function LoginScreen(): React.ReactElement {
           )}
         </Button>
 
-        <Pressable
-          onPress={() => router.replace('/guest')}
-          accessibilityRole="button"
-          accessibilityLabel="Continue as Guest"
-          className="items-center py-3 active:opacity-80"
-        >
-          <Text className="font-sans-semibold text-sm text-primary">Continue as Guest</Text>
-        </Pressable>
+        {!isElectronShell ? (
+          <Pressable
+            onPress={() => router.replace('/guest')}
+            accessibilityRole="button"
+            accessibilityLabel="Continue as Guest"
+            className="items-center py-3 active:opacity-80"
+          >
+            <Text className="font-sans-semibold text-sm text-primary">Continue as Guest</Text>
+          </Pressable>
+        ) : null}
       </View>
 
-      <View
-        className={`flex-row justify-center gap-1 pt-6 ${isElectronShell ? '' : 'mt-auto'}`}
-      >
-        <Text className="font-sans text-sm text-on-surface-variant">New to {APP_SHORT_NAME}?</Text>
-        <Link href="/signup" className="font-sans-semibold text-sm text-primary">
-          Create an account
-        </Link>
-      </View>
+      {!isElectronShell ? (
+        <View className="mt-auto flex-row justify-center gap-1 pt-6">
+          <Text className="font-sans text-sm text-on-surface-variant">
+            New to {APP_SHORT_NAME}?
+          </Text>
+          <Link href="/signup" className="font-sans-semibold text-sm text-primary">
+            Create an account
+          </Link>
+        </View>
+      ) : null}
     </>
   );
 
