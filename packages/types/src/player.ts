@@ -7,21 +7,22 @@ import type { TournamentSummary } from './tournament';
 /** Featured match for a player's team (current or next fixture). */
 export type PlayerFeaturedMatchSummary = CaptainFeaturedMatchSummary;
 
-/** True when the assigned scorer should resume into live scoring (§11.1). */
+/**
+ * True when the assigned scorer should open the live scoring cockpit (§11.1).
+ * Matches Match Details "Continue Scoring": LIVE / rain — even before an innings
+ * row exists (recovery via startScoring on the score screen).
+ */
 export function isScorerMatchResumable(
   state: MatchState,
-  hasScoringSession: boolean,
+  _hasScoringSession?: boolean,
 ): boolean {
-  return (
-    hasScoringSession &&
-    (state === 'LIVE' || state === 'RAIN_INTERRUPTED')
-  );
+  return state === 'LIVE' || state === 'RAIN_INTERRUPTED';
 }
 
 /**
  * A match the signed-in player may start or continue as the assigned per-match Scorer (§11.1).
  * Only returned when the grant is active and the fixture is on today's calendar day.
- * Pre-live states → "Start Match"; LIVE / rain-interrupted with innings → "Continue Scoring".
+ * Pre-live states → "Start Match"; LIVE / rain-interrupted → "Continue Scoring".
  */
 export interface ScorerStartableMatch {
   matchId: string;
@@ -33,7 +34,10 @@ export interface ScorerStartableMatch {
   state: MatchState;
   /** False while Playing 11 is not locked for all participating teams. */
   playingXiLocked: boolean;
-  /** True once at least one innings row exists — required before "Continue Scoring". */
+  /**
+   * True once at least one innings row exists. Informational for the score UI;
+   * LIVE / rain always use "Continue Scoring" (same as Match Details).
+   */
   hasScoringSession: boolean;
   homeTeamId: string | null;
   awayTeamId: string | null;

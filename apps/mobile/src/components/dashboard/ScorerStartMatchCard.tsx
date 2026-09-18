@@ -19,7 +19,7 @@ export type MatchDayDashboardCardMatch = Pick<
 >;
 
 export interface ScorerStartMatchCardProps {
-  match: MatchDayDashboardCardMatch;
+  match: ScorerStartableMatch;
   onStartPress: () => void;
   /** Defaults to "Start Match". */
   buttonLabel?: string;
@@ -32,6 +32,7 @@ export function ScorerStartMatchCard({
   buttonLabel = 'Start Match',
 }: ScorerStartMatchCardProps): React.ReactElement {
   const resumable = isScorerMatchResumable(match.state, match.hasScoringSession);
+  // LIVE / rain must stay tappable (same as Match Details Continue Scoring).
   const startFlow = match.bothTeamsFinalized && !resumable;
   const startDisabled = startFlow && !match.canStartMatch;
   const timeHint =
@@ -76,9 +77,13 @@ export function ScorerStartMatchCard({
       <Button
         onPress={onStartPress}
         disabled={startDisabled}
+        accessibilityRole="button"
+        accessibilityLabel={buttonLabel}
         className="h-14 w-full flex-row gap-2"
       >
-        <Text className="font-sans-semibold text-base text-on-primary">{buttonLabel}</Text>
+        <Text className="font-sans-semibold text-base text-on-primary" pointerEvents="none">
+          {buttonLabel}
+        </Text>
         <Ionicons name="arrow-forward" size={20} color={colors.textInverse} />
       </Button>
 

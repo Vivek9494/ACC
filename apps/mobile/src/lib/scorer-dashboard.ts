@@ -11,7 +11,22 @@ export function scorerDashboardButtonLabel(match: ScorerStartableMatch): string 
   if (isScorerMatchResumable(match.state, match.hasScoringSession)) {
     return 'Continue Scoring';
   }
-  return scorerVerifyPlayingXiButtonLabel(match);
+  return scorerVerifyPlayingXiButtonLabel({
+    homeTeamName: match.teamA.name,
+    awayTeamName: match.teamB.name,
+    homeTeamFinalized: match.homeTeamFinalized,
+    awayTeamFinalized: match.awayTeamFinalized,
+    awayTeamId: match.awayTeamId,
+  });
+}
+
+function pushScoreCockpit(router: Router, matchId: string): void {
+  // Same destination as Match Details Continue Scoring — pathname form so nested
+  // role-tab routers resolve the root stack screen reliably.
+  router.push({
+    pathname: '/matches/[matchId]/score',
+    params: { matchId },
+  });
 }
 
 /** Dashboard card tap — verify XI, toss/setup, or live scoring. */
@@ -21,7 +36,7 @@ export function handleScorerDashboardPress(
   onOpenMatchSetup?: (match: ScorerStartableMatch) => void,
 ): void {
   if (isScorerMatchResumable(match.state, match.hasScoringSession)) {
-    router.push(`/matches/${match.matchId}/score`);
+    pushScoreCockpit(router, match.matchId);
     return;
   }
   if (match.bothTeamsFinalized) {
@@ -32,7 +47,7 @@ export function handleScorerDashboardPress(
       onOpenMatchSetup(match);
       return;
     }
-    router.push(`/matches/${match.matchId}/score`);
+    pushScoreCockpit(router, match.matchId);
     return;
   }
 
