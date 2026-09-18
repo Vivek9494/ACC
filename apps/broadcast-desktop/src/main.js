@@ -33,6 +33,11 @@ let panelVisible = false;
 const obs = new ObsController();
 const lifecycle = new ObsLifecycle(obs, () => readObsConfig(userDataDir()));
 let quitting = false;
+/** Match id waiting for OBS connect so ASC Overlay can be ensured. */
+/** @type {string | null} */
+let pendingOverlayMatchId = null;
+/** @type {string} */
+let lastObsConnection = obs.connection;
 
 function userDataDir() {
   return app.getPath('userData');
@@ -78,7 +83,42 @@ function pushObsStatus() {
 
 lifecycle.onChange(() => {
   pushObsStatus();
+  const now = obs.connection;
+  if (now === 'connected' && lastObsConnection !== 'connected' && pendingOverlayMatchId) {
+    void ensureAscOverlayForMatch(pendingOverlayMatchId);
+  }
+  lastObsConnection = now;
 });
+
+/**
+ * Best-effort: point OBS “ASC Overlay” at this match. Soft-skips when disconnected.
+ * @param {string} matchId
+ */
+async function ensureAscOverlayForMatch(matchId) {
+  const trimmed = String(matchId ?? '').trim();
+  if (!trimmed) {
+    return;
+  }
+  pendingOverlayMatchId = trimmed;
+  if (obs.connection !== 'connected') {
+    console.warn('[OBS] ASC Overlay deferred until OBS connects.');
+    return;
+  }
+  try {
+    // Refresh scene/URL config from disk in case Settings changed since connect.
+    obs.applyReplaySceneConfig(readObsConfig(userDataDir()));
+    await obs.ensureAscOverlay(trimmed);
+  } catch (err) {
+    console.warn(
+      '[OBS] ensureAscOverlay failed:',
+      err instanceof Error ? err.message : String(err),
+    );
+  } finally {
+    if (obs.connection === 'connected' && pendingOverlayMatchId === trimmed) {
+      pendingOverlayMatchId = null;
+    }
+  }
+}
 
 function contentBounds() {
   if (!mainWindow) {
@@ -199,6 +239,7 @@ function loadControlPanel(matchId) {
     matchId: trimmed,
   });
   mainWindow.setTitle(`ASC Broadcast — ${trimmed}`);
+  void ensureAscOverlayForMatch(trimmed);
 }
 
 function createWindow() {
@@ -363,6 +404,10 @@ function registerIpc() {
   ipcMain.handle('asc:obs-save-config', (_event, raw) => {
     const config = writeObsConfig(userDataDir(), raw);
     obs.applyReplaySceneConfig(config);
+    const matchId = pendingOverlayMatchId || readLastMatchId();
+    if (matchId && obs.connection === 'connected') {
+      void ensureAscOverlayForMatch(matchId);
+    }
     return config;
   });
   ipcMain.handle('asc:obs-get-status', () => lifecycle.snapshot());

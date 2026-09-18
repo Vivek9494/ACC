@@ -15,6 +15,8 @@ const obsAppPath = document.getElementById('obs-app-path');
 const obsCollection = document.getElementById('obs-collection');
 const obsProfile = document.getElementById('obs-profile');
 const obsLiveScene = document.getElementById('obs-live-scene');
+const obsOverlayScene = document.getElementById('obs-overlay-scene');
+const obsOverlayUrl = document.getElementById('obs-overlay-url');
 const obsReplayScene = document.getElementById('obs-replay-scene');
 const obsReplayMedia = document.getElementById('obs-replay-media');
 const btnSettingsCancel = document.getElementById('btn-settings-cancel');
@@ -39,6 +41,8 @@ async function openSettings() {
   obsCollection.value = config.sceneCollection || '';
   obsProfile.value = config.profile || '';
   obsLiveScene.value = config.liveSceneName || 'Scene';
+  obsOverlayScene.value = config.overlaySceneName || 'Scene';
+  obsOverlayUrl.value = config.overlayUrlBase || 'https://acc-overlay.netlify.app';
   obsReplayScene.value = config.replaySceneName || 'Replay';
   obsReplayMedia.value = config.replayMediaSourceName || 'Replay Media';
   settingsModal.hidden = false;
@@ -80,6 +84,8 @@ settingsForm.addEventListener('submit', (event) => {
       sceneCollection: obsCollection.value,
       profile: obsProfile.value,
       liveSceneName: obsLiveScene.value,
+      overlaySceneName: obsOverlayScene.value,
+      overlayUrlBase: obsOverlayUrl.value,
       replaySceneName: obsReplayScene.value,
       replayMediaSourceName: obsReplayMedia.value,
     });

@@ -19,6 +19,10 @@ const DEFAULTS = Object.freeze({
   replaySceneName: 'Replay',
   /** ffmpeg media source inside the replay scene (file left blank in OBS). */
   replayMediaSourceName: 'Replay Media',
+  /** Scene that hosts the ASC Overlay browser source. */
+  overlaySceneName: 'Scene',
+  /** Deployed overlay origin (no trailing slash). */
+  overlayUrlBase: 'https://acc-overlay.netlify.app',
 });
 
 /** @param {string} userDataDir */
@@ -71,6 +75,8 @@ function stringOrDefault(value, fallback) {
  *   liveSceneName: string,
  *   replaySceneName: string,
  *   replayMediaSourceName: string,
+ *   overlaySceneName: string,
+ *   overlayUrlBase: string,
  * }}
  */
 function normalizeConfig(raw) {
@@ -91,6 +97,7 @@ function normalizeConfig(raw) {
   const sceneCollection =
     typeof source.sceneCollection === 'string' ? source.sceneCollection.trim() : '';
   const profile = typeof source.profile === 'string' ? source.profile.trim() : '';
+  const overlayUrlRaw = stringOrDefault(source.overlayUrlBase, DEFAULTS.overlayUrlBase);
   return {
     host,
     port,
@@ -104,6 +111,8 @@ function normalizeConfig(raw) {
       source.replayMediaSourceName,
       DEFAULTS.replayMediaSourceName,
     ),
+    overlaySceneName: stringOrDefault(source.overlaySceneName, DEFAULTS.overlaySceneName),
+    overlayUrlBase: overlayUrlRaw.replace(/\/$/, ''),
   };
 }
 

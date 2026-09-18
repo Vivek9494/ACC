@@ -17,6 +17,8 @@ const EMPTY_CONFIG: AscObsConfig = {
   liveSceneName: 'Scene',
   replaySceneName: 'Replay',
   replayMediaSourceName: 'Replay Media',
+  overlaySceneName: 'Scene',
+  overlayUrlBase: 'https://acc-overlay.netlify.app',
 };
 
 export function ObsConnectionSettingsModal({
@@ -170,6 +172,21 @@ export function ObsConnectionSettingsModal({
                 onChangeText={(v) => setField('liveSceneName', v)}
                 autoCapitalize="none"
                 autoCorrect={false}
+              />
+              <TextInput
+                label="OBS Scene (overlay)"
+                value={form.overlaySceneName}
+                onChangeText={(v) => setField('overlaySceneName', v)}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              <TextInput
+                label="Overlay URL base"
+                value={form.overlayUrlBase}
+                onChangeText={(v) => setField('overlayUrlBase', v)}
+                autoCapitalize="none"
+                autoCorrect={false}
+                placeholder="https://acc-overlay.netlify.app"
               />
               <TextInput
                 label="Replay scene"

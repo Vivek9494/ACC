@@ -35,6 +35,10 @@ export interface AscObsConfig {
   liveSceneName: string;
   replaySceneName: string;
   replayMediaSourceName: string;
+  /** Scene hosting the ASC Overlay browser source (default "Scene"). */
+  overlaySceneName: string;
+  /** Deployed overlay origin, no trailing slash. */
+  overlayUrlBase: string;
 }
 
 export interface AscInningsHighlightResult {

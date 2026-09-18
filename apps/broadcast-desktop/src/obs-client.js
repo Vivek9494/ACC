@@ -7,6 +7,7 @@
  *   SetInputSettings / SetCurrentProgramScene / TriggerMediaInputAction
  *   MediaInputPlaybackEnded / GetStudioModeEnabled
  *   GetProfileParameter / SetProfileParameter (RecRB enable)
+ *   GetInputList / CreateInput / SetSceneItemTransform / SetSceneItemIndex (ASC Overlay)
  */
 
 const { EventSubscription, OBSWebSocket, OBSWebSocketError } = require('obs-websocket-js');
@@ -23,6 +24,13 @@ const SAVE_EVENT_WAIT_MS = 8_000;
 const SAVE_FALLBACK_DELAY_MS = 750;
 
 const MEDIA_RESTART = 'OBS_WEBSOCKET_MEDIA_INPUT_ACTION_RESTART';
+
+/** Fixed browser-source name for the scoring overlay (idempotent by name). */
+const ASC_OVERLAY_INPUT_NAME = 'ASC Overlay';
+const ASC_OVERLAY_WIDTH = 1920;
+const ASC_OVERLAY_HEIGHT = 1080;
+const ASC_OVERLAY_CSS =
+  'body { background-color: rgba(0,0,0,0) !important; margin: 0px; overflow: hidden; }';
 
 /** Explicit subscriptions — Outputs (ReplayBufferSaved) + MediaInputs (playback ended). */
 const OBS_EVENT_SUBSCRIPTIONS =
@@ -154,6 +162,11 @@ class ObsController {
       replaySceneName: DEFAULTS.replaySceneName,
       replayMediaSourceName: DEFAULTS.replayMediaSourceName,
     };
+    /** @type {{ overlaySceneName: string, overlayUrlBase: string }} */
+    this.overlayConfig = {
+      overlaySceneName: DEFAULTS.overlaySceneName,
+      overlayUrlBase: DEFAULTS.overlayUrlBase,
+    };
     /** @type {string | null} */
     this.liveSceneBeforeReplay = null;
     /** @type {ReturnType<typeof setTimeout> | null} */
@@ -199,7 +212,13 @@ class ObsController {
   }
 
   /**
-   * @param {{ liveSceneName?: string, replaySceneName?: string, replayMediaSourceName?: string }} config
+   * @param {{
+   *   liveSceneName?: string,
+   *   replaySceneName?: string,
+   *   replayMediaSourceName?: string,
+   *   overlaySceneName?: string,
+   *   overlayUrlBase?: string,
+   * }} config
    */
   applyReplaySceneConfig(config) {
     this.replayScenes = {
@@ -207,6 +226,138 @@ class ObsController {
       replaySceneName: config.replaySceneName || DEFAULTS.replaySceneName,
       replayMediaSourceName: config.replayMediaSourceName || DEFAULTS.replayMediaSourceName,
     };
+    const overlayBase =
+      typeof config.overlayUrlBase === 'string' && config.overlayUrlBase.trim()
+        ? config.overlayUrlBase.trim().replace(/\/$/, '')
+        : DEFAULTS.overlayUrlBase;
+    this.overlayConfig = {
+      overlaySceneName: config.overlaySceneName || DEFAULTS.overlaySceneName,
+      overlayUrlBase: overlayBase,
+    };
+  }
+
+  /**
+   * Build overlay page URL for a match: `{base}/?matchId=…`.
+   * @param {string} matchId
+   */
+  overlayUrlForMatch(matchId) {
+    const base = this.overlayConfig.overlayUrlBase || DEFAULTS.overlayUrlBase;
+    const params = new URLSearchParams({ matchId });
+    return `${base}/?${params.toString()}`;
+  }
+
+  /**
+   * Ensure browser source "ASC Overlay" exists in the configured scene and points
+   * at this match. Idempotent: update URL only when present; create+size+layer once.
+   * No-op when OBS is not connected.
+   * @param {string} matchId
+   * @returns {Promise<{ action: 'skipped' | 'updated' | 'created', reason?: string }>}
+   */
+  async ensureAscOverlay(matchId) {
+    const id = typeof matchId === 'string' ? matchId.trim() : '';
+    if (!id) {
+      return { action: 'skipped', reason: 'no-match-id' };
+    }
+    if (this.connection !== 'connected') {
+      return { action: 'skipped', reason: 'not-connected' };
+    }
+
+    const url = this.overlayUrlForMatch(id);
+    const sceneName = this.overlayConfig.overlaySceneName || DEFAULTS.overlaySceneName;
+
+    let exists = false;
+    try {
+      const { inputs } = await this.obs.call('GetInputList');
+      exists = Array.isArray(inputs)
+        ? inputs.some((input) => input && input.inputName === ASC_OVERLAY_INPUT_NAME)
+        : false;
+    } catch (err) {
+      throw new Error(`Could not list OBS inputs: ${describeObsError(err)}`);
+    }
+
+    if (exists) {
+      try {
+        await this.obs.call('SetInputSettings', {
+          inputName: ASC_OVERLAY_INPUT_NAME,
+          inputSettings: { url },
+          overlay: true,
+        });
+        console.info(`[OBS] Updated “${ASC_OVERLAY_INPUT_NAME}” URL for match ${id}`);
+        return { action: 'updated' };
+      } catch (err) {
+        throw new Error(
+          `Could not update “${ASC_OVERLAY_INPUT_NAME}”: ${describeObsError(err)}`,
+        );
+      }
+    }
+
+    /** @type {{ sceneItemId?: number }} */
+    let created;
+    try {
+      created = await this.obs.call('CreateInput', {
+        sceneName,
+        inputName: ASC_OVERLAY_INPUT_NAME,
+        inputKind: 'browser_source',
+        inputSettings: {
+          url,
+          width: ASC_OVERLAY_WIDTH,
+          height: ASC_OVERLAY_HEIGHT,
+          css: ASC_OVERLAY_CSS,
+          fps: 30,
+          shutdown: false,
+          restart_when_active: true,
+        },
+        sceneItemEnabled: true,
+      });
+    } catch (err) {
+      throw new Error(
+        `Could not create “${ASC_OVERLAY_INPUT_NAME}” in scene “${sceneName}”: ${describeObsError(err)}`,
+      );
+    }
+
+    const sceneItemId = created?.sceneItemId;
+    if (typeof sceneItemId === 'number') {
+      try {
+        await this.obs.call('SetSceneItemTransform', {
+          sceneName,
+          sceneItemId,
+          sceneItemTransform: {
+            positionX: 0,
+            positionY: 0,
+            alignment: 5,
+            boundsType: 'OBS_BOUNDS_STRETCH',
+            boundsAlignment: 0,
+            boundsWidth: ASC_OVERLAY_WIDTH,
+            boundsHeight: ASC_OVERLAY_HEIGHT,
+          },
+        });
+      } catch (err) {
+        console.warn(
+          `[OBS] Created “${ASC_OVERLAY_INPUT_NAME}” but could not set transform:`,
+          describeObsError(err),
+        );
+      }
+
+      try {
+        const { sceneItems } = await this.obs.call('GetSceneItemList', { sceneName });
+        const topIndex = Array.isArray(sceneItems) ? Math.max(0, sceneItems.length - 1) : 0;
+        await this.obs.call('SetSceneItemIndex', {
+          sceneName,
+          sceneItemId,
+          sceneItemIndex: topIndex,
+        });
+      } catch (err) {
+        console.warn(
+          `[OBS] Created “${ASC_OVERLAY_INPUT_NAME}” but could not set z-order:`,
+          describeObsError(err),
+        );
+      }
+    }
+
+    console.info(
+      `[OBS] Created “${ASC_OVERLAY_INPUT_NAME}” in “${sceneName}” for match ${id}`,
+    );
+    return { action: 'created' };
   }
 
   bindEvents() {
@@ -524,6 +675,8 @@ class ObsController {
    *   liveSceneName?: string,
    *   replaySceneName?: string,
    *   replayMediaSourceName?: string,
+   *   overlaySceneName?: string,
+   *   overlayUrlBase?: string,
    * }} config
    */
   async connect(config) {
