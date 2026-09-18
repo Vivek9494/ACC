@@ -22,8 +22,14 @@ export interface CurrentOverTracker {
   slots: OverBallSlot[];
 }
 
+function isWicketCode(code: string): boolean {
+  const c = code.trim();
+  return c === 'W' || c.endsWith('+W');
+}
+
 function isExtraCode(code: string): boolean {
   const c = code.trim();
+  if (isWicketCode(c)) return false;
   return (
     c === 'Wd' ||
     c.startsWith('Wd') ||
@@ -50,8 +56,8 @@ function isMetadataCode(code: string): boolean {
 
 function legalDisplay(code: string): Omit<OverBallSlot, 'isExtra'> {
   const c = code.trim();
-  if (c === 'W') {
-    return { label: 'W', isWicket: true, isBoundary: false };
+  if (isWicketCode(c)) {
+    return { label: c, isWicket: true, isBoundary: false };
   }
   if (c === '·' || c === '.' || c === '0') {
     return { label: '●', isWicket: false, isBoundary: false };

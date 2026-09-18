@@ -122,9 +122,41 @@ function oversText(legalBalls: number): string {
   return `${Math.floor(legalBalls / BALLS_PER_OVER)}.${legalBalls % BALLS_PER_OVER}`;
 }
 
+/**
+ * Compact code for a wicket delivery (spec §28).
+ * Bare "W" when nothing was scored with the wicket; otherwise prefix completed
+ * runs / extras (e.g. "1+W", "Wd+1+W", "Nb+2+W").
+ */
+function wicketDeliveryCode(e: ScoringEvent): string {
+  switch (e.type) {
+    case DeliveryType.Wide: {
+      const completed = Math.max(0, e.extraRuns - 1);
+      return completed > 0 ? `Wd+${completed}+W` : 'Wd+W';
+    }
+    case DeliveryType.NoBall:
+      if (e.noBallLegByeRuns > 0) {
+        return `${e.noBallLegByeRuns}Lb+Nb+W`;
+      }
+      if (e.noBallByeRuns > 0) {
+        return `${e.noBallByeRuns}B+Nb+W`;
+      }
+      return e.runsBat > 0 ? `Nb+${e.runsBat}+W` : 'Nb+W';
+    case DeliveryType.Bye:
+      return e.extraRuns > 0 ? `B${e.extraRuns}+W` : 'W';
+    case DeliveryType.LegBye:
+      return e.extraRuns > 0 ? `Lb${e.extraRuns}+W` : 'W';
+    case DeliveryType.RetiredOut:
+      return 'W';
+    default:
+      return e.runsBat > 0 ? `${e.runsBat}+W` : 'W';
+  }
+}
+
 /** Compact code for the overs strip / timeline (spec §28). */
 function deliveryCode(e: ScoringEvent): string {
-  if (isWicketEvent(e)) return 'W';
+  // Mankad keeps its own glyph (pre-delivery; not a completed-runs wicket token).
+  if (e.type === DeliveryType.Mankad) return 'Mk';
+  if (isWicketEvent(e)) return wicketDeliveryCode(e);
   switch (e.type) {
     case DeliveryType.Wide:
       return e.extraRuns > 1 ? `Wd+${e.extraRuns - 1}` : 'Wd';
@@ -148,8 +180,6 @@ function deliveryCode(e: ScoringEvent): string {
       return 'W';
     case DeliveryType.ImpactPlayerIn:
       return 'IMP';
-    case DeliveryType.Mankad:
-      return 'Mk';
     case DeliveryType.EndInnings:
       return 'End';
     case DeliveryType.CatchDrop:
@@ -423,29 +453,25 @@ export function deriveInnings(events: ScoringEvent[], ctx: InningsContext = {}):
         break;
     }
 
-    // Batter figures: credit off-bat runs and a faced ball to the striker.
+    // Batter figures: credit off-bat runs and a faced ball to the striker
+    // (including completed runs on a run-out — Laws: the batter who faced the ball).
     const strikerCard = ensureBatter(striker);
     if (strikerCard && countsAsFaced(e.type)) {
       strikerCard.balls += 1;
     }
     if (e.type === DeliveryType.Legal || e.type === DeliveryType.NoBall) {
-      const runsRecipientId =
-        e.dismissalType === DismissalType.RunOut && e.dismissedId && e.dismissedId !== striker
-          ? e.dismissedId
-          : striker;
-      const runsCard = runsRecipientId ? ensureBatter(runsRecipientId) : null;
-      if (runsCard) {
-        runsCard.runs += e.runsBat;
+      if (strikerCard) {
+        strikerCard.runs += e.runsBat;
         if (e.isBoundary && e.runsBat === 4) {
-          runsCard.fours += 1;
+          strikerCard.fours += 1;
         } else if (e.isBoundary && e.runsBat === 6) {
-          runsCard.sixes += 1;
+          strikerCard.sixes += 1;
         } else if (e.runsBat === 1) {
-          runsCard.ones += 1;
+          strikerCard.ones += 1;
         } else if (e.runsBat === 2) {
-          runsCard.twos += 1;
+          strikerCard.twos += 1;
         } else if (e.runsBat === 3) {
-          runsCard.threes += 1;
+          strikerCard.threes += 1;
         }
       }
     }

@@ -34,10 +34,16 @@ const VARIANT_STYLES: Record<
   wicket: { bgClass: SCORING_KEYPAD_WICKET_BG, textClass: SCORING_KEYPAD_WICKET_TEXT },
 };
 
+/** True when an engine timeline / over-strip code represents a wicket. */
+export function isWicketBallCode(code: string): boolean {
+  return code === 'W' || code.endsWith('+W');
+}
+
 /** Maps an engine timeline code to a compact chip label + keypad-matched colors. */
 export function recentBallChipStyle(code: string, isWicket: boolean): RecentBallChipStyle {
-  if (isWicket || code === 'W') {
-    return { label: 'W', variant: 'wicket', ...VARIANT_STYLES.wicket };
+  if (isWicket || isWicketBallCode(code)) {
+    const label = isWicketBallCode(code) ? code : 'W';
+    return { label, variant: 'wicket', ...VARIANT_STYLES.wicket };
   }
   if (code === '·' || code === '0') {
     return { label: '.', variant: 'grey', ...VARIANT_STYLES.grey };

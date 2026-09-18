@@ -201,7 +201,7 @@ export function LiveScorecard({ state, nameOf, teamNameOf }: Props): React.React
                     <View
                       key={`${over.overNumber}-${i}`}
                       className={`h-7 min-w-7 items-center justify-center rounded-full px-2 ${
-                        code === 'W'
+                        code === 'W' || code.endsWith('+W')
                           ? 'bg-secondary-900'
                           : code === '4' || code === '6'
                             ? 'bg-primary'
@@ -210,7 +210,7 @@ export function LiveScorecard({ state, nameOf, teamNameOf }: Props): React.React
                     >
                       <Text
                         className={`font-sans-medium text-[11px] ${
-                          code === 'W' || code === '4' || code === '6'
+                          code === 'W' || code.endsWith('+W') || code === '4' || code === '6'
                             ? 'text-on-primary'
                             : 'text-on-surface'
                         }`}

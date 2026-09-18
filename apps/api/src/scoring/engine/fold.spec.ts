@@ -638,7 +638,8 @@ describe('Scoring engine — scorer edit window (§12.2)', () => {
 });
 
 describe('Scoring engine — run-out completed runs (§12.1)', () => {
-  it('credits completed runs to the dismissed non-striker on a run out', () => {
+  it('credits completed runs to the striker when the non-striker is run out', () => {
+    // Striker A hits, completes 2, non-striker B run out going for the next.
     const card = deriveInnings(
       innings([
         {
@@ -651,9 +652,58 @@ describe('Scoring engine — run-out completed runs (§12.1)', () => {
       ]),
     );
     expect(card.runs).toBe(2);
-    expect(card.batters.find((b) => b.playerId === 'B')).toMatchObject({ runs: 2, balls: 0 });
-    expect(card.batters.find((b) => b.playerId === 'A')).toMatchObject({ runs: 0, balls: 1 });
+    expect(card.wickets).toBe(1);
+    expect(card.batters.find((b) => b.playerId === 'A')).toMatchObject({ runs: 2, balls: 1 });
+    expect(card.batters.find((b) => b.playerId === 'B')).toMatchObject({
+      runs: 0,
+      balls: 0,
+      isOut: true,
+      dismissalType: DismissalType.RunOut,
+    });
     expect(card.bowlers[0]).toMatchObject({ wickets: 0, runsConceded: 2 });
+    expect(card.timeline[0]!.code).toBe('2+W');
+  });
+
+  it('shows bare W and credits the striker 0 runs when run out with 0 completed', () => {
+    const card = deriveInnings(
+      innings([
+        {
+          type: DeliveryType.Legal,
+          runsBat: 0,
+          dismissalType: DismissalType.RunOut,
+          dismissedId: 'B',
+          fielderId: 'Y',
+        },
+      ]),
+    );
+    expect(card.runs).toBe(0);
+    expect(card.batters.find((b) => b.playerId === 'A')).toMatchObject({ runs: 0, balls: 1 });
+    expect(card.timeline[0]!.code).toBe('W');
+  });
+
+  it('credits the striker when the striker is run out with completed runs', () => {
+    const card = deriveInnings(
+      innings([
+        {
+          type: DeliveryType.Legal,
+          runsBat: 1,
+          dismissalType: DismissalType.RunOut,
+          dismissedId: 'A',
+          fielderId: 'Y',
+        },
+      ]),
+    );
+    expect(card.runs).toBe(1);
+    expect(card.batters.find((b) => b.playerId === 'A')).toMatchObject({
+      runs: 1,
+      balls: 1,
+      isOut: true,
+    });
+    expect(card.batters.find((b) => b.playerId === 'B')).toMatchObject({ runs: 0, balls: 0 });
+    expect(card.timeline[0]!.code).toBe('1+W');
+    // 1 completed (odd) then striker dismissed → swap puts non-striker on strike end vacated.
+    expect(card.currentStrikerId).toBe('B');
+    expect(card.currentNonStrikerId).toBeNull();
   });
 
   it('records a wide + run out with completed runs on the wide', () => {
@@ -673,6 +723,27 @@ describe('Scoring engine — run-out completed runs (§12.1)', () => {
     expect(card.legalBalls).toBe(0);
     expect(card.runs).toBe(3);
     expect(card.bowlers[0]).toMatchObject({ wickets: 0, runsConceded: 3, wides: 1 });
+    expect(card.timeline[0]!.code).toBe('Wd+2+W');
+  });
+
+  it('records a no-ball + run out with completed off-bat runs', () => {
+    const card = deriveInnings(
+      innings([
+        {
+          type: DeliveryType.NoBall,
+          runsBat: 1,
+          extraRuns: 1,
+          dismissalType: DismissalType.RunOut,
+          dismissedId: 'B',
+          fielderId: 'Y',
+        },
+      ]),
+    );
+    expect(card.runs).toBe(2);
+    expect(card.extras.noBalls).toBe(1);
+    expect(card.batters.find((b) => b.playerId === 'A')).toMatchObject({ runs: 1, balls: 1 });
+    expect(card.timeline[0]!.code).toBe('Nb+1+W');
+    expect(card.freeHitNext).toBe(true);
   });
 
   it('stores relay fielders on the dismissed batter card', () => {

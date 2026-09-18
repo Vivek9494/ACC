@@ -331,7 +331,7 @@ export interface TimelineEntry {
   ballNumber: number | null;
   /** Position label, e.g. "12.3"; empty for non-ball events. */
   label: string;
-  /** Compact code shown in the overs strip: "·", "1", "4", "6", "W", "Wd", "Nb", "B", "Lb". */
+  /** Compact code shown in the overs strip: "·", "1", "4", "6", "W", "1+W", "Wd", "Wd+1+W", "Nb", "B", "Lb". */
   code: string;
   /** Total team runs from this event. */
   runs: number;

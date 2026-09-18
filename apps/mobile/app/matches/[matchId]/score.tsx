@@ -21,6 +21,7 @@ import {
   type ScorerRevokedReason,
   type SetInningsParticipantsRequest,
   type SquadPlayerView,
+  type BatsmanPickerRole as BatsmanPickerRoleValue,
 } from '@acc/types';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -65,6 +66,7 @@ import {
   EndOverConfirmDialog,
   upcomingOverNumber,
 } from '../../../src/components/scoring/cockpit/EndOverFlowDialogs';
+import { SelectBatsmanDialog } from '../../../src/components/scoring/cockpit/SelectBatsmanDialog';
 import { ScorerRevokedDialog } from '../../../src/components/scoring/ScorerRevokedDialog';
 import {
   WicketDismissalSheet,
@@ -96,6 +98,7 @@ import { isInningsTransitionPending } from '../../../src/lib/match-completion';
 import {
   consumeScoringPickResult,
   setScoringPickResult,
+  type IncomingCreaseSlot,
   type ScoringPickResult,
 } from '../../../src/lib/scoring-pick-session';
 import {
@@ -322,6 +325,13 @@ export default function LiveScoringScreen(): React.ReactElement {
     legalBalls: number;
   } | null>(null);
   const [endOverConfirming, setEndOverConfirming] = useState(false);
+  /** Desktop/Electron: Select Batsman modal instead of full-page route. */
+  const [batsmanDialog, setBatsmanDialog] = useState<{
+    role: BatsmanPickerRoleValue;
+    otherSlotUserId: string | null;
+    incomingSlot: IncomingCreaseSlot | null;
+  } | null>(null);
+  const [batsmanDialogConfirming, setBatsmanDialogConfirming] = useState(false);
   const endInningsPromptDismissedRef = useRef(false);
   const pendingBatsmanPickerRef = useRef(false);
   const pendingBowlerRef = useRef(false);
@@ -488,11 +498,6 @@ export default function LiveScoringScreen(): React.ReactElement {
       showScoringBlocked();
       return;
     }
-    beginExplicitPickerNavigation(
-      pendingBatsmanPickerRef,
-      batsmanAutoPromptSuppressedKeyRef,
-      skipNextFocusLoadRef,
-    );
     const pickerRole =
       role === 'striker'
         ? BatsmanPickerRole.Striker
@@ -513,6 +518,25 @@ export default function LiveScoringScreen(): React.ReactElement {
             ? 'nonStriker'
             : null
         : null;
+
+    // Desktop cockpit (incl. Electron): modal over score — same idea as ConfirmNextBowlerDialog.
+    if (useCockpit) {
+      batsmanAutoPromptSuppressedKeyRef.current = null;
+      setBatsmanDialog((current) =>
+        current ?? {
+          role: pickerRole,
+          otherSlotUserId: otherSlotUserId ?? null,
+          incomingSlot,
+        },
+      );
+      return;
+    }
+
+    beginExplicitPickerNavigation(
+      pendingBatsmanPickerRef,
+      batsmanAutoPromptSuppressedKeyRef,
+      skipNextFocusLoadRef,
+    );
     router.push({
       pathname: '/matches/[matchId]/select-batsman',
       params: {
@@ -649,6 +673,16 @@ export default function LiveScoringScreen(): React.ReactElement {
 
   /** Desktop Play Control — same setInningsParticipants write as the full-page batsman picker. */
   function selectBatterInline(role: 'striker' | 'nonStriker', userId: string): void {
+    const pick: ScoringPickResult = {
+      kind: 'batsman',
+      role: role === 'striker' ? BatsmanPickerRole.Striker : BatsmanPickerRole.NonStriker,
+      userId,
+    };
+    applyBatsmanPick(pick);
+  }
+
+  /** Desktop Select Batsman dialog — same write path as full-page picker / Play Control. */
+  function applyBatsmanPick(pick: ScoringPickResult): void {
     const snapshot = card;
     const liveInnings = inn;
     const inningsId = liveInnings?.inningsId;
@@ -657,19 +691,21 @@ export default function LiveScoringScreen(): React.ReactElement {
       showScoringBlocked();
       return;
     }
-    const pick: ScoringPickResult = {
-      kind: 'batsman',
-      role: role === 'striker' ? BatsmanPickerRole.Striker : BatsmanPickerRole.NonStriker,
-      userId,
-    };
     setBattingSlots((prev) => applyBattingSlotPick(pick, prev));
-    if (role === 'striker') {
-      setStrikerId(userId);
-    } else {
-      setNonStrikerId(userId);
+    if (pick.kind === 'batsman') {
+      if (pick.incomingSlot === 'striker' || pick.role === BatsmanPickerRole.Striker) {
+        setStrikerId(pick.userId);
+      } else if (pick.incomingSlot === 'nonStriker' || pick.role === BatsmanPickerRole.NonStriker) {
+        setNonStrikerId(pick.userId);
+      } else if (!liveInnings?.currentStrikerId) {
+        setStrikerId(pick.userId);
+      } else if (!liveInnings?.currentNonStrikerId) {
+        setNonStrikerId(pick.userId);
+      }
     }
     void (async () => {
       setWorking(true);
+      setBatsmanDialogConfirming(true);
       setError(null);
       try {
         syncFromCard(
@@ -680,6 +716,7 @@ export default function LiveScoringScreen(): React.ReactElement {
           ),
           { promptBowlers: false },
         );
+        setBatsmanDialog(null);
       } catch (err) {
         if (err instanceof ApiRequestError) {
           if (isScoringNotAllowedError(err)) {
@@ -689,12 +726,14 @@ export default function LiveScoringScreen(): React.ReactElement {
           }
           if (err.status === 409) {
             syncFromCard(await getScorecard(matchId), { promptBowlers: false });
+            setBatsmanDialog(null);
           }
         } else {
           setError('Could not save player selection.');
         }
       } finally {
         setWorking(false);
+        setBatsmanDialogConfirming(false);
       }
     })();
   }
@@ -1995,6 +2034,29 @@ export default function LiveScoringScreen(): React.ReactElement {
             }}
             onConfirm={(nextBowlerId) => {
               void commitEndOverWithBowler(nextBowlerId);
+            }}
+          />
+          <SelectBatsmanDialog
+            visible={batsmanDialog != null}
+            matchId={matchId}
+            inningsId={inn.inningsId}
+            role={batsmanDialog?.role ?? BatsmanPickerRole.Incoming}
+            otherSlotUserId={batsmanDialog?.otherSlotUserId ?? null}
+            incomingSlot={batsmanDialog?.incomingSlot ?? null}
+            confirming={batsmanDialogConfirming}
+            onCancel={() => {
+              if (inn && needIncomingBatter(inn)) {
+                batsmanAutoPromptSuppressedKeyRef.current = incomingBatterAutoPromptKey(inn);
+              }
+              setBatsmanDialog(null);
+            }}
+            onConfirm={(result) => {
+              applyBatsmanPick({
+                kind: 'batsman',
+                role: result.role,
+                userId: result.userId,
+                ...(result.incomingSlot ? { incomingSlot: result.incomingSlot } : {}),
+              });
             }}
           />
         </>

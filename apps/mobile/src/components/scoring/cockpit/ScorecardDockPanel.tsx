@@ -307,13 +307,13 @@ function OverBallChips({ balls }: { balls: readonly string[] }): React.ReactElem
   return (
     <View className="min-w-0 flex-1 flex-row flex-wrap items-center gap-1">
       {balls.map((code, index) => {
-        const chip = recentBallChipStyle(code, code === 'W');
+        const chip = recentBallChipStyle(code, false);
         const textSize =
           chip.label.length > 3 ? 'text-[8px]' : chip.label.length > 2 ? 'text-[9px]' : 'text-[10px]';
         return (
           <View
             key={`${index}-${code}`}
-            className={`h-6 w-6 items-center justify-center rounded-full ${chip.bgClass}`}
+            className={`h-6 min-w-6 items-center justify-center rounded-full px-0.5 ${chip.bgClass}`}
             accessibilityLabel={`Ball ${index + 1}: ${chip.label}`}
           >
             <Text className={`font-sans-bold ${textSize} ${chip.textClass}`} numberOfLines={1}>

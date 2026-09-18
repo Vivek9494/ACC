@@ -4,8 +4,8 @@ import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
+  ScrollView,
   View,
-  type StyleProp,
   type ViewStyle,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -32,17 +32,37 @@ import {
   saveRememberMeFlag,
 } from '../src/lib/remember-me';
 
+/** RN Web extras used only on the Electron BrowserView login chrome. */
+type ElectronWebViewStyle = Omit<ViewStyle, 'minHeight'> & {
+  minHeight?: number | string;
+  backgroundImage?: string;
+  boxShadow?: string;
+};
+
 /** ASC Broadcast shell `.match-view` page chrome (Electron BrowserView only). */
-const ELECTRON_SHELL_STYLE: StyleProp<ViewStyle> = {
+const ELECTRON_SHELL_STYLE: ElectronWebViewStyle = {
   flex: 1,
+  width: '100%',
+  // Viewport fill — RN Web ScrollView flexGrow centering is unreliable without this.
+  minHeight: '100vh',
   backgroundColor: '#f7f2eb',
   // RN Web — matches broadcast-desktop shell.css body background.
   backgroundImage:
     'radial-gradient(ellipse at top, #fff8f0 0%, transparent 55%), linear-gradient(165deg, #f7f2eb 0%, #ebe3d8 100%)',
-} as ViewStyle;
+};
+
+/** Center the login card like shell.css `.match-view { place-items: center }`. */
+const ELECTRON_CENTER_CONTENT: ElectronWebViewStyle = {
+  flexGrow: 1,
+  minHeight: '100vh',
+  justifyContent: 'center',
+  alignItems: 'center',
+  paddingHorizontal: 16,
+  paddingVertical: 32,
+};
 
 /** ASC Broadcast shell `.card` (match-entry) — Electron BrowserView only. */
-const ELECTRON_CARD_STYLE: StyleProp<ViewStyle> = {
+const ELECTRON_CARD_STYLE: ElectronWebViewStyle = {
   width: '100%',
   maxWidth: 420,
   paddingTop: 32,
@@ -54,7 +74,7 @@ const ELECTRON_CARD_STYLE: StyleProp<ViewStyle> = {
   borderColor: '#e0d5cb',
   // RN Web — matches shell.css `.card` box-shadow.
   boxShadow: '0 18px 40px rgba(28, 20, 16, 0.08)',
-} as ViewStyle;
+};
 
 function mapLoginApiError(err: unknown): string {
   if (err instanceof SessionExpiredError) {
@@ -160,19 +180,17 @@ export default function LoginScreen(): React.ReactElement {
 
   const formBody = (
     <>
-      {!isElectronShell ? (
-        <View className="mt-8 gap-2">
-          <Text className="font-sans-medium text-sm uppercase tracking-widest text-primary">
-            {APP_ORG_NAME}
-          </Text>
-          <Text className="font-sans-bold text-3xl text-on-surface">Welcome back</Text>
-          <Text className="font-sans text-base text-on-surface-variant">
-            Log in with your mobile number and password.
-          </Text>
-        </View>
-      ) : null}
+      <View className={`gap-2 ${isElectronShell ? '' : 'mt-8'}`}>
+        <Text className="font-sans-medium text-sm uppercase tracking-widest text-primary">
+          {APP_ORG_NAME}
+        </Text>
+        <Text className="font-sans-bold text-3xl text-on-surface">Welcome back</Text>
+        <Text className="font-sans text-base text-on-surface-variant">
+          Log in with your mobile number and password.
+        </Text>
+      </View>
 
-      <View className={`gap-5 ${isElectronShell ? '' : 'mt-10'}`}>
+      <View className="mt-10 gap-5">
         <TextInput
           label="Mobile number"
           value={mobileNumber}
@@ -199,18 +217,15 @@ export default function LoginScreen(): React.ReactElement {
         />
 
         {!isElectronShell ? (
-          <>
-            <Checkbox checked={rememberMe} onChange={onRememberMeChange}>
-              <Text className="font-sans text-base text-on-surface">Remember Me</Text>
-            </Checkbox>
+          <Checkbox checked={rememberMe} onChange={onRememberMeChange}>
+            <Text className="font-sans text-base text-on-surface">Remember Me</Text>
+          </Checkbox>
+        ) : null}
 
-            <Link
-              href="/forgot-password"
-              className="self-end font-sans-semibold text-sm text-primary"
-            >
-              Forgot password?
-            </Link>
-          </>
+        {!isElectronShell ? (
+          <Link href="/forgot-password" className="self-end font-sans-semibold text-sm text-primary">
+            Forgot password?
+          </Link>
         ) : null}
 
         {formError ? (
@@ -243,9 +258,7 @@ export default function LoginScreen(): React.ReactElement {
 
       {!isElectronShell ? (
         <View className="mt-auto flex-row justify-center gap-1 pt-6">
-          <Text className="font-sans text-sm text-on-surface-variant">
-            New to {APP_SHORT_NAME}?
-          </Text>
+          <Text className="font-sans text-sm text-on-surface-variant">New to {APP_SHORT_NAME}?</Text>
           <Link href="/signup" className="font-sans-semibold text-sm text-primary">
             Create an account
           </Link>
@@ -256,13 +269,15 @@ export default function LoginScreen(): React.ReactElement {
 
   if (isElectronShell) {
     return (
-      <View style={ELECTRON_SHELL_STYLE}>
-        <KeyboardAwareFormScrollView
-          compact
-          contentContainerClassName="flex-grow items-center justify-center px-4 py-8"
+      <View style={ELECTRON_SHELL_STYLE as never}>
+        <ScrollView
+          style={{ flex: 1, width: '100%' }}
+          contentContainerStyle={ELECTRON_CENTER_CONTENT as never}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          <View style={ELECTRON_CARD_STYLE}>{formBody}</View>
-        </KeyboardAwareFormScrollView>
+          <View style={ELECTRON_CARD_STYLE as never}>{formBody}</View>
+        </ScrollView>
       </View>
     );
   }
