@@ -31,5 +31,6 @@ export function toScoringEvent(d: Delivery): ScoringEvent {
     dismissedId: d.dismissedUserId ?? d.dismissedExternalId ?? null,
     fielderId: d.fielderUserId ?? d.fielderExternalId ?? null,
     fielder2Id: d.fielder2UserId ?? d.fielder2ExternalId ?? null,
+    batsmenCrossed: d.batsmenCrossed ?? false,
   };
 }

@@ -1139,6 +1139,8 @@ model Delivery {
   /// Relay run-out — second fielder (notation "run out (f1/f2)").
   fielder2UserId      String?
   fielder2ExternalId  String?
+  /// Run-out / caught: batters had crossed when the wicket fell (Law 18.12).
+  batsmenCrossed      Boolean @default(false)
 
   /// Append-only correction tracking.
   revision               Int       @default(1)

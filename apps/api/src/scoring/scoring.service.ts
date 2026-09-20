@@ -94,6 +94,7 @@ interface DeliveryDraft {
   dismissedId: string | null;
   fielderId: string | null;
   fielder2Id: string | null;
+  batsmenCrossed?: boolean;
   shotX?: number | null;
   shotY?: number | null;
   /** Set when scoring a boundary (4/6) — v0 highlight marker. */
@@ -237,6 +238,7 @@ export class ScoringService {
       dismissedId: req.dismissal?.dismissedId ?? null,
       fielderId: req.fielderId ?? req.dismissal?.fielderId ?? null,
       fielder2Id: req.dismissal?.fielder2Id ?? null,
+      batsmenCrossed: req.dismissal?.batsmenCrossed ?? false,
       shotX: req.shotX ?? null,
       shotY: req.shotY ?? null,
       ...highlight,
@@ -430,6 +432,7 @@ export class ScoringService {
       dismissedId: req.dismissal?.dismissedId ?? null,
       fielderId: req.fielderId ?? req.dismissal?.fielderId ?? null,
       fielder2Id: req.dismissal?.fielder2Id ?? null,
+      batsmenCrossed: req.dismissal?.batsmenCrossed ?? false,
       shotX: req.shotX ?? target.shotX ?? null,
       shotY: req.shotY ?? target.shotY ?? null,
       ...highlight,
@@ -1362,6 +1365,7 @@ export class ScoringService {
       fielderExternalId: extCol(draft.fielderId),
       fielder2UserId: userCol(draft.fielder2Id),
       fielder2ExternalId: extCol(draft.fielder2Id),
+      batsmenCrossed: draft.batsmenCrossed ?? false,
       shotX: draft.shotX ?? null,
       shotY: draft.shotY ?? null,
       highlightMarkedAt: draft.highlightMarkedAt ?? null,

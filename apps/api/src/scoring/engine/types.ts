@@ -39,6 +39,11 @@ export interface ScoringEvent {
   dismissedId: string | null;
   fielderId: string | null;
   fielder2Id: string | null;
+  /**
+   * Batters had crossed when the wicket fell (Law 18.12). Used for run-out
+   * crease assignment; ignored for other dismissal types in the fold.
+   */
+  batsmenCrossed: boolean;
 }
 
 /** Static facts about an innings the fold needs (allotment, chase target). */

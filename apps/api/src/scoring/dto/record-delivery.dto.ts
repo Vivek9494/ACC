@@ -36,6 +36,10 @@ class DismissalInputDto implements DismissalInput {
   @IsOptional()
   @IsString()
   fielder2Id?: string | null;
+
+  @IsOptional()
+  @IsBoolean()
+  batsmenCrossed?: boolean;
 }
 
 export class RecordDeliveryDto implements RecordDeliveryRequest {

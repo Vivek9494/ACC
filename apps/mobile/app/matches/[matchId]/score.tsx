@@ -173,6 +173,7 @@ function buildRunOutDelivery(
     dismissedId: result.dismissedId,
     fielderId: result.fielderId,
     fielder2Id: result.fielder2Id ?? null,
+    batsmenCrossed: result.batsmenCrossed,
   };
 
   switch (extra) {

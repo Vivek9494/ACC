@@ -95,6 +95,50 @@ function runsRunForRotation(e: ScoringEvent): number {
   return creditedCrossings(e) + Math.max(0, e.runsShort);
 }
 
+/**
+ * Law 18.12 crease ends after a run-out (not Mankad).
+ * After completed crossings (and optional cross on the incomplete run), the
+ * not-out batter stays at their resulting end; the dismissed batter's end is vacant.
+ */
+export function applyRunOutCreaseEnds(
+  striker: string | null,
+  nonStriker: string | null,
+  dismissedId: string,
+  completedCrossings: number,
+  batsmenCrossed: boolean,
+): { striker: string | null; nonStriker: string | null } {
+  let atStrikeEnd = striker;
+  let atNonStrikeEnd = nonStriker;
+
+  if (completedCrossings % 2 === 1) {
+    [atStrikeEnd, atNonStrikeEnd] = [atNonStrikeEnd, atStrikeEnd];
+  }
+  if (batsmenCrossed) {
+    [atStrikeEnd, atNonStrikeEnd] = [atNonStrikeEnd, atStrikeEnd];
+  }
+
+  if (dismissedId === atStrikeEnd) {
+    return { striker: null, nonStriker: atNonStrikeEnd };
+  }
+  if (dismissedId === atNonStrikeEnd) {
+    return { striker: atStrikeEnd, nonStriker: null };
+  }
+  // Dismissed id not at either resulting end (miswired) — clear by start-of-ball role.
+  if (dismissedId === striker) {
+    return { striker: null, nonStriker };
+  }
+  if (dismissedId === nonStriker) {
+    return { striker, nonStriker: null };
+  }
+  return { striker, nonStriker };
+}
+
+function isRunOutBallEvent(e: ScoringEvent): boolean {
+  return (
+    e.dismissalType === DismissalType.RunOut && e.type !== DeliveryType.Mankad
+  );
+}
+
 function penaltyCountsForInnings(e: ScoringEvent, battingTeamId: string | null | undefined): boolean {
   if (e.type !== DeliveryType.PenaltyRuns) {
     return false;
@@ -571,8 +615,26 @@ export function deriveInnings(events: ScoringEvent[], ctx: InningsContext = {}):
       }
       // Whoever is dismissed leaves; their crease position becomes unknown
       // until the next recorded delivery names the incoming batter.
-      if (dismissedId && dismissedId === striker) striker = null;
-      else if (dismissedId && dismissedId === nonStriker) nonStriker = null;
+      // Run-out: Law 18.12 end assignment (completed crossings + crossed-on-dismissal).
+      if (
+        isRunOutBallEvent(e) &&
+        dismissedId &&
+        (dismissedId === striker || dismissedId === nonStriker)
+      ) {
+        const placed = applyRunOutCreaseEnds(
+          striker,
+          nonStriker,
+          dismissedId,
+          creditedCrossings(e),
+          e.batsmenCrossed === true,
+        );
+        striker = placed.striker;
+        nonStriker = placed.nonStriker;
+      } else if (dismissedId && dismissedId === striker) {
+        striker = null;
+      } else if (dismissedId && dismissedId === nonStriker) {
+        nonStriker = null;
+      }
 
       const standSurvivorId: string | null =
         dismissedId && pairIds.length === 2
@@ -594,7 +656,8 @@ export function deriveInnings(events: ScoringEvent[], ctx: InningsContext = {}):
     }
 
     // Strike rotation: odd runs swap, boundaries never swap (§32).
-    if (occupiesBallSlot(e.type)) {
+    // Run-out crease ends are already set by Law 18.12 — do not odd/even again.
+    if (occupiesBallSlot(e.type) && !isRunOutBallEvent(e)) {
       const runsRun = runsRunForRotation(e);
       if (!e.isBoundary && runsRun % 2 === 1) {
         [striker, nonStriker] = [nonStriker, striker];

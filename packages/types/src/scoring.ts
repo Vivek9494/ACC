@@ -136,6 +136,11 @@ export interface DismissalInput {
   fielderId?: string | null;
   /** Run-out relay — second fielder (notation "run out (f1/f2)"). */
   fielder2Id?: string | null;
+  /**
+   * Run-out (and caught): batters had crossed when the wicket fell (Law 18.12).
+   * Drives post-dismissal crease ends for run-out.
+   */
+  batsmenCrossed?: boolean;
 }
 
 /**

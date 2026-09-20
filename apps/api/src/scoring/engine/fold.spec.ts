@@ -43,6 +43,7 @@ function innings(specs: Spec[], openers: [string, string] = ['A', 'B']): Scoring
       dismissedId: s.dismissedId ?? null,
       fielderId: s.fielderId ?? null,
       fielder2Id: s.fielder2Id ?? null,
+      batsmenCrossed: s.batsmenCrossed ?? false,
     });
   }
   return events;
@@ -662,6 +663,9 @@ describe('Scoring engine — run-out completed runs (§12.1)', () => {
     });
     expect(card.bowlers[0]).toMatchObject({ wickets: 0, runsConceded: 2 });
     expect(card.timeline[0]!.code).toBe('2+W');
+    // 2 completed (even), not crossed → B still at non-strike when out; A keeps strike.
+    expect(card.currentStrikerId).toBe('A');
+    expect(card.currentNonStrikerId).toBeNull();
   });
 
   it('shows bare W and credits the striker 0 runs when run out with 0 completed', () => {
@@ -690,6 +694,7 @@ describe('Scoring engine — run-out completed runs (§12.1)', () => {
           dismissalType: DismissalType.RunOut,
           dismissedId: 'A',
           fielderId: 'Y',
+          batsmenCrossed: false,
         },
       ]),
     );
@@ -701,9 +706,87 @@ describe('Scoring engine — run-out completed runs (§12.1)', () => {
     });
     expect(card.batters.find((b) => b.playerId === 'B')).toMatchObject({ runs: 0, balls: 0 });
     expect(card.timeline[0]!.code).toBe('1+W');
-    // 1 completed (odd) then striker dismissed → swap puts non-striker on strike end vacated.
+    // 1 completed, not crossed, striker out → survivor at strike end (Law 18).
     expect(card.currentStrikerId).toBe('B');
     expect(card.currentNonStrikerId).toBeNull();
+  });
+
+  it('Law 18: 1 completed, crossed on 2nd, non-striker run out → original striker keeps strike', () => {
+    // X=A strike, Y=B non-strike; complete 1, cross on 2nd, B out.
+    const card = deriveInnings(
+      innings([
+        {
+          type: DeliveryType.Legal,
+          runsBat: 1,
+          dismissalType: DismissalType.RunOut,
+          dismissedId: 'B',
+          fielderId: 'Y',
+          batsmenCrossed: true,
+        },
+      ]),
+    );
+    expect(card.runs).toBe(1);
+    expect(card.batters.find((b) => b.playerId === 'A')).toMatchObject({ runs: 1, balls: 1 });
+    expect(card.batters.find((b) => b.playerId === 'B')).toMatchObject({ isOut: true });
+    expect(card.currentStrikerId).toBe('A');
+    expect(card.currentNonStrikerId).toBeNull();
+  });
+
+  it('Law 18: non-striker run out with 0 completed and not crossed → striker keeps strike', () => {
+    const card = deriveInnings(
+      innings([
+        {
+          type: DeliveryType.Legal,
+          runsBat: 0,
+          dismissalType: DismissalType.RunOut,
+          dismissedId: 'B',
+          fielderId: 'Y',
+          batsmenCrossed: false,
+        },
+      ]),
+    );
+    expect(card.currentStrikerId).toBe('A');
+    expect(card.currentNonStrikerId).toBeNull();
+  });
+
+  it('Law 18: striker run out with 0 completed and crossed → survivor on strike', () => {
+    const card = deriveInnings(
+      innings([
+        {
+          type: DeliveryType.Legal,
+          runsBat: 0,
+          dismissalType: DismissalType.RunOut,
+          dismissedId: 'A',
+          fielderId: 'Y',
+          batsmenCrossed: true,
+        },
+      ]),
+    );
+    expect(card.currentStrikerId).toBe('B');
+    expect(card.currentNonStrikerId).toBeNull();
+  });
+
+  it('Law 18: end-of-over swap applies after run-out crease assignment', () => {
+    const specs: Spec[] = [
+      dot(),
+      dot(),
+      dot(),
+      dot(),
+      dot(),
+      {
+        type: DeliveryType.Legal,
+        runsBat: 1,
+        dismissalType: DismissalType.RunOut,
+        dismissedId: 'B',
+        fielderId: 'Y',
+        batsmenCrossed: true,
+      },
+    ];
+    const card = deriveInnings(innings(specs));
+    // After Law 18: A on strike, non vacant; 6th legal ball then swaps → A becomes non-strike.
+    expect(card.legalBalls).toBe(6);
+    expect(card.currentStrikerId).toBeNull();
+    expect(card.currentNonStrikerId).toBe('A');
   });
 
   it('records a wide + run out with completed runs on the wide', () => {

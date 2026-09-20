@@ -33,6 +33,8 @@ export interface RunOutDetailsConfirm {
   fielderId: string;
   fielder2Id: string | null;
   completedRuns: number;
+  /** Batters crossed on the incomplete run when the wicket fell (Law 18.12). */
+  batsmenCrossed: boolean;
   extraType: RunOutExtraOption;
 }
 
@@ -119,6 +121,7 @@ export function RunOutDetailsDialog({
   const [fielderId, setFielderId] = useState<string | null>(null);
   const [fielder2Id, setFielder2Id] = useState<string | null>(null);
   const [completedRuns, setCompletedRuns] = useState(0);
+  const [batsmenCrossed, setBatsmenCrossed] = useState(false);
   const [extraType, setExtraType] = useState<RunOutExtraOption>('NONE');
   const [showAddExternal, setShowAddExternal] = useState(false);
 
@@ -141,6 +144,7 @@ export function RunOutDetailsDialog({
       setFielderId(null);
       setFielder2Id(null);
       setCompletedRuns(0);
+      setBatsmenCrossed(false);
       setExtraType('NONE');
       void load();
     } else {
@@ -149,6 +153,7 @@ export function RunOutDetailsDialog({
       setFielderId(null);
       setFielder2Id(null);
       setCompletedRuns(0);
+      setBatsmenCrossed(false);
       setExtraType('NONE');
       setError(null);
       setShowAddExternal(false);
@@ -179,6 +184,7 @@ export function RunOutDetailsDialog({
       fielderId,
       fielder2Id: fielder2Id || null,
       completedRuns,
+      batsmenCrossed,
       extraType,
     });
   }
@@ -294,6 +300,27 @@ export function RunOutDetailsDialog({
                         <Text className="font-sans-bold text-base text-on-surface">{runs}</Text>
                       </Pressable>
                     ))}
+                  </View>
+                </View>
+
+                <View className="gap-2">
+                  <Text className="font-sans-semibold text-xs uppercase tracking-wider text-on-surface-variant">
+                    Did the batsmen cross?
+                  </Text>
+                  <Text className="font-sans text-xs text-on-surface-variant">
+                    On the incomplete run when the wicket fell (Law 18).
+                  </Text>
+                  <View className="flex-row gap-2">
+                    <ExtraTypeButton
+                      label="No"
+                      selected={!batsmenCrossed}
+                      onPress={() => setBatsmenCrossed(false)}
+                    />
+                    <ExtraTypeButton
+                      label="Yes"
+                      selected={batsmenCrossed}
+                      onPress={() => setBatsmenCrossed(true)}
+                    />
                   </View>
                 </View>
 

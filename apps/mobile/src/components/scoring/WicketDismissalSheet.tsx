@@ -61,7 +61,7 @@ export interface WicketDismissalResult {
   fielderId: string | null;
   fielder2Id?: string | null;
   runsBat: number;
-  /** Caught only — batters crossed before the catch (affects who is on strike). */
+  /** Caught / run-out — batters crossed when the wicket fell (Law 18.12). */
   batsmenCrossed: boolean;
   isRetiredHurt: boolean;
   /** Stumped only — stumping occurred off a wide delivery. */
@@ -303,6 +303,7 @@ export function WicketDismissalSheet({
     fielderId: string;
     fielder2Id: string | null;
     completedRuns: number;
+    batsmenCrossed: boolean;
     extraType: RunOutExtraOption;
   }): void {
     emit({
@@ -311,7 +312,7 @@ export function WicketDismissalSheet({
       fielderId: result.fielderId,
       fielder2Id: result.fielder2Id,
       runsBat: result.completedRuns,
-      batsmenCrossed: false,
+      batsmenCrossed: result.batsmenCrossed,
       isRetiredHurt: false,
       runOutExtraType: result.extraType,
     });
