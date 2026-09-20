@@ -46,9 +46,9 @@ export interface BowlingLeaderboardEntry {
   teamId: string;
   teamName: string;
   teamLogoUrl: string | null;
-  /** Matches bowled in. */
+  /** Matches in the Playing XI (independent of whether they bowled). */
   matches: number;
-  /** Innings in which the bowler bowled at least one delivery (or took a wicket). */
+  /** Innings in which the bowler bowled at least one delivery. */
   innings: number;
   wickets: number;
   /**

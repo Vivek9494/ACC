@@ -10,6 +10,7 @@ import {
 import {
   applyBatterInnings,
   applyBowlerInnings,
+  applyBowlingXiMatch,
   buildBattingLeaderboardEntries,
   buildBowlingLeaderboardEntries,
   createBattingAccumulator,
@@ -103,7 +104,7 @@ describe('leaderboard.compute', () => {
     expect(entries[1]?.fifties).toBe(0);
   });
 
-  it('accumulates bowling figures and matches bowled', () => {
+  it('accumulates bowling figures and innings bowled (not XI matches)', () => {
     const acc = createBowlingAccumulator();
     applyBowlerInnings(acc, 'match-1', { runsConceded: 24, legalBalls: 24, wickets: 2 });
     applyBowlerInnings(acc, 'match-2', { runsConceded: 18, legalBalls: 18, wickets: 1 });
@@ -113,7 +114,7 @@ describe('leaderboard.compute', () => {
     expect(acc.wickets).toBe(3);
     expect(acc.innings).toBe(2);
     expect(acc.bestBowling).toEqual({ wickets: 2, runsConceded: 24 });
-    expect(acc.bowledMatchIds).toEqual(new Set(['match-1', 'match-2']));
+    expect(acc.xiMatchIds.size).toBe(0);
   });
 
   it('counts Inns only when the bowler actually bowled and picks Best by wickets then runs', () => {
@@ -140,7 +141,35 @@ describe('leaderboard.compute', () => {
     expect(moreWicketsBeatsFewerRuns.bestBowling).toEqual({ wickets: 5, runsConceded: 50 });
   });
 
-  it('sorts by wickets desc, then lower economy, then fewer matches', () => {
+  it('keeps Playing XI Matches separate from Inns bowled', () => {
+    const acc = createBowlingAccumulator();
+    applyBowlerInnings(acc, 'm1', { runsConceded: 20, legalBalls: 24, wickets: 2 });
+    applyBowlerInnings(acc, 'm2', { runsConceded: 15, legalBalls: 18, wickets: 1 });
+    applyBowlingXiMatch(acc, 'm1');
+    applyBowlingXiMatch(acc, 'm2');
+    applyBowlingXiMatch(acc, 'm3'); // in XI, did not bowl
+    applyBowlingXiMatch(acc, 'm1'); // idempotent
+
+    expect(acc.innings).toBe(2);
+    expect(acc.xiMatchIds).toEqual(new Set(['m1', 'm2', 'm3']));
+
+    const entries = buildBowlingLeaderboardEntries([
+      {
+        userId: 'u1',
+        firstName: 'A',
+        lastName: 'Alpha',
+        profilePhotoUrl: null,
+        teamId: 't1',
+        teamName: 'Team A',
+        teamLogoUrl: null,
+        accumulator: acc,
+      },
+    ]);
+    expect(entries[0]?.matches).toBe(3);
+    expect(entries[0]?.innings).toBe(2);
+  });
+
+  it('sorts by wickets desc, then lower economy, then fewer innings', () => {
     const entries = buildBowlingLeaderboardEntries([
       {
         userId: 'u1',
@@ -156,7 +185,7 @@ describe('leaderboard.compute', () => {
           wickets: 10,
           innings: 2,
           bestBowling: { wickets: 5, runsConceded: 20 },
-          bowledMatchIds: new Set(['m1', 'm2']),
+          xiMatchIds: new Set(['m1', 'm2']),
         },
       },
       {
@@ -173,7 +202,7 @@ describe('leaderboard.compute', () => {
           wickets: 10,
           innings: 1,
           bestBowling: { wickets: 4, runsConceded: 12 },
-          bowledMatchIds: new Set(['m1']),
+          xiMatchIds: new Set(['m1']),
         },
       },
       {
@@ -190,7 +219,7 @@ describe('leaderboard.compute', () => {
           wickets: 8,
           innings: 1,
           bestBowling: { wickets: 3, runsConceded: 14 },
-          bowledMatchIds: new Set(['m1']),
+          xiMatchIds: new Set(['m1']),
         },
       },
     ]);
@@ -198,6 +227,7 @@ describe('leaderboard.compute', () => {
     expect(entries.map((entry) => entry.userId)).toEqual(['u2', 'u1', 'u3']);
     expect(entries[0]?.economy).toBe(5);
     expect(entries[1]?.economy).toBe(6);
+    expect(entries[0]?.matches).toBe(1);
     expect(entries[0]?.innings).toBe(1);
     expect(entries[0]?.bestBowling).toBe('4/12');
     expect(entries[1]?.bestBowling).toBe('5/20');

@@ -100,10 +100,14 @@ export interface BowlingAccumulator {
   runsConceded: number;
   legalBalls: number;
   wickets: number;
-  /** Innings where the bowler actually bowled (Flag A / career bowlingInnings). */
+  /** Innings where the bowler actually bowled (≥1 delivery / career bowlingInnings gate). */
   innings: number;
   bestBowling: BestBowlingFigures | null;
-  bowledMatchIds: Set<string>;
+  /**
+   * Matches where the player was in the Playing XI.
+   * Filled separately from squad rows — not from bowling activity.
+   */
+  xiMatchIds: Set<string>;
 }
 
 export function createBowlingAccumulator(): BowlingAccumulator {
@@ -113,7 +117,7 @@ export function createBowlingAccumulator(): BowlingAccumulator {
     wickets: 0,
     innings: 0,
     bestBowling: null,
-    bowledMatchIds: new Set(),
+    xiMatchIds: new Set(),
   };
 }
 
@@ -133,16 +137,13 @@ function isBetterBowlingFigures(
 
 export function applyBowlerInnings(
   acc: BowlingAccumulator,
-  matchId: string,
+  _matchId: string,
   bowler: Pick<BowlerCard, 'runsConceded' | 'legalBalls' | 'wickets'>,
 ): void {
   acc.runsConceded += bowler.runsConceded;
   acc.legalBalls += bowler.legalBalls;
   acc.wickets += bowler.wickets;
-  if (bowler.legalBalls > 0 || bowler.wickets > 0 || bowler.runsConceded > 0) {
-    acc.bowledMatchIds.add(matchId);
-  }
-  // Participation innings + best figures (same gate as career bowlingInnings).
+  // Innings bowled + best figures (same gate as career bowlingInnings).
   if (bowler.legalBalls > 0 || bowler.wickets > 0) {
     acc.innings += 1;
     const candidate: BestBowlingFigures = {
@@ -153,6 +154,11 @@ export function applyBowlerInnings(
       acc.bestBowling = candidate;
     }
   }
+}
+
+/** Record a Playing XI appearance for Matches (independent of bowling). */
+export function applyBowlingXiMatch(acc: BowlingAccumulator, matchId: string): void {
+  acc.xiMatchIds.add(matchId);
 }
 
 export interface BuildBowlingLeaderboardPlayerInput {
@@ -167,7 +173,7 @@ export interface BuildBowlingLeaderboardPlayerInput {
 }
 
 /**
- * Sort by wickets descending; tie-break lower economy, then fewer matches bowled.
+ * Sort by wickets descending; tie-break lower economy, then fewer innings bowled.
  * Rank = list position (1-based).
  */
 export function buildBowlingLeaderboardEntries(
@@ -190,10 +196,9 @@ export function buildBowlingLeaderboardEntries(
       return economyDiff;
     }
 
-    const matchesDiff =
-      left.accumulator.bowledMatchIds.size - right.accumulator.bowledMatchIds.size;
-    if (matchesDiff !== 0) {
-      return matchesDiff;
+    const inningsDiff = left.accumulator.innings - right.accumulator.innings;
+    if (inningsDiff !== 0) {
+      return inningsDiff;
     }
 
     const leftName = `${left.lastName} ${left.firstName}`.trim();
@@ -202,7 +207,7 @@ export function buildBowlingLeaderboardEntries(
   });
 
   return sorted.map((player, index) => {
-    const { runsConceded, legalBalls, wickets, innings, bestBowling, bowledMatchIds } =
+    const { runsConceded, legalBalls, wickets, innings, bestBowling, xiMatchIds } =
       player.accumulator;
     return {
       rank: index + 1,
@@ -213,7 +218,7 @@ export function buildBowlingLeaderboardEntries(
       teamId: player.teamId,
       teamName: player.teamName,
       teamLogoUrl: player.teamLogoUrl,
-      matches: bowledMatchIds.size,
+      matches: xiMatchIds.size,
       innings,
       wickets,
       bestBowling: bestBowling

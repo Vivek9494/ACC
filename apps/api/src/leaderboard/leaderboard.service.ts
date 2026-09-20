@@ -1,5 +1,6 @@
 import {
   LIVE_MATCH_STATES,
+  MatchSquadRole,
   MatchState,
   type AuthUser,
   type TournamentLeaderboard,
@@ -18,6 +19,7 @@ import { activeTeamMembershipWhere } from '../teams/team-membership-query';
 import {
   applyBatterInnings,
   applyBowlerInnings,
+  applyBowlingXiMatch,
   buildBattingLeaderboardEntries,
   buildBowlingLeaderboardEntries,
   createBattingAccumulator,
@@ -170,6 +172,29 @@ export class LeaderboardService {
       }
     }
 
+    // Matches = Playing XI appearances (independent of bowling activity).
+    if (tournament.matches.length > 0 && bowlingAccumulators.size > 0) {
+      const xiRows = await this.prisma.matchSquadPlayer.findMany({
+        where: {
+          role: MatchSquadRole.PlayingXi,
+          userId: { in: [...bowlingAccumulators.keys()] },
+          squad: {
+            matchId: { in: tournament.matches.map((match) => match.id) },
+          },
+        },
+        select: {
+          userId: true,
+          squad: { select: { matchId: true } },
+        },
+      });
+      for (const row of xiRows) {
+        const acc = bowlingAccumulators.get(row.userId);
+        if (acc) {
+          applyBowlingXiMatch(acc, row.squad.matchId);
+        }
+      }
+    }
+
     const battingPlayers = memberships
       .map((membership) => {
         const acc = battingAccumulators.get(membership.userId);
@@ -192,7 +217,8 @@ export class LeaderboardService {
     const bowlingPlayers = memberships
       .map((membership) => {
         const acc = bowlingAccumulators.get(membership.userId);
-        if (!acc || acc.bowledMatchIds.size === 0) {
+        // Bowl tab: only players who actually bowled (Inns > 0); XI-only never-bowled excluded.
+        if (!acc || acc.innings === 0) {
           return null;
         }
         return {
