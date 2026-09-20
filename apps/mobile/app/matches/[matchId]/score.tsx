@@ -48,6 +48,7 @@ import { WideBallDialog } from '../../../src/components/scoring/WideBallDialog';
 import { LiveScoringHeader } from '../../../src/components/scoring/LiveScoringHeader';
 import { LiveScoringKeypad } from '../../../src/components/scoring/LiveScoringKeypad';
 import { LiveScoringPlayerCards } from '../../../src/components/scoring/LiveScoringPlayerCards';
+import { canCorrectNonStriker } from '../../../src/components/scoring/canCorrectNonStriker';
 import { LiveScoringScorecardTab } from '../../../src/components/scoring/LiveScoringScorecardTab';
 import { ScoringCockpit } from '../../../src/components/scoring/cockpit/ScoringCockpit';
 import {
@@ -1472,6 +1473,8 @@ export default function LiveScoringScreen(): React.ReactElement {
   const batsman1Card = inn?.batters.find((b) => b.playerId === battingSlots.batsman1Id);
   const batsman2Card = inn?.batters.find((b) => b.playerId === battingSlots.batsman2Id);
   const bowlerCard = inn?.bowlers.find((b) => b.playerId === bowlerId);
+  const nonStrikerCard = inn?.batters.find((b) => b.playerId === nonStrikerId);
+  const canChangeNonStriker = canCorrectNonStriker(nonStrikerId, nonStrikerCard);
   const keypadDisabled =
     working ||
     endOverStep != null ||
@@ -1565,7 +1568,7 @@ export default function LiveScoringScreen(): React.ReactElement {
           nonStrikerId={nonStrikerId}
           bowlerId={bowlerId}
           strikerCard={inn.batters.find((b) => b.playerId === strikerId)}
-          nonStrikerCard={inn.batters.find((b) => b.playerId === nonStrikerId)}
+          nonStrikerCard={nonStrikerCard}
           bowlerCard={inn.bowlers.find((b) => b.playerId === bowlerId)}
           battingXi={battingSquad}
           bowlingXi={bowlingSquad}
@@ -1702,6 +1705,8 @@ export default function LiveScoringScreen(): React.ReactElement {
                 onOpenBatsmanPicker={openBatsmanPickerFromBatIcon}
                 onPickBatsman1={() => openBatsmanPicker('striker')}
                 onPickBatsman2={() => openBatsmanPicker('nonStriker')}
+                nonStrikerPlayerId={nonStrikerId}
+                canChangeNonStriker={canChangeNonStriker}
                 onPickBowler={() => openBowlerPicker()}
               />
 

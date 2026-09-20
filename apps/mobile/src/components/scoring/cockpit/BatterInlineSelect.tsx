@@ -39,6 +39,11 @@ export interface BatterInlineSelectProps {
   selectedUserId: string | null;
   /** Same action the full-page picker uses after choose(). */
   onSelect: (userId: string) => void;
+  /**
+   * When false, the field is display-only (used to block unsafe non-striker
+   * swaps after the batter has faced a ball / scored).
+   */
+  changeAllowed?: boolean;
 }
 
 interface AnchorRect {
@@ -72,6 +77,7 @@ export function BatterInlineSelect({
   displayName,
   selectedUserId,
   onSelect,
+  changeAllowed = true,
 }: BatterInlineSelectProps): React.ReactElement {
   const fieldRef = useRef<RNView>(null);
   const [open, setOpen] = useState(false);
@@ -106,7 +112,7 @@ export function BatterInlineSelect({
   }, [open, load]);
 
   function openDropdown(): void {
-    if (!inningsId) return;
+    if (!inningsId || !changeAllowed) return;
     fieldRef.current?.measureInWindow((x, y, width, height) => {
       setAnchor({ x, y, width, height });
       setOpen(true);
@@ -132,10 +138,14 @@ export function BatterInlineSelect({
   return (
     <View ref={fieldRef} className="min-w-0 flex-1" collapsable={false}>
       <Pressable
-        onPress={openDropdown}
+        onPress={changeAllowed ? openDropdown : undefined}
+        disabled={!changeAllowed}
         accessibilityRole="button"
+        accessibilityState={{ disabled: !changeAllowed }}
         accessibilityLabel={role === 'striker' ? 'Select striker' : 'Select non-striker'}
-        className="min-h-[28px] min-w-0 flex-1 flex-row items-center justify-between gap-1 rounded border border-outline-variant bg-surface-container-lowest px-2 active:opacity-80"
+        className={`min-h-[28px] min-w-0 flex-1 flex-row items-center justify-between gap-1 rounded border border-outline-variant bg-surface-container-lowest px-2 ${
+          changeAllowed ? 'active:opacity-80' : 'opacity-90'
+        }`}
       >
         <Text
           className="min-w-0 flex-1 font-sans-medium text-[12px] text-on-surface"
@@ -144,7 +154,9 @@ export function BatterInlineSelect({
         >
           {displayName}
         </Text>
-        <Ionicons name="chevron-down" size={12} color={colors.textMuted} />
+        {changeAllowed ? (
+          <Ionicons name="chevron-down" size={12} color={colors.textMuted} />
+        ) : null}
       </Pressable>
 
       <Modal visible={open} transparent animationType="fade" onRequestClose={closeDropdown}>

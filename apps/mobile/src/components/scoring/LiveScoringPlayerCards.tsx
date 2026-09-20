@@ -108,6 +108,13 @@ export interface LiveScoringPlayerCardsProps {
   onPickBatsman1: () => void;
   /** Placeholder row for fixed batsman 2 (non-striker) slot. */
   onPickBatsman2: () => void;
+  /**
+   * Live non-striker id — when this player is shown in a slot and
+   * `canChangeNonStriker`, the row stays tappable for setup correction.
+   */
+  nonStrikerPlayerId?: string | null;
+  /** Safe to replace the non-striker (0 balls / 0 runs). */
+  canChangeNonStriker?: boolean;
   onPickBowler: () => void;
 }
 
@@ -147,12 +154,12 @@ function SlimSelectorRow({
     </View>
   );
 
-  if (!selected && onPress) {
+  if (onPress) {
     return (
       <Pressable
         onPress={onPress}
         accessibilityRole="button"
-        accessibilityLabel={placeholder}
+        accessibilityLabel={selected ? name ?? placeholder : placeholder}
         className="active:opacity-80"
       >
         {row}
@@ -167,10 +174,12 @@ function PopulatedBatterRow({
   name,
   card,
   onStrike,
+  onPress,
 }: {
   name: string;
   card: BatterCard | undefined;
   onStrike: boolean;
+  onPress?: () => void;
 }): React.ReactElement {
   const runs = card?.runs ?? 0;
   const balls = card?.balls ?? 0;
@@ -178,7 +187,7 @@ function PopulatedBatterRow({
   const sixes = card?.sixes ?? 0;
   const strikeRate = formatBatterStrikeRateDisplay(card);
 
-  return (
+  const row = (
     <BatterTableRow
       rowClassName={[
         'rounded-control py-1.5',
@@ -223,6 +232,21 @@ function PopulatedBatterRow({
       }}
     />
   );
+
+  if (onPress) {
+    return (
+      <Pressable
+        onPress={onPress}
+        accessibilityRole="button"
+        accessibilityLabel={`Change non-striker ${name}`}
+        className="active:opacity-80"
+      >
+        {row}
+      </Pressable>
+    );
+  }
+
+  return row;
 }
 
 function formatExtrasBreakdown(extras: ExtrasBreakdown): string | null {
@@ -307,6 +331,8 @@ export function LiveScoringPlayerCards({
   onOpenBatsmanPicker,
   onPickBatsman1,
   onPickBatsman2,
+  nonStrikerPlayerId = null,
+  canChangeNonStriker = false,
   onPickBowler,
 }: LiveScoringPlayerCardsProps): React.ReactElement {
   const battersReady = Boolean(batsman1Id && batsman2Id);
@@ -365,14 +391,24 @@ export function LiveScoringPlayerCards({
     playerId: string | null,
     card: BatterCard | undefined,
     placeholder: string,
-    onPick: () => void,
+    onPickEmpty: () => void,
   ): React.ReactElement {
+    const isCurrentNonStriker =
+      Boolean(playerId) && Boolean(nonStrikerPlayerId) && playerId === nonStrikerPlayerId;
+    const allowNonStrikerCorrection = isCurrentNonStriker && canChangeNonStriker;
+    const onPress = !playerId
+      ? onPickEmpty
+      : allowNonStrikerCorrection
+        ? onPickBatsman2
+        : undefined;
+
     if (usePopulatedBattingRows && playerId) {
       return (
         <PopulatedBatterRow
           name={nameOf(playerId)}
           card={card}
           onStrike={playerId === onStrikePlayerId}
+          onPress={onPress}
         />
       );
     }
@@ -386,7 +422,7 @@ export function LiveScoringPlayerCards({
             ? `${card.runs} (${card.balls}) · 4s: ${card.fours} | 6s: ${card.sixes}`
             : null
         }
-        onPress={!playerId ? onPick : undefined}
+        onPress={onPress}
       />
     );
   }

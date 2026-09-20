@@ -1050,6 +1050,29 @@ describe('Scoring engine — persisted participant selections', () => {
       currentBowlerId: 'X',
     });
   });
+
+  it('replaces a non-striker who has not batted when a new selection is persisted', () => {
+    const events = innings([
+      { type: DeliveryType.Legal, runsBat: 0, strikerId: 'A', nonStrikerId: 'B' },
+    ]);
+    const card = deriveInnings(events, { selectedNonStrikerId: 'C' });
+    expect(card.currentStrikerId).toBe('A');
+    expect(card.currentNonStrikerId).toBe('C');
+    expect(card.batters.find((b) => b.playerId === 'A')).toMatchObject({ runs: 0, balls: 1 });
+    expect(card.batters.find((b) => b.playerId === 'B')).toMatchObject({ runs: 0, balls: 0 });
+  });
+
+  it('does not replace a non-striker who has already faced a ball', () => {
+    const events = innings([
+      { type: DeliveryType.Legal, runsBat: 1, strikerId: 'A', nonStrikerId: 'B' },
+      { type: DeliveryType.Legal, runsBat: 2, strikerId: 'B', nonStrikerId: 'A' },
+    ]);
+    const card = deriveInnings(events, { selectedNonStrikerId: 'C' });
+    // After odd run, B is on strike with runs; A is non-striker with 1 ball — unsafe to swap A.
+    expect(card.currentStrikerId).toBe('B');
+    expect(card.currentNonStrikerId).toBe('A');
+    expect(card.batters.find((b) => b.playerId === 'A')).toMatchObject({ runs: 1, balls: 1 });
+  });
 });
 
 describe('Scoring engine — partnerships (§28)', () => {

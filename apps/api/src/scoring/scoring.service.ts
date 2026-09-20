@@ -50,10 +50,12 @@ import {
   isConsecutiveOverViolation,
   isDismissalAllowedOnFreeHit,
   isLegalBall,
+  isSafeCreaseBatterSwap,
   nextBallPosition,
   occupiesBallSlot,
   type ScoringEvent,
 } from './engine';
+import { selectedParticipantContext } from './innings-participant-mapper';
 import { ScorecardConfirmationService } from './scorecard-confirmation.service';
 import { ScorecardReader } from './scorecard-reader';
 
@@ -1078,6 +1080,7 @@ export class ScoringService {
       data.selectedStrikerExternalId = extCol(req.strikerId);
     }
     if (req.nonStrikerId !== undefined) {
+      await this.assertNonStrikerChangeAllowed(innings, req.nonStrikerId);
       data.selectedNonStrikerUserId = userCol(req.nonStrikerId);
       data.selectedNonStrikerExternalId = extCol(req.nonStrikerId);
     }
@@ -1121,6 +1124,38 @@ export class ScoringService {
       throw new BadRequestException({
         message: 'Striker and non-striker must be different players',
         error: 'DUPLICATE_CREASE_PLAYERS',
+      });
+    }
+  }
+
+  /**
+   * Non-striker may only be replaced when the current occupant has not batted
+   * (0 balls / 0 runs) — innings-start correction. Blocks silent history moves.
+   */
+  private async assertNonStrikerChangeAllowed(
+    innings: Innings,
+    nextNonStrikerId: string | null,
+  ): Promise<void> {
+    if (!nextNonStrikerId) {
+      return;
+    }
+    const events = (await this.liveDeliveries(innings.id)).map((d) => toScoringEvent(d));
+    const derived = deriveInnings(events, selectedParticipantContext(innings));
+    const currentId = derived.currentNonStrikerId;
+    if (!currentId || currentId === nextNonStrikerId) {
+      return;
+    }
+    const card = derived.batters.find((b) => b.playerId === currentId);
+    if (
+      !isSafeCreaseBatterSwap(
+        card
+          ? { runs: card.runs, balls: card.balls, isOut: card.isOut }
+          : null,
+      )
+    ) {
+      throw new BadRequestException({
+        message: 'Cannot change the non-striker after they have batted',
+        error: 'NON_STRIKER_ALREADY_BATTED',
       });
     }
   }

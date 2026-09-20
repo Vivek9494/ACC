@@ -647,28 +647,6 @@ export function deriveInnings(events: ScoringEvent[], ctx: InningsContext = {}):
 
   extras.total = extras.wides + extras.noBalls + extras.byes + extras.legByes + extras.penalties;
 
-  const batterCards: BatterCard[] = batterOrder.map((id) => {
-    const b = batters.get(id) as MutableBatter;
-    return {
-      playerId: b.playerId,
-      runs: b.runs,
-      balls: b.balls,
-      ones: b.ones,
-      twos: b.twos,
-      threes: b.threes,
-      fours: b.fours,
-      sixes: b.sixes,
-      strikeRate: b.balls > 0 ? round((b.runs / b.balls) * 100, 2) : 0,
-      isOut: b.isOut,
-      dismissalType: b.dismissalType,
-      bowlerId: b.bowlerId,
-      fielderId: b.fielderId,
-      fielder2Id: b.fielder2Id,
-      retiredHurt: b.retiredHurt,
-      isMankad: b.isMankad,
-    };
-  });
-
   const bowlerCards: BowlerCard[] = bowlerOrder.map((id) => {
     const b = bowlers.get(id) as MutableBowler;
     const oversBowled = b.legalBalls / BALLS_PER_OVER;
@@ -725,10 +703,43 @@ export function deriveInnings(events: ScoringEvent[], ctx: InningsContext = {}):
     .sort((a, b) => a.overNumber - b.overNumber)
     .slice(-RECENT_OVERS);
 
+  const foldedNonStriker = nonStriker ? batters.get(nonStriker) : undefined;
   const participants = resolveLiveParticipants(
     { striker, nonStriker, currentBowlerId, legalBalls },
     ctx,
+    foldedNonStriker
+      ? {
+          runs: foldedNonStriker.runs,
+          balls: foldedNonStriker.balls,
+          isOut: foldedNonStriker.isOut,
+        }
+      : null,
   );
+  // New non-striker from a safe correction may not have been on a delivery yet.
+  ensureBatter(participants.currentStrikerId);
+  ensureBatter(participants.currentNonStrikerId);
+
+  const batterCards: BatterCard[] = batterOrder.map((id) => {
+    const b = batters.get(id) as MutableBatter;
+    return {
+      playerId: b.playerId,
+      runs: b.runs,
+      balls: b.balls,
+      ones: b.ones,
+      twos: b.twos,
+      threes: b.threes,
+      fours: b.fours,
+      sixes: b.sixes,
+      strikeRate: b.balls > 0 ? round((b.runs / b.balls) * 100, 2) : 0,
+      isOut: b.isOut,
+      dismissalType: b.dismissalType,
+      bowlerId: b.bowlerId,
+      fielderId: b.fielderId,
+      fielder2Id: b.fielder2Id,
+      retiredHurt: b.retiredHurt,
+      isMankad: b.isMankad,
+    };
+  });
 
   // Current partnership: runs/balls since the last wicket between the pair (§28).
   const lastWicketRuns = fallOfWickets.at(-1)?.teamRuns ?? 0;
@@ -785,6 +796,23 @@ export function deriveInnings(events: ScoringEvent[], ctx: InningsContext = {}):
   };
 }
 
+/** Folded non-striker batting line used for safe opener corrections. */
+export interface CreaseBatterFaceStats {
+  runs: number;
+  balls: number;
+  isOut: boolean;
+}
+
+/** True when replacing this crease batter will not move any scoring history. */
+export function isSafeCreaseBatterSwap(
+  stats: CreaseBatterFaceStats | null | undefined,
+): boolean {
+  if (!stats) {
+    return true;
+  }
+  return stats.balls === 0 && stats.runs === 0 && !stats.isOut;
+}
+
 /** Merge folded crease state with scorer selections persisted on the innings row. */
 export function resolveLiveParticipants(
   folded: {
@@ -794,6 +822,11 @@ export function resolveLiveParticipants(
     legalBalls: number;
   },
   ctx: InningsContext,
+  /**
+   * Face stats for the folded non-striker (when occupied). Used to allow an
+   * innings-start correction: replace non-striker only when they have not batted.
+   */
+  foldedNonStrikerStats: CreaseBatterFaceStats | null = null,
 ): {
   currentStrikerId: string | null;
   currentNonStrikerId: string | null;
@@ -807,6 +840,15 @@ export function resolveLiveParticipants(
     striker = ctx.selectedStrikerId;
   }
   if (nonStriker === null && ctx.selectedNonStrikerId != null) {
+    nonStriker = ctx.selectedNonStrikerId;
+  } else if (
+    nonStriker !== null &&
+    ctx.selectedNonStrikerId != null &&
+    ctx.selectedNonStrikerId !== nonStriker &&
+    ctx.selectedNonStrikerId !== striker &&
+    isSafeCreaseBatterSwap(foldedNonStrikerStats)
+  ) {
+    // Safe setup correction: wrong opener at non-strike, no balls/runs yet.
     nonStriker = ctx.selectedNonStrikerId;
   }
 

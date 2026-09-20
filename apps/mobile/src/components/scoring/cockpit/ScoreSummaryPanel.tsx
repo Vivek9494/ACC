@@ -13,6 +13,7 @@ import { Pressable, View } from 'react-native';
 import { Text } from '../../ui/Text';
 import { FIELD_ORANGE } from '../../ui/fieldStyles';
 import { colors } from '../../../theme/colors';
+import { canCorrectNonStriker } from '../canCorrectNonStriker';
 import { recentBallChipStyle } from '../liveScoringKeypadTokens';
 import { BatterInlineSelect } from './BatterInlineSelect';
 import {
@@ -388,6 +389,7 @@ export function ScoreSummaryPanel({
   const result = resultLine?.trim() || null;
   const strikerName = strikerId ? nameOf(strikerId) : 'Select striker';
   const nonStrikerName = nonStrikerId ? nameOf(nonStrikerId) : 'Select non-striker';
+  const nonStrikerChangeAllowed = canCorrectNonStriker(nonStrikerId, nonStrikerCard);
   const bowlerName = bowlerId ? nameOf(bowlerId) : 'Select bowler';
   const thisOverBalls = currentOverSummary(innings)?.balls ?? [];
   const partnership = innings.partnership;
@@ -475,6 +477,7 @@ export function ScoreSummaryPanel({
               displayName={nonStrikerName}
               selectedUserId={nonStrikerId}
               onSelect={onSelectNonStriker}
+              changeAllowed={nonStrikerChangeAllowed}
             />
             <StatValues values={batterStats(nonStrikerCard)} />
           </View>
