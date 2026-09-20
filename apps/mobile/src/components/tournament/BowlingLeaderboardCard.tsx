@@ -70,7 +70,9 @@ export function BowlingLeaderboardCard({ entry }: BowlingLeaderboardCardProps): 
 
       <View className="flex-row border-t border-surface-container pt-3">
         <StatCell label="Matches" value={String(entry.matches)} />
+        <StatCell label="Inns" value={String(entry.innings)} />
         <StatCell label="Wickets" value={String(entry.wickets)} highlight />
+        <StatCell label="Best" value={entry.bestBowling ?? '–'} />
         <StatCell label="Econ" value={formatLeaderboardEconomy(entry.economy)} />
       </View>
     </View>

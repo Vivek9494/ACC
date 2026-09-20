@@ -22,6 +22,10 @@ export interface BattingLeaderboardEntry {
   matches: number;
   /** Total runs (R). */
   runs: number;
+  /** Innings scoring 30–49 (exclusive of fifties/hundreds). */
+  thirties: number;
+  /** Innings scoring 50–99 (exclusive of hundreds). */
+  fifties: number;
   /** Batting average; null when never dismissed (÷0 guard). */
   average: number | null;
   /** Strike rate; null when no balls faced. */
@@ -44,7 +48,14 @@ export interface BowlingLeaderboardEntry {
   teamLogoUrl: string | null;
   /** Matches bowled in. */
   matches: number;
+  /** Innings in which the bowler bowled at least one delivery (or took a wicket). */
+  innings: number;
   wickets: number;
+  /**
+   * Best per-innings figures as "W/R" (e.g. "5/23"); null when no bowling innings.
+   * Ranking: most wickets, then fewer runs conceded.
+   */
+  bestBowling: string | null;
   /** Economy rate; null when no balls bowled. */
   economy: number | null;
 }

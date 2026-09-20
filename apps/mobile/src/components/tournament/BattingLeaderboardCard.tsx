@@ -75,6 +75,8 @@ export function BattingLeaderboardCard({ entry }: BattingLeaderboardCardProps): 
       <View className="flex-row border-t border-surface-container pt-3">
         <StatCell label="M" value={String(entry.matches)} />
         <StatCell label="R" value={String(entry.runs)} />
+        <StatCell label="30s" value={String(entry.thirties)} />
+        <StatCell label="50s" value={String(entry.fifties)} />
         <StatCell label="Avg" value={formatLeaderboardAverage(entry.average)} highlight />
         <StatCell label="SR" value={formatLeaderboardStrikeRate(entry.strikeRate)} />
       </View>

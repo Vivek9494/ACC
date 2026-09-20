@@ -3,6 +3,7 @@ import {
   computeBattingAverage,
   computeEconomyRate,
   computeStrikeRate,
+  formatPlayerProfileBestBowling,
   type BattingLeaderboardEntry,
   type BowlingLeaderboardEntry,
 } from '@acc/types';
@@ -12,11 +13,13 @@ export interface BattingAccumulator {
   runs: number;
   balls: number;
   dismissals: number;
+  thirties: number;
+  fifties: number;
   battedMatchIds: Set<string>;
 }
 
 export function createBattingAccumulator(): BattingAccumulator {
-  return { runs: 0, balls: 0, dismissals: 0, battedMatchIds: new Set() };
+  return { runs: 0, balls: 0, dismissals: 0, thirties: 0, fifties: 0, battedMatchIds: new Set() };
 }
 
 export function applyBatterInnings(
@@ -28,6 +31,12 @@ export function applyBatterInnings(
   acc.balls += batter.balls;
   if (batter.isOut) {
     acc.dismissals += 1;
+  }
+  // Exclusive milestone buckets (same as career card): 30–49 / 50–99; 100+ neither.
+  if (batter.runs >= 30 && batter.runs < 50) {
+    acc.thirties += 1;
+  } else if (batter.runs >= 50 && batter.runs < 100) {
+    acc.fifties += 1;
   }
   if (batter.balls > 0 || batter.runs > 0 || batter.isOut) {
     acc.battedMatchIds.add(matchId);
@@ -60,7 +69,7 @@ export function buildBattingLeaderboardEntries(
   });
 
   return sorted.map((player, index) => {
-    const { runs, balls, dismissals, battedMatchIds } = player.accumulator;
+    const { runs, balls, dismissals, thirties, fifties, battedMatchIds } = player.accumulator;
     return {
       rank: index + 1,
       userId: player.userId,
@@ -72,10 +81,18 @@ export function buildBattingLeaderboardEntries(
       teamLogoUrl: player.teamLogoUrl,
       matches: battedMatchIds.size,
       runs,
+      thirties,
+      fifties,
       average: computeBattingAverage(runs, dismissals),
       strikeRate: computeStrikeRate(runs, balls),
     };
   });
+}
+
+/** Per-innings best bowling figures (career-card ranking: wickets desc, runs asc). */
+export interface BestBowlingFigures {
+  wickets: number;
+  runsConceded: number;
 }
 
 /** Per-player bowling totals while folding completed-match scorecards. */
@@ -83,11 +100,35 @@ export interface BowlingAccumulator {
   runsConceded: number;
   legalBalls: number;
   wickets: number;
+  /** Innings where the bowler actually bowled (Flag A / career bowlingInnings). */
+  innings: number;
+  bestBowling: BestBowlingFigures | null;
   bowledMatchIds: Set<string>;
 }
 
 export function createBowlingAccumulator(): BowlingAccumulator {
-  return { runsConceded: 0, legalBalls: 0, wickets: 0, bowledMatchIds: new Set() };
+  return {
+    runsConceded: 0,
+    legalBalls: 0,
+    wickets: 0,
+    innings: 0,
+    bestBowling: null,
+    bowledMatchIds: new Set(),
+  };
+}
+
+/** Same ranking as career `isBetterBowling`: more wickets, then fewer runs. */
+function isBetterBowlingFigures(
+  current: BestBowlingFigures | null,
+  candidate: BestBowlingFigures,
+): boolean {
+  if (!current) {
+    return true;
+  }
+  if (candidate.wickets !== current.wickets) {
+    return candidate.wickets > current.wickets;
+  }
+  return candidate.runsConceded < current.runsConceded;
 }
 
 export function applyBowlerInnings(
@@ -100,6 +141,17 @@ export function applyBowlerInnings(
   acc.wickets += bowler.wickets;
   if (bowler.legalBalls > 0 || bowler.wickets > 0 || bowler.runsConceded > 0) {
     acc.bowledMatchIds.add(matchId);
+  }
+  // Participation innings + best figures (same gate as career bowlingInnings).
+  if (bowler.legalBalls > 0 || bowler.wickets > 0) {
+    acc.innings += 1;
+    const candidate: BestBowlingFigures = {
+      wickets: bowler.wickets,
+      runsConceded: bowler.runsConceded,
+    };
+    if (isBetterBowlingFigures(acc.bestBowling, candidate)) {
+      acc.bestBowling = candidate;
+    }
   }
 }
 
@@ -150,7 +202,8 @@ export function buildBowlingLeaderboardEntries(
   });
 
   return sorted.map((player, index) => {
-    const { runsConceded, legalBalls, wickets, bowledMatchIds } = player.accumulator;
+    const { runsConceded, legalBalls, wickets, innings, bestBowling, bowledMatchIds } =
+      player.accumulator;
     return {
       rank: index + 1,
       userId: player.userId,
@@ -161,7 +214,11 @@ export function buildBowlingLeaderboardEntries(
       teamName: player.teamName,
       teamLogoUrl: player.teamLogoUrl,
       matches: bowledMatchIds.size,
+      innings,
       wickets,
+      bestBowling: bestBowling
+        ? formatPlayerProfileBestBowling(bestBowling.wickets, bestBowling.runsConceded)
+        : null,
       economy: computeEconomyRate(runsConceded, legalBalls),
     };
   });
