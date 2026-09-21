@@ -7,6 +7,7 @@ import {
   SIGNUP_NAME_MAX_LENGTH,
   SIGNUP_NAME_REGEX,
   SIGNUP_VALIDATION_MESSAGES,
+  isMediaStorageKey,
   type UpdateProfileRequest,
 } from '@acc/types';
 import { Transform } from 'class-transformer';
@@ -80,6 +81,10 @@ export class UpdateProfileDto implements UpdateProfileRequest {
   postalCode?: string;
 
   @IsOptional()
+  @ValidateIf(
+    (_: unknown, value: unknown) =>
+      typeof value === 'string' && value.trim().length > 0 && !isMediaStorageKey(value.trim()),
+  )
   @IsUrl(APP_URL_VALIDATION_OPTIONS)
   profilePhotoUrl?: string | null;
 

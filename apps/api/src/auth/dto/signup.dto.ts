@@ -6,6 +6,7 @@ import {
   SIGNUP_NAME_MAX_LENGTH,
   SIGNUP_NAME_REGEX,
   SIGNUP_VALIDATION_MESSAGES,
+  isMediaStorageKey,
   type SignupRequest,
 } from '@acc/types';
 import { Transform } from 'class-transformer';
@@ -85,6 +86,10 @@ export class SignupDto implements SignupRequest {
   jerseyNumber?: number;
 
   @IsOptional()
+  @ValidateIf(
+    (_: unknown, value: unknown) =>
+      typeof value === 'string' && value.trim().length > 0 && !isMediaStorageKey(value.trim()),
+  )
   @IsUrl(APP_URL_VALIDATION_OPTIONS)
   profilePhotoUrl?: string | null;
 

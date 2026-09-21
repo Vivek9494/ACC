@@ -45,17 +45,21 @@ export function ProfilePhotoField({
   }, []);
 
   async function pick(): Promise<void> {
-    const limits = await getUploadLimits();
-    const result = await pickImage(profilePhotoPickOptions(limits));
-    if (result === null) {
-      return;
+    try {
+      const limits = await getUploadLimits();
+      const result = await pickImage(profilePhotoPickOptions(limits));
+      if (result === null) {
+        return;
+      }
+      if (!result.ok) {
+        onValidationError?.(result.error);
+        return;
+      }
+      onValidationError?.(null);
+      onChange(result.file);
+    } catch {
+      onValidationError?.('Could not open the photo library. Please try again.');
     }
-    if (!result.ok) {
-      onValidationError?.(result.error);
-      return;
-    }
-    onValidationError?.(null);
-    onChange(result.file);
   }
 
   const borderClass = error ? `border ${ERROR_BORDER_CLASS}` : 'border border-border';

@@ -6,7 +6,7 @@ import { getUploadLimits as fetchUploadLimits } from './api';
 let cached: UploadLimits | null = null;
 let inflight: Promise<UploadLimits> | null = null;
 
-/** Fetch upload limits from the server (cached until invalidated). */
+/** Fetch upload limits from the server (cached until invalidated). Falls back to defaults on network failure. */
 export async function getUploadLimits(): Promise<UploadLimits> {
   if (cached) {
     return cached;
@@ -16,6 +16,11 @@ export async function getUploadLimits(): Promise<UploadLimits> {
       .then((limits) => {
         cached = limits;
         return limits;
+      })
+      .catch(() => {
+        const defaults = defaultUploadLimits();
+        cached = defaults;
+        return defaults;
       })
       .finally(() => {
         inflight = null;

@@ -9,6 +9,7 @@ import {
   formatSignupAddressInput,
   formatSignupMobileInput,
   formatSignupNameInput,
+  isMediaStorageKey,
   type SignupFieldKey,
   type SignupRequest,
 } from '@acc/types';
@@ -34,8 +35,14 @@ import { SectionCard } from '../src/components/ui/SectionCard';
 import { Select } from '../src/components/ui/Select';
 import { Text } from '../src/components/ui/Text';
 import { TextInput } from '../src/components/ui/TextInput';
-import { ApiRequestError } from '../src/lib/api';
-import type { PickedImageFile } from '../src/lib/imagePicker';
+import { ApiRequestError, getProfile, updateProfile } from '../src/lib/api';
+import {
+  ensureUploadableUri,
+  isLocalImageUri,
+  resolveImageFileSize,
+  type PickedImageFile,
+} from '../src/lib/imagePicker';
+import { uploadProfilePhoto } from '../src/lib/imageUpload';
 import { useAuth } from '../src/lib/auth-context';
 import {
   firstSignupFieldError,
@@ -47,7 +54,7 @@ import { useSignupGeography } from '../src/lib/signup-geography';
 
 export default function SignupScreen(): React.ReactElement {
   const router = useRouter();
-  const { register } = useAuth();
+  const { register, applyProfileUpdate } = useAuth();
   const scrollRef = useRef<ScrollView>(null);
   const fieldOffsets = useRef<Partial<Record<SignupFieldKey, number>>>({});
 
@@ -118,6 +125,44 @@ export default function SignupScreen(): React.ReactElement {
     clearFieldError('postalCode');
   }
 
+  /** After signup tokens exist: upload local photo the same way Edit Profile does. */
+  async function attachSignupProfilePhoto(file: PickedImageFile): Promise<void> {
+    if (!isLocalImageUri(file.uri) || !province || !centerId) {
+      return;
+    }
+    const sizeBytes = await resolveImageFileSize(file.uri, file.sizeBytes);
+    if (sizeBytes == null || sizeBytes <= 0) {
+      throw new Error('Could not read the photo size. Please pick the image again.');
+    }
+    const uploadUri = await ensureUploadableUri(file.uri, 'profile-photo');
+    const uploaded = await uploadProfilePhoto(uploadUri, sizeBytes);
+    if (!isMediaStorageKey(uploaded.storageKey)) {
+      throw new Error('Photo upload failed. Please try again.');
+    }
+
+    const profile = await getProfile();
+    const updated = await updateProfile({
+      firstName: profile.firstName,
+      lastName: profile.lastName,
+      provinceId: profile.provinceId,
+      centerId: profile.centerId,
+      dateOfBirth: profile.dateOfBirth,
+      emergencyContactName: profile.emergencyContactName,
+      emergencyContactNumber: profile.emergencyContactNumber.replace(/\D/g, ''),
+      hasHealthCard: profile.hasHealthCard,
+      email: profile.email,
+      ...(profile.address ? { address: profile.address } : { address: '' }),
+      ...(profile.postalCode
+        ? { postalCode: profile.postalCode }
+        : { postalCode: '' }),
+      profilePhotoUrl: uploaded.storageKey,
+      jerseyNumber: profile.jerseyNumber,
+      ...(profile.jerseyName ? { jerseyName: profile.jerseyName } : { jerseyName: null }),
+      ...(profile.jerseySize ? { jerseySize: profile.jerseySize } : { jerseySize: null }),
+    });
+    applyProfileUpdate(updated);
+  }
+
   async function onSubmit(): Promise<void> {
     const errors = validateSignupForm({
       profilePhotoError,
@@ -164,6 +209,22 @@ export default function SignupScreen(): React.ReactElement {
           : {}),
       };
       await register(payload);
+      // Account is created; attach optional photo with the authenticated upload path.
+      // Soft-fail so a photo error does not look like a failed signup after the user exists.
+      if (profilePhoto) {
+        try {
+          await attachSignupProfilePhoto(profilePhoto);
+        } catch (photoErr) {
+          if (__DEV__) {
+            console.warn('[signup] profile photo upload failed', photoErr);
+          }
+          setFormError(
+            photoErr instanceof Error
+              ? `${photoErr.message} You can add a photo later from Edit Profile.`
+              : 'Account created, but the photo could not be uploaded. Add it later from Edit Profile.',
+          );
+        }
+      }
     } catch (err) {
       if (err instanceof ApiRequestError) {
         const mapped = mapApiErrorsToSignupFields(err);
