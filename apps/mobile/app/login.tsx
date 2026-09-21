@@ -217,11 +217,18 @@ export default function LoginScreen(): React.ReactElement {
         />
 
         {!isElectronShell ? (
-          <View className="flex-row items-center justify-between">
-            <Checkbox checked={rememberMe} onChange={onRememberMeChange}>
+          <View className="w-full flex-row items-center justify-between gap-3">
+            <Checkbox
+              className="min-w-0 flex-1"
+              checked={rememberMe}
+              onChange={onRememberMeChange}
+            >
               <Text className="font-sans text-base text-on-surface">Remember Me</Text>
             </Checkbox>
-            <Link href="/forgot-password" className="font-sans-semibold text-sm text-primary">
+            <Link
+              href="/forgot-password"
+              className="shrink-0 font-sans-semibold text-sm text-primary"
+            >
               Forgot password?
             </Link>
           </View>
