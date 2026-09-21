@@ -16,11 +16,21 @@ import { clearRememberMePreferences } from './remember-me';
 
 export type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated';
 
+/** Optional post-signup work (e.g. profile photo) before the app treats the session as active. */
+export interface RegisterOptions {
+  /**
+   * Runs after tokens are saved (API calls are authenticated) but BEFORE
+   * `status` becomes `authenticated` — so the root redirect to home waits.
+   * On failure, signup still completes with the original signup user payload.
+   */
+  beforeActivate?: () => Promise<void>;
+}
+
 interface AuthContextValue {
   status: AuthStatus;
   user: AuthUser | null;
   signIn: (credentials: LoginRequest) => Promise<void>;
-  register: (payload: SignupRequest) => Promise<void>;
+  register: (payload: SignupRequest, options?: RegisterOptions) => Promise<void>;
   signOut: () => Promise<void>;
   /** Clears persisted tokens and local auth state without calling the logout API. */
   endSession: () => Promise<void>;
@@ -121,14 +131,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
     [applySession],
   );
 
-  const register = useCallback(
-    async (payload: SignupRequest) => {
-      const response = await apiSignup(payload);
-      await saveTokens(response.tokens);
-      applySession(response);
-    },
-    [applySession],
-  );
+  const register = useCallback(async (payload: SignupRequest, options?: RegisterOptions) => {
+    const response = await apiSignup(payload);
+    await saveTokens(response.tokens);
+    // Token only — do not flip status to authenticated yet, or the root
+    // navigator redirects to the dashboard before optional hydrate (photo) finishes.
+    setAuthToken(response.tokens.accessToken);
+
+    let sessionUser = response.user;
+    if (options?.beforeActivate) {
+      await options.beforeActivate();
+      try {
+        sessionUser = await getMe();
+      } catch (err) {
+        if (__DEV__) {
+          console.warn('[auth] signup getMe after beforeActivate failed; using signup user', err);
+        }
+      }
+    }
+
+    setUser(sessionUser);
+    setStatus('authenticated');
+    void registerDeviceForPush();
+  }, []);
 
   // Restore a persisted session on launch: try the stored access token; the
   // shared api client refreshes automatically on 401.
@@ -188,7 +213,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
       refreshUser,
       clearMustChangePassword,
     }),
-    [status, user, signIn, register, signOut, clearSession, clearCredentials, markUnauthenticated, applyProfileUpdate, refreshUser, clearMustChangePassword],
+    [
+      status,
+      user,
+      signIn,
+      register,
+      signOut,
+      clearSession,
+      clearCredentials,
+      markUnauthenticated,
+      applyProfileUpdate,
+      refreshUser,
+      clearMustChangePassword,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

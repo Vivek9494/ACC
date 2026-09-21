@@ -17,6 +17,7 @@ import { Link, useRouter } from 'expo-router';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   type LayoutChangeEvent,
   Pressable,
   ScrollView,
@@ -54,7 +55,7 @@ import { useSignupGeography } from '../src/lib/signup-geography';
 
 export default function SignupScreen(): React.ReactElement {
   const router = useRouter();
-  const { register, refreshUser } = useAuth();
+  const { register } = useAuth();
   const scrollRef = useRef<ScrollView>(null);
   const fieldOffsets = useRef<Partial<Record<SignupFieldKey, number>>>({});
 
@@ -139,8 +140,6 @@ export default function SignupScreen(): React.ReactElement {
     if (!isMediaStorageKey(uploaded.storageKey)) {
       throw new Error('Photo upload failed. Please try again.');
     }
-    // Complete already wrote the key; refresh so the icon gets a signed URL.
-    await refreshUser();
   }
 
   async function onSubmit(): Promise<void> {
@@ -172,6 +171,7 @@ export default function SignupScreen(): React.ReactElement {
     setSubmitting(true);
     const trimmedPostalCode = postalCode.trim();
     const trimmedEmail = email.trim();
+    let photoAttachFailedMessage: string | null = null;
     try {
       const payload: SignupRequest = {
         firstName: firstName.trim(),
@@ -188,22 +188,27 @@ export default function SignupScreen(): React.ReactElement {
           ? { postalCode: normalizeCanadianPostalCode(trimmedPostalCode) }
           : {}),
       };
-      await register(payload);
-      // Account is created; attach optional photo with the authenticated upload path.
-      // Soft-fail so a photo error does not look like a failed signup after the user exists.
-      if (profilePhoto) {
-        try {
-          await attachSignupProfilePhoto(profilePhoto);
-        } catch (photoErr) {
-          if (__DEV__) {
-            console.warn('[signup] profile photo upload failed', photoErr);
-          }
-          setFormError(
-            photoErr instanceof Error
-              ? `${photoErr.message} You can add a photo later from Edit Profile.`
-              : 'Account created, but the photo could not be uploaded. Add it later from Edit Profile.',
-          );
-        }
+      // Photo upload runs before status → authenticated so the dashboard icon
+      // mounts with a freshly signed profilePhotoUrl (not the pre-photo signup user).
+      await register(payload, {
+        beforeActivate: profilePhoto
+          ? async () => {
+              try {
+                await attachSignupProfilePhoto(profilePhoto);
+              } catch (photoErr) {
+                if (__DEV__) {
+                  console.warn('[signup] profile photo upload failed', photoErr);
+                }
+                photoAttachFailedMessage =
+                  photoErr instanceof Error
+                    ? `${photoErr.message} You can add a photo later from Edit Profile.`
+                    : 'Account created, but the photo could not be uploaded. Add it later from Edit Profile.';
+              }
+            }
+          : undefined,
+      });
+      if (photoAttachFailedMessage) {
+        Alert.alert('Profile photo', photoAttachFailedMessage);
       }
     } catch (err) {
       if (err instanceof ApiRequestError) {
