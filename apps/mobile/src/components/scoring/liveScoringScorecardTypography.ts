@@ -30,13 +30,13 @@ export const SCORECARD_TABLE_TYPE = {
  * name/size reference for the paired bowling table.
  */
 export const INNINGS_SCORECARD_TABLE_TYPE = {
-  columnHeader: 'font-sans-semibold text-[10px] uppercase tracking-wide text-on-surface-variant',
+  columnHeader: 'font-sans-semibold text-sm uppercase tracking-wide text-on-surface-variant',
   playerName: 'font-sans-semibold text-sm',
   playerNameActive: 'font-sans-semibold text-sm text-primary',
-  status: 'font-sans text-[11px] text-on-surface-variant',
-  statusActive: 'font-sans text-[11px] text-primary',
-  stat: 'font-sans text-xs text-on-surface',
-  statActive: 'font-sans-semibold text-xs text-primary',
+  status: 'font-sans text-sm text-on-surface-variant',
+  statusActive: 'font-sans text-sm text-primary',
+  stat: 'font-sans text-sm text-on-surface',
+  statActive: 'font-sans-semibold text-sm text-primary',
 } as const;
 
 /** FoW / Catch Dropped event row — taupe fill (`bg-surface-container-low`), 8px radius. */

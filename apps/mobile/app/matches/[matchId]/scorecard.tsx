@@ -11,7 +11,7 @@ import {
 } from '@acc/types';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Linking, Pressable, ScrollView, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, View } from 'react-native';
 import { ScreenHeader } from '../../../src/components/ui/ScreenHeader';
 import { Button } from '../../../src/components/ui/Button';
 import { Text } from '../../../src/components/ui/Text';
@@ -29,7 +29,6 @@ import {
   getScorecard,
   getScorecardConfirmEligibility,
   getScorecardConfirmation,
-  scorecardPdfUrl,
 } from '../../../src/lib/api';
 
 import { useScorecardResolvers } from '../../../src/hooks/useMatchResolvers';
@@ -42,7 +41,7 @@ import {
  * Match result & scorecard confirmation screen (spec §13, §16). Mirrors the
  * `full_scorecard_detailed_view_with_stats` mockup: the full derived scorecard,
  * a Captain/VC confirmation banner with the 5-hour auto-confirm countdown,
- * awarded Man of the Match on the winning-team tab, and a signed-in-only PDF export.
+ * and awarded Man of the Match on the winning-team tab.
  * Select/change MoM lives on Match Details only.
  */
 export default function ScorecardResultScreen(): React.ReactElement {
@@ -301,17 +300,6 @@ export default function ScorecardResultScreen(): React.ReactElement {
                 />
               ) : null
             }
-          />
-        ) : null}
-
-        {/* §16: PDF export — signed-in users only (hidden for Guest) */}
-        {user ? (
-          <Button
-            onPress={() => void Linking.openURL(scorecardPdfUrl(matchId))}
-            variant="outline"
-            className="h-12 border-primary"
-            textClassName="text-primary"
-            label="Export scorecard PDF"
           />
         ) : null}
       </ScrollView>
