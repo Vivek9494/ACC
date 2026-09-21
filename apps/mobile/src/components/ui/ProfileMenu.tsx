@@ -1,8 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useCallback, useRef, useState, type ComponentProps } from 'react';
+import { useCallback, useEffect, useRef, useState, type ComponentProps } from 'react';
 import {
-  Dimensions,
   Image,
   Modal,
   Pressable,
@@ -57,6 +56,7 @@ export function ProfileMenu(): React.ReactElement {
   const anchorRef = useRef<View>(null);
   const [open, setOpen] = useState(false);
   const [menuLayout, setMenuLayout] = useState<LayoutRectangle | null>(null);
+  const [avatarFailed, setAvatarFailed] = useState(false);
 
   const close = useCallback(() => {
     setOpen(false);
@@ -101,6 +101,12 @@ export function ProfileMenu(): React.ReactElement {
 
   const avatarUri = resolveMediaDisplayUrl(user?.profilePhotoUrl);
 
+  useEffect(() => {
+    setAvatarFailed(false);
+  }, [avatarUri]);
+
+  const showPhoto = Boolean(avatarUri) && !avatarFailed;
+
   return (
     <>
       <View ref={anchorRef} collapsable={false}>
@@ -110,10 +116,11 @@ export function ProfileMenu(): React.ReactElement {
           accessibilityLabel="Open profile menu"
           className="active:opacity-90"
         >
-          {avatarUri ? (
+          {showPhoto && avatarUri ? (
             <Image
               source={{ uri: avatarUri }}
               className={`${HEADER_PROFILE_AVATAR_SIZE_CLASS} rounded-full`}
+              onError={() => setAvatarFailed(true)}
             />
           ) : (
             <View

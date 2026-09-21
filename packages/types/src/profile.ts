@@ -55,8 +55,9 @@ export interface RequestProfileMobileOtpRequest {
 }
 
 export interface UploadProfilePhotoResponse {
+  /** Stable S3 object key — already written to User.profilePhotoUrl by complete. */
   storageKey: string;
-  /** Presigned read URL for immediate display. Persist storageKey on the profile record. */
+  /** Fresh presigned read URL for immediate display (re-signed again on login/getMe). */
   profilePhotoUrl: string;
 }
 

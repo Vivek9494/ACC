@@ -30,6 +30,8 @@ interface AuthContextValue {
   markUnauthenticated: () => void;
   /** Merge profile fields into the in-memory user after a successful profile save. */
   applyProfileUpdate: (profile: ProfileDetail) => void;
+  /** Re-fetch /auth/me so profilePhotoUrl is a freshly signed read URL. */
+  refreshUser: () => Promise<void>;
   /** Clears the forced password-change gate after a successful password update. */
   clearMustChangePassword: () => void;
 }
@@ -81,6 +83,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
         profilePhotoUrl: profile.profilePhotoUrl,
       };
     });
+  }, []);
+
+  const refreshUser = useCallback(async () => {
+    const me = await getMe();
+    setUser(me);
+    setStatus('authenticated');
   }, []);
 
   const clearMustChangePassword = useCallback(() => {
@@ -177,9 +185,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
       clearCredentials,
       markUnauthenticated,
       applyProfileUpdate,
+      refreshUser,
       clearMustChangePassword,
     }),
-    [status, user, signIn, register, signOut, clearSession, clearCredentials, markUnauthenticated, applyProfileUpdate, clearMustChangePassword],
+    [status, user, signIn, register, signOut, clearSession, clearCredentials, markUnauthenticated, applyProfileUpdate, refreshUser, clearMustChangePassword],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

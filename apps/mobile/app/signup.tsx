@@ -35,7 +35,7 @@ import { SectionCard } from '../src/components/ui/SectionCard';
 import { Select } from '../src/components/ui/Select';
 import { Text } from '../src/components/ui/Text';
 import { TextInput } from '../src/components/ui/TextInput';
-import { ApiRequestError, getProfile, updateProfile } from '../src/lib/api';
+import { ApiRequestError } from '../src/lib/api';
 import {
   ensureUploadableUri,
   isLocalImageUri,
@@ -54,7 +54,7 @@ import { useSignupGeography } from '../src/lib/signup-geography';
 
 export default function SignupScreen(): React.ReactElement {
   const router = useRouter();
-  const { register, applyProfileUpdate } = useAuth();
+  const { register, refreshUser } = useAuth();
   const scrollRef = useRef<ScrollView>(null);
   const fieldOffsets = useRef<Partial<Record<SignupFieldKey, number>>>({});
 
@@ -125,9 +125,9 @@ export default function SignupScreen(): React.ReactElement {
     clearFieldError('postalCode');
   }
 
-  /** After signup tokens exist: upload local photo the same way Edit Profile does. */
+  /** After signup tokens exist: upload local photo (complete persists the S3 key). */
   async function attachSignupProfilePhoto(file: PickedImageFile): Promise<void> {
-    if (!isLocalImageUri(file.uri) || !province || !centerId) {
+    if (!isLocalImageUri(file.uri)) {
       return;
     }
     const sizeBytes = await resolveImageFileSize(file.uri, file.sizeBytes);
@@ -139,28 +139,8 @@ export default function SignupScreen(): React.ReactElement {
     if (!isMediaStorageKey(uploaded.storageKey)) {
       throw new Error('Photo upload failed. Please try again.');
     }
-
-    const profile = await getProfile();
-    const updated = await updateProfile({
-      firstName: profile.firstName,
-      lastName: profile.lastName,
-      provinceId: profile.provinceId,
-      centerId: profile.centerId,
-      dateOfBirth: profile.dateOfBirth,
-      emergencyContactName: profile.emergencyContactName,
-      emergencyContactNumber: profile.emergencyContactNumber.replace(/\D/g, ''),
-      hasHealthCard: profile.hasHealthCard,
-      email: profile.email,
-      ...(profile.address ? { address: profile.address } : { address: '' }),
-      ...(profile.postalCode
-        ? { postalCode: profile.postalCode }
-        : { postalCode: '' }),
-      profilePhotoUrl: uploaded.storageKey,
-      jerseyNumber: profile.jerseyNumber,
-      ...(profile.jerseyName ? { jerseyName: profile.jerseyName } : { jerseyName: null }),
-      ...(profile.jerseySize ? { jerseySize: profile.jerseySize } : { jerseySize: null }),
-    });
-    applyProfileUpdate(updated);
+    // Complete already wrote the key; refresh so the icon gets a signed URL.
+    await refreshUser();
   }
 
   async function onSubmit(): Promise<void> {

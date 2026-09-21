@@ -283,6 +283,44 @@ export class ProfileService {
     return this.toProfileDetail(updated);
   }
 
+  /**
+   * Persist a verified profile-photo storage key on the user row.
+   * Called from POST /profile/photo/complete so upload alone updates the profile
+   * (clients must not rely on a separate PATCH for the key).
+   */
+  async attachProfilePhotoKey(userId: string, storageKey: string): Promise<void> {
+    const nextPhotoKey = this.normalizeProfilePhotoForStorage(storageKey);
+    if (!isMediaStorageKey(nextPhotoKey)) {
+      throw new BadRequestException({
+        message: 'Invalid profile photo reference',
+        error: 'INVALID_PROFILE_PHOTO',
+      });
+    }
+
+    const user = await this.prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: { profilePhotoUrl: true },
+    });
+
+    const previousKey =
+      user.profilePhotoUrl != null
+        ? (this.storage.resolveObjectKey(user.profilePhotoUrl) ?? user.profilePhotoUrl)
+        : null;
+
+    if (previousKey === nextPhotoKey) {
+      return;
+    }
+
+    if (previousKey) {
+      await this.storage.deleteObject(user.profilePhotoUrl);
+    }
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { profilePhotoUrl: nextPhotoKey },
+    });
+  }
+
   private async loadUser(userId: string): Promise<UserWithCenter> {
     return this.prisma.user.findUniqueOrThrow({
       where: { id: userId },

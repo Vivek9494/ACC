@@ -82,6 +82,8 @@ export class ProfileController {
     @Body() dto: MediaUploadCompleteDto,
   ): Promise<UploadProfilePhotoResponse> {
     const result = await this.mediaUpload.completeProfilePhotoUpload(user.id, dto);
+    // Persist the stable S3 key on the user; response URL is a fresh 1h read URL.
+    await this.profile.attachProfilePhotoKey(user.id, result.storageKey);
     return {
       storageKey: result.storageKey,
       profilePhotoUrl: result.displayUrl,

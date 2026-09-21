@@ -59,7 +59,7 @@ const FALLBACK_JERSEY_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL'] as const;
 
 export default function EditProfileScreen(): React.ReactElement {
   const router = useRouter();
-  const { status, applyProfileUpdate } = useAuth();
+  const { status, applyProfileUpdate, refreshUser } = useAuth();
 
   const [loading, setLoading] = useState(true);
   const [profileReady, setProfileReady] = useState(false);
@@ -247,6 +247,8 @@ export default function EditProfileScreen(): React.ReactElement {
           uri: uploaded.profilePhotoUrl,
           remoteUrl: uploaded.storageKey,
         });
+        // Complete already persisted the key; refresh icon URL without waiting on PATCH.
+        await refreshUser();
       }
 
       const trimmedPostal = postalCode.trim();
