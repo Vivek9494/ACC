@@ -9,7 +9,7 @@ import {
   OTP_TTL_SECONDS,
   isValidCanadianPostalCode,
   normalizeCanadianPostalCode,
-  type BallType,
+  BallType,
   type OwnPlayerMomMatchesView,
   type OwnPlayerStatsView,
   PLAYER_PROFILE_BALL_TYPE_LABELS,
