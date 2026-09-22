@@ -218,6 +218,17 @@ export default function ScorecardResultScreen(): React.ReactElement {
             : 'Scorecard'
         }
         onBack={() => router.back()}
+        titleTrailing={
+          matchId ? (
+            <Button
+              label="Details"
+              variant="outline"
+              className="h-9 px-3"
+              textClassName="text-xs"
+              onPress={() => router.push(`/matches/${matchId}`)}
+            />
+          ) : null
+        }
       />
       <ScrollView contentContainerClassName="px-6 py-6 gap-4">
         {error ? (

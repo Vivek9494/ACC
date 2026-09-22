@@ -1,4 +1,4 @@
-import type { TeamStandingRow } from '@acc/types';
+import { LEATHER_STANDINGS_POINTS, type TeamStandingRow } from '@acc/types';
 
 import {
   accumulateInningsNrr,
@@ -510,5 +510,102 @@ describe('standings NRR', () => {
     });
 
     expect(dataErrors).toHaveLength(0);
+  });
+});
+
+describe('leather standings points (10 / 5 / 0)', () => {
+  const leatherTeams = [
+    { teamId: 'a', teamName: 'ACC 3', logoUrl: null, groupId: null },
+    { teamId: 'b', teamName: 'ACC 6', logoUrl: null, groupId: null },
+  ];
+
+  it('awards Win 10, Loss 0, No Result 5 each, Tie 5 each', () => {
+    const { tables, dataErrors } = computeStandings({
+      tournamentId: 'leather',
+      matchSchedulingFormat: null,
+      groupCount: 0,
+      includeNetRunRate: false,
+      points: LEATHER_STANDINGS_POINTS,
+      awardUndecidedAsSplit: true,
+      teams: leatherTeams,
+      groups: [],
+      matches: [
+        {
+          matchId: 'win',
+          groupId: null,
+          homeTeamId: 'a',
+          awayTeamId: 'b',
+          isNoResult: false,
+          winningTeamId: 'a',
+          innings: [],
+        },
+        {
+          matchId: 'nr',
+          groupId: null,
+          homeTeamId: 'a',
+          awayTeamId: 'b',
+          isNoResult: true,
+          winningTeamId: null,
+          innings: [],
+        },
+        {
+          matchId: 'tie',
+          groupId: null,
+          homeTeamId: 'a',
+          awayTeamId: 'b',
+          isNoResult: false,
+          winningTeamId: null,
+          requiresSuperOver: true,
+          innings: [],
+        },
+      ],
+    });
+
+    expect(dataErrors).toHaveLength(0);
+    const alpha = tables[0]?.teams.find((row: TeamStandingRow) => row.teamId === 'a');
+    const beta = tables[0]?.teams.find((row: TeamStandingRow) => row.teamId === 'b');
+    // A: W10 + NR5 + Tie5 = 20; B: L0 + NR5 + Tie5 = 10
+    expect(alpha?.wins).toBe(1);
+    expect(alpha?.losses).toBe(0);
+    expect(alpha?.noResults).toBe(2);
+    expect(alpha?.points).toBe(20);
+    expect(beta?.wins).toBe(0);
+    expect(beta?.losses).toBe(1);
+    expect(beta?.noResults).toBe(2);
+    expect(beta?.points).toBe(10);
+  });
+
+  it('does not change tennis defaults when leather schedule is omitted', () => {
+    const { tables, dataErrors } = computeStandings({
+      tournamentId: 'tennis',
+      matchSchedulingFormat: null,
+      groupCount: 0,
+      teams: leatherTeams,
+      groups: [],
+      matches: [
+        {
+          matchId: 'win',
+          groupId: null,
+          homeTeamId: 'a',
+          awayTeamId: 'b',
+          isNoResult: false,
+          winningTeamId: 'a',
+          innings: [],
+        },
+        {
+          matchId: 'nr',
+          groupId: null,
+          homeTeamId: 'a',
+          awayTeamId: 'b',
+          isNoResult: true,
+          winningTeamId: null,
+          innings: [],
+        },
+      ],
+    });
+
+    expect(dataErrors).toHaveLength(0);
+    const alpha = tables[0]?.teams.find((row: TeamStandingRow) => row.teamId === 'a');
+    expect(alpha?.points).toBe(3); // 2 + 1
   });
 });

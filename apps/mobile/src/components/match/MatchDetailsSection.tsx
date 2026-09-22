@@ -16,6 +16,7 @@ import {
   venueLocationIsOpenable,
 } from '../../lib/open-tournament-venue';
 import { resolveVenueDisplayTimezone } from '../../lib/venue-time';
+import { MatchStateBadge } from '../MatchStateBadge';
 import {
   TournamentDetailInfoRow,
   TournamentDetailSectionCard,
@@ -118,6 +119,7 @@ export function MatchDetailsSection({
     <TournamentDetailSectionCard
       title="Match Details"
       icon={<Ionicons name="information-circle-outline" size={20} color={FIELD_ORANGE} />}
+      headerRight={<MatchStateBadge state={match.state} />}
     >
       {reportingLabel ? (
         <View className="flex-row items-start gap-3">

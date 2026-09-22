@@ -36,7 +36,7 @@ function TeamColumn({
       </Text>
       {scoreLine ? (
         <Text
-          className="text-center font-sans-semibold text-xs text-on-surface-variant"
+          className="text-center font-sans-semibold text-sm text-on-surface-variant"
           numberOfLines={1}
         >
           {scoreLine}
@@ -64,7 +64,6 @@ function MatchListCard({
   onWatchLivePress,
   onScorecardPress,
   showLiveMatchDetails = false,
-  showCancelledMatchDetails = false,
 }: {
   match: MatchListItem;
   menuActions: OverflowMenuAction[];
@@ -72,7 +71,6 @@ function MatchListCard({
   onWatchLivePress: () => void;
   onScorecardPress: () => void;
   showLiveMatchDetails?: boolean;
-  showCancelledMatchDetails?: boolean;
 }): React.ReactElement {
   const isDeleted = match.isDeleted === true;
   const contextLabel = formatMatchListContextLabel(match);
@@ -82,10 +80,18 @@ function MatchListCard({
     !isDeleted && match.displayState === MatchCardDisplayState.Completed;
   const venue = match.groundLocation?.trim();
   const hasTeamScores = Boolean(match.teamA.scoreLine || match.teamB.scoreLine);
-  const bodyGap =
-    hasTeamScores || (match.displayState === MatchCardDisplayState.Scheduled && venue)
+  const showResultSummary =
+    !isDeleted &&
+    match.displayState === MatchCardDisplayState.Completed &&
+    Boolean(match.resultSummary);
+  const bodyGap = showResultSummary
+    ? 'gap-2'
+    : hasTeamScores || (match.displayState === MatchCardDisplayState.Scheduled && venue)
       ? 'gap-6'
       : 'gap-4';
+
+  const useScheduledHeaderLayout =
+    !isDeleted && match.displayState === MatchCardDisplayState.Scheduled;
 
   const onCardPress =
     isDeleted
@@ -106,34 +112,65 @@ function MatchListCard({
           : ''
   }`;
 
+  const dateCapsule = (
+    <View className="rounded-full border border-outline-variant bg-transparent px-2.5 py-0.5">
+      <Text
+        className="font-sans-semibold text-sm text-on-surface-variant"
+        numberOfLines={1}
+      >
+        {contextLabel}
+      </Text>
+    </View>
+  );
+
   /** Main body is pressable; overflow menu + footer Buttons stay siblings (no nested <button> on web). */
   return (
     <View className={shellClass} style={INPUT_SHADOW_STYLE}>
-      <View className="flex-row items-center justify-between gap-2">
-        <Pressable
-          accessibilityRole="button"
-          onPress={onCardPress}
-          className="min-w-0 flex-1 active:opacity-90"
-        >
-          <Text
-            className="font-sans-semibold text-sm text-on-surface-variant"
-            numberOfLines={1}
+      {useScheduledHeaderLayout ? (
+        <View className="gap-2">
+          <View className="flex-row items-center justify-between gap-2">
+            <Pressable
+              accessibilityRole="button"
+              onPress={onCardPress}
+              className="min-w-0 flex-1 active:opacity-90"
+            >
+              {dateCapsule}
+            </Pressable>
+            {menuActions.length > 0 ? (
+              <OverflowMenu actions={menuActions} iconColor={FIELD_ORANGE} />
+            ) : null}
+          </View>
+          <Pressable
+            accessibilityRole="button"
+            onPress={onCardPress}
+            className="flex-row flex-wrap items-center gap-1.5 active:opacity-90"
           >
-            {contextLabel}
-          </Text>
-        </Pressable>
-        <View className="shrink-0 flex-row items-center gap-1.5">
-          {match.homeAway ? <MatchHomeAwayBadge homeAway={match.homeAway} /> : null}
-          {isDeleted ? (
-            <MatchDeletedBadge />
-          ) : (
+            {match.homeAway ? <MatchHomeAwayBadge homeAway={match.homeAway} /> : null}
             <MatchCardDisplayBadge state={match.state} variant="tournamentPrimary" />
-          )}
-          {!isDeleted && menuActions.length > 0 ? (
-            <OverflowMenu actions={menuActions} iconColor={FIELD_ORANGE} />
-          ) : null}
+          </Pressable>
         </View>
-      </View>
+      ) : (
+        <View className="flex-row items-center justify-between gap-2">
+          <Pressable
+            accessibilityRole="button"
+            onPress={onCardPress}
+            className="min-w-0 flex-1 flex-row flex-wrap items-center gap-1.5 active:opacity-90"
+          >
+            {dateCapsule}
+            {match.homeAway ? <MatchHomeAwayBadge homeAway={match.homeAway} /> : null}
+          </Pressable>
+          <View className="shrink-0 flex-row items-center gap-1.5">
+            {isDeleted ? (
+              <MatchDeletedBadge />
+            ) : (
+              <MatchCardDisplayBadge state={match.state} variant="tournamentPrimary" />
+            )}
+            {!isDeleted && menuActions.length > 0 ? (
+              <OverflowMenu actions={menuActions} iconColor={FIELD_ORANGE} />
+            ) : null}
+          </View>
+        </View>
+      )}
 
       <Pressable
         accessibilityRole="button"
@@ -171,23 +208,6 @@ function MatchListCard({
         ) : null}
       </Pressable>
 
-      {isDeleted ? (
-        <View className="flex-row gap-2">
-          <Button
-            label="Scorecard"
-            variant="outline"
-            className="h-12 min-w-0 flex-1"
-            onPress={onScorecardPress}
-          />
-          <Button
-            label="Details"
-            variant="outline"
-            className="h-12 min-w-0 flex-1"
-            onPress={onPress}
-          />
-        </View>
-      ) : null}
-
       {isLive ? (
         showLiveMatchDetails ? (
           <View className="flex-row gap-2">
@@ -213,49 +233,6 @@ function MatchListCard({
           />
         )
       ) : null}
-
-      {isCancelled ? (
-        showCancelledMatchDetails ? (
-          <View className="flex-row gap-2">
-            <Button
-              label="Scorecard"
-              variant="outline"
-              className="h-12 min-w-0 flex-1"
-              onPress={onScorecardPress}
-            />
-            <Button
-              label="Details"
-              variant="outline"
-              className="h-12 min-w-0 flex-1"
-              onPress={onPress}
-            />
-          </View>
-        ) : (
-          <Button
-            label="Scorecard"
-            variant="outline"
-            className="h-12 w-full"
-            onPress={onScorecardPress}
-          />
-        )
-      ) : null}
-
-      {isCompletedTerminal ? (
-        <View className="flex-row gap-2">
-          <Button
-            label="Scorecard"
-            variant="outline"
-            className="h-12 min-w-0 flex-1"
-            onPress={onScorecardPress}
-          />
-          <Button
-            label="Details"
-            variant="outline"
-            className="h-12 min-w-0 flex-1"
-            onPress={onPress}
-          />
-        </View>
-      ) : null}
     </View>
   );
 }
@@ -268,8 +245,6 @@ export interface MatchListProps {
   buildMenuActions?: (match: MatchListItem) => OverflowMenuAction[];
   /** Admin / Club Manager — secondary Details CTA beside Watch Live on live cards. */
   showLiveMatchDetails?: boolean;
-  /** Admin / Club Manager / confirmed registrant — Details beside Scorecard on cancelled cards. */
-  showCancelledMatchDetails?: boolean;
 }
 
 /** Tournament Matches tab — date-ordered match cards. */
@@ -280,7 +255,6 @@ export function MatchList({
   onScorecardPress,
   buildMenuActions,
   showLiveMatchDetails = false,
-  showCancelledMatchDetails = false,
 }: MatchListProps): React.ReactElement {
   return (
     <View className="gap-4">
@@ -293,7 +267,6 @@ export function MatchList({
           onWatchLivePress={() => onWatchLivePress(match.id)}
           onScorecardPress={() => onScorecardPress(match.id)}
           showLiveMatchDetails={showLiveMatchDetails}
-          showCancelledMatchDetails={showCancelledMatchDetails}
         />
       ))}
     </View>

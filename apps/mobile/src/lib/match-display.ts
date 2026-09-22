@@ -95,8 +95,7 @@ export function formatMatchListContextLabel(
   }
 
   if (match.displayState === MatchCardDisplayState.Completed) {
-    const day = match.matchDate ? formatShortMatchDay(match.matchDate) : '—';
-    return `${day} • ${meta.contextStatusLine}`;
+    return match.matchDate ? formatShortMatchDay(match.matchDate) : '—';
   }
 
   return formatMatchListScheduleLabel(match);

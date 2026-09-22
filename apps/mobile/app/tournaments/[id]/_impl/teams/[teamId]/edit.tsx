@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import {
   TEAM_FORM_MESSAGES,
   TEAM_NAME_MAX_LENGTH,
+  isMediaStorageKey,
   normalizeTeamName,
   type TeamDetailView,
   validateTeamName,
@@ -35,7 +36,7 @@ import {
   ensureUploadableUri,
   isLocalImageUri,
   pickedToStored,
-  storedImageFromRemoteUrl,
+  storedImageFromPresignedReadUrl,
   type PickedImageFile,
   type StoredImageFile,
 } from '../../../../../../src/lib/imagePicker';
@@ -69,35 +70,47 @@ export default function EditTeamScreen(): React.ReactElement {
 
     let cancelled = false;
     setLoading(true);
-    getTeamDetail(tournamentId, teamId)
-      .then((detail) => {
+    void (async () => {
+      try {
+        const detail = await getTeamDetail(tournamentId, teamId);
         if (cancelled) {
           return;
         }
         setTeamDetail(detail);
         setTeamName(detail.name);
         setInitialName(detail.name);
-        if (detail.logoUrl) {
-          const displayUrl = resolveMediaDisplayUrl(detail.logoUrl) ?? detail.logoUrl;
-          setLogo({
-            ...storedImageFromRemoteUrl(detail.logoUrl),
-            uri: displayUrl,
-          });
+
+        let displayUrl = resolveMediaDisplayUrl(detail.logoUrl);
+        // getDetail historically returned an unsigned storage key; list summaries re-sign.
+        if (!displayUrl && detail.logoUrl) {
+          try {
+            const teams = await listTeams(tournamentId);
+            if (cancelled) {
+              return;
+            }
+            const summary = teams.find((team) => team.id === teamId);
+            displayUrl = resolveMediaDisplayUrl(summary?.logoUrl ?? null);
+          } catch {
+            // Detail load already succeeded; logo preview is best-effort.
+          }
         }
+        if (displayUrl) {
+          setLogo(storedImageFromPresignedReadUrl(displayUrl));
+        }
+
         setLoadError(null);
-      })
-      .catch((err: unknown) => {
+      } catch (err: unknown) {
         if (!cancelled) {
           setLoadError(
             err instanceof ApiRequestError ? err.message : 'Could not load the team.',
           );
         }
-      })
-      .finally(() => {
+      } finally {
         if (!cancelled) {
           setLoading(false);
         }
-      });
+      }
+    })();
 
     return () => {
       cancelled = true;
@@ -170,9 +183,11 @@ export default function EditTeamScreen(): React.ReactElement {
 
     setSubmitting(true);
     try {
+      const logoStorageKey =
+        logo?.remoteUrl && isMediaStorageKey(logo.remoteUrl) ? logo.remoteUrl : undefined;
       await updateTeam(tournamentId, teamId, {
         name: teamName.trim(),
-        logoUrl: logo?.remoteUrl ?? null,
+        ...(logoStorageKey !== undefined ? { logoUrl: logoStorageKey } : {}),
       });
       setShowSuccessDialog(true);
     } catch (err) {

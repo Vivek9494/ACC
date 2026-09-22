@@ -95,10 +95,13 @@ export function TeamRoleAssignmentFields({
     <View className="gap-4">
       <View>
         <Text className="font-sans-bold text-lg text-on-surface">Team Leadership</Text>
-        <Text className="mt-1 font-sans text-sm text-on-surface-variant">
-          Assign one Captain, Vice-Captain
-          {showManager ? ', and Manager' : ''} from this roster. Each role must be a different player.
-        </Text>
+        {!captainUserId || !viceCaptainUserId ? (
+          <Text className="mt-1 font-sans text-sm text-on-surface-variant">
+            Assign one Captain, Vice-Captain
+            {showManager ? ', and Manager' : ''} from this roster. Each role must be a different
+            player.
+          </Text>
+        ) : null}
       </View>
 
       <Select

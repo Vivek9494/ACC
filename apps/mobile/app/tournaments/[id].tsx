@@ -17,6 +17,7 @@ import { colors } from '@/theme/colors';
 
 import { BallTypeIcon } from '../../src/components/ui/BallTypeIcon';
 import { Button } from '../../src/components/ui/Button';
+import { ListRowIconButton } from '../../src/components/ui/ListRowIconButton';
 import {
   TournamentDetailInfoRow,
   TournamentDetailSectionCard,
@@ -525,15 +526,12 @@ export default function TournamentDetailScreen(): React.ReactElement {
                 {tournament.name}
               </Text>
               {tournament.canEdit ? (
-                <Pressable
-                  onPress={() => router.push(tournamentSubpathHref(user, tournament.id, 'edit'))}
-                  hitSlop={8}
-                  accessibilityRole="button"
+                <ListRowIconButton
+                  icon="pencil"
                   accessibilityLabel="Edit tournament"
-                  className="mt-1 shrink-0 active:opacity-70"
-                >
-                  <Ionicons name="pencil" size={20} color={FIELD_ORANGE} />
-                </Pressable>
+                  onPress={() => router.push(tournamentSubpathHref(user, tournament.id, 'edit'))}
+                  className="mt-0.5"
+                />
               ) : null}
             </View>
             <View className="shrink-0 items-end gap-2">

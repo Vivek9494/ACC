@@ -262,7 +262,7 @@ export class TeamsService {
       id: team.id,
       tournamentId: team.tournamentId,
       name: team.name,
-      logoUrl: team.logoUrl,
+      logoUrl: await this.mediaUrls.resolveReadUrl(team.logoUrl),
       ballType: team.tournament.ballType as BallType,
       showPlayerCategorySplit,
       activePlayerCount: players.length,

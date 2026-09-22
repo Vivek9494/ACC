@@ -7,6 +7,7 @@
 
 import type { DeliveryHighlightMarker } from './boundary-highlight';
 import type { BallType } from './rbac';
+import { BallType as BallTypeEnum } from './rbac';
 
 /** Type of a scoring event (spec §12.1). */
 export const DeliveryType = {
@@ -106,9 +107,40 @@ export const WICKETS_FOR_ALL_OUT = 10;
 export const WICKETS_FOR_SUPER_OVER_ALL_OUT = 2;
 export const PLAYERS_PER_TEAM = 11;
 export const SUPER_OVER_OVERS = 1;
+/** Tennis (APL / Center) points table — unchanged. */
 export const POINTS_WIN = 2;
 export const POINTS_TIE_OR_NO_RESULT = 1;
 export const POINTS_LOSS = 0;
+
+/** Leather (ACC) points table. */
+export const LEATHER_POINTS_WIN = 10;
+export const LEATHER_POINTS_TIE_OR_NO_RESULT = 5;
+export const LEATHER_POINTS_LOSS = 0;
+
+/** Points awarded per match outcome for standings aggregation. */
+export interface StandingsPointsSchedule {
+  win: number;
+  /** Awarded to each side on tie, no-result, or cancelled. */
+  tieOrNoResult: number;
+  loss: number;
+}
+
+export const TENNIS_STANDINGS_POINTS: StandingsPointsSchedule = {
+  win: POINTS_WIN,
+  tieOrNoResult: POINTS_TIE_OR_NO_RESULT,
+  loss: POINTS_LOSS,
+};
+
+export const LEATHER_STANDINGS_POINTS: StandingsPointsSchedule = {
+  win: LEATHER_POINTS_WIN,
+  tieOrNoResult: LEATHER_POINTS_TIE_OR_NO_RESULT,
+  loss: LEATHER_POINTS_LOSS,
+};
+
+/** Leather (ACC) uses 10 / 5 / 0; tennis keeps 2 / 1 / 0. */
+export function standingsPointsForBallType(ballType: BallType): StandingsPointsSchedule {
+  return ballType === BallTypeEnum.Leather ? LEATHER_STANDINGS_POINTS : TENNIS_STANDINGS_POINTS;
+}
 
 /** Standard on-field penalty awarded via More → Penalty (§12.1). */
 export const STANDARD_MATCH_PENALTY_RUNS = 5;

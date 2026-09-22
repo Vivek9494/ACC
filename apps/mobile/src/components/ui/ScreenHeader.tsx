@@ -84,11 +84,11 @@ export function ScreenHeader({
         </View>
       </View>
       {title || titleTrailing ? (
-        <View className="flex-row items-center gap-3">
+        <View className="flex-row flex-wrap items-center gap-x-3 gap-y-2">
           {title ? (
             <Text
               numberOfLines={3}
-              className={`min-w-0 flex-1 font-sans-bold text-xl ${accentTitle ? 'text-primary' : 'text-on-surface'}`}
+              className={`min-w-[70%] max-w-full flex-1 font-sans-bold text-xl ${accentTitle ? 'text-primary' : 'text-on-surface'}`}
             >
               {title}
             </Text>

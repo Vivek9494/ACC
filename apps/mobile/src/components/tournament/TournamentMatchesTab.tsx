@@ -4,7 +4,6 @@ import {
   MATCH_LIST_GROUP_FILTER,
   UserRole,
   canViewAdminUsersDirectory,
-  canViewCancelledMatchDetails,
   filterMatchList,
   tournamentSupportsGroups,
   type GroupSummary,
@@ -152,12 +151,6 @@ export function TournamentMatchesTab({
   const canBackfillPastMatch =
     user?.role === UserRole.Admin && ballType === BallType.Leather;
   const showLiveMatchDetails = user != null && canViewAdminUsersDirectory(user.role);
-  const showCancelledMatchDetails =
-    user != null &&
-    canViewCancelledMatchDetails({
-      role: user.role,
-      registrationStatus: viewerRegistrationStatus,
-    });
   const showKnockoutChartEntry = shouldShowKnockoutChartEntry(
     { matchSchedulingFormat, hasKnockoutBracket },
     user,
@@ -405,7 +398,6 @@ export function TournamentMatchesTab({
               onScorecardPress={(matchId) => router.push(`/matches/${matchId}/scorecard`)}
               buildMenuActions={buildMenuActions}
               showLiveMatchDetails={showLiveMatchDetails}
-              showCancelledMatchDetails={showCancelledMatchDetails}
             />
           ) : emptyFilterMessage ? (
             <Text className="py-8 text-center font-sans text-sm text-on-surface-variant">

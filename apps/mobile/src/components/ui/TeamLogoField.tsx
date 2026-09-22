@@ -11,6 +11,9 @@ import { ERROR_BORDER_CLASS, FIELD_ORANGE, labelClassName } from './fieldStyles'
 import { FormErrorText } from './FormErrorText';
 import { Text } from './Text';
 
+/** Compact square thumbnail (~112px) — keeps team forms above the fold. */
+const LOGO_PREVIEW_CLASS = 'h-28 w-28';
+
 export interface TeamLogoFieldProps {
   uri: string | null;
   uploading?: boolean;
@@ -49,13 +52,13 @@ export function TeamLogoField({
         disabled={uploading}
         accessibilityRole="button"
         accessibilityLabel="Upload team logo"
-        className={`relative w-full overflow-hidden rounded-control border-2 border-dashed bg-surface-container-lowest ${borderClass} ${uploading ? 'opacity-70' : ''} ${uri ? '' : 'aspect-square items-center justify-center gap-3'}`}
+        className={`relative items-center justify-center overflow-hidden rounded-control border-2 border-dashed bg-surface-container-lowest ${LOGO_PREVIEW_CLASS} ${borderClass} ${uploading ? 'opacity-70' : ''} ${uri ? '' : 'gap-1 px-1'}`}
       >
         {uri ? (
           <>
             <Image
               source={{ uri }}
-              className="aspect-square w-full rounded-control"
+              className="h-full w-full"
               resizeMode="contain"
               accessibilityIgnoresInvertColors
             />
@@ -67,8 +70,10 @@ export function TeamLogoField({
           </>
         ) : (
           <>
-            <Ionicons name="image-outline" size={48} color={FIELD_ORANGE} />
-            <Text className="font-sans-semibold text-sm text-primary">Tap to upload team logo</Text>
+            <Ionicons name="image-outline" size={28} color={FIELD_ORANGE} />
+            <Text className="text-center font-sans-semibold text-[10px] leading-3 text-primary">
+              Tap to upload
+            </Text>
           </>
         )}
       </Pressable>

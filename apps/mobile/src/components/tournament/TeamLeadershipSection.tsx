@@ -102,10 +102,13 @@ export function TeamLeadershipSection({
   return (
     <View className="gap-3 rounded-xl border border-outline-variant bg-surface-container-lowest p-4">
       <Text className="font-sans-bold text-lg text-on-surface">Team Leadership</Text>
-      <Text className="font-sans text-sm text-on-surface-variant">
-        Assign one Captain, Vice-Captain
-        {showManager ? ', and Manager' : ''} from this roster. Each role must be a different player.
-      </Text>
+      {!captain || !viceCaptain ? (
+        <Text className="font-sans text-sm text-on-surface-variant">
+          Assign one Captain, Vice-Captain
+          {showManager ? ', and Manager' : ''} from this roster. Each role must be a different
+          player.
+        </Text>
+      ) : null}
 
       <View className="gap-2">
         <View className="flex-row items-center justify-between gap-3">

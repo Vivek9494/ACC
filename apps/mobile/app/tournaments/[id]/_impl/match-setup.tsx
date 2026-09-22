@@ -712,12 +712,7 @@ export default function MatchSetupScreen(): React.ReactElement {
                 </Text>
               </>
             ) : isManual ? (
-              <>
-                <Text className="font-sans-bold text-2xl text-on-surface">New Match Setup</Text>
-                <Text className="mt-2 font-sans text-sm text-on-surface-variant">
-                  Configure the manual match details below to proceed.
-                </Text>
-              </>
+              <Text className="font-sans-bold text-2xl text-on-surface">New Match Setup</Text>
             ) : (
               <>
                 <Text className="font-sans-bold text-2xl text-on-surface">Match Setup</Text>
@@ -862,9 +857,6 @@ export default function MatchSetupScreen(): React.ReactElement {
                 value={homeAway}
                 onChange={setHomeAway}
               />
-              <Text className="font-sans text-sm text-on-surface-variant">
-                Optional — indicates which side sets up stumps and boundary cones.
-              </Text>
             </View>
           ) : null}
 

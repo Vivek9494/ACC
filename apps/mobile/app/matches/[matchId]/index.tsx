@@ -19,13 +19,13 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, View } from 'react-native';
 import { Button } from '../../../src/components/ui/Button';
+import { PillTabBar } from '../../../src/components/ui/PillTabBar';
 import { Select } from '../../../src/components/ui/Select';
 import { ScreenHeader } from '../../../src/components/ui/ScreenHeader';
 import { Text } from '../../../src/components/ui/Text';
 import { FIELD_ORANGE } from '../../../src/components/ui/fieldStyles';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { MatchStateBadge } from '../../../src/components/MatchStateBadge';
 import { DelayMatchDialog } from '../../../src/components/match/DelayMatchDialog';
 import { MatchDetailsSection } from '../../../src/components/match/MatchDetailsSection';
 import { MatchManOfMatchBlock } from '../../../src/components/match/MatchManOfMatchBlock';
@@ -83,6 +83,7 @@ export default function MatchDetailScreen(): React.ReactElement {
   const [working, setWorking] = useState(false);
   const [assignScorerUserId, setAssignScorerUserId] = useState<string | null>(null);
   const [delayDialogVisible, setDelayDialogVisible] = useState(false);
+  const [xiTab, setXiTab] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!matchId) return;
@@ -243,6 +244,31 @@ export default function MatchDetailScreen(): React.ReactElement {
     return `/matches/${match.id}/playing-xi?teamId=${team.id}&teamName=${encodeURIComponent(team.name)}`;
   }
 
+  const EXTERNAL_XI_TAB = '__external__';
+  const xiTabOptions = [
+    ...match.squads.map((squad) => ({
+      value: squad.teamId,
+      label: squad.teamName,
+    })),
+    ...(externalOpponent && match.externalPlayers.length > 0
+      ? [
+          {
+            value: EXTERNAL_XI_TAB,
+            label: match.externalOpponentName ?? 'Opponent',
+          },
+        ]
+      : []),
+  ];
+  const activeXiTab =
+    xiTab != null && xiTabOptions.some((tab) => tab.value === xiTab)
+      ? xiTab
+      : (xiTabOptions[0]?.value ?? null);
+  const selectedSquad =
+    activeXiTab && activeXiTab !== EXTERNAL_XI_TAB
+      ? (match.squads.find((squad) => squad.teamId === activeXiTab) ?? null)
+      : null;
+  const showExternalXiList = activeXiTab === EXTERNAL_XI_TAB;
+
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
       <ScreenHeader />
@@ -252,7 +278,6 @@ export default function MatchDetailScreen(): React.ReactElement {
             {match.homeTeamName ?? 'TBD'} vs{' '}
             {match.awayTeamName ?? match.externalOpponentName ?? 'TBD'}
           </Text>
-          <MatchStateBadge state={state} />
           {match.matchCode ? (
             <Text className="font-sans-medium text-xs uppercase tracking-wider text-on-surface-variant">
               {match.matchCode}
@@ -360,50 +385,51 @@ export default function MatchDetailScreen(): React.ReactElement {
           </View>
         ) : null}
 
-        {/* Locked squads — ACC / registered teams first (§9.7) */}
-        {match.squads.map((squad) => (
-          <View
-            key={squad.teamId}
-            className="gap-2 rounded-xl border border-outline-variant bg-surface-container-lowest p-4"
-          >
-            <Text className="font-sans-bold text-lg text-primary">{squad.teamName} XI</Text>
-            {orderSquadPlayers(squad.players).map((p) => (
-              <View key={p.userId} className="flex-row items-center justify-between">
-                <Text className="font-sans text-sm text-on-surface">
-                  {p.firstName} {p.lastName}
-                  {p.isActiveImpact ? ' ★' : ''}
-                </Text>
-                <Text className="font-sans-medium text-[10px] uppercase tracking-wider text-on-surface-variant">
-                  {ROLE_LABELS[p.role]}
-                </Text>
+        {/* Locked squads — tabbed Playing 11 per team (§9.7) */}
+        {xiTabOptions.length > 0 && activeXiTab ? (
+          <View className="gap-3 rounded-xl border border-outline-variant bg-surface-container-lowest p-4">
+            <PillTabBar
+              options={xiTabOptions}
+              value={activeXiTab}
+              onChange={setXiTab}
+              accessibilityLabel="Playing XI team"
+            />
+            {selectedSquad ? (
+              <View className="gap-2">
+                {orderSquadPlayers(selectedSquad.players).map((p) => (
+                  <View key={p.userId} className="flex-row items-center justify-between">
+                    <Text className="font-sans text-base text-on-surface">
+                      {p.firstName} {p.lastName}
+                      {p.isActiveImpact ? ' ★' : ''}
+                    </Text>
+                    <Text className="font-sans-medium text-[10px] uppercase tracking-wider text-on-surface-variant">
+                      {ROLE_LABELS[p.role]}
+                    </Text>
+                  </View>
+                ))}
+                {selectedSquad.penaltyServing.map((p) => (
+                  <View key={`penalty-${p.userId}`} className="flex-row items-center justify-between">
+                    <Text className="font-sans text-base text-on-surface">
+                      {p.firstName} {p.lastName}
+                    </Text>
+                    <Text className="font-sans-medium text-[10px] uppercase tracking-wider text-on-surface-variant">
+                      Penalty Serving
+                    </Text>
+                  </View>
+                ))}
               </View>
-            ))}
-            {squad.penaltyServing.map((p) => (
-              <View key={`penalty-${p.userId}`} className="flex-row items-center justify-between">
-                <Text className="font-sans text-sm text-on-surface">
-                  {p.firstName} {p.lastName}
-                </Text>
-                <Text className="font-sans-medium text-[10px] uppercase tracking-wider text-on-surface-variant">
-                  Penalty Serving
-                </Text>
+            ) : null}
+            {showExternalXiList ? (
+              <View className="gap-2">
+                {[...match.externalPlayers]
+                  .sort((a, b) => a.slot - b.slot)
+                  .map((player) => (
+                    <Text key={player.id} className="font-sans text-base text-on-surface">
+                      {player.name}
+                    </Text>
+                  ))}
               </View>
-            ))}
-          </View>
-        ))}
-
-        {/* External opponent XI — shown after the ACC / registered squad */}
-        {externalOpponent && match.externalPlayers.length > 0 ? (
-          <View className="gap-2 rounded-xl border border-outline-variant bg-surface-container-lowest p-4">
-            <Text className="font-sans-bold text-lg text-primary">
-              {match.externalOpponentName ?? 'Opponent'} XI
-            </Text>
-            {[...match.externalPlayers]
-              .sort((a, b) => a.slot - b.slot)
-              .map((player) => (
-                <Text key={player.id} className="font-sans text-sm text-on-surface">
-                  {player.name}
-                </Text>
-              ))}
+            ) : null}
           </View>
         ) : null}
 

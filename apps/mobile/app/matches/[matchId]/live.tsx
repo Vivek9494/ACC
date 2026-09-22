@@ -92,7 +92,7 @@ export default function LiveViewScreen(): React.ReactElement {
 
       <ScrollView contentContainerClassName="gap-4 px-4 pb-8">
         <View className="flex-row flex-wrap items-center gap-x-2 gap-y-2">
-          <Text className="min-w-0 flex-1 font-sans-bold text-lg text-on-surface" numberOfLines={2}>
+          <Text className="min-w-[70%] max-w-full flex-1 font-sans-bold text-lg text-on-surface" numberOfLines={2}>
             {match
               ? `${match.homeTeamName ?? 'TBD'} vs ${match.awayTeamName ?? match.externalOpponentName ?? 'TBD'}`
               : 'Match scorecard'}

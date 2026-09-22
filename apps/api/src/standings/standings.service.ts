@@ -3,6 +3,8 @@ import {
   InningsType,
   MatchState,
   resolveStandingsSplitPointOutcome,
+  LEATHER_STANDINGS_POINTS,
+  TENNIS_STANDINGS_POINTS,
   type AuthUser,
   type StandingsInningsInput,
   type StandingsMatchInput,
@@ -79,6 +81,7 @@ export class StandingsService {
 
     const isLeather = tournament.ballType === BallType.Leather;
     const showNetRunRate = !isLeather;
+    const points = isLeather ? LEATHER_STANDINGS_POINTS : TENNIS_STANDINGS_POINTS;
 
     const matchInputs: StandingsMatchInput[] = [];
     for (const match of tournament.matches) {
@@ -132,6 +135,8 @@ export class StandingsService {
       })),
       matches: matchInputs,
       includeNetRunRate: showNetRunRate,
+      points,
+      awardUndecidedAsSplit: isLeather,
     });
 
     const resolvedTables = await Promise.all(

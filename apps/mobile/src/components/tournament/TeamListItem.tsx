@@ -1,9 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import type { TeamSummary } from '@acc/types';
+import { useMemo } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { FIELD_ORANGE } from '../ui/fieldStyles';
-import { ListRowIconButton } from '../ui/ListRowIconButton';
+import { OverflowMenu, type OverflowMenuAction } from '../ui/OverflowMenu';
 import { TeamAvatar } from '../ui/TeamAvatar';
 import { Text } from '../ui/Text';
 
@@ -18,14 +19,37 @@ export interface TeamListItemProps {
   onDelete?: () => void;
 }
 
-/** Tappable team row — logo/avatar, name, member count; optional edit/delete actions. */
+/** Tappable team row — logo/avatar, name, member count; overflow Edit / Delete when permitted. */
 export function TeamListItem({
   team,
   onPress,
   onEdit,
   onDelete,
 }: TeamListItemProps): React.ReactElement {
-  const showActions = onEdit != null || onDelete != null;
+  const menuActions = useMemo((): OverflowMenuAction[] => {
+    const actions: OverflowMenuAction[] = [];
+    if (onEdit) {
+      actions.push({
+        key: 'edit',
+        label: 'Edit',
+        icon: 'pencil',
+        secondary: true,
+        onPress: onEdit,
+      });
+    }
+    if (onDelete) {
+      actions.push({
+        key: 'delete',
+        label: 'Delete',
+        icon: 'trash-outline',
+        destructive: true,
+        onPress: onDelete,
+      });
+    }
+    return actions;
+  }, [onDelete, onEdit]);
+
+  const showActions = menuActions.length > 0;
 
   return (
     <View className="flex-row items-center gap-2 rounded-control bg-surface-container-low p-4">
@@ -47,22 +71,11 @@ export function TeamListItem({
         ) : null}
       </Pressable>
       {showActions ? (
-        <View className="flex-row items-center gap-1">
-          {onEdit ? (
-            <ListRowIconButton
-              icon="pencil"
-              accessibilityLabel={`Edit ${team.name}`}
-              onPress={onEdit}
-            />
-          ) : null}
-          {onDelete ? (
-            <ListRowIconButton
-              icon="trash-outline"
-              accessibilityLabel={`Delete ${team.name}`}
-              onPress={onDelete}
-            />
-          ) : null}
-        </View>
+        <OverflowMenu
+          actions={menuActions}
+          accessibilityLabel={`More options for ${team.name}`}
+          iconColor={FIELD_ORANGE}
+        />
       ) : null}
     </View>
   );

@@ -51,10 +51,8 @@ const BADGE_CLASS: Record<
 
 function CancelledStatusBadge({ label }: { label: string }): React.ReactElement {
   return (
-    <View className={`self-start rounded-full px-3 py-1 ${CANCELLED_BADGE.container}`}>
-      <Text className={`font-sans-semibold text-[10px] tracking-wider ${CANCELLED_BADGE.text}`}>
-        {label}
-      </Text>
+    <View className={`self-start rounded-full px-2.5 py-0.5 ${CANCELLED_BADGE.container}`}>
+      <Text className={`font-sans-semibold text-sm ${CANCELLED_BADGE.text}`}>{label}</Text>
     </View>
   );
 }
@@ -75,10 +73,8 @@ export function MatchCardDisplayBadge({
 
   if (variant === 'tournamentPrimary') {
     return (
-      <View className="self-start rounded-full bg-primary px-3 py-1">
-        <Text className="font-sans-semibold text-[10px] tracking-wider text-text-inverse">
-          {label}
-        </Text>
+      <View className="self-start rounded-full bg-primary px-2.5 py-0.5">
+        <Text className="font-sans-semibold text-sm text-text-inverse">{label}</Text>
       </View>
     );
   }
@@ -90,9 +86,9 @@ export function MatchCardDisplayBadge({
   const classes = BADGE_CLASS[style];
 
   return (
-    <View className={`self-start rounded-full px-3 py-1 ${classes.container}`}>
+    <View className={`self-start rounded-full px-2.5 py-0.5 ${classes.container}`}>
       <Text
-        className={`font-sans-semibold text-[10px] tracking-wider ${classes.text}${
+        className={`font-sans-semibold text-sm ${classes.text}${
           classes.uppercase ? ' uppercase' : ''
         }`}
       >

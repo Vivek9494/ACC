@@ -7,11 +7,11 @@ export interface MatchHomeAwayBadgeProps {
   homeAway: HomeAway;
 }
 
-/** Ground-setup pill — secondary brand fill, distinct from primary status badges. */
+/** Ground-setup pill — same capsule shape as match-date chip, filled secondary. */
 export function MatchHomeAwayBadge({ homeAway }: MatchHomeAwayBadgeProps): React.ReactElement {
   return (
-    <View className="rounded-full bg-secondary px-2.5 py-0.5">
-      <Text className="font-sans-semibold text-[10px] tracking-wide text-text-inverse">
+    <View className="self-start rounded-full bg-secondary px-2.5 py-0.5">
+      <Text className="font-sans-semibold text-sm text-text-inverse">
         {HOME_AWAY_LABELS[homeAway]}
       </Text>
     </View>

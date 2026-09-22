@@ -71,14 +71,14 @@ export interface StandingsMatchInput {
   innings: StandingsInningsInput[];
 }
 
-/** States that award 1 point each (NR column, excluded from NRR) — same rule as No Result. */
+/** States that award split points each (NR column, excluded from NRR) — same rule as No Result. */
 export const STANDINGS_SPLIT_POINT_MATCH_STATES: readonly MatchState[] = [
   MatchState.NoResult,
   MatchState.Cancelled,
 ];
 
 /**
- * Whether a completed fixture counts as a split-point outcome (1 pt each, NR++, no NRR).
+ * Whether a completed fixture counts as a split-point outcome (tieOrNoResult pts each, NR++, no NRR).
  * Cancelled matches use the same path as No Result (`isNoResult` on {@link StandingsMatchInput}).
  */
 export function resolveStandingsSplitPointOutcome(input: {
