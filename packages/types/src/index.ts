@@ -92,5 +92,6 @@ export * from './team-access';
 export * from './standings';
 export * from './leaderboard';
 export * from './tournament-stats';
+export * from './acc-teams';
 export * from './places';
 export * from './location-input';

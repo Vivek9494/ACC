@@ -28,7 +28,7 @@ export interface TournamentStatsView {
   tournamentId: string;
   /** True when at least one included match has scoring data (for the selected scope). */
   hasRecords: boolean;
-  /** Non-deleted teams for the Stats tab filter (same shape as Leaderboard). */
+  /** Non-deleted teams for the Stats tab filter (Leather: ACC 3/6/9/0 in this tournament only). */
   teams: LeaderboardTeamOption[];
   aggregates: TournamentAggregateStats;
   mostSixes: TournamentBoundaryLeaderboardEntry[];

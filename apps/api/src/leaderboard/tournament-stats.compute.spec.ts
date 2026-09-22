@@ -209,6 +209,124 @@ describe('tournament-stats.compute', () => {
     expect(bowlingAcc.playerSixes.size).toBe(0);
   });
 
+  it('excludes external-opponent innings when allowedTeamIds is set (Leather ACC Stats)', () => {
+    const acc = createTournamentStatsAccumulators();
+    const membership = new Set(['acc-batter']);
+    const allowed = new Set(['acc-3']);
+
+    const card: ScorecardResponse = {
+      ...minimalScorecard(
+        [
+          {
+            playerId: 'acc-batter',
+            runs: 40,
+            balls: 30,
+            ones: 0,
+            twos: 0,
+            threes: 0,
+            fours: 4,
+            sixes: 2,
+            strikeRate: 133.3,
+            isOut: false,
+            dismissalType: null,
+            bowlerId: null,
+            fielderId: null,
+            fielder2Id: null,
+            retiredHurt: false,
+            isMankad: false,
+          },
+        ],
+        [],
+        40,
+        0,
+      ),
+      innings: [
+        {
+          ...minimalScorecard([], [], 40, 0).innings[0]!,
+          battingTeamId: 'acc-3',
+          bowlingTeamId: null,
+          runs: 40,
+          wickets: 0,
+          batters: [
+            {
+              playerId: 'acc-batter',
+              runs: 40,
+              balls: 30,
+              ones: 0,
+              twos: 0,
+              threes: 0,
+              fours: 4,
+              sixes: 2,
+              strikeRate: 133.3,
+              isOut: false,
+              dismissalType: null,
+              bowlerId: null,
+              fielderId: null,
+              fielder2Id: null,
+              retiredHurt: false,
+              isMankad: false,
+            },
+          ],
+        },
+        {
+          ...minimalScorecard([], [], 120, 3).innings[0]!,
+          battingTeamId: null,
+          bowlingTeamId: 'acc-3',
+          battingIsExternal: true,
+          runs: 120,
+          wickets: 3,
+          batters: [
+            {
+              playerId: 'ext-1',
+              runs: 80,
+              balls: 50,
+              ones: 0,
+              twos: 0,
+              threes: 0,
+              fours: 10,
+              sixes: 5,
+              strikeRate: 160,
+              isOut: false,
+              dismissalType: null,
+              bowlerId: null,
+              fielderId: null,
+              fielder2Id: null,
+              retiredHurt: false,
+              isMankad: false,
+            },
+          ],
+          bowlers: [
+            {
+              playerId: 'acc-batter',
+              legalBalls: 24,
+              oversText: '4.0',
+              runsConceded: 30,
+              wickets: 5,
+              maidens: 0,
+              dotBalls: 0,
+              wides: 0,
+              noBalls: 0,
+              fours: 0,
+              sixes: 0,
+              economy: 7.5,
+            },
+          ],
+        },
+      ],
+    };
+
+    foldScorecardIntoTournamentStats(acc, card, membership, null, allowed);
+
+    // ACC batting only for runs/boundaries; ACC bowling for wickets/fifers; external bat excluded
+    expect(acc.totalRuns).toBe(40);
+    expect(acc.sixes).toBe(2);
+    expect(acc.fours).toBe(4);
+    expect(acc.totalWickets).toBe(3);
+    expect(acc.fifers).toBe(1);
+    expect(acc.playerSixes.get('acc-batter')).toBe(2);
+    expect(acc.playerSixes.has('ext-1')).toBe(false);
+  });
+
   it('ranks boundary leaders with tie-break by runs then name', () => {
     const entries = buildBoundaryLeaderboardEntries([
       {

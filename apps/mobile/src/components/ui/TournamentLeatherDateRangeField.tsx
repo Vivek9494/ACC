@@ -20,7 +20,7 @@ export interface TournamentLeatherDateRangeFieldProps {
 }
 
 /**
- * Leather tournament span: from/end date pickers (not individual match days).
+ * Leather tournament span: from/end date pickers side by side (not individual match days).
  */
 export function TournamentLeatherDateRangeField({
   fromDate,
@@ -48,22 +48,30 @@ export function TournamentLeatherDateRangeField({
   return (
     <View className="gap-4">
       <Text className={labelClassName()}>Tournament Dates</Text>
-      <DateField
-        label="From Date"
-        value={fromDate}
-        onChange={onFromDateChange}
-        enforceSignupAgeMax={false}
-        minimumDate={minimumFromDate}
-        error={fromError}
-      />
-      <DateField
-        label="End Date"
-        value={endDate}
-        onChange={onEndDateChange}
-        enforceSignupAgeMax={false}
-        minimumDate={endMinimumDate}
-        error={endError}
-      />
+      <View className="flex-row gap-3">
+        <DateField
+          containerClassName="min-w-0 flex-1"
+          label="From Date"
+          value={fromDate}
+          onChange={onFromDateChange}
+          enforceSignupAgeMax={false}
+          minimumDate={minimumFromDate}
+          error={fromError}
+          compactDisplay
+          placeholder="MMM D, YYYY"
+        />
+        <DateField
+          containerClassName="min-w-0 flex-1"
+          label="End Date"
+          value={endDate}
+          onChange={onEndDateChange}
+          enforceSignupAgeMax={false}
+          minimumDate={endMinimumDate}
+          error={endError}
+          compactDisplay
+          placeholder="MMM D, YYYY"
+        />
+      </View>
       <FormErrorText inline>{spanError}</FormErrorText>
     </View>
   );

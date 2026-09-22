@@ -30,10 +30,13 @@ export function formatIsoDate(date: Date): string {
   return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
 }
 
-/** Format a Date for display: e.g. "June 8, 2026". */
-export function formatDisplayDate(date: Date): string {
+/** Format a Date for display: e.g. "June 8, 2026" (long) or "Jun 8, 2026" (short). */
+export function formatDisplayDate(
+  date: Date,
+  month: 'long' | 'short' = 'long',
+): string {
   return date.toLocaleDateString('en-US', {
-    month: 'long',
+    month,
     day: 'numeric',
     year: 'numeric',
   });
@@ -77,6 +80,8 @@ export interface DateFieldProps {
   enforceSignupAgeMax?: boolean;
   minimumDate?: Date;
   maximumDate?: Date;
+  /** Short month (e.g. "Jun 8, 2026") — use in narrow side-by-side layouts. */
+  compactDisplay?: boolean;
 }
 
 /**
@@ -93,6 +98,7 @@ export function DateField({
   enforceSignupAgeMax = true,
   minimumDate,
   maximumDate,
+  compactDisplay = false,
 }: DateFieldProps): React.ReactElement {
   const [showPicker, setShowPicker] = useState(false);
   const signupMaxDate = useMemo(() => maxBirthDateForSignup(), []);
@@ -130,11 +136,13 @@ export function DateField({
           <Ionicons name="calendar-outline" size={20} color={FIELD_ORANGE} />
         </View>
         <Text
-          className={`${FIELD_VALUE_TEXT_CLASS} ${parsed ? 'text-text' : 'text-text-muted'}`}
+          className={`min-w-0 flex-1 ${FIELD_VALUE_TEXT_CLASS} ${parsed ? 'text-text' : 'text-text-muted'}`}
           style={INPUT_TEXT_STYLE}
           numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.8}
         >
-          {parsed ? formatDisplayDate(parsed) : placeholder}
+          {parsed ? formatDisplayDate(parsed, compactDisplay ? 'short' : 'long') : placeholder}
         </Text>
       </Pressable>
 

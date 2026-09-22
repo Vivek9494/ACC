@@ -34,16 +34,28 @@ export function createTournamentStatsAccumulators(): TournamentStatsAccumulators
  * Fold one match scorecard into running tournament totals.
  * When `teamId` is set: runs/boundaries/milestones from batting innings for that team;
  * wickets/fifers from bowling innings for that team.
+ * When `allowedTeamIds` is set (Leather ACC Stats): only innings for those system teams
+ * count — external-opponent sides are excluded from aggregates.
  */
 export function foldScorecardIntoTournamentStats(
   acc: TournamentStatsAccumulators,
   scorecard: ScorecardResponse,
   membershipUserIds: ReadonlySet<string>,
   teamId?: string | null,
+  allowedTeamIds?: ReadonlySet<string> | null,
 ): void {
   for (const innings of scorecard.innings) {
-    const isBattingTeam = teamId == null || innings.battingTeamId === teamId;
-    const isBowlingTeam = teamId == null || innings.bowlingTeamId === teamId;
+    const battingSideAllowed =
+      allowedTeamIds == null ||
+      (innings.battingTeamId != null && allowedTeamIds.has(innings.battingTeamId));
+    const bowlingSideAllowed =
+      allowedTeamIds == null ||
+      (innings.bowlingTeamId != null && allowedTeamIds.has(innings.bowlingTeamId));
+
+    const isBattingTeam =
+      battingSideAllowed && (teamId == null || innings.battingTeamId === teamId);
+    const isBowlingTeam =
+      bowlingSideAllowed && (teamId == null || innings.bowlingTeamId === teamId);
 
     if (isBattingTeam) {
       acc.totalRuns += innings.runs;

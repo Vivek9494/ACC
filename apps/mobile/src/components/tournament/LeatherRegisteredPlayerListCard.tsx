@@ -5,7 +5,6 @@ import {
 import { Pressable, View } from 'react-native';
 
 import { PlayerAvatar } from '../tournament/PlayerAvatar';
-import { VerifyPlayerRatingsRow } from '../tournament/verify-players/VerifyPlayerRatingsRow';
 import { Text } from '../ui/Text';
 
 function formatPlayerType(
@@ -25,7 +24,7 @@ export interface LeatherRegisteredPlayerListCardProps {
   onPress?: () => void;
 }
 
-/** One leather registrant on the View Registered Players list (ACC squad-building). */
+/** One leather registrant on Registered Players (ACC). Skill ratings are tennis-only. */
 export function LeatherRegisteredPlayerListCard({
   player,
   onPress,
@@ -54,14 +53,6 @@ export function LeatherRegisteredPlayerListCard({
             <Text className="mt-2 font-sans-medium text-sm text-primary">{playerTypeLabel}</Text>
           ) : null}
         </View>
-      </View>
-
-      <View className="mt-4 rounded-lg bg-surface-container-low px-2 py-2">
-        <VerifyPlayerRatingsRow
-          batting={player.battingRating}
-          bowling={player.bowlingRating}
-          fielding={player.fieldingRating}
-        />
       </View>
     </Pressable>
   );

@@ -415,8 +415,13 @@ export const OVERLAY_TOURNAMENT_ACTIONS: {
   { graphic: 'most_fours', label: 'Most Fours' },
 ];
 
-/** Fixed ACC leather team display names (IDs are per-tournament). */
-export const ACC_FIXED_TEAM_NAMES = ['ACC 3', 'ACC 6', 'ACC 9', 'ACC 0'] as const;
+import {
+  ACC_FIXED_TEAM_NAMES,
+  filterAccFixedTeamsInTournament,
+  isAccFixedTeamName,
+} from '@acc/types';
+
+export { ACC_FIXED_TEAM_NAMES, filterAccFixedTeamsInTournament, isAccFixedTeamName };
 
 /**
  * Order tournament teams as ACC 3 / 6 / 9 / 0 for the leather Top 5 dropdown.
@@ -425,16 +430,7 @@ export const ACC_FIXED_TEAM_NAMES = ['ACC 3', 'ACC 6', 'ACC 9', 'ACC 0'] as cons
 export function orderAccFixedTeams<T extends { id: string; name: string }>(
   teams: T[],
 ): T[] {
-  const byName = new Map(
-    teams.map((team) => [team.name.trim().toUpperCase(), team] as const),
-  );
-  const ordered: T[] = [];
-  for (const name of ACC_FIXED_TEAM_NAMES) {
-    const hit = byName.get(name.toUpperCase());
-    if (hit) {
-      ordered.push(hit);
-    }
-  }
+  const ordered = filterAccFixedTeamsInTournament(teams);
   if (ordered.length > 0) {
     return ordered;
   }

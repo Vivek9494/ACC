@@ -234,7 +234,7 @@ export class TournamentsService {
 
     await this.notifyNewTournament(created, dto.name, type);
 
-    return this.getDetail(created);
+    return this.getDetail(created, actor);
   }
 
   /**

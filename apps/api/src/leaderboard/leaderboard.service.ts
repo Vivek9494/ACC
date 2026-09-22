@@ -1,7 +1,9 @@
 import {
+  BallType,
   LIVE_MATCH_STATES,
   MatchSquadRole,
   MatchState,
+  filterAccFixedTeamsInTournament,
   type AuthUser,
   type TournamentLeaderboard,
   type TournamentStatsView,
@@ -277,13 +279,21 @@ export class LeaderboardService {
       allowUnauthenticated: true,
     });
 
-    const teams = tournament.teams.map((team) => ({
+    const isLeather = tournament.ballType === BallType.Leather;
+    const statsTeams = isLeather
+      ? filterAccFixedTeamsInTournament(tournament.teams)
+      : tournament.teams;
+    const allowedTeamIds = isLeather
+      ? new Set(statsTeams.map((team) => team.id))
+      : null;
+
+    const teams = statsTeams.map((team) => ({
       id: team.id,
       name: team.name,
       logoUrl: team.logoUrl,
     }));
 
-    if (teamId && !tournament.teams.some((team) => team.id === teamId)) {
+    if (teamId && !statsTeams.some((team) => team.id === teamId)) {
       return {
         tournamentId,
         hasRecords: false,
@@ -297,7 +307,11 @@ export class LeaderboardService {
     const memberships = await this.prisma.teamMembership.findMany({
       where: {
         tournamentId,
-        ...(teamId ? { teamId } : {}),
+        ...(teamId
+          ? { teamId }
+          : allowedTeamIds
+            ? { teamId: { in: [...allowedTeamIds] } }
+            : {}),
         team: activeTeamWhere,
         ...activeTeamMembershipWhere,
       },
@@ -324,7 +338,13 @@ export class LeaderboardService {
 
     for (const match of tournament.matches) {
       const scorecard = await this.resolveStatsScorecard(match);
-      foldScorecardIntoTournamentStats(acc, scorecard, membershipUserIds, teamId);
+      foldScorecardIntoTournamentStats(
+        acc,
+        scorecard,
+        membershipUserIds,
+        teamId,
+        allowedTeamIds,
+      );
     }
 
     const boundaryPlayers = memberships.map((membership) => ({
