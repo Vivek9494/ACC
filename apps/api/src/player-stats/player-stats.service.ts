@@ -13,6 +13,7 @@ import { Injectable } from '@nestjs/common';
 
 import { PrismaService } from '../prisma/prisma.service';
 import { ScorecardReader } from '../scoring/scorecard-reader';
+import { activeTeamMembershipWhere } from '../teams/team-membership-query';
 import { activeTournamentWhere } from '../tournaments/tournament-query';
 import {
   applyMatchToPlayerStats,
@@ -67,6 +68,43 @@ export class PlayerStatsService {
       leather: toManagerPlayerStats(leather.career),
       tennis: toManagerPlayerStats(tennis.career),
     };
+  }
+
+  /**
+   * True when the player has leather involvement: locked XI on any leather match,
+   * active leather roster, or registration for a leather tournament.
+   */
+  async hasLeatherParticipation(userId: string): Promise<boolean> {
+    const [lockedXi, activeRoster, registered] = await Promise.all([
+      this.prisma.matchSquadPlayer.findFirst({
+        where: {
+          userId,
+          squad: {
+            match: {
+              isDeleted: false,
+              tournament: { ballType: BallType.Leather, isDeleted: false },
+            },
+          },
+        },
+        select: { id: true },
+      }),
+      this.prisma.teamMembership.findFirst({
+        where: {
+          userId,
+          ...activeTeamMembershipWhere,
+          tournament: { ballType: BallType.Leather, ...activeTournamentWhere },
+        },
+        select: { id: true },
+      }),
+      this.prisma.registration.findFirst({
+        where: {
+          userId,
+          tournament: { ballType: BallType.Leather, isDeleted: false },
+        },
+        select: { id: true },
+      }),
+    ]);
+    return lockedXi != null || activeRoster != null || registered != null;
   }
 
   async buildCareerStats(userId: string, ballType: BallType): Promise<PlayerCareerStatsBundle> {

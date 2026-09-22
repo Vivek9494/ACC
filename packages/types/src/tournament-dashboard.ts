@@ -50,7 +50,8 @@ function displayStatusForEntry(
 
 /**
  * Dashboard tournament priority (all users, date-derived status):
- * 1. All upcoming (start asc) → 2. All live → 3. Single most-recent completed → none.
+ * 1. All Upcoming then all Live (each group sorted by start asc)
+ * 2. Else single most-recent Completed (latest end date)
  * Cancelled entries are excluded.
  */
 export function selectDashboardTournaments<T extends DashboardTournamentCandidate>(
@@ -62,15 +63,12 @@ export function selectDashboardTournaments<T extends DashboardTournamentCandidat
   const upcoming = active
     .filter((entry) => displayStatusForEntry(entry, now) === TournamentDisplayStatus.Upcoming)
     .sort(compareStartDateAsc);
-  if (upcoming.length > 0) {
-    return upcoming;
-  }
-
   const live = active
     .filter((entry) => displayStatusForEntry(entry, now) === TournamentDisplayStatus.Live)
     .sort(compareStartDateAsc);
-  if (live.length > 0) {
-    return live;
+
+  if (upcoming.length > 0 || live.length > 0) {
+    return [...upcoming, ...live];
   }
 
   const completed = active

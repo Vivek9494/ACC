@@ -517,10 +517,10 @@ export default function TournamentDetailScreen(): React.ReactElement {
             />
           </View>
 
-          <View className="flex-row items-start justify-between gap-3 px-4 pt-4">
-            <View className="min-w-0 flex-1 flex-row items-start gap-2">
+          <View className="gap-2 px-4 pt-4">
+            <View className="flex-row items-start gap-2">
               <Text
-                className="shrink font-sans-bold text-2xl text-on-surface"
+                className="min-w-0 flex-1 font-sans-bold text-2xl text-on-surface"
                 numberOfLines={3}
               >
                 {tournament.name}
@@ -530,13 +530,13 @@ export default function TournamentDetailScreen(): React.ReactElement {
                   icon="pencil"
                   accessibilityLabel="Edit tournament"
                   onPress={() => router.push(tournamentSubpathHref(user, tournament.id, 'edit'))}
-                  className="mt-0.5"
+                  className="mt-0.5 shrink-0"
                 />
               ) : null}
             </View>
-            <View className="shrink-0 items-end gap-2">
-              <BallTypeIcon ballType={tournament.ballType} size={28} />
+            <View className="flex-row items-center justify-between">
               <StatusPill {...tournamentStatusPill(tournament)} />
+              <BallTypeIcon ballType={tournament.ballType} size={28} />
             </View>
           </View>
 

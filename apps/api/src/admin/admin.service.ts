@@ -617,17 +617,21 @@ export class AdminService {
       throw new NotFoundException('User not found.');
     }
 
-    const [statsBundle, wicketkeeperRegistration] = await Promise.all([
+    const [statsBundle, wicketkeeperRegistration, hasLeatherParticipation] = await Promise.all([
       this.playerStats.buildCareerStats(userId, ballType),
       this.prisma.registration.findFirst({
         where: { userId, fieldingPosition: 'Wicketkeeper' },
         select: { id: true },
       }),
+      this.playerStats.hasLeatherParticipation(userId),
     ]);
 
     return {
       ballType,
       ballTypeLabel: PLAYER_PROFILE_BALL_TYPE_LABELS[ballType],
+      hasLeatherParticipation:
+        hasLeatherParticipation ||
+        (ballType === BallType.Leather && statsBundle.career.matches > 0),
       career: statsBundle.career,
       byYear: statsBundle.byYear,
       byTournament: statsBundle.byTournament,

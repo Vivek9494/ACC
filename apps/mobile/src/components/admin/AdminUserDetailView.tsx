@@ -8,7 +8,7 @@ import { AdminUserProfileHeader } from './AdminUserProfileHeader';
 import { AdminUserProfileTab } from './AdminUserProfileTab';
 import { AdminUserStatsTab } from './AdminUserStatsTab';
 import { ScreenHeader } from '../ui/ScreenHeader';
-import { UnderlineTabBar } from '../ui/UnderlineTabBar';
+import { PillTabBar } from '../ui/PillTabBar';
 import { Text } from '../ui/Text';
 import { FIELD_ORANGE } from '../ui/fieldStyles';
 import {
@@ -141,11 +141,12 @@ export function AdminUserDetailView({
             }
           />
 
-          <UnderlineTabBar
+          <PillTabBar
             options={DETAIL_TABS}
             value={activeTab}
             onChange={setActiveTab}
             accessibilityLabel="User detail view"
+            layout="equal"
           />
 
           {activeTab === 'profile' ? (

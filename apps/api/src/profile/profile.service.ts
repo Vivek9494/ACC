@@ -68,7 +68,7 @@ export class ProfileService {
   ) {}
 
   async getOwnStats(userId: string, ballType: BallType): Promise<OwnPlayerStatsView> {
-    const [user, leadership, latestRegistration, wicketkeeperRegistration, statsBundle, manOfTheMatch] =
+    const [user, leadership, latestRegistration, wicketkeeperRegistration, statsBundle, manOfTheMatch, hasLeatherParticipation] =
       await Promise.all([
         this.prisma.user.findUniqueOrThrow({
           where: { id: userId },
@@ -97,6 +97,7 @@ export class ProfileService {
         }),
         this.playerStats.buildCareerStats(userId, ballType),
         this.playerMomStats.buildSummary(userId, ballType),
+        this.playerStats.hasLeatherParticipation(userId),
       ]);
 
     const playerRole = latestRegistration?.playerRole ?? null;
@@ -115,6 +116,9 @@ export class ProfileService {
       isViceCaptain: leadership.some((row) => row.role === UserRole.ViceCaptain),
       ballType,
       ballTypeLabel: PLAYER_PROFILE_BALL_TYPE_LABELS[ballType],
+      hasLeatherParticipation:
+        hasLeatherParticipation ||
+        (ballType === BallType.Leather && statsBundle.career.matches > 0),
       career: statsBundle.career,
       byYear: statsBundle.byYear,
       byTournament: statsBundle.byTournament,

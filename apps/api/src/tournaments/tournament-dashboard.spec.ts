@@ -31,16 +31,23 @@ function entry(
 describe('selectDashboardTournaments', () => {
   const now = new Date('2026-06-17T16:00:00.000Z');
 
-  it('returns all upcoming sorted by start date ascending', () => {
+  it('returns all upcoming then all live, each sorted by start date ascending', () => {
     const selected = selectDashboardTournaments(
       [
         entry('b', '2026-07-01T00:00:00.000Z', '2026-07-05T00:00:00.000Z'),
         entry('a', '2026-06-20T00:00:00.000Z', '2026-06-25T00:00:00.000Z'),
-        entry('live', '2026-06-10T00:00:00.000Z', '2026-06-30T00:00:00.000Z'),
+        entry('live-late', '2026-06-12T00:00:00.000Z', '2026-06-30T00:00:00.000Z'),
+        entry('live-early', '2026-06-01T00:00:00.000Z', '2026-06-25T00:00:00.000Z'),
+        entry('done', '2026-01-01T00:00:00.000Z', '2026-05-01T00:00:00.000Z'),
       ],
       now,
     );
-    expect(selected.map((row) => row.tournament.id)).toEqual(['a', 'b']);
+    expect(selected.map((row) => row.tournament.id)).toEqual([
+      'a',
+      'b',
+      'live-early',
+      'live-late',
+    ]);
   });
 
   it('returns all live when no upcoming exist', () => {

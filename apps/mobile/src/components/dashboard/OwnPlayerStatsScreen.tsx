@@ -1,6 +1,6 @@
 import { BallType, type OwnPlayerStatsView } from '@acc/types';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -35,7 +35,12 @@ export function OwnPlayerStatsScreen(): React.ReactElement {
     setLoading(true);
     setError(null);
     getOwnPlayerStats(ballType)
-      .then(setStats)
+      .then((data) => {
+        setStats(data);
+        if (data.hasLeatherParticipation === false && ballType === BallType.Leather) {
+          setBallType(BallType.Tennis);
+        }
+      })
       .catch((err: unknown) => {
         setStats(null);
         setError(err instanceof ApiRequestError ? err.message : 'Could not load your stats.');
@@ -49,20 +54,30 @@ export function OwnPlayerStatsScreen(): React.ReactElement {
     }, [load]),
   );
 
+  const ballTypeTabs = useMemo(() => {
+    // Only hide Leather once the API explicitly says false — not while undefined/loading.
+    if (stats?.hasLeatherParticipation === false) {
+      return BALL_TYPE_TABS.filter((tab) => tab.value !== BallType.Leather);
+    }
+    return [...BALL_TYPE_TABS];
+  }, [stats]);
+
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
       <ScrollView className="flex-1" contentContainerClassName="px-4 pb-10 pt-2">
         {stats ? <PlayerProfileHeader profile={stats} /> : null}
 
-        <View className="mt-3 items-center">
-          <SegmentedControl
-            options={BALL_TYPE_TABS}
-            value={ballType}
-            onChange={setBallType}
-            accessibilityLabel="Ball type"
-            size="md"
-          />
-        </View>
+        {ballTypeTabs.length > 1 ? (
+          <View className="mt-3 items-center">
+            <SegmentedControl
+              options={ballTypeTabs}
+              value={ballType}
+              onChange={setBallType}
+              accessibilityLabel="Ball type"
+              size="md"
+            />
+          </View>
+        ) : null}
 
         {loading ? (
           <View className="items-center py-12">

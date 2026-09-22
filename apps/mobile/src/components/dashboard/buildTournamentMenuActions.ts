@@ -41,7 +41,7 @@ export function buildTournamentMenuActions(
   if (permissions.canEdit) {
     actions.push({
       key: 'edit-tournament',
-      label: 'Edit tournament',
+      label: 'Edit',
       icon: 'create-outline',
       onPress: () => router.push(tournamentSubpathHref(user, tournamentId, 'edit')),
     });
@@ -50,7 +50,7 @@ export function buildTournamentMenuActions(
   if (permissions.canDelete) {
     actions.push({
       key: 'delete-tournament',
-      label: 'Delete tournament',
+      label: 'Delete',
       icon: 'trash-outline',
       destructive: true,
       onPress: () => {

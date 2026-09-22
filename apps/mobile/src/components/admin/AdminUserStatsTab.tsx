@@ -1,5 +1,5 @@
 import { BallType, type AdminUserPlayerStatsView } from '@acc/types';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 
 import { PlayerCareerStatsContent } from '../tournament/player-profile/PlayerCareerStatsContent';
@@ -34,7 +34,12 @@ export function AdminUserStatsTab({ userId }: AdminUserStatsTabProps): React.Rea
     setLoading(true);
     setError(null);
     getAdminUserStats(userId, ballType)
-      .then(setStats)
+      .then((data) => {
+        setStats(data);
+        if (data.hasLeatherParticipation === false && ballType === BallType.Leather) {
+          setBallType(BallType.Tennis);
+        }
+      })
       .catch((err: unknown) => {
         setStats(null);
         setError(
@@ -50,15 +55,25 @@ export function AdminUserStatsTab({ userId }: AdminUserStatsTabProps): React.Rea
     load();
   }, [load]);
 
+  const ballTypeTabs = useMemo(() => {
+    // Only hide Leather once the API explicitly says false — not while undefined/loading.
+    if (stats?.hasLeatherParticipation === false) {
+      return BALL_TYPE_TABS.filter((tab) => tab.value !== BallType.Leather);
+    }
+    return [...BALL_TYPE_TABS];
+  }, [stats]);
+
   return (
     <View className="gap-4">
-      <UnderlineTabBar
-        options={BALL_TYPE_TABS}
-        value={ballType}
-        onChange={setBallType}
-        accessibilityLabel="Ball type"
-        layout="spread"
-      />
+      {ballTypeTabs.length > 1 ? (
+        <UnderlineTabBar
+          options={ballTypeTabs}
+          value={ballType}
+          onChange={setBallType}
+          accessibilityLabel="Ball type"
+          layout="spread"
+        />
+      ) : null}
 
       {loading ? (
         <View className="items-center py-12">

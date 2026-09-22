@@ -242,6 +242,8 @@ export interface GenerateTemporaryPasswordResponse {
 export interface AdminUserPlayerStatsView {
   ballType: BallType;
   ballTypeLabel: string;
+  /** Show Leather tab when the player played or registered for a leather tournament. */
+  hasLeatherParticipation: boolean;
   career: PlayerProfileCareerStats;
   byYear: PlayerProfileYearSummary[];
   byTournament: PlayerProfileTournamentSummary[];
