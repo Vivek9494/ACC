@@ -1,5 +1,4 @@
 import type { CenterSummary, ProvinceSummary } from '@acc/types';
-import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { API_BASE_URL, describeApiError, getCenters, getProvinces } from './api';
@@ -214,14 +213,6 @@ export function useSignupGeography(selectedProvinceId: string | null): {
       }
     })();
   }, [loadProvinces]);
-
-  useFocusEffect(
-    useCallback(() => {
-      if (provincesErrorType === 'network') {
-        void loadProvinces(false);
-      }
-    }, [loadProvinces, provincesErrorType]),
-  );
 
   useEffect(() => {
     if (!selectedProvinceId) {

@@ -595,11 +595,11 @@ export function getHealth(): Promise<HealthStatus> {
 
 export function getCenters(provinceId?: string): Promise<CenterSummary[]> {
   const qs = provinceId ? `?provinceId=${encodeURIComponent(provinceId)}` : '';
-  return apiFetch<CenterSummary[]>(`/centers${qs}`);
+  return apiFetchPublic<CenterSummary[]>(`/centers${qs}`);
 }
 
 export function getProvinces(): Promise<ProvinceSummary[]> {
-  return apiFetch<ProvinceSummary[]>('/provinces');
+  return apiFetchPublic<ProvinceSummary[]>('/provinces');
 }
 
 export function listProvincesAdmin(): Promise<ProvinceDetail[]> {
