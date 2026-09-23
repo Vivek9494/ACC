@@ -63,6 +63,11 @@ export interface AdminUserSummary {
   mobileNumber?: string;
   profilePhotoUrl: string | null;
   isActive: boolean;
+  /**
+   * True when `passwordResetLockedAt` is set and still within the 24h lock window.
+   * Past 24h (or cleared) → false even if the timestamp column is stale.
+   */
+  isLocked: boolean;
   /** Deduped platform + scoped roles for chip display. */
   roles: UserRole[];
   /** Account created (UTC ISO 8601). */

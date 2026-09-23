@@ -1,6 +1,7 @@
 import {
   AuthErrorCode,
   isPasswordPolicyCompliant,
+  isPasswordResetLocked,
   OTP_IP_RATE_LIMIT,
   OTP_LENGTH,
   OTP_MAX_FAILED_ATTEMPTS,
@@ -72,7 +73,7 @@ export class PasswordResetService {
       return;
     }
 
-    if (user.passwordResetLockedAt) {
+    if (isPasswordResetLocked(user.passwordResetLockedAt)) {
       throw this.lockedError();
     }
 
@@ -92,6 +93,10 @@ export class PasswordResetService {
       ONE_DAY_SECONDS,
     );
     if (requestCount > OTP_MAX_REQUESTS_PER_DAY) {
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { passwordResetLockedAt: new Date() },
+      });
       throw new HttpException(
         {
           message: 'Too many OTP requests. Please try again tomorrow.',
@@ -131,7 +136,7 @@ export class PasswordResetService {
       });
     }
 
-    if (user.passwordResetLockedAt) {
+    if (isPasswordResetLocked(user.passwordResetLockedAt)) {
       throw this.lockedError();
     }
 
@@ -202,7 +207,7 @@ export class PasswordResetService {
       });
     }
 
-    if (user.passwordResetLockedAt) {
+    if (isPasswordResetLocked(user.passwordResetLockedAt)) {
       throw this.lockedError();
     }
 
@@ -227,7 +232,7 @@ export class PasswordResetService {
 
   /**
    * Clears a password-reset lock and resets OTP counters, then audits the
-   * action. Restricted to admin/captain/club-manager at the controller (§3.4).
+   * action. Restricted to Admin at the controller.
    */
   async unlock(actor: AuthUser, userId: string): Promise<void> {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });

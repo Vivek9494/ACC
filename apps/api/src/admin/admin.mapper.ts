@@ -1,6 +1,7 @@
 import {
   formatAdminUserRolesForDisplay,
   formatCanadianMobileMasked,
+  isPasswordResetLocked,
   type AdminUserDetail,
   type AdminUserRoleAssignment,
   type AdminUserSummary,
@@ -17,6 +18,7 @@ type UserListRow = {
   mobileNumber: string;
   profilePhotoUrl: string | null;
   isActive: boolean;
+  passwordResetLockedAt: Date | null;
   role: PrismaUserRole;
   createdAt: Date;
   roleAssignments: { role: PrismaUserRole }[];
@@ -66,6 +68,7 @@ export function toAdminUserSummary(
     maskedMobileNumber: formatCanadianMobileMasked(user.mobileNumber),
     profilePhotoUrl: user.profilePhotoUrl,
     isActive: user.isActive,
+    isLocked: isPasswordResetLocked(user.passwordResetLockedAt),
     roles: collectRoles(user),
     createdAt: user.createdAt.toISOString(),
   };

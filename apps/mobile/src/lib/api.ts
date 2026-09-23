@@ -81,6 +81,7 @@ import {
   type LeatherTournamentInvitesResponse,
   type ExternalPlayerView,
   type ForgotPasswordRequest,
+  type UnlockAccountRequest,
   type GroupSummary,
   type UpdateGroupMembersRequest,
   type HandoverScorerRequest,
@@ -1062,6 +1063,11 @@ export function verifyResetOtp(body: VerifyResetOtpRequest): Promise<VerifyReset
 
 export function resetPassword(body: ResetPasswordRequest): Promise<{ success: boolean }> {
   return apiFetch<{ success: boolean }>('/auth/reset-password', { method: 'POST', body });
+}
+
+/** Admin-only: clear password-reset lock + OTP counters for a user. */
+export function unlockAdminAccount(body: UnlockAccountRequest): Promise<{ success: true }> {
+  return apiFetch<{ success: true }>('/auth/unlock', { method: 'POST', body });
 }
 
 export function changePassword(body: ChangePasswordRequest): Promise<ChangePasswordResponse> {

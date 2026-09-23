@@ -1,4 +1,5 @@
 import type { AdminUserSummary } from '@acc/types';
+import { Ionicons } from '@expo/vector-icons';
 import { Pressable, View } from 'react-native';
 
 import { colors } from '@/theme/colors';
@@ -17,6 +18,8 @@ export interface AdminUserListCardProps {
   showRowActions?: boolean;
   onToggleStatus: () => void;
   onDelete: () => void;
+  /** Unlock password-reset lock — only shown when {@link AdminUserSummary.isLocked}. */
+  onUnlock?: () => void;
 }
 
 /** Admin directory row — tap opens detail; overflow menu for status + delete. */
@@ -26,6 +29,7 @@ export function AdminUserListCard({
   showRowActions = true,
   onToggleStatus,
   onDelete,
+  onUnlock,
 }: AdminUserListCardProps): React.ReactElement {
   const menuActions: OverflowMenuAction[] = [
     {
@@ -82,11 +86,24 @@ export function AdminUserListCard({
           </View>
         </View>
         {showRowActions ? (
-          <OverflowMenu
-            actions={menuActions}
-            accessibilityLabel="User actions"
-            iconColor={colors.primary}
-          />
+          <View className="flex-row items-center gap-1">
+            {user.isLocked && onUnlock ? (
+              <Pressable
+                onPress={onUnlock}
+                accessibilityRole="button"
+                accessibilityLabel={`Unlock ${user.firstName} ${user.lastName}`}
+                hitSlop={8}
+                className="h-10 w-10 items-center justify-center rounded-full active:bg-black/5"
+              >
+                <Ionicons name="lock-closed" size={22} color={colors.primary} />
+              </Pressable>
+            ) : null}
+            <OverflowMenu
+              actions={menuActions}
+              accessibilityLabel="User actions"
+              iconColor={colors.primary}
+            />
+          </View>
         ) : null}
       </View>
     </Card>

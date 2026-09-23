@@ -31,6 +31,7 @@ import {
   listAdminUsers,
   listCentersAdmin,
   listProvincesAdmin,
+  unlockAdminAccount,
   updateAdminUserStatus,
 } from '../../lib/api';
 import { confirmActionAlert } from '../../lib/confirm-action-alert';
@@ -287,6 +288,28 @@ export function AdminUsersDirectoryScreen({
     });
   }
 
+  function requestUnlockUser(user: AdminUserSummary): void {
+    const displayName = `${user.firstName} ${user.lastName}`.trim();
+    confirmActionAlert({
+      title: `Unlock ${displayName}?`,
+      message: 'This clears their password-reset lock so they can request a new OTP.',
+      confirmLabel: 'Unlock',
+      onConfirm: async () => {
+        try {
+          await unlockAdminAccount({ userId: user.id });
+          setItems((current) =>
+            current.map((row) => (row.id === user.id ? { ...row, isLocked: false } : row)),
+          );
+        } catch (err) {
+          Alert.alert(
+            'Could not unlock account',
+            err instanceof ApiRequestError ? err.message : 'Unlock failed.',
+          );
+        }
+      },
+    });
+  }
+
   function requestDeleteUser(user: AdminUserSummary): void {
     const displayName = `${user.firstName} ${user.lastName}`.trim();
     confirmDestructiveDeleteAlert({
@@ -400,6 +423,7 @@ export function AdminUsersDirectoryScreen({
                 onPress={() => router.push(userDetailHref(item.id))}
                 onToggleStatus={() => requestToggleStatus(item)}
                 onDelete={() => requestDeleteUser(item)}
+                onUnlock={manageUsers ? () => requestUnlockUser(item) : undefined}
               />
             )}
             ListEmptyComponent={

@@ -46,6 +46,10 @@ import {
   type AccessTokenPayload,
   BCRYPT_SALT_ROUNDS,
   loginAttemptsKey,
+  otpCodeKey,
+  otpFailedCountKey,
+  otpRequestCountKey,
+  otpResendCooldownKey,
   type RefreshTokenPayload,
   refreshKey,
   signupAttemptsKey,
@@ -199,6 +203,17 @@ export class AuthService {
     }
 
     await this.redis.del(attemptsKey);
+    // Proven password ownership lifts the forgot-password OTP / reset lockout.
+    await Promise.all([
+      this.redis.del(otpRequestCountKey(mobileNumber)),
+      this.redis.del(otpFailedCountKey(mobileNumber)),
+      this.redis.del(otpCodeKey(mobileNumber)),
+      this.redis.del(otpResendCooldownKey(mobileNumber)),
+    ]);
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { passwordResetLockedAt: null },
+    });
 
     // Single-device enforcement (§3.2): bumping tokenVersion on every login
     // invalidates any token still held by a previously logged-in device.

@@ -16,6 +16,7 @@ describe('admin.mapper', () => {
         mobileNumber: '+15555550007',
         profilePhotoUrl: null,
         isActive: true,
+        passwordResetLockedAt: null,
         role: UserRole.Player,
         createdAt: new Date('2024-01-15T00:00:00.000Z'),
         roleAssignments: [{ role: UserRole.Captain }],
@@ -23,6 +24,7 @@ describe('admin.mapper', () => {
 
       expect(summary.maskedMobileNumber).toBe('+1 (***) ***-0007');
       expect(summary.mobileNumber).toBeUndefined();
+      expect(summary.isLocked).toBe(false);
       expect(summary.roles).toEqual([UserRole.Captain]);
     });
 
@@ -35,6 +37,7 @@ describe('admin.mapper', () => {
           mobileNumber: '+15199955472',
           profilePhotoUrl: null,
           isActive: true,
+          passwordResetLockedAt: null,
           role: UserRole.Player,
           createdAt: new Date('2024-01-15T00:00:00.000Z'),
           roleAssignments: [],
@@ -44,6 +47,42 @@ describe('admin.mapper', () => {
 
       expect(summary.mobileNumber).toBe('+15199955472');
       expect(summary.maskedMobileNumber).toBe('+1 (***) ***-5472');
+    });
+
+    it('marks isLocked only within the 24h password-reset lock window', () => {
+      const now = new Date('2026-09-23T12:00:00.000Z');
+      jest.useFakeTimers();
+      jest.setSystemTime(now);
+
+      const locked = toAdminUserSummary({
+        id: 'u1',
+        firstName: 'Dev',
+        lastName: 'Player',
+        mobileNumber: '+15555550007',
+        profilePhotoUrl: null,
+        isActive: true,
+        passwordResetLockedAt: new Date('2026-09-23T06:00:00.000Z'),
+        role: UserRole.Player,
+        createdAt: new Date('2024-01-15T00:00:00.000Z'),
+        roleAssignments: [],
+      });
+      expect(locked.isLocked).toBe(true);
+
+      const expired = toAdminUserSummary({
+        id: 'u2',
+        firstName: 'Old',
+        lastName: 'Lock',
+        mobileNumber: '+15555550008',
+        profilePhotoUrl: null,
+        isActive: true,
+        passwordResetLockedAt: new Date('2026-09-22T11:00:00.000Z'),
+        role: UserRole.Player,
+        createdAt: new Date('2024-01-15T00:00:00.000Z'),
+        roleAssignments: [],
+      });
+      expect(expired.isLocked).toBe(false);
+
+      jest.useRealTimers();
     });
   });
 

@@ -409,50 +409,55 @@ export default function SignupScreen(): React.ReactElement {
             />,
           )}
 
-          {fieldWrap(
-            'province',
-            <Select
-              label="Province"
-              placeholder="Select Province"
-              value={province}
-              options={provinceOptions}
-              onChange={onProvinceChange}
-              loading={provinceField.loading}
-              error={provinceSelectError}
-              onRetry={provinceField.errorType === 'network' ? provinceField.retry : undefined}
-              emptyMessage={
-                provinceField.errorType === 'network'
-                  ? provinceField.errorMessage ?? 'No options available.'
-                  : 'No provinces available.'
-              }
-              disabled={provinceField.errorType === 'empty'}
-            />,
-          )}
-
-          {fieldWrap(
-            'center',
-            <Select
-              label="Center"
-              placeholder={province ? 'Select Center' : 'Select province first'}
-              value={centerId}
-              options={centerSelectOptions}
-              onChange={(value) => {
-                setCenterId(value);
-                clearFieldError('center');
-              }}
-              loading={Boolean(province) && centerField.loading}
-              error={centerSelectError}
-              onRetry={
-                province && centerField.errorType === 'network' ? centerField.retry : undefined
-              }
-              emptyMessage={
-                centerField.errorType === 'network'
-                  ? centerField.errorMessage ?? 'No options available.'
-                  : 'No centers available in this province.'
-              }
-              disabled={!province || centerField.errorType === 'empty'}
-            />,
-          )}
+          <View className="w-full flex-row items-start gap-3">
+            {fieldWrap(
+              'province',
+              <Select
+                label="Province"
+                placeholder="Select Province"
+                containerClassName="w-full"
+                value={province}
+                options={provinceOptions}
+                onChange={onProvinceChange}
+                loading={provinceField.loading}
+                error={provinceSelectError}
+                onRetry={provinceField.errorType === 'network' ? provinceField.retry : undefined}
+                emptyMessage={
+                  provinceField.errorType === 'network'
+                    ? provinceField.errorMessage ?? 'No options available.'
+                    : 'No provinces available.'
+                }
+                disabled={provinceField.errorType === 'empty'}
+              />,
+              'min-w-0 flex-1',
+            )}
+            {fieldWrap(
+              'center',
+              <Select
+                label="Center"
+                placeholder={province ? 'Select Center' : 'Select province first'}
+                containerClassName="w-full"
+                value={centerId}
+                options={centerSelectOptions}
+                onChange={(value) => {
+                  setCenterId(value);
+                  clearFieldError('center');
+                }}
+                loading={Boolean(province) && centerField.loading}
+                error={centerSelectError}
+                onRetry={
+                  province && centerField.errorType === 'network' ? centerField.retry : undefined
+                }
+                emptyMessage={
+                  centerField.errorType === 'network'
+                    ? centerField.errorMessage ?? 'No options available.'
+                    : 'No centers available in this province.'
+                }
+                disabled={!province || centerField.errorType === 'empty'}
+              />,
+              'min-w-0 flex-1',
+            )}
+          </View>
 
           {fieldWrap(
             'password',

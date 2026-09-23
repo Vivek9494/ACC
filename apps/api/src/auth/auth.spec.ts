@@ -176,6 +176,47 @@ describe('AuthService', () => {
     }
   });
 
+  it('clears OTP request lockout counters on successful password login', async () => {
+    prisma.user.findUnique.mockResolvedValue(makeUser({ tokenVersion: 1 }));
+    prisma.user.update.mockResolvedValue(makeUser({ tokenVersion: 2 }));
+    redis.get.mockResolvedValue(null);
+
+    const jestBcrypt = jest.spyOn(
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      require('bcrypt') as { compare: (a: string, b: string) => Promise<boolean> },
+      'compare',
+    );
+    jestBcrypt.mockResolvedValue(true as never);
+
+    await service.login({ mobileNumber: '+15555550100', password: 'password1' });
+
+    expect(redis.del).toHaveBeenCalledWith('otp:requests:+15555550100');
+    expect(redis.del).toHaveBeenCalledWith('otp:failed:+15555550100');
+    expect(redis.del).toHaveBeenCalledWith('otp:code:+15555550100');
+    expect(redis.del).toHaveBeenCalledWith('otp:resend:+15555550100');
+    jestBcrypt.mockRestore();
+  });
+
+  it('does not clear OTP counters on failed password login', async () => {
+    prisma.user.findUnique.mockResolvedValue(makeUser());
+    redis.get.mockResolvedValue(null);
+    redis.incrementWithTtl.mockResolvedValue(1);
+
+    const jestBcrypt = jest.spyOn(
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      require('bcrypt') as { compare: (a: string, b: string) => Promise<boolean> },
+      'compare',
+    );
+    jestBcrypt.mockResolvedValue(false as never);
+
+    await expect(
+      service.login({ mobileNumber: '+15555550100', password: 'wrong' }),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+
+    expect(redis.del).not.toHaveBeenCalledWith('otp:requests:+15555550100');
+    jestBcrypt.mockRestore();
+  });
+
   it('increments tokenVersion on login so prior sessions are invalidated', async () => {
     prisma.user.findUnique.mockResolvedValue(makeUser({ tokenVersion: 4 }));
     prisma.user.update.mockResolvedValue(makeUser({ tokenVersion: 5 }));

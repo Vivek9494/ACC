@@ -94,6 +94,7 @@ export class AdminService {
         isActive: true,
         role: true,
         createdAt: true,
+        passwordResetLockedAt: true,
         roleAssignments: { select: { role: true } },
       },
     });
@@ -198,6 +199,7 @@ export class AdminService {
         isActive: true,
         role: true,
         createdAt: true,
+        passwordResetLockedAt: true,
         email: true,
         dateOfBirth: true,
         jerseyNumber: true,

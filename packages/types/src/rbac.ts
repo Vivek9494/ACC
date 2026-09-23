@@ -673,11 +673,7 @@ export const PERMISSION_MATRIX: Record<Permission, PermissionRule> = {
     grants: [{ subject: R.Admin }, { subject: R.ClubManager }],
   },
   [Permission.UNLOCK_ACCOUNT]: {
-    grants: [
-      { subject: R.Admin },
-      { subject: R.ClubManager },
-      { subject: R.Captain, scope: PermissionScope.OwnTeam },
-    ],
+    grants: [{ subject: R.Admin }],
   },
 
   // N. Audit & Announcements

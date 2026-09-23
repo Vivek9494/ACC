@@ -29,6 +29,29 @@ export const RESET_TOKEN_TTL_SECONDS = 10 * 60;
 export const OTP_MAX_REQUESTS_PER_DAY = 5;
 /** Failed OTP entries before the active code is invalidated (user must resend). */
 export const OTP_MAX_FAILED_ATTEMPTS = 5;
+/**
+ * How long a password-reset lock (`User.passwordResetLockedAt`) remains effective.
+ * Past this window the account is treated as unlocked without an explicit clear.
+ */
+export const PASSWORD_RESET_LOCK_TTL_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * True when a password-reset lock timestamp is set and still within the 24h window.
+ * Null/expired timestamps are not locked.
+ */
+export function isPasswordResetLocked(
+  lockedAt: Date | string | null | undefined,
+  now: Date = new Date(),
+): boolean {
+  if (lockedAt == null) {
+    return false;
+  }
+  const ms = lockedAt instanceof Date ? lockedAt.getTime() : Date.parse(lockedAt);
+  if (Number.isNaN(ms)) {
+    return false;
+  }
+  return now.getTime() - ms < PASSWORD_RESET_LOCK_TTL_MS;
+}
 
 /** Rate limits for forgot-password send + verify (per client IP). */
 export const OTP_IP_RATE_LIMIT = {

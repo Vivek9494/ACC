@@ -52,11 +52,11 @@ export class PasswordResetController {
     return { success: true };
   }
 
-  /** Admin/Captain/Club Manager: clear a reset lock and reset OTP counters. */
+  /** Admin only: clear a reset lock and reset OTP counters. */
   @Post('unlock')
   @HttpCode(HttpStatus.OK)
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.Admin, UserRole.Captain, UserRole.ClubManager)
+  @Roles(UserRole.Admin)
   async unlock(
     @CurrentUser() actor: AuthUser,
     @Body() dto: UnlockAccountDto,
