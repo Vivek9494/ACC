@@ -33,6 +33,39 @@ export interface AdminOverview {
   scorerMatch: ScorerStartableMatch | null;
 }
 
+/** One day on the Admin password-reset OTP analytics graph. */
+export interface AdminPasswordResetOtpDayCount {
+  /** UTC calendar day `YYYY-MM-DD`. */
+  date: string;
+  /** Total password-reset OTP SMS sends that UTC day. */
+  count: number;
+}
+
+/** Daily series for a requested inclusive UTC date range. */
+export interface AdminPasswordResetOtpDailySeries {
+  fromDate: string;
+  toDate: string;
+  days: AdminPasswordResetOtpDayCount[];
+}
+
+/** One user row when drilling into a UTC day on the OTP graph. */
+export interface AdminPasswordResetOtpDayUser {
+  userId: string;
+  firstName: string;
+  lastName: string;
+  profilePhotoUrl: string | null;
+  /** Full E.164 — Admin-only analytics. */
+  mobileNumber: string;
+  /** OTPs sent to this user on that UTC day. */
+  count: number;
+}
+
+export interface AdminPasswordResetOtpDayUsers {
+  /** UTC calendar day `YYYY-MM-DD`. */
+  date: string;
+  users: AdminPasswordResetOtpDayUser[];
+}
+
 /** Display labels for platform / scoped roles on admin user screens. */
 export const ADMIN_USER_ROLE_LABELS: Record<UserRole, string> = {
   [UserRole.Admin]: 'Admin',

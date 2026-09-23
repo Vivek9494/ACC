@@ -17,6 +17,8 @@ import {
   type CompleteForcedPasswordChangeRequest,
   type CompleteForcedPasswordChangeResponse,
   type AdminOverview,
+  type AdminPasswordResetOtpDailySeries,
+  type AdminPasswordResetOtpDayUsers,
   type AdminAppSettings,
   type AdminBroadcastView,
   type ActiveBroadcast,
@@ -686,6 +688,27 @@ export function deleteCenter(id: string): Promise<void> {
 
 export function getAdminOverview(): Promise<AdminOverview> {
   return apiFetch<AdminOverview>('/admin/overview');
+}
+
+/** Admin-only: password-reset OTP send counts by UTC day. */
+export function getAdminPasswordResetOtpDaily(
+  fromDate: string,
+  toDate: string,
+): Promise<AdminPasswordResetOtpDailySeries> {
+  const params = new URLSearchParams({ fromDate, toDate });
+  return apiFetch<AdminPasswordResetOtpDailySeries>(
+    `/admin/password-reset-otp/daily?${params}`,
+  );
+}
+
+/** Admin-only: users who received password-reset OTPs on a UTC day. */
+export function getAdminPasswordResetOtpByDay(
+  date: string,
+): Promise<AdminPasswordResetOtpDayUsers> {
+  const params = new URLSearchParams({ date });
+  return apiFetch<AdminPasswordResetOtpDayUsers>(
+    `/admin/password-reset-otp/by-day?${params}`,
+  );
 }
 
 export function getUploadLimits(): Promise<UploadLimits> {

@@ -2,6 +2,8 @@ import {
   ADMIN_USERS_PAGE_SIZE,
   ADMIN_USERS_PAGE_SIZE_MAX,
   type AdminOverview,
+  type AdminPasswordResetOtpDailySeries,
+  type AdminPasswordResetOtpDayUsers,
   type AdminUserDetail,
   type AdminUserPlayerStatsView,
   type AdminUsersPage,
@@ -29,6 +31,7 @@ import {
   isAdminPlayingRole,
   DEFAULT_VENUE_TIMEZONE,
   getTodayCalendarPartsInZone,
+  formatUtcIsoDate,
 } from '@acc/types';
 import { Injectable, BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
@@ -763,6 +766,156 @@ export class AdminService {
       age -= 1;
     }
     return age;
+  }
+
+  /**
+   * Password-reset OTP sends per UTC day for an inclusive date range.
+   * Days with zero sends are included so the Admin graph has a continuous series.
+   */
+  async getPasswordResetOtpDailySeries(
+    fromDate: string,
+    toDate: string,
+  ): Promise<AdminPasswordResetOtpDailySeries> {
+    const range = this.parseInclusiveUtcDateRange(fromDate, toDate);
+    const rows = await this.prisma.$queryRaw<Array<{ day: Date; count: bigint }>>`
+      SELECT (("createdAt" AT TIME ZONE 'UTC')::date) AS day,
+             COUNT(*)::bigint AS count
+      FROM "PasswordResetOtpSend"
+      WHERE "createdAt" >= ${range.fromStart}
+        AND "createdAt" < ${range.toExclusive}
+      GROUP BY 1
+      ORDER BY 1 ASC
+    `;
+
+    const countByDay = new Map<string, number>();
+    for (const row of rows) {
+      const key =
+        row.day instanceof Date
+          ? formatUtcIsoDate(row.day)
+          : String(row.day).slice(0, 10);
+      countByDay.set(key, Number(row.count));
+    }
+
+    const days: AdminPasswordResetOtpDailySeries['days'] = [];
+    const cursor = new Date(range.fromStart);
+    while (cursor < range.toExclusive) {
+      const date = formatUtcIsoDate(cursor);
+      days.push({ date, count: countByDay.get(date) ?? 0 });
+      cursor.setUTCDate(cursor.getUTCDate() + 1);
+    }
+
+    return {
+      fromDate: formatUtcIsoDate(range.fromStart),
+      toDate: formatUtcIsoDate(new Date(range.toExclusive.getTime() - 1)),
+      days,
+    };
+  }
+
+  /** Users who received password-reset OTPs on a single UTC calendar day. */
+  async getPasswordResetOtpDayUsers(date: string): Promise<AdminPasswordResetOtpDayUsers> {
+    const dayStart = this.parseUtcDateOnly(date);
+    if (!dayStart) {
+      throw new BadRequestException({
+        message: 'date must be YYYY-MM-DD',
+        error: 'INVALID_DATE',
+      });
+    }
+    const dayEnd = new Date(dayStart);
+    dayEnd.setUTCDate(dayEnd.getUTCDate() + 1);
+
+    const grouped = await this.prisma.passwordResetOtpSend.groupBy({
+      by: ['userId'],
+      where: { createdAt: { gte: dayStart, lt: dayEnd } },
+      _count: { _all: true },
+      orderBy: { _count: { userId: 'desc' } },
+    });
+
+    if (grouped.length === 0) {
+      return { date: formatUtcIsoDate(dayStart), users: [] };
+    }
+
+    const users = await this.prisma.user.findMany({
+      where: { id: { in: grouped.map((row) => row.userId) } },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        profilePhotoUrl: true,
+        mobileNumber: true,
+      },
+    });
+    const byId = new Map(users.map((user) => [user.id, user]));
+
+    const items = await this.mediaUrls.resolveProfilePhotoUrls(
+      grouped.flatMap((row) => {
+        const user = byId.get(row.userId);
+        if (!user) {
+          return [];
+        }
+        return [
+          {
+            userId: user.id,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            profilePhotoUrl: user.profilePhotoUrl,
+            mobileNumber: user.mobileNumber,
+            count: row._count._all,
+          },
+        ];
+      }),
+    );
+
+    return { date: formatUtcIsoDate(dayStart), users: items };
+  }
+
+  private parseUtcDateOnly(value: string): Date | null {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim().slice(0, 10));
+    if (!match) {
+      return null;
+    }
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    const date = new Date(Date.UTC(year, month - 1, day));
+    if (
+      date.getUTCFullYear() !== year ||
+      date.getUTCMonth() !== month - 1 ||
+      date.getUTCDate() !== day
+    ) {
+      return null;
+    }
+    return date;
+  }
+
+  private parseInclusiveUtcDateRange(
+    fromDate: string,
+    toDate: string,
+  ): { fromStart: Date; toExclusive: Date } {
+    const fromStart = this.parseUtcDateOnly(fromDate);
+    const toStart = this.parseUtcDateOnly(toDate);
+    if (!fromStart || !toStart) {
+      throw new BadRequestException({
+        message: 'fromDate and toDate must be YYYY-MM-DD',
+        error: 'INVALID_DATE_RANGE',
+      });
+    }
+    if (fromStart.getTime() > toStart.getTime()) {
+      throw new BadRequestException({
+        message: 'fromDate must be on or before toDate',
+        error: 'INVALID_DATE_RANGE',
+      });
+    }
+    const spanDays =
+      Math.floor((toStart.getTime() - fromStart.getTime()) / (24 * 60 * 60 * 1000)) + 1;
+    if (spanDays > 90) {
+      throw new BadRequestException({
+        message: 'Date range cannot exceed 90 days',
+        error: 'INVALID_DATE_RANGE',
+      });
+    }
+    const toExclusive = new Date(toStart);
+    toExclusive.setUTCDate(toExclusive.getUTCDate() + 1);
+    return { fromStart, toExclusive };
   }
 
   async getOverview(actor: AuthUser): Promise<AdminOverview> {

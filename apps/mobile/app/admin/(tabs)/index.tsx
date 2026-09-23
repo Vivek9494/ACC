@@ -1,26 +1,22 @@
-import type { AdminOverview, TournamentDashboardEntry } from '@acc/types';
+import type { AdminOverview } from '@acc/types';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { View } from 'react-native';
 
+import { AdminPasswordResetOtpAnalyticsCard } from '../../../src/components/admin/AdminPasswordResetOtpAnalyticsCard';
 import { buildCaptainFeaturedMatchSections } from '../../../src/components/dashboard/buildDashboardFeaturedMatchSections';
-import { buildTournamentMenuActions } from '../../../src/components/dashboard/buildTournamentMenuActions';
 import { DashboardScaffold } from '../../../src/components/dashboard/DashboardScaffold';
 import { ScorerStartMatchCard } from '../../../src/components/dashboard/ScorerStartMatchCard';
 import { Card } from '../../../src/components/ui/Card';
-import { CircularAddButton } from '../../../src/components/ui/CircularAddButton';
 import { StatTile } from '../../../src/components/ui/StatTile';
 import { Text } from '../../../src/components/ui/Text';
-import { TournamentDashboardCard } from '../../../src/components/ui/TournamentDashboardCard';
-import { getAdminOverview, listTournamentDashboardEntries } from '../../../src/lib/api';
+import { getAdminOverview } from '../../../src/lib/api';
 import { prependBroadcastSection } from '../../../src/lib/dashboard-broadcast';
 import { dashboardFetchError, logFetchError } from '../../../src/lib/fetch-error';
-import { useAuth } from '../../../src/lib/auth-context';
 import {
   handleScorerDashboardPress,
   scorerDashboardButtonLabel,
 } from '../../../src/lib/scorer-dashboard';
-import { tournamentDetailHref, tournamentNewHref } from '../../../src/lib/tournament-detail-route';
 import { useActiveBroadcast } from '../../../src/hooks/useActiveBroadcast';
 
 function OverviewMetric({
@@ -42,9 +38,7 @@ function OverviewMetric({
 
 export default function AdminDashboardScreen(): React.ReactElement {
   const router = useRouter();
-  const { user } = useAuth();
   const [overview, setOverview] = useState<AdminOverview | null>(null);
-  const [tournaments, setTournaments] = useState<TournamentDashboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { broadcast } = useActiveBroadcast(!loading && !error);
@@ -53,11 +47,9 @@ export default function AdminDashboardScreen(): React.ReactElement {
     let cancelled = false;
     setLoading(true);
     setError(null);
-    Promise.all([getAdminOverview(), listTournamentDashboardEntries()])
-      .then(([stats, tourList]) => {
-        if (cancelled) return;
-        setOverview(stats);
-        setTournaments(tourList);
+    getAdminOverview()
+      .then((stats) => {
+        if (!cancelled) setOverview(stats);
       })
       .catch((err: unknown) => {
         logFetchError('Failed to load admin dashboard', err);
@@ -122,33 +114,9 @@ export default function AdminDashboardScreen(): React.ReactElement {
       glanceItems.length > 0 ? (
         <StatTile key="at-a-glance" title="At a Glance" items={glanceItems} />
       ) : null,
-      tournaments.length > 0 ? (
-        <View key="tournaments" className="gap-3">
-          <View className="flex-row items-center justify-between">
-            <Text className="font-sans-bold text-xl text-on-surface">Tournaments</Text>
-            <CircularAddButton
-              accessibilityLabel="Add tournament"
-              onPress={() => router.push(tournamentNewHref(user))}
-            />
-          </View>
-          {tournaments.map(({ tournament, permissions }) => (
-            <TournamentDashboardCard
-              key={tournament.id}
-              tournament={tournament}
-              onPress={() => user && router.push(tournamentDetailHref(user, tournament.id))}
-              menuActions={buildTournamentMenuActions(
-                permissions,
-                tournament.id,
-                tournament.name,
-                router,
-                { onDeleted: load, user },
-              )}
-            />
-          ))}
-        </View>
-      ) : null,
+      <AdminPasswordResetOtpAnalyticsCard key="password-reset-otp-analytics" />,
     ].filter((section) => section !== null);
-  }, [glanceItems, load, overview, router, tournaments, user]);
+  }, [glanceItems, overview, router]);
 
   const sectionsWithBroadcast = useMemo(
     () => prependBroadcastSection(sections, broadcast),

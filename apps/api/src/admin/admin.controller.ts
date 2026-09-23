@@ -1,5 +1,7 @@
 import type {
   AdminOverview,
+  AdminPasswordResetOtpDailySeries,
+  AdminPasswordResetOtpDayUsers,
   AdminUserDetail,
   AdminUserPlayerStatsView,
   AdminUsersPage,
@@ -35,6 +37,10 @@ import { ListAdminUsersDto } from './dto/list-admin-users.dto';
 import { CreateAdminUserDto } from './dto/create-admin-user.dto';
 import { UpdateAdminUserDto } from './dto/update-admin-user.dto';
 import { UpdateAdminUserStatusDto } from './dto/update-admin-user-status.dto';
+import {
+  PasswordResetOtpByDayQueryDto,
+  PasswordResetOtpDailyQueryDto,
+} from './dto/password-reset-otp-analytics.dto';
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard)
@@ -46,6 +52,24 @@ export class AdminController {
   @RequirePermission(Permission.VIEW_ADMIN_OVERVIEW)
   overview(@CurrentUser() user: AuthUser): Promise<AdminOverview> {
     return this.admin.getOverview(user);
+  }
+
+  @Get('password-reset-otp/daily')
+  @UseGuards(PermissionGuard)
+  @RequirePermission(Permission.VIEW_ADMIN_OVERVIEW)
+  passwordResetOtpDaily(
+    @Query() query: PasswordResetOtpDailyQueryDto,
+  ): Promise<AdminPasswordResetOtpDailySeries> {
+    return this.admin.getPasswordResetOtpDailySeries(query.fromDate, query.toDate);
+  }
+
+  @Get('password-reset-otp/by-day')
+  @UseGuards(PermissionGuard)
+  @RequirePermission(Permission.VIEW_ADMIN_OVERVIEW)
+  passwordResetOtpByDay(
+    @Query() query: PasswordResetOtpByDayQueryDto,
+  ): Promise<AdminPasswordResetOtpDayUsers> {
+    return this.admin.getPasswordResetOtpDayUsers(query.date);
   }
 
   @Post('users')

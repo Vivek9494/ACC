@@ -365,12 +365,26 @@ model User {
   tournamentScorerAssignments TournamentScorer[]
   broadcastsPosted           Broadcast[]
   pushDeviceTokens           PushDeviceToken[]
+  passwordResetOtpSends      PasswordResetOtpSend[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([centerId])
   @@index([deletedAt])
+}
+
+/// Append-only log of password-reset OTP SMS sends (Admin analytics).
+model PasswordResetOtpSend {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id])
+  /// E.164 mobile at send time (denormalized for audit if the user later changes number).
+  mobileNumber String
+  createdAt    DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([userId, createdAt])
 }
 
 /// Shared tennis tournament scorer pool (Phase 1) — exactly five registered players per tournament.

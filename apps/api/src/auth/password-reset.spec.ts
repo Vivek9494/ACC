@@ -24,7 +24,10 @@ function errorCode(err: unknown): string {
 
 describe('PasswordResetService', () => {
   let service: PasswordResetService;
-  let prisma: { user: { findUnique: jest.Mock; update: jest.Mock } };
+  let prisma: {
+    user: { findUnique: jest.Mock; update: jest.Mock };
+    passwordResetOtpSend: { create: jest.Mock };
+  };
   let redis: {
     get: jest.Mock;
     incrementWithTtl: jest.Mock;
@@ -35,7 +38,10 @@ describe('PasswordResetService', () => {
   let audit: { record: jest.Mock };
 
   beforeEach(async () => {
-    prisma = { user: { findUnique: jest.fn(), update: jest.fn().mockResolvedValue({}) } };
+    prisma = {
+      user: { findUnique: jest.fn(), update: jest.fn().mockResolvedValue({}) },
+      passwordResetOtpSend: { create: jest.fn().mockResolvedValue({}) },
+    };
     redis = {
       get: jest.fn(),
       incrementWithTtl: jest.fn().mockResolvedValue(1),
@@ -88,6 +94,9 @@ describe('PasswordResetService', () => {
         expect.any(Number),
       );
       expect(sms.sendOtp).toHaveBeenCalledWith(mobile, expect.stringMatching(/^\d{4}$/));
+      expect(prisma.passwordResetOtpSend.create).toHaveBeenCalledWith({
+        data: { userId: 'u1', mobileNumber: mobile },
+      });
     });
 
     it(`rejects resend during the ${OTP_RESEND_COOLDOWN_SECONDS}s cooldown`, async () => {

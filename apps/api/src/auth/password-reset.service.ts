@@ -113,6 +113,9 @@ export class PasswordResetService {
       this.redis.setWithTtl(otpCodeKey(normalized), otpHash, OTP_TTL_SECONDS),
       this.redis.del(otpFailedCountKey(normalized)),
       this.redis.setWithTtl(otpResendCooldownKey(normalized), '1', OTP_RESEND_COOLDOWN_SECONDS),
+      this.prisma.passwordResetOtpSend.create({
+        data: { userId: user.id, mobileNumber: normalized },
+      }),
     ]);
   }
 
