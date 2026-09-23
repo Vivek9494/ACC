@@ -1,14 +1,40 @@
 import {
+  compareIsoDateOnly,
+  deriveTournamentDisplayStatus,
   formatUtcIsoDate,
   isDashboardFeaturedMatchScheduledToday,
+  MatchState,
+  TournamentDisplayStatus,
   type MatchScheduleAnchor,
 } from '@acc/types';
 
 /** Max fixtures on role home dashboards for today's app-wide feed. */
 export const DASHBOARD_TODAY_MATCHES_LIMIT = 10;
 
+/** Guest/all-user Recent: keep matches whose `matchDate` is within this many days. */
+export const DASHBOARD_RECENT_MATCH_MAX_AGE_DAYS = 30;
+
+/** Pre-play fixture states — void once the parent tournament's calendar has ended. */
+const UNPLAYED_DASHBOARD_MATCH_STATES: ReadonlySet<string> = new Set([
+  MatchState.Scheduled,
+  MatchState.PlayingXiLocked,
+  MatchState.TossCompleted,
+  MatchState.Delayed,
+]);
+
 type DashboardFeaturedMatchRow = MatchScheduleAnchor & {
   tournament: { timezone: string | null };
+};
+
+type DashboardTournamentSchedule = {
+  startAt: Date | string;
+  endAt: Date | string;
+  timezone: string | null;
+};
+
+type DashboardCompletedTournamentMatchRow = {
+  state: string;
+  tournament: DashboardTournamentSchedule;
 };
 
 type DashboardTodayMatchRow = MatchScheduleAnchor & { id: string };
@@ -82,4 +108,80 @@ export function filterDashboardFeaturedMatchesToToday<T extends DashboardFeature
   return rows.filter((row) =>
     isDashboardFeaturedMatchScheduledToday(row, row.tournament.timezone, now),
   );
+}
+
+function toIsoInstant(value: Date | string): string {
+  return value instanceof Date ? value.toISOString() : value;
+}
+
+function matchDateOnly(row: MatchScheduleAnchor): string | null {
+  if (row.matchDate == null) {
+    return null;
+  }
+  if (typeof row.matchDate === 'string') {
+    return row.matchDate.slice(0, 10);
+  }
+  return formatUtcIsoDate(row.matchDate);
+}
+
+/** True when the tournament's date-derived display status is Completed. */
+export function isDashboardTournamentDisplayCompleted(
+  tournament: DashboardTournamentSchedule,
+  now: Date = new Date(),
+): boolean {
+  return (
+    deriveTournamentDisplayStatus(
+      {
+        startAt: toIsoInstant(tournament.startAt),
+        endAt: toIsoInstant(tournament.endAt),
+        timezone: tournament.timezone,
+      },
+      now,
+    ) === TournamentDisplayStatus.Completed
+  );
+}
+
+/**
+ * Rule 1: drop scheduled-but-unplayed fixtures whose tournament calendar has ended.
+ * Played / live matches from a Completed tournament stay eligible.
+ */
+export function excludeUnplayedMatchesInCompletedTournaments<
+  T extends DashboardCompletedTournamentMatchRow,
+>(rows: readonly T[], now: Date = new Date()): T[] {
+  return rows.filter((row) => {
+    if (!UNPLAYED_DASHBOARD_MATCH_STATES.has(row.state)) {
+      return true;
+    }
+    return !isDashboardTournamentDisplayCompleted(row.tournament, now);
+  });
+}
+
+/** Inclusive UTC cutoff (`YYYY-MM-DD`) for the Recent window. */
+export function dashboardRecentMatchDateCutoff(
+  now: Date = new Date(),
+  maxAgeDays: number = DASHBOARD_RECENT_MATCH_MAX_AGE_DAYS,
+): string {
+  const cutoff = new Date(now.getTime());
+  cutoff.setUTCDate(cutoff.getUTCDate() - maxAgeDays);
+  return formatUtcIsoDate(cutoff);
+}
+
+/** True when `matchDate` is on or after the 30-day Recent cutoff (UTC date-only). */
+export function isDashboardMatchWithinRecentWindow(
+  row: MatchScheduleAnchor,
+  now: Date = new Date(),
+): boolean {
+  const dateOnly = matchDateOnly(row);
+  if (!dateOnly) {
+    return false;
+  }
+  return compareIsoDateOnly(dateOnly, dashboardRecentMatchDateCutoff(now)) >= 0;
+}
+
+/** Rule 2: Recent keeps only matches whose `matchDate` is within the last 30 days. */
+export function filterDashboardRecentMatchesByMatchDate<T extends MatchScheduleAnchor>(
+  rows: readonly T[],
+  now: Date = new Date(),
+): T[] {
+  return rows.filter((row) => isDashboardMatchWithinRecentWindow(row, now));
 }

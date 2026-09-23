@@ -26,13 +26,27 @@ import {
   guestVisibleTournamentRelationWhere,
 } from '../tournaments/tournament-query';
 import { TennisTournamentVisibilityService } from '../tournaments/tennis-tournament-visibility.service';
-import { filterDashboardFeaturedMatchesToToday, isDashboardMatchScheduledAfter, sortAndLimitDashboardTodayMatchRows, sortDashboardMatchesByTimeDesc } from './dashboard-featured-match.utils';
+import {
+  dashboardRecentMatchDateCutoff,
+  excludeUnplayedMatchesInCompletedTournaments,
+  filterDashboardFeaturedMatchesToToday,
+  filterDashboardRecentMatchesByMatchDate,
+  isDashboardMatchScheduledAfter,
+  sortAndLimitDashboardTodayMatchRows,
+  sortDashboardMatchesByTimeDesc,
+} from './dashboard-featured-match.utils';
 import { withDashboardMatchVisibility } from './match-visibility.utils';
 
 type MatchWithTeams = Match & {
   homeTeam: { id: string; name: string } | null;
   awayTeam: { id: string; name: string } | null;
-  tournament: { name: string; oversPerInnings: number | null; timezone: string | null };
+  tournament: {
+    name: string;
+    oversPerInnings: number | null;
+    timezone: string | null;
+    startAt: Date;
+    endAt: Date;
+  };
 };
 
 const UPCOMING_STATES: MatchState[] = [
@@ -60,7 +74,9 @@ const PLAYED_STATES: MatchState[] = [
 const FEATURED_MATCH_INCLUDE = {
   homeTeam: { select: { id: true, name: true } },
   awayTeam: { select: { id: true, name: true } },
-  tournament: { select: { name: true, oversPerInnings: true, timezone: true } },
+  tournament: {
+    select: { name: true, oversPerInnings: true, timezone: true, startAt: true, endAt: true },
+  },
 } as const;
 
 /**
@@ -95,7 +111,9 @@ export class DashboardFeaturedMatchesService {
       viewer ?? null,
       rows.map((row) => row.tournamentId),
     );
-    const scopedRows = rows.filter((row) => visibleTournamentIds.has(row.tournamentId));
+    const scopedRows = excludeUnplayedMatchesInCompletedTournaments(
+      rows.filter((row) => visibleTournamentIds.has(row.tournamentId)),
+    );
 
     const todayRows = filterDashboardFeaturedMatchesToToday(scopedRows);
     const topTodayRows = sortAndLimitDashboardTodayMatchRows(todayRows);
@@ -127,21 +145,29 @@ export class DashboardFeaturedMatchesService {
       }),
       include: FEATURED_MATCH_INCLUDE,
     });
-    const futureRows = rows.filter((row) => isDashboardMatchScheduledAfter(row, now));
+    const futureRows = excludeUnplayedMatchesInCompletedTournaments(rows, now).filter((row) =>
+      isDashboardMatchScheduledAfter(row, now),
+    );
     const [next] = sortAndLimitDashboardTodayMatchRows(futureRows, 1);
     return next ? this.buildFeaturedMatch(next) : null;
   }
 
   /** Most recently completed Tennis fixture (guest home recent card; Leather excluded). */
-  async loadGuestMostRecentCompletedMatch(): Promise<CaptainFeaturedMatchSummary | null> {
+  async loadGuestMostRecentCompletedMatch(
+    now: Date = new Date(),
+  ): Promise<CaptainFeaturedMatchSummary | null> {
+    const cutoff = dashboardRecentMatchDateCutoff(now);
     const rows = await this.prisma.match.findMany({
       where: withDashboardMatchVisibility({
         state: { in: COMPLETED_STATES },
+        matchDate: { gte: new Date(`${cutoff}T00:00:00.000Z`) },
         ...guestVisibleTournamentRelationWhere,
       }),
       include: FEATURED_MATCH_INCLUDE,
     });
-    const [recent] = sortDashboardMatchesByTimeDesc(rows);
+    const [recent] = sortDashboardMatchesByTimeDesc(
+      filterDashboardRecentMatchesByMatchDate(rows, now),
+    );
     return recent ? this.buildFeaturedMatch(recent) : null;
   }
 

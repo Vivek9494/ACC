@@ -1,9 +1,17 @@
-import { DEFAULT_VENUE_TIMEZONE, isDashboardFeaturedMatchScheduledToday } from '@acc/types';
+import {
+  DEFAULT_VENUE_TIMEZONE,
+  isDashboardFeaturedMatchScheduledToday,
+  MatchState,
+} from '@acc/types';
 
 import {
   compareDashboardTodayMatchesByTime,
+  DASHBOARD_RECENT_MATCH_MAX_AGE_DAYS,
   DASHBOARD_TODAY_MATCHES_LIMIT,
+  dashboardRecentMatchDateCutoff,
+  excludeUnplayedMatchesInCompletedTournaments,
   filterDashboardFeaturedMatchesToToday,
+  filterDashboardRecentMatchesByMatchDate,
   isDashboardMatchScheduledAfter,
   sortAndLimitDashboardTodayMatchRows,
   sortDashboardMatchesByTimeDesc,
@@ -119,6 +127,70 @@ describe('sortDashboardMatchesByTimeDesc', () => {
     expect(sortDashboardMatchesByTimeDesc(rows).map((row) => row.id)).toEqual([
       'match-late',
       'match-early',
+    ]);
+  });
+});
+
+describe('excludeUnplayedMatchesInCompletedTournaments', () => {
+  const now = new Date('2026-09-23T15:00:00.000Z');
+  const completedTournament = {
+    startAt: '2026-07-01T00:00:00.000Z',
+    endAt: '2026-08-15T00:00:00.000Z',
+    timezone: DEFAULT_VENUE_TIMEZONE,
+  };
+  const liveTournament = {
+    startAt: '2026-09-20T00:00:00.000Z',
+    endAt: '2026-09-30T00:00:00.000Z',
+    timezone: DEFAULT_VENUE_TIMEZONE,
+  };
+
+  it('hides scheduled-but-unplayed matches from a Completed tournament', () => {
+    const rows = [
+      { id: 'void-scheduled', state: MatchState.Scheduled, tournament: completedTournament },
+      { id: 'void-locked', state: MatchState.PlayingXiLocked, tournament: completedTournament },
+    ];
+
+    expect(excludeUnplayedMatchesInCompletedTournaments(rows, now)).toEqual([]);
+  });
+
+  it('keeps played matches from a Completed tournament', () => {
+    const rows = [
+      { id: 'played', state: MatchState.Completed, tournament: completedTournament },
+      { id: 'live', state: MatchState.Live, tournament: completedTournament },
+    ];
+
+    expect(excludeUnplayedMatchesInCompletedTournaments(rows, now).map((row) => row.id)).toEqual([
+      'played',
+      'live',
+    ]);
+  });
+
+  it('keeps unplayed matches from an active / upcoming tournament', () => {
+    const rows = [
+      { id: 'upcoming', state: MatchState.Scheduled, tournament: liveTournament },
+    ];
+
+    expect(excludeUnplayedMatchesInCompletedTournaments(rows, now).map((row) => row.id)).toEqual([
+      'upcoming',
+    ]);
+  });
+});
+
+describe('filterDashboardRecentMatchesByMatchDate', () => {
+  const now = new Date('2026-09-23T15:00:00.000Z');
+
+  it(`keeps matches on or after the ${DASHBOARD_RECENT_MATCH_MAX_AGE_DAYS}-day cutoff`, () => {
+    const cutoff = dashboardRecentMatchDateCutoff(now);
+    const rows = [
+      { id: 'today', matchDate: new Date('2026-09-23T00:00:00.000Z'), startTime: null },
+      { id: 'cutoff', matchDate: new Date(`${cutoff}T00:00:00.000Z`), startTime: null },
+      { id: 'stale', matchDate: new Date('2026-08-20T00:00:00.000Z'), startTime: null },
+      { id: 'undated', matchDate: null, startTime: new Date('2026-09-22T18:00:00.000Z') },
+    ];
+
+    expect(filterDashboardRecentMatchesByMatchDate(rows, now).map((row) => row.id)).toEqual([
+      'today',
+      'cutoff',
     ]);
   });
 });
