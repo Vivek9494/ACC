@@ -47,7 +47,8 @@ import {
 export default function ScorecardResultScreen(): React.ReactElement {
   const { matchId } = useLocalSearchParams<{ matchId: string }>();
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, status: authStatus } = useAuth();
+  const isGuest = authStatus !== 'authenticated';
 
   const [match, setMatch] = useState<MatchDetail | null>(null);
   const [card, setCard] = useState<ScorecardResponse | null>(null);
@@ -219,7 +220,7 @@ export default function ScorecardResultScreen(): React.ReactElement {
         }
         onBack={() => router.back()}
         titleTrailing={
-          matchId ? (
+          matchId && !isGuest ? (
             <Button
               label="Details"
               variant="outline"

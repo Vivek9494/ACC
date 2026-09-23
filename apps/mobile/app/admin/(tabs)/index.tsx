@@ -101,7 +101,11 @@ export default function AdminDashboardScreen(): React.ReactElement {
           }
         />
       ) : null,
-      ...buildCaptainFeaturedMatchSections(overview.featuredMatches, router),
+      ...buildCaptainFeaturedMatchSections(
+        overview.liveMatches,
+        overview.upcomingMatches,
+        router,
+      ),
       <Card accent key="system-overview">
         <Text className="mb-4 font-sans-bold text-lg text-on-surface">System Overview</Text>
         <View className="gap-4">

@@ -22,8 +22,10 @@ export interface AdminOverview {
   tournamentCount: number;
   matchesTodayCount: number;
   pendingApprovalsCount: number;
-  /** App-wide fixtures scheduled today (venue-local), same set as other role dashboards. */
-  featuredMatches: CaptainFeaturedMatchSummary[];
+  /** Currently live fixtures the Admin may see (same visibility rules as other role homes). */
+  liveMatches: CaptainFeaturedMatchSummary[];
+  /** Fixtures in the next 7 days, soonest→latest. */
+  upcomingMatches: CaptainFeaturedMatchSummary[];
   /**
    * Active per-match Scorer grant for this Admin (e.g. historical backfill).
    * Same resume card Player/Captain dashboards use.

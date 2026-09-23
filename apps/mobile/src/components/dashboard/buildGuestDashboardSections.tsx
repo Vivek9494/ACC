@@ -10,17 +10,16 @@ import {
 import { MatchSummaryCard } from '../ui/MatchSummaryCard';
 import { Text } from '../ui/Text';
 import { TournamentDashboardCard } from '../ui/TournamentDashboardCard';
+import { buildGuestLiveUpcomingMatchSections } from './buildDashboardFeaturedMatchSections';
 
-function guestMatchSection(
-  key: string,
-  title: string,
+function guestRecentSection(
   match: CaptainFeaturedMatchSummary,
   router: Router,
 ): ReactNode {
   const entry = captainFeaturedToEntry(match);
   return (
-    <View key={key} className="gap-3">
-      <Text className="font-sans-bold text-xl text-on-surface">{title}</Text>
+    <View key="recent-match" className="gap-3">
+      <Text className="font-sans-bold text-xl text-on-surface">Recent</Text>
       <MatchSummaryCard
         {...entry.card}
         onPress={() => router.push(guestFeaturedHref(match))}
@@ -52,28 +51,18 @@ export function buildGuestDashboardSections(
   dashboard: GuestDashboard,
   router: Router,
 ): ReactNode[] {
-  if (dashboard.liveMatch) {
-    const sections: ReactNode[] = [
-      guestMatchSection('live-match', 'Live', dashboard.liveMatch, router),
-    ];
-    const tournamentSection = guestTournamentSection(dashboard, router);
-    if (tournamentSection) {
-      sections.push(tournamentSection);
-    }
-    return sections;
+  const sections: ReactNode[] = [
+    ...buildGuestLiveUpcomingMatchSections(
+      dashboard.liveMatches,
+      dashboard.upcomingMatches,
+      router,
+    ),
+  ];
+
+  if (dashboard.recentMatch) {
+    sections.push(guestRecentSection(dashboard.recentMatch, router));
   }
 
-  const sections: ReactNode[] = [];
-  if (dashboard.upcomingMatch) {
-    sections.push(
-      guestMatchSection('upcoming-match', 'Upcoming', dashboard.upcomingMatch, router),
-    );
-  }
-  if (dashboard.recentMatch) {
-    sections.push(
-      guestMatchSection('recent-match', 'Recent', dashboard.recentMatch, router),
-    );
-  }
   const tournamentSection = guestTournamentSection(dashboard, router);
   if (tournamentSection) {
     sections.push(tournamentSection);

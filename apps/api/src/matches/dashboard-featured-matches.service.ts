@@ -1,5 +1,6 @@
 import {
   type AuthUser,
+  BallType,
   type CaptainFeaturedMatchStatus,
   type CaptainFeaturedMatchSummary,
   deriveChaseEquation,
@@ -25,13 +26,12 @@ import {
   activeTournamentRelationWhere,
   guestVisibleTournamentRelationWhere,
 } from '../tournaments/tournament-query';
-import { TennisTournamentVisibilityService } from '../tournaments/tennis-tournament-visibility.service';
+import { LeatherTournamentVisibilityService } from '../tournaments/leather-tournament-visibility.service';
 import {
   dashboardRecentMatchDateCutoff,
   excludeUnplayedMatchesInCompletedTournaments,
-  filterDashboardFeaturedMatchesToToday,
+  filterDashboardUpcomingMatchesBySchedule,
   filterDashboardRecentMatchesByMatchDate,
-  isDashboardMatchScheduledAfter,
   sortAndLimitDashboardTodayMatchRows,
   sortDashboardMatchesByTimeDesc,
 } from './dashboard-featured-match.utils';
@@ -46,6 +46,7 @@ type MatchWithTeams = Match & {
     timezone: string | null;
     startAt: Date;
     endAt: Date;
+    ballType: string;
   };
 };
 
@@ -64,92 +65,80 @@ const COMPLETED_STATES: MatchState[] = [
   MatchState.NoResult,
 ];
 
-const PLAYED_STATES: MatchState[] = [
-  MatchState.Live,
-  MatchState.Completed,
-  MatchState.ScorecardLocked,
-  MatchState.NoResult,
-];
-
 const FEATURED_MATCH_INCLUDE = {
   homeTeam: { select: { id: true, name: true } },
   awayTeam: { select: { id: true, name: true } },
   tournament: {
-    select: { name: true, oversPerInnings: true, timezone: true, startAt: true, endAt: true },
+    select: {
+      name: true,
+      oversPerInnings: true,
+      timezone: true,
+      startAt: true,
+      endAt: true,
+      ballType: true,
+    },
   },
 } as const;
 
 /**
- * App-wide today's fixtures for role home dashboards.
- * Tennis APL/CENTER matches are visible to all authenticated viewers
- * (registration/actions remain center-scoped elsewhere).
+ * Dashboard Live + Upcoming featured matches for guest and all role homes.
+ * Guests: Tennis only. Logged-in: Tennis + leather tournaments they may view.
  */
 @Injectable()
 export class DashboardFeaturedMatchesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly scorecardReader: ScorecardReader,
-    private readonly tennisVisibility: TennisTournamentVisibilityService,
+    private readonly leatherVisibility: LeatherTournamentVisibilityService,
   ) {}
 
-  async loadTodayMatches(viewer?: AuthUser | null): Promise<CaptainFeaturedMatchSummary[]> {
+  /**
+   * Currently live fixtures (`LIVE` / `RAIN_INTERRUPTED`), not date-windowed.
+   * `viewer` null → guest (tennis only).
+   */
+  async loadLiveMatches(
+    viewer: AuthUser | null = null,
+  ): Promise<CaptainFeaturedMatchSummary[]> {
     const rows = await this.prisma.match.findMany({
-      where: withDashboardMatchVisibility({
-        state: { in: [...LIVE_STATES, ...UPCOMING_STATES, ...PLAYED_STATES] },
-        // Hide in-progress/upcoming backfills from live dashboard surfaces; completed
-        // fixtures still appear like any other match (flag is never user-visible).
-        OR: [
-          { suppressLiveSideEffects: false },
-          { state: { in: PLAYED_STATES } },
-        ],
-        ...activeTournamentRelationWhere,
-      }),
-      include: FEATURED_MATCH_INCLUDE,
-    });
-
-    const visibleTournamentIds = await this.tennisVisibility.filterTournamentIdsVisibleToViewer(
-      viewer ?? null,
-      rows.map((row) => row.tournamentId),
-    );
-    const scopedRows = excludeUnplayedMatchesInCompletedTournaments(
-      rows.filter((row) => visibleTournamentIds.has(row.tournamentId)),
-    );
-
-    const todayRows = filterDashboardFeaturedMatchesToToday(scopedRows);
-    const topTodayRows = sortAndLimitDashboardTodayMatchRows(todayRows);
-    return Promise.all(topTodayRows.map((row) => this.buildFeaturedMatch(row)));
-  }
-
-  /** First in-progress Tennis fixture (guest home live card; Leather excluded). */
-  async loadGuestLiveMatch(): Promise<CaptainFeaturedMatchSummary | null> {
-    const row = await this.prisma.match.findFirst({
       where: withDashboardMatchVisibility({
         suppressLiveSideEffects: false,
         state: { in: LIVE_STATES },
-        ...guestVisibleTournamentRelationWhere,
+        ...(viewer
+          ? activeTournamentRelationWhere
+          : guestVisibleTournamentRelationWhere),
       }),
       include: FEATURED_MATCH_INCLUDE,
-      orderBy: [{ startTime: 'asc' }, { id: 'asc' }],
     });
-    return row ? this.buildFeaturedMatch(row) : null;
+    const scoped = await this.filterRowsForAudience(viewer, rows);
+    const sorted = sortAndLimitDashboardTodayMatchRows(scoped, scoped.length);
+    return Promise.all(sorted.map((row) => this.buildFeaturedMatch(row)));
   }
 
-  /** Soonest future Tennis fixture (guest home upcoming card; Leather excluded). */
-  async loadGuestNextUpcomingMatch(
+  /**
+   * Pre-play fixtures in `(now, now+7d]`, soonest→latest. Applies Rule 1
+   * (hide unplayed matches in Completed tournaments).
+   * `viewer` null → guest (tennis only).
+   */
+  async loadUpcomingMatches(
+    viewer: AuthUser | null = null,
     now: Date = new Date(),
-  ): Promise<CaptainFeaturedMatchSummary | null> {
+  ): Promise<CaptainFeaturedMatchSummary[]> {
     const rows = await this.prisma.match.findMany({
       where: withDashboardMatchVisibility({
         state: { in: UPCOMING_STATES },
-        ...guestVisibleTournamentRelationWhere,
+        ...(viewer
+          ? activeTournamentRelationWhere
+          : guestVisibleTournamentRelationWhere),
       }),
       include: FEATURED_MATCH_INCLUDE,
     });
-    const futureRows = excludeUnplayedMatchesInCompletedTournaments(rows, now).filter((row) =>
-      isDashboardMatchScheduledAfter(row, now),
+    const scoped = await this.filterRowsForAudience(viewer, rows);
+    const upcoming = filterDashboardUpcomingMatchesBySchedule(
+      excludeUnplayedMatchesInCompletedTournaments(scoped, now),
+      now,
     );
-    const [next] = sortAndLimitDashboardTodayMatchRows(futureRows, 1);
-    return next ? this.buildFeaturedMatch(next) : null;
+    const sorted = sortAndLimitDashboardTodayMatchRows(upcoming, upcoming.length);
+    return Promise.all(sorted.map((row) => this.buildFeaturedMatch(row)));
   }
 
   /** Most recently completed Tennis fixture (guest home recent card; Leather excluded). */
@@ -169,6 +158,33 @@ export class DashboardFeaturedMatchesService {
       filterDashboardRecentMatchesByMatchDate(rows, now),
     );
     return recent ? this.buildFeaturedMatch(recent) : null;
+  }
+
+  /**
+   * Guests: tennis rows only (query already scoped).
+   * Logged-in: all tennis + leather IDs from {@link LeatherTournamentVisibilityService}.
+   */
+  private async filterRowsForAudience<T extends MatchWithTeams>(
+    viewer: AuthUser | null,
+    rows: T[],
+  ): Promise<T[]> {
+    if (!viewer) {
+      return rows.filter((row) => row.tournament.ballType === BallType.Tennis);
+    }
+
+    const tennisRows = rows.filter((row) => row.tournament.ballType === BallType.Tennis);
+    const leatherRows = rows.filter((row) => row.tournament.ballType === BallType.Leather);
+    if (leatherRows.length === 0) {
+      return tennisRows;
+    }
+
+    const visibleLeatherIds = new Set(
+      await this.leatherVisibility.getVisibleLeatherTournamentIds(viewer),
+    );
+    return [
+      ...tennisRows,
+      ...leatherRows.filter((row) => visibleLeatherIds.has(row.tournamentId)),
+    ];
   }
 
   private async buildFeaturedMatch(

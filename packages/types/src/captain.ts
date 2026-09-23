@@ -179,7 +179,10 @@ export interface CaptainUpcomingMatchCardView {
 
 /** Captain / Vice-Captain dashboard payload (GET /captain/dashboard). */
 export interface CaptainDashboard {
-  featuredMatches: CaptainFeaturedMatchSummary[];
+  /** Currently live fixtures the viewer may see. */
+  liveMatches: CaptainFeaturedMatchSummary[];
+  /** Fixtures in the next 7 days the viewer may see, soonest→latest. */
+  upcomingMatches: CaptainFeaturedMatchSummary[];
   /** Captain-only unified upcoming leather match card; null for vice-captains. */
   upcomingMatchCard: CaptainUpcomingMatchCardView | null;
   /** Leather-ball participation poll for vice-captains (and when no unified card). */

@@ -32,12 +32,12 @@ export interface GuestFeaturedLiveMatch {
 
 /** Guest dashboard payload — public, no auth (spec §2). */
 export interface GuestDashboard {
-  /** When set, only the live card is featured on the home screen. */
-  liveMatch: CaptainFeaturedMatchSummary | null;
-  /** Soonest scheduled future fixture when nothing is live. */
-  upcomingMatch: CaptainFeaturedMatchSummary | null;
-  /** Most recently completed fixture when nothing is live. */
+  /** Currently live public (tennis) matches — carousel when 2+. */
+  liveMatches: CaptainFeaturedMatchSummary[];
+  /** Public tennis fixtures in the next 7 days, soonest→latest. */
+  upcomingMatches: CaptainFeaturedMatchSummary[];
+  /** Most recently completed fixture when nothing is live (unchanged). */
   recentMatch: CaptainFeaturedMatchSummary | null;
-  /** Tournament for the featured match(es) — upcoming, else recent, else live. */
+  /** Tournament for the featured match(es) — live, else upcoming, else recent. */
   featuredTournament: TournamentSummary | null;
 }

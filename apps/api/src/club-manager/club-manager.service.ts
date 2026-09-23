@@ -22,17 +22,19 @@ export class ClubManagerService {
   ) {}
 
   async getDashboard(actor: AuthUser): Promise<ClubManagerDashboard> {
-    const [tournaments, featuredMatches, playerStats, teamLeadMatchCards, squadParticipationPoll] =
+    const [tournaments, liveMatches, upcomingMatches, playerStats, teamLeadMatchCards, squadParticipationPoll] =
       await Promise.all([
         this.tournaments.listDashboardEntries(actor),
-        this.dashboardFeaturedMatches.loadTodayMatches(actor),
+        this.dashboardFeaturedMatches.loadLiveMatches(actor),
+        this.dashboardFeaturedMatches.loadUpcomingMatches(actor),
         this.loadPlayerStats(actor.id),
         this.captain.loadTeamLeadMatchCards(actor),
         this.captain.loadSquadParticipationPoll(actor.id),
       ]);
 
     return {
-      featuredMatches,
+      liveMatches,
+      upcomingMatches,
       upcomingMatchCard: teamLeadMatchCards.upcomingMatchCard,
       participationPoll: teamLeadMatchCards.upcomingMatchCard ? null : squadParticipationPoll,
       playerStats,

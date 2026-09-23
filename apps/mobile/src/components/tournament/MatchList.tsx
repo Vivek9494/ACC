@@ -113,7 +113,7 @@ function MatchListCard({
   }`;
 
   const dateCapsule = (
-    <View className="rounded-full border border-outline-variant bg-transparent px-2.5 py-0.5">
+    <View className="self-start rounded-full border border-outline-variant bg-transparent px-2.5 py-0.5">
       <Text
         className="font-sans-semibold text-sm text-on-surface-variant"
         numberOfLines={1}

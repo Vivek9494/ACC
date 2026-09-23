@@ -63,7 +63,8 @@ describe('AdminService user management', () => {
       resolveProfilePhotoUrls: jest.fn(async <T extends { profilePhotoUrl: string | null }>(rows: T[]) => rows),
     };
     const dashboardFeaturedMatches = {
-      loadTodayMatches: jest.fn().mockResolvedValue([]),
+      loadLiveMatches: jest.fn().mockResolvedValue([]),
+      loadUpcomingMatches: jest.fn().mockResolvedValue([]),
     };
     const scorerDashboardMatch = {
       loadStartableMatch: jest.fn().mockResolvedValue(null),

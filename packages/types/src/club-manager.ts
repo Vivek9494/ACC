@@ -180,7 +180,8 @@ export function statsForDashboardBallType(
 
 /** Club Manager dashboard payload (GET /club-manager/dashboard). */
 export interface ClubManagerDashboard {
-  featuredMatches: CaptainFeaturedMatchSummary[];
+  liveMatches: CaptainFeaturedMatchSummary[];
+  upcomingMatches: CaptainFeaturedMatchSummary[];
   /**
    * Unified upcoming leather match card when the CM is also Captain/VC of an ACC team.
    * Same chrome and timing as the captain dashboard.

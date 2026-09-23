@@ -49,7 +49,11 @@ export function buildCaptainDashboardSections(
         onPress={() => router.push(`/matches/${item.matchId}/scorecard`)}
       />
     )),
-    ...buildCaptainFeaturedMatchSections(dashboard.featuredMatches, router),
+    ...buildCaptainFeaturedMatchSections(
+      dashboard.liveMatches,
+      dashboard.upcomingMatches,
+      router,
+    ),
     ...buildTeamLeadPollSections(
       dashboard.upcomingMatchCard,
       dashboard.participationPoll,

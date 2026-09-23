@@ -8,11 +8,14 @@ import {
   compareDashboardTodayMatchesByTime,
   DASHBOARD_RECENT_MATCH_MAX_AGE_DAYS,
   DASHBOARD_TODAY_MATCHES_LIMIT,
+  DASHBOARD_UPCOMING_MATCH_WINDOW_DAYS,
   dashboardRecentMatchDateCutoff,
   excludeUnplayedMatchesInCompletedTournaments,
   filterDashboardFeaturedMatchesToToday,
   filterDashboardRecentMatchesByMatchDate,
+  filterDashboardUpcomingMatchesBySchedule,
   isDashboardMatchScheduledAfter,
+  isDashboardMatchWithinUpcomingWindow,
   sortAndLimitDashboardTodayMatchRows,
   sortDashboardMatchesByTimeDesc,
 } from './dashboard-featured-match.utils';
@@ -220,5 +223,62 @@ describe('isDashboardMatchScheduledAfter', () => {
         now,
       ),
     ).toBe(false);
+  });
+});
+
+describe('filterDashboardUpcomingMatchesBySchedule', () => {
+  const now = new Date('2026-07-04T15:00:00.000Z');
+
+  it(`keeps fixtures in (now, now+${DASHBOARD_UPCOMING_MATCH_WINDOW_DAYS}d], including later today`, () => {
+    const rows = [
+      {
+        id: 'past',
+        matchDate: new Date('2026-07-04T12:00:00.000Z'),
+        startTime: new Date('2026-07-04T14:00:00.000Z'),
+      },
+      {
+        id: 'later-today',
+        matchDate: new Date('2026-07-04T12:00:00.000Z'),
+        startTime: new Date('2026-07-04T18:00:00.000Z'),
+      },
+      {
+        id: 'in-3d',
+        matchDate: new Date('2026-07-07T12:00:00.000Z'),
+        startTime: new Date('2026-07-07T18:00:00.000Z'),
+      },
+      {
+        id: 'at-7d',
+        matchDate: new Date('2026-07-11T12:00:00.000Z'),
+        startTime: new Date('2026-07-11T15:00:00.000Z'),
+      },
+      {
+        id: 'beyond-7d',
+        matchDate: new Date('2026-07-12T12:00:00.000Z'),
+        startTime: new Date('2026-07-12T15:00:00.000Z'),
+      },
+      {
+        id: 'undated',
+        matchDate: null,
+        startTime: null,
+      },
+    ];
+
+    expect(filterDashboardUpcomingMatchesBySchedule(rows, now).map((row) => row.id)).toEqual([
+      'later-today',
+      'in-3d',
+      'at-7d',
+    ]);
+  });
+
+  it('prefers startTime over matchDate for the window check', () => {
+    expect(
+      isDashboardMatchWithinUpcomingWindow(
+        {
+          matchDate: new Date('2026-07-20T12:00:00.000Z'),
+          startTime: new Date('2026-07-05T12:00:00.000Z'),
+        },
+        now,
+      ),
+    ).toBe(true);
   });
 });

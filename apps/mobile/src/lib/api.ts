@@ -1255,7 +1255,8 @@ export function listTeams(tournamentId: string): Promise<TeamSummary[]> {
 }
 
 export function getTeamDetail(tournamentId: string, teamId: string): Promise<TeamDetailView> {
-  return apiFetch<TeamDetailView>(`/tournaments/${tournamentId}/teams/${teamId}`);
+  // Guest-readable team roster; Bearer forwarded when logged in for manage flags.
+  return apiFetchOptionalAuth<TeamDetailView>(`/tournaments/${tournamentId}/teams/${teamId}`);
 }
 
 export function listTeamAddPlayerCandidates(

@@ -13,6 +13,7 @@ import { Text } from '../../../src/components/ui/Text';
 import { FIELD_ORANGE } from '../../../src/components/ui/fieldStyles';
 import { useScorecardResolvers } from '../../../src/hooks/useMatchResolvers';
 import { ApiRequestError, getMatch, getScorecard } from '../../../src/lib/api';
+import { useAuth } from '../../../src/lib/auth-context';
 import { freshestScorecard, useLiveScore } from '../../../src/lib/live-socket';
 import {
   defaultInningsTabIndex,
@@ -23,6 +24,8 @@ import {
 export default function LiveViewScreen(): React.ReactElement {
   const { matchId } = useLocalSearchParams<{ matchId: string }>();
   const router = useRouter();
+  const { status: authStatus } = useAuth();
+  const isGuest = authStatus !== 'authenticated';
 
   const [match, setMatch] = useState<MatchDetail | null>(null);
   const [seed, setSeed] = useState<ScorecardResponse | null>(null);
@@ -98,7 +101,7 @@ export default function LiveViewScreen(): React.ReactElement {
               : 'Match scorecard'}
           </Text>
           <View className="shrink-0 flex-row items-center gap-2">
-            {matchId ? (
+            {matchId && !isGuest ? (
               <Button
                 label="Details"
                 variant="outline"

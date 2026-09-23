@@ -18,7 +18,8 @@ export interface TournamentDashboardEntry {
 
 /** Center Sevak dashboard payload (GET /center-sevak/dashboard). */
 export interface CenterSevakDashboard {
-  featuredMatches: CaptainFeaturedMatchSummary[];
+  liveMatches: CaptainFeaturedMatchSummary[];
+  upcomingMatches: CaptainFeaturedMatchSummary[];
   /** Leather-ball participation poll for the sevak's next open fixture on their roster, if any. */
   participationPoll: ParticipationPollCardView | null;
   /** Center Sevaks are always players — zeros when no match data yet. */

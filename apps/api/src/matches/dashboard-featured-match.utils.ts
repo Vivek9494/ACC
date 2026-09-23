@@ -14,6 +14,9 @@ export const DASHBOARD_TODAY_MATCHES_LIMIT = 10;
 /** Guest/all-user Recent: keep matches whose `matchDate` is within this many days. */
 export const DASHBOARD_RECENT_MATCH_MAX_AGE_DAYS = 30;
 
+/** Dashboard Upcoming section: fixtures scheduled within this many days from now. */
+export const DASHBOARD_UPCOMING_MATCH_WINDOW_DAYS = 7;
+
 /** Pre-play fixture states — void once the parent tournament's calendar has ended. */
 const UNPLAYED_DASHBOARD_MATCH_STATES: ReadonlySet<string> = new Set([
   MatchState.Scheduled,
@@ -98,6 +101,37 @@ export function isDashboardMatchScheduledAfter(
   now: Date = new Date(),
 ): boolean {
   return dashboardTodayMatchSortInstant(row) > now.getTime();
+}
+
+/** End of the Upcoming window (`now` + {@link DASHBOARD_UPCOMING_MATCH_WINDOW_DAYS}). */
+export function dashboardUpcomingMatchWindowEnd(
+  now: Date = new Date(),
+  windowDays: number = DASHBOARD_UPCOMING_MATCH_WINDOW_DAYS,
+): Date {
+  return new Date(now.getTime() + windowDays * 24 * 60 * 60 * 1000);
+}
+
+/**
+ * True when schedule is in `(now, now+7d]` — later today included; past and >7d excluded.
+ * Undated / TBD fixtures (no sortable anchor) are excluded.
+ */
+export function isDashboardMatchWithinUpcomingWindow(
+  row: MatchScheduleAnchor,
+  now: Date = new Date(),
+): boolean {
+  const instant = dashboardTodayMatchSortInstant(row);
+  if (instant === Number.MAX_SAFE_INTEGER) {
+    return false;
+  }
+  return instant > now.getTime() && instant <= dashboardUpcomingMatchWindowEnd(now).getTime();
+}
+
+/** Upcoming section: keep fixtures in the next 7 days, soonest→latest ready for sort. */
+export function filterDashboardUpcomingMatchesBySchedule<T extends MatchScheduleAnchor>(
+  rows: readonly T[],
+  now: Date = new Date(),
+): T[] {
+  return rows.filter((row) => isDashboardMatchWithinUpcomingWindow(row, now));
 }
 
 /** Keeps dashboard featured cards scheduled for today only (venue-local calendar day). */

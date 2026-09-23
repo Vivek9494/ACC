@@ -25,20 +25,27 @@ export class PlayerService {
   async getDashboard(actor: AuthUser): Promise<PlayerDashboard> {
     const userId = actor.id;
 
-    const [featuredMatchesRaw, participationPoll, scorerMatch, playerStats, tournaments] =
+    const [liveMatchesRaw, upcomingMatchesRaw, participationPoll, scorerMatch, playerStats, tournaments] =
       await Promise.all([
-        this.dashboardFeaturedMatches.loadTodayMatches(actor),
+        this.dashboardFeaturedMatches.loadLiveMatches(actor),
+        this.dashboardFeaturedMatches.loadUpcomingMatches(actor),
         this.participationPolls.loadDashboardPoll(userId),
         this.scorerDashboardMatch.loadStartableMatch(userId),
         this.playerStats.buildDashboardHighLevelStats(userId),
         this.listDashboardTournaments(actor),
       ]);
 
-    const featuredMatches = scorerMatch
-      ? featuredMatchesRaw.filter((match) => match.matchId !== scorerMatch.matchId)
-      : featuredMatchesRaw;
+    const excludeScorer = <T extends { matchId: string }>(matches: T[]) =>
+      scorerMatch ? matches.filter((match) => match.matchId !== scorerMatch.matchId) : matches;
 
-    return { featuredMatches, participationPoll, scorerMatch, playerStats, tournaments };
+    return {
+      liveMatches: excludeScorer(liveMatchesRaw),
+      upcomingMatches: excludeScorer(upcomingMatchesRaw),
+      participationPoll,
+      scorerMatch,
+      playerStats,
+      tournaments,
+    };
   }
 
   /** Active per-match Scorer grant for a startable fixture (§11.1). */

@@ -56,8 +56,8 @@ export interface ScorerStartableMatch {
 
 /** Player dashboard payload (GET /player/dashboard). */
 export interface PlayerDashboard {
-  /** Team fixtures for the home dashboard (grouped client-side by venue-local day). */
-  featuredMatches: PlayerFeaturedMatchSummary[];
+  liveMatches: PlayerFeaturedMatchSummary[];
+  upcomingMatches: PlayerFeaturedMatchSummary[];
   /** Leather-ball participation poll for the player's next open fixture, if any. */
   participationPoll: ParticipationPollCardView | null;
   /** Active scorer grant for a startable match today; null otherwise. */

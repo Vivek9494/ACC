@@ -60,7 +60,11 @@ export default function ClubManagerDashboardScreen(): React.ReactElement {
     }
 
     return [
-      ...buildCaptainFeaturedMatchSections(dashboard.featuredMatches, router),
+      ...buildCaptainFeaturedMatchSections(
+        dashboard.liveMatches,
+        dashboard.upcomingMatches,
+        router,
+      ),
       ...buildTeamLeadPollSections(
         dashboard.upcomingMatchCard,
         dashboard.participationPoll,

@@ -20,7 +20,11 @@ export function buildCenterSevakDashboardSections(
   onParticipationPollUpdated?: () => void,
 ): ReactNode[] {
   return [
-    ...buildCaptainFeaturedMatchSections(dashboard.featuredMatches, router),
+    ...buildCaptainFeaturedMatchSections(
+      dashboard.liveMatches,
+      dashboard.upcomingMatches,
+      router,
+    ),
     dashboard.participationPoll?.isOpen ? (
       <ParticipationPollCard
         key="participation-poll"

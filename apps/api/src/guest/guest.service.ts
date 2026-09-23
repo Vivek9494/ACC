@@ -24,31 +24,25 @@ export class GuestService {
   ) {}
 
   async getDashboard(): Promise<GuestDashboard> {
-    const liveMatch = await this.dashboardFeaturedMatches.loadGuestLiveMatch();
-    if (liveMatch) {
-      const featuredTournament = await this.loadTournamentById(liveMatch.tournamentId);
-      return {
-        liveMatch,
-        upcomingMatch: null,
-        recentMatch: null,
-        featuredTournament,
-      };
-    }
-
-    const [upcomingMatch, recentMatch] = await Promise.all([
-      this.dashboardFeaturedMatches.loadGuestNextUpcomingMatch(),
+    const [liveMatches, upcomingMatches, recentMatch] = await Promise.all([
+      this.dashboardFeaturedMatches.loadLiveMatches(null),
+      this.dashboardFeaturedMatches.loadUpcomingMatches(null),
       this.dashboardFeaturedMatches.loadGuestMostRecentCompletedMatch(),
     ]);
+
     const featuredTournamentId =
-      upcomingMatch?.tournamentId ?? recentMatch?.tournamentId ?? null;
+      liveMatches[0]?.tournamentId ??
+      upcomingMatches[0]?.tournamentId ??
+      recentMatch?.tournamentId ??
+      null;
     const featuredTournament = featuredTournamentId
       ? await this.loadTournamentById(featuredTournamentId)
       : null;
 
     return {
-      liveMatch: null,
-      upcomingMatch,
-      recentMatch,
+      liveMatches,
+      upcomingMatches,
+      recentMatch: liveMatches.length > 0 ? null : recentMatch,
       featuredTournament,
     };
   }

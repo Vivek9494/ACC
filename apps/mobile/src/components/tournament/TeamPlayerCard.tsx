@@ -60,14 +60,14 @@ export function TeamPlayerCard({
 
   return (
     <View className="overflow-hidden rounded-xl border border-outline-variant bg-surface-container-lowest p-3">
-      <View className="flex-row gap-3">
+      <View className="flex-row items-center gap-3">
         <PlayerAvatar
           firstName={player.firstName}
           profilePhotoUrl={player.profilePhotoUrl}
           size="md"
           shape="circle"
         />
-        <View className="min-w-0 flex-1">
+        <View className="min-w-0 flex-1 justify-center">
           <Text className="font-sans-bold text-base text-on-surface" numberOfLines={2}>
             {player.firstName} {player.lastName}
           </Text>

@@ -41,7 +41,11 @@ export function buildPlayerDashboardSections(
         }
       />
     ) : null,
-    ...buildCaptainFeaturedMatchSections(dashboard.featuredMatches ?? [], router),
+    ...buildCaptainFeaturedMatchSections(
+      dashboard.liveMatches,
+      dashboard.upcomingMatches,
+      router,
+    ),
     dashboard.participationPoll?.isOpen ? (
       <ParticipationPollCard
         key="participation-poll"

@@ -14,7 +14,7 @@ export interface DashboardFeaturedMatchCarouselProps {
   onPress: (matchId: string) => void;
 }
 
-/** Horizontal pager for three or more featured matches on the same venue-local day. */
+/** Horizontal pager for two or more featured matches in a Live/Upcoming section. */
 export function DashboardFeaturedMatchCarousel({
   entries,
   onPress,

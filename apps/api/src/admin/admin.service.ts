@@ -777,7 +777,8 @@ export class AdminService {
       tournamentCount,
       matchesTodayCount,
       pendingApprovalsCount,
-      featuredMatchesRaw,
+      liveMatchesRaw,
+      upcomingMatchesRaw,
       scorerMatch,
     ] = await Promise.all([
       this.prisma.province.count({ where: { isActive: true } }),
@@ -796,13 +797,13 @@ export class AdminService {
       this.prisma.registration.count({
         where: { status: RegistrationStatus.InWaitlist },
       }),
-      this.dashboardFeaturedMatches.loadTodayMatches(),
+      this.dashboardFeaturedMatches.loadLiveMatches(actor),
+      this.dashboardFeaturedMatches.loadUpcomingMatches(actor),
       this.scorerDashboardMatch.loadStartableMatch(actor.id),
     ]);
 
-    const featuredMatches = scorerMatch
-      ? featuredMatchesRaw.filter((match) => match.matchId !== scorerMatch.matchId)
-      : featuredMatchesRaw;
+    const excludeScorer = <T extends { matchId: string }>(matches: T[]) =>
+      scorerMatch ? matches.filter((match) => match.matchId !== scorerMatch.matchId) : matches;
 
     return {
       provinceCount,
@@ -812,7 +813,8 @@ export class AdminService {
       tournamentCount,
       matchesTodayCount,
       pendingApprovalsCount,
-      featuredMatches,
+      liveMatches: excludeScorer(liveMatchesRaw),
+      upcomingMatches: excludeScorer(upcomingMatchesRaw),
       scorerMatch,
     };
   }

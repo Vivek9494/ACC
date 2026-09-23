@@ -89,9 +89,19 @@ export class CaptainService {
       ...new Set(leadership.map((row) => row.teamId).filter((id): id is string => Boolean(id))),
     ];
 
-    const [featuredMatchesRaw, teamLeadMatchCards, squadParticipationPoll, pendingManOfMatch, pendingScorecardConfirmations, scorerMatch, playerStats, tournaments] =
-      await Promise.all([
-      this.dashboardFeaturedMatches.loadTodayMatches(actor),
+    const [
+      liveMatchesRaw,
+      upcomingMatchesRaw,
+      teamLeadMatchCards,
+      squadParticipationPoll,
+      pendingManOfMatch,
+      pendingScorecardConfirmations,
+      scorerMatch,
+      playerStats,
+      tournaments,
+    ] = await Promise.all([
+      this.dashboardFeaturedMatches.loadLiveMatches(actor),
+      this.dashboardFeaturedMatches.loadUpcomingMatches(actor),
       this.loadTeamLeadMatchCards(actor),
       this.loadSquadParticipationPoll(userId),
       this.loadPendingManOfMatch(userId, teamIds),
@@ -101,15 +111,17 @@ export class CaptainService {
       this.tournaments.listDashboardSummaries(actor),
     ]);
 
-    const featuredMatches = scorerMatch
-      ? featuredMatchesRaw.filter((match) => match.matchId !== scorerMatch.matchId)
-      : featuredMatchesRaw;
+    const excludeScorer = (matches: CaptainFeaturedMatchSummary[]) =>
+      scorerMatch
+        ? matches.filter((match) => match.matchId !== scorerMatch.matchId)
+        : matches;
 
     const { upcomingMatchCard, scorerAssignmentMatch } = teamLeadMatchCards;
     const participationPoll = upcomingMatchCard ? null : squadParticipationPoll;
 
     return {
-      featuredMatches,
+      liveMatches: excludeScorer(liveMatchesRaw),
+      upcomingMatches: excludeScorer(upcomingMatchesRaw),
       upcomingMatchCard,
       participationPoll,
       playingXiCard: null,
