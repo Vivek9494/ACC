@@ -33,6 +33,28 @@ export interface AdminOverview {
   scorerMatch: ScorerStartableMatch | null;
 }
 
+/** One center row in Admin users-by-geography. */
+export interface AdminUsersByGeographyCenter {
+  centerId: string;
+  name: string;
+  /** Non-deleted users registered to this center. */
+  userCount: number;
+}
+
+/** One province accordion row with nested centers. */
+export interface AdminUsersByGeographyProvince {
+  provinceId: string;
+  name: string;
+  /** Sum of nested center user counts. */
+  userCount: number;
+  centers: AdminUsersByGeographyCenter[];
+}
+
+/** Admin dashboard: all non-deleted users grouped by province → center. */
+export interface AdminUsersByGeography {
+  provinces: AdminUsersByGeographyProvince[];
+}
+
 /** One day on the Admin password-reset OTP analytics graph. */
 export interface AdminPasswordResetOtpDayCount {
   /** UTC calendar day `YYYY-MM-DD`. */

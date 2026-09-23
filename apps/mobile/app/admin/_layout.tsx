@@ -21,6 +21,7 @@ export default function AdminLayout(): React.ReactElement {
       <Stack.Screen name="tournament-types/[id]" />
       <Stack.Screen name="users/new" />
       <Stack.Screen name="users/[userId]" />
+      <Stack.Screen name="password-reset-otp/[date]" />
     </Stack>
   );
 }

@@ -82,6 +82,8 @@ export interface DateFieldProps {
   maximumDate?: Date;
   /** Short month (e.g. "Jun 8, 2026") — use in narrow side-by-side layouts. */
   compactDisplay?: boolean;
+  /** Smaller control height/padding for dense rows (e.g. analytics date range). */
+  compact?: boolean;
 }
 
 /**
@@ -99,6 +101,7 @@ export function DateField({
   minimumDate,
   maximumDate,
   compactDisplay = false,
+  compact = false,
 }: DateFieldProps): React.ReactElement {
   const [showPicker, setShowPicker] = useState(false);
   const signupMaxDate = useMemo(() => maxBirthDateForSignup(), []);
@@ -119,30 +122,48 @@ export function DateField({
     onChange(formatIsoDate(selected));
   }
 
-  let fieldClassName = mergeFieldClassName('flex-row items-center', { hasLeadingIcon: true });
+  const heightClass = compact ? 'min-h-11' : FIELD_CONTROL_MIN_HEIGHT_CLASS;
+  let fieldClassName = mergeFieldClassName(
+    compact ? 'flex-row items-center px-3 py-2 pl-11' : 'flex-row items-center',
+    { hasLeadingIcon: !compact },
+  );
   if (error) {
     fieldClassName = applyFieldErrorBorder(fieldClassName);
   }
 
+  const labelClass = compact
+    ? 'font-sans text-sm leading-5 text-text-muted mb-1 ml-0.5'
+    : labelClassName(labelVariant);
+
   return (
     <View className={containerClassName}>
-      {label ? <Text className={labelClassName(labelVariant)}>{label}</Text> : null}
+      {label ? <Text className={labelClass}>{label}</Text> : null}
       <Pressable
         onPress={() => setShowPicker(true)}
-        className={`relative ${FIELD_CONTROL_MIN_HEIGHT_CLASS} ${fieldClassName}`}
+        className={`relative ${heightClass} ${fieldClassName}`}
         style={INPUT_SHADOW_STYLE}
       >
-        <View className="absolute inset-y-0 left-5 justify-center">
-          <Ionicons name="calendar-outline" size={20} color={FIELD_ORANGE} />
+        <View
+          className={`absolute inset-y-0 justify-center ${compact ? 'left-3' : 'left-5'}`}
+        >
+          <Ionicons
+            name="calendar-outline"
+            size={compact ? 16 : 20}
+            color={FIELD_ORANGE}
+          />
         </View>
         <Text
-          className={`min-w-0 flex-1 ${FIELD_VALUE_TEXT_CLASS} ${parsed ? 'text-text' : 'text-text-muted'}`}
-          style={INPUT_TEXT_STYLE}
+          className={`min-w-0 flex-1 ${FIELD_VALUE_TEXT_CLASS} ${
+            compact ? 'text-sm' : ''
+          } ${parsed ? 'text-text' : 'text-text-muted'}`}
+          style={compact ? { fontSize: 14 } : INPUT_TEXT_STYLE}
           numberOfLines={1}
           adjustsFontSizeToFit
           minimumFontScale={0.8}
         >
-          {parsed ? formatDisplayDate(parsed, compactDisplay ? 'short' : 'long') : placeholder}
+          {parsed
+            ? formatDisplayDate(parsed, compact || compactDisplay ? 'short' : 'long')
+            : placeholder}
         </Text>
       </Pressable>
 

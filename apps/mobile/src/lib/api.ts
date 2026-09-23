@@ -19,6 +19,7 @@ import {
   type AdminOverview,
   type AdminPasswordResetOtpDailySeries,
   type AdminPasswordResetOtpDayUsers,
+  type AdminUsersByGeography,
   type AdminAppSettings,
   type AdminBroadcastView,
   type ActiveBroadcast,
@@ -709,6 +710,11 @@ export function getAdminPasswordResetOtpByDay(
   return apiFetch<AdminPasswordResetOtpDayUsers>(
     `/admin/password-reset-otp/by-day?${params}`,
   );
+}
+
+/** Admin-only: all non-deleted users grouped by province → center. */
+export function getAdminUsersByGeography(): Promise<AdminUsersByGeography> {
+  return apiFetch<AdminUsersByGeography>('/admin/users-by-geography');
 }
 
 export function getUploadLimits(): Promise<UploadLimits> {

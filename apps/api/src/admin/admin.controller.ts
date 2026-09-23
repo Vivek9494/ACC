@@ -2,6 +2,7 @@ import type {
   AdminOverview,
   AdminPasswordResetOtpDailySeries,
   AdminPasswordResetOtpDayUsers,
+  AdminUsersByGeography,
   AdminUserDetail,
   AdminUserPlayerStatsView,
   AdminUsersPage,
@@ -70,6 +71,14 @@ export class AdminController {
     @Query() query: PasswordResetOtpByDayQueryDto,
   ): Promise<AdminPasswordResetOtpDayUsers> {
     return this.admin.getPasswordResetOtpDayUsers(query.date);
+  }
+
+  /** Path must not sit under `users/:userId` or Nest treats `by-geography` as a user id. */
+  @Get('users-by-geography')
+  @UseGuards(PermissionGuard)
+  @RequirePermission(Permission.VIEW_ADMIN_OVERVIEW)
+  usersByGeography(): Promise<AdminUsersByGeography> {
+    return this.admin.getUsersByGeography();
   }
 
   @Post('users')

@@ -4,6 +4,7 @@ import {
   type AdminOverview,
   type AdminPasswordResetOtpDailySeries,
   type AdminPasswordResetOtpDayUsers,
+  type AdminUsersByGeography,
   type AdminUserDetail,
   type AdminUserPlayerStatsView,
   type AdminUsersPage,
@@ -866,6 +867,50 @@ export class AdminService {
     );
 
     return { date: formatUtcIsoDate(dayStart), users: items };
+  }
+
+  /**
+   * All non-deleted users grouped by province → center (includes inactive accounts).
+   * Provinces/centers with zero users are included so the Admin accordion is complete.
+   */
+  async getUsersByGeography(): Promise<AdminUsersByGeography> {
+    const [provinces, centers, counts] = await Promise.all([
+      this.prisma.province.findMany({
+        select: { id: true, name: true },
+        orderBy: { name: 'asc' },
+      }),
+      this.prisma.center.findMany({
+        select: { id: true, name: true, provinceId: true },
+        orderBy: { name: 'asc' },
+      }),
+      this.prisma.user.groupBy({
+        by: ['centerId'],
+        where: adminDirectoryUserWhere,
+        _count: { _all: true },
+      }),
+    ]);
+
+    const countByCenterId = new Map(
+      counts.map((row) => [row.centerId, row._count._all] as const),
+    );
+
+    return {
+      provinces: provinces.map((province) => {
+        const provinceCenters = centers
+          .filter((center) => center.provinceId === province.id)
+          .map((center) => ({
+            centerId: center.id,
+            name: center.name,
+            userCount: countByCenterId.get(center.id) ?? 0,
+          }));
+        return {
+          provinceId: province.id,
+          name: province.name,
+          userCount: provinceCenters.reduce((sum, center) => sum + center.userCount, 0),
+          centers: provinceCenters,
+        };
+      }),
+    };
   }
 
   private parseUtcDateOnly(value: string): Date | null {

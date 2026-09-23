@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { View } from 'react-native';
 
 import { AdminPasswordResetOtpAnalyticsCard } from '../../../src/components/admin/AdminPasswordResetOtpAnalyticsCard';
+import { AdminUsersByGeographyAccordion } from '../../../src/components/admin/AdminUsersByGeographyAccordion';
 import { buildCaptainFeaturedMatchSections } from '../../../src/components/dashboard/buildDashboardFeaturedMatchSections';
 import { DashboardScaffold } from '../../../src/components/dashboard/DashboardScaffold';
 import { ScorerStartMatchCard } from '../../../src/components/dashboard/ScorerStartMatchCard';
@@ -115,6 +116,7 @@ export default function AdminDashboardScreen(): React.ReactElement {
         <StatTile key="at-a-glance" title="At a Glance" items={glanceItems} />
       ) : null,
       <AdminPasswordResetOtpAnalyticsCard key="password-reset-otp-analytics" />,
+      <AdminUsersByGeographyAccordion key="users-by-geography" />,
     ].filter((section) => section !== null);
   }, [glanceItems, overview, router]);
 
