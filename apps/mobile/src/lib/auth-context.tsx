@@ -11,7 +11,7 @@ import {
   signup as apiSignup,
 } from './api';
 import { registerDeviceForPush, unregisterDeviceForPush } from './push-registration';
-import { clearTokens, loadTokens, saveTokens } from './session';
+import { clearTokens, loadRefreshToken, loadTokens, saveTokens } from './session';
 import { clearRememberMePreferences } from './remember-me';
 
 export type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated';
@@ -114,7 +114,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
   const signOut = useCallback(async () => {
     await unregisterDeviceForPush();
     try {
-      await apiLogout();
+      const refreshToken = await loadRefreshToken();
+      if (refreshToken) {
+        await apiLogout(refreshToken);
+      }
     } catch {
       // Best-effort server invalidation; always clear local session.
     }

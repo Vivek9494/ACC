@@ -834,8 +834,17 @@ export class RegistrationsService {
     const tournament = await this.requireTournament(tournamentId);
     this.assertRegistrationVerificationTournament(tournament.ballType as BallType);
 
+    const teamId = await this.resolveFavouriteTeamId(actor, tournamentId);
+    if (!teamId) {
+      throw new ForbiddenException({
+        message: 'Only team Captains, Vice-Captains, and Managers may favourite players',
+        error: 'FORBIDDEN',
+      });
+    }
+
     const allowed = await this.permissions.check(Permission.FAVOURITE_PLAYERS, actor, {
       tournamentId,
+      teamId,
     });
     if (!allowed) {
       throw new ForbiddenException({
@@ -845,14 +854,6 @@ export class RegistrationsService {
     }
 
     await this.assertRegistrationVerificationComplete(tournament);
-
-    const teamId = await this.resolveFavouriteTeamId(actor, tournamentId);
-    if (!teamId) {
-      throw new ForbiddenException({
-        message: 'Only team Captains, Vice-Captains, and Managers may favourite players',
-        error: 'FORBIDDEN',
-      });
-    }
 
     const registration = await this.prisma.registration.findUnique({
       where: { tournamentId_userId: { tournamentId, userId } },
@@ -897,8 +898,14 @@ export class RegistrationsService {
     const tournament = await this.requireTournament(tournamentId);
     this.assertRegistrationVerificationTournament(tournament.ballType as BallType);
 
+    const favouriteTeamId = await this.resolveFavouriteTeamId(actor, tournamentId);
+    if (!favouriteTeamId) {
+      return { favourites: [], canFavourite: false, favouriteTeamId: null };
+    }
+
     const allowed = await this.permissions.check(Permission.FAVOURITE_PLAYERS, actor, {
       tournamentId,
+      teamId: favouriteTeamId,
     });
     if (!allowed) {
       throw new ForbiddenException({
@@ -908,11 +915,6 @@ export class RegistrationsService {
     }
 
     await this.assertRegistrationVerificationComplete(tournament);
-
-    const favouriteTeamId = await this.resolveFavouriteTeamId(actor, tournamentId);
-    if (!favouriteTeamId) {
-      return { favourites: [], canFavourite: false, favouriteTeamId: null };
-    }
 
     const favouriteRows = await this.prisma.teamRegistrationFavourite.findMany({
       where: { tournamentId, teamId: favouriteTeamId },

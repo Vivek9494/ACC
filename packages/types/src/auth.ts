@@ -19,7 +19,7 @@ export const REFRESH_IDLE_DAYS = 10;
 export const REFRESH_IDLE_DAYS_REMEMBER_ME = 90;
 
 /** Forgot-password OTP policy (§3.3, §3.4). */
-export const OTP_LENGTH = 4;
+export const OTP_LENGTH = 6;
 export const OTP_TTL_SECONDS = 5 * 60;
 /** Minimum wait between OTP resend requests for the same number. */
 export const OTP_RESEND_COOLDOWN_SECONDS = 60;
@@ -151,6 +151,11 @@ export interface LoginRequest {
 }
 
 export interface RefreshRequest {
+  refreshToken: string;
+}
+
+/** Body for logout — refresh token identifies the session when access JWT is expired. */
+export interface LogoutRequest {
   refreshToken: string;
 }
 

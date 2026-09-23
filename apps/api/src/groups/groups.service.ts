@@ -23,6 +23,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { activeTeamWhere } from '../teams/team-query';
 import { activeTeamMembershipCountSelect } from '../teams/team-membership-query';
 import { assertTournamentActive } from '../tournaments/tournament-query';
+import { TennisTournamentVisibilityService } from '../tournaments/tennis-tournament-visibility.service';
 import { TournamentsService } from '../tournaments/tournaments.service';
 import type { CreateGroupDto } from './dto/create-group.dto';
 import {
@@ -39,10 +40,17 @@ export class GroupsService {
     private readonly prisma: PrismaService,
     private readonly permissions: PermissionService,
     private readonly tournaments: TournamentsService,
+    private readonly tennisVisibility: TennisTournamentVisibilityService,
   ) {}
 
-  async list(tournamentId: string): Promise<GroupSummary[]> {
-    await this.requireTournament(tournamentId);
+  async list(
+    tournamentId: string,
+    viewer: AuthUser | null = null,
+  ): Promise<GroupSummary[]> {
+    const tournament = await this.requireTournament(tournamentId);
+    await this.tennisVisibility.assertCanViewCenterLevelTournament(viewer, tournament, {
+      allowUnauthenticated: true,
+    });
     const rows = await this.prisma.tournamentGroup.findMany({
       where: { tournamentId },
       orderBy: { name: 'asc' },
@@ -65,7 +73,9 @@ export class GroupsService {
   async create(actor: AuthUser, tournamentId: string, dto: CreateGroupDto): Promise<GroupSummary> {
     const tournament = await this.requireTournament(tournamentId);
 
-    const allowed = await this.permissions.check(Permission.CREATE_MATCH, actor, { tournamentId });
+    const allowed = await this.permissions.check(Permission.EDIT_TOURNAMENT, actor, {
+      tournamentId,
+    });
     if (!allowed) {
       throw new ForbiddenException({
         message: 'You do not have permission to manage tournament groups',
@@ -283,7 +293,9 @@ export class GroupsService {
   }
 
   private async assertCanManageGroups(actor: AuthUser, tournamentId: string): Promise<void> {
-    const allowed = await this.permissions.check(Permission.CREATE_MATCH, actor, { tournamentId });
+    const allowed = await this.permissions.check(Permission.EDIT_TOURNAMENT, actor, {
+      tournamentId,
+    });
     if (!allowed) {
       throw new ForbiddenException({
         message: 'You do not have permission to manage tournament groups',

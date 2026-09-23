@@ -1,6 +1,8 @@
 import { type AuthUser, Permission, type ScorecardResponse, type BatsmanPickerResponse, type BowlerPickerResponse, type FielderPickerResponse, type ExternalPlayerView, type EnterScoringSessionResponse } from '@acc/types';
-import { Body, Controller, Get, Param, Patch, Post, Put, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
+import type { Request } from 'express';
 
+import { AuthService } from '../auth/auth.service';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Public } from '../auth/public.decorator';
@@ -31,13 +33,18 @@ export class ScoringController {
     private readonly batsmanPicker: BatsmanPickerService,
     private readonly bowlerPicker: BowlerPickerService,
     private readonly fielderPicker: FielderPickerService,
+    private readonly auth: AuthService,
   ) {}
 
   /** Public, guest-readable live scorecard snapshot (spec §2, §28). */
   @Get('scorecard')
   @Public()
-  scorecard(@Param('matchId') matchId: string): Promise<ScorecardResponse> {
-    return this.scoring.getScorecard(matchId);
+  async scorecard(
+    @Param('matchId') matchId: string,
+    @Req() req: Request,
+  ): Promise<ScorecardResponse> {
+    const viewer = await this.auth.resolveOptionalUser(req);
+    return this.scoring.getScorecard(matchId, viewer);
   }
 
   /** Tennis Phase 2: one-time auth when opening the live scoring screen. */

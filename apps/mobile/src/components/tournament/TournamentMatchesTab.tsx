@@ -54,6 +54,7 @@ export interface TournamentMatchesTabProps {
   canScheduleMatches?: boolean;
   matchSchedulingFormat?: TournamentDetail['matchSchedulingFormat'];
   hasKnockoutBracket?: boolean;
+  canManageKnockoutBracket?: boolean;
   tournamentName?: string;
   /** Viewer's registration in this tournament (`GET .../registrations/me`). */
   viewerRegistrationStatus?: RegistrationStatus | null;
@@ -70,6 +71,7 @@ export function TournamentMatchesTab({
   canScheduleMatches = false,
   matchSchedulingFormat = null,
   hasKnockoutBracket = false,
+  canManageKnockoutBracket = false,
   tournamentName = '',
   viewerRegistrationStatus = null,
 }: TournamentMatchesTabProps): React.ReactElement {
@@ -156,7 +158,7 @@ export function TournamentMatchesTab({
     user,
   );
   const showKnockoutBracketEntry = shouldShowKnockoutBracketEntry(
-    { matchSchedulingFormat },
+    { matchSchedulingFormat, canManageKnockoutBracket },
     user,
   );
   const knockoutManageButtonLabel = hasKnockoutBracket

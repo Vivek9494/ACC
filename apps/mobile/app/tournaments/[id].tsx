@@ -684,6 +684,7 @@ export default function TournamentDetailScreen(): React.ReactElement {
                 canScheduleMatches={tournament.canScheduleMatches}
                 matchSchedulingFormat={tournament.matchSchedulingFormat}
                 hasKnockoutBracket={tournament.hasKnockoutBracket}
+                canManageKnockoutBracket={tournament.canManageKnockoutBracket}
                 tournamentName={tournament.name}
                 viewerRegistrationStatus={
                   registrationChecked ? (myRegistration?.status ?? null) : null

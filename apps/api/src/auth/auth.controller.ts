@@ -7,37 +7,45 @@ import { CurrentUser } from './current-user.decorator';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { CompleteForcedPasswordChangeDto } from './dto/complete-forced-password-change.dto';
 import { LoginDto } from './dto/login.dto';
+import { LogoutDto } from './dto/logout.dto';
 import { RefreshDto } from './dto/refresh.dto';
 import { SignupDto } from './dto/signup.dto';
 import { JwtAuthGuard } from './jwt-auth.guard';
+import { Public } from './public.decorator';
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  @Public()
   @Post('signup')
   signup(@Body() dto: SignupDto): Promise<AuthResponse> {
     return this.authService.signup(dto);
   }
 
+  @Public()
   @Post('login')
   @HttpCode(HttpStatus.OK)
   login(@Body() dto: LoginDto): Promise<AuthResponse> {
     return this.authService.login(dto);
   }
 
+  @Public()
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
   refresh(@Body() dto: RefreshDto): Promise<AuthTokens> {
     return this.authService.refresh(dto.refreshToken);
   }
 
+  /**
+   * Revokes the refresh session using the refresh token itself so logout works
+   * even when the access JWT is expired (H6).
+   */
+  @Public()
   @Post('logout')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @UseGuards(JwtAuthGuard)
-  @AllowMustChangePassword()
-  logout(@CurrentUser() user: AuthUser): Promise<void> {
-    return this.authService.logout(user.id);
+  logout(@Body() dto: LogoutDto): Promise<void> {
+    return this.authService.logoutWithRefreshToken(dto.refreshToken);
   }
 
   @Get('me')

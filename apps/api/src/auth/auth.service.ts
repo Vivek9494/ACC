@@ -267,6 +267,27 @@ export class AuthService {
   }
 
   /**
+   * Logout using the refresh token so revocation works even when the access
+   * JWT is already expired (H6). Invalid/malformed refresh is a no-op (204).
+   */
+  async logoutWithRefreshToken(refreshToken: string): Promise<void> {
+    let payload: RefreshTokenPayload;
+    try {
+      payload = await this.jwt.verifyAsync<RefreshTokenPayload>(refreshToken, {
+        secret: this.config.getOrThrow<string>('JWT_REFRESH_SECRET'),
+      });
+    } catch {
+      return;
+    }
+
+    if (payload.type !== 'refresh' || !payload.sub) {
+      return;
+    }
+
+    await this.logout(payload.sub);
+  }
+
+  /**
    * Verifies the current password, enforces the shared policy, bumps tokenVersion, and
    * clears the refresh session — invalidating every device including the caller.
    */

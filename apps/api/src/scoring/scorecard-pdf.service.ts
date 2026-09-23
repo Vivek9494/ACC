@@ -1,6 +1,7 @@
 import {
   APP_ORG_NAME,
   APP_SHORT_NAME,
+  type AuthUser,
   formatInningsTotalScore,
   type InningsScorecard,
   MatchState,
@@ -11,6 +12,7 @@ import { BadRequestException, Injectable, Logger, NotFoundException } from '@nes
 
 import { PrismaService } from '../prisma/prisma.service';
 import { activeMatchFirstWhere } from '../matches/match-query';
+import { TennisTournamentVisibilityService } from '../tournaments/tennis-tournament-visibility.service';
 import { ScorecardReader } from './scorecard-reader';
 
 /** Match states for which the scorecard PDF may be exported (§16: completed). */
@@ -39,15 +41,20 @@ export class ScorecardPdfService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly reader: ScorecardReader,
+    private readonly tennisVisibility: TennisTournamentVisibilityService,
   ) {}
 
-  async export(matchId: string, forceHtml = false): Promise<ScorecardDocument> {
+  async export(
+    matchId: string,
+    forceHtml = false,
+    viewer: AuthUser | null = null,
+  ): Promise<ScorecardDocument> {
     const match = await this.prisma.match.findFirst({
       where: activeMatchFirstWhere(matchId),
       include: {
         homeTeam: { select: { name: true } },
         awayTeam: { select: { name: true } },
-        tournament: { select: { name: true } },
+        tournament: { select: { id: true, name: true, type: true, ballType: true, isDeleted: true } },
         squads: { include: { players: { include: { user: { select: { firstName: true, lastName: true } } } } } },
         externalPlayers: true,
       },
@@ -55,6 +62,9 @@ export class ScorecardPdfService {
     if (!match) {
       throw new NotFoundException({ message: 'Match not found', error: 'MATCH_NOT_FOUND' });
     }
+    await this.tennisVisibility.assertCanViewCenterLevelTournament(viewer, match.tournament, {
+      allowUnauthenticated: true,
+    });
     if (!EXPORTABLE_STATES.includes(match.state as MatchState)) {
       throw new BadRequestException({
         message: 'The scorecard PDF is only available for a completed match',

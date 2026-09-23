@@ -165,15 +165,23 @@ function makeHarness(
         where: {
           state?: { in: string[] };
           adminConfirmed?: boolean;
+          isDeleted?: boolean;
+          confirmedAt?: null;
           OR?: { homeTeamId?: { in: string[] }; awayTeamId?: { in: string[] } }[];
-          completedAt?: { lte: Date };
+          completedAt?: { not?: null; lte: Date };
         };
       }) =>
         [...matches.values()].filter((m) => {
+          if (where.isDeleted === false && m.isDeleted === true) {
+            return false;
+          }
           if (where.state?.in && !where.state.in.includes(m.state as string)) {
             return false;
           }
           if (where.adminConfirmed === false && m.adminConfirmed === true) {
+            return false;
+          }
+          if (where.confirmedAt === null && m.confirmedAt != null) {
             return false;
           }
           if (where.completedAt?.lte) {
@@ -297,6 +305,14 @@ function makeHarness(
     team: {
       findUnique: async () => ({ name: 'Home XI' }),
     },
+    tournament: {
+      findUnique: async ({ where }: { where: { id: string } }) => ({
+        id: where.id,
+        type: 'ACC',
+        ballType: 'TENNIS',
+        isDeleted: false,
+      }),
+    },
     $transaction: async (cb: (tx: unknown) => unknown) => cb(prisma),
   };
 
@@ -349,6 +365,7 @@ function makeHarness(
     knockoutProgression as never,
     notifications as never,
     notificationAudience as never,
+    { assertCanViewCenterLevelTournament: jest.fn().mockResolvedValue(undefined) } as never,
   );
   return {
     service,
@@ -374,6 +391,7 @@ function seedMatch(matches: Map<string, Row>, overrides: Row = {}): void {
     state: 'COMPLETED',
     scorecardVersion: 3,
     isNoResult: false,
+    isDeleted: false,
     winningTeamId: null,
     manOfTheMatchUserId: null,
     manOfTheMatchSelectedAt: null,
@@ -575,6 +593,59 @@ describe('ScorecardConfirmationService — dashboard pending list (§13.1)', () 
   it('returns empty for users without captain/VC assignments', async () => {
     const h = makeHarness();
     seedMatch(h.matches);
+
+    const pending = await h.service.listPendingDashboardConfirmations(captain);
+    expect(pending).toHaveLength(0);
+  });
+
+  it('omits soft-deleted matches (avoids Match not found on Review & confirm)', async () => {
+    const h = makeHarness();
+    seedMatch(h.matches, { isDeleted: true });
+    h.roleAssignments.push({
+      userId: captain.id,
+      role: 'CAPTAIN',
+      teamId: 'home',
+      tournamentId: 't1',
+    });
+
+    const pending = await h.service.listPendingDashboardConfirmations(captain);
+    expect(pending).toHaveLength(0);
+  });
+
+  it('omits admin-overridden matches even when team flags stay pending', async () => {
+    const h = makeHarness();
+    seedMatch(h.matches, {
+      adminConfirmed: true,
+      adminConfirmedByUserId: 'admin-1',
+      adminConfirmedAt: new Date(),
+      confirmedAt: new Date(),
+      confirmedByUserId: 'admin-1',
+    });
+    h.roleAssignments.push({
+      userId: captain.id,
+      role: 'CAPTAIN',
+      teamId: 'home',
+      tournamentId: 't1',
+    });
+
+    const pending = await h.service.listPendingDashboardConfirmations(captain);
+    expect(pending).toHaveLength(0);
+  });
+
+  it('omits locked matches that still have COMPLETED state', async () => {
+    const h = makeHarness();
+    seedMatch(h.matches, {
+      homeTeamConfirmed: true,
+      awayTeamConfirmed: true,
+      confirmedAt: new Date(),
+      confirmedByUserId: 'cap-1',
+    });
+    h.roleAssignments.push({
+      userId: captain.id,
+      role: 'CAPTAIN',
+      teamId: 'home',
+      tournamentId: 't1',
+    });
 
     const pending = await h.service.listPendingDashboardConfirmations(captain);
     expect(pending).toHaveLength(0);

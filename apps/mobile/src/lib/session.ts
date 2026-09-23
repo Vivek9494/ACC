@@ -31,6 +31,10 @@ export async function loadTokens(): Promise<AuthTokens | null> {
   return { accessToken, refreshToken };
 }
 
+export async function loadRefreshToken(): Promise<string | null> {
+  return getSecureItem(REFRESH_TOKEN_KEY);
+}
+
 export async function clearTokens(): Promise<void> {
   await Promise.all([
     deleteSecureItem(ACCESS_TOKEN_KEY),

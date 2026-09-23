@@ -227,7 +227,7 @@ export class PasswordResetService {
 
   /**
    * Clears a password-reset lock and resets OTP counters, then audits the
-   * action. Restricted to admin/captain/club-manager at the controller (§3.4).
+   * action. Restricted to Admin/Club Manager at the controller (§3.4).
    */
   async unlock(actor: AuthUser, userId: string): Promise<void> {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });

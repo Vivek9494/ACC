@@ -261,6 +261,11 @@ export interface TournamentDetail extends TournamentSummary {
   knockoutTeamCount: number | null;
   /** True when a live KnockoutBracket row exists — locks knockoutTeamCount. */
   hasKnockoutBracket: boolean;
+  /**
+   * Viewer may generate/delete the knockout bracket (Admin, or Club Manager who
+   * created this tournament). Server-authoritative; UI should follow this flag.
+   */
+  canManageKnockoutBracket: boolean;
   groups: GroupSummary[];
   teams: {
     id: string;

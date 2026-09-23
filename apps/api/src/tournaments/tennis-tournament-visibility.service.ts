@@ -3,6 +3,10 @@ import { ForbiddenException, Injectable } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 
 import { PrismaService } from '../prisma/prisma.service';
+import {
+  type LeatherTournamentViewOptions,
+  LeatherTournamentVisibilityService,
+} from './leather-tournament-visibility.service';
 import { activeTournamentWhere } from './tournament-query';
 
 /** Tennis tournament types that use {@link TournamentCenter} participation for actions. */
@@ -11,9 +15,23 @@ const PARTICIPATING_CENTER_TENNIS_TYPES: TournamentType[] = [
   TournamentType.Center,
 ];
 
+export type TournamentViewTarget = {
+  id: string;
+  type: string;
+  ballType: string;
+};
+
+export type TournamentViewOptions = LeatherTournamentViewOptions & {
+  /** Reserved for callers; leather guests are always denied by the leather gate. */
+  allowUnauthenticated?: boolean;
+};
+
 @Injectable()
 export class TennisTournamentVisibilityService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly leatherVisibility: LeatherTournamentVisibilityService,
+  ) {}
 
   /**
    * Active APL / Center-level tennis tournaments linked to a center via
@@ -69,15 +87,27 @@ export class TennisTournamentVisibilityService {
   }
 
   /**
-   * Tennis APL/CENTER detail and related reads are public to authenticated and
-   * guest viewers. Participation gates **actions** (register), not view.
+   * Shared tournament **view** choke point for detail and all sub-resources.
+   * - Leather: same invite / existing-leather / Admin·CM gate as tournament detail.
+   * - Tennis: public view (participation gates register/actions, not read).
    */
   async assertCanViewCenterLevelTournament(
-    _viewer: AuthUser | null | undefined,
-    _tournament: { id: string; type: string },
-    _options: { allowUnauthenticated?: boolean } = {},
+    viewer: AuthUser | null | undefined,
+    tournament: TournamentViewTarget,
+    options: TournamentViewOptions = {},
   ): Promise<void> {
-    // View-only for all; no participation hide.
+    if (tournament.ballType === BallType.Leather) {
+      await this.leatherVisibility.assertCanViewLeatherTournament(
+        viewer,
+        tournament.id,
+        BallType.Leather,
+        {
+          allowClubManagerManagement: options.allowClubManagerManagement,
+          allowEditor: options.allowEditor,
+        },
+      );
+    }
+    // Tennis: view-only for all; no participation hide.
   }
 
   /**

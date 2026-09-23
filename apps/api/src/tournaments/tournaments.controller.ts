@@ -138,7 +138,7 @@ export class TournamentsController {
   /** Records the scheduling mode chosen in the Schedule Matches modal. */
   @Post(':tournamentId/match-scheduling-format')
   @HttpCode(HttpStatus.OK)
-  @RequirePermission(Permission.CREATE_MATCH)
+  @RequirePermission(Permission.EDIT_TOURNAMENT)
   @UseGuards(PermissionGuard)
   selectMatchSchedulingFormat(
     @CurrentUser() user: AuthUser,

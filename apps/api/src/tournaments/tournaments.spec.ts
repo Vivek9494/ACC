@@ -106,7 +106,7 @@ describe('TournamentsService', () => {
     tournament: { findUnique: jest.Mock; findFirst: jest.Mock; update: jest.Mock; delete: jest.Mock };
     match: { findMany: jest.Mock };
     roleAssignment: { findFirst: jest.Mock; findMany: jest.Mock; count: jest.Mock };
-    tournamentCenter: { findFirst: jest.Mock };
+    tournamentCenter: { findMany: jest.Mock };
     teamMembership: { findUnique: jest.Mock };
     registration: { findMany: jest.Mock; count: jest.Mock };
     province: { findUnique: jest.Mock };
@@ -161,7 +161,7 @@ describe('TournamentsService', () => {
         findMany: jest.fn().mockResolvedValue([]),
         count: jest.fn(),
       },
-      tournamentCenter: { findFirst: jest.fn().mockResolvedValue(null) },
+      tournamentCenter: { findMany: jest.fn().mockResolvedValue([]) },
       teamMembership: { findUnique: jest.fn().mockResolvedValue(null) },
       match: { findMany: jest.fn().mockResolvedValue([]) },
       registration: {
@@ -779,45 +779,112 @@ describe('TournamentsService', () => {
   });
 
   describe('Center Sevak tournament ownership (§7.4)', () => {
-    it('allows a Center Sevak to update a tournament they created', async () => {
+    it('allows a Center Sevak to update a single-center CENTER tournament for their center', async () => {
       prisma.tournament.findUnique.mockResolvedValue(
-        detailRow({ createdByUserId: 'sevak-1' }),
-      );
-
-      await service.update(sevak, 'tid', { locationAddress: 'New Ground' });
-
-      expect(tx.tournament.update).toHaveBeenCalled();
-    });
-
-    it('allows a Center Sevak to update a tournament linked to their center', async () => {
-      prisma.tournament.findUnique.mockResolvedValue(
-        detailRow({ createdByUserId: 'cm-1' }),
+        detailRow({
+          type: 'CENTER',
+          ballType: 'TENNIS',
+          createdByUserId: 'cm-1',
+          locationAddress: '123 Main St, Toronto, ON',
+          latitude: 43.65,
+          longitude: -79.38,
+        }),
       );
       prisma.roleAssignment.findMany.mockResolvedValueOnce([{ centerId: 'center-A' }]);
-      prisma.tournamentCenter.findFirst.mockResolvedValueOnce({ centerId: 'center-A' });
+      prisma.tournamentCenter.findMany.mockResolvedValueOnce([{ centerId: 'center-A' }]);
 
-      await service.update(sevak, 'tid', { locationAddress: 'New Ground' });
+      await service.update(sevak, 'tid', { youtubeUrl: 'https://youtube.com/watch?v=abc' });
 
       expect(tx.tournament.update).toHaveBeenCalled();
     });
 
-    it('denies a Center Sevak updating a tournament from another center they did not create', async () => {
+    it('allows any Sevak of the center (not only the creator)', async () => {
+      prisma.tournament.findUnique.mockResolvedValue(
+        detailRow({
+          type: 'CENTER',
+          ballType: 'TENNIS',
+          createdByUserId: 'other-sevak',
+          locationAddress: '123 Main St, Toronto, ON',
+          latitude: 43.65,
+          longitude: -79.38,
+        }),
+      );
+      prisma.roleAssignment.findMany.mockResolvedValueOnce([{ centerId: 'center-A' }]);
+      prisma.tournamentCenter.findMany.mockResolvedValueOnce([{ centerId: 'center-A' }]);
+
+      await service.update(sevak, 'tid', { youtubeUrl: 'https://youtube.com/watch?v=def' });
+
+      expect(tx.tournament.update).toHaveBeenCalled();
+    });
+
+    it('denies a Center Sevak updating an APL tournament even when their center is listed', async () => {
       prisma.tournament.findUnique.mockResolvedValueOnce(
-        detailRow({ createdByUserId: 'cm-1' }),
+        detailRow({
+          type: 'APL',
+          ballType: 'TENNIS',
+          createdByUserId: 'cm-1',
+        }),
       );
       prisma.roleAssignment.findMany.mockResolvedValueOnce([{ centerId: 'center-A' }]);
-      prisma.tournamentCenter.findFirst.mockResolvedValueOnce(null);
+      prisma.tournamentCenter.findMany.mockResolvedValueOnce([
+        { centerId: 'center-A' },
+        { centerId: 'center-B' },
+      ]);
 
       await expect(
-        service.update(sevak, 'tid', { locationAddress: 'New Ground' }),
+        service.update(sevak, 'tid', { youtubeUrl: 'https://youtube.com/watch?v=x' }),
       ).rejects.toBeInstanceOf(ForbiddenException);
       expect(prisma.tournament.update).not.toHaveBeenCalled();
     });
 
-    it('allows a Center Sevak to delete their own tournament', async () => {
+    it('denies a Center Sevak updating a multi-center CENTER tournament', async () => {
       prisma.tournament.findUnique.mockResolvedValueOnce(
-        detailRow({ createdByUserId: 'sevak-1', state: 'NEW' }),
+        detailRow({
+          type: 'CENTER',
+          ballType: 'TENNIS',
+          createdByUserId: 'sevak-1',
+        }),
       );
+      prisma.roleAssignment.findMany.mockResolvedValueOnce([{ centerId: 'center-A' }]);
+      prisma.tournamentCenter.findMany.mockResolvedValueOnce([
+        { centerId: 'center-A' },
+        { centerId: 'center-B' },
+      ]);
+
+      await expect(
+        service.update(sevak, 'tid', { youtubeUrl: 'https://youtube.com/watch?v=x' }),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      expect(prisma.tournament.update).not.toHaveBeenCalled();
+    });
+
+    it('denies a Center Sevak updating another center\'s single-center tournament', async () => {
+      prisma.tournament.findUnique.mockResolvedValueOnce(
+        detailRow({
+          type: 'CENTER',
+          ballType: 'TENNIS',
+          createdByUserId: 'cm-1',
+        }),
+      );
+      prisma.roleAssignment.findMany.mockResolvedValueOnce([{ centerId: 'center-A' }]);
+      prisma.tournamentCenter.findMany.mockResolvedValueOnce([{ centerId: 'center-B' }]);
+
+      await expect(
+        service.update(sevak, 'tid', { youtubeUrl: 'https://youtube.com/watch?v=x' }),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      expect(prisma.tournament.update).not.toHaveBeenCalled();
+    });
+
+    it('allows a Center Sevak to delete their center\'s single-center tournament', async () => {
+      prisma.tournament.findUnique.mockResolvedValueOnce(
+        detailRow({
+          type: 'CENTER',
+          ballType: 'TENNIS',
+          createdByUserId: 'sevak-1',
+          state: 'NEW',
+        }),
+      );
+      prisma.roleAssignment.findMany.mockResolvedValueOnce([{ centerId: 'center-A' }]);
+      prisma.tournamentCenter.findMany.mockResolvedValueOnce([{ centerId: 'center-A' }]);
 
       await service.remove(sevak, 'tid');
 
@@ -831,12 +898,17 @@ describe('TournamentsService', () => {
       });
     });
 
-    it('denies a Center Sevak deleting a tournament from another center they did not create', async () => {
+    it('denies a Center Sevak deleting a tournament from another center', async () => {
       prisma.tournament.findUnique.mockResolvedValueOnce(
-        detailRow({ createdByUserId: 'cm-1', state: 'NEW' }),
+        detailRow({
+          type: 'CENTER',
+          ballType: 'TENNIS',
+          createdByUserId: 'cm-1',
+          state: 'NEW',
+        }),
       );
       prisma.roleAssignment.findMany.mockResolvedValueOnce([{ centerId: 'center-A' }]);
-      prisma.tournamentCenter.findFirst.mockResolvedValueOnce(null);
+      prisma.tournamentCenter.findMany.mockResolvedValueOnce([{ centerId: 'center-B' }]);
 
       await expect(service.remove(sevak, 'tid')).rejects.toBeInstanceOf(ForbiddenException);
       expect(prisma.tournament.update).not.toHaveBeenCalled();

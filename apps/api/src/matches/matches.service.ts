@@ -884,7 +884,7 @@ export class MatchesService {
   ): Promise<MatchListItem[]> {
     const tournament = await this.prisma.tournament.findUnique({
       where: { id: tournamentId },
-      select: { id: true, type: true, isDeleted: true },
+      select: { id: true, type: true, ballType: true, isDeleted: true },
     });
     assertTournamentActive(tournament);
     await this.tennisVisibility.assertCanViewCenterLevelTournament(viewer, tournament, {
@@ -1129,7 +1129,11 @@ export class MatchesService {
     }
     await this.tennisVisibility.assertCanViewCenterLevelTournament(
       viewer,
-      { id: row.tournamentId, type: row.tournament.type },
+      {
+        id: row.tournamentId,
+        type: row.tournament.type,
+        ballType: row.tournament.ballType,
+      },
       { allowUnauthenticated: true },
     );
     const scorerIds = row.scorerGrants.filter((g) => g.revokedAt === null).map((g) => g.userId);

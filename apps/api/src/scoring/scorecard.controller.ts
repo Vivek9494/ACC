@@ -13,12 +13,14 @@ import {
   Post,
   Put,
   Query,
+  Req,
   Res,
   UseGuards,
 } from '@nestjs/common';
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
 import { Body } from '@nestjs/common';
 
+import { AuthService } from '../auth/auth.service';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Public } from '../auth/public.decorator';
@@ -38,13 +40,18 @@ export class ScorecardController {
   constructor(
     private readonly confirmation: ScorecardConfirmationService,
     private readonly pdf: ScorecardPdfService,
+    private readonly auth: AuthService,
   ) {}
 
   /** Public confirmation status (drives the lazy auto-confirm safety-net). */
   @Get('confirmation')
   @Public()
-  status(@Param('matchId') matchId: string): Promise<ScorecardConfirmationView> {
-    return this.confirmation.status(matchId);
+  async status(
+    @Param('matchId') matchId: string,
+    @Req() req: Request,
+  ): Promise<ScorecardConfirmationView> {
+    const viewer = await this.auth.resolveOptionalUser(req);
+    return this.confirmation.status(matchId, viewer);
   }
 
   /** §13.1: Captain / VC confirms the scorecard, locking the match. */
@@ -99,9 +106,11 @@ export class ScorecardController {
   async exportPdf(
     @Param('matchId') matchId: string,
     @Query('format') format: string | undefined,
+    @Req() req: Request,
     @Res() res: Response,
   ): Promise<void> {
-    const doc = await this.pdf.export(matchId, format === 'html');
+    const viewer = await this.auth.resolveOptionalUser(req);
+    const doc = await this.pdf.export(matchId, format === 'html', viewer);
     res.setHeader('Content-Type', doc.contentType);
     res.setHeader('Content-Disposition', `inline; filename="${doc.filename.replace(/"/g, '')}"`);
     res.send(doc.body);

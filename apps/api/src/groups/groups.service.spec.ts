@@ -78,6 +78,7 @@ describe('GroupsService.remove', () => {
       prisma as never,
       permissions as never,
       tournaments as never,
+      { assertCanViewCenterLevelTournament: jest.fn().mockResolvedValue(undefined) } as never,
     );
   });
 

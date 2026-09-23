@@ -9,6 +9,7 @@ import { UnlockAccountDto } from './dto/unlock-account.dto';
 import { VerifyResetOtpDto } from './dto/verify-reset-otp.dto';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { PasswordResetService } from './password-reset.service';
+import { Public } from './public.decorator';
 import { Roles } from './roles.decorator';
 import { RolesGuard } from './roles.guard';
 
@@ -25,6 +26,7 @@ export class PasswordResetController {
   constructor(private readonly passwordReset: PasswordResetService) {}
 
   /** Request an OTP. Always 200 so callers can't probe which numbers exist. */
+  @Public()
   @Post('forgot-password')
   @HttpCode(HttpStatus.OK)
   async forgotPassword(
@@ -36,6 +38,7 @@ export class PasswordResetController {
   }
 
   /** Verify the OTP and issue a short-lived reset token. */
+  @Public()
   @Post('verify-reset-otp')
   @HttpCode(HttpStatus.OK)
   async verifyResetOtp(
@@ -45,6 +48,7 @@ export class PasswordResetController {
     return this.passwordReset.verifyOtp(dto.mobileNumber, dto.otp, clientIp(req));
   }
 
+  @Public()
   @Post('reset-password')
   @HttpCode(HttpStatus.OK)
   async resetPassword(@Body() dto: ResetPasswordDto): Promise<{ success: true }> {
@@ -52,11 +56,11 @@ export class PasswordResetController {
     return { success: true };
   }
 
-  /** Admin/Captain/Club Manager: clear a reset lock and reset OTP counters. */
+  /** Admin/Club Manager: clear a reset lock and reset OTP counters. */
   @Post('unlock')
   @HttpCode(HttpStatus.OK)
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.Admin, UserRole.Captain, UserRole.ClubManager)
+  @Roles(UserRole.Admin, UserRole.ClubManager)
   async unlock(
     @CurrentUser() actor: AuthUser,
     @Body() dto: UnlockAccountDto,
