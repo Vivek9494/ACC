@@ -84,6 +84,7 @@ export class MatchesController {
   }
 
   @Get('tournaments/:tournamentId/matches')
+  @Public()
   async list(
     @Param('tournamentId') tournamentId: string,
     @Query('teamId') teamId: string | undefined,

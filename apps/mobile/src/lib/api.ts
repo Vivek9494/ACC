@@ -1669,7 +1669,8 @@ export function listMatches(
     teamId != null && teamId !== ''
       ? `?teamId=${encodeURIComponent(teamId)}`
       : '';
-  return apiFetch<MatchListItem[]>(`/tournaments/${tournamentId}/matches${query}`);
+  // Guest-readable (Tournament → Matches); Bearer forwarded when logged in for canEdit flags.
+  return apiFetchOptionalAuth<MatchListItem[]>(`/tournaments/${tournamentId}/matches${query}`);
 }
 
 export function getRoundRobinMatchSetupContext(

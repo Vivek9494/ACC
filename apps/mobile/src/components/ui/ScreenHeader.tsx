@@ -2,12 +2,14 @@ import { Ionicons } from '@expo/vector-icons';
 import type { ReactNode } from 'react';
 import { useRouter } from 'expo-router';
 import { Pressable, View } from 'react-native';
+import { colors } from '@/theme/colors';
 
+import { useAuth } from '../../lib/auth-context';
 import { ProfileMenu } from './ProfileMenu';
 import { BirthdayHeaderButton } from './BirthdayHeaderButton';
 import { BroadcastMessageHeaderButton } from './BroadcastMessageHeaderButton';
 import { Text } from './Text';
-import { FIELD_ORANGE } from './fieldStyles';
+import { FIELD_ORANGE, INPUT_SHADOW_STYLE } from './fieldStyles';
 
 export interface ScreenHeaderProps {
   onBack?: () => void;
@@ -44,6 +46,11 @@ export function ScreenHeader({
   compact = false,
 }: ScreenHeaderProps): React.ReactElement {
   const router = useRouter();
+  const { status } = useAuth();
+  const isAuthenticated = status === 'authenticated';
+  /** Guests never see ProfileMenu ("U" fallback); same sign-in control as GuestHeader. */
+  const showAuthenticatedChrome = showProfileMenu && isAuthenticated;
+  const showGuestSignIn = showProfileMenu && !isAuthenticated;
 
   function handleBack(): void {
     if (onBack) {
@@ -69,15 +76,29 @@ export function ScreenHeader({
           <View className={`${iconButtonClass(compact)} shrink-0`} />
         )}
         <View className="min-w-0 flex-1 flex-row items-center justify-end gap-2">
-          {showProfileMenu ? (
+          {showAuthenticatedChrome ? (
             <>
               <BirthdayHeaderButton compact={compact} />
               <BroadcastMessageHeaderButton compact={compact} />
             </>
           ) : null}
           {trailing ? <View className="max-w-full shrink">{trailing}</View> : null}
-          {showProfileMenu ? (
+          {showAuthenticatedChrome ? (
             <ProfileMenu />
+          ) : showGuestSignIn ? (
+            <Pressable
+              onPress={() => router.push('/login')}
+              accessibilityRole="button"
+              accessibilityLabel="Sign in or create account"
+              className={`${iconButtonClass(compact)} shrink-0 bg-surface`}
+              style={INPUT_SHADOW_STYLE}
+            >
+              <Ionicons
+                name="person-circle-outline"
+                size={compact ? 24 : 28}
+                color={colors.textMuted}
+              />
+            </Pressable>
           ) : !trailing ? (
             <View className={compact ? 'h-9 w-9' : 'h-10 w-10'} />
           ) : null}
