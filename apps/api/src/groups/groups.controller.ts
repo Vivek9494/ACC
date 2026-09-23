@@ -3,20 +3,8 @@ import {
   Permission,
   type GroupSummary,
 } from '@acc/types';
-import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  Param,
-  Patch,
-  Post,
-  Req,
-  UseGuards,
-} from '@nestjs/common';
-import type { Request } from 'express';
+import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 
-import { AuthService } from '../auth/auth.service';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Public } from '../auth/public.decorator';
@@ -30,23 +18,16 @@ import { GroupsService } from './groups.service';
 @Controller()
 @UseGuards(JwtAuthGuard)
 export class GroupsController {
-  constructor(
-    private readonly groups: GroupsService,
-    private readonly auth: AuthService,
-  ) {}
+  constructor(private readonly groups: GroupsService) {}
 
   @Get('tournaments/:tournamentId/groups')
   @Public()
-  async list(
-    @Param('tournamentId') tournamentId: string,
-    @Req() req: Request,
-  ): Promise<GroupSummary[]> {
-    const viewer = await this.auth.resolveOptionalUser(req);
-    return this.groups.list(tournamentId, viewer);
+  list(@Param('tournamentId') tournamentId: string): Promise<GroupSummary[]> {
+    return this.groups.list(tournamentId);
   }
 
   @Post('tournaments/:tournamentId/groups')
-  @RequirePermission(Permission.EDIT_TOURNAMENT)
+  @RequirePermission(Permission.CREATE_MATCH)
   @UseGuards(PermissionGuard)
   create(
     @CurrentUser() user: AuthUser,
@@ -57,7 +38,7 @@ export class GroupsController {
   }
 
   @Patch('tournaments/:tournamentId/groups/:groupId')
-  @RequirePermission(Permission.EDIT_TOURNAMENT)
+  @RequirePermission(Permission.CREATE_MATCH)
   @UseGuards(PermissionGuard)
   updateMembers(
     @CurrentUser() user: AuthUser,
@@ -69,7 +50,7 @@ export class GroupsController {
   }
 
   @Delete('tournaments/:tournamentId/groups/:groupId')
-  @RequirePermission(Permission.EDIT_TOURNAMENT)
+  @RequirePermission(Permission.CREATE_MATCH)
   @UseGuards(PermissionGuard)
   remove(
     @CurrentUser() user: AuthUser,

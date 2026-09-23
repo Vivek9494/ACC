@@ -247,8 +247,8 @@ export const PERMISSION_MATRIX: Record<Permission, PermissionRule> = {
     grants: [
       { subject: R.Admin },
       { subject: R.ClubManager },
-      // Center Sevak: own-center CENTER tournaments only (not APL / multi-center).
-      { subject: R.CenterSevak, scope: PermissionScope.OwnCenter, tournamentTypes: CENTER_ONLY },
+      { subject: R.CenterSevak, scope: PermissionScope.Organizer, tournamentTypes: TENNIS_TYPES },
+      { subject: R.CenterSevak, scope: PermissionScope.OwnCenter, tournamentTypes: TENNIS_TYPES },
     ],
   },
   [Permission.CHANGE_TOURNAMENT_STATUS]: {
@@ -673,7 +673,11 @@ export const PERMISSION_MATRIX: Record<Permission, PermissionRule> = {
     grants: [{ subject: R.Admin }, { subject: R.ClubManager }],
   },
   [Permission.UNLOCK_ACCOUNT]: {
-    grants: [{ subject: R.Admin }, { subject: R.ClubManager }],
+    grants: [
+      { subject: R.Admin },
+      { subject: R.ClubManager },
+      { subject: R.Captain, scope: PermissionScope.OwnTeam },
+    ],
   },
 
   // N. Audit & Announcements

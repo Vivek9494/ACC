@@ -30,21 +30,12 @@ export const KNOCKOUT_BRACKET_MESSAGES = {
   feederAwaitingScorecardConfirmation: 'Result pending scorecard lock',
 } as const;
 
-/** Admin, or the Club Manager who owns/organizes this tournament (createdByUserId). */
-export function canManageKnockoutBracket(
-  user: AuthUser | null | undefined,
-  tournament?: { createdByUserId: string } | null,
-): boolean {
+/** Admin / Club Manager — same gate as bracket generation. */
+export function canManageKnockoutBracket(user: AuthUser | null | undefined): boolean {
   if (!user) {
     return false;
   }
-  if (user.role === UserRole.Admin) {
-    return true;
-  }
-  if (user.role === UserRole.ClubManager) {
-    return tournament != null && tournament.createdByUserId === user.id;
-  }
-  return false;
+  return user.role === UserRole.Admin || user.role === UserRole.ClubManager;
 }
 
 /** Bracket-existence flag on tournament read models (server-sourced). */

@@ -8,7 +8,7 @@ block above Main Scoreboard on the cockpit page.
 Scope: match-ID entry + full-window cockpit embed + OBS connect / start-stop
 stream + **OBS lifecycle** + **Instant Replay**. OBS controls and Settings live
 in the cockpit **Broadcast / OBS** block (Electron only).  
-The public graphics-only `control.html` is **retired** (use the cockpit Overlay Control).
+The graphics-only `control.html` is unchanged and unused by the operator embed.
 **Not in v1:** clip tagging bridge, Studio Mode / custom transition APIs.
 
 ## Dev

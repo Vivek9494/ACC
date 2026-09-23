@@ -1,6 +1,7 @@
 import {
   buildKnockoutSeedingPreviewHint,
   buildTeamIdsFromManualPlacements,
+  canManageKnockoutBracket,
   formatSignedNetRunRate,
   KNOCKOUT_BRACKET_MESSAGES,
   KnockoutBracketSlotKind,
@@ -26,7 +27,6 @@ import {
   generateKnockoutBracket,
   getKnockoutBracket,
   getKnockoutQualification,
-  getTournament,
 } from '../../lib/api';
 import { useAuth } from '../../lib/auth-context';
 import { confirmActionAlert } from '../../lib/confirm-action-alert';
@@ -281,7 +281,7 @@ export function KnockoutBracketManageScreen({
 }: KnockoutBracketManageScreenProps): React.ReactElement {
   const router = useRouter();
   const { user } = useAuth();
-  const [canManage, setCanManage] = useState(false);
+  const canManage = canManageKnockoutBracket(user);
 
   const [bracket, setBracket] = useState<KnockoutBracketView | null>(null);
   const [qualification, setQualification] = useState<KnockoutQualificationResponse | null>(null);
@@ -333,17 +333,10 @@ export function KnockoutBracketManageScreen({
     setLoading(true);
     setError(null);
     try {
-      const [qualResult, bracketResult, detailResult] = await Promise.allSettled([
+      const [qualResult, bracketResult] = await Promise.allSettled([
         getKnockoutQualification(tournamentId),
         getKnockoutBracket(tournamentId),
-        getTournament(tournamentId),
       ]);
-
-      if (detailResult.status === 'fulfilled') {
-        setCanManage(detailResult.value.canManageKnockoutBracket === true);
-      } else {
-        setCanManage(false);
-      }
 
       if (qualResult.status === 'rejected') {
         throw qualResult.reason;
@@ -363,7 +356,6 @@ export function KnockoutBracketManageScreen({
     } catch (err) {
       setBracket(null);
       setQualification(null);
-      setCanManage(false);
       setError(
         err instanceof ApiRequestError
           ? err.message
@@ -599,24 +591,20 @@ export function shouldShowKnockoutChartEntry(
   );
 }
 
-/** Matches tab — Admin / owning Club Manager generate & manage knockout. */
+/** Matches tab — Admin / Club Manager generate & manage knockout (separate from chart view). */
 export function shouldShowKnockoutBracketEntry(
-  tournament: Pick<TournamentDetail, 'matchSchedulingFormat' | 'canManageKnockoutBracket'>,
+  tournament: Pick<TournamentDetail, 'matchSchedulingFormat'>,
   user: ReturnType<typeof useAuth>['user'],
 ): boolean {
   return (
-    user != null &&
-    tournament.canManageKnockoutBracket === true &&
+    canManageKnockoutBracket(user) &&
     tournament.matchSchedulingFormat === MatchSchedulingFormat.GroupStageKnockout
   );
 }
 
 /** @deprecated Use shouldShowKnockoutBracketEntry */
 export function shouldShowKnockoutBracketManage(
-  tournament: Pick<
-    TournamentDetail,
-    'hasKnockoutBracket' | 'matchSchedulingFormat' | 'canManageKnockoutBracket'
-  >,
+  tournament: Pick<TournamentDetail, 'hasKnockoutBracket' | 'matchSchedulingFormat'>,
   user: ReturnType<typeof useAuth>['user'],
 ): boolean {
   return shouldShowKnockoutBracketEntry(tournament, user);

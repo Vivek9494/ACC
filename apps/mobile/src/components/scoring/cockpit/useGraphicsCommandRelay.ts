@@ -1,6 +1,6 @@
 /**
  * Live socket relay for OBS graphics:command (same /live namespace as score push).
- * Subscribe stays open; emission requires the operator access token (SCORE_BALL on server).
+ * Pure forward — matches apps/scoring-overlay control page behavior.
  */
 import {
   LIVE_NAMESPACE,
@@ -13,7 +13,6 @@ import { io, type Socket } from 'socket.io-client';
 
 import { API_BASE_URL } from '../../../lib/api';
 import type { LiveConnectionStatus } from '../../../lib/live-socket';
-import { loadAccessToken } from '../../../lib/session';
 
 export function useGraphicsCommandRelay(matchId: string): {
   status: LiveConnectionStatus;
@@ -26,58 +25,44 @@ export function useGraphicsCommandRelay(matchId: string): {
   const skipEchoRef = useRef(false);
 
   useEffect(() => {
-    let cancelled = false;
-    let socket: Socket | null = null;
+    const socket = io(`${API_BASE_URL}${LIVE_NAMESPACE}`, {
+      transports: ['websocket', 'polling'],
+      forceNew: true,
+      reconnection: true,
+    });
+    socketRef.current = socket;
 
-    void loadAccessToken().then((token) => {
-      if (cancelled) {
+    const subscribe = (): void => {
+      const msg: LiveSubscribeMessage = { matchId };
+      socket.emit(LiveEvent.Subscribe, msg);
+    };
+
+    socket.on('connect', () => {
+      setStatus('live');
+      subscribe();
+    });
+    socket.on('disconnect', () => setStatus('offline'));
+    socket.on('connect_error', () => setStatus('offline'));
+    socket.io.on('reconnect', () => {
+      setStatus('live');
+      subscribe();
+    });
+    socket.on(LiveEvent.GraphicsCommand, (cmd: GraphicsCommandMessage) => {
+      if (cmd.matchId !== matchId) {
         return;
       }
-
-      socket = io(`${API_BASE_URL}${LIVE_NAMESPACE}`, {
-        transports: ['websocket', 'polling'],
-        forceNew: true,
-        reconnection: true,
-        ...(token ? { auth: { token } } : {}),
-      });
-      socketRef.current = socket;
-
-      const subscribe = (): void => {
-        const msg: LiveSubscribeMessage = { matchId };
-        socket?.emit(LiveEvent.Subscribe, msg);
-      };
-
-      socket.on('connect', () => {
-        setStatus('live');
-        subscribe();
-      });
-      socket.on('disconnect', () => setStatus('offline'));
-      socket.on('connect_error', () => setStatus('offline'));
-      socket.io.on('reconnect', () => {
-        setStatus('live');
-        subscribe();
-      });
-      socket.on(LiveEvent.GraphicsCommand, (cmd: GraphicsCommandMessage) => {
-        if (cmd.matchId !== matchId) {
-          return;
-        }
-        if (skipEchoRef.current) {
-          skipEchoRef.current = false;
-          return;
-        }
-        setLastCommand(cmd);
-      });
+      if (skipEchoRef.current) {
+        skipEchoRef.current = false;
+        return;
+      }
+      setLastCommand(cmd);
     });
 
     return () => {
-      cancelled = true;
-      const active = socketRef.current ?? socket;
-      if (active) {
-        const msg: LiveSubscribeMessage = { matchId };
-        active.emit(LiveEvent.Unsubscribe, msg);
-        active.removeAllListeners();
-        active.disconnect();
-      }
+      const msg: LiveSubscribeMessage = { matchId };
+      socket.emit(LiveEvent.Unsubscribe, msg);
+      socket.removeAllListeners();
+      socket.disconnect();
       socketRef.current = null;
     };
   }, [matchId]);

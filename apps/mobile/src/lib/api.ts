@@ -125,7 +125,6 @@ import {
   type RegisterPushTokenRequest,
   type StartMatchSetupRequest,
   type RefreshRequest,
-  type LogoutRequest,
   type ReverseGeocodeResult,
   type UnregisterPushTokenRequest,
   type ResolvedLocationResult,
@@ -1022,13 +1021,8 @@ export function login(body: LoginRequest): Promise<AuthResponse> {
   });
 }
 
-export function logout(refreshToken: string): Promise<void> {
-  return apiFetchInternal<void>('/auth/logout', {
-    method: 'POST',
-    body: { refreshToken } satisfies LogoutRequest,
-    skipAuthHeader: true,
-    skipAuthRetry: true,
-  });
+export function logout(): Promise<void> {
+  return apiFetchInternal<void>('/auth/logout', { method: 'POST', skipAuthRetry: true });
 }
 
 /** Register/refresh this device's FCM push token for the logged-in user (§17). */

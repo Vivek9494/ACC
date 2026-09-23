@@ -15,19 +15,7 @@ function makeService(prisma: unknown): ScoringService {
   const audit = { record: async () => undefined } as never;
   const confirmation = { evaluateAutoConfirm: async () => undefined } as never;
   const tennisScoringAuth = { assertCanEnterScoringSession: async () => undefined } as never;
-  const tennisVisibility = {
-    assertCanViewCenterLevelTournament: async () => undefined,
-  } as never;
-  return new ScoringService(
-    prisma as never,
-    live,
-    reader,
-    audit,
-    confirmation,
-    { generateForCompletedMatch: jest.fn() } as never,
-    tennisScoringAuth,
-    tennisVisibility,
-  );
+  return new ScoringService(prisma as never, live, reader, audit, confirmation, { generateForCompletedMatch: jest.fn() } as never, tennisScoringAuth);
 }
 
 const scorer: AuthUser = {
@@ -123,14 +111,6 @@ function makeDb() {
         if (data.resultNote !== undefined) m.resultNote = data.resultNote;
         return { ...m };
       },
-    },
-    tournament: {
-      findUnique: async ({ where }: { where: { id: string } }) => ({
-        id: where.id,
-        type: 'ACC',
-        ballType: 'TENNIS',
-        isDeleted: false,
-      }),
     },
     innings: {
       findMany: async ({

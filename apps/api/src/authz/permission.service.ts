@@ -206,14 +206,17 @@ export class PermissionService {
 
     // For a match action without an explicit team, treat both sides as the
     // candidate context team (a captain matches whichever side is theirs).
-    // OwnTeam requires a concrete team/match context — tournament-only refs do
-    // not satisfy "any leadership in this tournament" (organizer actions must
-    // use Organizer/Global scope instead).
     const contextTeamIds = teamId
       ? [teamId]
       : [match?.homeTeamId, match?.awayTeamId].filter((id): id is string => Boolean(id));
     let sameTeam = contextTeamIds.some((id) => captainTeamIds.has(id));
-    if (sameTeam && !teamId) {
+    // Tournament-level routes (no team/match param): any leadership in this tournament satisfies OwnTeam.
+    if (!sameTeam && contextTeamIds.length === 0 && tournamentId && captainTeamIds.size > 0) {
+      sameTeam = true;
+      if (!teamId) {
+        teamId = [...captainTeamIds][0];
+      }
+    } else if (sameTeam && !teamId) {
       teamId = contextTeamIds.find((id) => captainTeamIds.has(id));
     }
 

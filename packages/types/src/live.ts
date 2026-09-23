@@ -4,10 +4,8 @@
  * {@link ScorecardResponse}, caches it in Redis, and pushes it to every
  * subscriber of the match room. Guests subscribe read-only, no auth (spec §2).
  *
- * Broadcast graphics (OBS overlay): operators emit {@link LiveEvent.GraphicsCommand}
- * with a valid access JWT on the `/live` handshake; the server authorizes
- * SCORE_BALL for the match then forwards room-scoped only.
- * Subscribe/listen remains unauthenticated for OBS Browser Sources and guests.
+ * Broadcast graphics (OBS overlay) use the same namespace: operators emit
+ * {@link LiveEvent.GraphicsCommand}; the server forwards room-scoped only.
  */
 
 import type { ScorecardResponse } from './scoring';
@@ -206,7 +204,7 @@ export interface GraphicsCommandPayload {
   filter?: '4s' | '6s' | '4s6s' | 'all';
 }
 
-/** Room-scoped OBS graphics control (auth + SCORE_BALL required to emit). */
+/** Room-scoped OBS graphics control (unauthenticated; pure forward). */
 export interface GraphicsCommandMessage {
   matchId: string;
   action: GraphicsCommandAction;

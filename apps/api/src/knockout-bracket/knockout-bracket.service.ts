@@ -42,6 +42,7 @@ export class KnockoutBracketService {
     tournamentId: string,
     manualTeamIds?: readonly string[],
   ): Promise<KnockoutBracketView> {
+    assertCanManageKnockoutBracket(actor);
     await this.assertNoActiveKnockoutBracket(tournamentId);
 
     const tournament = await this.prisma.tournament.findUnique({
@@ -50,11 +51,9 @@ export class KnockoutBracketService {
         isDeleted: true,
         type: true,
         knockoutTeamCount: true,
-        createdByUserId: true,
       },
     });
     assertTournamentActive(tournament);
-    assertCanManageKnockoutBracket(actor, tournament);
 
     if (!isAplTournamentType(tournament.type)) {
       throw new BadRequestException({
@@ -261,12 +260,12 @@ export class KnockoutBracketService {
   }
 
   async deleteKnockoutBracket(actor: AuthUser, tournamentId: string): Promise<void> {
+    assertCanManageKnockoutBracket(actor);
+
     const tournament = await this.prisma.tournament.findUnique({
       where: { id: tournamentId },
-      select: { isDeleted: true, createdByUserId: true },
     });
     assertTournamentActive(tournament);
-    assertCanManageKnockoutBracket(actor, tournament);
 
     const bracket = await this.prisma.knockoutBracket.findUnique({
       where: { tournamentId },

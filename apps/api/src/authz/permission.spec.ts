@@ -220,7 +220,7 @@ describe('PermissionService', () => {
     });
   });
 
-  describe('check() — OwnTeam requires concrete team (favourite players)', () => {
+  describe('check() — tournament-level OwnTeam (favourite players PUT)', () => {
     const captain: AuthUser = {
       id: 'captain-1',
       firstName: 'Cap',
@@ -234,7 +234,7 @@ describe('PermissionService', () => {
       isActive: true,
     };
 
-    it('allows Captain when teamId matches their leadership', async () => {
+    it('allows Captain when leading a team in the tournament (no teamId in route)', async () => {
       prisma.tournament.findUnique.mockResolvedValue({
         type: TournamentType.APL,
         createdByUserId: 'other',
@@ -251,32 +251,9 @@ describe('PermissionService', () => {
 
       const allowed = await service.check(Permission.FAVOURITE_PLAYERS, captain, {
         tournamentId: 'tour-1',
-        teamId: 'team-1',
       });
 
       expect(allowed).toBe(true);
-    });
-
-    it('denies Captain when only tournamentId is provided (no OwnTeam broadening)', async () => {
-      prisma.tournament.findUnique.mockResolvedValue({
-        type: TournamentType.APL,
-        createdByUserId: 'other',
-        isDeleted: false,
-      });
-      prisma.roleAssignment.findMany.mockResolvedValue([
-        {
-          role: UserRole.Captain,
-          tournamentId: 'tour-1',
-          teamId: 'team-1',
-          centerId: null,
-        },
-      ]);
-
-      const allowed = await service.check(Permission.FAVOURITE_PLAYERS, captain, {
-        tournamentId: 'tour-1',
-      });
-
-      expect(allowed).toBe(false);
     });
 
     it('denies a player with no team leadership in the tournament', async () => {
@@ -289,7 +266,6 @@ describe('PermissionService', () => {
 
       const allowed = await service.check(Permission.FAVOURITE_PLAYERS, captain, {
         tournamentId: 'tour-1',
-        teamId: 'team-1',
       });
 
       expect(allowed).toBe(false);

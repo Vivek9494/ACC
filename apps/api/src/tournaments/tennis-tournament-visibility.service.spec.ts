@@ -2,7 +2,6 @@ import { BallType, TournamentType, UserRole, type AuthUser } from '@acc/types';
 import { ForbiddenException } from '@nestjs/common';
 
 import { PrismaService } from '../prisma/prisma.service';
-import { LeatherTournamentVisibilityService } from './leather-tournament-visibility.service';
 import { TennisTournamentVisibilityService } from './tennis-tournament-visibility.service';
 
 describe('TennisTournamentVisibilityService', () => {
@@ -11,11 +10,7 @@ describe('TennisTournamentVisibilityService', () => {
     tournament: { findMany: jest.fn() },
   } as unknown as PrismaService;
 
-  const leatherVisibility = {
-    assertCanViewLeatherTournament: jest.fn().mockResolvedValue(undefined),
-  } as unknown as LeatherTournamentVisibilityService;
-
-  const service = new TennisTournamentVisibilityService(prisma, leatherVisibility);
+  const service = new TennisTournamentVisibilityService(prisma);
 
   const player = (centerId: string): AuthUser =>
     ({
@@ -39,7 +34,6 @@ describe('TennisTournamentVisibilityService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    (leatherVisibility.assertCanViewLeatherTournament as jest.Mock).mockResolvedValue(undefined);
   });
 
   it('returns linked active tennis APL and Center tournaments for a center', async () => {
@@ -80,53 +74,20 @@ describe('TennisTournamentVisibilityService', () => {
   });
 
   describe('assertCanViewCenterLevelTournament', () => {
-    it('allows tennis view for non-participating players and guests without leather gate', async () => {
+    it('allows view for non-participating players and guests', async () => {
       await expect(
         service.assertCanViewCenterLevelTournament(player('windsor'), {
           id: 'apl-1',
           type: TournamentType.APL,
-          ballType: BallType.Tennis,
         }),
       ).resolves.toBeUndefined();
       await expect(
         service.assertCanViewCenterLevelTournament(null, {
           id: 't1',
           type: TournamentType.Center,
-          ballType: BallType.Tennis,
         }),
       ).resolves.toBeUndefined();
       expect(prisma.tournamentCenter.findFirst).not.toHaveBeenCalled();
-      expect(leatherVisibility.assertCanViewLeatherTournament).not.toHaveBeenCalled();
-    });
-
-    it('delegates leather tournaments to the leather invite gate (guests included)', async () => {
-      await service.assertCanViewCenterLevelTournament(null, {
-        id: 'leather-1',
-        type: TournamentType.ACC,
-        ballType: BallType.Leather,
-      });
-      expect(leatherVisibility.assertCanViewLeatherTournament).toHaveBeenCalledWith(
-        null,
-        'leather-1',
-        BallType.Leather,
-        { allowClubManagerManagement: undefined, allowEditor: undefined },
-      );
-    });
-
-    it('propagates leather ForbiddenException for non-invited viewers', async () => {
-      (leatherVisibility.assertCanViewLeatherTournament as jest.Mock).mockRejectedValue(
-        new ForbiddenException({
-          message: 'You do not have access to this leather tournament',
-          error: 'LEATHER_TOURNAMENT_NOT_VISIBLE',
-        }),
-      );
-      await expect(
-        service.assertCanViewCenterLevelTournament(player('windsor'), {
-          id: 'leather-1',
-          type: TournamentType.ACC,
-          ballType: BallType.Leather,
-        }),
-      ).rejects.toBeInstanceOf(ForbiddenException);
     });
   });
 

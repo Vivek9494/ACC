@@ -5,16 +5,8 @@ import {
   OTP_MAX_FAILED_ATTEMPTS,
   OTP_MAX_REQUESTS_PER_DAY,
   OTP_RESEND_COOLDOWN_SECONDS,
-  UserRole,
 } from '@acc/types';
-import {
-  BadRequestException,
-  ForbiddenException,
-  HttpException,
-  HttpStatus,
-  type ExecutionContext,
-} from '@nestjs/common';
-import { Reflector } from '@nestjs/core';
+import { BadRequestException, ForbiddenException, HttpException, HttpStatus } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { Test } from '@nestjs/testing';
 
@@ -22,11 +14,8 @@ import { AuditService } from '../audit/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import { SMS_PROVIDER } from '../sms/sms-provider';
-import { PasswordResetController } from './password-reset.controller';
 import { PasswordResetService } from './password-reset.service';
 import type { ResetPasswordDto } from './dto/reset-password.dto';
-import { ROLES_KEY } from './roles.decorator';
-import { RolesGuard } from './roles.guard';
 
 function errorCode(err: unknown): string {
   const response = (err as HttpException).getResponse() as { error: string };
@@ -95,10 +84,10 @@ describe('PasswordResetService', () => {
 
       expect(redis.setWithTtl).toHaveBeenCalledWith(
         expect.stringContaining('otp:code:'),
-        expect.not.stringMatching(/^\d{6}$/),
+        expect.not.stringMatching(/^\d{4}$/),
         expect.any(Number),
       );
-      expect(sms.sendOtp).toHaveBeenCalledWith(mobile, expect.stringMatching(/^\d{6}$/));
+      expect(sms.sendOtp).toHaveBeenCalledWith(mobile, expect.stringMatching(/^\d{4}$/));
     });
 
     it(`rejects resend during the ${OTP_RESEND_COOLDOWN_SECONDS}s cooldown`, async () => {
@@ -133,7 +122,7 @@ describe('PasswordResetService', () => {
 
   describe('OTP verify', () => {
     it('issues a reset token when the OTP matches', async () => {
-      const otp = '123456';
+      const otp = '1234';
       const hash = await bcrypt.hash(otp, 12);
       prisma.user.findUnique.mockResolvedValue({ id: 'u1', passwordResetLockedAt: null });
       redis.get.mockResolvedValue(hash);
@@ -145,25 +134,25 @@ describe('PasswordResetService', () => {
     });
 
     it('rejects a wrong OTP and counts toward the attempt limit', async () => {
-      const hash = await bcrypt.hash('123456', 12);
+      const hash = await bcrypt.hash('1234', 12);
       prisma.user.findUnique.mockResolvedValue({ id: 'u1', passwordResetLockedAt: null });
       redis.get.mockResolvedValue(hash);
       redis.incrementWithTtl.mockResolvedValue(2);
 
-      await expect(service.verifyOtp(mobile, '000000', ip)).rejects.toMatchObject({
+      await expect(service.verifyOtp(mobile, '0000', ip)).rejects.toMatchObject({
         response: expect.objectContaining({ error: AuthErrorCode.OtpInvalid }),
       });
     });
 
     it(`invalidates the OTP on the ${OTP_MAX_FAILED_ATTEMPTS}th failed attempt`, async () => {
-      const hash = await bcrypt.hash('123456', 12);
+      const hash = await bcrypt.hash('1234', 12);
       prisma.user.findUnique.mockResolvedValue({ id: 'u1', passwordResetLockedAt: null });
       redis.get.mockResolvedValue(hash);
       redis.incrementWithTtl.mockResolvedValue(OTP_MAX_FAILED_ATTEMPTS);
 
       expect.assertions(2);
       try {
-        await service.verifyOtp(mobile, '000000', ip);
+        await service.verifyOtp(mobile, '0000', ip);
       } catch (err) {
         expect(errorCode(err)).toBe(AuthErrorCode.OtpAttemptsExceeded);
         expect(redis.del).toHaveBeenCalledWith(expect.stringContaining('otp:code:'));
@@ -174,7 +163,7 @@ describe('PasswordResetService', () => {
       prisma.user.findUnique.mockResolvedValue({ id: 'u1', passwordResetLockedAt: null });
       redis.get.mockResolvedValue(null);
 
-      await expect(service.verifyOtp(mobile, '123456', ip)).rejects.toMatchObject({
+      await expect(service.verifyOtp(mobile, '1234', ip)).rejects.toMatchObject({
         response: expect.objectContaining({ error: AuthErrorCode.OtpInvalid }),
       });
     });
@@ -235,86 +224,5 @@ describe('PasswordResetService', () => {
 
       await expect(service.resetPassword(resetDto())).rejects.toBeInstanceOf(ForbiddenException);
     });
-  });
-
-  describe('unlock', () => {
-    it('clears the DB lock and OTP counters for the target user', async () => {
-      prisma.user.findUnique.mockResolvedValue({
-        id: 'u-target',
-        mobileNumber: mobile,
-        passwordResetLockedAt: new Date(),
-      });
-
-      await service.unlock(
-        { id: 'admin-1', role: UserRole.Admin } as never,
-        'u-target',
-      );
-
-      expect(prisma.user.update).toHaveBeenCalledWith({
-        where: { id: 'u-target' },
-        data: { passwordResetLockedAt: null },
-      });
-      expect(redis.del).toHaveBeenCalledWith(expect.stringContaining('otp:failed:'));
-      expect(redis.del).toHaveBeenCalledWith(expect.stringContaining('otp:requests:'));
-      expect(redis.del).toHaveBeenCalledWith(expect.stringContaining('otp:code:'));
-      expect(redis.del).toHaveBeenCalledWith(expect.stringContaining('otp:resend:'));
-      expect(audit.record).toHaveBeenCalledWith(
-        expect.objectContaining({
-          action: 'PASSWORD_RESET_UNLOCK',
-          actorUserId: 'admin-1',
-          targetUserId: 'u-target',
-        }),
-      );
-    });
-  });
-});
-
-describe('POST /auth/unlock roles', () => {
-  it('allows Admin and Club Manager only (not Captain)', () => {
-    const roles = Reflect.getMetadata(ROLES_KEY, PasswordResetController.prototype.unlock) as
-      | UserRole[]
-      | undefined;
-    expect(roles).toEqual([UserRole.Admin, UserRole.ClubManager]);
-    expect(roles).not.toContain(UserRole.Captain);
-  });
-
-  it('RolesGuard rejects Captain with 403', () => {
-    const reflector = new Reflector();
-    jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue([
-      UserRole.Admin,
-      UserRole.ClubManager,
-    ]);
-    const guard = new RolesGuard(reflector);
-    const context = {
-      getHandler: () => PasswordResetController.prototype.unlock,
-      getClass: () => PasswordResetController,
-      switchToHttp: () => ({
-        getRequest: () => ({
-          user: { id: 'captain-1', role: UserRole.Captain },
-        }),
-      }),
-    } as unknown as ExecutionContext;
-
-    expect(() => guard.canActivate(context)).toThrow(ForbiddenException);
-  });
-
-  it('RolesGuard allows Admin and Club Manager', () => {
-    const reflector = new Reflector();
-    jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue([
-      UserRole.Admin,
-      UserRole.ClubManager,
-    ]);
-    const guard = new RolesGuard(reflector);
-
-    for (const role of [UserRole.Admin, UserRole.ClubManager]) {
-      const context = {
-        getHandler: () => PasswordResetController.prototype.unlock,
-        getClass: () => PasswordResetController,
-        switchToHttp: () => ({
-          getRequest: () => ({ user: { id: 'actor-1', role } }),
-        }),
-      } as unknown as ExecutionContext;
-      expect(guard.canActivate(context)).toBe(true);
-    }
   });
 });

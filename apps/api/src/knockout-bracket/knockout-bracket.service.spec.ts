@@ -149,7 +149,6 @@ describe('KnockoutBracketService', () => {
         findUnique: jest.fn().mockResolvedValue({
           id: 't-1',
           isDeleted: false,
-          createdByUserId: 'admin-1',
         }),
       },
       knockoutBracket: {
@@ -202,7 +201,7 @@ describe('KnockoutBracketService', () => {
   it('after delete, active knockout count is zero even if soft-deleted rows remain', async () => {
     const prisma = {
       tournament: {
-        findUnique: jest.fn().mockResolvedValue({ id: 't-1', isDeleted: false, createdByUserId: 'admin-1' }),
+        findUnique: jest.fn().mockResolvedValue({ id: 't-1', isDeleted: false }),
       },
       knockoutBracket: {
         findUnique: jest

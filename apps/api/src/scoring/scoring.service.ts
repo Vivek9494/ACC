@@ -38,7 +38,6 @@ import { PrismaService } from '../prisma/prisma.service';
 import { activeMatchFirstWhere } from '../matches/match-query';
 import { SuspensionService } from '../suspension/suspension.service';
 import { TennisMatchScoringAuthService } from '../tournaments/tennis-match-scoring-auth.service';
-import { TennisTournamentVisibilityService } from '../tournaments/tennis-tournament-visibility.service';
 import { assertKnockoutPostConfirmEditAllowed } from '../knockout-bracket/knockout-bracket-correction.guard';
 import { toScoringEvent } from './delivery-mapper';
 import {
@@ -115,7 +114,6 @@ export class ScoringService {
     private readonly confirmation: ScorecardConfirmationService,
     private readonly suspensions: SuspensionService,
     private readonly tennisScoringAuth: TennisMatchScoringAuthService,
-    private readonly tennisVisibility: TennisTournamentVisibilityService,
   ) {}
 
   /**
@@ -129,33 +127,13 @@ export class ScoringService {
 
   // --- Reads ---------------------------------------------------------------
 
-  async getScorecard(
-    matchId: string,
-    viewer: AuthUser | null = null,
-  ): Promise<ScorecardResponse> {
+  async getScorecard(matchId: string): Promise<ScorecardResponse> {
     // §13.1 lazy safety-net: if the 5-hour window has elapsed, lock the
     // scorecard before serving (the cron is the primary path).
     await this.confirmation.evaluateAutoConfirm(matchId);
     const match = await this.requireMatch(matchId);
-    await this.assertCanViewMatchTournament(viewer, match.tournamentId);
     // Warm the live cache so a subsequent socket subscriber gets a snapshot.
     return this.publishAndReturn(match);
-  }
-
-  private async assertCanViewMatchTournament(
-    viewer: AuthUser | null,
-    tournamentId: string,
-  ): Promise<void> {
-    const tournament = await this.prisma.tournament.findUnique({
-      where: { id: tournamentId },
-      select: { id: true, type: true, ballType: true, isDeleted: true },
-    });
-    if (!tournament || tournament.isDeleted) {
-      throw new NotFoundException({ message: 'Match not found', error: 'MATCH_NOT_FOUND' });
-    }
-    await this.tennisVisibility.assertCanViewCenterLevelTournament(viewer, tournament, {
-      allowUnauthenticated: true,
-    });
   }
 
   /** Builds the scorecard, pushes it to live subscribers, and returns it. */

@@ -1,4 +1,3 @@
-import { OTP_LENGTH } from '@acc/types';
 import { useRef } from 'react';
 import { Pressable, type TextInput as RNTextInput, View } from 'react-native';
 import { Text } from './ui/Text';
@@ -18,7 +17,7 @@ interface OtpInputProps {
 export function OtpInput({
   value,
   onChange,
-  length = OTP_LENGTH,
+  length = 4,
   autoFocus = false,
 }: OtpInputProps): React.ReactElement {
   const inputRef = useRef<RNTextInput>(null);

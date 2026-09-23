@@ -83,8 +83,6 @@ describe('AuthService', () => {
   };
   let redis: { get: jest.Mock; incrementWithTtl: jest.Mock; del: jest.Mock; setWithTtl: jest.Mock };
 
-  let jwt: { signAsync: jest.Mock; verifyAsync: jest.Mock };
-
   beforeEach(async () => {
     prisma = {
       user: { findUnique: jest.fn(), create: jest.fn(), update: jest.fn() },
@@ -97,17 +95,13 @@ describe('AuthService', () => {
       del: jest.fn(),
       setWithTtl: jest.fn(),
     };
-    jwt = {
-      signAsync: jest.fn().mockResolvedValue('signed'),
-      verifyAsync: jest.fn(),
-    };
 
     const moduleRef = await Test.createTestingModule({
       providers: [
         AuthService,
         { provide: PrismaService, useValue: prisma },
         { provide: RedisService, useValue: redis },
-        { provide: JwtService, useValue: jwt },
+        { provide: JwtService, useValue: { signAsync: jest.fn().mockResolvedValue('signed') } },
         {
           provide: ConfigService,
           useValue: { getOrThrow: () => 'a-very-long-test-secret', get: () => '15m' },
@@ -243,34 +237,6 @@ describe('AuthService', () => {
       data: { tokenVersion: { increment: 1 } },
     });
     expect(redis.del).toHaveBeenCalledWith('refresh:user-1');
-  });
-
-  it('logoutWithRefreshToken revokes session without requiring an access JWT', async () => {
-    jwt.verifyAsync.mockResolvedValue({
-      sub: 'user-1',
-      tokenVersion: 1,
-      jti: 'jti-1',
-      type: 'refresh',
-    });
-    prisma.user.update.mockResolvedValue(makeUser({ tokenVersion: 2 }));
-
-    await service.logoutWithRefreshToken('refresh-jwt');
-
-    expect(jwt.verifyAsync).toHaveBeenCalled();
-    expect(prisma.user.update).toHaveBeenCalledWith({
-      where: { id: 'user-1' },
-      data: { tokenVersion: { increment: 1 } },
-    });
-    expect(redis.del).toHaveBeenCalledWith('refresh:user-1');
-  });
-
-  it('logoutWithRefreshToken is a no-op when the refresh token is invalid', async () => {
-    jwt.verifyAsync.mockRejectedValue(new Error('jwt expired'));
-
-    await service.logoutWithRefreshToken('bad-refresh');
-
-    expect(prisma.user.update).not.toHaveBeenCalled();
-    expect(redis.del).not.toHaveBeenCalled();
   });
 });
 

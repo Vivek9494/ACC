@@ -1,11 +1,11 @@
-import { AuthErrorCode, OTP_LENGTH } from '@acc/types';
+import { AuthErrorCode } from '@acc/types';
 
 import { ApiRequestError } from './api';
 
 export const PASSWORD_RESET_MESSAGES = {
   mobileRequired: 'Mobile number is required',
   mobileInvalid: 'Enter a valid 10-digit mobile number',
-  otpRequired: `Enter the ${OTP_LENGTH}-digit code`,
+  otpRequired: 'Enter the 4-digit code',
   otpInvalid: 'Invalid or expired code',
   otpAttemptsExceeded: 'Too many incorrect attempts. Please request a new code.',
   resendCooldown: 'Please wait before requesting another code.',

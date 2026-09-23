@@ -79,12 +79,12 @@ Same Netlify site / origin as the score strip:
 |------|-----|
 | Score strip | `/?matchId=…` |
 | Graphics (OBS) | `/graphics.html?matchId=…` |
-| Control panel | **Retired** — use the ASC mobile scoring cockpit Overlay Control (authenticated). `/control.html` shows a retirement notice only. |
+| Control panel | `/control.html?matchId=…` |
 
 **V1 graphics (manual):** partnership, fall of wicket, batsman card, bowler card (this match), **bowler career stats**, **batsman career stats**, innings break. **Toss** and **Runs to win** are strip-only (replace CRR | overs remaining on the score bar).
 
 - **Single OBS source (recommended):** root `/?matchId=…` renders the score strip **and** full-screen graphics via a shared `graphics-stage` layer (centered above the strip). `graphics.html` remains available and uses the same module.
-- Live data from `/live` + scorecard (partnership / FOW / innings / this-match figures). Subscribe/listen on `/live` stays **unauthenticated** (OBS). Emitting `graphics:command` requires an operator JWT + SCORE_BALL (cockpit only).
+- Live data from `/live` + scorecard (partnership / FOW / innings / this-match figures).
 - **In-play batsman card:** this-innings only (full name + runs*(balls); Dot Balls / 2s / 4s / 6s / SR). No career/broadcast-stats fetch. Dot balls derived as `balls − ones − twos − threes − fours − sixes`.
 - Career photo + summary via `GET /broadcast/players/:userId/stats?ballType=LEATHER|TENNIS` (includes batting innings/30s/50s/HS context, bowling average, economy, and underlying bowling totals for live merge) — used by career cards only.
 - Photo missing → initials fallback. One full-screen graphic on air at a time; **Hide all** clears cards + strip overrides.
@@ -94,13 +94,13 @@ Same Netlify site / origin as the score strip:
 - **Bowler Career Stats:** shown on the **score strip page** (`/?matchId=…`) as a bottom navy/purple bar (Matches / Wickets / Average / Economy / Best). Figures **include the current match live** (career totals + this-match bowling, recomputed from underlying runs/balls/wickets). Replaces the strip while on air; strip returns on Hide. Show disabled until career bowling stats exist for the match ball type.
 - **Batsman Career Stats:** full-screen card on the **root strip page** and `graphics.html` via the shared graphics stage (photo, LEATHER/TENNIS CAREER header, innings / runs / avg / SR / 30s / 50s, highest score + optional opponent/venue). Centered above the strip; strip keeps updating. Graphics fetch/render is **isolated** (try/catch). Uses the **match ball type only**. Independent of the in-play batsman card. Show disabled until career batting stats exist for that ball type.
 
-**Operator control:** ASC mobile scoring cockpit **Overlay Control** panel (signed-in scorer / Captain / VC). Public `control.html` no longer emits commands.
+**Control panel (operator):** sticky on-air dock + one-tap **Take off air**; section highlight when that graphic is live; live previews; Show disabled until data is ready; batsman/bowler pickers grouped (crease / this innings / all).
 
 Local:
 
 ```bash
 pnpm --filter @acc/scoring-overlay dev
-# Graphics: http://localhost:5178/graphics.html?matchId=UUID
-# Strip:     http://localhost:5178/?matchId=UUID
-# Optional local API (display pages only): &api=http://localhost:3001
+# Control:  http://localhost:5179/control.html?matchId=UUID
+# Graphics: http://localhost:5179/graphics.html?matchId=UUID
+# Optional local API: &api=http://localhost:3001
 ```

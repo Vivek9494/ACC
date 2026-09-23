@@ -3,41 +3,272 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ASC Graphics Control — retired</title>
-    <style>
-      body {
-        margin: 0;
-        min-height: 100vh;
-        display: grid;
-        place-items: center;
-        font-family: system-ui, sans-serif;
-        background: #0f172a;
-        color: #e2e8f0;
-        padding: 1.5rem;
-      }
-      main {
-        max-width: 32rem;
-        text-align: center;
-      }
-      h1 {
-        font-size: 1.25rem;
-        margin: 0 0 0.75rem;
-      }
-      p {
-        margin: 0;
-        line-height: 1.5;
-        color: #94a3b8;
-      }
-    </style>
+    <title>ASC Graphics Control</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&display=swap"
+      rel="stylesheet"
+    />
   </head>
-  <body>
-    <main>
-      <h1>Graphics control moved</h1>
-      <p>
-        Public browser control is retired for security. Use the ASC mobile scoring cockpit
-        Overlay Control panel while signed in as the match scorer (or Captain / Vice Captain).
-        OBS display pages (<code>/?matchId=</code>, <code>graphics.html</code>) are unchanged.
+  <body class="control-body">
+    <aside id="on-air-dock" class="on-air-dock" aria-live="polite">
+      <div class="on-air-copy">
+        <p id="on-air" class="on-air-value">Nothing on air</p>
+        <p id="on-air-detail" class="on-air-detail"></p>
+      </div>
+      <button type="button" id="btn-clear-air" class="btn btn-danger" disabled>
+        Take off air
+      </button>
+    </aside>
+
+    <main class="control-shell">
+      <header class="control-header">
+        <div class="header-top">
+          <h1>ASC Graphics</h1>
+          <p id="conn-label" class="conn-label">Connecting…</p>
+        </div>
+        <p id="match-label" class="match-label">Loading…</p>
+      </header>
+
+      <section class="control-group team-panels">
+        <div class="team-columns">
+          <div class="team-column" data-team-side="a">
+            <h2 class="group-title team-title" data-team-title="a">Team A</h2>
+            <div class="team-controls">
+              <article class="team-control" data-team-action="playing_xi">
+                <div class="team-control-head">
+                  <h3>Playing XI</h3>
+                  <span class="on-air-badge" hidden>ON AIR</span>
+                </div>
+                <button type="button" class="btn btn-primary btn-team-show" data-team-side="a" data-team-action="playing_xi">Show</button>
+              </article>
+              <article class="team-control" data-team-action="batting_lineup">
+                <div class="team-control-head">
+                  <h3>Batting card</h3>
+                  <span class="on-air-badge" hidden>ON AIR</span>
+                </div>
+                <button type="button" class="btn btn-primary btn-team-show" data-team-side="a" data-team-action="batting_lineup">Show</button>
+              </article>
+              <article class="team-control" data-team-action="bowling">
+                <div class="team-control-head">
+                  <h3>Bowling</h3>
+                  <span class="on-air-badge" hidden>ON AIR</span>
+                </div>
+                <button type="button" class="btn btn-primary btn-team-show" data-team-side="a" data-team-action="bowling">Show</button>
+              </article>
+              <article class="team-control" data-team-action="partnerships">
+                <div class="team-control-head">
+                  <h3>Partnership</h3>
+                  <span class="on-air-badge" hidden>ON AIR</span>
+                </div>
+                <button type="button" class="btn btn-primary btn-team-show" data-team-side="a" data-team-action="partnerships">Show</button>
+              </article>
+              <article class="team-control" data-team-action="fow">
+                <div class="team-control-head">
+                  <h3>Last wicket</h3>
+                  <span class="on-air-badge" hidden>ON AIR</span>
+                </div>
+                <button type="button" class="btn btn-primary btn-team-show" data-team-side="a" data-team-action="fow">Show</button>
+              </article>
+              <article class="team-control" data-team-action="batsman">
+                <div class="team-control-head">
+                  <h3>Batsman</h3>
+                  <span class="on-air-badge" hidden>ON AIR</span>
+                </div>
+                <select class="field-select team-pick" data-team-side="a" data-pick="batsman" aria-label="Team A batsman"></select>
+                <button type="button" class="btn btn-primary btn-team-show" data-team-side="a" data-team-action="batsman">Show</button>
+              </article>
+              <article class="team-control" data-team-action="bowler">
+                <div class="team-control-head">
+                  <h3>Bowler</h3>
+                  <span class="on-air-badge" hidden>ON AIR</span>
+                </div>
+                <select class="field-select team-pick" data-team-side="a" data-pick="bowler" aria-label="Team A bowler"></select>
+                <button type="button" class="btn btn-primary btn-team-show" data-team-side="a" data-team-action="bowler">Show</button>
+              </article>
+              <article class="team-control" data-team-action="batsman_career">
+                <div class="team-control-head">
+                  <h3>Batsman career</h3>
+                  <span class="on-air-badge" hidden>ON AIR</span>
+                </div>
+                <select class="field-select team-pick" data-team-side="a" data-pick="batsman_career" aria-label="Team A batsman career"></select>
+                <button type="button" class="btn btn-primary btn-team-show" data-team-side="a" data-team-action="batsman_career">Show</button>
+              </article>
+              <article class="team-control" data-team-action="bowler_career">
+                <div class="team-control-head">
+                  <h3>Bowler career</h3>
+                  <span class="on-air-badge" hidden>ON AIR</span>
+                </div>
+                <select class="field-select team-pick" data-team-side="a" data-pick="bowler_career" aria-label="Team A bowler career"></select>
+                <button type="button" class="btn btn-primary btn-team-show" data-team-side="a" data-team-action="bowler_career">Show</button>
+              </article>
+            </div>
+          </div>
+
+          <div class="team-column" data-team-side="b">
+            <h2 class="group-title team-title" data-team-title="b">Team B</h2>
+            <div class="team-controls">
+              <article class="team-control" data-team-action="playing_xi">
+                <div class="team-control-head">
+                  <h3>Playing XI</h3>
+                  <span class="on-air-badge" hidden>ON AIR</span>
+                </div>
+                <button type="button" class="btn btn-primary btn-team-show" data-team-side="b" data-team-action="playing_xi">Show</button>
+              </article>
+              <article class="team-control" data-team-action="batting_lineup">
+                <div class="team-control-head">
+                  <h3>Batting card</h3>
+                  <span class="on-air-badge" hidden>ON AIR</span>
+                </div>
+                <button type="button" class="btn btn-primary btn-team-show" data-team-side="b" data-team-action="batting_lineup">Show</button>
+              </article>
+              <article class="team-control" data-team-action="bowling">
+                <div class="team-control-head">
+                  <h3>Bowling</h3>
+                  <span class="on-air-badge" hidden>ON AIR</span>
+                </div>
+                <button type="button" class="btn btn-primary btn-team-show" data-team-side="b" data-team-action="bowling">Show</button>
+              </article>
+              <article class="team-control" data-team-action="partnerships">
+                <div class="team-control-head">
+                  <h3>Partnership</h3>
+                  <span class="on-air-badge" hidden>ON AIR</span>
+                </div>
+                <button type="button" class="btn btn-primary btn-team-show" data-team-side="b" data-team-action="partnerships">Show</button>
+              </article>
+              <article class="team-control" data-team-action="fow">
+                <div class="team-control-head">
+                  <h3>Last wicket</h3>
+                  <span class="on-air-badge" hidden>ON AIR</span>
+                </div>
+                <button type="button" class="btn btn-primary btn-team-show" data-team-side="b" data-team-action="fow">Show</button>
+              </article>
+              <article class="team-control" data-team-action="batsman">
+                <div class="team-control-head">
+                  <h3>Batsman</h3>
+                  <span class="on-air-badge" hidden>ON AIR</span>
+                </div>
+                <select class="field-select team-pick" data-team-side="b" data-pick="batsman" aria-label="Team B batsman"></select>
+                <button type="button" class="btn btn-primary btn-team-show" data-team-side="b" data-team-action="batsman">Show</button>
+              </article>
+              <article class="team-control" data-team-action="bowler">
+                <div class="team-control-head">
+                  <h3>Bowler</h3>
+                  <span class="on-air-badge" hidden>ON AIR</span>
+                </div>
+                <select class="field-select team-pick" data-team-side="b" data-pick="bowler" aria-label="Team B bowler"></select>
+                <button type="button" class="btn btn-primary btn-team-show" data-team-side="b" data-team-action="bowler">Show</button>
+              </article>
+              <article class="team-control" data-team-action="batsman_career">
+                <div class="team-control-head">
+                  <h3>Batsman career</h3>
+                  <span class="on-air-badge" hidden>ON AIR</span>
+                </div>
+                <select class="field-select team-pick" data-team-side="b" data-pick="batsman_career" aria-label="Team B batsman career"></select>
+                <button type="button" class="btn btn-primary btn-team-show" data-team-side="b" data-team-action="batsman_career">Show</button>
+              </article>
+              <article class="team-control" data-team-action="bowler_career">
+                <div class="team-control-head">
+                  <h3>Bowler career</h3>
+                  <span class="on-air-badge" hidden>ON AIR</span>
+                </div>
+                <select class="field-select team-pick" data-team-side="b" data-pick="bowler_career" aria-label="Team B bowler career"></select>
+                <button type="button" class="btn btn-primary btn-team-show" data-team-side="b" data-team-action="bowler_career">Show</button>
+              </article>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="control-group">
+        <h2 class="group-title">Common</h2>
+        <div class="card-grid">
+          <article id="sec-toss" class="control-card" data-graphic="toss">
+            <div class="card-head">
+              <h3>Toss</h3>
+              <span class="on-air-badge" hidden>ON STRIP</span>
+            </div>
+            <p id="preview-toss" class="card-preview">Waiting for toss…</p>
+            <button type="button" id="btn-show-toss" class="btn btn-primary" disabled>
+              Show toss
+            </button>
+          </article>
+          <article id="sec-chase" class="control-card" data-graphic="chase">
+            <div class="card-head">
+              <h3>Runs to win</h3>
+              <span class="on-air-badge" hidden>ON STRIP</span>
+            </div>
+            <p id="preview-chase" class="card-preview">Waiting for chase…</p>
+            <button type="button" id="btn-show-chase" class="btn btn-primary" disabled>
+              Show runs to win
+            </button>
+          </article>
+          <article id="sec-playing-xi-both" class="control-card" data-graphic="playing_xi">
+            <div class="card-head">
+              <h3>Both teams — Playing XI</h3>
+              <span class="on-air-badge" hidden>ON AIR</span>
+            </div>
+            <p id="preview-playing-xi" class="card-preview">Waiting for squads…</p>
+            <button type="button" id="btn-show-playing-xi" class="btn btn-primary" disabled>
+              Show playing XI
+            </button>
+          </article>
+          <article id="sec-toss-result" class="control-card" data-graphic="toss_result">
+            <div class="card-head">
+              <h3>Toss result</h3>
+              <span class="on-air-badge" hidden>ON AIR</span>
+            </div>
+            <p id="preview-toss-result" class="card-preview">Waiting for toss…</p>
+            <button type="button" id="btn-show-toss-result" class="btn btn-primary" disabled>
+              Show toss result
+            </button>
+          </article>
+          <article id="sec-partnership" class="control-card" data-graphic="partnership">
+            <div class="card-head">
+              <h3>Current Partnership</h3>
+              <span class="on-air-badge" hidden>ON AIR</span>
+            </div>
+            <p id="preview-partnership" class="card-preview">Waiting for partnership…</p>
+            <button type="button" id="btn-show-partnership" class="btn btn-primary" disabled>
+              Show partnership
+            </button>
+          </article>
+          <article id="sec-innings" class="control-card control-card-wide" data-graphic="innings_break">
+            <div class="card-head">
+              <h3>Innings break</h3>
+              <span class="on-air-badge" hidden>ON AIR</span>
+            </div>
+            <p id="preview-innings" class="card-preview">Waiting for innings…</p>
+            <button type="button" id="btn-show-innings" class="btn btn-primary" disabled>
+              Show innings break
+            </button>
+            <div id="innings-tabs" class="btn-row innings-tabs" hidden>
+              <button type="button" class="btn btn-secondary innings-tab is-active-tab" data-innings-view="batting">
+                Batting
+              </button>
+              <button type="button" class="btn btn-secondary innings-tab" data-innings-view="bowling">
+                Bowling
+              </button>
+              <button type="button" class="btn btn-secondary innings-tab" data-innings-view="fow">
+                Fall of wickets
+              </button>
+              <button type="button" class="btn btn-secondary innings-tab" data-innings-view="partnerships">
+                Partnerships
+              </button>
+              <button type="button" class="btn btn-secondary innings-tab" data-innings-view="overs">
+                Overs summary
+              </button>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <p class="hint">
+        Pair with <code>graphics.html?matchId=…</code> (full-screen cards) and
+        <code>/?matchId=…</code> (score strip — toss). Same matchId + api.
       </p>
     </main>
+    <script type="module" src="/src/control-main.ts"></script>
   </body>
 </html>

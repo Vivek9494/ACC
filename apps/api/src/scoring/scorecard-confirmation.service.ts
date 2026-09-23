@@ -37,7 +37,6 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { activeMatchFirstWhere } from '../matches/match-query';
 import { isCaptainOrViceCaptain } from '../authz/team-leader.util';
-import { TennisTournamentVisibilityService } from '../tournaments/tennis-tournament-visibility.service';
 import { ScorecardReader } from './scorecard-reader';
 
 /** Match states awaiting a §13.1 confirmation. No Result still locks (§5.2). */
@@ -67,7 +66,6 @@ export class ScorecardConfirmationService {
     private readonly knockoutProgression: KnockoutProgressionService,
     private readonly notifications: NotificationsService,
     private readonly notificationAudience: NotificationAudienceService,
-    private readonly tennisVisibility: TennisTournamentVisibilityService,
   ) {}
 
   // --- Manual confirmation (§13.1) -----------------------------------------
@@ -397,29 +395,14 @@ export class ScorecardConfirmationService {
     };
   }
 
-  async status(
-    matchId: string,
-    viewer: AuthUser | null = null,
-  ): Promise<ScorecardConfirmationView> {
+  async status(matchId: string): Promise<ScorecardConfirmationView> {
     await this.evaluateAutoConfirm(matchId);
-    const match = await this.requireMatch(matchId);
-    const tournament = await this.prisma.tournament.findUnique({
-      where: { id: match.tournamentId },
-      select: { id: true, type: true, ballType: true, isDeleted: true },
-    });
-    if (!tournament || tournament.isDeleted) {
-      throw new NotFoundException({ message: 'Match not found', error: 'MATCH_NOT_FOUND' });
-    }
-    await this.tennisVisibility.assertCanViewCenterLevelTournament(viewer, tournament, {
-      allowUnauthenticated: true,
-    });
-    return this.toView(match);
+    return this.toView(await this.requireMatch(matchId));
   }
 
   /**
    * Captain/VC dashboard cards — own-team pending confirmations only (§13.1).
-   * Excludes soft-deleted fixtures, already-locked scorecards, and Admin/Club
-   * Manager overrides (those users confirm on the scorecard screen).
+   * Excludes Admin/Club Manager override path; those users confirm on the scorecard.
    */
   async listPendingDashboardConfirmations(
     actor: AuthUser,
@@ -442,10 +425,8 @@ export class ScorecardConfirmationService {
 
     const matches = await this.prisma.match.findMany({
       where: {
-        isDeleted: false,
         state: { in: AWAITING_CONFIRMATION },
         adminConfirmed: false,
-        confirmedAt: null,
         OR: [{ homeTeamId: { in: teamIds } }, { awayTeamId: { in: teamIds } }],
       },
       include: {
@@ -458,9 +439,7 @@ export class ScorecardConfirmationService {
 
     const results: PendingScorecardConfirmationCardView[] = [];
     for (const match of matches) {
-      // Soft-deleted / locked rows are filtered in the query; keep these checks
-      // so a finalized override cannot resurface if flags drift.
-      if (isScorecardLocked(match) || isScorecardFinalized(match)) {
+      if (isScorecardFinalized(match)) {
         continue;
       }
       const side = await this.resolveCaptainConfirmSide(actor, match);

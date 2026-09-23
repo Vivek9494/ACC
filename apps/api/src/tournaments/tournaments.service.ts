@@ -34,7 +34,6 @@ import {
   TournamentType,
   UserRole,
   canManageLeatherInvites,
-  canManageKnockoutBracket,
 } from '@acc/types';
 import { decimalToNumberOrNull, numberToDecimalOrNull } from '../common/decimal.util';
 import {
@@ -48,8 +47,8 @@ import type { Prisma, Tournament } from '@prisma/client';
 
 import { PermissionService } from '../authz/permission.service';
 import { resolveOrHealCenterSevakCenterIds } from '../authz/center-sevak-assignment';
-import { favouritesLeadTeamIdInTournament } from '../authz/team-leader.util';
 import {
+  assertCanScheduleTournamentMatches,
   canActorScheduleTournamentMatches,
   viewerLeaderTeamIdsInTournament,
 } from '../matches/create-match-auth.util';
@@ -316,6 +315,10 @@ export class TournamentsService {
     if (!row) {
       throw new NotFoundException({ message: 'Tournament not found', error: 'NOT_FOUND' });
     }
+    await this.tennisVisibility.assertCanViewCenterLevelTournament(viewer, {
+      id: row.id,
+      type: row.type,
+    });
     const isCancelled = row.isDeleted;
     if (isCancelled && !viewer) {
       throw new NotFoundException({ message: 'Tournament not found', error: 'NOT_FOUND' });
@@ -330,22 +333,16 @@ export class TournamentsService {
         id: row.id,
         createdByUserId: row.createdByUserId,
         ballType: row.ballType as BallType,
-        type: row.type,
       });
       canEditForView = menuPermissions.canEdit;
     }
 
-    // Shared choke point: leather invite gate; tennis remains publicly viewable.
     if (!isCancelled) {
-      await this.tennisVisibility.assertCanViewCenterLevelTournament(
+      await this.leatherVisibility.assertCanViewLeatherTournament(
         viewer,
+        id,
+        row.ballType as BallType,
         {
-          id: row.id,
-          type: row.type,
-          ballType: row.ballType,
-        },
-        {
-          allowUnauthenticated: true,
           allowClubManagerManagement: viewer?.role === UserRole.ClubManager,
           allowEditor: canEditForView,
         },
@@ -483,17 +480,11 @@ export class TournamentsService {
           { tournamentId: id },
         );
         if (registrationVerificationComplete) {
-          const favouriteTeamId = await favouritesLeadTeamIdInTournament(
-            this.prisma,
-            viewer.id,
-            id,
+          canViewFavouritePlayers = await this.permissions.check(
+            Permission.FAVOURITE_PLAYERS,
+            viewer,
+            { tournamentId: id },
           );
-          canViewFavouritePlayers =
-            favouriteTeamId != null &&
-            (await this.permissions.check(Permission.FAVOURITE_PLAYERS, viewer, {
-              tournamentId: id,
-              teamId: favouriteTeamId,
-            }));
         }
       }
     }
@@ -535,7 +526,6 @@ export class TournamentsService {
         id: row.id,
         createdByUserId: row.createdByUserId,
         ballType: row.ballType as BallType,
-        type: row.type,
       });
       canEdit = menuPermissions.canEdit;
       if (row.ballType === BallType.Leather) {
@@ -560,9 +550,6 @@ export class TournamentsService {
 
     const participatingCenterIds = await this.tournamentScorers.loadParticipatingCenterIds(id);
     const hasKnockoutBracket = await this.knockoutBracket.hasKnockoutBracket(id);
-    const canManageKnockoutBracketFlag = canManageKnockoutBracket(viewer, {
-      createdByUserId: row.createdByUserId,
-    });
     const scorerFlags = await this.tournamentScorers.buildViewerFlags(
       viewer,
       id,
@@ -574,7 +561,6 @@ export class TournamentsService {
     return {
       ...detailBase,
       hasKnockoutBracket,
-      canManageKnockoutBracket: canManageKnockoutBracketFlag,
       myTeamId,
       hasRegistrationWindow,
       registrationIsOpen: isTournamentRegistrationOpen(detailBase),
@@ -958,16 +944,10 @@ export class TournamentsService {
     const existing = await this.prisma.tournament.findUnique({ where: { id: tournamentId } });
     assertTournamentActive(existing);
 
-    // Tournament-wide structure — organizers only (not team captains via OwnTeam).
-    const allowed = await this.permissions.check(Permission.EDIT_TOURNAMENT, actor, {
-      tournamentId,
+    await assertCanScheduleTournamentMatches(this.permissions, this.prisma, actor, {
+      id: existing.id,
+      ballType: existing.ballType as BallType,
     });
-    if (!allowed) {
-      throw new ForbiddenException({
-        message: 'You do not have permission to set the match scheduling format',
-        error: 'FORBIDDEN',
-      });
-    }
 
     await this.assertCenterSevakTournamentAccess(actor, existing);
 
@@ -1018,54 +998,47 @@ export class TournamentsService {
 
   // --- helpers -------------------------------------------------------------
 
-/**
- * Center Sevak may edit/delete only single-center CENTER tournaments that
- * belong to one of their assigned centers. APL and multi-center tournaments
- * are never in scope (participating center ≠ organizing rights). Other roles
- * rely on RBAC at the guard.
- */
-async assertCenterSevakTournamentAccess(
-  actor: AuthUser,
-  tournament: { id: string; type: string; createdByUserId: string },
-): Promise<void> {
-  if (actor.role !== UserRole.CenterSevak) {
-    return;
+  /**
+   * Center Sevak may edit/delete only tournaments they created or that belong to
+   * one of their scoped centers (§7.4). Other roles rely on RBAC at the guard.
+   */
+  async assertCenterSevakTournamentAccess(
+    actor: AuthUser,
+    tournament: { id: string; createdByUserId: string },
+  ): Promise<void> {
+    if (actor.role !== UserRole.CenterSevak) {
+      return;
+    }
+    const allowed = await this.centerSevakCanModifyTournament(actor.id, tournament);
+    if (!allowed) {
+      throw new ForbiddenException({
+        message: 'You can only edit or delete tournaments you created or that belong to your center',
+        error: 'FORBIDDEN',
+      });
+    }
   }
-  const allowed = await this.centerSevakCanModifyTournament(actor.id, tournament);
-  if (!allowed) {
-    throw new ForbiddenException({
-      message:
-        'You can only edit or delete single-center tournaments that belong to your center',
-      error: 'FORBIDDEN',
-    });
-  }
-}
 
-/**
- * Center-scoped modify check for dashboard permissions and service enforcement.
- * Creator identity alone is not enough — the tournament must be CENTER with
- * exactly one linked center that matches the Sevak's assignment.
- */
-async centerSevakCanModifyTournament(
-  userId: string,
-  tournament: { id: string; type: string },
-): Promise<boolean> {
-  if (tournament.type !== TournamentType.Center) {
-    return false;
+  /** Ownership check for dashboard permissions and service-layer enforcement. */
+  async centerSevakCanModifyTournament(
+    userId: string,
+    tournament: { id: string; createdByUserId: string },
+  ): Promise<boolean> {
+    if (tournament.createdByUserId === userId) {
+      return true;
+    }
+    const centerIds = await this.resolveCenterSevakCenterIds(userId);
+    if (centerIds.length === 0) {
+      return false;
+    }
+    const link = await this.prisma.tournamentCenter.findFirst({
+      where: {
+        tournamentId: tournament.id,
+        centerId: { in: centerIds },
+      },
+      select: { centerId: true },
+    });
+    return link !== null;
   }
-  const centerIds = await this.resolveCenterSevakCenterIds(userId);
-  if (centerIds.length === 0) {
-    return false;
-  }
-  const links = await this.prisma.tournamentCenter.findMany({
-    where: { tournamentId: tournament.id },
-    select: { centerId: true },
-  });
-  if (links.length !== 1) {
-    return false;
-  }
-  return centerIds.includes(links[0]!.centerId);
-}
 
   async resolveCenterSevakCenterIds(userId: string): Promise<string[]> {
     return resolveOrHealCenterSevakCenterIds(this.prisma, userId);
@@ -1074,7 +1047,7 @@ async centerSevakCanModifyTournament(
   /** Resolves tournament card permissions for role dashboards. */
   async resolveTournamentMenuPermissions(
     actor: AuthUser,
-    tournament: { id: string; createdByUserId: string; ballType: BallType; type: string },
+    tournament: { id: string; createdByUserId: string; ballType: BallType },
     targetCenterId?: string,
   ): Promise<TournamentDashboardPermissions> {
     const refs = targetCenterId
@@ -1112,7 +1085,7 @@ async centerSevakCanModifyTournament(
   /** Resolves tournament card permissions for the Center Sevak dashboard. */
   async resolveDashboardPermissions(
     actor: AuthUser,
-    tournament: { id: string; createdByUserId: string; ballType: BallType; type: string },
+    tournament: { id: string; createdByUserId: string; ballType: BallType },
     actionCenterId: string,
   ): Promise<TournamentDashboardPermissions> {
     return this.resolveTournamentMenuPermissions(actor, tournament, actionCenterId);
