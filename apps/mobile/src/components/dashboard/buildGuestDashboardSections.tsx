@@ -72,7 +72,7 @@ export function buildGuestDashboardSections(
     return [
       <View key="empty" className="gap-2 py-4">
         <Text className="font-sans text-base text-on-surface-variant">
-          No matches scheduled yet. Browse tournaments to see what&apos;s coming up.
+          Nothing to show yet. Check back soon for upcoming matches and tournaments.
         </Text>
       </View>,
     ];

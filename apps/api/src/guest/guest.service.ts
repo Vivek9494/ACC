@@ -1,6 +1,8 @@
 import {
+  BallType,
   type GuestDashboard,
   deriveTournamentDisplayStatus,
+  selectDashboardTournaments,
   type TournamentSummary,
 } from '@acc/types';
 import { Injectable } from '@nestjs/common';
@@ -24,20 +26,13 @@ export class GuestService {
   ) {}
 
   async getDashboard(): Promise<GuestDashboard> {
-    const [liveMatches, upcomingMatches, recentMatch] = await Promise.all([
-      this.dashboardFeaturedMatches.loadLiveMatches(null),
-      this.dashboardFeaturedMatches.loadUpcomingMatches(null),
-      this.dashboardFeaturedMatches.loadGuestMostRecentCompletedMatch(),
-    ]);
-
-    const featuredTournamentId =
-      liveMatches[0]?.tournamentId ??
-      upcomingMatches[0]?.tournamentId ??
-      recentMatch?.tournamentId ??
-      null;
-    const featuredTournament = featuredTournamentId
-      ? await this.loadTournamentById(featuredTournamentId)
-      : null;
+    const [liveMatches, upcomingMatches, recentMatch, featuredTournament] =
+      await Promise.all([
+        this.dashboardFeaturedMatches.loadLiveMatches(null),
+        this.dashboardFeaturedMatches.loadUpcomingMatches(null),
+        this.dashboardFeaturedMatches.loadGuestMostRecentCompletedMatch(),
+        this.loadFeaturedTournament(),
+      ]);
 
     return {
       liveMatches,
@@ -47,15 +42,29 @@ export class GuestService {
     };
   }
 
-  private async loadTournamentById(tournamentId: string): Promise<TournamentSummary | null> {
-    const row = await this.prisma.tournament.findFirst({
+  /**
+   * Same priority as role homes ({@link selectDashboardTournaments}):
+   * all Upcoming then Live, else single most-recent Completed.
+   * Guest visibility: Tennis / public only — never Leather.
+   */
+  private async loadFeaturedTournament(): Promise<TournamentSummary | null> {
+    const rows = await this.prisma.tournament.findMany({
       where: {
-        id: tournamentId,
         ...activeTournamentWhere,
+        ballType: BallType.Tennis,
       },
       include: { _count: { select: activeTeamCountSelect } },
     });
-    return row ? this.toTournamentSummary(row) : null;
+
+    const candidates = await Promise.all(
+      rows.map(async (row) => {
+        const tournament = await this.toTournamentSummary(row);
+        return { tournament, cancelled: false as const };
+      }),
+    );
+
+    const [featured] = selectDashboardTournaments(candidates);
+    return featured?.tournament ?? null;
   }
 
   private async toTournamentSummary(row: TournamentWithCounts): Promise<TournamentSummary> {

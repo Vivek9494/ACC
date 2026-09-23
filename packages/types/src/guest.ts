@@ -38,6 +38,10 @@ export interface GuestDashboard {
   upcomingMatches: CaptainFeaturedMatchSummary[];
   /** Most recently completed fixture when nothing is live (unchanged). */
   recentMatch: CaptainFeaturedMatchSummary | null;
-  /** Tournament for the featured match(es) — live, else upcoming, else recent. */
+  /**
+   * Featured public (tennis) tournament — Upcoming/Live via
+   * {@link selectDashboardTournaments}, else most-recent Completed.
+   * Null only when no guest-visible tournaments exist.
+   */
   featuredTournament: TournamentSummary | null;
 }
