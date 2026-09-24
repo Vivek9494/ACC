@@ -244,11 +244,13 @@ export const PERMISSION_MATRIX: Record<Permission, PermissionRule> = {
     grants: [{ subject: R.Admin }, { subject: R.ClubManager }, { subject: R.CenterSevak }],
   },
   [Permission.EDIT_TOURNAMENT]: {
+    // Organizer is type-aware via PermissionService.isOrganizer (canOrganizeTournament):
+    // APL = Admin+CM; multi-center CENTER = Admin+participating Sevak (no CM);
+    // single-center/leather = existing CM + Sevak creator/own-center rules.
     grants: [
       { subject: R.Admin },
-      { subject: R.ClubManager },
+      { subject: R.ClubManager, scope: PermissionScope.Organizer },
       { subject: R.CenterSevak, scope: PermissionScope.Organizer, tournamentTypes: TENNIS_TYPES },
-      { subject: R.CenterSevak, scope: PermissionScope.OwnCenter, tournamentTypes: TENNIS_TYPES },
     ],
   },
   [Permission.CHANGE_TOURNAMENT_STATUS]: {
@@ -259,12 +261,12 @@ export const PERMISSION_MATRIX: Record<Permission, PermissionRule> = {
     ],
   },
   [Permission.CREATE_MATCH]: {
-    // Admin / Club Manager build fixtures platform-wide (§11, §27). Center Sevak for
-    // own tennis tournaments. Captain / VC may schedule Leather (ACC) fixtures involving
-    // their own team only — enforced on create.
+    // Admin always. Club Manager / Center Sevak when type-aware organizers
+    // (canOrganizeTournament). Captain / VC may schedule Leather (ACC) fixtures
+    // involving their own team only — enforced on create.
     grants: [
       { subject: R.Admin },
-      { subject: R.ClubManager },
+      { subject: R.ClubManager, scope: PermissionScope.Organizer },
       { subject: R.CenterSevak, scope: PermissionScope.Organizer, tournamentTypes: TENNIS_TYPES },
       ...captainAndDeputy().map((grant) => ({ ...grant, tournamentTypes: ACC_ONLY })),
     ],

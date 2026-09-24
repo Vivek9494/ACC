@@ -1,6 +1,8 @@
 import { colors } from '@/theme/colors';
 import {
+  BallType,
   MatchCardDisplayState,
+  type BallType as BallTypeValue,
   type MatchListItem,
 } from '@acc/types';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -64,6 +66,7 @@ function MatchListCard({
   onWatchLivePress,
   onScorecardPress,
   showLiveMatchDetails = false,
+  showMatchVenue,
 }: {
   match: MatchListItem;
   menuActions: OverflowMenuAction[];
@@ -71,6 +74,8 @@ function MatchListCard({
   onWatchLivePress: () => void;
   onScorecardPress: () => void;
   showLiveMatchDetails?: boolean;
+  /** Leather only — Tennis uses one tournament-level ground. */
+  showMatchVenue: boolean;
 }): React.ReactElement {
   const isDeleted = match.isDeleted === true;
   const contextLabel = formatMatchListContextLabel(match);
@@ -78,7 +83,11 @@ function MatchListCard({
   const isCancelled = !isDeleted && match.displayState === MatchCardDisplayState.Cancelled;
   const isCompletedTerminal =
     !isDeleted && match.displayState === MatchCardDisplayState.Completed;
-  const venue = match.groundLocation?.trim();
+  const venue = showMatchVenue ? match.groundLocation?.trim() : undefined;
+  const showVenueRow =
+    !isDeleted &&
+    match.displayState === MatchCardDisplayState.Scheduled &&
+    Boolean(venue);
   const hasTeamScores = Boolean(match.teamA.scoreLine || match.teamB.scoreLine);
   const showResultSummary =
     !isDeleted &&
@@ -86,7 +95,7 @@ function MatchListCard({
     Boolean(match.resultSummary);
   const bodyGap = showResultSummary
     ? 'gap-2'
-    : hasTeamScores || (match.displayState === MatchCardDisplayState.Scheduled && venue)
+    : hasTeamScores || showVenueRow
       ? 'gap-6'
       : 'gap-4';
 
@@ -203,9 +212,7 @@ function MatchListCard({
           </Text>
         ) : null}
 
-        {!isDeleted && match.displayState === MatchCardDisplayState.Scheduled && venue ? (
-          <VenueRow venue={venue} />
-        ) : null}
+        {showVenueRow && venue ? <VenueRow venue={venue} /> : null}
       </Pressable>
 
       {isLive ? (
@@ -245,6 +252,8 @@ export interface MatchListProps {
   buildMenuActions?: (match: MatchListItem) => OverflowMenuAction[];
   /** Admin / Club Manager — secondary Details CTA beside Watch Live on live cards. */
   showLiveMatchDetails?: boolean;
+  /** Tournament ball type — venue row only on Leather match cards. */
+  ballType: BallTypeValue;
 }
 
 /** Tournament Matches tab — date-ordered match cards. */
@@ -255,7 +264,10 @@ export function MatchList({
   onScorecardPress,
   buildMenuActions,
   showLiveMatchDetails = false,
+  ballType,
 }: MatchListProps): React.ReactElement {
+  const showMatchVenue = ballType === BallType.Leather;
+
   return (
     <View className="gap-4">
       {matches.map((match) => (
@@ -267,6 +279,7 @@ export function MatchList({
           onWatchLivePress={() => onWatchLivePress(match.id)}
           onScorecardPress={() => onScorecardPress(match.id)}
           showLiveMatchDetails={showLiveMatchDetails}
+          showMatchVenue={showMatchVenue}
         />
       ))}
     </View>

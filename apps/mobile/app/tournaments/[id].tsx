@@ -710,6 +710,7 @@ export default function TournamentDetailScreen(): React.ReactElement {
                 groups={tournament.groups}
                 tournamentType={tournament.type}
                 canScheduleMatches={tournament.canScheduleMatches}
+                canEdit={tournament.canEdit}
                 matchSchedulingFormat={tournament.matchSchedulingFormat}
                 hasKnockoutBracket={tournament.hasKnockoutBracket}
                 tournamentName={tournament.name}
@@ -723,6 +724,7 @@ export default function TournamentDetailScreen(): React.ReactElement {
                 tournamentId={id}
                 numberOfTeams={tournament.numberOfTeams}
                 myTeamId={tournament.myTeamId}
+                canCreateTeam={tournament.canEdit}
                 onTeamsChanged={() => void load({ silent: true })}
                 teams={tournament.teams.map((team) => ({
                   id: team.id,
@@ -740,6 +742,7 @@ export default function TournamentDetailScreen(): React.ReactElement {
               <TournamentGroupsTab
                 tournamentId={id}
                 groups={tournament.groups}
+                canManageGroups={tournament.canEdit}
                 allTeams={tournament.teams.map((team) => ({
                   id: team.id,
                   tournamentId: id,

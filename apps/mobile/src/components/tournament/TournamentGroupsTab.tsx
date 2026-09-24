@@ -5,7 +5,6 @@ import { View } from 'react-native';
 
 import { Button } from '../ui/Button';
 import { useAuth } from '../../lib/auth-context';
-import { canScheduleTournamentMatches } from '../../lib/can-schedule-matches';
 import { tournamentSubpathHref } from '../../lib/tournament-detail-route';
 import { TabEmptyState } from '../ui/TabEmptyState';
 import { EditableTournamentGroupSection } from './EditableTournamentGroupSection';
@@ -16,6 +15,8 @@ export interface TournamentGroupsTabProps {
   tournamentId: string;
   groups: GroupSummary[];
   allTeams: TeamSummary[];
+  /** Server-resolved organizer flag (canEdit) — type-aware organize rights. */
+  canManageGroups?: boolean;
   onGroupsChanged: () => void | Promise<void>;
 }
 
@@ -24,11 +25,11 @@ export function TournamentGroupsTab({
   tournamentId,
   groups,
   allTeams,
+  canManageGroups = false,
   onGroupsChanged,
 }: TournamentGroupsTabProps): React.ReactElement {
   const router = useRouter();
   const { user } = useAuth();
-  const canManageGroups = canScheduleTournamentMatches(user);
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
 
   const handleEditStart = useCallback(

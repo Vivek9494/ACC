@@ -4,7 +4,6 @@ import { useCallback, useMemo } from 'react';
 import { Alert, Image, View } from 'react-native';
 
 import { useAuth } from '../../lib/auth-context';
-import { canCreateTournamentTeam } from '../../lib/can-create-team';
 import { canManageTournamentTeam } from '../../lib/can-manage-tournament-team';
 import { confirmDestructiveDeleteAlert } from '../../lib/confirm-destructive-delete';
 import { ApiRequestError, deleteTeam } from '../../lib/api';
@@ -21,6 +20,8 @@ export interface TournamentTeamsTabProps {
   numberOfTeams: number;
   /** Viewer roster team in this tournament; null when not on a team. */
   myTeamId?: string | null;
+  /** Server-resolved organizer flag (canEdit) for Add Team. */
+  canCreateTeam?: boolean;
   onTeamsChanged?: () => void;
 }
 
@@ -92,12 +93,12 @@ export function TournamentTeamsTab({
   teams,
   numberOfTeams,
   myTeamId = null,
+  canCreateTeam = false,
   onTeamsChanged,
 }: TournamentTeamsTabProps): React.ReactElement {
   const router = useRouter();
   const { user } = useAuth();
-  const canCreateTeam = canCreateTournamentTeam(user);
-  const canManage = canManageTournamentTeam(user);
+  const canManage = canCreateTeam && canManageTournamentTeam(user);
   const atTeamCap = teams.length >= numberOfTeams;
 
   const { myTeam, otherTeams } = useMemo(() => {

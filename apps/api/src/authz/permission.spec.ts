@@ -379,20 +379,29 @@ describe('PermissionService', () => {
       expect(result).toBe(false);
     });
 
-    it('allows Club Manager in ACC tournaments even when not the organizer', () => {
+    it('allows Club Manager in ACC tournaments when they are an organizer', () => {
       const result = service.evaluate(Permission.CREATE_MATCH, ctx({
         subjects: [UserRole.ClubManager],
         tournamentType: TournamentType.ACC,
-        isOrganizer: false,
+        isOrganizer: true,
       }));
       expect(result).toBe(true);
     });
 
-    it('allows Club Manager in APL tournaments even when not the organizer', () => {
+    it('denies Club Manager CREATE_MATCH when not an organizer (e.g. multi-center)', () => {
+      const result = service.evaluate(Permission.CREATE_MATCH, ctx({
+        subjects: [UserRole.ClubManager],
+        tournamentType: TournamentType.Center,
+        isOrganizer: false,
+      }));
+      expect(result).toBe(false);
+    });
+
+    it('allows Club Manager in APL tournaments when they are an organizer', () => {
       const result = service.evaluate(Permission.CREATE_MATCH, ctx({
         subjects: [UserRole.ClubManager],
         tournamentType: TournamentType.APL,
-        isOrganizer: false,
+        isOrganizer: true,
       }));
       expect(result).toBe(true);
     });
@@ -533,26 +542,59 @@ describe('PermissionService', () => {
   });
 
   describe('Club Manager edits tournaments', () => {
-    it('allows editing ACC tournaments even when Admin created them', () => {
+    it('allows editing ACC tournaments when they are an organizer', () => {
       const result = service.evaluate(
         Permission.EDIT_TOURNAMENT,
-        ctx({ subjects: [UserRole.ClubManager], tournamentType: TournamentType.ACC, isOrganizer: false }),
+        ctx({ subjects: [UserRole.ClubManager], tournamentType: TournamentType.ACC, isOrganizer: true }),
       );
       expect(result).toBe(true);
     });
 
-    it('allows editing APL tournaments even when not the organizer', () => {
+    it('allows editing APL tournaments when they are an organizer', () => {
       const result = service.evaluate(
         Permission.EDIT_TOURNAMENT,
-        ctx({ subjects: [UserRole.ClubManager], tournamentType: TournamentType.APL, isOrganizer: false }),
+        ctx({ subjects: [UserRole.ClubManager], tournamentType: TournamentType.APL, isOrganizer: true }),
       );
       expect(result).toBe(true);
     });
 
-    it('allows editing Center-level tournaments even when not the organizer', () => {
+    it('allows editing single-center tournaments when they are an organizer', () => {
+      const result = service.evaluate(
+        Permission.EDIT_TOURNAMENT,
+        ctx({ subjects: [UserRole.ClubManager], tournamentType: TournamentType.Center, isOrganizer: true }),
+      );
+      expect(result).toBe(true);
+    });
+
+    it('denies editing when Club Manager is not an organizer (multi-center)', () => {
       const result = service.evaluate(
         Permission.EDIT_TOURNAMENT,
         ctx({ subjects: [UserRole.ClubManager], tournamentType: TournamentType.Center, isOrganizer: false }),
+      );
+      expect(result).toBe(false);
+    });
+
+    it('denies APL Center Sevak EDIT_TOURNAMENT via OwnCenter (organize is Admin+CM only)', () => {
+      const result = service.evaluate(
+        Permission.EDIT_TOURNAMENT,
+        ctx({
+          subjects: [UserRole.CenterSevak],
+          tournamentType: TournamentType.APL,
+          isOrganizer: false,
+          sameCenter: true,
+        }),
+      );
+      expect(result).toBe(false);
+    });
+
+    it('allows multi-center Center Sevak EDIT_TOURNAMENT when organizer', () => {
+      const result = service.evaluate(
+        Permission.EDIT_TOURNAMENT,
+        ctx({
+          subjects: [UserRole.CenterSevak],
+          tournamentType: TournamentType.Center,
+          isOrganizer: true,
+        }),
       );
       expect(result).toBe(true);
     });

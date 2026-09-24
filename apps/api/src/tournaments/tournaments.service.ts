@@ -34,6 +34,8 @@ import {
   TournamentType,
   UserRole,
   canManageLeatherInvites,
+  canCenterSevakOrganizeTournament,
+  canOrganizeTournament as evaluateCanOrganizeTournament,
 } from '@acc/types';
 import { decimalToNumberOrNull, numberToDecimalOrNull } from '../common/decimal.util';
 import {
@@ -334,6 +336,7 @@ export class TournamentsService {
     if (viewer && !isCancelled) {
       const menuPermissions = await this.resolveTournamentMenuPermissions(viewer, {
         id: row.id,
+        type: row.type,
         createdByUserId: row.createdByUserId,
         ballType: row.ballType as BallType,
       });
@@ -528,6 +531,7 @@ export class TournamentsService {
 
       const menuPermissions = await this.resolveTournamentMenuPermissions(viewer, {
         id: row.id,
+        type: row.type,
         createdByUserId: row.createdByUserId,
         ballType: row.ballType as BallType,
       });
@@ -1003,12 +1007,60 @@ export class TournamentsService {
   // --- helpers -------------------------------------------------------------
 
   /**
-   * Center Sevak may edit/delete only tournaments they created or that belong to
-   * one of their scoped centers (§7.4). Other roles rely on RBAC at the guard.
+   * Type-aware organizer gate (edit/delete/groups). Encodes APL Admin+CM,
+   * multi-center participating Sevak, and single-center/leather unchanged rules.
+   */
+  async assertTournamentOrganizer(
+    actor: AuthUser,
+    tournament: { id: string; type: TournamentType | string; createdByUserId: string },
+  ): Promise<void> {
+    const allowed = await this.canOrganizeTournament(actor, tournament);
+    if (!allowed) {
+      throw new ForbiddenException({
+        message: 'You do not have permission to organize this tournament',
+        error: 'FORBIDDEN',
+      });
+    }
+  }
+
+  async canOrganizeTournament(
+    actor: AuthUser,
+    tournament: { id: string; type: TournamentType | string; createdByUserId: string },
+  ): Promise<boolean> {
+    const participatingCenterIds = (
+      await this.prisma.tournamentCenter.findMany({
+        where: { tournamentId: tournament.id },
+        select: { centerId: true },
+      })
+    ).map((link) => link.centerId);
+
+    const sevakCenterIds =
+      actor.role === UserRole.CenterSevak
+        ? await this.resolveCenterSevakCenterIds(actor.id)
+        : [];
+
+    return evaluateCanOrganizeTournament(
+      {
+        userId: actor.id,
+        role: actor.role,
+        sevakCenterIds,
+      },
+      {
+        type: tournament.type as TournamentType,
+        createdByUserId: tournament.createdByUserId,
+        participatingCenterIds,
+      },
+    );
+  }
+
+  /**
+   * Center Sevak may organize only when type-aware rules allow (not APL;
+   * multi-center = any participating center; single = creator or own center).
+   * Other roles rely on RBAC at the guard / {@link assertTournamentOrganizer}.
    */
   async assertCenterSevakTournamentAccess(
     actor: AuthUser,
-    tournament: { id: string; createdByUserId: string },
+    tournament: { id: string; type: TournamentType | string; createdByUserId: string },
   ): Promise<void> {
     if (actor.role !== UserRole.CenterSevak) {
       return;
@@ -1016,7 +1068,7 @@ export class TournamentsService {
     const allowed = await this.centerSevakCanModifyTournament(actor.id, tournament);
     if (!allowed) {
       throw new ForbiddenException({
-        message: 'You can only edit or delete tournaments you created or that belong to your center',
+        message: 'You can only edit or delete tournaments you organize',
         error: 'FORBIDDEN',
       });
     }
@@ -1025,23 +1077,22 @@ export class TournamentsService {
   /** Ownership check for dashboard permissions and service-layer enforcement. */
   async centerSevakCanModifyTournament(
     userId: string,
-    tournament: { id: string; createdByUserId: string },
+    tournament: { id: string; type: TournamentType | string; createdByUserId: string },
   ): Promise<boolean> {
-    if (tournament.createdByUserId === userId) {
-      return true;
-    }
-    const centerIds = await this.resolveCenterSevakCenterIds(userId);
-    if (centerIds.length === 0) {
-      return false;
-    }
-    const link = await this.prisma.tournamentCenter.findFirst({
-      where: {
-        tournamentId: tournament.id,
-        centerId: { in: centerIds },
-      },
-      select: { centerId: true },
+    const [centerIds, participatingCenterIds] = await Promise.all([
+      this.resolveCenterSevakCenterIds(userId),
+      this.prisma.tournamentCenter
+        .findMany({
+          where: { tournamentId: tournament.id },
+          select: { centerId: true },
+        })
+        .then((links) => links.map((link) => link.centerId)),
+    ]);
+    return canCenterSevakOrganizeTournament(centerIds, userId, {
+      type: tournament.type as TournamentType,
+      createdByUserId: tournament.createdByUserId,
+      participatingCenterIds,
     });
-    return link !== null;
   }
 
   async resolveCenterSevakCenterIds(userId: string): Promise<string[]> {
@@ -1051,7 +1102,12 @@ export class TournamentsService {
   /** Resolves tournament card permissions for role dashboards. */
   async resolveTournamentMenuPermissions(
     actor: AuthUser,
-    tournament: { id: string; createdByUserId: string; ballType: BallType },
+    tournament: {
+      id: string;
+      type: TournamentType | string;
+      createdByUserId: string;
+      ballType: BallType;
+    },
     targetCenterId?: string,
   ): Promise<TournamentDashboardPermissions> {
     const refs = targetCenterId
@@ -1089,7 +1145,12 @@ export class TournamentsService {
   /** Resolves tournament card permissions for the Center Sevak dashboard. */
   async resolveDashboardPermissions(
     actor: AuthUser,
-    tournament: { id: string; createdByUserId: string; ballType: BallType },
+    tournament: {
+      id: string;
+      type: TournamentType | string;
+      createdByUserId: string;
+      ballType: BallType;
+    },
     actionCenterId: string,
   ): Promise<TournamentDashboardPermissions> {
     return this.resolveTournamentMenuPermissions(actor, tournament, actionCenterId);

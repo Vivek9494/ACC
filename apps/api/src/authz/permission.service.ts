@@ -1,10 +1,12 @@
 import {
   type AuthUser,
+  canOrganizeTournament,
   type GrantSubject,
   type Permission,
   PERMISSION_MATRIX,
   type PermissionContext,
   PermissionScope,
+  resolveSevakVerificationCenterIds,
   type RoleGrant,
   SCORER_SUBJECT,
   type TournamentType,
@@ -13,7 +15,6 @@ import {
 import { Injectable } from '@nestjs/common';
 
 import { PrismaService } from '../prisma/prisma.service';
-import { activeTournamentRelationWhere } from '../tournaments/tournament-query';
 import { activeTeamMembershipWhere } from '../teams/team-membership-query';
 import { MatchScorerGrantService } from './match-scorer.service';
 
@@ -151,15 +152,22 @@ export class PermissionService {
     }
 
     let tournamentType: TournamentType | undefined;
-    let isOrganizer = false;
+    let tournamentCreatedByUserId: string | undefined;
+    let participatingCenterIds: string[] = [];
     if (tournamentId) {
       const tournament = await this.prisma.tournament.findUnique({
         where: { id: tournamentId },
-        select: { type: true, createdByUserId: true, isDeleted: true },
+        select: {
+          type: true,
+          createdByUserId: true,
+          isDeleted: true,
+          centerLinks: { select: { centerId: true } },
+        },
       });
       if (tournament && !tournament.isDeleted) {
         tournamentType = tournament.type as TournamentType;
-        isOrganizer = tournament.createdByUserId === actor.id;
+        tournamentCreatedByUserId = tournament.createdByUserId;
+        participatingCenterIds = (tournament.centerLinks ?? []).map((link) => link.centerId);
       }
     }
 
@@ -204,6 +212,23 @@ export class PermissionService {
       subjects.add(SCORER_SUBJECT);
     }
 
+    // Type-aware organizer (APL Admin+CM; multi-center participating Sevak; etc.).
+    let isOrganizer = false;
+    if (tournamentType !== undefined && tournamentCreatedByUserId !== undefined) {
+      isOrganizer = canOrganizeTournament(
+        {
+          userId: actor.id,
+          role: actor.role,
+          sevakCenterIds: [...sevakCenterIds],
+        },
+        {
+          type: tournamentType,
+          createdByUserId: tournamentCreatedByUserId,
+          participatingCenterIds,
+        },
+      );
+    }
+
     // For a match action without an explicit team, treat both sides as the
     // candidate context team (a captain matches whichever side is theirs).
     const contextTeamIds = teamId
@@ -237,18 +262,20 @@ export class PermissionService {
       }
     }
 
-    const sameCenterFromTarget =
-      targetCenterId !== undefined && sevakCenterIds.has(targetCenterId);
-    let sameCenter = sameCenterFromTarget;
-    if (!sameCenter && tournamentId && sevakCenterIds.size > 0) {
-      const centerLink = await this.prisma.tournamentCenter.findFirst({
-        where: {
-          tournamentId,
-          centerId: { in: [...sevakCenterIds] },
-        },
-        select: { centerId: true },
+    // Verification / OwnCenter: multi-center organizer Sevaks cover all participating
+    // centers; APL / single-center stay own ∩ participating.
+    let sameCenter = false;
+    if (sevakCenterIds.size > 0 && tournamentType !== undefined) {
+      const verificationCenters = resolveSevakVerificationCenterIds([...sevakCenterIds], {
+        type: tournamentType,
+        participatingCenterIds,
       });
-      sameCenter = centerLink !== null;
+      sameCenter =
+        targetCenterId !== undefined
+          ? verificationCenters.includes(targetCenterId)
+          : verificationCenters.length > 0;
+    } else if (targetCenterId !== undefined && sevakCenterIds.has(targetCenterId)) {
+      sameCenter = true;
     }
     const isSelf = targetUserId !== undefined && targetUserId === actor.id;
     const { captainSuspended, leadersSuspended } = await this.leaderSuspensionFacts(

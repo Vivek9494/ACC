@@ -393,8 +393,15 @@ export default function MatchSetupScreen(): React.ReactElement {
     if (!isRoundRobin || !teamAId || !roundRobinContext) {
       return base;
     }
+    // Edit: this match's own A–B pair is already in existingPairKeys — keep Team B
+    // selectable (same exception as duplicate-pair save validation).
+    const ownPairKey =
+      isEditMode && teamBId ? normalizeTeamPairKey(teamAId, teamBId) : null;
     const alreadyScheduled = new Set<string>();
     for (const key of roundRobinContext.existingPairKeys) {
+      if (ownPairKey && key === ownPairKey) {
+        continue;
+      }
       const [first, second] = key.split(':');
       if (first === teamAId) {
         alreadyScheduled.add(second);
@@ -406,7 +413,7 @@ export default function MatchSetupScreen(): React.ReactElement {
     return base
       .filter((option) => !alreadyScheduled.has(option.value))
       .sort((left, right) => left.label.localeCompare(right.label));
-  }, [isRoundRobin, roundRobinContext, teamAId, teamOptions]);
+  }, [isEditMode, isRoundRobin, roundRobinContext, teamAId, teamBId, teamOptions]);
 
   const matchDateOptions = useMemo(
     () =>

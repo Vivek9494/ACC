@@ -21,11 +21,7 @@ import { ApiRequestError, listMatches, selectMatchSchedulingFormat } from '../..
 import { useAuth } from '../../lib/auth-context';
 import { buildMatchMenuActions } from '../../lib/build-match-menu-actions';
 import { subscribeMatchDataInvalidation } from '../../lib/match-data-invalidation';
-import { canCreateTournamentTeam } from '../../lib/can-create-team';
-import {
-  canManageUpcomingMatchSchedule,
-  canScheduleTournamentMatchesAsOrganizer,
-} from '../../lib/can-schedule-matches';
+import { canManageUpcomingMatchSchedule } from '../../lib/can-schedule-matches';
 import {
   shouldShowKnockoutBracketEntry,
   shouldShowKnockoutChartEntry,
@@ -52,6 +48,8 @@ export interface TournamentMatchesTabProps {
   tournamentType?: TournamentType;
   /** Server-resolved CREATE_MATCH gate for this tournament (includes Leather captains). */
   canScheduleMatches?: boolean;
+  /** Server-resolved organizer edit flag — groups / create-team CTAs. */
+  canEdit?: boolean;
   matchSchedulingFormat?: TournamentDetail['matchSchedulingFormat'];
   hasKnockoutBracket?: boolean;
   tournamentName?: string;
@@ -68,6 +66,7 @@ export function TournamentMatchesTab({
   groups = [],
   tournamentType,
   canScheduleMatches = false,
+  canEdit = false,
   matchSchedulingFormat = null,
   hasKnockoutBracket = false,
   tournamentName = '',
@@ -144,8 +143,8 @@ export function TournamentMatchesTab({
   }, [groupFilter, hasFilteredMatches, hasMatches, teamFilter]);
 
   const canSchedule = canScheduleMatches;
-  const canManageGroups = canScheduleTournamentMatchesAsOrganizer(user);
-  const canCreateTeam = canCreateTournamentTeam(user);
+  const canManageGroups = canEdit;
+  const canCreateTeam = canEdit;
   const canManageMatches = canManageUpcomingMatchSchedule(user);
   /** Client hint only — create is gated by Permission.BACKFILL_MATCH on the server. */
   const canBackfillPastMatch =
@@ -393,6 +392,7 @@ export function TournamentMatchesTab({
           {hasFilteredMatches ? (
             <MatchList
               matches={filteredMatches}
+              ballType={ballType}
               onMatchPress={(matchId) => router.push(`/matches/${matchId}`)}
               onWatchLivePress={(matchId) => router.push(`/matches/${matchId}/live`)}
               onScorecardPress={(matchId) => router.push(`/matches/${matchId}/scorecard`)}

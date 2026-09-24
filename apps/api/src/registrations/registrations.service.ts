@@ -4,6 +4,7 @@ import {
   type AvailabilitySummary,
   type CustomFormRequestSummary,
   canManageRegistrationVerification,
+  canSevakManageVerificationAtCenter,
   isTournamentRegistrationOpen,
   isRegistrationVerificationComplete,
   Permission,
@@ -19,6 +20,7 @@ import {
   type RegistrationVerificationQueue,
   type CenterPlayerRosterEntry,
   RegistrationVerificationPhase,
+  resolveSevakVerificationCenterIds,
   type TournamentFavouritePlayersView,
   type LeatherRegisteredPlayersView,
   type LateRegisterCandidatesView,
@@ -31,6 +33,7 @@ import {
   canSelfRegisterForTournament,
   formatVenueDateTime,
   serverVenueTimezone,
+  TournamentType,
   UserRole,
 } from '@acc/types';
 import {
@@ -286,7 +289,7 @@ export class RegistrationsService {
       });
     }
 
-    await this.assertSevakOwnCenter(actor, player.centerId);
+    await this.assertSevakVerificationCenterAccess(actor, tournamentId, player.centerId);
     await this.assertCenterParticipatesInTournament(tournamentId, ballType, player.centerId);
 
     await this.validateCustomFields(tournamentId, dto.customFields ?? null);
@@ -473,7 +476,11 @@ export class RegistrationsService {
     this.assertRegistrationVerificationTournament(tournament.ballType as BallType);
     this.assertCenterSevakTennisOnly(actor, tournament.ballType as BallType);
     this.assertRegistrationVerificationManageOpen(tournament);
-    await this.assertSevakOwnCenter(actor, existing.centerId);
+    await this.assertSevakVerificationCenterAccess(
+      actor,
+      existing.tournamentId,
+      existing.centerId,
+    );
 
     const row = await this.prisma.registration.update({
       where: { id: registrationId },
@@ -564,7 +571,7 @@ export class RegistrationsService {
     if (!existing || existing.tournamentId !== tournamentId) {
       throw new NotFoundException({ message: 'Registration not found', error: 'NOT_FOUND' });
     }
-    await this.assertSevakOwnCenter(actor, existing.centerId);
+    await this.assertSevakVerificationCenterAccess(actor, tournamentId, existing.centerId);
 
     const data: Prisma.RegistrationUpdateInput = {};
     if (dto.battingRating !== undefined) {
@@ -1185,20 +1192,30 @@ export class RegistrationsService {
         error: 'FORBIDDEN',
       });
     }
-    const sevakAssignments = await this.prisma.roleAssignment.findMany({
-      where: { userId: actor.id, role: UserRole.CenterSevak, centerId: { not: null } },
-      select: { centerId: true },
-    });
-    const centerIds = sevakAssignments
-      .map((a) => a.centerId)
-      .filter((id): id is string => id !== null);
-    if (centerIds.length > 0) {
-      return centerIds;
+    const sevakCenterIds = await this.findCenterSevakCenterIds(actor);
+    if (sevakCenterIds.length === 0) {
+      throw new ForbiddenException({
+        message: 'You do not have permission to view registrations',
+        error: 'FORBIDDEN',
+      });
     }
-    throw new ForbiddenException({
-      message: 'You do not have permission to view registrations',
-      error: 'FORBIDDEN',
+    const participatingCenterIds = (
+      await this.prisma.tournamentCenter.findMany({
+        where: { tournamentId },
+        select: { centerId: true },
+      })
+    ).map((link) => link.centerId);
+    const visible = resolveSevakVerificationCenterIds(sevakCenterIds, {
+      type: tournament.type as TournamentType,
+      participatingCenterIds,
     });
+    if (visible.length === 0) {
+      throw new ForbiddenException({
+        message: 'You do not have permission to view registrations',
+        error: 'FORBIDDEN',
+      });
+    }
+    return visible;
   }
 
   /** Center Sevak only ? returns assigned center ids or throws. */
@@ -1290,6 +1307,7 @@ export class RegistrationsService {
     actor: AuthUser,
     tournamentId: string,
   ): Promise<string[]> {
+    const tournament = await this.requireTournament(tournamentId);
     if (actor.role === UserRole.Admin) {
       const links = await this.prisma.tournamentCenter.findMany({
         where: { tournamentId },
@@ -1309,7 +1327,24 @@ export class RegistrationsService {
         error: 'FORBIDDEN',
       });
     }
-    return this.requireCenterSevakCenterIds(actor);
+    const sevakCenterIds = await this.requireCenterSevakCenterIds(actor);
+    const participatingCenterIds = (
+      await this.prisma.tournamentCenter.findMany({
+        where: { tournamentId },
+        select: { centerId: true },
+      })
+    ).map((link) => link.centerId);
+    const centerIds = resolveSevakVerificationCenterIds(sevakCenterIds, {
+      type: tournament.type as TournamentType,
+      participatingCenterIds,
+    });
+    if (centerIds.length === 0) {
+      throw new ForbiddenException({
+        message: 'You do not have permission to view the verification queue',
+        error: 'FORBIDDEN',
+      });
+    }
+    return centerIds;
   }
 
   /** Centers a late-registering actor may pull candidates from (tennis). */
@@ -1317,6 +1352,7 @@ export class RegistrationsService {
     actor: AuthUser,
     tournamentId: string,
   ): Promise<string[]> {
+    const tournament = await this.requireTournament(tournamentId);
     const links = await this.prisma.tournamentCenter.findMany({
       where: { tournamentId },
       select: { centerId: true },
@@ -1331,7 +1367,10 @@ export class RegistrationsService {
     }
 
     const sevakCenterIds = await this.findCenterSevakCenterIds(actor);
-    const scoped = tournamentCenterIds.filter((id) => sevakCenterIds.includes(id));
+    const scoped = resolveSevakVerificationCenterIds(sevakCenterIds, {
+      type: tournament.type as TournamentType,
+      participatingCenterIds: tournamentCenterIds,
+    });
     if (scoped.length === 0) {
       throw new ForbiddenException({
         message: 'Your center is not part of this tournament',
@@ -1379,21 +1418,35 @@ export class RegistrationsService {
     }
   }
 
-  /** When the actor is a Center Sevak, the target must belong to one of their centers. */
-  private async assertSevakOwnCenter(actor: AuthUser, targetCenterId: string): Promise<void> {
-    const sevakAssignments = await this.prisma.roleAssignment.findMany({
-      where: { userId: actor.id, role: UserRole.CenterSevak, centerId: { not: null } },
-      select: { centerId: true },
-    });
-    const centerIds = sevakAssignments
-      .map((assignment) => assignment.centerId)
-      .filter((id): id is string => id !== null);
-    if (centerIds.length === 0) {
+  /**
+   * When the actor is a Center Sevak, the target must be within their
+   * verification scope for this tournament (own-center for APL/single;
+   * all participating centers for multi-center organizers).
+   */
+  private async assertSevakVerificationCenterAccess(
+    actor: AuthUser,
+    tournamentId: string,
+    targetCenterId: string,
+  ): Promise<void> {
+    const sevakCenterIds = await this.findCenterSevakCenterIds(actor);
+    if (sevakCenterIds.length === 0) {
       return;
     }
-    if (!centerIds.includes(targetCenterId)) {
+    const tournament = await this.requireTournament(tournamentId);
+    const participatingCenterIds = (
+      await this.prisma.tournamentCenter.findMany({
+        where: { tournamentId },
+        select: { centerId: true },
+      })
+    ).map((link) => link.centerId);
+    if (
+      !canSevakManageVerificationAtCenter(sevakCenterIds, {
+        type: tournament.type as TournamentType,
+        participatingCenterIds,
+      }, targetCenterId)
+    ) {
       throw new ForbiddenException({
-        message: 'You can only manage players from your own center',
+        message: 'You can only manage players within your verification scope for this tournament',
         error: 'FORBIDDEN',
       });
     }

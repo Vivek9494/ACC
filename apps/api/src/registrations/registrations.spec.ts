@@ -760,6 +760,36 @@ describe('RegistrationsService', () => {
       );
     });
 
+    it('includes all participating centers for a multi-center organizer Sevak', async () => {
+      prisma.tournament.findUnique.mockResolvedValue({
+        id: 'tour-multi',
+        state: 'REGISTRATION_OPEN',
+        type: 'CENTER',
+        ballType: 'TENNIS',
+        isDeleted: false,
+        ...openRegistrationWindow,
+      });
+      permissions.check.mockResolvedValue(true);
+      prisma.roleAssignment.findMany.mockResolvedValue([{ centerId: 'center-A' }]);
+      prisma.tournamentCenter.findMany.mockResolvedValue([
+        { centerId: 'center-A' },
+        { centerId: 'center-B' },
+      ]);
+      prisma.registration.findMany.mockResolvedValue([]);
+      prisma.user.findMany.mockResolvedValue([]);
+
+      await service.getVerificationQueue(sevak, 'tour-multi');
+
+      expect(prisma.registration.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            tournamentId: 'tour-multi',
+            centerId: { in: ['center-A', 'center-B'] },
+          },
+        }),
+      );
+    });
+
     it('forbids Center Sevak on a leather ACC tournament', async () => {
       prisma.tournament.findUnique.mockResolvedValue({
         id: 'tour-acc',

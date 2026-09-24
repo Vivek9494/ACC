@@ -76,6 +76,7 @@ export * from './tournament-browse';
 export * from './tournament-fees';
 export * from './tournament-scope';
 export * from './tournament-scorers';
+export * from './tournament-organizer';
 export * from './tournament-media';
 export * from './tournament-validation';
 export * from './tournament-form-validation';
