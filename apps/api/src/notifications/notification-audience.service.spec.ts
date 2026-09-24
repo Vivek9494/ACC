@@ -11,6 +11,7 @@ describe('NotificationAudienceService', () => {
     user: { findMany: jest.Mock };
     matchSquadPlayer: { findMany: jest.Mock };
     registration: { findMany: jest.Mock };
+    roleAssignment: { findMany: jest.Mock };
     team: { findFirst: jest.Mock };
     teamMembership: { findMany: jest.Mock };
     matchSquad: { findUnique: jest.Mock };
@@ -27,6 +28,7 @@ describe('NotificationAudienceService', () => {
       teamMembership: { findMany: jest.fn() },
       matchSquad: { findUnique: jest.fn() },
       registration: { findMany: jest.fn() },
+      roleAssignment: { findMany: jest.fn() },
     };
     service = new NotificationAudienceService(prisma as never);
   });
@@ -185,6 +187,32 @@ describe('NotificationAudienceService', () => {
         select: { userId: true },
       });
       expect(result).toEqual(['u1', 'u2']);
+    });
+  });
+
+  describe('resolveTournamentCenterSevaks', () => {
+    it('returns Center Sevaks for the tournament centers', async () => {
+      prisma.tournamentCenter.findMany.mockResolvedValue([
+        { centerId: 'c1' },
+        { centerId: 'c2' },
+      ]);
+      prisma.roleAssignment.findMany.mockResolvedValue([
+        { userId: 'sevak-1' },
+        { userId: 'sevak-2' },
+        { userId: 'sevak-1' },
+      ]);
+
+      const result = await service.resolveTournamentCenterSevaks('t1');
+
+      expect(prisma.roleAssignment.findMany).toHaveBeenCalledWith({
+        where: {
+          role: 'CENTER_SEVAK',
+          centerId: { in: ['c1', 'c2'] },
+          user: { is: { deletedAt: null, isActive: true } },
+        },
+        select: { userId: true },
+      });
+      expect(result).toEqual(['sevak-1', 'sevak-2']);
     });
   });
 });

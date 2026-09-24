@@ -58,6 +58,10 @@ export const NotificationTrigger = {
   VideoUploadOpened: 'VIDEO_UPLOAD_OPENED',
   /** ?17: on registration when video is required ? informs the registrant of the deadline (Phase C). */
   VideoUploadDeadline: 'VIDEO_UPLOAD_DEADLINE',
+  /** §17: 1 day before verification deadline — Center Sevaks of the tournament's centers. */
+  VerificationReminder: 'VERIFICATION_REMINDER',
+  /** §17: bulk auto-confirm of remaining In-Waitlist registrations at the verification deadline. */
+  WaitlistAutoConfirm: 'WAITLIST_AUTO_CONFIRM',
   /** ?17: at 10 AM EDT on a user's birthday, to all active users (Phase C). */
   Birthday: 'BIRTHDAY',
   /** ?17: Captain carried a pending suspension forward — notify Club Managers. */

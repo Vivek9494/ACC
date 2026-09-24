@@ -2,6 +2,8 @@ import {
   BallType,
   DEFAULT_VENUE_TIMEZONE,
   PRE_LIVE_MATCH_STATES,
+  REGISTRATION_VERIFICATION_NO_AUCTION_GRACE_MS,
+  RegistrationStatus,
   formatTodayDateOnlyInZone,
   getTodayCalendarPartsInZone,
   getYearInZone,
@@ -14,12 +16,15 @@ import { PrismaService } from '../prisma/prisma.service';
 import { activeTeamMembershipWhere } from '../teams/team-membership-query';
 import { selectableUserWhere } from '../users/user-query';
 import { NotificationAudienceService } from './notification-audience.service';
+import { NotificationLogService } from './notification-log.service';
 import { NotificationsService, NotificationTrigger } from './notifications.service';
 
 /** How long before a stored close time (§17 Phase C #11/#12) the reminder fires. */
 const CLOSE_REMINDER_LEAD_MS = 10 * 60_000;
 /** Width of the minute-cron catch window; matches EVERY_MINUTE cadence. */
 const CLOSE_WINDOW_WIDTH_MS = 60_000;
+/** Sevak verification reminder fires this far before the deadline. */
+const VERIFICATION_REMINDER_LEAD_MS = 24 * 60 * 60_000;
 
 /**
  * Timed (§17 Phase C) notification jobs. Each method is invoked by the
@@ -37,6 +42,7 @@ export class NotificationTimedJobsService {
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationsService,
     private readonly audience: NotificationAudienceService,
+    private readonly log: NotificationLogService,
   ) {}
 
   /** All 10:00 AM Eastern daily jobs (#9 poll, #10 match, #13 birthday). */
@@ -46,12 +52,14 @@ export class NotificationTimedJobsService {
     await this.sendBirthdayNotifications(now);
   }
 
-  /** All frequent close-window checks (#11 registration, #12 video open/closing, deferred reg-open). */
+  /** All frequent close-window checks (#11 registration, #12 video, verification). */
   async runCloseWindowChecks(now: Date = new Date()): Promise<void> {
     await this.sendRegistrationOpened(now);
     await this.sendRegistrationClosing(now);
     await this.sendVideoUploadOpened(now);
     await this.sendVideoUploadClosing(now);
+    await this.sendVerificationReminder(now);
+    await this.autoConfirmWaitlistAtDeadline(now);
   }
 
   // --- #9 Poll reminder (Leather only) -------------------------------------
@@ -290,6 +298,108 @@ export class NotificationTimedJobsService {
     }
   }
 
+  // --- Verification reminder + waitlist auto-confirm -----------------------
+
+  /**
+   * 1 day before the verification deadline, remind Center Sevaks of the
+   * tournament's centers to finish verifying. Once per tournament.
+   */
+  async sendVerificationReminder(now: Date = new Date()): Promise<void> {
+    const tournaments = await this.findTennisTournamentsWithDeadlineInWindow(
+      this.leadWindow(now, VERIFICATION_REMINDER_LEAD_MS),
+    );
+    for (const tournament of tournaments) {
+      try {
+        const userIds = await this.audience.resolveTournamentCenterSevaks(tournament.id);
+        if (userIds.length === 0) {
+          continue;
+        }
+        await this.notifications.sendToAudience(userIds, {
+          triggerKey: NotificationTrigger.VerificationReminder,
+          dedupeKey: `${NotificationTrigger.VerificationReminder}:${tournament.id}`,
+          title: 'Verify players soon',
+          body: `Please finish verifying players for ${tournament.name} — the verification deadline is tomorrow.`,
+          data: { tournamentId: tournament.id, screen: 'tournament' },
+          audienceSummary: `Center Sevaks of tournament ${tournament.id}`,
+        });
+      } catch (err) {
+        this.logger.error(
+          `Verification reminder failed for tournament ${tournament.id}`,
+          err as Error,
+        );
+      }
+    }
+  }
+
+  /**
+   * When the verification deadline arrives: auto-confirm remaining In-Waitlist
+   * players (Declined untouched), push each once, once per tournament.
+   */
+  async autoConfirmWaitlistAtDeadline(now: Date = new Date()): Promise<void> {
+    const tournaments = await this.findTennisTournamentsWithDeadlineInWindow(
+      this.arrivalWindow(now),
+    );
+    for (const tournament of tournaments) {
+      try {
+        const logId = await this.log.reserve({
+          triggerKey: NotificationTrigger.WaitlistAutoConfirm,
+          dedupeKey: `${NotificationTrigger.WaitlistAutoConfirm}:${tournament.id}`,
+          title: 'Waitlist auto-confirm',
+          body: `Auto-confirmed remaining waitlist for ${tournament.name}.`,
+          data: { tournamentId: tournament.id },
+          audienceSummary: `In-waitlist of tournament ${tournament.id}`,
+        });
+        if (logId == null) {
+          continue;
+        }
+
+        const waitlist = await this.prisma.registration.findMany({
+          where: {
+            tournamentId: tournament.id,
+            status: RegistrationStatus.InWaitlist,
+          },
+          select: { id: true, userId: true },
+        });
+
+        if (waitlist.length > 0) {
+          const reviewedAt = new Date();
+          await this.prisma.registration.updateMany({
+            where: {
+              id: { in: waitlist.map((row) => row.id) },
+              status: RegistrationStatus.InWaitlist,
+            },
+            data: {
+              status: RegistrationStatus.Confirmed,
+              reviewedAt,
+            },
+          });
+
+          for (const row of waitlist) {
+            await this.notifications.sendToAudience([row.userId], {
+              triggerKey: NotificationTrigger.RegistrationConfirmed,
+              dedupeKey: `${NotificationTrigger.RegistrationConfirmed}:${row.id}`,
+              title: 'Registration confirmed',
+              body: `You're confirmed for ${tournament.name}.`,
+              data: { tournamentId: tournament.id, screen: 'tournament' },
+              audienceSummary: `Registrant ${row.userId} of tournament ${tournament.id}`,
+            });
+          }
+        }
+
+        await this.log.finalize(logId, {
+          recipientCount: waitlist.length,
+          successCount: waitlist.length,
+          failureCount: 0,
+        });
+      } catch (err) {
+        this.logger.error(
+          `Waitlist auto-confirm failed for tournament ${tournament.id}`,
+          err as Error,
+        );
+      }
+    }
+  }
+
   // --- #13 Birthday --------------------------------------------------------
 
   /**
@@ -341,6 +451,47 @@ export class NotificationTimedJobsService {
   private closeWindow(now: Date): { gt: Date; lte: Date } {
     const start = new Date(now.getTime() + CLOSE_REMINDER_LEAD_MS);
     return { gt: start, lte: new Date(start.getTime() + CLOSE_WINDOW_WIDTH_MS) };
+  }
+
+  /** Instant just arriving: (now − 60s, now]. */
+  private arrivalWindow(now: Date): { gt: Date; lte: Date } {
+    return {
+      gt: new Date(now.getTime() - CLOSE_WINDOW_WIDTH_MS),
+      lte: now,
+    };
+  }
+
+  /** Instant that falls `leadMs` ahead of now, within a 1-minute catch window. */
+  private leadWindow(now: Date, leadMs: number): { gt: Date; lte: Date } {
+    const start = new Date(now.getTime() + leadMs);
+    return { gt: start, lte: new Date(start.getTime() + CLOSE_WINDOW_WIDTH_MS) };
+  }
+
+  /**
+   * Tennis tournaments whose verification deadline (auctionAt, else close+48h)
+   * falls in the given 1-minute window.
+   */
+  private async findTennisTournamentsWithDeadlineInWindow(window: {
+    gt: Date;
+    lte: Date;
+  }): Promise<Array<{ id: string; name: string }>> {
+    const closeWindow = {
+      gt: new Date(window.gt.getTime() - REGISTRATION_VERIFICATION_NO_AUCTION_GRACE_MS),
+      lte: new Date(window.lte.getTime() - REGISTRATION_VERIFICATION_NO_AUCTION_GRACE_MS),
+    };
+    return this.prisma.tournament.findMany({
+      where: {
+        isDeleted: false,
+        ballType: BallType.Tennis,
+        registrationOpenAt: { not: null },
+        registrationCloseAt: { not: null },
+        OR: [
+          { auctionAt: window },
+          { auctionAt: null, registrationCloseAt: closeWindow },
+        ],
+      },
+      select: { id: true, name: true },
+    });
   }
 
   /** Resolve the type-based tournament audience and dispatch a single payload. */

@@ -1,6 +1,6 @@
 import {
   BallType,
-  isTournamentRegistrationWindowClosed,
+  canManageRegistrationVerification,
   REGISTRATION_PLAYER_TYPE_OPTIONS,
   REGISTRATION_RATING_OPTIONS,
   RegistrationPlayerType,
@@ -168,7 +168,7 @@ export default function RegistrationRatingsReviewScreen(): React.ReactElement {
     void load();
   }, [load]);
 
-  const windowClosed = tournament ? isTournamentRegistrationWindowClosed(tournament) : false;
+  const canManage = tournament ? canManageRegistrationVerification(tournament) : false;
 
   if (loading) {
     return (
@@ -186,10 +186,10 @@ export default function RegistrationRatingsReviewScreen(): React.ReactElement {
         onBack={() => router.back()}
       />
       <ScrollView contentContainerClassName="gap-4 px-4 py-4">
-        {!windowClosed ? (
+        {!canManage ? (
           <View className="rounded-control bg-surface-container-high px-4 py-3">
             <Text className="font-sans text-sm text-on-surface-variant">
-              Ratings can be adjusted only after the registration window closes.
+              Ratings can be adjusted from registration open until the verification deadline.
             </Text>
           </View>
         ) : null}
@@ -200,7 +200,7 @@ export default function RegistrationRatingsReviewScreen(): React.ReactElement {
           </View>
         ) : null}
 
-        {windowClosed
+        {canManage
           ? rows.map((row) => (
               <RatingsReviewRow
                 key={row.id}

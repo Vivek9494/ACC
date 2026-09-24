@@ -454,6 +454,7 @@ export class TournamentsService {
           hasRegistrationWindow,
           registrationOpenAt: detailBase.registrationOpenAt,
           registrationCloseAt: detailBase.registrationCloseAt,
+          auctionAt: detailBase.auctionAt,
         },
         pendingWaitlistCount,
       );

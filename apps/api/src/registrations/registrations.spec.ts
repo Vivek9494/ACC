@@ -88,12 +88,22 @@ const captain: AuthUser = {
 
 const openRegistrationWindow = {
   registrationOpenAt: new Date('2026-01-01T00:00:00.000Z'),
-  registrationCloseAt: new Date('2026-12-31T23:59:59.000Z'),
+  registrationCloseAt: new Date('2099-12-31T23:59:59.000Z'),
+  auctionAt: null as Date | null,
 };
 
+/** Registration closed, but still within the 48h verification grace (no auction). */
 const closedRegistrationWindow = {
-  registrationOpenAt: new Date('2020-01-01T00:00:00.000Z'),
-  registrationCloseAt: new Date('2020-01-02T00:00:00.000Z'),
+  registrationOpenAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
+  registrationCloseAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
+  auctionAt: null as Date | null,
+};
+
+/** Verification deadline already passed (close + 48h in the past). */
+const pastVerificationDeadlineWindow = {
+  registrationOpenAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
+  registrationCloseAt: new Date(Date.now() - 72 * 60 * 60 * 1000),
+  auctionAt: null as Date | null,
 };
 
 const testCenterId = '11111111-1111-4111-8111-111111111111';
@@ -380,14 +390,14 @@ describe('RegistrationsService', () => {
       );
     });
 
-    it('blocks approve while the registration window is still open', async () => {
+    it('blocks approve after the verification deadline', async () => {
       prisma.tournament.findUnique.mockResolvedValue({
         id: 'tour-1',
         state: 'REGISTRATION_OPEN',
         type: 'APL',
         ballType: 'TENNIS',
         isDeleted: false,
-        ...openRegistrationWindow,
+        ...pastVerificationDeadlineWindow,
       });
       prisma.registration.findUnique.mockResolvedValue({
         id: 'reg-1',
@@ -491,7 +501,7 @@ describe('RegistrationsService', () => {
   });
 
   describe('verification queue (§7.3, §7.4)', () => {
-    it('returns view-only roster count during the registration window', async () => {
+    it('returns manage phase during the registration window (verify from open)', async () => {
       permissions.check.mockResolvedValue(true);
       prisma.roleAssignment.findMany.mockResolvedValue([{ centerId: 'center-A' }]);
       prisma.registration.findMany.mockResolvedValue([
@@ -511,12 +521,12 @@ describe('RegistrationsService', () => {
 
       const result = await service.getVerificationQueue(sevak, 'tour-1');
 
-      expect(result.phase).toBe(RegistrationVerificationPhase.ViewOnly);
-      expect(result.actionCount).toBe(2);
+      expect(result.phase).toBe(RegistrationVerificationPhase.Manage);
+      expect(result.actionCount).toBe(1);
       expect(result.registered).toHaveLength(2);
       expect(result.registeredCount).toBe(2);
       expect(result.notRegistered).toHaveLength(1);
-      expect(result.canManage).toBe(false);
+      expect(result.canManage).toBe(true);
       expect(result.canLateRegister).toBe(true);
     });
 
@@ -730,7 +740,7 @@ describe('RegistrationsService', () => {
         type: 'APL',
         ballType: 'TENNIS',
         isDeleted: false,
-        ...closedRegistrationWindow,
+        ...pastVerificationDeadlineWindow,
       });
       prisma.registration.count.mockResolvedValue(0);
       prisma.registration.findMany.mockResolvedValue([
@@ -990,7 +1000,7 @@ describe('RegistrationsService', () => {
         type: 'APL',
         ballType: 'TENNIS',
         isDeleted: false,
-        ...closedRegistrationWindow,
+        ...pastVerificationDeadlineWindow,
       });
       prisma.registration.count.mockResolvedValue(0);
       permissions.check.mockResolvedValue(true);
@@ -1301,7 +1311,15 @@ describe('RegistrationsService', () => {
   });
 
   describe('ratings adjustment (§7.5)', () => {
-    it('blocks adjusted ratings while the registration window is still open', async () => {
+    it('blocks adjusted ratings after the verification deadline', async () => {
+      prisma.tournament.findUnique.mockResolvedValue({
+        id: 'tour-1',
+        state: 'REGISTRATION_OPEN',
+        type: 'APL',
+        ballType: 'TENNIS',
+        isDeleted: false,
+        ...pastVerificationDeadlineWindow,
+      });
       await expect(
         service.updateRatings(admin, 'tour-1', 'reg-1', {
           battingRating: 4,
@@ -1335,14 +1353,13 @@ describe('RegistrationsService', () => {
       ).rejects.toBeInstanceOf(ForbiddenException);
     });
 
-    it('stores adjusted ratings after the registration window closes', async () => {
+    it('stores adjusted ratings while the verification window is open', async () => {
       prisma.tournament.findUnique.mockResolvedValue({
         id: 'tour-1',
         state: 'REGISTRATION_OPEN',
         type: 'APL',
         isDeleted: false,
-        registrationOpenAt: new Date('2020-01-01T00:00:00.000Z'),
-        registrationCloseAt: new Date('2020-01-02T00:00:00.000Z'),
+        ...closedRegistrationWindow,
       });
       prisma.registration.findUnique.mockResolvedValue({
         id: 'reg-1',

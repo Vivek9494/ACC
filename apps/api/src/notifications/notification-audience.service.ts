@@ -1,4 +1,4 @@
-import { BallType, MatchSquadRole, RegistrationStatus } from '@acc/types';
+import { BallType, MatchSquadRole, RegistrationStatus, UserRole } from '@acc/types';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 
@@ -150,5 +150,29 @@ export class NotificationAudienceService {
       select: { userId: true },
     });
     return uniqueIds(registrations.map((row) => row.userId));
+  }
+
+  /**
+   * Center Sevaks assigned to any center linked to the tournament (verification
+   * reminder audience). Distinct from the tournament center-user audience.
+   */
+  async resolveTournamentCenterSevaks(tournamentId: string): Promise<string[]> {
+    const links = await this.prisma.tournamentCenter.findMany({
+      where: { tournamentId },
+      select: { centerId: true },
+    });
+    const centerIds = links.map((link) => link.centerId);
+    if (centerIds.length === 0) {
+      return [];
+    }
+    const assignments = await this.prisma.roleAssignment.findMany({
+      where: {
+        role: UserRole.CenterSevak,
+        centerId: { in: centerIds },
+        user: { is: selectableUserWhere },
+      },
+      select: { userId: true },
+    });
+    return uniqueIds(assignments.map((row) => row.userId));
   }
 }

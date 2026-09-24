@@ -3,8 +3,8 @@ import {
   BallType,
   type AvailabilitySummary,
   type CustomFormRequestSummary,
+  canManageRegistrationVerification,
   isTournamentRegistrationOpen,
-  isTournamentRegistrationWindowClosed,
   isRegistrationVerificationComplete,
   Permission,
   PlayerSkillVideoStatus,
@@ -461,7 +461,7 @@ export class RegistrationsService {
     }
     const tournament = await this.requireTournament(existing.tournamentId);
     this.assertRegistrationVerificationTournament(tournament.ballType as BallType);
-    this.assertRegistrationWindowClosed(tournament);
+    this.assertRegistrationVerificationManageOpen(tournament);
 
     const row = await this.prisma.registration.update({
       where: { id: registrationId },
@@ -498,7 +498,7 @@ export class RegistrationsService {
     const tournament = await this.requireTournament(tournamentId);
     this.assertRegistrationVerificationTournament(tournament.ballType as BallType);
     this.assertCenterSevakTennisOnly(actor, tournament.ballType as BallType);
-    this.assertRegistrationWindowClosed(tournament);
+    this.assertRegistrationVerificationManageOpen(tournament);
 
     const existing = await this.prisma.registration.findUnique({
       where: { id: registrationId },
@@ -975,15 +975,16 @@ export class RegistrationsService {
 
     const windowConfigured =
       tournament.registrationOpenAt !== null && tournament.registrationCloseAt !== null;
-    const windowClosed =
+    const canManage =
       windowConfigured &&
-      isTournamentRegistrationWindowClosed({
-        registrationOpenAt: tournament.registrationOpenAt!.toISOString(),
-        registrationCloseAt: tournament.registrationCloseAt!.toISOString(),
+      canManageRegistrationVerification({
+        registrationOpenAt: tournament.registrationOpenAt,
+        registrationCloseAt: tournament.registrationCloseAt,
+        auctionAt: tournament.auctionAt,
       });
 
     const registrationSummaries = registrationRows.map((row) => this.toSummary(row));
-    const registered = windowClosed
+    const registered = canManage
       ? this.sortVerificationQueue(registrationSummaries)
       : this.sort(registrationSummaries, RegistrationSortKey.Name);
     const registeredUserIds = new Set(registrationRows.map((row) => row.userId));
@@ -1019,11 +1020,10 @@ export class RegistrationsService {
     const pendingCount = registered.filter(
       (row) => row.status === RegistrationStatus.InWaitlist,
     ).length;
-    const phase = windowClosed
+    const phase = canManage
       ? RegistrationVerificationPhase.Manage
       : RegistrationVerificationPhase.ViewOnly;
-    const actionCount = windowClosed ? pendingCount : registered.length;
-    const canManage = windowClosed;
+    const actionCount = canManage ? pendingCount : registered.length;
 
     const canLateRegister = await this.resolveCanLateRegister(actor, tournamentId);
 
@@ -1212,6 +1212,7 @@ export class RegistrationsService {
         hasRegistrationWindow,
         registrationOpenAt: tournament.registrationOpenAt?.toISOString() ?? null,
         registrationCloseAt: tournament.registrationCloseAt?.toISOString() ?? null,
+        auctionAt: tournament.auctionAt?.toISOString() ?? null,
       },
       pendingWaitlistCount,
     );
@@ -1438,6 +1439,7 @@ export class RegistrationsService {
     timezone: string | null;
     registrationOpenAt: Date | null;
     registrationCloseAt: Date | null;
+    auctionAt: Date | null;
     videoRequired: boolean;
     videoUploadEndDate: Date | null;
     defaultPlayerFeeCents: bigint | null;
@@ -1454,6 +1456,7 @@ export class RegistrationsService {
         isDeleted: true,
         registrationOpenAt: true,
         registrationCloseAt: true,
+        auctionAt: true,
         videoRequired: true,
         videoUploadEndDate: true,
         defaultPlayerFeeCents: true,
@@ -1463,9 +1466,10 @@ export class RegistrationsService {
     return tournament;
   }
 
-  private assertRegistrationWindowClosed(tournament: {
+  private assertRegistrationVerificationManageOpen(tournament: {
     registrationOpenAt: Date | null;
     registrationCloseAt: Date | null;
+    auctionAt: Date | null;
   }): void {
     if (!tournament.registrationOpenAt || !tournament.registrationCloseAt) {
       throw new BadRequestException({
@@ -1474,14 +1478,15 @@ export class RegistrationsService {
       });
     }
     if (
-      !isTournamentRegistrationWindowClosed({
-        registrationOpenAt: tournament.registrationOpenAt.toISOString(),
-        registrationCloseAt: tournament.registrationCloseAt.toISOString(),
+      !canManageRegistrationVerification({
+        registrationOpenAt: tournament.registrationOpenAt,
+        registrationCloseAt: tournament.registrationCloseAt,
+        auctionAt: tournament.auctionAt,
       })
     ) {
       throw new BadRequestException({
-        message: 'Ratings can only be adjusted after the registration window closes',
-        error: 'REGISTRATION_WINDOW_STILL_OPEN',
+        message: 'Verification is locked after the verification deadline',
+        error: 'VERIFICATION_DEADLINE_PASSED',
       });
     }
   }

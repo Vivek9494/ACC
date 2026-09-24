@@ -9,6 +9,7 @@ describe('NotificationTimedJobsService', () => {
     teamMembership: { findMany: jest.Mock };
     match: { findMany: jest.Mock };
     tournament: { findMany: jest.Mock };
+    registration: { findMany: jest.Mock; updateMany: jest.Mock };
     $queryRaw: jest.Mock;
   };
   let notifications: { sendToAudience: jest.Mock };
@@ -16,8 +17,10 @@ describe('NotificationTimedJobsService', () => {
     resolveTeamSquad: jest.Mock;
     resolveTournamentAudience: jest.Mock;
     resolveTournamentRegisteredPlayers: jest.Mock;
+    resolveTournamentCenterSevaks: jest.Mock;
     resolveAllActiveUsers: jest.Mock;
   };
+  let log: { reserve: jest.Mock; finalize: jest.Mock };
   let service: NotificationTimedJobsService;
 
   beforeEach(() => {
@@ -26,6 +29,10 @@ describe('NotificationTimedJobsService', () => {
       teamMembership: { findMany: jest.fn().mockResolvedValue([]) },
       match: { findMany: jest.fn().mockResolvedValue([]) },
       tournament: { findMany: jest.fn().mockResolvedValue([]) },
+      registration: {
+        findMany: jest.fn().mockResolvedValue([]),
+        updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+      },
       $queryRaw: jest.fn().mockResolvedValue([]),
     };
     notifications = { sendToAudience: jest.fn().mockResolvedValue({ sent: true }) };
@@ -33,12 +40,18 @@ describe('NotificationTimedJobsService', () => {
       resolveTeamSquad: jest.fn().mockResolvedValue([]),
       resolveTournamentAudience: jest.fn().mockResolvedValue([]),
       resolveTournamentRegisteredPlayers: jest.fn().mockResolvedValue([]),
+      resolveTournamentCenterSevaks: jest.fn().mockResolvedValue([]),
       resolveAllActiveUsers: jest.fn().mockResolvedValue([]),
+    };
+    log = {
+      reserve: jest.fn().mockResolvedValue('log-1'),
+      finalize: jest.fn().mockResolvedValue(undefined),
     };
     service = new NotificationTimedJobsService(
       prisma as never,
       notifications as never,
       audience as never,
+      log as never,
     );
   });
 
@@ -235,6 +248,78 @@ describe('NotificationTimedJobsService', () => {
           dedupeKey: `${NotificationTrigger.VideoUploadClosing}:t1`,
         }),
       );
+    });
+  });
+
+  describe('sendVerificationReminder', () => {
+    it('notifies tournament Center Sevaks 1 day before the deadline', async () => {
+      const now = new Date('2026-07-07T15:00:00.000Z');
+      prisma.tournament.findMany.mockResolvedValue([{ id: 't1', name: 'APL 2026' }]);
+      audience.resolveTournamentCenterSevaks.mockResolvedValue(['sevak-1']);
+
+      await service.sendVerificationReminder(now);
+
+      expect(audience.resolveTournamentCenterSevaks).toHaveBeenCalledWith('t1');
+      expect(notifications.sendToAudience).toHaveBeenCalledWith(
+        ['sevak-1'],
+        expect.objectContaining({
+          triggerKey: NotificationTrigger.VerificationReminder,
+          dedupeKey: `${NotificationTrigger.VerificationReminder}:t1`,
+        }),
+      );
+    });
+  });
+
+  describe('autoConfirmWaitlistAtDeadline', () => {
+    it('confirms In-Waitlist players once and pushes each', async () => {
+      const now = new Date('2026-07-07T15:00:00.000Z');
+      prisma.tournament.findMany.mockResolvedValue([{ id: 't1', name: 'APL 2026' }]);
+      prisma.registration.findMany.mockResolvedValue([
+        { id: 'reg-1', userId: 'p1' },
+        { id: 'reg-2', userId: 'p2' },
+      ]);
+
+      await service.autoConfirmWaitlistAtDeadline(now);
+
+      expect(log.reserve).toHaveBeenCalledWith(
+        expect.objectContaining({
+          triggerKey: NotificationTrigger.WaitlistAutoConfirm,
+          dedupeKey: `${NotificationTrigger.WaitlistAutoConfirm}:t1`,
+        }),
+      );
+      expect(prisma.registration.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            id: { in: ['reg-1', 'reg-2'] },
+            status: 'IN_WAITLIST',
+          }),
+          data: expect.objectContaining({ status: 'CONFIRMED' }),
+        }),
+      );
+      expect(notifications.sendToAudience).toHaveBeenCalledWith(
+        ['p1'],
+        expect.objectContaining({
+          triggerKey: NotificationTrigger.RegistrationConfirmed,
+          dedupeKey: `${NotificationTrigger.RegistrationConfirmed}:reg-1`,
+          body: "You're confirmed for APL 2026.",
+        }),
+      );
+      expect(notifications.sendToAudience).toHaveBeenCalledWith(
+        ['p2'],
+        expect.objectContaining({
+          dedupeKey: `${NotificationTrigger.RegistrationConfirmed}:reg-2`,
+        }),
+      );
+    });
+
+    it('skips when bulk dedupe already reserved', async () => {
+      prisma.tournament.findMany.mockResolvedValue([{ id: 't1', name: 'APL 2026' }]);
+      log.reserve.mockResolvedValue(null);
+
+      await service.autoConfirmWaitlistAtDeadline(new Date('2026-07-07T15:00:00.000Z'));
+
+      expect(prisma.registration.findMany).not.toHaveBeenCalled();
+      expect(notifications.sendToAudience).not.toHaveBeenCalled();
     });
   });
 

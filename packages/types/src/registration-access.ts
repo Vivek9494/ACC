@@ -3,9 +3,8 @@ import { hasTeamFavouritesLeadInTournament, hasTeamLeadershipInTournament } from
 import { BallType, type BallType as BallTypeValue } from './rbac';
 import { RegistrationStatus } from './registration';
 import {
-  isTournamentRegistrationWindowClosed,
   hasRegistrationOpened,
-  tournamentHasRegistrationWindow,
+  isRegistrationVerificationDeadlinePassed,
 } from './tournament-registration';
 
 /** Tournament fields needed for registration-management visibility. */
@@ -16,7 +15,9 @@ export interface RegistrationManagementTournamentContext {
   hasRegistrationWindow?: boolean;
   registrationOpenAt?: string | null;
   registrationCloseAt?: string | null;
-  /** Server-derived: registration closed and no registrants left in waitlist. */
+  /** Tennis: auction datetime locks verification when set. */
+  auctionAt?: string | null;
+  /** Server-derived: verification deadline passed and no registrants left in waitlist. */
   registrationVerificationComplete?: boolean;
 }
 
@@ -85,13 +86,17 @@ export function isTournamentTeamLead(
 }
 
 /**
- * True when Center Sevak verification is finished: registration window closed and
- * no registrants remain IN_WAITLIST (everyone approved or declined).
+ * True when Center Sevak verification is finished: verification deadline passed and
+ * no registrants remain IN_WAITLIST (everyone approved, declined, or auto-confirmed).
  */
 export function isRegistrationVerificationComplete(
   tournament: Pick<
     RegistrationManagementTournamentContext,
-    'ballType' | 'hasRegistrationWindow' | 'registrationOpenAt' | 'registrationCloseAt'
+    | 'ballType'
+    | 'hasRegistrationWindow'
+    | 'registrationOpenAt'
+    | 'registrationCloseAt'
+    | 'auctionAt'
   >,
   pendingWaitlistCount: number,
   now: Date = new Date(),
@@ -102,13 +107,15 @@ export function isRegistrationVerificationComplete(
   if (!tournament.hasRegistrationWindow) {
     return false;
   }
-  if (!isTournamentRegistrationWindowClosed(
-    {
-      registrationOpenAt: tournament.registrationOpenAt ?? null,
-      registrationCloseAt: tournament.registrationCloseAt ?? null,
-    },
-    now,
-  )) {
+  if (
+    !isRegistrationVerificationDeadlinePassed(
+      {
+        auctionAt: tournament.auctionAt ?? null,
+        registrationCloseAt: tournament.registrationCloseAt ?? null,
+      },
+      now,
+    )
+  ) {
     return false;
   }
   return pendingWaitlistCount === 0;
@@ -193,3 +200,5 @@ export function canUploadPlayerSkillVideo(
 
 /** @deprecated Use {@link canUploadPlayerSkillVideo}. */
 export const canUploadPlayerVideo = canUploadPlayerSkillVideo;
+
+export { canManageRegistrationVerification } from './tournament-registration';

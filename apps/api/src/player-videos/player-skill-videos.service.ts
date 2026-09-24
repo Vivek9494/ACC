@@ -210,6 +210,7 @@ export class PlayerSkillVideosService {
         isDeleted: true,
         registrationOpenAt: true,
         registrationCloseAt: true,
+        auctionAt: true,
       },
     });
     if (!tournament || tournament.isDeleted) {
@@ -238,6 +239,7 @@ export class PlayerSkillVideosService {
         hasRegistrationWindow,
         registrationOpenAt: tournament.registrationOpenAt?.toISOString() ?? null,
         registrationCloseAt: tournament.registrationCloseAt?.toISOString() ?? null,
+        auctionAt: tournament.auctionAt?.toISOString() ?? null,
       },
       pendingWaitlistCount,
     );
@@ -271,6 +273,7 @@ export class PlayerSkillVideosService {
         isDeleted: true,
         registrationOpenAt: true,
         registrationCloseAt: true,
+        auctionAt: true,
         videoRequired: true,
         videoUploadStartAt: true,
         videoUploadEndDate: true,
@@ -309,6 +312,7 @@ export class PlayerSkillVideosService {
         hasRegistrationWindow,
         registrationOpenAt: tournament.registrationOpenAt?.toISOString() ?? null,
         registrationCloseAt: tournament.registrationCloseAt?.toISOString() ?? null,
+        auctionAt: tournament.auctionAt?.toISOString() ?? null,
       },
       pendingWaitlistCount,
     );
