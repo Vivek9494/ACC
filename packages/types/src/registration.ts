@@ -473,9 +473,10 @@ export interface CenterPlayerRosterEntry {
 export interface RegistrationVerificationQueue {
   phase: RegistrationVerificationPhase;
   /**
-   * Button count for the current phase. Hide the Verify Players button when 0.
-   * VIEW_ONLY: registered count. MANAGE: In Waitlist pending verification only
-   * (Sevak late-confirmed registrations are excluded).
+   * Button count for the current phase.
+   * VIEW_ONLY: registered count — hide the Verify Players button when 0.
+   * MANAGE: In Waitlist pending verification only (badge); button stays visible
+   * for the whole manage window so Verified/Declined tabs remain reachable.
    */
   actionCount: number;
   /** Own-center registrations with submitted details. */
@@ -484,7 +485,7 @@ export interface RegistrationVerificationQueue {
   notRegistered: CenterPlayerRosterEntry[];
   /** Count shown in the screen subtitle. */
   registeredCount: number;
-  /** Ratings edit + approve/decline allowed (post-window only). */
+  /** Ratings edit + approve/decline allowed (registration open → verification deadline). */
   canManage: boolean;
   /**
    * §7.6: Actor may late-register a missed player (Admin / Club Manager / eligible

@@ -110,6 +110,7 @@ export default function TournamentDetailScreen(): React.ReactElement {
   const [myRegistration, setMyRegistration] = useState<RegistrationDetail | null>(null);
   const [registrationChecked, setRegistrationChecked] = useState(false);
   const [verifyActionCount, setVerifyActionCount] = useState(0);
+  const [verifyCanManage, setVerifyCanManage] = useState(false);
   const [verifyQueueChecked, setVerifyQueueChecked] = useState(false);
 
   /** Silent vs first load — must not put `tournament` in effect deps (re-fetch loop). */
@@ -214,10 +215,12 @@ export default function TournamentDetailScreen(): React.ReactElement {
 
       setMyRegistration(mine);
       setVerifyActionCount(verificationQueue?.actionCount ?? 0);
+      setVerifyCanManage(verificationQueue?.canManage ?? false);
     } catch (err) {
       setTournament(null);
       setMyRegistration(null);
       setVerifyActionCount(0);
+      setVerifyCanManage(false);
       hasLoadedRef.current = false;
       loadedTournamentIdRef.current = null;
       if (isSessionExpiredError(err)) {
@@ -342,14 +345,20 @@ export default function TournamentDetailScreen(): React.ReactElement {
       );
     }
 
-    if (showVerifyPlayers && verifyQueueChecked && verifyActionCount > 0) {
+    // During the manage window always show (Pending may be 0 while Verified/Declined
+    // remain). VIEW_ONLY still uses actionCount (registered total) and hides at 0.
+    if (showVerifyPlayers && verifyQueueChecked && (verifyCanManage || verifyActionCount > 0)) {
       items.push(
         <Button
           key="verify-players"
           variant="amber"
           className={gridButtonClass}
           textClassName={gridLabelClass}
-          label={`Verify Players (${verifyActionCount})`}
+          label={
+            verifyActionCount > 0
+              ? `Verify Players (${verifyActionCount})`
+              : 'Verify Players'
+          }
           onPress={() =>
             router.push(tournamentSubpathHref(user, tournament.id, 'registrations/queue'))
           }
@@ -457,6 +466,7 @@ export default function TournamentDetailScreen(): React.ReactElement {
     tournament,
     user,
     verifyActionCount,
+    verifyCanManage,
     verifyQueueChecked,
   ]);
 
