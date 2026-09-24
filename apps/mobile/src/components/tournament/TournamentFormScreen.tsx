@@ -186,7 +186,6 @@ export function TournamentFormScreen({
   const editFormHydratedForTournamentIdRef = useRef<string | null>(null);
   const initialLeatherFromDateRef = useRef('');
   const initialLeatherEndDateRef = useRef('');
-  const initialVideoUploadStartDateRef = useRef('');
 
   const scrollRef = useRef<ScrollView>(null);
   const fieldOffsets = useRef<Partial<Record<TournamentFormFieldKey, number>>>({});
@@ -428,7 +427,6 @@ export function TournamentFormScreen({
         setVideoUploadStartTime(hydrated.videoUploadStartTime);
         setVideoUploadEndDate(hydrated.videoUploadEndDate);
         setVideoUploadEndTime(hydrated.videoUploadEndTime);
-        initialVideoUploadStartDateRef.current = hydrated.videoUploadStartDate;
         setFeeFullTime(hydrated.feeFullTime);
         setFeePartTime(hydrated.feePartTime);
         setScopeLabel(hydrated.scopeLabel);
@@ -470,7 +468,6 @@ export function TournamentFormScreen({
     editFormHydratedForTournamentIdRef.current = null;
     initialLeatherFromDateRef.current = '';
     initialLeatherEndDateRef.current = '';
-    initialVideoUploadStartDateRef.current = '';
   }, [tournamentId]);
 
   useEffect(() => {
@@ -794,7 +791,6 @@ export function TournamentFormScreen({
           longitude,
           initialLeatherFromDate: initialLeatherFromDateRef.current,
           initialLeatherEndDate: initialLeatherEndDateRef.current,
-          initialVideoUploadStartDate: initialVideoUploadStartDateRef.current,
           minTeamCount,
           datesWithMatches,
           tournamentType: editTournamentType ?? TournamentType.ACC,
@@ -962,7 +958,6 @@ export function TournamentFormScreen({
         const updated = await updateTournament(tournamentId, updatePayload);
         initialLeatherFromDateRef.current = leatherFromDate;
         initialLeatherEndDateRef.current = leatherEndDate;
-        initialVideoUploadStartDateRef.current = videoUploadStartDate;
         savedTournamentIdRef.current = updated.id;
         setSavedTournamentId(updated.id);
         successNavigatedRef.current = false;

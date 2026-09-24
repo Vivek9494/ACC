@@ -61,7 +61,7 @@ export const TOURNAMENT_FORM_MESSAGES = {
   },
   videoUploadStartDate: {
     required: 'Upload Start Date & Time are required.',
-    past: 'Choose today or a future date',
+    beforeRegistrationOpen: 'Upload start cannot be before registration opens.',
   },
   videoUploadStartTime: {
     required: 'Upload Start Date & Time are required.',

@@ -33,7 +33,6 @@ export interface TournamentFormValues extends Omit<CreateTournamentFormInput, 'h
   venueTimezone?: string;
   initialLeatherFromDate?: string;
   initialLeatherEndDate?: string;
-  initialVideoUploadStartDate?: string;
 }
 
 export function validateTournamentForm(values: TournamentFormValues): TournamentFormFieldErrors {
@@ -116,7 +115,6 @@ export function validateUpdateTournamentFormValues(
     longitude: values.longitude,
     initialLeatherFromDate: values.initialLeatherFromDate,
     initialLeatherEndDate: values.initialLeatherEndDate,
-    initialVideoUploadStartDate: values.initialVideoUploadStartDate,
     minTeamCount: values.minTeamCount,
     datesWithMatches: values.datesWithMatches,
     tournamentType: values.tournamentType,

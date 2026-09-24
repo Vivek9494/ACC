@@ -179,13 +179,11 @@ function appendVideoUploadWindowErrors(
     | 'videoUploadEndDate'
     | 'videoUploadEndTime'
     | 'hasRegistrationWindow'
+    | 'registrationOpenDate'
+    | 'registrationOpenTime'
     | 'registrationCloseDate'
     | 'registrationCloseTime'
-    | 'venueTimezone'
-  > & {
-    initialVideoUploadStartDate?: string;
-    isEdit?: boolean;
-  },
+  >,
 ): void {
   if (values.ballType !== BallType.Tennis || !values.videoRequired) {
     return;
@@ -196,7 +194,6 @@ function appendVideoUploadWindowErrors(
   const startTime = values.videoUploadStartTime.trim();
   const endDate = values.videoUploadEndDate.trim();
   const endTime = values.videoUploadEndTime.trim();
-  const timeZone = values.venueTimezone ?? DEFAULT_VENUE_TIMEZONE;
 
   if (!startDate || !startTime) {
     const message = messages.videoUploadStartDate.required;
@@ -209,24 +206,24 @@ function appendVideoUploadWindowErrors(
     errors.videoUploadEndTime = message;
   }
 
-  if (startDate && !values.isEdit && isDateOnlyBeforeTodayInZone(startDate, timeZone)) {
-    const message = messages.videoUploadStartDate.past;
-    errors.videoUploadStartDate = message;
-    errors.videoUploadStartTime = message;
-  } else if (
-    startDate &&
-    values.isEdit &&
-    startDate !== values.initialVideoUploadStartDate &&
-    isDateOnlyBeforeTodayInZone(startDate, timeZone)
-  ) {
-    const message = messages.videoUploadStartDate.past;
-    errors.videoUploadStartDate = message;
-    errors.videoUploadStartTime = message;
-  }
-
   const startIso =
     startDate && startTime ? combineLocalDateAndTimeToIso(startDate, startTime) : null;
   const endIso = endDate && endTime ? combineLocalDateAndTimeToIso(endDate, endTime) : null;
+
+  if (values.hasRegistrationWindow && startIso) {
+    const registrationOpenIso = combineLocalDateAndTimeToIso(
+      values.registrationOpenDate,
+      values.registrationOpenTime,
+    );
+    if (
+      registrationOpenIso &&
+      compareIsoDates(startIso, registrationOpenIso) < 0
+    ) {
+      const message = messages.videoUploadStartDate.beforeRegistrationOpen;
+      errors.videoUploadStartDate = message;
+      errors.videoUploadStartTime = message;
+    }
+  }
 
   if (startIso && endIso && compareIsoDates(endIso, startIso) <= 0) {
     const message = messages.videoUploadEndDate.afterStart;
@@ -412,8 +409,6 @@ export interface UpdateTournamentFormInput extends CreateTournamentFormInput {
    */
   initialLeatherFromDate?: string;
   initialLeatherEndDate?: string;
-  /** Saved upload window start date — unchanged past dates remain valid on edit. */
-  initialVideoUploadStartDate?: string;
 }
 
 function isNewPastLeatherDate(
@@ -484,11 +479,7 @@ export function validateUpdateTournamentForm(
   delete errors.centers;
 
   if (values.ballType === BallType.Tennis && values.videoRequired) {
-    appendVideoUploadWindowErrors(errors, {
-      ...values,
-      isEdit: true,
-      initialVideoUploadStartDate: values.initialVideoUploadStartDate,
-    });
+    appendVideoUploadWindowErrors(errors, values);
   } else {
     delete errors.videoUploadStartDate;
     delete errors.videoUploadStartTime;

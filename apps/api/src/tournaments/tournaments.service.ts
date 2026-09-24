@@ -1158,6 +1158,21 @@ export class TournamentsService {
         });
       }
       if (
+        dto.registrationOpenAt &&
+        new Date(dto.videoUploadStartAt) < new Date(dto.registrationOpenAt)
+      ) {
+        throw new BadRequestException({
+          message: TOURNAMENT_FORM_MESSAGES.videoUploadStartDate.beforeRegistrationOpen,
+          error: 'INVALID_VIDEO_START',
+          fields: {
+            videoUploadStartDate:
+              TOURNAMENT_FORM_MESSAGES.videoUploadStartDate.beforeRegistrationOpen,
+            videoUploadStartTime:
+              TOURNAMENT_FORM_MESSAGES.videoUploadStartDate.beforeRegistrationOpen,
+          },
+        });
+      }
+      if (
         dto.registrationCloseAt &&
         new Date(dto.videoUploadEndDate) <= new Date(dto.registrationCloseAt)
       ) {

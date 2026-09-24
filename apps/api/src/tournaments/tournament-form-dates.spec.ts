@@ -408,8 +408,8 @@ describe('tournament form dates', () => {
       videoUploadEndTime: '',
     });
 
-    expect(errors.videoUploadStartDate).toBe('Upload start date is required');
-    expect(errors.videoUploadEndTime).toBe('Upload end time is required');
+    expect(errors.videoUploadStartDate).toBe('Upload Start Date & Time are required.');
+    expect(errors.videoUploadEndTime).toBe('Upload End Date & Time are required.');
   });
 
   it('requires upload end after upload start', () => {
@@ -442,5 +442,78 @@ describe('tournament form dates', () => {
     });
 
     expect(errors.videoUploadEndDate).toBe('Upload end must be after upload start');
+  });
+
+  it('rejects upload start before registration open', () => {
+    const errors = validateCreateTournamentForm({
+      hasPoster: true,
+      name: 'APL 2026',
+      year: '2026',
+      tournamentDates: ['2026-07-20'],
+      leatherFromDate: '',
+      leatherEndDate: '',
+      ballType: BallType.Tennis,
+      citySelection: CitySelection.Apl,
+      tournamentProvinceId: 'province-1',
+      selectedCenterIds: [],
+      numberOfTeams: '8',
+      playersPerTeam: '',
+      hasRegistrationWindow: true,
+      registrationOpenDate: '2026-07-10',
+      registrationOpenTime: '10:00',
+      registrationCloseDate: '2026-07-15',
+      registrationCloseTime: '18:00',
+      hasAuctionDate: false,
+      auctionDate: '',
+      auctionTime: '',
+      videoRequired: true,
+      videoUploadStartDate: '2026-07-10',
+      videoUploadStartTime: '09:00',
+      videoUploadEndDate: '2026-07-16',
+      videoUploadEndTime: '12:00',
+    });
+
+    expect(errors.videoUploadStartDate).toBe(
+      'Upload start cannot be before registration opens.',
+    );
+  });
+
+  it('allows upload start equal to registration open even when both are in the past', () => {
+    const errors = validateUpdateTournamentForm({
+      hasPoster: true,
+      name: 'APL 2026',
+      year: '2026',
+      tournamentDates: ['2026-07-20'],
+      leatherFromDate: '',
+      leatherEndDate: '',
+      ballType: BallType.Tennis,
+      citySelection: CitySelection.Apl,
+      tournamentProvinceId: 'province-1',
+      selectedCenterIds: [],
+      numberOfTeams: '8',
+      playersPerTeam: '',
+      hasRegistrationWindow: true,
+      registrationOpenDate: '2020-06-01',
+      registrationOpenTime: '10:00',
+      registrationCloseDate: '2020-06-10',
+      registrationCloseTime: '18:00',
+      hasAuctionDate: false,
+      auctionDate: '',
+      auctionTime: '',
+      videoRequired: true,
+      videoUploadStartDate: '2020-06-01',
+      videoUploadStartTime: '10:00',
+      videoUploadEndDate: '2020-06-11',
+      videoUploadEndTime: '12:00',
+      minTeamCount: 1,
+      datesWithMatches: [],
+      tournamentType: TournamentType.APL,
+      groupCount: 1,
+      knockoutTeamCount: null,
+      hasKnockoutBracket: false,
+    });
+
+    expect(errors.videoUploadStartDate).toBeUndefined();
+    expect(errors.videoUploadStartTime).toBeUndefined();
   });
 });
