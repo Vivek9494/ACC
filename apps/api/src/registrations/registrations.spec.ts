@@ -456,6 +456,64 @@ describe('RegistrationsService', () => {
       );
       expect(REGISTRATION_DECLINED_MESSAGE).toBe('Declined. Contact Center Sevak');
     });
+
+    it('reverts a declined registration to waitlist without notifying', async () => {
+      prisma.tournament.findUnique.mockResolvedValue({
+        id: 'tour-1',
+        name: 'APL 2026',
+        state: 'REGISTRATION_OPEN',
+        type: 'APL',
+        ballType: 'TENNIS',
+        isDeleted: false,
+        ...closedRegistrationWindow,
+      });
+      prisma.registration.findUnique.mockResolvedValue({
+        id: 'reg-1',
+        status: RegistrationStatus.Declined,
+        userId: 'player-1',
+        tournamentId: 'tour-1',
+        centerId: 'center-A',
+      });
+      prisma.registration.update.mockResolvedValue(
+        row({ status: RegistrationStatus.InWaitlist, reviewedByUserId: null, reviewedAt: null }),
+      );
+
+      const result = await service.revertToWaitlist(admin, 'reg-1');
+
+      expect(result.status).toBe(RegistrationStatus.InWaitlist);
+      expect(prisma.registration.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: {
+            status: RegistrationStatus.InWaitlist,
+            reviewedByUserId: null,
+            reviewedAt: null,
+          },
+        }),
+      );
+      expect(notifications.sendToAudience).not.toHaveBeenCalled();
+    });
+
+    it('blocks revert after the verification deadline', async () => {
+      prisma.tournament.findUnique.mockResolvedValue({
+        id: 'tour-1',
+        state: 'REGISTRATION_OPEN',
+        type: 'APL',
+        ballType: 'TENNIS',
+        isDeleted: false,
+        ...pastVerificationDeadlineWindow,
+      });
+      prisma.registration.findUnique.mockResolvedValue({
+        id: 'reg-1',
+        status: RegistrationStatus.Declined,
+        userId: 'player-1',
+        tournamentId: 'tour-1',
+        centerId: 'center-A',
+      });
+
+      await expect(service.revertToWaitlist(admin, 'reg-1')).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+    });
   });
 
   describe('visibility rules (§7.4)', () => {

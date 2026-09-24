@@ -5,7 +5,7 @@ import { colors } from '@/theme/colors';
 
 import { Text } from '../../ui/Text';
 
-/** Post-window verification status pill — distinct from the Approve action button. */
+/** Verification status pill — Pending / Verified / Declined. */
 export function VerifyPlayerVerificationBadge({
   status,
 }: {
@@ -33,6 +33,19 @@ export function VerifyPlayerVerificationBadge({
       >
         <Ionicons name="time-outline" size={14} color={colors.primaryDark} />
         <Text className="font-sans-semibold text-xs text-primary-800">Pending</Text>
+      </View>
+    );
+  }
+
+  if (status === RegistrationStatus.Declined) {
+    return (
+      <View
+        className="flex-row items-center gap-1 self-start rounded-full bg-surface-container-high px-2.5 py-1"
+        accessibilityRole="text"
+        accessibilityLabel="Declined"
+      >
+        <Ionicons name="close-circle" size={14} color={colors.secondaryDark} />
+        <Text className="font-sans-semibold text-xs text-secondary-900">Declined</Text>
       </View>
     );
   }

@@ -16,6 +16,7 @@ export interface VerifyPlayerCardProps {
   onApprove: () => void;
   onDecline: () => void;
   onEdit: () => void;
+  onRevert?: () => void;
 }
 
 export function VerifyPlayerCard({
@@ -25,21 +26,17 @@ export function VerifyPlayerCard({
   onApprove,
   onDecline,
   onEdit,
+  onRevert,
 }: VerifyPlayerCardProps): React.ReactElement {
   const isDeclined = row.status === RegistrationStatus.Declined;
   const isPending = row.status === RegistrationStatus.InWaitlist;
   const canApprove = canManage && isPending;
   const canDecline = canManage && isPending;
-  const showVerificationBadge = canManage && !isDeclined;
-  const showActions = canManage && !isDeclined;
+  const canRevert = canManage && isDeclined && onRevert != null;
 
   return (
     <View
-      className={`rounded-lg border px-4 py-3 ${
-        isDeclined
-          ? 'border-secondary-700/30 bg-surface-container-high opacity-90'
-          : 'border-outline-variant bg-surface'
-      }`}
+      className="rounded-lg border border-outline-variant bg-surface px-4 py-3"
       style={INPUT_SHADOW_STYLE}
     >
       <View className="flex-row items-start gap-3">
@@ -51,14 +48,12 @@ export function VerifyPlayerCard({
         <View className="min-w-0 flex-1 gap-1">
           <View className="flex-row items-center gap-2">
             <Text
-              className={`min-w-0 flex-1 font-sans-bold text-base ${
-                isDeclined ? 'text-on-surface-variant' : 'text-on-surface'
-              }`}
+              className="min-w-0 flex-1 font-sans-bold text-base text-on-surface"
               numberOfLines={1}
             >
               {row.firstName} {row.lastName}
             </Text>
-            {showVerificationBadge ? (
+            {canManage ? (
               <View className="shrink-0">
                 <VerifyPlayerVerificationBadge status={row.status} />
               </View>
@@ -67,16 +62,13 @@ export function VerifyPlayerCard({
           <Text className="font-sans text-sm text-on-surface-variant" numberOfLines={1}>
             {row.mobileNumber}
           </Text>
-          {isDeclined ? (
-            <Text className="font-sans-medium text-xs text-secondary-900">Declined</Text>
-          ) : null}
           <View className="mt-2 flex-row items-center gap-2">
             <VerifyPlayerRatingsRow
               batting={row.battingRating}
               bowling={row.bowlingRating}
               fielding={row.fieldingRating}
             />
-            {showActions ? (
+            {canManage ? (
               <View className="shrink-0 flex-row items-center gap-1.5">
                 {canApprove ? (
                   <Pressable
@@ -84,12 +76,12 @@ export function VerifyPlayerCard({
                     disabled={busy}
                     accessibilityRole="button"
                     accessibilityLabel="Approve player"
-                    className="h-9 w-9 items-center justify-center rounded-full bg-primary-container shadow-md active:scale-90"
+                    className="h-9 w-9 items-center justify-center rounded-full bg-surface-container-high active:scale-90"
                   >
                     {busy ? (
-                      <ActivityIndicator color={colors.textInverse} size="small" />
+                      <ActivityIndicator color={FIELD_ORANGE} size="small" />
                     ) : (
-                      <Ionicons name="checkmark" size={20} color={colors.textInverse} />
+                      <Ionicons name="checkmark" size={20} color={FIELD_ORANGE} />
                     )}
                   </Pressable>
                 ) : null}
@@ -104,15 +96,32 @@ export function VerifyPlayerCard({
                     <Ionicons name="close" size={20} color={colors.secondaryDark} />
                   </Pressable>
                 ) : null}
-                <Pressable
-                  onPress={onEdit}
-                  disabled={busy}
-                  accessibilityRole="button"
-                  accessibilityLabel="Edit ratings"
-                  className="h-9 w-9 items-center justify-center rounded-full bg-surface-container-high active:scale-90"
-                >
-                  <Ionicons name="pencil" size={16} color={FIELD_ORANGE} />
-                </Pressable>
+                {canRevert ? (
+                  <Pressable
+                    onPress={onRevert}
+                    disabled={busy}
+                    accessibilityRole="button"
+                    accessibilityLabel="Move back to pending"
+                    className="h-9 w-9 items-center justify-center rounded-full bg-surface-container-high active:scale-90"
+                  >
+                    {busy ? (
+                      <ActivityIndicator color={FIELD_ORANGE} size="small" />
+                    ) : (
+                      <Ionicons name="arrow-undo" size={18} color={FIELD_ORANGE} />
+                    )}
+                  </Pressable>
+                ) : null}
+                {!isDeclined ? (
+                  <Pressable
+                    onPress={onEdit}
+                    disabled={busy}
+                    accessibilityRole="button"
+                    accessibilityLabel="Edit ratings"
+                    className="h-9 w-9 items-center justify-center rounded-full bg-surface-container-high active:scale-90"
+                  >
+                    <Ionicons name="pencil" size={16} color={FIELD_ORANGE} />
+                  </Pressable>
+                ) : null}
               </View>
             ) : null}
           </View>

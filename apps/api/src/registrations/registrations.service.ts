@@ -447,6 +447,55 @@ export class RegistrationsService {
     return this.review(actor, registrationId, RegistrationStatus.Declined);
   }
 
+  /**
+   * Move a Declined registration back to In Waitlist so the Sevak can
+   * re-verify. Clears review attribution; no confirm/decline push.
+   */
+  async revertToWaitlist(
+    actor: AuthUser,
+    registrationId: string,
+  ): Promise<RegistrationDetail> {
+    const existing = await this.prisma.registration.findUnique({
+      where: { id: registrationId },
+      select: { id: true, status: true, userId: true, tournamentId: true, centerId: true },
+    });
+    if (!existing) {
+      throw new NotFoundException({ message: 'Registration not found', error: 'NOT_FOUND' });
+    }
+    if (existing.status !== RegistrationStatus.Declined) {
+      throw new BadRequestException({
+        message: 'Only declined registrations can be moved back to pending',
+        error: 'INVALID_REGISTRATION_STATUS',
+      });
+    }
+
+    const tournament = await this.requireTournament(existing.tournamentId);
+    this.assertRegistrationVerificationTournament(tournament.ballType as BallType);
+    this.assertCenterSevakTennisOnly(actor, tournament.ballType as BallType);
+    this.assertRegistrationVerificationManageOpen(tournament);
+    await this.assertSevakOwnCenter(actor, existing.centerId);
+
+    const row = await this.prisma.registration.update({
+      where: { id: registrationId },
+      data: {
+        status: RegistrationStatus.InWaitlist,
+        reviewedByUserId: null,
+        reviewedAt: null,
+      },
+      include: REGISTRATION_INCLUDE,
+    });
+    await this.audit.record({
+      action: 'REGISTRATION_REVERT_WAITLIST',
+      actorUserId: actor.id,
+      targetUserId: existing.userId,
+      targetEntityType: 'registration',
+      targetEntityId: registrationId,
+      before: { status: existing.status },
+      after: { status: RegistrationStatus.InWaitlist },
+    });
+    return this.resolveSummaryPhoto(this.toDetail(row));
+  }
+
   private async review(
     actor: AuthUser,
     registrationId: string,

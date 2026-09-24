@@ -203,6 +203,18 @@ export class RegistrationsController {
     return this.registrations.decline(user, registrationId);
   }
 
+  /** Move a Declined registration back to In Waitlist for re-verification. */
+  @Post(':registrationId/revert-waitlist')
+  @HttpCode(HttpStatus.OK)
+  @RequirePermission(Permission.APPROVE_REGISTRATION)
+  @UseGuards(PermissionGuard)
+  revertToWaitlist(
+    @CurrentUser() user: AuthUser,
+    @Param('registrationId') registrationId: string,
+  ): Promise<RegistrationDetail> {
+    return this.registrations.revertToWaitlist(user, registrationId);
+  }
+
   /** §7.5: Center Sevak updates adjusted ratings for an own-Center player (APL). */
   @Patch(':registrationId/ratings')
   @RequirePermission(Permission.UPDATE_PLAYER_RATINGS)

@@ -1637,6 +1637,17 @@ export function declineRegistration(
   );
 }
 
+/** Move a Declined registration back to In Waitlist. */
+export function revertRegistrationToWaitlist(
+  tournamentId: string,
+  registrationId: string,
+): Promise<RegistrationDetail> {
+  return apiFetch<RegistrationDetail>(
+    `/tournaments/${tournamentId}/registrations/${registrationId}/revert-waitlist`,
+    { method: 'POST' },
+  );
+}
+
 /** §7.5: update an own-Center player's ratings (APL). */
 export function updateRegistrationRatings(
   tournamentId: string,
