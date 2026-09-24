@@ -254,7 +254,6 @@ export default function EditTeamScreen(): React.ReactElement {
 
           <TextInput
             label="Team Name"
-            placeholder="e.g. Barrie Cobras"
             value={teamName}
             onChangeText={(value) => {
               setTeamName(value.slice(0, TEAM_NAME_MAX_LENGTH));

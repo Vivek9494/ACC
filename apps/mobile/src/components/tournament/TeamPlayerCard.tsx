@@ -52,11 +52,8 @@ export function TeamPlayerCard({
   onRemove,
   removing = false,
 }: TeamPlayerCardProps): React.ReactElement {
-  const hasMeta =
-    player.isCaptain ||
-    player.isViceCaptain ||
-    player.isManager ||
-    player.mobileNumber != null;
+  const hasRoles =
+    player.isCaptain || player.isViceCaptain || player.isManager;
 
   return (
     <View className="overflow-hidden rounded-xl border border-outline-variant bg-surface-container-lowest p-3">
@@ -67,53 +64,50 @@ export function TeamPlayerCard({
           size="md"
           shape="circle"
         />
-        <View className="min-w-0 flex-1 justify-center">
+        <View className="min-w-0 flex-1 justify-center gap-1">
           <Text className="font-sans-bold text-base text-on-surface" numberOfLines={2}>
             {player.firstName} {player.lastName}
           </Text>
-
-          {hasMeta || showViewProfile || onRemove ? (
-            <View className="mt-1 flex-row items-center gap-2">
-              <View className="min-w-0 flex-1 gap-1">
-                {player.isCaptain ? <RoleBadge label="Captain" /> : null}
-                {player.isViceCaptain ? <RoleBadge label="Vice-Captain" /> : null}
-                {player.isManager ? <RoleBadge label="Manager" /> : null}
-                {player.mobileNumber ? (
-                  <MobileNumberLink mobileNumber={player.mobileNumber} />
-                ) : null}
-              </View>
-
-              {showViewProfile ? (
-                <View className="shrink-0">
-                  <Button
-                    variant="amber"
-                    label="View Profile"
-                    onPress={onViewProfile}
-                    className="h-9 rounded-full px-4"
-                    textClassName="text-xs"
-                  />
-                </View>
-              ) : null}
-
-              {onRemove ? (
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={`Remove ${player.firstName} ${player.lastName} from team`}
-                  disabled={removing}
-                  hitSlop={8}
-                  onPress={onRemove}
-                  className="h-9 w-9 shrink-0 items-center justify-center rounded-full"
-                >
-                  {removing ? (
-                    <ActivityIndicator size="small" color={colors.textMuted} />
-                  ) : (
-                    <MaterialIcons name="delete-outline" size={22} color={colors.textMuted} />
-                  )}
-                </Pressable>
-              ) : null}
+          {player.mobileNumber ? (
+            <MobileNumberLink mobileNumber={player.mobileNumber} />
+          ) : null}
+          {hasRoles ? (
+            <View className="gap-1">
+              {player.isCaptain ? <RoleBadge label="Captain" /> : null}
+              {player.isViceCaptain ? <RoleBadge label="Vice-Captain" /> : null}
+              {player.isManager ? <RoleBadge label="Manager" /> : null}
             </View>
           ) : null}
         </View>
+
+        {showViewProfile ? (
+          <View className="shrink-0">
+            <Button
+              variant="amber"
+              label="View Profile"
+              onPress={onViewProfile}
+              className="h-9 rounded-full px-4"
+              textClassName="text-xs"
+            />
+          </View>
+        ) : null}
+
+        {onRemove ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Remove ${player.firstName} ${player.lastName} from team`}
+            disabled={removing}
+            hitSlop={8}
+            onPress={onRemove}
+            className="h-9 w-9 shrink-0 items-center justify-center rounded-full"
+          >
+            {removing ? (
+              <ActivityIndicator size="small" color={colors.textMuted} />
+            ) : (
+              <MaterialIcons name="delete-outline" size={22} color={colors.textMuted} />
+            )}
+          </Pressable>
+        ) : null}
       </View>
     </View>
   );

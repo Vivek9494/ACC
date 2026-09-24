@@ -44,6 +44,10 @@ describe('canViewTeamRosterMobileNumbers', () => {
     expect(canViewTeamRosterMobileNumbers(member, false)).toBe(false);
   });
 
+  it('allows roster managers who are not team members', () => {
+    expect(canViewTeamRosterMobileNumbers(member, false, true)).toBe(true);
+  });
+
   it('denies guests', () => {
     expect(canViewTeamRosterMobileNumbers(null, true)).toBe(false);
   });

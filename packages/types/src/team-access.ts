@@ -82,17 +82,23 @@ export function canViewTournamentPlayerProfiles(
 
 /**
  * True when the viewer may receive teammates' mobile numbers on a team roster.
- * Admin / Club Manager: all teams. Everyone else: only when they are a member of that team
+ * Admin / Club Manager: all teams. Roster managers (e.g. Center Sevak on an
+ * eligible Center-level tournament): teams they can add/remove on.
+ * Everyone else: only when they are a member of that team
  * (`isMemberOfTeam` from TeamMembership — server must resolve this; never trust the client alone).
  */
 export function canViewTeamRosterMobileNumbers(
   user: AuthUser | null | undefined,
   isMemberOfTeam: boolean,
+  canManageRoster = false,
 ): boolean {
   if (!user) {
     return false;
   }
   if (user.role === UserRole.Admin || user.role === UserRole.ClubManager) {
+    return true;
+  }
+  if (canManageRoster) {
     return true;
   }
   return isMemberOfTeam;

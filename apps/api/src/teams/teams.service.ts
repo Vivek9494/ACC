@@ -197,7 +197,12 @@ export class TeamsService {
       leaderAssignments.find((row) => row.role === UserRole.Manager)?.userId ?? null;
     const showPlayerCategorySplit = team.tournament.ballType === BallType.Leather;
     const canViewPlayerProfiles = canViewTournamentPlayerProfiles(viewer, tournamentId);
-    const canViewMobileNumbers = canViewTeamRosterMobileNumbers(viewer, viewerMembership != null);
+    const canManageRoster = viewer ? await this.canManageTeamRoster(viewer, tournamentId) : false;
+    const canViewMobileNumbers = canViewTeamRosterMobileNumbers(
+      viewer,
+      viewerMembership != null,
+      canManageRoster,
+    );
 
     let fulltimePlayerCount = 0;
     let parttimePlayerCount = 0;
@@ -254,7 +259,6 @@ export class TeamsService {
       return a.firstName.localeCompare(b.firstName);
     });
 
-    const canManageRoster = viewer ? await this.canManageTeamRoster(viewer, tournamentId) : false;
     const playersPerTeamCap = team.tournament.playersPerTeam;
     const rosterSlotsRemaining = teamRosterSlotsRemaining(playersPerTeamCap, players.length);
 
