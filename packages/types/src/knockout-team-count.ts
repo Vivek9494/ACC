@@ -8,6 +8,8 @@ export const KNOCKOUT_TEAM_COUNT_MESSAGES = {
   aboveTotalTeams: (max: number) => `Cannot exceed ${max} teams`,
   notApl: 'Knockout team count applies to APL tournaments only',
   prerequisites: 'Set groups and teams first',
+  /** Add Tournament — groups are optional at create; only team count is required. */
+  prerequisitesCreate: 'Select number of teams first',
   locked: 'Locked — delete the bracket to change knockout size',
 } as const;
 
@@ -59,6 +61,27 @@ export function buildKnockoutTeamCountOptions(
     options.push({ value: String(n), label: String(n) });
   }
   return options;
+}
+
+/**
+ * Add Tournament (no groups yet): even sizes from 2 through totalTeams.
+ * Uses groupCount=1 so {@link evenCeil} yields floor 2.
+ */
+export function buildKnockoutTeamCountOptionsForCreate(
+  totalTeams: number,
+): KnockoutTeamCountOption[] {
+  return buildKnockoutTeamCountOptions(1, totalTeams);
+}
+
+export function canConfigureKnockoutTeamCountOnCreate(totalTeams: number): boolean {
+  return canConfigureKnockoutTeamCount(1, totalTeams);
+}
+
+export function validateKnockoutTeamCountOnCreate(
+  value: number | null | undefined,
+  totalTeams: number,
+): string | null {
+  return validateKnockoutTeamCount(value, { groupCount: 1, totalTeams });
 }
 
 export function validateKnockoutTeamCount(

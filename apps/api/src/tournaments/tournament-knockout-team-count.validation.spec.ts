@@ -7,16 +7,34 @@ import {
 
 describe('tournament-knockout-team-count.validation', () => {
   describe('assertKnockoutTeamCountOnCreate', () => {
-    it('rejects any value on create', () => {
-      expect(() =>
-        assertKnockoutTeamCountOnCreate(TournamentType.APL, 8),
-      ).toThrow(/Set groups and teams first/i);
-    });
-
     it('allows null on create', () => {
       expect(() =>
-        assertKnockoutTeamCountOnCreate(TournamentType.APL, null),
+        assertKnockoutTeamCountOnCreate(TournamentType.APL, 16, null),
       ).not.toThrow();
+    });
+
+    it('accepts a valid even knockout size on APL create', () => {
+      expect(() =>
+        assertKnockoutTeamCountOnCreate(TournamentType.APL, 16, 8),
+      ).not.toThrow();
+    });
+
+    it('rejects odd knockout size on create', () => {
+      expect(() =>
+        assertKnockoutTeamCountOnCreate(TournamentType.APL, 16, 7),
+      ).toThrow(/even number/i);
+    });
+
+    it('rejects knockout above team count on create', () => {
+      expect(() =>
+        assertKnockoutTeamCountOnCreate(TournamentType.APL, 10, 12),
+      ).toThrow(/Cannot exceed 10/i);
+    });
+
+    it('rejects knockout for non-APL on create', () => {
+      expect(() =>
+        assertKnockoutTeamCountOnCreate(TournamentType.Center, 16, 8),
+      ).toThrow(/APL tournaments only/i);
     });
   });
 

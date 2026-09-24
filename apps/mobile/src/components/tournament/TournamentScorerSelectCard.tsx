@@ -1,4 +1,4 @@
-import { registrationPlayerRoleLabel, type TournamentScorerPoolRow } from '@acc/types';
+import type { TournamentScorerPoolRow } from '@acc/types';
 import { Ionicons } from '@expo/vector-icons';
 import { Pressable, View } from 'react-native';
 import { colors } from '@/theme/colors';
@@ -20,8 +20,6 @@ export function TournamentScorerSelectCard({
   disabled = false,
   onToggle,
 }: TournamentScorerSelectCardProps): React.ReactElement {
-  const roleLabel = registrationPlayerRoleLabel(player.playerRole);
-
   return (
     <Pressable
       onPress={disabled ? undefined : onToggle}
@@ -42,11 +40,6 @@ export function TournamentScorerSelectCard({
             {player.firstName} {player.lastName}
           </Text>
           <Text className="mt-1 font-sans text-sm text-on-surface-variant">{player.centerName}</Text>
-          {roleLabel ? (
-            <Text className="mt-1 font-sans-medium text-xs uppercase tracking-wider text-primary">
-              {roleLabel}
-            </Text>
-          ) : null}
         </View>
         <View
           className={`h-5 w-5 shrink-0 items-center justify-center rounded-md border ${

@@ -341,33 +341,32 @@ export function TournamentRegistrationFormScreen({
           <View className="gap-6">
             <FormSection title="Personal Information">
               <View className="gap-4">
-                <TextInput
-                  label="First Name"
-                  value={firstName}
-                  onChangeText={(text) => {
-                    setFirstName(formatSignupNameInput(text));
-                    if (firstNameError) setFirstNameError(undefined);
-                  }}
-                  autoCapitalize="words"
-                  maxLength={SIGNUP_NAME_MAX_LENGTH}
-                  error={firstNameError}
-                />
-                <TextInput
-                  label="Last Name"
-                  value={lastName}
-                  onChangeText={(text) => {
-                    setLastName(formatSignupNameInput(text));
-                    if (lastNameError) setLastNameError(undefined);
-                  }}
-                  autoCapitalize="words"
-                  maxLength={SIGNUP_NAME_MAX_LENGTH}
-                  error={lastNameError}
-                />
-              </View>
-            </FormSection>
-
-            <FormSection title="Game Preferences">
-              <View className="gap-4">
+                <FormFieldRow>
+                  <TextInput
+                    label="First Name"
+                    value={firstName}
+                    onChangeText={(text) => {
+                      setFirstName(formatSignupNameInput(text));
+                      if (firstNameError) setFirstNameError(undefined);
+                    }}
+                    autoCapitalize="words"
+                    maxLength={SIGNUP_NAME_MAX_LENGTH}
+                    error={firstNameError}
+                    containerClassName="min-w-0 flex-1"
+                  />
+                  <TextInput
+                    label="Last Name"
+                    value={lastName}
+                    onChangeText={(text) => {
+                      setLastName(formatSignupNameInput(text));
+                      if (lastNameError) setLastNameError(undefined);
+                    }}
+                    autoCapitalize="words"
+                    maxLength={SIGNUP_NAME_MAX_LENGTH}
+                    error={lastNameError}
+                    containerClassName="min-w-0 flex-1"
+                  />
+                </FormFieldRow>
                 <Select
                   label="Center"
                   placeholder="Select training center"
@@ -376,6 +375,11 @@ export function TournamentRegistrationFormScreen({
                   onChange={setCenterId}
                   disabled={isLateOnBehalf}
                 />
+              </View>
+            </FormSection>
+
+            <FormSection title="Game Preferences">
+              <View className="gap-4">
                 <Select
                   label="Batting/Bowling Hand"
                   value={battingStyle}

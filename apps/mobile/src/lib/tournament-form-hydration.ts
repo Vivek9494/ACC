@@ -50,6 +50,7 @@ export interface HydratedTournamentFormState {
   registrationCloseTime: string;
   hasAuctionDate: boolean;
   auctionDate: string;
+  auctionTime: string;
   impactPlayerEnabled: boolean;
   videoRequired: boolean;
   videoUploadStartDate: string;
@@ -132,6 +133,7 @@ export function hydrateTournamentFormFromEditData(
     registrationCloseTime: isoToLocalTime(data.registrationCloseAt),
     hasAuctionDate: data.auctionAt != null,
     auctionDate: isoToLocalDate(data.auctionAt),
+    auctionTime: isoToLocalTime(data.auctionAt),
     impactPlayerEnabled: data.impactPlayerEnabled,
     videoRequired: data.videoRequired,
     videoUploadStartDate: isoToLocalDate(data.videoUploadStartAt),

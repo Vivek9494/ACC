@@ -17,7 +17,8 @@ import type { ScorerStartableMatch } from './player';
 export interface AdminOverview {
   provinceCount: number;
   centerCount: number;
-  activeTournamentCount: number;
+  /** Non-deleted tournaments in COMPLETED state. */
+  completedTournamentCount: number;
   totalUserCount: number;
   tournamentCount: number;
   matchesTodayCount: number;

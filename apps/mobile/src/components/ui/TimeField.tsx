@@ -62,6 +62,8 @@ export interface TimeFieldProps {
   onChange: (time: string) => void;
   placeholder?: string;
   error?: string;
+  /** When false, still applies error border but hides the message (pair-level copy). Default true. */
+  showErrorMessage?: boolean;
   containerClassName?: string;
 }
 
@@ -73,6 +75,7 @@ export function TimeField({
   onChange,
   placeholder = 'Time',
   error,
+  showErrorMessage = true,
   containerClassName,
 }: TimeFieldProps): React.ReactElement {
   const [showPicker, setShowPicker] = useState(false);
@@ -119,7 +122,7 @@ export function TimeField({
           {parsed ? formatDisplayTime(value) : placeholder}
         </Text>
       </Pressable>
-      <FormErrorText inline>{error}</FormErrorText>
+      <FormErrorText inline>{showErrorMessage ? error : null}</FormErrorText>
 
       <DateTimePickerSheet
         visible={showPicker}

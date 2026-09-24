@@ -1,4 +1,8 @@
-import { validateKnockoutTeamCount } from './knockout-team-count';
+import {
+  resolvesToAplOnCreate,
+  validateKnockoutTeamCount,
+  validateKnockoutTeamCountOnCreate,
+} from './knockout-team-count';
 import { BallType, CitySelection, TournamentType } from './rbac';
 import {
   compareIsoDateOnly,
@@ -40,6 +44,7 @@ export const TOURNAMENT_FIELD_ORDER: readonly TournamentFormFieldKey[] = [
   'registrationCloseDate',
   'registrationCloseTime',
   'auctionDate',
+  'auctionTime',
   'videoUploadStartDate',
   'videoUploadStartTime',
   'videoUploadEndDate',
@@ -72,11 +77,14 @@ export interface CreateTournamentFormInput {
   registrationCloseTime: string;
   hasAuctionDate: boolean;
   auctionDate: string;
+  auctionTime: string;
   videoRequired: boolean;
   videoUploadStartDate: string;
   videoUploadStartTime: string;
   videoUploadEndDate: string;
   videoUploadEndTime: string;
+  /** APL create — optional even knockout size (≤ numberOfTeams). */
+  knockoutTeamCount?: string | null;
   /** Venue IANA timezone for today comparisons; defaults to Ontario. */
   venueTimezone?: string;
   locationAddress?: string;
@@ -190,28 +198,30 @@ function appendVideoUploadWindowErrors(
   const endTime = values.videoUploadEndTime.trim();
   const timeZone = values.venueTimezone ?? DEFAULT_VENUE_TIMEZONE;
 
-  if (!startDate) {
-    errors.videoUploadStartDate = messages.videoUploadStartDate.required;
+  if (!startDate || !startTime) {
+    const message = messages.videoUploadStartDate.required;
+    errors.videoUploadStartDate = message;
+    errors.videoUploadStartTime = message;
   }
-  if (!startTime) {
-    errors.videoUploadStartTime = messages.videoUploadStartTime.required;
-  }
-  if (!endDate) {
-    errors.videoUploadEndDate = messages.videoUploadEndDate.required;
-  }
-  if (!endTime) {
-    errors.videoUploadEndTime = messages.videoUploadEndTime.required;
+  if (!endDate || !endTime) {
+    const message = messages.videoUploadEndDate.required;
+    errors.videoUploadEndDate = message;
+    errors.videoUploadEndTime = message;
   }
 
   if (startDate && !values.isEdit && isDateOnlyBeforeTodayInZone(startDate, timeZone)) {
-    errors.videoUploadStartDate = messages.videoUploadStartDate.past;
+    const message = messages.videoUploadStartDate.past;
+    errors.videoUploadStartDate = message;
+    errors.videoUploadStartTime = message;
   } else if (
     startDate &&
     values.isEdit &&
     startDate !== values.initialVideoUploadStartDate &&
     isDateOnlyBeforeTodayInZone(startDate, timeZone)
   ) {
-    errors.videoUploadStartDate = messages.videoUploadStartDate.past;
+    const message = messages.videoUploadStartDate.past;
+    errors.videoUploadStartDate = message;
+    errors.videoUploadStartTime = message;
   }
 
   const startIso =
@@ -219,7 +229,9 @@ function appendVideoUploadWindowErrors(
   const endIso = endDate && endTime ? combineLocalDateAndTimeToIso(endDate, endTime) : null;
 
   if (startIso && endIso && compareIsoDates(endIso, startIso) <= 0) {
-    errors.videoUploadEndDate = messages.videoUploadEndDate.afterStart;
+    const message = messages.videoUploadEndDate.afterStart;
+    errors.videoUploadEndDate = message;
+    errors.videoUploadEndTime = message;
   }
 
   if (values.hasRegistrationWindow && endIso) {
@@ -228,7 +240,9 @@ function appendVideoUploadWindowErrors(
       values.registrationCloseTime,
     );
     if (registrationCloseIso && compareIsoDates(endIso, registrationCloseIso) <= 0) {
-      errors.videoUploadEndDate = messages.videoUploadEndDate.afterRegistrationClose;
+      const message = messages.videoUploadEndDate.afterRegistrationClose;
+      errors.videoUploadEndDate = message;
+      errors.videoUploadEndTime = message;
     }
   }
 }
@@ -320,19 +334,20 @@ export function validateCreateTournamentForm(
   }
 
   if (values.hasRegistrationWindow) {
-    const regMissing =
-      !values.registrationOpenDate ||
-      !values.registrationOpenTime ||
-      !values.registrationCloseDate ||
-      !values.registrationCloseTime;
+    const openMissing = !values.registrationOpenDate || !values.registrationOpenTime;
+    const closeMissing = !values.registrationCloseDate || !values.registrationCloseTime;
 
-    if (regMissing) {
-      const message = TOURNAMENT_FORM_MESSAGES.registration.required;
+    if (openMissing) {
+      const message = TOURNAMENT_FORM_MESSAGES.registration.openRequired;
       errors.registrationOpenDate = message;
       errors.registrationOpenTime = message;
+    }
+    if (closeMissing) {
+      const message = TOURNAMENT_FORM_MESSAGES.registration.closeRequired;
       errors.registrationCloseDate = message;
       errors.registrationCloseTime = message;
-    } else {
+    }
+    if (!openMissing && !closeMissing) {
       const openIso = combineLocalDateAndTimeToIso(
         values.registrationOpenDate,
         values.registrationOpenTime,
@@ -342,21 +357,41 @@ export function validateCreateTournamentForm(
         values.registrationCloseTime,
       );
       if (openIso && closeIso && compareIsoDates(closeIso, openIso) <= 0) {
-        errors.registrationCloseDate = TOURNAMENT_FORM_MESSAGES.registration.closeBeforeOpen;
-        errors.registrationCloseTime = TOURNAMENT_FORM_MESSAGES.registration.closeBeforeOpen;
+        const message = TOURNAMENT_FORM_MESSAGES.registration.closeBeforeOpen;
+        errors.registrationCloseDate = message;
+        errors.registrationCloseTime = message;
       }
     }
   }
 
   if (values.ballType === BallType.Tennis) {
-    if (values.hasAuctionDate && !values.auctionDate) {
-      errors.auctionDate = TOURNAMENT_FORM_MESSAGES.auctionDate.required;
+    if (values.hasAuctionDate) {
+      if (!values.auctionDate || !values.auctionTime) {
+        const message = TOURNAMENT_FORM_MESSAGES.auctionDate.required;
+        errors.auctionDate = message;
+        errors.auctionTime = message;
+      }
     }
 
     appendVideoUploadWindowErrors(errors, values);
   }
 
   appendTennisTournamentLocationErrors(errors, values);
+
+  if (resolvesToAplOnCreate(values.ballType, values.citySelection)) {
+    const knockoutRaw = values.knockoutTeamCount?.trim() ?? '';
+    if (knockoutRaw !== '') {
+      const totalTeams = values.numberOfTeams ? Number(values.numberOfTeams) : 0;
+      const parsed = Number(knockoutRaw);
+      const knockoutError = validateKnockoutTeamCountOnCreate(
+        Number.isInteger(parsed) ? parsed : null,
+        totalTeams,
+      );
+      if (knockoutError) {
+        errors.knockoutTeamCount = knockoutError;
+      }
+    }
+  }
 
   return errors;
 }
@@ -568,9 +603,11 @@ export function allTournamentFormMessages(): string[] {
     m.numberOfTeams.range,
     m.playersPerTeam.notNumeric,
     m.playersPerTeam.max,
-    m.registration.required,
+    m.registration.openRequired,
+    m.registration.closeRequired,
     m.registration.closeBeforeOpen,
     m.auctionDate.required,
+    m.auctionTime.required,
     m.videoUploadStartDate.required,
     m.videoUploadStartTime.required,
     m.videoUploadEndDate.required,

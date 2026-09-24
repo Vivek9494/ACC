@@ -1,12 +1,14 @@
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import type { CenterPlayerRosterEntry } from '@acc/types';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PlayerAvatarWithStatus } from '../../../../src/components/tournament/verify-players/PlayerAvatarWithStatus';
+import { KeyboardAwareFormScrollView } from '../../../../src/components/ui/KeyboardAwareFormScrollView';
 import { ScreenHeader } from '../../../../src/components/ui/ScreenHeader';
+import { TextInput } from '../../../../src/components/ui/TextInput';
 import { Text } from '../../../../src/components/ui/Text';
 import { FIELD_ORANGE, INPUT_SHADOW_STYLE } from '../../../../src/components/ui/fieldStyles';
 import { ApiRequestError, listLateRegisterCandidates } from '../../../../src/lib/api';
@@ -23,6 +25,8 @@ export default function LateRegisterPickerScreen(): React.ReactElement {
   const [players, setPlayers] = useState<CenterPlayerRosterEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [search, setSearch] = useState('');
 
   const load = useCallback(async () => {
     if (!tournamentId) {
@@ -44,6 +48,20 @@ export default function LateRegisterPickerScreen(): React.ReactElement {
     void load();
   }, [load]);
 
+  const filteredPlayers = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) {
+      return players;
+    }
+    return players.filter((player) => {
+      const name = `${player.firstName} ${player.lastName}`.toLowerCase();
+      const mobile = player.mobileNumber.toLowerCase();
+      return name.includes(q) || mobile.includes(q);
+    });
+  }, [players, search]);
+
+  const hasActiveSearch = search.trim().length > 0;
+
   function selectPlayer(player: CenterPlayerRosterEntry): void {
     router.push(
       tournamentSubpathHref(user, tournamentId, 'registrations/register', {
@@ -56,51 +74,101 @@ export default function LateRegisterPickerScreen(): React.ReactElement {
     );
   }
 
+  function toggleSearch(): void {
+    setSearchOpen((open) => {
+      if (open) {
+        setSearch('');
+      }
+      return !open;
+    });
+  }
+
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
       <ScreenHeader
         title="Add player"
         subtitle="Select a player who missed registration."
         onBack={() => router.back()}
+        titleTrailing={
+          <Pressable
+            onPress={toggleSearch}
+            accessibilityRole="button"
+            accessibilityLabel={searchOpen ? 'Hide search' : 'Show search'}
+            accessibilityState={{ expanded: searchOpen }}
+            hitSlop={8}
+            className="h-9 w-9 items-center justify-center active:opacity-70"
+          >
+            <MaterialIcons
+              name="filter-list"
+              size={24}
+              color={hasActiveSearch || searchOpen ? FIELD_ORANGE : '#5A4136'}
+            />
+          </Pressable>
+        }
       />
 
-      <ScrollView contentContainerClassName="gap-3 px-4 pb-8">
-        {loading ? (
-          <View className="items-center py-16">
-            <ActivityIndicator color={FIELD_ORANGE} />
-          </View>
-        ) : error ? (
-          <View className="rounded-lg bg-primary-50 px-4 py-3">
-            <Text className="font-sans text-sm text-primary">{error}</Text>
-          </View>
-        ) : players.length === 0 ? (
-          <Text className="py-16 text-center font-sans text-sm text-on-surface-variant">
-            Every eligible player is already registered.
-          </Text>
-        ) : (
-          players.map((player) => (
-            <Pressable
-              key={player.userId}
-              onPress={() => selectPlayer(player)}
-              className="flex-row items-center gap-3 rounded-lg border border-outline-variant bg-surface px-4 py-3 active:opacity-90"
-              style={INPUT_SHADOW_STYLE}
-            >
-              <PlayerAvatarWithStatus
-                firstName={player.firstName}
-                profilePhotoUrl={player.profilePhotoUrl}
-                size="sm"
-              />
-              <View className="min-w-0 flex-1">
-                <Text className="font-sans-bold text-base text-on-surface">
-                  {player.firstName} {player.lastName}
-                </Text>
-                <Text className="font-sans text-sm text-on-surface-variant">{player.mobileNumber}</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color={FIELD_ORANGE} />
-            </Pressable>
-          ))
-        )}
-      </ScrollView>
+      <KeyboardAwareFormScrollView
+        className="flex-1"
+        contentContainerClassName="px-4"
+        extraBottomPadding={40}
+      >
+        {searchOpen ? (
+          <TextInput
+            placeholder="Search by name or phone…"
+            value={search}
+            onChangeText={setSearch}
+            autoCapitalize="none"
+            autoCorrect={false}
+            autoFocus
+            returnKeyType="search"
+            containerClassName="mb-[10px]"
+          />
+        ) : null}
+
+        <View className="gap-3">
+          {loading ? (
+            <View className="items-center py-16">
+              <ActivityIndicator color={FIELD_ORANGE} />
+            </View>
+          ) : error ? (
+            <View className="rounded-lg bg-primary-50 px-4 py-3">
+              <Text className="font-sans text-sm text-primary">{error}</Text>
+            </View>
+          ) : players.length === 0 ? (
+            <Text className="py-16 text-center font-sans text-sm text-on-surface-variant">
+              Every eligible player is already registered.
+            </Text>
+          ) : filteredPlayers.length === 0 ? (
+            <Text className="py-16 text-center font-sans text-sm text-on-surface-variant">
+              No players match your search.
+            </Text>
+          ) : (
+            filteredPlayers.map((player) => (
+              <Pressable
+                key={player.userId}
+                onPress={() => selectPlayer(player)}
+                className="flex-row items-center gap-3 rounded-lg border border-outline-variant bg-surface px-4 py-3 active:opacity-90"
+                style={INPUT_SHADOW_STYLE}
+              >
+                <PlayerAvatarWithStatus
+                  firstName={player.firstName}
+                  profilePhotoUrl={player.profilePhotoUrl}
+                  size="sm"
+                />
+                <View className="min-w-0 flex-1">
+                  <Text className="font-sans-bold text-base text-on-surface">
+                    {player.firstName} {player.lastName}
+                  </Text>
+                  <Text className="font-sans text-sm text-on-surface-variant">
+                    {player.mobileNumber}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={FIELD_ORANGE} />
+              </Pressable>
+            ))
+          )}
+        </View>
+      </KeyboardAwareFormScrollView>
     </SafeAreaView>
   );
 }

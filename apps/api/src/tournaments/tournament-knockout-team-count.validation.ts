@@ -2,22 +2,40 @@ import {
   isAplTournamentType,
   KNOCKOUT_TEAM_COUNT_MESSAGES,
   validateKnockoutTeamCount,
+  validateKnockoutTeamCountOnCreate,
   type TournamentType,
 } from '@acc/types';
 import { BadRequestException } from '@nestjs/common';
 
+/** APL create — knockout size may be set before groups exist (floor = 2). */
 export function assertKnockoutTeamCountOnCreate(
   type: TournamentType,
+  numberOfTeams: number,
   knockoutTeamCount: number | null | undefined,
 ): void {
   if (knockoutTeamCount == null) {
     return;
   }
-  throw new BadRequestException({
-    message: KNOCKOUT_TEAM_COUNT_MESSAGES.prerequisites,
-    error: 'KNOCKOUT_TEAM_COUNT_NOT_ON_CREATE',
-    fields: { knockoutTeamCount: KNOCKOUT_TEAM_COUNT_MESSAGES.prerequisites },
-  });
+
+  if (!isAplTournamentType(type)) {
+    throw new BadRequestException({
+      message: KNOCKOUT_TEAM_COUNT_MESSAGES.notApl,
+      error: 'KNOCKOUT_TEAM_COUNT_NOT_APL',
+      fields: { knockoutTeamCount: KNOCKOUT_TEAM_COUNT_MESSAGES.notApl },
+    });
+  }
+
+  const validationError = validateKnockoutTeamCountOnCreate(
+    knockoutTeamCount,
+    numberOfTeams,
+  );
+  if (validationError) {
+    throw new BadRequestException({
+      message: validationError,
+      error: 'KNOCKOUT_TEAM_COUNT_INVALID',
+      fields: { knockoutTeamCount: validationError },
+    });
+  }
 }
 
 export async function assertKnockoutTeamCountOnUpdate(

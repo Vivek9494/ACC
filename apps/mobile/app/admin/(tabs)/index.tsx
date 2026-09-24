@@ -1,7 +1,7 @@
 import type { AdminOverview } from '@acc/types';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { View } from 'react-native';
+import { Alert, View } from 'react-native';
 
 import { AdminPasswordResetOtpAnalyticsCard } from '../../../src/components/admin/AdminPasswordResetOtpAnalyticsCard';
 import { AdminUsersByGeographyAccordion } from '../../../src/components/admin/AdminUsersByGeographyAccordion';
@@ -19,6 +19,12 @@ import {
   scorerDashboardButtonLabel,
 } from '../../../src/lib/scorer-dashboard';
 import { useActiveBroadcast } from '../../../src/hooks/useActiveBroadcast';
+
+const AT_A_GLANCE_INFO_MESSAGE = [
+  'Tournaments — Total tournaments on the platform that have not been deleted.',
+  'Matches Today — Matches scheduled for today’s UTC calendar day.',
+  'Pending Approvals — Player registrations currently in waitlist, awaiting organizer approval.',
+].join('\n\n');
 
 function OverviewMetric({
   label,
@@ -78,6 +84,10 @@ export default function AdminDashboardScreen(): React.ReactElement {
       ]
     : [];
 
+  const showAtAGlanceInfo = useCallback(() => {
+    Alert.alert('At a Glance', AT_A_GLANCE_INFO_MESSAGE);
+  }, []);
+
   const sections = useMemo(() => {
     if (!overview) {
       return [];
@@ -107,18 +117,24 @@ export default function AdminDashboardScreen(): React.ReactElement {
             <OverviewMetric label="Centers" value={overview.centerCount} />
           </View>
           <View className="flex-row gap-4">
-            <OverviewMetric label="Active Tournaments" value={overview.activeTournamentCount} />
+            <OverviewMetric label="Completed Tournaments" value={overview.completedTournamentCount} />
             <OverviewMetric label="Total Users" value={overview.totalUserCount} />
           </View>
         </View>
       </Card>,
       glanceItems.length > 0 ? (
-        <StatTile key="at-a-glance" title="At a Glance" items={glanceItems} />
+        <StatTile
+          key="at-a-glance"
+          title="At a Glance"
+          items={glanceItems}
+          onInfoPress={showAtAGlanceInfo}
+          infoAccessibilityLabel="About At a Glance metrics"
+        />
       ) : null,
       <AdminPasswordResetOtpAnalyticsCard key="password-reset-otp-analytics" />,
       <AdminUsersByGeographyAccordion key="users-by-geography" />,
     ].filter((section) => section !== null);
-  }, [glanceItems, overview, router]);
+  }, [glanceItems, overview, router, showAtAGlanceInfo]);
 
   const sectionsWithBroadcast = useMemo(
     () => prependBroadcastSection(sections, broadcast),

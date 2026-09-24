@@ -153,7 +153,7 @@ export class TournamentsService {
     }
 
     assertCreateTournamentFormValid(dto);
-    assertKnockoutTeamCountOnCreate(type, dto.knockoutTeamCount);
+    assertKnockoutTeamCountOnCreate(type, dto.numberOfTeams, dto.knockoutTeamCount);
     await this.assertActiveProvince(dto.provinceId);
 
     if (dto.ballType === BallType.Leather) {
@@ -208,6 +208,9 @@ export class TournamentsService {
           feePartTime: fees.feePartTime,
           provinceId: dto.provinceId,
           createdByUserId: actor.id,
+          ...(type === TournamentType.APL && dto.knockoutTeamCount != null
+            ? { knockoutTeamCount: dto.knockoutTeamCount }
+            : {}),
         },
       });
 

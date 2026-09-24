@@ -74,7 +74,10 @@ export interface DateFieldProps {
   value: string;
   onChange: (isoDate: string) => void;
   placeholder?: string;
+  /** When set, shows primary-orange border and optionally the message below. */
   error?: string;
+  /** When false, still applies error border but hides the message (pair-level copy). Default true. */
+  showErrorMessage?: boolean;
   containerClassName?: string;
   /** When true (default), caps selectable dates for 18+ signup DOB. */
   enforceSignupAgeMax?: boolean;
@@ -96,6 +99,7 @@ export function DateField({
   onChange,
   placeholder = 'Month D, YYYY',
   error,
+  showErrorMessage = true,
   containerClassName,
   enforceSignupAgeMax = true,
   minimumDate,
@@ -167,7 +171,7 @@ export function DateField({
         </Text>
       </Pressable>
 
-      <FormErrorText inline>{error}</FormErrorText>
+      <FormErrorText inline>{showErrorMessage ? error : null}</FormErrorText>
 
       <DateTimePickerSheet
         visible={showPicker}

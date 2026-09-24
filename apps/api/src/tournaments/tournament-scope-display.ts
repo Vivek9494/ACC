@@ -33,6 +33,7 @@ export async function buildTournamentScopeDisplay(
       citySelection: null,
       provinceName: await provinceNameById(prisma, storedProvinceId),
       centerNames: [],
+      centerIds: [],
     };
   }
 
@@ -47,10 +48,11 @@ export async function buildTournamentScopeDisplay(
     links[0]?.center.province.name ??
     null;
   const centerNames = links.map((link) => link.center.name);
+  const centerIds = links.map((link) => link.centerId);
   let citySelection: CitySelection | null = CitySelection.Apl;
   if (type === TournamentType.Center) {
     citySelection = centerNames.length === 1 ? CitySelection.Single : CitySelection.Multi;
   }
 
-  return { citySelection, provinceName, centerNames };
+  return { citySelection, provinceName, centerNames, centerIds };
 }

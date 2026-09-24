@@ -42,6 +42,7 @@ function dtoToFormInput(dto: CreateTournamentDto): CreateTournamentFormInput {
     registrationCloseTime: dto.registrationCloseAt ? 'set' : '',
     hasAuctionDate: dto.auctionAt != null,
     auctionDate: dto.auctionAt ? 'set' : '',
+    auctionTime: dto.auctionAt ? 'set' : '',
     videoRequired: dto.videoRequired,
     videoUploadStartDate: dto.videoUploadStartAt ? 'set' : '',
     videoUploadStartTime: dto.videoUploadStartAt ? 'set' : '',
@@ -50,6 +51,7 @@ function dtoToFormInput(dto: CreateTournamentDto): CreateTournamentFormInput {
     locationAddress: dto.locationAddress ?? '',
     latitude: dto.latitude ?? null,
     longitude: dto.longitude ?? null,
+    knockoutTeamCount: dto.knockoutTeamCount != null ? String(dto.knockoutTeamCount) : null,
   };
 }
 
@@ -76,21 +78,25 @@ export function videoDateRequiredFields(): Record<string, string> {
   const m = TOURNAMENT_FORM_MESSAGES;
   return {
     videoUploadStartDate: m.videoUploadStartDate.required,
-    videoUploadStartTime: m.videoUploadStartTime.required,
+    videoUploadStartTime: m.videoUploadStartDate.required,
     videoUploadEndDate: m.videoUploadEndDate.required,
-    videoUploadEndTime: m.videoUploadEndTime.required,
+    videoUploadEndTime: m.videoUploadEndDate.required,
   };
 }
 
 export function videoDateAfterStartFields(): Record<string, string> {
+  const message = TOURNAMENT_FORM_MESSAGES.videoUploadEndDate.afterStart;
   return {
-    videoUploadEndDate: TOURNAMENT_FORM_MESSAGES.videoUploadEndDate.afterStart,
+    videoUploadEndDate: message,
+    videoUploadEndTime: message,
   };
 }
 
 export function videoDateAfterRegistrationFields(): Record<string, string> {
+  const message = TOURNAMENT_FORM_MESSAGES.videoUploadEndDate.afterRegistrationClose;
   return {
-    videoUploadEndDate: TOURNAMENT_FORM_MESSAGES.videoUploadEndDate.afterRegistrationClose,
+    videoUploadEndDate: message,
+    videoUploadEndTime: message,
   };
 }
 

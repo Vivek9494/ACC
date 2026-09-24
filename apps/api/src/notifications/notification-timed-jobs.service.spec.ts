@@ -177,6 +177,48 @@ describe('NotificationTimedJobsService', () => {
     });
   });
 
+  describe('sendVideoUploadOpened', () => {
+    it('notifies registered players when the upload window just opened', async () => {
+      const now = new Date('2026-07-07T15:00:00.000Z');
+      prisma.tournament.findMany.mockResolvedValue([{ id: 't1', name: 'APL 2026' }]);
+      audience.resolveTournamentRegisteredPlayers.mockResolvedValue(['p1', 'p2']);
+
+      await service.sendVideoUploadOpened(now);
+
+      expect(prisma.tournament.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            videoRequired: true,
+            videoUploadStartAt: {
+              gt: new Date('2026-07-07T14:59:00.000Z'),
+              lte: now,
+            },
+          }),
+        }),
+      );
+      expect(audience.resolveTournamentRegisteredPlayers).toHaveBeenCalledWith('t1');
+      expect(notifications.sendToAudience).toHaveBeenCalledWith(
+        ['p1', 'p2'],
+        expect.objectContaining({
+          triggerKey: NotificationTrigger.VideoUploadOpened,
+          dedupeKey: `${NotificationTrigger.VideoUploadOpened}:t1`,
+          title: 'Skill video upload open',
+          body: 'You can now upload your skill video for APL 2026.',
+        }),
+      );
+    });
+
+    it('skips when there are no registered players yet', async () => {
+      const now = new Date('2026-07-07T15:00:00.000Z');
+      prisma.tournament.findMany.mockResolvedValue([{ id: 't1', name: 'APL 2026' }]);
+      audience.resolveTournamentRegisteredPlayers.mockResolvedValue([]);
+
+      await service.sendVideoUploadOpened(now);
+
+      expect(notifications.sendToAudience).not.toHaveBeenCalled();
+    });
+  });
+
   describe('sendVideoUploadClosing', () => {
     it('notifies registered players when the upload deadline is ~10 minutes away', async () => {
       const now = new Date('2026-07-07T14:50:00.000Z');

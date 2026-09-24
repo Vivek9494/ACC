@@ -141,7 +141,7 @@ export interface CreateTournamentRequest {
   cloneFromTournamentId?: string | null;
   /** When cloning, also copy Captain/VC/Manager assignments (§6.2). */
   copyRoleAssignments?: boolean;
-  /** APL only — set in Edit once groups exist; omitted on create. */
+  /** APL only — optional at create (even size ≤ numberOfTeams); refined after groups exist. */
   knockoutTeamCount?: number | null;
 }
 
@@ -186,6 +186,8 @@ export interface TournamentScopeDisplay {
   citySelection: CitySelection | null;
   provinceName: string | null;
   centerNames: string[];
+  /** Participating center ids (tennis with center links); empty for leather / ACC. */
+  centerIds: string[];
 }
 
 /** Payload for GET /tournaments/:id/edit-form (authenticated, EDIT_TOURNAMENT). */

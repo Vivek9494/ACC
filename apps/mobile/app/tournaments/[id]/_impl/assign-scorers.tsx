@@ -3,9 +3,10 @@ import {
   formatRemovedScorerResetAlert,
   type SetTournamentScorersRequest,
 } from '@acc/types';
+import { MaterialIcons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { TournamentScorerSelectCard } from '../../../../src/components/tournament/TournamentScorerSelectCard';
@@ -26,6 +27,7 @@ export default function AssignTournamentScorersScreen(): React.ReactElement {
   const { id: tournamentId } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
 
+  const [searchOpen, setSearchOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [pool, setPool] = useState<
@@ -81,6 +83,7 @@ export default function AssignTournamentScorersScreen(): React.ReactElement {
     : pool;
 
   const selectedCount = selectedIds.size;
+  const hasActiveSearch = search.trim().length > 0;
 
   const toggleSelection = useCallback((userId: string): void => {
     setSelectedIds((current) => {
@@ -95,6 +98,15 @@ export default function AssignTournamentScorersScreen(): React.ReactElement {
       return next;
     });
   }, []);
+
+  function toggleSearch(): void {
+    setSearchOpen((open) => {
+      if (open) {
+        setSearch('');
+      }
+      return !open;
+    });
+  }
 
   async function handleSubmit(): Promise<void> {
     if (!tournamentId || selectedCount !== TOURNAMENT_SCORER_COUNT || scorersEditLocked) {
@@ -130,6 +142,22 @@ export default function AssignTournamentScorersScreen(): React.ReactElement {
         title="Assign Scorers"
         subtitle="Select exactly 5 registered players"
         onBack={() => router.back()}
+        titleTrailing={
+          <Pressable
+            onPress={toggleSearch}
+            accessibilityRole="button"
+            accessibilityLabel={searchOpen ? 'Hide search' : 'Show search'}
+            accessibilityState={{ expanded: searchOpen }}
+            hitSlop={8}
+            className="h-9 w-9 items-center justify-center active:opacity-70"
+          >
+            <MaterialIcons
+              name="filter-list"
+              size={24}
+              color={hasActiveSearch || searchOpen ? FIELD_ORANGE : '#5A4136'}
+            />
+          </Pressable>
+        }
       />
 
       {loading ? (
@@ -139,7 +167,7 @@ export default function AssignTournamentScorersScreen(): React.ReactElement {
       ) : (
         <KeyboardAwareFormScrollView
           className="flex-1"
-          contentContainerClassName="gap-4 px-4 pb-10 pt-2"
+          contentContainerClassName="px-4 pb-10 pt-2"
           footer={
             <View className="gap-3 border-t border-outline-variant bg-background px-4 pb-4 pt-3">
               {scorersEditLocked && scorersEditLockedMessage ? (
@@ -159,45 +187,52 @@ export default function AssignTournamentScorersScreen(): React.ReactElement {
             </View>
           }
         >
-          <TextInput
-            placeholder="Search by name or center…"
-            value={search}
-            onChangeText={setSearch}
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
-
-          {error ? (
-            <Text className="font-sans text-sm text-primary">{error}</Text>
+          {searchOpen ? (
+            <TextInput
+              placeholder="Search by name or center…"
+              value={search}
+              onChangeText={setSearch}
+              autoCapitalize="none"
+              autoCorrect={false}
+              autoFocus
+              returnKeyType="search"
+              containerClassName="mb-[10px]"
+            />
           ) : null}
 
-          {scorersEditLocked && scorersEditLockedMessage ? (
-            <View className="rounded-control border border-outline-variant bg-surface-container-lowest p-4">
-              <Text className="font-sans text-sm text-on-surface-variant">
-                {scorersEditLockedMessage}
+          <View className="gap-2">
+            {error ? (
+              <Text className="font-sans text-sm text-primary">{error}</Text>
+            ) : null}
+
+            {scorersEditLocked && scorersEditLockedMessage ? (
+              <View className="rounded-control border border-outline-variant bg-surface-container-lowest p-4">
+                <Text className="font-sans text-sm text-on-surface-variant">
+                  {scorersEditLockedMessage}
+                </Text>
+              </View>
+            ) : null}
+
+            {filteredPool.length === 0 ? (
+              <Text className="py-8 text-center font-sans text-base text-on-surface-variant">
+                No registered players match your search.
               </Text>
-            </View>
-          ) : null}
-
-          {filteredPool.length === 0 ? (
-            <Text className="py-8 text-center font-sans text-base text-on-surface-variant">
-              No registered players match your search.
-            </Text>
-          ) : (
-            filteredPool.map((player) => {
-              const selected = selectedIds.has(player.userId);
-              const atCapacity = !selected && selectedCount >= TOURNAMENT_SCORER_COUNT;
-              return (
-                <TournamentScorerSelectCard
-                  key={player.userId}
-                  player={player}
-                  selected={selected}
-                  disabled={scorersEditLocked || atCapacity}
-                  onToggle={() => toggleSelection(player.userId)}
-                />
-              );
-            })
-          )}
+            ) : (
+              filteredPool.map((player) => {
+                const selected = selectedIds.has(player.userId);
+                const atCapacity = !selected && selectedCount >= TOURNAMENT_SCORER_COUNT;
+                return (
+                  <TournamentScorerSelectCard
+                    key={player.userId}
+                    player={player}
+                    selected={selected}
+                    disabled={scorersEditLocked || atCapacity}
+                    onToggle={() => toggleSelection(player.userId)}
+                  />
+                );
+              })
+            )}
+          </View>
         </KeyboardAwareFormScrollView>
       )}
 

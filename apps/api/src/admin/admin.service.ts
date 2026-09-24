@@ -972,7 +972,7 @@ export class AdminService {
     const [
       provinceCount,
       centerCount,
-      activeTournamentCount,
+      completedTournamentCount,
       totalUserCount,
       tournamentCount,
       matchesTodayCount,
@@ -984,7 +984,7 @@ export class AdminService {
       this.prisma.province.count({ where: { isActive: true } }),
       this.prisma.center.count({ where: { isActive: true } }),
       this.prisma.tournament.count({
-        where: { ...activeTournamentWhere, state: { not: TournamentState.Completed } },
+        where: { ...activeTournamentWhere, state: TournamentState.Completed },
       }),
       this.prisma.user.count({ where: { ...adminDirectoryUserWhere, isActive: true } }),
       this.prisma.tournament.count({ where: activeTournamentWhere }),
@@ -1008,7 +1008,7 @@ export class AdminService {
     return {
       provinceCount,
       centerCount,
-      activeTournamentCount,
+      completedTournamentCount,
       totalUserCount,
       tournamentCount,
       matchesTodayCount,

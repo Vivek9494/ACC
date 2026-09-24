@@ -54,6 +54,8 @@ export const NotificationTrigger = {
   RegistrationClosing: 'REGISTRATION_CLOSING',
   /** ?17: ~10 min before the video upload deadline, to registered players (Phase C). */
   VideoUploadClosing: 'VIDEO_UPLOAD_CLOSING',
+  /** §17: when videoUploadStartAt arrives, to registered players (Confirmed + In Waitlist). */
+  VideoUploadOpened: 'VIDEO_UPLOAD_OPENED',
   /** ?17: on registration when video is required ? informs the registrant of the deadline (Phase C). */
   VideoUploadDeadline: 'VIDEO_UPLOAD_DEADLINE',
   /** ?17: at 10 AM EDT on a user's birthday, to all active users (Phase C). */

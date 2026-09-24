@@ -46,10 +46,11 @@ export class NotificationTimedJobsService {
     await this.sendBirthdayNotifications(now);
   }
 
-  /** All frequent close-window checks (#11 registration, #12 video, deferred reg-open). */
+  /** All frequent close-window checks (#11 registration, #12 video open/closing, deferred reg-open). */
   async runCloseWindowChecks(now: Date = new Date()): Promise<void> {
     await this.sendRegistrationOpened(now);
     await this.sendRegistrationClosing(now);
+    await this.sendVideoUploadOpened(now);
     await this.sendVideoUploadClosing(now);
   }
 
@@ -212,7 +213,46 @@ export class NotificationTimedJobsService {
     }
   }
 
-  // --- #12 Video upload closing --------------------------------------------
+  // --- Video upload window open / closing ----------------------------------
+
+  /**
+   * When videoUploadStartAt arrives, notify registered players (Confirmed + In
+   * Waitlist) — once per tournament. Cron-only; not fired on create/edit.
+   */
+  async sendVideoUploadOpened(now: Date = new Date()): Promise<void> {
+    const tournaments = await this.prisma.tournament.findMany({
+      where: {
+        isDeleted: false,
+        videoRequired: true,
+        videoUploadStartAt: {
+          gt: new Date(now.getTime() - CLOSE_WINDOW_WIDTH_MS),
+          lte: now,
+        },
+      },
+      select: { id: true, name: true },
+    });
+    for (const tournament of tournaments) {
+      try {
+        const userIds = await this.audience.resolveTournamentRegisteredPlayers(tournament.id);
+        if (userIds.length === 0) {
+          continue;
+        }
+        await this.notifications.sendToAudience(userIds, {
+          triggerKey: NotificationTrigger.VideoUploadOpened,
+          dedupeKey: `${NotificationTrigger.VideoUploadOpened}:${tournament.id}`,
+          title: 'Skill video upload open',
+          body: `You can now upload your skill video for ${tournament.name}.`,
+          data: { tournamentId: tournament.id, screen: 'tournament' },
+          audienceSummary: `Registered players of tournament ${tournament.id}`,
+        });
+      } catch (err) {
+        this.logger.error(
+          `Video-upload-opened reminder failed for tournament ${tournament.id}`,
+          err as Error,
+        );
+      }
+    }
+  }
 
   /**
    * ~10 min before the video upload deadline, notify registered players — only

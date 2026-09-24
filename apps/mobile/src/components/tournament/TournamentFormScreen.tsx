@@ -8,7 +8,9 @@ import {
   TOURNAMENT_FIELD_LIMITS,
   TournamentType,
   buildKnockoutTeamCountOptions,
+  buildKnockoutTeamCountOptionsForCreate,
   canConfigureKnockoutTeamCount,
+  canConfigureKnockoutTeamCountOnCreate,
   isMediaStorageKey,
   parseOptionalTournamentFee,
   resolveTournamentFormDates,
@@ -39,6 +41,7 @@ import { KeyboardAwareFormScrollView } from '../ui/KeyboardAwareFormScrollView';
 import { Checkbox } from '../ui/Checkbox';
 import { DateField } from '../ui/DateField';
 import { FIELD_ORANGE, labelClassName } from '../ui/fieldStyles';
+import { FormErrorText } from '../ui/FormErrorText';
 import { MultiSelect, MultiSelectChips } from '../ui/MultiSelect';
 import { ScreenHeader } from '../ui/ScreenHeader';
 import { RadioGroup } from '../ui/RadioGroup';
@@ -68,7 +71,6 @@ import { canCreateTournament } from '../../lib/can-create-tournament';
 import { useSignupGeography } from '../../lib/signup-geography';
 import {
   combineLocalDateAndTimeToIso,
-  dateOnlyToUtcIso,
 } from '../../lib/tournament-datetime';
 import {
   hydrateTournamentFormFromEditData,
@@ -161,6 +163,7 @@ export function TournamentFormScreen({
 
   const [hasAuctionDate, setHasAuctionDate] = useState(false);
   const [auctionDate, setAuctionDate] = useState('');
+  const [auctionTime, setAuctionTime] = useState('');
 
   const [impactPlayerEnabled, setImpactPlayerEnabled] = useState(false);
   const [videoRequired, setVideoRequired] = useState(false);
@@ -272,23 +275,22 @@ export function TournamentFormScreen({
     ? editTournamentType === TournamentType.APL
     : resolvesToAplOnCreate(ballType, citySelection);
   const configuredTotalTeams = numberOfTeams ? Number(numberOfTeams) : 0;
-  const knockoutPrerequisitesMet = canConfigureKnockoutTeamCount(
-    isEditMode ? editGroupCount : 0,
-    configuredTotalTeams,
-  );
+  const knockoutPrerequisitesMet = isEditMode
+    ? canConfigureKnockoutTeamCount(editGroupCount, configuredTotalTeams)
+    : canConfigureKnockoutTeamCountOnCreate(configuredTotalTeams);
   const knockoutTeamCountOptions = useMemo(
     () =>
-      buildKnockoutTeamCountOptions(
-        isEditMode ? editGroupCount : 0,
-        configuredTotalTeams,
-      ),
+      isEditMode
+        ? buildKnockoutTeamCountOptions(editGroupCount, configuredTotalTeams)
+        : buildKnockoutTeamCountOptionsForCreate(configuredTotalTeams),
     [configuredTotalTeams, editGroupCount, isEditMode],
   );
   const knockoutFieldLocked = isEditMode && hasKnockoutBracket;
-  const knockoutFieldDisabled =
-    !isEditMode || !knockoutPrerequisitesMet || knockoutFieldLocked;
-  const knockoutDisabledHint = !isEditMode || !knockoutPrerequisitesMet
-    ? KNOCKOUT_TEAM_COUNT_MESSAGES.prerequisites
+  const knockoutFieldDisabled = !knockoutPrerequisitesMet || knockoutFieldLocked;
+  const knockoutDisabledHint = !knockoutPrerequisitesMet
+    ? isEditMode
+      ? KNOCKOUT_TEAM_COUNT_MESSAGES.prerequisites
+      : KNOCKOUT_TEAM_COUNT_MESSAGES.prerequisitesCreate
     : null;
 
   const { provinces, centers, provinceField, centerField } =
@@ -419,6 +421,7 @@ export function TournamentFormScreen({
         setRegistrationCloseTime(hydrated.registrationCloseTime);
         setHasAuctionDate(hydrated.hasAuctionDate);
         setAuctionDate(hydrated.auctionDate);
+        setAuctionTime(hydrated.auctionTime);
         setImpactPlayerEnabled(hydrated.impactPlayerEnabled);
         setVideoRequired(hydrated.videoRequired);
         setVideoUploadStartDate(hydrated.videoUploadStartDate);
@@ -519,8 +522,23 @@ export function TournamentFormScreen({
     setHasAuctionDate(checked);
     if (!checked) {
       setAuctionDate('');
-      clearFieldError('auctionDate');
+      setAuctionTime('');
+      setFieldErrors((prev) => {
+        const next = { ...prev };
+        delete next.auctionDate;
+        delete next.auctionTime;
+        return next;
+      });
     }
+  }
+
+  function clearAuctionFieldErrors(): void {
+    setFieldErrors((prev) => {
+      const next = { ...prev };
+      delete next.auctionDate;
+      delete next.auctionTime;
+      return next;
+    });
   }
 
   function onVideoToggle(checked: boolean): void {
@@ -590,6 +608,7 @@ export function TournamentFormScreen({
       clearCenterPicker();
       setHasAuctionDate(false);
       setAuctionDate('');
+      setAuctionTime('');
       setImpactPlayerEnabled(false);
       setVideoRequired(false);
       setVideoUploadStartDate('');
@@ -603,6 +622,7 @@ export function TournamentFormScreen({
       setFieldErrors((prev) => {
         const next = { ...prev };
         delete next.auctionDate;
+        delete next.auctionTime;
         delete next.videoUploadStartDate;
         delete next.videoUploadStartTime;
         delete next.videoUploadEndDate;
@@ -658,7 +678,10 @@ export function TournamentFormScreen({
       videoRequired,
       videoUploadStartAt,
       videoUploadEndDate: videoUploadEndAt,
-      auctionAt: hasAuctionDate && auctionDate ? dateOnlyToUtcIso(auctionDate) : null,
+      auctionAt:
+        hasAuctionDate && auctionDate && auctionTime
+          ? combineLocalDateAndTimeToIso(auctionDate, auctionTime)
+          : null,
     };
   }
 
@@ -759,6 +782,7 @@ export function TournamentFormScreen({
           registrationCloseTime,
           hasAuctionDate: isTennisBall && hasAuctionDate,
           auctionDate: isTennisBall ? auctionDate : '',
+          auctionTime: isTennisBall ? auctionTime : '',
           videoRequired: isTennisBall && videoRequired,
           videoUploadStartDate: isTennisBall ? videoUploadStartDate : '',
           videoUploadStartTime: isTennisBall ? videoUploadStartTime : '',
@@ -801,11 +825,15 @@ export function TournamentFormScreen({
           registrationCloseTime,
           hasAuctionDate: isTennisBall && hasAuctionDate,
           auctionDate: isTennisBall ? auctionDate : '',
+          auctionTime: isTennisBall ? auctionTime : '',
           videoRequired: isTennisBall && videoRequired,
           videoUploadStartDate: isTennisBall ? videoUploadStartDate : '',
           videoUploadStartTime: isTennisBall ? videoUploadStartTime : '',
           videoUploadEndDate: isTennisBall ? videoUploadEndDate : '',
           videoUploadEndTime: isTennisBall ? videoUploadEndTime : '',
+          knockoutTeamCount: resolvesToAplOnCreate(ballType, citySelection)
+            ? knockoutTeamCount
+            : null,
           venueTimezone,
           locationAddress,
           latitude,
@@ -984,6 +1012,11 @@ export function TournamentFormScreen({
                   : {}),
             }
           : {}),
+        ...(resolvesToAplOnCreate(ballType, citySelection)
+          ? {
+              knockoutTeamCount: knockoutTeamCount ? Number(knockoutTeamCount) : null,
+            }
+          : {}),
       };
 
       const created: TournamentDetail = await createTournament(payload);
@@ -1118,7 +1151,7 @@ export function TournamentFormScreen({
                 setName(text);
                 clearFieldError('name');
               }}
-              placeholder="e.g. Hariprabodham Premiere League"
+              placeholder=""
               error={fieldErrors.name}
             />
             </View>
@@ -1223,7 +1256,7 @@ export function TournamentFormScreen({
                 <View className="flex-row gap-3">
                   <View className="min-w-0 flex-1">
                     <View className="gap-1">
-                      <Text className={labelClassName('brand')}>Tournament For</Text>
+                      <Text className={labelClassName('brand')}>Tournament Type</Text>
                       <View className="rounded-control border border-outline-variant bg-surface-container-low px-4 py-3">
                         <Text className="font-sans text-base text-on-surface-variant">
                           {scopeLabel}
@@ -1251,7 +1284,7 @@ export function TournamentFormScreen({
                 </View>
               ) : (
                 <View className="gap-1">
-                  <Text className={labelClassName('brand')}>Tournament For</Text>
+                  <Text className={labelClassName('brand')}>Tournament Type</Text>
                   <View className="rounded-control border border-outline-variant bg-surface-container-low px-4 py-3">
                     <Text className="font-sans text-base text-on-surface-variant">{scopeLabel}</Text>
                   </View>
@@ -1265,7 +1298,7 @@ export function TournamentFormScreen({
                   <View className="flex-row gap-3">
                     <View className="min-w-0 flex-1" onLayout={layoutField('citySelection')}>
                       <Select
-                        label="Tournament For"
+                        label="Tournament Type"
                         placeholder="Select scope"
                         value={scopeSelectValue}
                         options={scopeOptions}
@@ -1305,7 +1338,7 @@ export function TournamentFormScreen({
               ) : (
                 <View onLayout={layoutField('citySelection')}>
                   <Select
-                    label="Tournament For"
+                    label="Tournament Type"
                     placeholder="Select scope"
                     value={scopeSelectValue}
                     options={scopeOptions}
@@ -1412,67 +1445,81 @@ export function TournamentFormScreen({
 
             {hasRegistrationWindow ? (
               <View className="gap-4 pl-1">
-                <View className="flex-row gap-3">
-                  <View
-                    className="min-w-0 flex-[3]"
-                    onLayout={layoutField('registrationOpenDate')}
-                  >
-                    <DateField
-                      label="Registration Open Date"
-                      value={registrationOpenDate}
-                      onChange={(value) => {
-                        setRegistrationOpenDate(value);
-                        clearRegistrationFieldErrors();
-                      }}
-                      enforceSignupAgeMax={false}
-                      error={fieldErrors.registrationOpenDate}
-                    />
+                <View className="gap-1">
+                  <View className="flex-row gap-3">
+                    <View
+                      className="min-w-0 flex-[3]"
+                      onLayout={layoutField('registrationOpenDate')}
+                    >
+                      <DateField
+                        label="Registration Open Date"
+                        value={registrationOpenDate}
+                        onChange={(value) => {
+                          setRegistrationOpenDate(value);
+                          clearRegistrationFieldErrors();
+                        }}
+                        enforceSignupAgeMax={false}
+                        error={fieldErrors.registrationOpenDate}
+                        showErrorMessage={false}
+                      />
+                    </View>
+                    <View
+                      className="min-w-0 flex-[2]"
+                      onLayout={layoutField('registrationOpenTime')}
+                    >
+                      <TimeField
+                        label="Open Time"
+                        value={registrationOpenTime}
+                        onChange={(value) => {
+                          setRegistrationOpenTime(value);
+                          clearRegistrationFieldErrors();
+                        }}
+                        error={fieldErrors.registrationOpenTime}
+                        showErrorMessage={false}
+                      />
+                    </View>
                   </View>
-                  <View
-                    className="min-w-0 flex-[2]"
-                    onLayout={layoutField('registrationOpenTime')}
-                  >
-                    <TimeField
-                      label="Open Time"
-                      value={registrationOpenTime}
-                      onChange={(value) => {
-                        setRegistrationOpenTime(value);
-                        clearRegistrationFieldErrors();
-                      }}
-                      error={fieldErrors.registrationOpenTime}
-                    />
-                  </View>
+                  <FormErrorText inline>
+                    {fieldErrors.registrationOpenDate ?? fieldErrors.registrationOpenTime}
+                  </FormErrorText>
                 </View>
-                <View className="flex-row gap-3">
-                  <View
-                    className="min-w-0 flex-[3]"
-                    onLayout={layoutField('registrationCloseDate')}
-                  >
-                    <DateField
-                      label="Registration Close Date"
-                      value={registrationCloseDate}
-                      onChange={(value) => {
-                        setRegistrationCloseDate(value);
-                        clearRegistrationFieldErrors();
-                      }}
-                      enforceSignupAgeMax={false}
-                      error={fieldErrors.registrationCloseDate}
-                    />
+                <View className="gap-1">
+                  <View className="flex-row gap-3">
+                    <View
+                      className="min-w-0 flex-[3]"
+                      onLayout={layoutField('registrationCloseDate')}
+                    >
+                      <DateField
+                        label="Registration Close Date"
+                        value={registrationCloseDate}
+                        onChange={(value) => {
+                          setRegistrationCloseDate(value);
+                          clearRegistrationFieldErrors();
+                        }}
+                        enforceSignupAgeMax={false}
+                        error={fieldErrors.registrationCloseDate}
+                        showErrorMessage={false}
+                      />
+                    </View>
+                    <View
+                      className="min-w-0 flex-[2]"
+                      onLayout={layoutField('registrationCloseTime')}
+                    >
+                      <TimeField
+                        label="Close Time"
+                        value={registrationCloseTime}
+                        onChange={(value) => {
+                          setRegistrationCloseTime(value);
+                          clearRegistrationFieldErrors();
+                        }}
+                        error={fieldErrors.registrationCloseTime}
+                        showErrorMessage={false}
+                      />
+                    </View>
                   </View>
-                  <View
-                    className="min-w-0 flex-[2]"
-                    onLayout={layoutField('registrationCloseTime')}
-                  >
-                    <TimeField
-                      label="Close Time"
-                      value={registrationCloseTime}
-                      onChange={(value) => {
-                        setRegistrationCloseTime(value);
-                        clearRegistrationFieldErrors();
-                      }}
-                      error={fieldErrors.registrationCloseTime}
-                    />
-                  </View>
+                  <FormErrorText inline>
+                    {fieldErrors.registrationCloseDate ?? fieldErrors.registrationCloseTime}
+                  </FormErrorText>
                 </View>
               </View>
             ) : null}
@@ -1524,17 +1571,43 @@ export function TournamentFormScreen({
                 </Checkbox>
 
                 {hasAuctionDate ? (
-                  <View onLayout={layoutField('auctionDate')}>
-                    <DateField
-                      label="Auction Date"
-                      value={auctionDate}
-                      onChange={(value) => {
-                        setAuctionDate(value);
-                        clearFieldError('auctionDate');
-                      }}
-                      enforceSignupAgeMax={false}
-                      error={fieldErrors.auctionDate}
-                    />
+                  <View className="gap-1 pl-1">
+                    <View className="flex-row gap-3">
+                      <View
+                        className="min-w-0 flex-[3]"
+                        onLayout={layoutField('auctionDate')}
+                      >
+                        <DateField
+                          label="Auction Date"
+                          value={auctionDate}
+                          onChange={(value) => {
+                            setAuctionDate(value);
+                            clearAuctionFieldErrors();
+                          }}
+                          enforceSignupAgeMax={false}
+                          error={fieldErrors.auctionDate}
+                          showErrorMessage={false}
+                        />
+                      </View>
+                      <View
+                        className="min-w-0 flex-[2]"
+                        onLayout={layoutField('auctionTime')}
+                      >
+                        <TimeField
+                          label="Auction Time"
+                          value={auctionTime}
+                          onChange={(value) => {
+                            setAuctionTime(value);
+                            clearAuctionFieldErrors();
+                          }}
+                          error={fieldErrors.auctionTime}
+                          showErrorMessage={false}
+                        />
+                      </View>
+                    </View>
+                    <FormErrorText inline>
+                      {fieldErrors.auctionDate ?? fieldErrors.auctionTime}
+                    </FormErrorText>
                   </View>
                 ) : null}
 
@@ -1552,67 +1625,81 @@ export function TournamentFormScreen({
 
                 {videoRequired ? (
                   <View className="gap-4 pl-1">
-                    <View className="flex-row gap-3">
-                      <View
-                        className="min-w-0 flex-[3]"
-                        onLayout={layoutField('videoUploadStartDate')}
-                      >
-                        <DateField
-                          label="Upload Start Date"
-                          value={videoUploadStartDate}
-                          onChange={(value) => {
-                            setVideoUploadStartDate(value);
-                            clearVideoUploadFieldErrors();
-                          }}
-                          enforceSignupAgeMax={false}
-                          error={fieldErrors.videoUploadStartDate}
-                        />
+                    <View className="gap-1">
+                      <View className="flex-row gap-3">
+                        <View
+                          className="min-w-0 flex-[3]"
+                          onLayout={layoutField('videoUploadStartDate')}
+                        >
+                          <DateField
+                            label="Upload Start Date"
+                            value={videoUploadStartDate}
+                            onChange={(value) => {
+                              setVideoUploadStartDate(value);
+                              clearVideoUploadFieldErrors();
+                            }}
+                            enforceSignupAgeMax={false}
+                            error={fieldErrors.videoUploadStartDate}
+                            showErrorMessage={false}
+                          />
+                        </View>
+                        <View
+                          className="min-w-0 flex-[2]"
+                          onLayout={layoutField('videoUploadStartTime')}
+                        >
+                          <TimeField
+                            label="Upload Start Time"
+                            value={videoUploadStartTime}
+                            onChange={(value) => {
+                              setVideoUploadStartTime(value);
+                              clearVideoUploadFieldErrors();
+                            }}
+                            error={fieldErrors.videoUploadStartTime}
+                            showErrorMessage={false}
+                          />
+                        </View>
                       </View>
-                      <View
-                        className="min-w-0 flex-[2]"
-                        onLayout={layoutField('videoUploadStartTime')}
-                      >
-                        <TimeField
-                          label="Upload Start Time"
-                          value={videoUploadStartTime}
-                          onChange={(value) => {
-                            setVideoUploadStartTime(value);
-                            clearVideoUploadFieldErrors();
-                          }}
-                          error={fieldErrors.videoUploadStartTime}
-                        />
-                      </View>
+                      <FormErrorText inline>
+                        {fieldErrors.videoUploadStartDate ?? fieldErrors.videoUploadStartTime}
+                      </FormErrorText>
                     </View>
-                    <View className="flex-row gap-3">
-                      <View
-                        className="min-w-0 flex-[3]"
-                        onLayout={layoutField('videoUploadEndDate')}
-                      >
-                        <DateField
-                          label="Upload End Date"
-                          value={videoUploadEndDate}
-                          onChange={(value) => {
-                            setVideoUploadEndDate(value);
-                            clearVideoUploadFieldErrors();
-                          }}
-                          enforceSignupAgeMax={false}
-                          error={fieldErrors.videoUploadEndDate}
-                        />
+                    <View className="gap-1">
+                      <View className="flex-row gap-3">
+                        <View
+                          className="min-w-0 flex-[3]"
+                          onLayout={layoutField('videoUploadEndDate')}
+                        >
+                          <DateField
+                            label="Upload End Date"
+                            value={videoUploadEndDate}
+                            onChange={(value) => {
+                              setVideoUploadEndDate(value);
+                              clearVideoUploadFieldErrors();
+                            }}
+                            enforceSignupAgeMax={false}
+                            error={fieldErrors.videoUploadEndDate}
+                            showErrorMessage={false}
+                          />
+                        </View>
+                        <View
+                          className="min-w-0 flex-[2]"
+                          onLayout={layoutField('videoUploadEndTime')}
+                        >
+                          <TimeField
+                            label="Upload End Time"
+                            value={videoUploadEndTime}
+                            onChange={(value) => {
+                              setVideoUploadEndTime(value);
+                              clearVideoUploadFieldErrors();
+                            }}
+                            error={fieldErrors.videoUploadEndTime}
+                            showErrorMessage={false}
+                          />
+                        </View>
                       </View>
-                      <View
-                        className="min-w-0 flex-[2]"
-                        onLayout={layoutField('videoUploadEndTime')}
-                      >
-                        <TimeField
-                          label="Upload End Time"
-                          value={videoUploadEndTime}
-                          onChange={(value) => {
-                            setVideoUploadEndTime(value);
-                            clearVideoUploadFieldErrors();
-                          }}
-                          error={fieldErrors.videoUploadEndTime}
-                        />
-                      </View>
+                      <FormErrorText inline>
+                        {fieldErrors.videoUploadEndDate ?? fieldErrors.videoUploadEndTime}
+                      </FormErrorText>
                     </View>
                   </View>
                 ) : null}

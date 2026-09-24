@@ -1,33 +1,32 @@
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import {
   BallType,
+  CitySelection,
   compareVerifiedPlayersForSkillFilter,
   matchesVerifiedPlayerSkillFilter,
   VERIFIED_PLAYER_SKILL_FILTER_LABELS,
   VERIFIED_PLAYER_SKILL_FILTER_ORDER,
   type RegistrationSummary,
+  type TournamentScopeDisplay,
   type VerifiedPlayerSkillFilter,
   type VerifiedRegisteredPlayerRow,
 } from '@acc/types';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { LeatherRegisteredPlayerListCard } from '../../../../src/components/tournament/LeatherRegisteredPlayerListCard';
 import { RegisteredPlayerListCard } from '../../../../src/components/tournament/RegisteredPlayerListCard';
 import { RegisteredPlayerRegistrationDetailsModal } from '../../../../src/components/tournament/RegisteredPlayerRegistrationDetailsModal';
 import { SkillVideoPlayerModal } from '../../../../src/components/tournament/SkillVideoPlayerModal';
+import { Button } from '../../../../src/components/ui/Button';
 import { ScreenHeader } from '../../../../src/components/ui/ScreenHeader';
 import { KeyboardAwareFormScrollView } from '../../../../src/components/ui/KeyboardAwareFormScrollView';
 import {
   PillTabBar,
-  PILL_TAB_CHIP_ACTIVE_CLASS,
-  PILL_TAB_CHIP_BASE_CLASS,
-  PILL_TAB_CHIP_INACTIVE_CLASS,
-  PILL_TAB_LABEL_ACTIVE_CLASS,
-  PILL_TAB_LABEL_INACTIVE_CLASS,
 } from '../../../../src/components/ui/PillTabBar';
+import { Select, type SelectOption } from '../../../../src/components/ui/Select';
 import { TextInput } from '../../../../src/components/ui/TextInput';
 import { Text } from '../../../../src/components/ui/Text';
 import { FIELD_ORANGE } from '../../../../src/components/ui/fieldStyles';
@@ -45,6 +44,8 @@ import { tournamentSubpathHref } from '../../../../src/lib/tournament-detail-rou
 
 type TennisStatusTab = 'waitlist' | 'confirmed' | 'declined';
 
+const ALL_CENTER_VALUE = '__all__';
+
 const TENNIS_STATUS_TABS: readonly {
   value: TennisStatusTab;
   label: string;
@@ -54,12 +55,55 @@ const TENNIS_STATUS_TABS: readonly {
   { value: 'declined', label: 'Declined' },
 ];
 
+interface PlayerListFilters {
+  search: string;
+  centerId: string | null;
+}
+
+const EMPTY_FILTERS: PlayerListFilters = {
+  search: '',
+  centerId: null,
+};
+
+function filterHasValues(filters: PlayerListFilters): boolean {
+  return filters.search.trim().length > 0 || filters.centerId != null;
+}
+
+/** APL / multi-center tennis — show participating centers in the filter panel. */
+function shouldShowCenterFilter(
+  isLeather: boolean,
+  scope: TournamentScopeDisplay | null,
+): boolean {
+  if (isLeather || !scope) {
+    return false;
+  }
+  return (
+    scope.citySelection === CitySelection.Apl ||
+    scope.citySelection === CitySelection.Multi
+  );
+}
+
+function matchesPlayerSearch(
+  firstName: string,
+  lastName: string,
+  centerName: string,
+  query: string,
+): boolean {
+  if (!query) {
+    return true;
+  }
+  const name = `${firstName} ${lastName}`.toLowerCase();
+  const center = centerName.toLowerCase();
+  return name.includes(query) || center.includes(query);
+}
+
 /** Registered players — tennis (post-open) or leather (ACC squad-building). */
 export default function VerifiedRegisteredPlayersScreen(): React.ReactElement {
   const router = useRouter();
   const { user } = useAuth();
   const { id: tournamentId } = useLocalSearchParams<{ id: string }>();
   const [isLeather, setIsLeather] = useState(false);
+  const [scopeDisplay, setScopeDisplay] = useState<TournamentScopeDisplay | null>(null);
   const [waitlist, setWaitlist] = useState<VerifiedRegisteredPlayerRow[]>([]);
   const [confirmed, setConfirmed] = useState<VerifiedRegisteredPlayerRow[]>([]);
   const [declined, setDeclined] = useState<VerifiedRegisteredPlayerRow[]>([]);
@@ -68,7 +112,9 @@ export default function VerifiedRegisteredPlayersScreen(): React.ReactElement {
   const [statusTab, setStatusTab] = useState<TennisStatusTab>('waitlist');
   const [canFavourite, setCanFavourite] = useState(false);
   const [canLateRegister, setCanLateRegister] = useState(false);
-  const [search, setSearch] = useState('');
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [draftFilters, setDraftFilters] = useState<PlayerListFilters>(EMPTY_FILTERS);
+  const [appliedFilters, setAppliedFilters] = useState<PlayerListFilters>(EMPTY_FILTERS);
   const [skillFilter, setSkillFilter] = useState<VerifiedPlayerSkillFilter>(
     VERIFIED_PLAYER_SKILL_FILTER_ORDER[0],
   );
@@ -78,6 +124,27 @@ export default function VerifiedRegisteredPlayersScreen(): React.ReactElement {
   const [detailsPlayer, setDetailsPlayer] = useState<RegistrationSummary | null>(null);
   const [detailsVisible, setDetailsVisible] = useState(false);
   const skillVideo = useSkillVideoPlayback(tournamentId);
+
+  const showCenterFilter = shouldShowCenterFilter(isLeather, scopeDisplay);
+  const hasAppliedFilters = filterHasValues(appliedFilters);
+
+  const centerOptions = useMemo<SelectOption[]>(() => {
+    if (!scopeDisplay) {
+      return [{ value: ALL_CENTER_VALUE, label: 'All centers' }];
+    }
+    const centerIds = scopeDisplay.centerIds ?? [];
+    const centerNames = scopeDisplay.centerNames ?? [];
+    const options: SelectOption[] = [{ value: ALL_CENTER_VALUE, label: 'All centers' }];
+    const count = Math.min(centerIds.length, centerNames.length);
+    for (let i = 0; i < count; i += 1) {
+      const id = centerIds[i];
+      const name = centerNames[i];
+      if (id && name) {
+        options.push({ value: id, label: name });
+      }
+    }
+    return options;
+  }, [scopeDisplay]);
 
   const load = useCallback(async () => {
     if (!tournamentId) {
@@ -90,6 +157,7 @@ export default function VerifiedRegisteredPlayersScreen(): React.ReactElement {
       const tournament = await getTournament(tournamentId);
       const leather = tournament.ballType === BallType.Leather;
       setIsLeather(leather);
+      setScopeDisplay(tournament.scopeDisplay);
 
       if (leather) {
         const data = await listLeatherRegisteredPlayers(tournamentId);
@@ -121,6 +189,7 @@ export default function VerifiedRegisteredPlayersScreen(): React.ReactElement {
       setRegisteredCount(0);
       setCanFavourite(false);
       setCanLateRegister(false);
+      setScopeDisplay(null);
       setError(
         err instanceof ApiRequestError
           ? err.message
@@ -165,7 +234,8 @@ export default function VerifiedRegisteredPlayersScreen(): React.ReactElement {
   }, [statusTab, waitlist, confirmed, declined]);
 
   const filteredTennis = useMemo(() => {
-    const q = search.trim().toLowerCase();
+    const q = appliedFilters.search.trim().toLowerCase();
+    const centerId = appliedFilters.centerId;
     const applySkill = statusTab === 'confirmed';
     let rows = applySkill
       ? activeTennisPlayers.filter((player) =>
@@ -173,31 +243,54 @@ export default function VerifiedRegisteredPlayersScreen(): React.ReactElement {
         )
       : activeTennisPlayers;
 
+    if (centerId) {
+      rows = rows.filter((player) => player.centerId === centerId);
+    }
+
     if (q) {
-      rows = rows.filter((player) => {
-        const name = `${player.firstName} ${player.lastName}`.toLowerCase();
-        const center = player.centerName.toLowerCase();
-        return name.includes(q) || center.includes(q);
-      });
+      rows = rows.filter((player) =>
+        matchesPlayerSearch(player.firstName, player.lastName, player.centerName, q),
+      );
     }
 
     if (applySkill) {
       return [...rows].sort((a, b) => compareVerifiedPlayersForSkillFilter(a, b, skillFilter));
     }
     return rows;
-  }, [activeTennisPlayers, search, skillFilter, statusTab]);
+  }, [activeTennisPlayers, appliedFilters, skillFilter, statusTab]);
 
   const filteredLeather = useMemo(() => {
-    const q = search.trim().toLowerCase();
+    const q = appliedFilters.search.trim().toLowerCase();
     if (!q) {
       return leatherPlayers;
     }
-    return leatherPlayers.filter((player) => {
-      const name = `${player.firstName} ${player.lastName}`.toLowerCase();
-      const center = player.centerName.toLowerCase();
-      return name.includes(q) || center.includes(q);
+    return leatherPlayers.filter((player) =>
+      matchesPlayerSearch(player.firstName, player.lastName, player.centerName, q),
+    );
+  }, [appliedFilters.search, leatherPlayers]);
+
+  function toggleFiltersPanel(): void {
+    setFiltersOpen((open) => {
+      const next = !open;
+      if (next) {
+        setDraftFilters(appliedFilters);
+      }
+      return next;
     });
-  }, [leatherPlayers, search]);
+  }
+
+  function applyFilters(): void {
+    setAppliedFilters({
+      search: draftFilters.search,
+      centerId: showCenterFilter ? draftFilters.centerId : null,
+    });
+    setFiltersOpen(false);
+  }
+
+  function clearFilters(): void {
+    setDraftFilters(EMPTY_FILTERS);
+    setAppliedFilters(EMPTY_FILTERS);
+  }
 
   async function toggleFavourite(player: VerifiedRegisteredPlayerRow): Promise<void> {
     if (!tournamentId || !canFavourite || statusTab !== 'confirmed') {
@@ -257,30 +350,53 @@ export default function VerifiedRegisteredPlayersScreen(): React.ReactElement {
     router.push(tournamentSubpathHref(user, tournamentId, 'registrations/late-register'));
   }
 
-  const emptyMessage = isLeather
-    ? 'No registered players match your search.'
-    : statusTab === 'waitlist'
-      ? 'No players in the waitlist.'
-      : statusTab === 'declined'
-        ? 'No declined players.'
-        : 'No confirmed players match your search.';
+  const emptyMessage =
+    hasAppliedFilters
+      ? 'No players match your search or filters.'
+      : isLeather
+        ? 'No registered players yet.'
+        : statusTab === 'waitlist'
+          ? 'No players in the waitlist.'
+          : statusTab === 'declined'
+            ? 'No declined players.'
+            : 'No confirmed players.';
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right']}>
       <ScreenHeader
-        title="Registered Players"
+        title={
+          loading ? 'Registered Players' : `Registered Players (${registeredCount})`
+        }
         onBack={() => router.back()}
         titleTrailing={
-          canLateRegister ? (
+          <View className="flex-row items-center gap-2">
             <Pressable
-              onPress={openLateRegister}
+              onPress={toggleFiltersPanel}
               accessibilityRole="button"
-              accessibilityLabel="Add player"
-              className="h-9 w-9 items-center justify-center rounded-full bg-primary active:opacity-90"
+              accessibilityLabel={
+                filtersOpen ? 'Hide player filters' : 'Show player filters'
+              }
+              accessibilityState={{ expanded: filtersOpen }}
+              hitSlop={8}
+              className="h-9 w-9 items-center justify-center active:opacity-70"
             >
-              <Ionicons name="add" size={22} color={colors.textInverse} />
+              <MaterialIcons
+                name="filter-list"
+                size={24}
+                color={hasAppliedFilters || filtersOpen ? FIELD_ORANGE : '#5A4136'}
+              />
             </Pressable>
-          ) : null
+            {canLateRegister ? (
+              <Pressable
+                onPress={openLateRegister}
+                accessibilityRole="button"
+                accessibilityLabel="Add player"
+                className="h-9 w-9 items-center justify-center rounded-full bg-primary active:opacity-90"
+              >
+                <Ionicons name="add" size={22} color={colors.textInverse} />
+              </Pressable>
+            ) : null}
+          </View>
         }
       />
 
@@ -298,53 +414,73 @@ export default function VerifiedRegisteredPlayersScreen(): React.ReactElement {
 
       {!loading && !error ? (
         <KeyboardAwareFormScrollView className="flex-1" contentContainerClassName="gap-4 px-4" extraBottomPadding={40}>
-          <Text className="font-sans-semibold text-sm text-on-surface-variant">
-            {registeredCount} Registered
-          </Text>
-          {!isLeather ? (
-            <PillTabBar
-              options={tennisTabOptions}
-              value={statusTab}
-              onChange={setStatusTab}
-              layout="scroll"
-              accessibilityLabel="Registration status"
-            />
+          {filtersOpen ? (
+            <View className="gap-3 rounded-control border border-outline-variant bg-surface-container-lowest p-3">
+              <TextInput
+                placeholder="Search by name or center…"
+                value={draftFilters.search}
+                onChangeText={(text) =>
+                  setDraftFilters((current) => ({ ...current, search: text }))
+                }
+                autoCapitalize="none"
+                autoCorrect={false}
+                returnKeyType="search"
+                containerClassName="mb-0"
+              />
+              {showCenterFilter ? (
+                <Select
+                  placeholder="All centers"
+                  value={draftFilters.centerId ?? ALL_CENTER_VALUE}
+                  options={centerOptions}
+                  onChange={(value) =>
+                    setDraftFilters((current) => ({
+                      ...current,
+                      centerId: value === ALL_CENTER_VALUE ? null : value,
+                    }))
+                  }
+                  emptyMessage="No centers for this tournament"
+                  containerClassName="mb-0"
+                />
+              ) : null}
+              <View className="flex-row gap-3">
+                <View className="min-w-0 flex-1">
+                  <Button
+                    label="Clear"
+                    variant="outline"
+                    onPress={clearFilters}
+                    className="h-11"
+                  />
+                </View>
+                <View className="min-w-0 flex-1">
+                  <Button label="Apply" onPress={applyFilters} className="h-11" />
+                </View>
+              </View>
+            </View>
           ) : null}
-          <View className="gap-6">
-            <TextInput
-              placeholder="Search by name or center…"
-              value={search}
-              onChangeText={setSearch}
-            />
-            {!isLeather && statusTab === 'confirmed' ? (
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerClassName="gap-2 pr-2"
-              >
-                {VERIFIED_PLAYER_SKILL_FILTER_ORDER.map((key) => {
-                  const active = key === skillFilter;
-                  return (
-                    <Pressable
-                      key={key}
-                      onPress={() => setSkillFilter(key)}
-                      className={`${PILL_TAB_CHIP_BASE_CLASS} shrink-0 ${
-                        active ? PILL_TAB_CHIP_ACTIVE_CLASS : PILL_TAB_CHIP_INACTIVE_CLASS
-                      }`}
-                    >
-                      <Text
-                        className={
-                          active ? PILL_TAB_LABEL_ACTIVE_CLASS : PILL_TAB_LABEL_INACTIVE_CLASS
-                        }
-                      >
-                        {VERIFIED_PLAYER_SKILL_FILTER_LABELS[key]}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </ScrollView>
-            ) : null}
-          </View>
+
+          {!isLeather ? (
+            <View className="gap-1">
+              <PillTabBar
+                options={tennisTabOptions}
+                value={statusTab}
+                onChange={setStatusTab}
+                layout="scroll"
+                accessibilityLabel="Registration status"
+              />
+              {statusTab === 'confirmed' ? (
+                <PillTabBar
+                  options={VERIFIED_PLAYER_SKILL_FILTER_ORDER.map((key) => ({
+                    value: key,
+                    label: VERIFIED_PLAYER_SKILL_FILTER_LABELS[key],
+                  }))}
+                  value={skillFilter}
+                  onChange={setSkillFilter}
+                  layout="scroll"
+                  accessibilityLabel="Player type"
+                />
+              ) : null}
+            </View>
+          ) : null}
           <View className="mt-2 gap-4">
           {isLeather ? (
             filteredLeather.length === 0 ? (

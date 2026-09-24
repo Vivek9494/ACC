@@ -595,6 +595,24 @@ export default function TournamentDetailScreen(): React.ReactElement {
                   </TournamentDetailSectionCard>
                 )}
 
+                {tournament.videoRequired &&
+                tournament.videoUploadStartAt &&
+                tournament.videoUploadEndDate ? (
+                  <TournamentDetailSectionCard
+                    title="Video Upload Details"
+                    icon={<Ionicons name="videocam-outline" size={20} color={FIELD_ORANGE} />}
+                  >
+                    <TournamentDetailInfoRow
+                      label="Upload Start Date & Time"
+                      value={formatTournamentDateTimeLabel(tournament.videoUploadStartAt)}
+                    />
+                    <TournamentDetailInfoRow
+                      label="Upload Close Date & Time"
+                      value={formatTournamentDateTimeLabel(tournament.videoUploadEndDate)}
+                    />
+                  </TournamentDetailSectionCard>
+                ) : null}
+
                 <TournamentDetailSectionCard
                   title="Tournament Schedule"
                   icon={<Ionicons name="calendar-outline" size={20} color={FIELD_ORANGE} />}
