@@ -1,6 +1,6 @@
 import { BallType, type OwnPlayerStatsView } from '@acc/types';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { ActivityIndicator, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -9,13 +9,8 @@ import { PlayerMomStatsCard } from '../stats/PlayerMomStatsCard';
 import { PlayerCareerStatsContent } from '../tournament/player-profile/PlayerCareerStatsContent';
 import { PlayerProfileHeader } from '../tournament/player-profile/PlayerProfileHeader';
 import { FIELD_ORANGE } from '../ui/fieldStyles';
-import { SegmentedControl } from '../ui/SegmentedControl';
+import { BallTypeSwitch } from '../ui/BallTypeSwitch';
 import { Text } from '../ui/Text';
-
-const BALL_TYPE_TABS = [
-  { value: BallType.Leather, label: 'Leather' },
-  { value: BallType.Tennis, label: 'Tennis' },
-] as const;
 
 function emptyStatsMessage(ballType: typeof BallType.Leather | typeof BallType.Tennis): string {
   return ballType === BallType.Leather ? 'No Leather stats yet' : 'No Tennis stats yet';
@@ -54,28 +49,16 @@ export function OwnPlayerStatsScreen(): React.ReactElement {
     }, [load]),
   );
 
-  const ballTypeTabs = useMemo(() => {
-    // Only hide Leather once the API explicitly says false — not while undefined/loading.
-    if (stats?.hasLeatherParticipation === false) {
-      return BALL_TYPE_TABS.filter((tab) => tab.value !== BallType.Leather);
-    }
-    return [...BALL_TYPE_TABS];
-  }, [stats]);
+  const showBallTypeSwitch = stats?.hasLeatherParticipation !== false;
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
       <ScrollView className="flex-1" contentContainerClassName="px-4 pb-10 pt-2">
         {stats ? <PlayerProfileHeader profile={stats} /> : null}
 
-        {ballTypeTabs.length > 1 ? (
+        {showBallTypeSwitch ? (
           <View className="mt-3 items-center">
-            <SegmentedControl
-              options={ballTypeTabs}
-              value={ballType}
-              onChange={setBallType}
-              accessibilityLabel="Ball type"
-              size="md"
-            />
+            <BallTypeSwitch value={ballType} onChange={setBallType} />
           </View>
         ) : null}
 

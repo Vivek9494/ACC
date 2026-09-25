@@ -1,7 +1,6 @@
 import {
   BallType,
   dashboardPlayedBallTypes,
-  MY_MATCHES_BALL_TYPE_LABEL,
   statsForDashboardBallType,
   type BallType as BallTypeValue,
   type DashboardPlayerPerformance,
@@ -10,13 +9,9 @@ import {
 import { useEffect, useMemo, useState } from 'react';
 import { View } from 'react-native';
 
-import { BallTypeIcon } from '../ui/BallTypeIcon';
-import { SegmentedControl } from '../ui/SegmentedControl';
+import { BallTypeSwitch } from '../ui/BallTypeSwitch';
 import { StatTile } from '../ui/StatTile';
 import { Text } from '../ui/Text';
-
-const BALL_TYPE_ORDER: BallTypeValue[] = [BallType.Leather, BallType.Tennis];
-const TOGGLE_BALL_ICON_SIZE = 22;
 
 function performanceItems(stats: ManagerPlayerStats) {
   return [
@@ -35,7 +30,7 @@ export interface YourPerformanceSectionProps {
 
 /**
  * Dashboard “Your Performance” — Matches / Runs / Wickets per ball type.
- * Shows the Leather/Tennis ball-icon toggle only when the user has played both formats.
+ * Shows the leather↔tennis sliding switch only when the user has played both formats.
  */
 export function YourPerformanceSection({
   performance,
@@ -65,23 +60,6 @@ export function YourPerformanceSection({
     ? selectedBallType
     : (playedBallTypes[0] ?? BallType.Leather);
   const stats = statsForDashboardBallType(performance, activeBallType);
-  const switchOptions = useMemo(
-    () =>
-      BALL_TYPE_ORDER.filter((ballType) => playedBallTypes.includes(ballType)).map(
-        (ballType) => ({
-          value: ballType,
-          label: MY_MATCHES_BALL_TYPE_LABEL[ballType],
-          icon: (
-            <BallTypeIcon
-              ballType={ballType}
-              size={TOGGLE_BALL_ICON_SIZE}
-              accessibilityLabel=""
-            />
-          ),
-        }),
-      ),
-    [playedBallTypes],
-  );
 
   return (
     <View className="gap-3">
@@ -91,14 +69,7 @@ export function YourPerformanceSection({
         </Text>
         {showSwitch ? (
           <View className="shrink-0">
-            <SegmentedControl
-              size="sm"
-              iconOnly
-              options={switchOptions}
-              value={selectedBallType}
-              onChange={setSelectedBallType}
-              accessibilityLabel="Ball type"
-            />
+            <BallTypeSwitch value={selectedBallType} onChange={setSelectedBallType} />
           </View>
         ) : null}
       </View>
