@@ -90,6 +90,7 @@ export * from './player-mom-stats';
 export * from './player-profile';
 export * from './team';
 export * from './team-access';
+export * from './team-leadership-assign';
 export * from './standings';
 export * from './leaderboard';
 export * from './tournament-stats';

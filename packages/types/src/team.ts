@@ -59,7 +59,7 @@ export interface TeamDetailView {
   parttimePlayerCount: number;
   /** True when the viewer may open another player's profile from this roster. */
   canViewPlayerProfiles: boolean;
-  /** Admin / Club Manager / organizing Center Sevak may assign Captain / VC / Manager. */
+  /** Server: may assign Cap/VC/Manager (strict matrix + registration-closed gate). */
   canAssignTeamRoles: boolean;
   /** Admin / Club Manager, or eligible multi-center Center Sevak, may manage the roster. */
   canAddPlayers: boolean;
@@ -76,10 +76,6 @@ export type { TournamentPlayerProfileView } from './player-profile';
 export interface CreateTeamRequest {
   name: string;
   logoUrl?: string | null;
-  /** Optional at create — Admin / Club Manager only; assignee is auto-added to the new team squad. */
-  captainUserId?: string | null;
-  viceCaptainUserId?: string | null;
-  managerUserId?: string | null;
 }
 
 export interface UpdateTeamRequest {
@@ -107,9 +103,8 @@ export interface AssignTeamRolesResponse {
 }
 
 /**
- * Player eligible for Captain / VC / Manager — type-specific audience
- * (tennis: tournament centers; leather: prior leather participants in province).
- * Unrostered in this tournament (already-rostered players are excluded from candidates).
+ * Player eligible for Captain / VC / Manager — confirmed registrant in this tournament.
+ * Includes players already on a roster (assign may auto-roster onto the target team).
  */
 export interface TeamRoleCandidate {
   userId: string;
@@ -123,9 +118,9 @@ export interface TeamRoleCandidatesView {
   candidates: TeamRoleCandidate[];
   /** Centers available for the center-filter dropdown on Cap/VC/Manager pickers. */
   centers: { id: string; name: string }[];
-  /** Total type-audience size (before search/center filters; includes rostered). */
+  /** Confirmed registrant count (before search/center filters). */
   confirmedRegistrantCount: number;
-  /** Distinct players on an active team in this tournament (excluded from candidates). */
+  /** Distinct players on an active team in this tournament. */
   rosteredCount: number;
 }
 

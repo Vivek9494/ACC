@@ -24,7 +24,6 @@ import { SuccessDialog } from '../../../../../../src/components/ui/SuccessDialog
 import { TeamLogoField } from '../../../../../../src/components/ui/TeamLogoField';
 import { Text } from '../../../../../../src/components/ui/Text';
 import { TextInput } from '../../../../../../src/components/ui/TextInput';
-import { TeamRoleAssignmentFields } from '../../../../../../src/components/tournament/TeamRoleAssignmentFields';
 import {
   ApiRequestError,
   getTeamDetail,
@@ -264,19 +263,6 @@ export default function EditTeamScreen(): React.ReactElement {
             maxLength={TEAM_NAME_MAX_LENGTH}
             error={nameError ?? undefined}
           />
-
-          {teamDetail?.canAssignTeamRoles ? (
-            <TeamRoleAssignmentFields
-              tournamentId={tournamentId!}
-              teamId={teamId!}
-              detail={teamDetail}
-              onUpdated={() => {
-                void getTeamDetail(tournamentId!, teamId!).then(setTeamDetail).catch(() => {
-                  // Role assign succeeded; detail refresh is best-effort.
-                });
-              }}
-            />
-          ) : null}
 
           {submitError ? (
             <Text className="font-sans text-sm text-primary">{submitError}</Text>

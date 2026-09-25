@@ -215,7 +215,7 @@ export function TeamLeadershipSection({
       <Text className="font-sans-bold text-lg text-on-surface">Team Leadership</Text>
       <Text className="font-sans text-sm text-on-surface-variant">
         Assign Captain, Vice-Captain
-        {showManager ? ', and Manager' : ''} from eligible players for this tournament type.
+        {showManager ? ', and Manager' : ''} from confirmed registrants after registration closes.
         Players not already on this squad are added automatically.
       </Text>
 

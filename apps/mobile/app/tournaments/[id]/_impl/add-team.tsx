@@ -2,14 +2,11 @@ import { Ionicons } from '@expo/vector-icons';
 import {
   TEAM_FORM_MESSAGES,
   TEAM_NAME_MAX_LENGTH,
-  type BallType,
-  canAssignTeamRoles,
   normalizeTeamName,
   validateTeamName,
-  validateTeamRoleAssignments,
 } from '@acc/types';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -22,11 +19,10 @@ import { KeyboardAwareFormScrollView } from '../../../../src/components/ui/Keybo
 import { FIELD_ORANGE } from '../../../../src/components/ui/fieldStyles';
 import { ScreenHeader } from '../../../../src/components/ui/ScreenHeader';
 import { SuccessDialog } from '../../../../src/components/ui/SuccessDialog';
-import { TeamCreateRoleAssignmentFields } from '../../../../src/components/tournament/TeamCreateRoleAssignmentFields';
 import { TeamLogoField } from '../../../../src/components/ui/TeamLogoField';
 import { Text } from '../../../../src/components/ui/Text';
 import { TextInput } from '../../../../src/components/ui/TextInput';
-import { ApiRequestError, createTeam, getTournament, listTeams } from '../../../../src/lib/api';
+import { ApiRequestError, createTeam, listTeams } from '../../../../src/lib/api';
 import { uploadTeamLogo } from '../../../../src/lib/imageUpload';
 import { useAuth } from '../../../../src/lib/auth-context';
 import { TOURNAMENT_DETAIL_TAB } from '../../../../src/lib/tournament-detail-tabs';
@@ -44,11 +40,6 @@ export default function AddTeamScreen(): React.ReactElement {
   const router = useRouter();
   const { user } = useAuth();
 
-  const [ballType, setBallType] = useState<BallType | null>(null);
-  const [captainUserId, setCaptainUserId] = useState<string | null>(null);
-  const [viceCaptainUserId, setViceCaptainUserId] = useState<string | null>(null);
-  const [managerUserId, setManagerUserId] = useState<string | null>(null);
-
   const [teamName, setTeamName] = useState('');
   const [logo, setLogo] = useState<StoredImageFile | null>(null);
   const [logoUploading, setLogoUploading] = useState(false);
@@ -59,16 +50,6 @@ export default function AddTeamScreen(): React.ReactElement {
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
 
   const previewUri = logo?.uri ?? null;
-  const showRoleFields = canAssignTeamRoles(user) && ballType != null;
-
-  useEffect(() => {
-    if (!tournamentId || !canAssignTeamRoles(user)) {
-      return;
-    }
-    getTournament(tournamentId)
-      .then((tournament) => setBallType(tournament.ballType))
-      .catch(() => setBallType(null));
-  }, [tournamentId, user]);
 
   const handleLogoPicked = useCallback(async (file: PickedImageFile) => {
     const stored = pickedToStored(file);
@@ -131,28 +112,11 @@ export default function AddTeamScreen(): React.ReactElement {
       return;
     }
 
-    const roleConflict = validateTeamRoleAssignments(
-      captainUserId,
-      viceCaptainUserId,
-      managerUserId,
-    );
-    if (roleConflict) {
-      setSubmitError(roleConflict);
-      return;
-    }
-
     setSubmitting(true);
     try {
       await createTeam(tournamentId, {
         name: teamName.trim(),
         logoUrl: logo?.remoteUrl ?? null,
-        ...(showRoleFields
-          ? {
-              captainUserId,
-              viceCaptainUserId,
-              managerUserId,
-            }
-          : {}),
       });
       setShowSuccessDialog(true);
     } catch (err) {
@@ -210,20 +174,6 @@ export default function AddTeamScreen(): React.ReactElement {
             maxLength={TEAM_NAME_MAX_LENGTH}
             error={nameError ?? undefined}
           />
-
-          {showRoleFields ? (
-            <TeamCreateRoleAssignmentFields
-              tournamentId={tournamentId!}
-              ballType={ballType!}
-              captainUserId={captainUserId}
-              viceCaptainUserId={viceCaptainUserId}
-              managerUserId={managerUserId}
-              onCaptainChange={setCaptainUserId}
-              onViceCaptainChange={setViceCaptainUserId}
-              onManagerChange={setManagerUserId}
-              disabled={submitting}
-            />
-          ) : null}
 
           {submitError ? (
             <Text className="font-sans text-sm text-primary">{submitError}</Text>

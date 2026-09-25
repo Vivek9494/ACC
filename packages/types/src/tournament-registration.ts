@@ -58,6 +58,25 @@ export function isTournamentRegistrationWindowClosed(
   return now.getTime() > closeMs;
 }
 
+/**
+ * Cap/VC/Manager assign window: after registration close, or when close is unset
+ * after registrationOpenAt + 48h. False when neither anchor exists.
+ */
+export function isTeamLeadershipAssignmentWindowOpen(
+  tournament: Pick<TournamentDetail, 'registrationOpenAt' | 'registrationCloseAt'>,
+  now: Date = new Date(),
+): boolean {
+  const closeMs = toMillis(tournament.registrationCloseAt);
+  if (closeMs != null) {
+    return now.getTime() > closeMs;
+  }
+  const openMs = toMillis(tournament.registrationOpenAt);
+  if (openMs != null) {
+    return now.getTime() > openMs + REGISTRATION_VERIFICATION_NO_AUCTION_GRACE_MS;
+  }
+  return false;
+}
+
 type VerificationDeadlineFields = {
   auctionAt?: InstantLike;
   registrationCloseAt?: InstantLike;

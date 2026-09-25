@@ -388,14 +388,15 @@ export const PERMISSION_MATRIX: Record<Permission, PermissionRule> = {
     ],
   },
   [Permission.ASSIGN_TEAM_ROLES]: {
-    // Admin / Club Manager; participating Center Sevak on multi-center (organizer).
+    // Coarse subjects — TeamsService enforces the strict Cap-assign matrix
+    // (CENTER: Admin+Sevak; APL/Leather: Admin+CM; timing gate).
     grants: [
       { subject: R.Admin },
       { subject: R.ClubManager },
       {
         subject: R.CenterSevak,
         scope: PermissionScope.Organizer,
-        tournamentTypes: TENNIS_TYPES,
+        tournamentTypes: CENTER_ONLY,
       },
     ],
   },

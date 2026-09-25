@@ -17,8 +17,10 @@ import {
   type TournamentPlayerProfileView,
   teamCapError,
   UserRole,
+  canAssignTeamLeadershipRoles,
   canViewTournamentPlayerProfiles,
   canViewTeamRosterMobileNumbers,
+  isTeamLeadershipAssignmentWindowOpen,
   PLAYER_PROFILE_BALL_TYPE_LABELS,
   type AssignTeamRolesRequest,
   type AddTeamPlayersResponse,
@@ -198,6 +200,9 @@ export class TeamsService {
     const showPlayerCategorySplit = team.tournament.ballType === BallType.Leather;
     const canViewPlayerProfiles = canViewTournamentPlayerProfiles(viewer, tournamentId);
     const canManageRoster = viewer ? await this.canManageTeamRoster(viewer, tournamentId) : false;
+    const canAssignTeamRoles = viewer
+      ? await this.resolveCanAssignTeamLeadership(viewer, tournament)
+      : false;
     const canViewMobileNumbers = canViewTeamRosterMobileNumbers(
       viewer,
       viewerMembership != null,
@@ -273,12 +278,7 @@ export class TeamsService {
       fulltimePlayerCount,
       parttimePlayerCount,
       canViewPlayerProfiles,
-      canAssignTeamRoles: canManageRoster
-        ? await this.permissions.check(Permission.ASSIGN_TEAM_ROLES, viewer!, {
-            tournamentId,
-            teamId,
-          })
-        : false,
+      canAssignTeamRoles,
       canAddPlayers: canManageRoster,
       canRemovePlayers: canManageRoster,
       playersPerTeamCap,
@@ -644,18 +644,8 @@ export class TeamsService {
     filters: { search?: string; centerId?: string } = {},
   ): Promise<TeamRoleCandidatesView> {
     const tournament = await this.requireTournament(tournamentId);
-
-    const allowed = await this.permissions.check(Permission.ASSIGN_TEAM_ROLES, actor, {
-      tournamentId,
-    });
-    if (!allowed) {
-      throw new ForbiddenException({
-        message: 'You do not have permission to assign team leadership roles',
-        error: 'FORBIDDEN',
-      });
-    }
-
-    return this.loadTypeAudienceRoleCandidates(tournament, filters);
+    await this.assertCanAssignTeamLeadership(actor, tournament);
+    return this.loadConfirmedRegistrantRoleCandidates(tournament.id, filters);
   }
 
   async create(actor: AuthUser, tournamentId: string, dto: CreateTeamDto): Promise<TeamSummary> {
@@ -684,111 +674,16 @@ export class TeamsService {
     const nameNormalized = normalizeTeamName(name);
     await this.assertTeamNameAvailable(tournamentId, nameNormalized);
 
-    const roleAssignees = this.collectCreateRoleAssignees(dto);
-    if (roleAssignees.hasAny) {
-      const canAssign = await this.permissions.check(Permission.ASSIGN_TEAM_ROLES, actor, {
-        tournamentId,
-      });
-      if (!canAssign) {
-        throw new ForbiddenException({
-          message: 'You do not have permission to assign team leadership roles',
-          error: 'FORBIDDEN',
-        });
-      }
-      if (dto.managerUserId != null && tournament.ballType === BallType.Leather) {
-        throw new BadRequestException({
-          message: 'Manager role is not used in ACC (leather-ball) tournaments',
-          error: 'MANAGER_NOT_ALLOWED',
-        });
-      }
-      const roleConflict = validateTeamRoleAssignments(
-        dto.captainUserId,
-        dto.viceCaptainUserId,
-        dto.managerUserId,
-      );
-      if (roleConflict) {
-        throw new BadRequestException({
-          message: roleConflict,
-          error: 'DUAL_TEAM_LEADER',
-        });
-      }
-      await this.assertEligibleForTeamRole(tournament, roleAssignees.userIds);
-      await this.assertNotRosteredInTournament(tournamentId, roleAssignees.userIds);
-    }
-
     try {
-      const created = await this.prisma.$transaction(async (tx) => {
-        const team = await tx.team.create({
-          data: {
-            tournamentId,
-            name,
-            nameNormalized,
-            logoUrl: dto.logoUrl ?? null,
-          },
-          include: { _count: { select: { memberships: activeTeamMembershipCountSelect } } },
-        });
-
-        if (roleAssignees.userIds.length > 0) {
-          const registrations = await tx.registration.findMany({
-            where: {
-              tournamentId,
-              userId: { in: roleAssignees.userIds },
-              status: RegistrationStatus.Confirmed,
-            },
-            select: { userId: true, playerType: true },
-          });
-          const registrationByUser = new Map(registrations.map((row) => [row.userId, row]));
-
-          for (const userId of roleAssignees.userIds) {
-            const registration = registrationByUser.get(userId);
-            await tx.teamMembership.create({
-              data: {
-                tournamentId,
-                teamId: team.id,
-                userId,
-                playerCategory: this.registrationToPlayerCategory(
-                  registration?.playerType ?? null,
-                  tournament.ballType as BallType,
-                ),
-              },
-            });
-          }
-
-          for (const assignment of roleAssignees.assignments) {
-            await tx.roleAssignment.create({
-              data: {
-                userId: assignment.userId,
-                role: assignment.role,
-                tournamentId,
-                teamId: team.id,
-              },
-            });
-          }
-        }
-
-        return team;
+      const created = await this.prisma.team.create({
+        data: {
+          tournamentId,
+          name,
+          nameNormalized,
+          logoUrl: dto.logoUrl ?? null,
+        },
+        include: { _count: { select: { memberships: activeTeamMembershipCountSelect } } },
       });
-
-      if (roleAssignees.hasAny) {
-        await this.audit.record({
-          action: 'TEAM_ROLES_ASSIGNED',
-          actorUserId: actor.id,
-          targetEntityType: 'team',
-          targetEntityId: created.id,
-          before: {
-            captainUserId: null,
-            viceCaptainUserId: null,
-            managerUserId: null,
-          },
-          after: {
-            captainUserId: dto.captainUserId ?? null,
-            viceCaptainUserId: dto.viceCaptainUserId ?? null,
-            managerUserId: dto.managerUserId ?? null,
-          },
-          details: { tournamentId, source: 'team_create' },
-        });
-      }
-
       return this.toSummary(created, false);
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
@@ -886,17 +781,7 @@ export class TeamsService {
     dto: AssignTeamRolesRequest,
   ): Promise<AssignTeamRolesResponse> {
     const tournament = await this.requireTournament(tournamentId);
-
-    const allowed = await this.permissions.check(Permission.ASSIGN_TEAM_ROLES, actor, {
-      tournamentId,
-      teamId,
-    });
-    if (!allowed) {
-      throw new ForbiddenException({
-        message: 'You do not have permission to assign team leadership roles',
-        error: 'FORBIDDEN',
-      });
-    }
+    await this.assertCanAssignTeamLeadership(actor, tournament);
 
     const team = await this.prisma.team.findFirst({
       where: { id: teamId, tournamentId, ...activeTeamWhere },
@@ -1167,159 +1052,160 @@ export class TeamsService {
     return map.get(teamId) ?? false;
   }
 
-  private collectCreateRoleAssignees(dto: CreateTeamDto): {
-    hasAny: boolean;
-    userIds: string[];
-    assignments: Array<{ role: UserRole; userId: string }>;
-  } {
-    const assignments: Array<{ role: UserRole; userId: string }> = [];
-    if (dto.captainUserId) {
-      assignments.push({ role: UserRole.Captain, userId: dto.captainUserId });
-    }
-    if (dto.viceCaptainUserId) {
-      assignments.push({ role: UserRole.ViceCaptain, userId: dto.viceCaptainUserId });
-    }
-    if (dto.managerUserId) {
-      assignments.push({ role: UserRole.Manager, userId: dto.managerUserId });
-    }
-    const userIds = assignments.map((row) => row.userId);
-    return {
-      hasAny: assignments.length > 0,
-      userIds,
-      assignments,
-    };
-  }
-
-  private async loadTypeAudienceRoleCandidates(
+  private async resolveCanAssignTeamLeadership(
+    actor: AuthUser,
     tournament: {
       id: string;
-      ballType: string;
-      provinceId: string | null;
       type: string;
+      createdByUserId: string;
+      registrationOpenAt: Date | null;
+      registrationCloseAt: Date | null;
     },
+  ): Promise<boolean> {
+    if (
+      !isTeamLeadershipAssignmentWindowOpen({
+        registrationOpenAt: tournament.registrationOpenAt?.toISOString() ?? null,
+        registrationCloseAt: tournament.registrationCloseAt?.toISOString() ?? null,
+      })
+    ) {
+      return false;
+    }
+
+    const [participatingCenterIds, sevakCenterIds] = await Promise.all([
+      this.loadParticipatingCenterIds(tournament.id),
+      (async (): Promise<string[]> => {
+        if ((actor.centerSevakCenterIds?.length ?? 0) > 0) {
+          return [...actor.centerSevakCenterIds!];
+        }
+        if (actor.role === UserRole.CenterSevak) {
+          return this.tournaments.resolveCenterSevakCenterIds(actor.id);
+        }
+        return [];
+      })(),
+    ]);
+
+    return canAssignTeamLeadershipRoles(
+      {
+        userId: actor.id,
+        role: actor.role,
+        sevakCenterIds,
+      },
+      {
+        type: tournament.type as TournamentType,
+        createdByUserId: tournament.createdByUserId,
+        participatingCenterIds,
+      },
+    );
+  }
+
+  private async assertCanAssignTeamLeadership(
+    actor: AuthUser,
+    tournament: {
+      id: string;
+      type: string;
+      createdByUserId: string;
+      registrationOpenAt: Date | null;
+      registrationCloseAt: Date | null;
+    },
+  ): Promise<void> {
+    if (
+      !isTeamLeadershipAssignmentWindowOpen({
+        registrationOpenAt: tournament.registrationOpenAt?.toISOString() ?? null,
+        registrationCloseAt: tournament.registrationCloseAt?.toISOString() ?? null,
+      })
+    ) {
+      throw new ForbiddenException({
+        message: 'Team leadership roles can only be assigned after registration closes',
+        error: 'REGISTRATION_STILL_OPEN',
+      });
+    }
+
+    const allowed = await this.resolveCanAssignTeamLeadership(actor, tournament);
+    if (!allowed) {
+      throw new ForbiddenException({
+        message: 'You do not have permission to assign team leadership roles',
+        error: 'FORBIDDEN',
+      });
+    }
+  }
+
+  /** Confirmed registrants for Cap/VC/Manager pickers (includes rostered players). */
+  private async loadConfirmedRegistrantRoleCandidates(
+    tournamentId: string,
     filters: { search?: string; centerId?: string },
   ): Promise<TeamRoleCandidatesView> {
-    const tournamentId = tournament.id;
     const search = filters.search?.trim() || undefined;
     const centerId = filters.centerId?.trim() || undefined;
 
-    const [rosteredRows, audienceUserIds, centers] = await Promise.all([
+    const [rosteredRows, totalConfirmed, registrations] = await Promise.all([
       this.prisma.teamMembership.findMany({
         where: { tournamentId, team: activeTeamWhere, ...activeTeamMembershipWhere },
         select: { userId: true },
       }),
-      this.loadTeamRoleAudienceUserIds(tournament),
-      this.loadTeamRoleAudienceCenters(tournament),
+      this.prisma.registration.count({
+        where: {
+          tournamentId,
+          status: RegistrationStatus.Confirmed,
+          user: selectableUserWhere,
+        },
+      }),
+      this.prisma.registration.findMany({
+        where: {
+          tournamentId,
+          status: RegistrationStatus.Confirmed,
+          user: {
+            ...selectableUserWhere,
+            ...(centerId ? { centerId } : {}),
+            ...(search
+              ? {
+                  OR: [
+                    { firstName: { contains: search, mode: 'insensitive' } },
+                    { lastName: { contains: search, mode: 'insensitive' } },
+                  ],
+                }
+              : {}),
+          },
+        },
+        select: {
+          userId: true,
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              centerId: true,
+              center: { select: { id: true, name: true } },
+            },
+          },
+          center: { select: { id: true, name: true } },
+        },
+        orderBy: [{ user: { lastName: 'asc' } }, { user: { firstName: 'asc' } }],
+      }),
     ]);
+
     const rosteredUserIds = [...new Set(rosteredRows.map((row) => row.userId))];
-    const rosteredSet = new Set(rosteredUserIds);
-    const confirmedRegistrantCount = audienceUserIds.length;
-
-    if (audienceUserIds.length === 0) {
-      return {
-        candidates: [],
-        centers,
-        confirmedRegistrantCount: 0,
-        rosteredCount: rosteredUserIds.length,
-      };
+    const centersById = new Map<string, string>();
+    for (const row of registrations) {
+      const center = row.user.center ?? row.center;
+      if (center) {
+        centersById.set(center.id, center.name);
+      }
     }
-
-    const candidateUserIds = audienceUserIds.filter((id) => !rosteredSet.has(id));
-    if (candidateUserIds.length === 0) {
-      return {
-        candidates: [],
-        centers,
-        confirmedRegistrantCount,
-        rosteredCount: rosteredUserIds.length,
-      };
-    }
-
-    const users = await this.prisma.user.findMany({
-      where: {
-        id: { in: candidateUserIds },
-        ...selectableUserWhere,
-        ...(centerId ? { centerId } : {}),
-        ...(search
-          ? {
-              OR: [
-                { firstName: { contains: search, mode: 'insensitive' } },
-                { lastName: { contains: search, mode: 'insensitive' } },
-              ],
-            }
-          : {}),
-      },
-      select: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        centerId: true,
-        center: { select: { name: true } },
-      },
-      orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
-    });
 
     return {
-      candidates: users.map((user) => ({
-        userId: user.id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        centerId: user.centerId,
-        centerName: user.center?.name ?? '',
+      candidates: registrations.map((row) => ({
+        userId: row.user.id,
+        firstName: row.user.firstName,
+        lastName: row.user.lastName,
+        centerId: row.user.centerId,
+        centerName: row.user.center?.name ?? row.center.name,
       })),
-      centers,
-      confirmedRegistrantCount,
+      centers: [...centersById.entries()]
+        .map(([id, name]) => ({ id, name }))
+        .sort((a, b) => a.name.localeCompare(b.name)),
+      confirmedRegistrantCount: totalConfirmed,
       rosteredCount: rosteredUserIds.length,
     };
-  }
-
-  private async loadTeamRoleAudienceUserIds(tournament: {
-    id: string;
-    ballType: string;
-    provinceId: string | null;
-  }): Promise<string[]> {
-    if (tournament.ballType === BallType.Leather) {
-      if (!tournament.provinceId) {
-        return [];
-      }
-      return this.loadLeatherProvincePriorParticipantUserIds(tournament.provinceId);
-    }
-
-    const centerIds = await this.loadParticipatingCenterIds(tournament.id);
-    if (centerIds.length === 0) {
-      return [];
-    }
-    const users = await this.prisma.user.findMany({
-      where: {
-        ...selectableUserWhere,
-        centerId: { in: centerIds },
-      },
-      select: { id: true },
-    });
-    return users.map((row) => row.id);
-  }
-
-  private async loadTeamRoleAudienceCenters(tournament: {
-    id: string;
-    ballType: string;
-    provinceId: string | null;
-  }): Promise<{ id: string; name: string }[]> {
-    if (tournament.ballType === BallType.Leather) {
-      if (!tournament.provinceId) {
-        return [];
-      }
-      return this.prisma.center.findMany({
-        where: { provinceId: tournament.provinceId, isActive: true },
-        select: { id: true, name: true },
-        orderBy: { name: 'asc' },
-      });
-    }
-
-    const links = await this.prisma.tournamentCenter.findMany({
-      where: { tournamentId: tournament.id },
-      select: { center: { select: { id: true, name: true } } },
-      orderBy: { center: { name: 'asc' } },
-    });
-    return links.map((row) => row.center);
   }
 
   /** TournamentCenter.centerIds for tennis APL / Center-level audiences. */
@@ -1329,51 +1215,6 @@ export class TeamsService {
       select: { centerId: true },
     });
     return rows.map((row) => row.centerId);
-  }
-
-  /**
-   * Users who previously registered for any leather tournament or appeared in any
-   * leather match squad, scoped to the given province via User.center.provinceId.
-   */
-  private async loadLeatherProvincePriorParticipantUserIds(
-    provinceId: string,
-  ): Promise<string[]> {
-    const [registrationRows, squadRows] = await Promise.all([
-      this.prisma.registration.findMany({
-        where: {
-          tournament: { ballType: BallType.Leather, isDeleted: false },
-          user: {
-            ...selectableUserWhere,
-            center: { provinceId },
-          },
-        },
-        select: { userId: true },
-        distinct: ['userId'],
-      }),
-      this.prisma.matchSquadPlayer.findMany({
-        where: {
-          squad: {
-            match: {
-              isDeleted: false,
-              tournament: { ballType: BallType.Leather, isDeleted: false },
-            },
-          },
-          user: {
-            ...selectableUserWhere,
-            center: { provinceId },
-          },
-        },
-        select: { userId: true },
-        distinct: ['userId'],
-      }),
-    ]);
-
-    return [
-      ...new Set([
-        ...registrationRows.map((row) => row.userId),
-        ...squadRows.map((row) => row.userId),
-      ]),
-    ];
   }
 
   private async loadUnrosteredRegistrationRows(tournamentId: string) {
@@ -1422,9 +1263,7 @@ export class TeamsService {
     return this.mediaUrls.resolveProfilePhotoUrls(mapped);
   }
 
-  /** Assignees must be in the type-specific Cap/VC/Manager audience and selectable.
-   * When `teamId` is set, players already active on that team are allowed (just set role).
-   */
+  /** Assignees must be confirmed registrants (or already on this team) and selectable. */
   private async assertEligibleForTeamRole(
     tournament: {
       id: string;
@@ -1439,8 +1278,15 @@ export class TeamsService {
     }
 
     const uniqueIds = [...new Set(userIds)];
-    const [audienceUserIds, selectableUsers, teamMemberships] = await Promise.all([
-      this.loadTeamRoleAudienceUserIds(tournament),
+    const [registrations, selectableUsers, teamMemberships] = await Promise.all([
+      this.prisma.registration.findMany({
+        where: {
+          tournamentId: tournament.id,
+          userId: { in: uniqueIds },
+          status: RegistrationStatus.Confirmed,
+        },
+        select: { userId: true },
+      }),
       this.prisma.user.findMany({
         where: { id: { in: uniqueIds }, ...selectableUserWhere },
         select: { id: true },
@@ -1457,7 +1303,7 @@ export class TeamsService {
           })
         : Promise.resolve([] as Array<{ userId: string }>),
     ]);
-    const audienceSet = new Set(audienceUserIds);
+    const registeredIds = new Set(registrations.map((row) => row.userId));
     const selectableIds = new Set(selectableUsers.map((row) => row.id));
     const onThisTeam = new Set(teamMemberships.map((row) => row.userId));
 
@@ -1468,9 +1314,9 @@ export class TeamsService {
           error: 'USER_NOT_SELECTABLE',
         });
       }
-      if (!audienceSet.has(userId) && !onThisTeam.has(userId)) {
+      if (!registeredIds.has(userId) && !onThisTeam.has(userId)) {
         throw new BadRequestException({
-          message: 'Selected players are not eligible for a team leadership role in this tournament',
+          message: 'Selected players must be confirmed registrants in this tournament',
           error: 'NOT_ELIGIBLE_FOR_TEAM_ROLE',
         });
       }

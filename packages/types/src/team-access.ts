@@ -105,29 +105,19 @@ export function canViewTeamRosterMobileNumbers(
 }
 
 /**
- * Optimistic UI gate for designating Captain / VC / Manager.
- * Admin and Club Manager everywhere; Center Sevak when organizing (server enforces
- * EDIT_TOURNAMENT-equivalent Organizer scope — participating centers on multi-center).
+ * Optimistic UI gate for Admin / Club Manager Cap-assign surfaces without tournament context.
+ * Prefer {@link canAssignTeamLeadershipRoles} + server `canAssignTeamRoles` when tournament is known.
  */
 export function canAssignTeamRoles(user: AuthUser | null | undefined): boolean {
   if (!user) {
     return false;
   }
-  if (user.role === UserRole.Admin || user.role === UserRole.ClubManager) {
-    return true;
-  }
-  if (user.role === UserRole.CenterSevak) {
-    return true;
-  }
-  return (user.centerSevakCenterIds?.length ?? 0) > 0;
+  return user.role === UserRole.Admin || user.role === UserRole.ClubManager;
 }
 
 /** Admin or Club Manager — organizer override for Playing 11 verify/confirm (§9.7, §11). */
 export function isPlayingXiOrganizer(user: AuthUser | null | undefined): boolean {
-  if (!user) {
-    return false;
-  }
-  return user.role === UserRole.Admin || user.role === UserRole.ClubManager;
+  return canAssignTeamRoles(user);
 }
 
 /**

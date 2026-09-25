@@ -652,7 +652,7 @@ describe('PermissionService', () => {
       expect(result).toBe(true);
     });
 
-    it('allows a participating Center Sevak organizer on a multi-center tournament', () => {
+    it('allows a participating Center Sevak organizer on a CENTER tournament', () => {
       const result = service.evaluate(
         Permission.ASSIGN_TEAM_ROLES,
         ctx({
@@ -671,6 +671,18 @@ describe('PermissionService', () => {
           subjects: [UserRole.CenterSevak],
           tournamentType: TournamentType.Center,
           isOrganizer: false,
+        }),
+      );
+      expect(result).toBe(false);
+    });
+
+    it('denies Center Sevak ASSIGN_TEAM_ROLES on APL (CENTER_ONLY grant)', () => {
+      const result = service.evaluate(
+        Permission.ASSIGN_TEAM_ROLES,
+        ctx({
+          subjects: [UserRole.CenterSevak],
+          tournamentType: TournamentType.APL,
+          isOrganizer: true,
         }),
       );
       expect(result).toBe(false);
