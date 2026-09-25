@@ -16,6 +16,7 @@
     "typecheck": "pnpm -r --if-present typecheck",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
+    "lint:typography-rules": "eslint --no-ignore tools/eslint-plugin-acc-typography/__fixtures__/violations.tsx",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "db:up": "docker compose up -d",

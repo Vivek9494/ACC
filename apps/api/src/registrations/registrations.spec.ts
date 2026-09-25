@@ -998,6 +998,40 @@ describe('RegistrationsService', () => {
       expect(result.favouriteTeamId).toBeNull();
     });
 
+    it('returns only confirmed for Manager RoleAssignment (no status tabs)', async () => {
+      const manager: AuthUser = {
+        ...captain,
+        id: 'manager-1',
+        role: UserRole.Player,
+        teamLeadAssignments: [
+          { role: UserRole.Manager, tournamentId: 'tour-1', teamId: 'team-1' },
+        ],
+      };
+      prisma.registration.findMany.mockResolvedValue([
+        row({
+          id: 'r-wait',
+          userId: 'p-wait',
+          status: RegistrationStatus.InWaitlist,
+        }),
+        row({
+          id: 'r-conf',
+          userId: 'p-conf',
+          status: RegistrationStatus.Confirmed,
+        }),
+        row({
+          id: 'r-dec',
+          userId: 'p-dec',
+          status: RegistrationStatus.Declined,
+        }),
+      ]);
+
+      const result = await service.listVerifiedRegisteredPlayers(manager, 'tour-1', {});
+
+      expect(result.waitlist).toHaveLength(0);
+      expect(result.confirmed).toHaveLength(1);
+      expect(result.declined).toHaveLength(0);
+    });
+
     it('returns waitlist, confirmed, and declined for Admin', async () => {
       prisma.registration.findMany.mockResolvedValue([
         row({

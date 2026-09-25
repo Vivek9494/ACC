@@ -108,8 +108,9 @@ export function ScreenHeader({
         <View className="flex-row flex-wrap items-center gap-x-3 gap-y-2">
           {title ? (
             <Text
+              variant="screenTitle"
               numberOfLines={3}
-              className={`min-w-[70%] max-w-full flex-1 font-sans-bold text-xl ${accentTitle ? 'text-primary' : 'text-on-surface'}`}
+              className={`min-w-[70%] max-w-full flex-1 font-sans-bold ${accentTitle ? 'text-primary' : 'text-on-surface'}`}
             >
               {title}
             </Text>

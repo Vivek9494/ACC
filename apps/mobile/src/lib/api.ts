@@ -1336,7 +1336,7 @@ export function assignTeamRoles(
   });
 }
 
-/** Captain / Club Manager tournament player profile (Team Detail → View Profile). */
+/** Cap / VC / Manager / Club Manager tournament player profile (Team Detail → View Profile). */
 export function getTournamentPlayerProfile(
   tournamentId: string,
   userId: string,

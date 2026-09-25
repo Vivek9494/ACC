@@ -122,13 +122,29 @@ describe('PermissionService', () => {
     });
   });
 
-  describe('tournament player profile (captain + Club Manager)', () => {
+  describe('tournament player profile (Cap / VC / Manager + Club Manager)', () => {
     it('allows any captain in the tournament to view profiles', () => {
       const result = service.evaluate(
         Permission.VIEW_TOURNAMENT_PLAYER_PROFILE,
         ctx({ subjects: [UserRole.Captain], tournamentType: TournamentType.ACC }),
       );
       expect(result).toBe(true);
+    });
+
+    it('allows Manager in a tennis tournament to view profiles', () => {
+      const result = service.evaluate(
+        Permission.VIEW_TOURNAMENT_PLAYER_PROFILE,
+        ctx({ subjects: [UserRole.Manager], tournamentType: TournamentType.APL }),
+      );
+      expect(result).toBe(true);
+    });
+
+    it('denies Manager profile access in ACC (leather — no Manager role)', () => {
+      const result = service.evaluate(
+        Permission.VIEW_TOURNAMENT_PLAYER_PROFILE,
+        ctx({ subjects: [UserRole.Manager], tournamentType: TournamentType.ACC }),
+      );
+      expect(result).toBe(false);
     });
 
     it('allows Club Manager cross-team profile access', () => {

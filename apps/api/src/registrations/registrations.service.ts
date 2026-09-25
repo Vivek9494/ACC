@@ -6,6 +6,7 @@ import {
   canManageRegistrationVerification,
   canSevakManageVerificationAtCenter,
   canViewRegisteredPlayersStatusTabs,
+  isRegisteredPlayersConfirmedOnlyViewer,
   isTournamentRegistrationOpen,
   isRegistrationVerificationComplete,
   Permission,
@@ -800,7 +801,9 @@ export class RegistrationsService {
       waitlistSummaries.length,
     );
 
-    const showStatusTabs = canViewRegisteredPlayersStatusTabs(actor);
+    const showStatusTabs =
+      canViewRegisteredPlayersStatusTabs(actor) &&
+      !isRegisteredPlayersConfirmedOnlyViewer(actor, tournamentId);
     const waitlist = showStatusTabs ? waitlistResolved : [];
     const confirmed = confirmedResolved;
     const declined = showStatusTabs ? declinedResolved : [];

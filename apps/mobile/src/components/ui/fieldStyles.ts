@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 
 import { colors } from '@/theme/colors';
+import { TYPE } from '@/theme/typography';
 
 /** Mirrors tailwind `primary` — use for non-className APIs (ActivityIndicator, Ionicons). */
 export const FIELD_ORANGE = colors.primary;
@@ -22,7 +23,8 @@ export const HEADER_PROFILE_AVATAR_INITIAL_CLASS = 'font-sans-bold text-lg text-
 /** Icon glyph size balanced inside {@link HEADER_PROFILE_AVATAR_SIZE_CLASS} (~text-lg weight). */
 export const HEADER_PROFILE_AVATAR_ICON_SIZE = 18;
 
-export const INPUT_TEXT_STYLE = { fontSize: 16 } as const;
+/** Input value size — must stay ≥16 to avoid iOS focus auto-zoom. */
+export const INPUT_TEXT_STYLE = { fontSize: TYPE.body } as const;
 
 export const DEFAULT_INPUT_CLASS =
   'bg-surface rounded-control border border-border px-5 py-4 text-text font-sans';
@@ -39,7 +41,7 @@ export const FIELD_VALUE_TEXT_CLASS = 'font-sans';
 function stripInputTypography(className: string): string {
   return className
     .replace(
-      /\btext-(xs|sm|base|lg|xl|2xl|3xl|4xl|5xl|6xl|7xl|8xl|9xl)\b/g,
+      /\btext-(xs|sm|base|lg|xl|2xl|3xl|4xl|5xl|6xl|7xl|8xl|9xl|caption|body|button|card-title|section|screen)\b/g,
       '',
     )
     .replace(/\bleading-[\w-]+\b/g, '')
@@ -87,7 +89,7 @@ export function mergeFieldClassName(
 
 /** Dashboard stat column labels (MATCHES / RUNS / WICKETS) and matching metadata rows. */
 export const STAT_LABEL_TEXT_CLASS =
-  'font-sans-medium text-[11px] uppercase tracking-wider text-on-surface-variant';
+  'font-sans-medium text-caption uppercase tracking-wider text-on-surface-variant';
 
 /** Validation / form error text — primary orange app-wide. */
 export const ERROR_TEXT_CLASS = 'font-sans text-sm text-primary';

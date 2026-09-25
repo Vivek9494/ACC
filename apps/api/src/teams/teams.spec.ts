@@ -112,6 +112,14 @@ const viceCaptain: AuthUser = {
   ],
 };
 
+const manager: AuthUser = {
+  ...captain,
+  id: 'manager-1',
+  teamLeadAssignments: [
+    { role: UserRole.Manager, tournamentId: 'tour-1', teamId: 'team-home' },
+  ],
+};
+
 const player: AuthUser = {
   ...captain,
   id: 'player-1',
@@ -224,6 +232,13 @@ describe('TeamsService player profile access', () => {
 
   it('allows a vice-captain to view a player on another team in the same tournament', async () => {
     const profile = await service.getPlayerProfile(viceCaptain, 'tour-1', 'target-1');
+
+    expect(profile.firstName).toBe('Ravi');
+    expect(profile.teamId).toBe('team-away');
+  });
+
+  it('allows a manager to view a player on another team in the same tournament', async () => {
+    const profile = await service.getPlayerProfile(manager, 'tour-1', 'target-1');
 
     expect(profile.firstName).toBe('Ravi');
     expect(profile.teamId).toBe('team-away');

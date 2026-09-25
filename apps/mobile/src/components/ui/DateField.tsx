@@ -158,9 +158,9 @@ export function DateField({
         </View>
         <Text
           className={`min-w-0 flex-1 ${FIELD_VALUE_TEXT_CLASS} ${
-            compact ? 'text-sm' : ''
-          } ${parsed ? 'text-text' : 'text-text-muted'}`}
-          style={compact ? { fontSize: 14 } : INPUT_TEXT_STYLE}
+            parsed ? 'text-text' : 'text-text-muted'
+          }`}
+          style={INPUT_TEXT_STYLE}
           numberOfLines={1}
           adjustsFontSizeToFit
           minimumFontScale={0.8}

@@ -143,6 +143,26 @@ module.exports = {
         'sans-semibold': ['Montserrat_600SemiBold'],
         'sans-bold': ['Montserrat_700Bold'],
       },
+      /**
+       * Product type scale (see src/theme/typography.ts).
+       * Keep xs/sm/base/lg aligned with caption/secondary/body/cardTitle.
+       * Named tokens: caption, body, button, card-title, section, screen.
+       * Do not add fontSize key `secondary` — clashes with color `text-secondary`.
+       */
+      fontSize: {
+        xs: ['12px', { lineHeight: '16px' }],
+        sm: ['14px', { lineHeight: '20px' }],
+        base: ['16px', { lineHeight: '24px' }],
+        lg: ['18px', { lineHeight: '28px' }],
+        xl: ['20px', { lineHeight: '28px' }],
+        '2xl': ['24px', { lineHeight: '32px' }],
+        caption: ['12px', { lineHeight: '16px' }],
+        body: ['16px', { lineHeight: '24px' }],
+        button: ['16px', { lineHeight: '24px' }],
+        'card-title': ['18px', { lineHeight: '28px' }],
+        section: ['22px', { lineHeight: '28px' }],
+        screen: ['26px', { lineHeight: '32px' }],
+      },
       borderRadius: {
         sm: '0.25rem',
         DEFAULT: '0.5rem',

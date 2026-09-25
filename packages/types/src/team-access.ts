@@ -65,7 +65,7 @@ export function hasTeamLeadershipInTournament(
 
 /**
  * True when the user may open tournament player profiles (Team Detail → View Profile).
- * Captains and Vice-Captains (any team in the tournament) and Club Managers — cross-team.
+ * Cap / VC / Manager (any team in the tournament) and Admin / Club Managers — cross-team.
  */
 export function canViewTournamentPlayerProfiles(
   user: AuthUser | null | undefined,
@@ -77,7 +77,7 @@ export function canViewTournamentPlayerProfiles(
   if (user.role === UserRole.Admin || user.role === UserRole.ClubManager) {
     return true;
   }
-  return hasTeamLeadershipInTournament(user, tournamentId);
+  return hasTeamFavouritesLeadInTournament(user, tournamentId);
 }
 
 /**

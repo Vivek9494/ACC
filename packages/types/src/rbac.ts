@@ -379,11 +379,12 @@ export const PERMISSION_MATRIX: Record<Permission, PermissionRule> = {
 
   // D. Teams & Roster
   [Permission.VIEW_TOURNAMENT_PLAYER_PROFILE]: {
-    // Cross-team read: any captain, vice captain, or Club Manager in the tournament context.
+    // Cross-team read: Cap / VC / Manager (RoleAssignment) or Club Manager / Admin.
     grants: [
       { subject: R.Admin },
       { subject: R.Captain },
       { subject: R.ViceCaptain },
+      { subject: R.Manager, tournamentTypes: TENNIS_TYPES },
       { subject: R.ClubManager },
     ],
   },

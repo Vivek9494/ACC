@@ -537,7 +537,7 @@ export class TeamsService {
     }
   }
 
-  /** Captain / Club Manager views another player's tournament profile (Team Detail → View Profile). */
+  /** Captain / Club Manager / Manager views another player's tournament profile (Team Detail → View Profile). */
   async getPlayerProfile(
     actor: AuthUser,
     tournamentId: string,

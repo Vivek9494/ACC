@@ -1,5 +1,5 @@
 import { type AuthUser, UserRole } from './auth';
-import { hasTeamFavouritesLeadInTournament, hasTeamLeadershipInTournament } from './team-access';
+import { hasTeamFavouritesLeadInTournament } from './team-access';
 import { BallType, type BallType as BallTypeValue } from './rbac';
 import { RegistrationStatus } from './registration';
 import {
@@ -87,12 +87,12 @@ export function canShowRegistrationVerificationQueue(
   return canCenterSevakManageTournamentRegistrations(user, tournament);
 }
 
-/** Captain or Vice Captain in a tournament. */
+/** Captain, Vice Captain, or Manager in a tournament (RoleAssignment). */
 export function isTournamentTeamLead(
   user: AuthUser | null | undefined,
   tournamentId: string,
 ): boolean {
-  return hasTeamLeadershipInTournament(user, tournamentId);
+  return hasTeamFavouritesLeadInTournament(user, tournamentId);
 }
 
 /**

@@ -3,6 +3,7 @@ import {
   BallType,
   CitySelection,
   canViewRegisteredPlayersStatusTabs,
+  isRegisteredPlayersConfirmedOnlyViewer,
   compareVerifiedPlayersForSkillFilter,
   matchesVerifiedPlayerSkillFilter,
   VERIFIED_PLAYER_SKILL_FILTER_LABELS,
@@ -128,7 +129,10 @@ export default function VerifiedRegisteredPlayersScreen(): React.ReactElement {
   const [detailsVisible, setDetailsVisible] = useState(false);
   const skillVideo = useSkillVideoPlayback(tournamentId);
 
-  const showStatusTabs = canViewRegisteredPlayersStatusTabs(user);
+  const showStatusTabs =
+    canViewRegisteredPlayersStatusTabs(user) &&
+    (tournamentId == null ||
+      !isRegisteredPlayersConfirmedOnlyViewer(user, tournamentId));
   const showCenterFilter = shouldShowCenterFilter(isLeather, scopeDisplay);
   const hasAppliedFilters = filterHasValues(appliedFilters);
 

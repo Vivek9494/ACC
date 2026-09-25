@@ -10,7 +10,7 @@ import { Text } from '../../../../../src/components/ui/Text';
 import { FIELD_ORANGE } from '../../../../../src/components/ui/fieldStyles';
 import { ApiRequestError, getTournamentPlayerProfile } from '../../../../../src/lib/api';
 
-/** Tournament-scoped player profile — captains and Club Managers only (server-enforced). */
+/** Tournament-scoped player profile — Cap / VC / Manager and Club Managers (server-enforced). */
 export default function TournamentPlayerProfileScreen(): React.ReactElement {
   const router = useRouter();
   const { id: tournamentId, userId } = useLocalSearchParams<{ id: string; userId: string }>();
