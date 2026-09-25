@@ -2,6 +2,7 @@ import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import {
   BallType,
   CitySelection,
+  canViewRegisteredPlayersStatusTabs,
   compareVerifiedPlayersForSkillFilter,
   matchesVerifiedPlayerSkillFilter,
   VERIFIED_PLAYER_SKILL_FILTER_LABELS,
@@ -109,7 +110,9 @@ export default function VerifiedRegisteredPlayersScreen(): React.ReactElement {
   const [declined, setDeclined] = useState<VerifiedRegisteredPlayerRow[]>([]);
   const [leatherPlayers, setLeatherPlayers] = useState<RegistrationSummary[]>([]);
   const [registeredCount, setRegisteredCount] = useState(0);
-  const [statusTab, setStatusTab] = useState<TennisStatusTab>('waitlist');
+  const [statusTab, setStatusTab] = useState<TennisStatusTab>(() =>
+    canViewRegisteredPlayersStatusTabs(user) ? 'waitlist' : 'confirmed',
+  );
   const [canFavourite, setCanFavourite] = useState(false);
   const [canLateRegister, setCanLateRegister] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -125,6 +128,7 @@ export default function VerifiedRegisteredPlayersScreen(): React.ReactElement {
   const [detailsVisible, setDetailsVisible] = useState(false);
   const skillVideo = useSkillVideoPlayback(tournamentId);
 
+  const showStatusTabs = canViewRegisteredPlayersStatusTabs(user);
   const showCenterFilter = shouldShowCenterFilter(isLeather, scopeDisplay);
   const hasAppliedFilters = filterHasValues(appliedFilters);
 
@@ -224,6 +228,9 @@ export default function VerifiedRegisteredPlayersScreen(): React.ReactElement {
   );
 
   const activeTennisPlayers = useMemo(() => {
+    if (!showStatusTabs || statusTab === 'confirmed') {
+      return confirmed;
+    }
     if (statusTab === 'waitlist') {
       return waitlist;
     }
@@ -231,12 +238,12 @@ export default function VerifiedRegisteredPlayersScreen(): React.ReactElement {
       return declined;
     }
     return confirmed;
-  }, [statusTab, waitlist, confirmed, declined]);
+  }, [showStatusTabs, statusTab, waitlist, confirmed, declined]);
 
   const filteredTennis = useMemo(() => {
     const q = appliedFilters.search.trim().toLowerCase();
     const centerId = appliedFilters.centerId;
-    const applySkill = statusTab === 'confirmed';
+    const applySkill = !showStatusTabs || statusTab === 'confirmed';
     let rows = applySkill
       ? activeTennisPlayers.filter((player) =>
           matchesVerifiedPlayerSkillFilter(player, skillFilter),
@@ -257,7 +264,7 @@ export default function VerifiedRegisteredPlayersScreen(): React.ReactElement {
       return [...rows].sort((a, b) => compareVerifiedPlayersForSkillFilter(a, b, skillFilter));
     }
     return rows;
-  }, [activeTennisPlayers, appliedFilters, skillFilter, statusTab]);
+  }, [activeTennisPlayers, appliedFilters, skillFilter, showStatusTabs, statusTab]);
 
   const filteredLeather = useMemo(() => {
     const q = appliedFilters.search.trim().toLowerCase();
@@ -293,7 +300,7 @@ export default function VerifiedRegisteredPlayersScreen(): React.ReactElement {
   }
 
   async function toggleFavourite(player: VerifiedRegisteredPlayerRow): Promise<void> {
-    if (!tournamentId || !canFavourite || statusTab !== 'confirmed') {
+    if (!tournamentId || !canFavourite || (showStatusTabs && statusTab !== 'confirmed')) {
       return;
     }
     const next = !player.isFavourited;
@@ -460,14 +467,16 @@ export default function VerifiedRegisteredPlayersScreen(): React.ReactElement {
 
           {!isLeather ? (
             <View className="gap-1">
-              <PillTabBar
-                options={tennisTabOptions}
-                value={statusTab}
-                onChange={setStatusTab}
-                layout="scroll"
-                accessibilityLabel="Registration status"
-              />
-              {statusTab === 'confirmed' ? (
+              {showStatusTabs ? (
+                <PillTabBar
+                  options={tennisTabOptions}
+                  value={statusTab}
+                  onChange={setStatusTab}
+                  layout="scroll"
+                  accessibilityLabel="Registration status"
+                />
+              ) : null}
+              {!showStatusTabs || statusTab === 'confirmed' ? (
                 <PillTabBar
                   options={VERIFIED_PLAYER_SKILL_FILTER_ORDER.map((key) => ({
                     value: key,

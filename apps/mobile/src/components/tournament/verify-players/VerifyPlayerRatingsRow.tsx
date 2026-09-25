@@ -26,8 +26,9 @@ export function VerifyPlayerRatingsRow({
   bowling: number | null;
   fielding: number | null;
 }): React.ReactElement {
+  // w-full (not flex-1): flexBasis 0 in a column parent collapses after list updates.
   return (
-    <View className="min-w-0 flex-1 flex-row items-center gap-3">
+    <View className="w-full flex-row items-center gap-3">
       <Stat label="Bat" value={batting} />
       <Stat label="Bowl" value={bowling} />
       <Stat label="Field" value={fielding} />

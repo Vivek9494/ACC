@@ -131,6 +131,37 @@ export function isRegistrationVerificationComplete(
   return pendingWaitlistCount === 0;
 }
 
+/** True when the actor may see In Waitlist / Confirmed / Declined status tabs. */
+export function canViewRegisteredPlayersStatusTabs(
+  user: AuthUser | null | undefined,
+): boolean {
+  if (!user) {
+    return false;
+  }
+  if (
+    user.role === UserRole.Admin ||
+    user.role === UserRole.ClubManager ||
+    user.role === UserRole.CenterSevak
+  ) {
+    return true;
+  }
+  return (user.centerSevakCenterIds?.length ?? 0) > 0;
+}
+
+/**
+ * Cap / VC / Manager (tournament RoleAssignment) — Confirmed list only, no status tabs.
+ * Admin / CM / Sevak take precedence when they also hold a team lead assignment.
+ */
+export function isRegisteredPlayersConfirmedOnlyViewer(
+  user: AuthUser | null | undefined,
+  tournamentId: string,
+): boolean {
+  if (!user || canViewRegisteredPlayersStatusTabs(user)) {
+    return false;
+  }
+  return hasTeamFavouritesLeadInTournament(user, tournamentId);
+}
+
 /**
  * Tennis Details-tab Registered Players List button.
  * Shown once registration has opened (verification may still be pending).

@@ -969,7 +969,7 @@ describe('RegistrationsService', () => {
       expect(prisma.teamRegistrationFavourite.upsert).toHaveBeenCalled();
     });
 
-    it('returns waitlist, confirmed, and declined when registration has opened', async () => {
+    it('returns only confirmed for Cap/VC/Manager (no waitlist/declined)', async () => {
       prisma.registration.findMany.mockResolvedValue([
         row({
           id: 'r-wait',
@@ -990,12 +990,39 @@ describe('RegistrationsService', () => {
 
       const result = await service.listVerifiedRegisteredPlayers(captain, 'tour-1', {});
 
+      expect(result.waitlist).toHaveLength(0);
+      expect(result.confirmed).toHaveLength(1);
+      expect(result.declined).toHaveLength(0);
+      expect(result.players).toHaveLength(1);
+      expect(result.canFavourite).toBe(false);
+      expect(result.favouriteTeamId).toBeNull();
+    });
+
+    it('returns waitlist, confirmed, and declined for Admin', async () => {
+      prisma.registration.findMany.mockResolvedValue([
+        row({
+          id: 'r-wait',
+          userId: 'p-wait',
+          status: RegistrationStatus.InWaitlist,
+        }),
+        row({
+          id: 'r-conf',
+          userId: 'p-conf',
+          status: RegistrationStatus.Confirmed,
+        }),
+        row({
+          id: 'r-dec',
+          userId: 'p-dec',
+          status: RegistrationStatus.Declined,
+        }),
+      ]);
+
+      const result = await service.listVerifiedRegisteredPlayers(admin, 'tour-1', {});
+
       expect(result.waitlist).toHaveLength(1);
       expect(result.confirmed).toHaveLength(1);
       expect(result.declined).toHaveLength(1);
       expect(result.players).toHaveLength(1);
-      expect(result.canFavourite).toBe(false);
-      expect(result.favouriteTeamId).toBeNull();
     });
 
     it('rejects when registration has not opened yet', async () => {

@@ -83,7 +83,7 @@ export function RegisteredPlayerListCard({
         ) : null}
       </View>
 
-      <View className="mt-4 rounded-lg bg-surface-container-low px-2 py-2">
+      <View className="mt-4 w-full rounded-lg bg-surface-container-low px-2 py-2">
         <VerifyPlayerRatingsRow
           batting={player.battingRating}
           bowling={player.bowlingRating}

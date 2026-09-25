@@ -63,11 +63,13 @@ export function VerifyPlayerCard({
             {row.mobileNumber}
           </Text>
           <View className="mt-2 flex-row items-center gap-2">
-            <VerifyPlayerRatingsRow
-              batting={row.battingRating}
-              bowling={row.bowlingRating}
-              fielding={row.fieldingRating}
-            />
+            <View className="min-w-0 flex-1">
+              <VerifyPlayerRatingsRow
+                batting={row.battingRating}
+                bowling={row.bowlingRating}
+                fielding={row.fieldingRating}
+              />
+            </View>
             {canManage ? (
               <View className="shrink-0 flex-row items-center gap-1.5">
                 {canApprove ? (

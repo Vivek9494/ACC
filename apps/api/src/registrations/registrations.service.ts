@@ -5,6 +5,7 @@ import {
   type CustomFormRequestSummary,
   canManageRegistrationVerification,
   canSevakManageVerificationAtCenter,
+  canViewRegisteredPlayersStatusTabs,
   isTournamentRegistrationOpen,
   isRegistrationVerificationComplete,
   Permission,
@@ -779,7 +780,7 @@ export class RegistrationsService {
       query.sort,
     );
 
-    const [waitlist, confirmed, declined] = await Promise.all([
+    const [waitlistResolved, confirmedResolved, declinedResolved] = await Promise.all([
       this.resolveSummaryPhotos(waitlistSummaries.map(toVerifiedRow)),
       this.resolveSummaryPhotos(confirmedSummaries.map(toVerifiedRow)),
       this.resolveSummaryPhotos(declinedSummaries.map(toVerifiedRow)),
@@ -798,6 +799,11 @@ export class RegistrationsService {
       },
       waitlistSummaries.length,
     );
+
+    const showStatusTabs = canViewRegisteredPlayersStatusTabs(actor);
+    const waitlist = showStatusTabs ? waitlistResolved : [];
+    const confirmed = confirmedResolved;
+    const declined = showStatusTabs ? declinedResolved : [];
 
     return {
       players: confirmed,
