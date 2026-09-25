@@ -85,12 +85,12 @@ function createSmallInputRule() {
       type: 'problem',
       docs: {
         description:
-          'Disallow input fontSize below 16 (iOS focus auto-zoom). Use INPUT_TEXT_STYLE / TYPE.body.',
+          'Disallow input fontSize below 16 (iOS focus auto-zoom). Use INPUT_TEXT_STYLE / TYPE.input.',
       },
       schema: [],
       messages: {
         smallInputFontSize:
-          'Input fontSize {{size}} is below 16. Use INPUT_TEXT_STYLE or TYPE.body (16) to avoid iOS focus zoom.',
+          'Input fontSize {{size}} is below 16. Use INPUT_TEXT_STYLE or TYPE.input (16) to avoid iOS focus zoom — do not use TYPE.body (15).',
       },
     },
     create(context) {

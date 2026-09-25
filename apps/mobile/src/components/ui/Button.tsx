@@ -40,7 +40,7 @@ export interface ButtonProps extends PressableProps {
 
 /**
  * App-wide button wrapper. All variants share `rounded-control` (8px). Text uses the
- * shared Text component with `font-sans-semibold` + type-scale button (16) unless
+ * shared Text component with `font-sans-semibold` + type-scale button (15) unless
  * overridden via `textClassName`.
  */
 export const Button = forwardRef<View, ButtonProps>(function Button(

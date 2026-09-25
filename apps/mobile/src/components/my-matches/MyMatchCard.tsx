@@ -64,11 +64,16 @@ function TeamRow({ team }: { team: MyMatchListItem['teamA'] }): React.ReactEleme
 
   return (
     <View className="flex-row items-start gap-3">
-      <Text className={`min-w-0 flex-1 font-sans-bold text-base ${toneClass}`}>
+      <Text
+        variant="cardTitle"
+        className={`min-w-0 flex-1 font-sans-bold ${toneClass}`}
+      >
         {team.name}
       </Text>
       {team.scoreLine ? (
-        <Text className={`shrink-0 font-sans-bold text-base ${toneClass}`}>{team.scoreLine}</Text>
+        <Text variant="cardTitle" className={`shrink-0 font-sans-bold ${toneClass}`}>
+          {team.scoreLine}
+        </Text>
       ) : null}
     </View>
   );

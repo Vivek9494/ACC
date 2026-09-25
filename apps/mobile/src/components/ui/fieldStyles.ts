@@ -24,8 +24,8 @@ export const HEADER_PROFILE_AVATAR_INITIAL_CLASS =
 /** Icon glyph size balanced inside {@link HEADER_PROFILE_AVATAR_SIZE_CLASS} (~text-lg weight). */
 export const HEADER_PROFILE_AVATAR_ICON_SIZE = 18;
 
-/** Input value size — must stay ≥16 to avoid iOS focus auto-zoom. */
-export const INPUT_TEXT_STYLE = { fontSize: TYPE.body } as const;
+/** Input value size — must stay ≥16 ({@link TYPE.input}); never use {@link TYPE.body}. */
+export const INPUT_TEXT_STYLE = { fontSize: TYPE.input } as const;
 
 export const DEFAULT_INPUT_CLASS =
   'bg-surface rounded-control border border-border px-5 py-4 text-text font-sans';
@@ -42,7 +42,7 @@ export const FIELD_VALUE_TEXT_CLASS = 'font-sans';
 function stripInputTypography(className: string): string {
   return className
     .replace(
-      /\btext-(xs|sm|base|lg|xl|2xl|3xl|4xl|5xl|6xl|7xl|8xl|9xl|caption|body|button|card-title|section|screen)\b/g,
+      /\btext-(xs|sm|base|lg|xl|2xl|3xl|4xl|5xl|6xl|7xl|8xl|9xl|caption|body|button|input|card-title|section|screen)\b/g,
       '',
     )
     .replace(/\bleading-[\w-]+\b/g, '')

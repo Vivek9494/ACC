@@ -152,13 +152,15 @@ module.exports = {
       fontSize: {
         xs: ['12px', { lineHeight: '16px' }],
         sm: ['14px', { lineHeight: '20px' }],
-        base: ['16px', { lineHeight: '24px' }],
+        base: ['15px', { lineHeight: '22px' }],
         lg: ['16px', { lineHeight: '24px' }],
         xl: ['18px', { lineHeight: '24px' }],
         '2xl': ['20px', { lineHeight: '28px' }],
         caption: ['12px', { lineHeight: '16px' }],
-        body: ['16px', { lineHeight: '24px' }],
-        button: ['16px', { lineHeight: '24px' }],
+        body: ['15px', { lineHeight: '22px' }],
+        button: ['15px', { lineHeight: '22px' }],
+        /** Form field values only — never use for body/button (iOS zoom). */
+        input: ['16px', { lineHeight: '24px' }],
         'card-title': ['16px', { lineHeight: '24px' }],
         section: ['18px', { lineHeight: '24px' }],
         screen: ['20px', { lineHeight: '28px' }],

@@ -7,7 +7,7 @@ Locks the mobile type scale from `apps/mobile/src/theme/typography.ts`.
 | Rule | Level | What it bans |
 |---|---|---|
 | `acc-typography/no-sub-caption-font-size` | **error** | `text-[8px]`–`text-[11px]`, `fontSize < 12` |
-| `acc-typography/no-small-input-font-size` | error (input files) | `fontSize < 16` on shared inputs |
+| `acc-typography/no-small-input-font-size` | error (input files) | `fontSize < 16` on shared inputs (`TYPE.input`, not body 15) |
 | `acc-typography/prefer-type-scale-token` | warn | arbitrary `text-[Npx]` ≥12 (prefer tokens) |
 
 Sub-12 is **error-only** outside the documented allowlist (Phase 3 complete).
