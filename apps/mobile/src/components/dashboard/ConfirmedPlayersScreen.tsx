@@ -83,7 +83,6 @@ function PlayingXiRow({
           label="Switch"
           onPress={onSwitch}
           className="h-9 min-w-[72px] px-3"
-          textClassName="text-xs"
         />
       ) : null}
     </Card>

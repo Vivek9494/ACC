@@ -402,7 +402,7 @@ export default function MatchDetailScreen(): React.ReactElement {
                       {p.firstName} {p.lastName}
                       {p.isActiveImpact ? ' ★' : ''}
                     </Text>
-                    <Text className="font-sans-medium text-[10px] uppercase tracking-wider text-on-surface-variant">
+                    <Text className="font-sans-medium text-caption uppercase tracking-wider text-on-surface-variant">
                       {ROLE_LABELS[p.role]}
                     </Text>
                   </View>
@@ -412,7 +412,7 @@ export default function MatchDetailScreen(): React.ReactElement {
                     <Text className="font-sans text-base text-on-surface">
                       {p.firstName} {p.lastName}
                     </Text>
-                    <Text className="font-sans-medium text-[10px] uppercase tracking-wider text-on-surface-variant">
+                    <Text className="font-sans-medium text-caption uppercase tracking-wider text-on-surface-variant">
                       Penalty Serving
                     </Text>
                   </View>
@@ -468,7 +468,7 @@ export default function MatchDetailScreen(): React.ReactElement {
                     onPress={() => void run(() => revokeScorer(match.id, s.userId))}
                     variant="destructive"
                     className="px-3 py-1"
-                    textClassName="font-sans text-xs"
+                    textClassName="font-sans text-caption"
                     label="Revoke"
                   />
                 </View>

@@ -12,10 +12,13 @@ interface RatingStatsProps {
 function Stat({ label, value }: { label: string; value: number | null }): React.ReactElement {
   return (
     <View className="flex-1 items-center rounded-lg bg-surface-container-high px-2 py-2">
-      <Text className="font-sans-medium text-[10px] uppercase tracking-wider text-on-surface-variant">
+      <Text
+        variant="caption"
+        className="font-sans-medium uppercase tracking-wider text-on-surface-variant"
+      >
         {label}
       </Text>
-      <Text className="mt-0.5 font-sans-bold text-base text-primary">
+      <Text variant="body" className="mt-0.5 font-sans-bold text-primary">
         {formatRegistrationSkillRating(value)}
       </Text>
     </View>

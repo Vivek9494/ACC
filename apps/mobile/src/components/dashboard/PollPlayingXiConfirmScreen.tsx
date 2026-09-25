@@ -136,7 +136,7 @@ function SelectablePlayerRow({
             selected ? 'border-primary bg-primary' : 'border-outline-variant bg-surface-container-lowest'
           }`}
         >
-          {selected ? <Text className="font-sans-medium text-[9px] text-on-primary">11</Text> : null}
+          {selected ? <Text className="font-sans-medium text-caption text-on-primary">11</Text> : null}
         </View>
       ) : (
         <MaterialIcons name="block" size={20} color={colors.textMuted} />

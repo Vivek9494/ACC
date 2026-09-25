@@ -35,7 +35,7 @@ function OverviewMetric({
 }): React.ReactElement {
   return (
     <View className="flex-1 gap-1">
-      <Text className="font-sans-medium text-[11px] uppercase tracking-wider text-on-surface-variant">
+      <Text className="font-sans-medium text-caption uppercase tracking-wider text-on-surface-variant">
         {label}
       </Text>
       <Text className="font-sans-bold text-2xl text-on-surface">{value}</Text>

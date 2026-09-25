@@ -49,7 +49,7 @@ export function TournamentBoundaryLeaderboardSection({
               </View>
               <View className="items-end">
                 <Text className="font-sans-bold text-xl text-primary">{entry.count}</Text>
-                <Text className="font-sans text-[10px] uppercase tracking-wide text-on-surface-variant">
+                <Text className="font-sans text-caption uppercase tracking-wide text-on-surface-variant">
                   {unitLabel}
                 </Text>
               </View>

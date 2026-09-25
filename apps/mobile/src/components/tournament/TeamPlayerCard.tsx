@@ -87,7 +87,6 @@ export function TeamPlayerCard({
               label="View Profile"
               onPress={onViewProfile}
               className="h-9 rounded-full px-4"
-              textClassName="text-xs"
             />
           </View>
         ) : null}

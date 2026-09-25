@@ -55,7 +55,7 @@ export function TournamentGroupCardHeaderWithCount({
     <TournamentGroupCardHeader
       groupName={groupName}
       trailing={
-        <Text className="font-sans-medium text-[10px] uppercase tracking-wider text-on-surface-variant">
+        <Text className="font-sans-medium text-caption uppercase tracking-wider text-on-surface-variant">
           {teamCount} TEAMS
         </Text>
       }
@@ -67,7 +67,7 @@ export function TournamentGroupCardHeaderWithCount({
 export function GroupCardTeamHeaderRow(): React.ReactElement {
   return (
     <View className="border-b border-separator px-3 py-2">
-      <Text className="font-sans-medium text-[10px] uppercase tracking-wider text-on-surface-variant">
+      <Text className="font-sans-medium text-caption uppercase tracking-wider text-on-surface-variant">
         Team
       </Text>
     </View>

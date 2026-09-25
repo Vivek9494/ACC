@@ -125,7 +125,7 @@ export default function RegisteredPlayersScreen(): React.ReactElement {
                     onPress={() => setSort(s.key)}
                     variant={active ? 'primary' : 'outline'}
                     className={`px-3 py-1.5 ${active ? 'border-primary' : 'bg-surface-container-lowest'}`}
-                    textClassName={`font-sans text-xs ${active ? 'text-on-primary' : 'text-on-surface'}`}
+                    textClassName={`font-sans text-caption ${active ? 'text-on-primary' : 'text-on-surface'}`}
                     label={s.label}
                   />
                 );
@@ -196,7 +196,7 @@ function AvailabilityPill({ value }: { value: boolean | null }): React.ReactElem
         : 'bg-surface-container-high';
   return (
     <View className={`rounded-full px-3 py-1 ${style}`}>
-      <Text className="font-sans-medium text-[10px] uppercase tracking-wider text-on-surface">{label}</Text>
+      <Text className="font-sans-medium text-caption uppercase tracking-wider text-on-surface">{label}</Text>
     </View>
   );
 }

@@ -6,10 +6,13 @@ import { Text } from '../../ui/Text';
 function Stat({ label, value }: { label: string; value: number | null }): React.ReactElement {
   return (
     <View className="min-w-[40px] shrink items-center">
-      <Text className="font-sans-semibold text-[10px] uppercase tracking-wider text-on-surface-variant/70">
+      <Text
+        variant="caption"
+        className="font-sans-semibold uppercase tracking-wider text-on-surface-variant/70"
+      >
         {label}
       </Text>
-      <Text className="font-sans-bold text-base text-primary">
+      <Text variant="body" className="font-sans-bold text-primary">
         {formatRegistrationSkillRating(value)}
       </Text>
     </View>

@@ -225,7 +225,6 @@ export default function ScorecardResultScreen(): React.ReactElement {
               label="Details"
               variant="outline"
               className="h-9 px-3"
-              textClassName="text-xs"
               onPress={() => router.push(`/matches/${matchId}`)}
             />
           ) : null

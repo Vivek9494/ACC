@@ -231,7 +231,7 @@ export default function PlayingXiScreen(): React.ReactElement {
                     </Text>
                     {c.isSuspended ? (
                       <View className="rounded-full bg-secondary-100 px-2 py-0.5">
-                        <Text className="font-sans-medium text-[9px] uppercase tracking-wider text-secondary-900">
+                        <Text className="font-sans-medium text-caption uppercase tracking-wider text-secondary-900">
                           Suspended
                         </Text>
                       </View>
@@ -263,7 +263,7 @@ export default function PlayingXiScreen(): React.ReactElement {
                   }`}
                 >
                   {role ? (
-                    <Text className="font-sans-medium text-[9px] text-on-primary">
+                    <Text className="font-sans-medium text-caption text-on-primary">
                       {role === 'XI' ? '11' : role === 'SUB' ? 'S' : 'I'}
                     </Text>
                   ) : null}

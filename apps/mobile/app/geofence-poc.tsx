@@ -167,7 +167,7 @@ export default function GeofencePocScreen(): React.ReactElement {
         refreshControl={<RefreshControl refreshing={false} onRefresh={() => void refresh()} />}
       >
         <View className="gap-1 rounded-xl border border-outline-variant bg-surface-container-lowest p-4">
-          <Text className="font-sans-medium text-[11px] uppercase tracking-wider text-on-surface-variant">
+          <Text className="font-sans-medium text-caption uppercase tracking-wider text-on-surface-variant">
             Region
           </Text>
           <Text className="font-sans text-sm text-on-surface">
@@ -254,7 +254,7 @@ export default function GeofencePocScreen(): React.ReactElement {
               >
                 {e.type.toUpperCase()}
               </Text>
-              <Text className="font-sans-medium text-[11px] text-on-surface-variant">
+              <Text className="font-sans-medium text-caption text-on-surface-variant">
                 {new Date(e.timestampIso).toLocaleString()}
               </Text>
             </View>

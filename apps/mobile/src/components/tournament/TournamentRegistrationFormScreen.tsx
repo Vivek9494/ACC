@@ -317,7 +317,7 @@ export function TournamentRegistrationFormScreen({
       <KeyboardAwareFormScrollView contentContainerClassName="gap-6 px-4" extraBottomPadding={24}>
         {existing && !isLateOnBehalf ? (
           <View className="gap-1 rounded-control bg-surface-container-high px-4 py-3">
-            <Text className="font-sans-medium text-[11px] uppercase tracking-wider text-on-surface-variant">
+            <Text className="font-sans-medium text-caption uppercase tracking-wider text-on-surface-variant">
               Your status
             </Text>
             <Text className="font-sans-bold text-lg text-on-surface">

@@ -63,7 +63,7 @@ export function ManOfMatchCard({
           Man of the Match
         </Text>
         <View className="rounded-md bg-primary px-2 py-0.5">
-          <Text className="font-sans-bold text-[10px] uppercase tracking-wider text-text-inverse">
+          <Text className="font-sans-bold text-caption uppercase tracking-wider text-text-inverse">
             MoM
           </Text>
         </View>

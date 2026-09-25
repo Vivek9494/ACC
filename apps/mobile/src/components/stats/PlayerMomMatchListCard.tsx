@@ -55,7 +55,7 @@ export function PlayerMomMatchListCard({
           {match.tournamentName}
         </Text>
         <View className="rounded-md bg-secondary px-2 py-1">
-          <Text className="font-sans-semibold text-[10px] uppercase tracking-wider text-text-inverse">
+          <Text className="font-sans-semibold text-caption uppercase tracking-wider text-text-inverse">
             MoM
           </Text>
         </View>

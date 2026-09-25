@@ -32,7 +32,7 @@ function BroadcastHistoryCard({ entry }: { entry: BroadcastHistoryEntry }): Reac
           }`}
         >
           <Text
-            className={`font-sans-semibold text-[11px] uppercase tracking-wide ${
+            className={`font-sans-semibold text-caption uppercase tracking-wide ${
               isActive ? 'text-primary' : 'text-on-surface-variant'
             }`}
           >

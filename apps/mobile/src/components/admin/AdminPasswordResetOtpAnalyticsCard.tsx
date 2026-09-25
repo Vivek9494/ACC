@@ -223,11 +223,11 @@ export function AdminPasswordResetOtpAnalyticsCard(): React.ReactElement {
             }`}
             style={scrollable ? { width: SCROLL_BAR_COLUMN_WIDTH } : undefined}
           >
-            <Text className="font-sans text-[10px] text-on-surface-variant">
+            <Text className="font-sans text-caption text-on-surface-variant">
               {day.count > 0 ? day.count : ''}
             </Text>
             <View className="w-full rounded-t-md bg-primary/70" style={{ height }} />
-            <Text className="font-sans text-[9px] text-on-surface-variant" numberOfLines={1}>
+            <Text className="font-sans text-caption text-on-surface-variant" numberOfLines={1}>
               {formatPasswordResetOtpDayLabel(day.date)}
             </Text>
           </Pressable>

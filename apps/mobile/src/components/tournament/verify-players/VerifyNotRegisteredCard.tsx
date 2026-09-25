@@ -29,7 +29,7 @@ export function VerifyNotRegisteredCard({
         </Text>
       </View>
       <View className="rounded-full bg-surface-container-high px-3 py-1">
-        <Text className="font-sans-medium text-[10px] uppercase tracking-wider text-on-surface-variant">
+        <Text className="font-sans-medium text-caption uppercase tracking-wider text-on-surface-variant">
           Not registered
         </Text>
       </View>

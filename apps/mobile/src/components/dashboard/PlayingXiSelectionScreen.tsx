@@ -124,7 +124,7 @@ function SquadSelectionIndicator({
       }`}
     >
       {selected ? (
-        <Text className="font-sans-medium text-[9px] text-on-primary">
+        <Text className="font-sans-medium text-caption text-on-primary">
           {bucket === 'PLAYING_XI' ? '11' : 'S'}
         </Text>
       ) : null}

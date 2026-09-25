@@ -222,8 +222,12 @@ export function TeamLeadershipSection({
       <View className="gap-2">
         <View className="flex-row items-center justify-between gap-3">
           <View className="min-w-0 flex-1">
-            <Text className="font-sans-semibold text-sm text-on-surface-variant">Captain</Text>
-            <Text className="font-sans-bold text-base text-on-surface">{playerName(captain)}</Text>
+            <Text variant="secondary" className="font-sans-semibold text-on-surface-variant">
+              Captain
+            </Text>
+            <Text variant="body" className="font-sans-bold text-on-surface">
+              {playerName(captain)}
+            </Text>
           </View>
           <Button
             variant="outline"
@@ -231,14 +235,15 @@ export function TeamLeadershipSection({
             onPress={() => openPicker('captain')}
             disabled={saving}
             className="h-9 rounded-full px-4"
-            textClassName="text-xs"
           />
         </View>
 
         <View className="flex-row items-center justify-between gap-3">
           <View className="min-w-0 flex-1">
-            <Text className="font-sans-semibold text-sm text-on-surface-variant">Vice-Captain</Text>
-            <Text className="font-sans-bold text-base text-on-surface">
+            <Text variant="secondary" className="font-sans-semibold text-on-surface-variant">
+              Vice-Captain
+            </Text>
+            <Text variant="body" className="font-sans-bold text-on-surface">
               {playerName(viceCaptain)}
             </Text>
           </View>
@@ -248,15 +253,18 @@ export function TeamLeadershipSection({
             onPress={() => openPicker('viceCaptain')}
             disabled={saving}
             className="h-9 rounded-full px-4"
-            textClassName="text-xs"
           />
         </View>
 
         {showManager ? (
           <View className="flex-row items-center justify-between gap-3">
             <View className="min-w-0 flex-1">
-              <Text className="font-sans-semibold text-sm text-on-surface-variant">Manager</Text>
-              <Text className="font-sans-bold text-base text-on-surface">{playerName(manager)}</Text>
+              <Text variant="secondary" className="font-sans-semibold text-on-surface-variant">
+                Manager
+              </Text>
+              <Text variant="body" className="font-sans-bold text-on-surface">
+                {playerName(manager)}
+              </Text>
             </View>
             <Button
               variant="outline"
@@ -264,7 +272,6 @@ export function TeamLeadershipSection({
               onPress={() => openPicker('manager')}
               disabled={saving}
               className="h-9 rounded-full px-4"
-              textClassName="text-xs"
             />
           </View>
         ) : null}

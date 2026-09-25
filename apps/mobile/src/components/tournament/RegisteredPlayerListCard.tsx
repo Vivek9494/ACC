@@ -61,7 +61,6 @@ export function RegisteredPlayerListCard({
                 label="View Profile"
                 onPress={onViewProfile}
                 className="h-9 shrink-0 rounded-full px-3"
-                textClassName="text-xs"
               />
             ) : null}
             {onToggleFavourite ? (
@@ -98,7 +97,7 @@ export function RegisteredPlayerListCard({
             label="View Video"
             onPress={onViewVideo}
             className="h-9 rounded-full border-primary px-4"
-            textClassName="text-xs text-primary"
+            textClassName="text-primary"
           />
         </View>
       ) : null}
