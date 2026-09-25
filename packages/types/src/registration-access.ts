@@ -6,6 +6,7 @@ import {
   hasRegistrationOpened,
   isRegistrationVerificationDeadlinePassed,
 } from './tournament-registration';
+import { TournamentDisplayStatus, type TournamentDisplayStatus as TournamentDisplayStatusValue } from './tournament-display-status';
 
 /** Tournament fields needed for registration-management visibility. */
 export interface RegistrationManagementTournamentContext {
@@ -19,6 +20,8 @@ export interface RegistrationManagementTournamentContext {
   auctionAt?: string | null;
   /** Server-derived: verification deadline passed and no registrants left in waitlist. */
   registrationVerificationComplete?: boolean;
+  /** Date-derived status — hide Verify Players once the tournament is finished. */
+  displayStatus?: TournamentDisplayStatusValue;
 }
 
 /** True when the actor holds a scoped Center Sevak assignment. */
@@ -66,12 +69,19 @@ export function canCenterSevakManageTournamentRegistrations(
 
 /**
  * Verify Players UI — tennis Center Sevak only. Leather has no verification step for anyone.
+ * Hidden once the tournament is Completed (or Cancelled).
  */
 export function canShowRegistrationVerificationQueue(
   user: AuthUser | null | undefined,
   tournament: RegistrationManagementTournamentContext | null | undefined,
 ): boolean {
   if (!user || !tournament?.hasRegistrationWindow) {
+    return false;
+  }
+  if (
+    tournament.displayStatus === TournamentDisplayStatus.Completed ||
+    tournament.displayStatus === TournamentDisplayStatus.Cancelled
+  ) {
     return false;
   }
   return canCenterSevakManageTournamentRegistrations(user, tournament);
@@ -124,7 +134,8 @@ export function isRegistrationVerificationComplete(
 /**
  * Tennis Details-tab Registered Players List button.
  * Shown once registration has opened (verification may still be pending).
- * Captain / VC / Manager (plus Admin / Club Manager).
+ * Admin / Club Manager / Captain / VC / Manager / Center Sevak.
+ * Non-Admin: hidden when tournament displayStatus is Completed or Cancelled.
  */
 export function canShowTournamentRegistrationPlayerButtons(
   user: AuthUser | null | undefined,
@@ -150,8 +161,19 @@ export function canShowTournamentRegistrationPlayerButtons(
   ) {
     return false;
   }
-  if (user.role === UserRole.ClubManager || user.role === UserRole.Admin) {
-    return true;
+  if (
+    user.role !== UserRole.Admin &&
+    (tournament.displayStatus === TournamentDisplayStatus.Completed ||
+      tournament.displayStatus === TournamentDisplayStatus.Cancelled)
+  ) {
+    return false;
+  }
+  if (
+    user.role === UserRole.ClubManager ||
+    user.role === UserRole.Admin ||
+    user.role === UserRole.CenterSevak
+  ) {
+    return user.role !== UserRole.CenterSevak || hasCenterSevakAssignment(user);
   }
   return hasTeamFavouritesLeadInTournament(user, tournament.id);
 }

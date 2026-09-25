@@ -280,7 +280,7 @@ export interface TournamentDetail extends TournamentSummary {
    * Drives Captain/Manager registration player buttons after Center Sevak verification.
    */
   registrationVerificationComplete: boolean;
-  /** Tennis + team lead + verification complete — Registered Players List button. */
+  /** Registered Players List button — reg window open + role/ball-type permission; non-Admin hidden when Completed/Cancelled. */
   canViewRegisteredPlayersList: boolean;
   /** Tennis + team lead + verification complete — Favourite Players button. */
   canViewFavouritePlayers: boolean;

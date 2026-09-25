@@ -126,6 +126,7 @@ export default function TournamentDetailScreen(): React.ReactElement {
       ? canShowRegistrationVerificationQueue(user, {
           ballType: tournament.ballType,
           hasRegistrationWindow: tournament.hasRegistrationWindow,
+          displayStatus: tournament.displayStatus,
         })
       : false;
   const showFeesTracker =
@@ -204,6 +205,7 @@ export default function TournamentDetailScreen(): React.ReactElement {
         canShowRegistrationVerificationQueue(currentUser, {
           ballType: detail.ballType,
           hasRegistrationWindow: detail.hasRegistrationWindow,
+          displayStatus: detail.displayStatus,
         })
           ? getRegistrationVerificationQueue(tournamentId).catch(() => null)
           : Promise.resolve(null);
@@ -435,9 +437,7 @@ export default function TournamentDetailScreen(): React.ReactElement {
           <Text
             className={`font-sans-semibold text-on-secondary-container ${gridLabelClass}`}
           >
-            {tournament.ballType === BallType.Leather
-              ? 'View Registered Players'
-              : 'Registered Players List'}
+            Registered Players List
           </Text>
         </Button>,
       );

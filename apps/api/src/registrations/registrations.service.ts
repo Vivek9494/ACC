@@ -21,6 +21,8 @@ import {
   type CenterPlayerRosterEntry,
   RegistrationVerificationPhase,
   resolveSevakVerificationCenterIds,
+  deriveTournamentDisplayStatus,
+  TournamentDisplayStatus,
   type TournamentFavouritePlayersView,
   type LeatherRegisteredPlayersView,
   type LateRegisterCandidatesView,
@@ -677,9 +679,10 @@ export class RegistrationsService {
   }
 
   /**
-   * Tennis Registered Players list — waitlist / confirmed / declined across all
-   * centers. Available once registration has opened (Captain / VC / Manager /
-   * Admin / Club Manager). Favouriting remains gated on verification complete.
+   * Tennis Registered Players list — waitlist / confirmed / declined.
+   * Available once registration has opened (Captain / VC / Manager /
+   * Admin / Club Manager / Center Sevak). Sevak rows are own-center only.
+   * Favouriting remains gated on verification complete.
    */
   async listVerifiedRegisteredPlayers(
     actor: AuthUser,
@@ -688,6 +691,7 @@ export class RegistrationsService {
   ): Promise<VerifiedRegisteredPlayersView> {
     const tournament = await this.requireTournament(tournamentId);
     this.assertRegistrationVerificationTournament(tournament.ballType as BallType);
+    this.assertRegisteredPlayersListAvailable(actor, tournament);
 
     const allowed = await this.permissions.check(
       Permission.VIEW_VERIFIED_REGISTERED_PLAYERS,
@@ -721,9 +725,15 @@ export class RegistrationsService {
       ? await this.loadFavouritedUserIds(tournamentId, favouriteTeamId)
       : new Set<string>();
 
+    const sevakCenterIds =
+      actor.role === UserRole.CenterSevak
+        ? await this.requireCenterSevakCenterIds(actor)
+        : null;
+
     const rows = await this.prisma.registration.findMany({
       where: {
         tournamentId,
+        ...(sevakCenterIds ? { centerId: { in: sevakCenterIds } } : {}),
         status: {
           in: [
             RegistrationStatus.InWaitlist,
@@ -816,6 +826,7 @@ export class RegistrationsService {
         error: 'NOT_LEATHER_TOURNAMENT',
       });
     }
+    this.assertRegisteredPlayersListAvailable(actor, tournament);
 
     const allowed = await this.permissions.check(
       Permission.VIEW_LEATHER_REGISTERED_PLAYERS,
@@ -1539,6 +1550,9 @@ export class RegistrationsService {
     type: string;
     ballType: string;
     timezone: string | null;
+    startAt: Date;
+    endAt: Date;
+    isDeleted: boolean;
     registrationOpenAt: Date | null;
     registrationCloseAt: Date | null;
     auctionAt: Date | null;
@@ -1555,6 +1569,8 @@ export class RegistrationsService {
         type: true,
         ballType: true,
         timezone: true,
+        startAt: true,
+        endAt: true,
         isDeleted: true,
         registrationOpenAt: true,
         registrationCloseAt: true,
@@ -1566,6 +1582,39 @@ export class RegistrationsService {
     });
     assertTournamentActive(tournament);
     return tournament;
+  }
+
+  /**
+   * Non-Admin actors lose Registered Players List access once the tournament
+   * is Completed or Cancelled (Admin retains access).
+   */
+  private assertRegisteredPlayersListAvailable(
+    actor: AuthUser,
+    tournament: {
+      startAt: Date;
+      endAt: Date;
+      timezone: string | null;
+      isDeleted: boolean;
+    },
+  ): void {
+    if (actor.role === UserRole.Admin) {
+      return;
+    }
+    const displayStatus = deriveTournamentDisplayStatus({
+      startAt: tournament.startAt.toISOString(),
+      endAt: tournament.endAt.toISOString(),
+      timezone: tournament.timezone,
+      cancelled: tournament.isDeleted,
+    });
+    if (
+      displayStatus === TournamentDisplayStatus.Completed ||
+      displayStatus === TournamentDisplayStatus.Cancelled
+    ) {
+      throw new ForbiddenException({
+        message: 'Registered players list is not available for completed tournaments',
+        error: 'TOURNAMENT_COMPLETED',
+      });
+    }
   }
 
   private assertRegistrationVerificationManageOpen(tournament: {

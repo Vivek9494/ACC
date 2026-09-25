@@ -160,6 +160,8 @@ describe('RegistrationsService', () => {
           ballType: 'TENNIS',
           timezone: 'America/Toronto',
           isDeleted: false,
+          startAt: new Date('2020-01-01T00:00:00.000Z'),
+          endAt: new Date('2099-12-31T00:00:00.000Z'),
           videoRequired: false,
           videoUploadEndDate: null,
           ...openRegistrationWindow,
@@ -827,7 +829,10 @@ describe('RegistrationsService', () => {
         state: 'REGISTRATION_CLOSED',
         type: 'APL',
         ballType: 'TENNIS',
+        timezone: 'America/Toronto',
         isDeleted: false,
+        startAt: new Date('2020-01-01T00:00:00.000Z'),
+        endAt: new Date('2099-12-31T00:00:00.000Z'),
         ...pastVerificationDeadlineWindow,
       });
       prisma.registration.count.mockResolvedValue(0);
@@ -993,7 +998,10 @@ describe('RegistrationsService', () => {
         state: 'UPCOMING',
         type: 'APL',
         ballType: 'TENNIS',
+        timezone: 'America/Toronto',
         isDeleted: false,
+        startAt: new Date('2099-01-01T00:00:00.000Z'),
+        endAt: new Date('2099-12-31T00:00:00.000Z'),
         registrationOpenAt: new Date('2099-01-01T00:00:00.000Z'),
         registrationCloseAt: new Date('2099-12-31T23:59:59.000Z'),
       });
@@ -1001,6 +1009,61 @@ describe('RegistrationsService', () => {
       await expect(
         service.listVerifiedRegisteredPlayers(captain, 'tour-1', {}),
       ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it('scopes Center Sevak list to own centers only', async () => {
+      prisma.roleAssignment.findMany.mockResolvedValue([{ centerId: 'center-A' }]);
+      prisma.registration.findMany.mockResolvedValue([
+        row({ status: RegistrationStatus.Confirmed }),
+      ]);
+
+      await service.listVerifiedRegisteredPlayers(centerSevak, 'tour-1', {});
+
+      expect(prisma.registration.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            tournamentId: 'tour-1',
+            centerId: { in: ['center-A'] },
+          }),
+        }),
+      );
+    });
+
+    it('rejects non-Admin when the tournament is completed', async () => {
+      prisma.tournament.findUnique.mockResolvedValue({
+        id: 'tour-1',
+        state: 'COMPLETED',
+        type: 'APL',
+        ballType: 'TENNIS',
+        timezone: 'America/Toronto',
+        isDeleted: false,
+        startAt: new Date('2020-01-01T00:00:00.000Z'),
+        endAt: new Date('2020-01-05T00:00:00.000Z'),
+        ...openRegistrationWindow,
+      });
+
+      await expect(
+        service.listVerifiedRegisteredPlayers(captain, 'tour-1', {}),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it('allows Admin when the tournament is completed', async () => {
+      prisma.tournament.findUnique.mockResolvedValue({
+        id: 'tour-1',
+        state: 'COMPLETED',
+        type: 'APL',
+        ballType: 'TENNIS',
+        timezone: 'America/Toronto',
+        isDeleted: false,
+        startAt: new Date('2020-01-01T00:00:00.000Z'),
+        endAt: new Date('2020-01-05T00:00:00.000Z'),
+        ...openRegistrationWindow,
+      });
+      prisma.roleAssignment.findFirst.mockResolvedValue(null);
+
+      const result = await service.listVerifiedRegisteredPlayers(admin, 'tour-1', {});
+
+      expect(result.confirmed).toHaveLength(1);
     });
   });
 
@@ -1017,7 +1080,10 @@ describe('RegistrationsService', () => {
         state: 'REGISTRATION_OPEN',
         type: 'ACC',
         ballType: 'LEATHER',
+        timezone: 'America/Toronto',
         isDeleted: false,
+        startAt: new Date('2020-01-01T00:00:00.000Z'),
+        endAt: new Date('2099-12-31T00:00:00.000Z'),
         ...openRegistrationWindow,
       });
       prisma.registration.findMany.mockResolvedValue([
@@ -1046,7 +1112,10 @@ describe('RegistrationsService', () => {
         state: 'REGISTRATION_OPEN',
         type: 'APL',
         ballType: 'TENNIS',
+        timezone: 'America/Toronto',
         isDeleted: false,
+        startAt: new Date('2020-01-01T00:00:00.000Z'),
+        endAt: new Date('2099-12-31T00:00:00.000Z'),
         ...openRegistrationWindow,
       });
 
@@ -1061,7 +1130,10 @@ describe('RegistrationsService', () => {
         state: 'NEW',
         type: 'ACC',
         ballType: 'LEATHER',
+        timezone: 'America/Toronto',
         isDeleted: false,
+        startAt: new Date('2099-01-01T00:00:00.000Z'),
+        endAt: new Date('2099-12-31T00:00:00.000Z'),
         registrationOpenAt: new Date('2099-01-01T00:00:00.000Z'),
         registrationCloseAt: new Date('2099-12-31T23:59:59.000Z'),
       });

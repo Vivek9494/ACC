@@ -32,6 +32,7 @@ import {
   type TournamentSummary,
   CitySelection,
   TournamentType,
+  TournamentDisplayStatus,
   UserRole,
   canManageLeatherInvites,
   canCenterSevakOrganizeTournament,
@@ -466,26 +467,37 @@ export class TournamentsService {
     let canViewRegisteredPlayersList = false;
     let canViewFavouritePlayers = false;
     if (viewer) {
+      const displayStatus = deriveTournamentDisplayStatus({
+        startAt: detailBase.startAt,
+        endAt: detailBase.endAt,
+        timezone: detailBase.timezone,
+        cancelled: isCancelled,
+      });
+      const hideRegisteredPlayersForNonAdmin =
+        viewer.role !== UserRole.Admin &&
+        (displayStatus === TournamentDisplayStatus.Completed ||
+          displayStatus === TournamentDisplayStatus.Cancelled);
+
       if (
         row.ballType === BallType.Leather &&
         hasRegistrationWindow &&
         hasRegistrationOpened(detailBase)
       ) {
-        canViewRegisteredPlayersList = await this.permissions.check(
-          Permission.VIEW_LEATHER_REGISTERED_PLAYERS,
-          viewer,
-          { tournamentId: id },
-        );
+        canViewRegisteredPlayersList =
+          !hideRegisteredPlayersForNonAdmin &&
+          (await this.permissions.check(Permission.VIEW_LEATHER_REGISTERED_PLAYERS, viewer, {
+            tournamentId: id,
+          }));
       } else if (
         row.ballType === BallType.Tennis &&
         hasRegistrationWindow &&
         hasRegistrationOpened(detailBase)
       ) {
-        canViewRegisteredPlayersList = await this.permissions.check(
-          Permission.VIEW_VERIFIED_REGISTERED_PLAYERS,
-          viewer,
-          { tournamentId: id },
-        );
+        canViewRegisteredPlayersList =
+          !hideRegisteredPlayersForNonAdmin &&
+          (await this.permissions.check(Permission.VIEW_VERIFIED_REGISTERED_PLAYERS, viewer, {
+            tournamentId: id,
+          }));
         if (registrationVerificationComplete) {
           canViewFavouritePlayers = await this.permissions.check(
             Permission.FAVOURITE_PLAYERS,

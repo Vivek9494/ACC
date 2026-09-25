@@ -148,7 +148,7 @@ describe('PermissionService', () => {
     });
   });
 
-  describe('verified registered players (Captain / VC / Club Manager)', () => {
+  describe('verified registered players (Captain / VC / Club Manager / Center Sevak)', () => {
     it('allows Captain in a tennis tournament on own team', () => {
       const result = service.evaluate(
         Permission.VIEW_VERIFIED_REGISTERED_PLAYERS,
@@ -183,6 +183,42 @@ describe('PermissionService', () => {
         ctx({ subjects: [UserRole.Manager], tournamentType: TournamentType.APL, sameTeam: true }),
       );
       expect(result).toBe(true);
+    });
+
+    it('allows Center Sevak with OwnCenter on tennis', () => {
+      const result = service.evaluate(
+        Permission.VIEW_VERIFIED_REGISTERED_PLAYERS,
+        ctx({
+          subjects: [UserRole.CenterSevak],
+          tournamentType: TournamentType.APL,
+          sameCenter: true,
+        }),
+      );
+      expect(result).toBe(true);
+    });
+
+    it('denies Center Sevak without OwnCenter on tennis', () => {
+      const result = service.evaluate(
+        Permission.VIEW_VERIFIED_REGISTERED_PLAYERS,
+        ctx({
+          subjects: [UserRole.CenterSevak],
+          tournamentType: TournamentType.APL,
+          sameCenter: false,
+        }),
+      );
+      expect(result).toBe(false);
+    });
+
+    it('denies Center Sevak on leather (ACC)', () => {
+      const result = service.evaluate(
+        Permission.VIEW_VERIFIED_REGISTERED_PLAYERS,
+        ctx({
+          subjects: [UserRole.CenterSevak],
+          tournamentType: TournamentType.ACC,
+          sameCenter: true,
+        }),
+      );
+      expect(result).toBe(false);
     });
   });
 

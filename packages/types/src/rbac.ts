@@ -429,6 +429,8 @@ export const PERMISSION_MATRIX: Record<Permission, PermissionRule> = {
       { subject: R.Captain },
       { subject: R.ViceCaptain },
       { subject: R.Manager },
+      // Own-center only — list API filters to Sevak centers (not multi-center verify-all).
+      { subject: R.CenterSevak, scope: PermissionScope.OwnCenter },
     ],
   },
   [Permission.VIEW_LEATHER_REGISTERED_PLAYERS]: {
