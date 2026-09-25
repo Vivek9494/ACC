@@ -52,7 +52,12 @@ function TeamRow({
       </Text>
       {scoreVisible ? (
         <View className="items-end">
-          <Text className={`font-sans-bold text-xl ${scoreClass}`}>{team.score}</Text>
+          <Text
+            variant="section"
+            className={`font-sans-bold ${scoreClass}`}
+          >
+            {team.score}
+          </Text>
           {team.overs ? (
             <Text
               variant="caption"

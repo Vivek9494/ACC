@@ -21,7 +21,13 @@ export function DashboardHeader({ fallbackName = 'User' }: DashboardHeaderProps)
         <Text variant="body" className="font-sans text-on-surface-variant">
           Jay Swaminarayan,
         </Text>
-        <Text className="font-sans-bold text-screen text-primary">
+        <Text
+          variant="screenTitle"
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.85}
+          className="font-sans-bold text-primary"
+        >
           {user?.firstName ?? fallbackName}
         </Text>
       </View>

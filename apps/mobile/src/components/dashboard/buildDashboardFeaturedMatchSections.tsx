@@ -28,7 +28,9 @@ function titledMatchSection(
 
   return (
     <View key={key} className="gap-3">
-      <Text className="font-sans-bold text-xl text-on-surface">{title}</Text>
+      <Text variant="section" className="font-sans-bold text-on-surface">
+        {title}
+      </Text>
       <DashboardFeaturedMatchList entries={entries} onPress={onPress} />
     </View>
   );

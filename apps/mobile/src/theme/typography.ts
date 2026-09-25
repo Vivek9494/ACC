@@ -21,12 +21,12 @@ export const TYPE = {
   body: 16,
   /** Button labels (medium/semibold). */
   button: 16,
-  /** Card / list-row titles. */
-  cardTitle: 18,
+  /** Card / list-row titles (same size as body — hierarchy via weight/color). */
+  cardTitle: 16,
   /** In-screen section headings. */
-  section: 22,
+  section: 18,
   /** Stack screen titles ({@link ScreenHeader}). */
-  screenTitle: 26,
+  screenTitle: 20,
 } as const;
 
 export type TypeToken = keyof typeof TYPE;

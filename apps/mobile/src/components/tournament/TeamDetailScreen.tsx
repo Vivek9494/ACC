@@ -24,7 +24,9 @@ function SquadStatusCard({ detail }: { detail: TeamDetailView }): React.ReactEle
   return (
     <View className="rounded-xl bg-primary p-5">
       <Text className="font-sans-semibold text-sm text-on-primary opacity-90">Squad Status</Text>
-      <Text className="mt-1 font-sans-bold text-2xl text-on-primary">{playerLabel}</Text>
+      <Text variant="section" className="mt-1 font-sans-bold text-on-primary">
+        {playerLabel}
+      </Text>
       {detail.showPlayerCategorySplit ? (
         <View className="mt-4 flex-row flex-wrap gap-2">
           <View className="rounded-full bg-on-primary/15 px-3 py-1">
@@ -269,7 +271,9 @@ export function TeamDetailScreen({
 
           <View className="gap-3">
             <View className="flex-row items-center justify-between gap-3">
-              <Text className="font-sans-bold text-xl text-on-surface">Team Players</Text>
+              <Text variant="section" className="font-sans-bold text-on-surface">
+                Team Players
+              </Text>
               {detail.canAddPlayers &&
               (detail.rosterSlotsRemaining == null || detail.rosterSlotsRemaining > 0) ? (
                 <CircularAddButton

@@ -19,7 +19,7 @@ function guestRecentSection(
   const entry = captainFeaturedToEntry(match);
   return (
     <View key="recent-match" className="gap-3">
-      <Text className="font-sans-bold text-xl text-on-surface">Recent</Text>
+      <Text variant="section" className="font-sans-bold text-on-surface">Recent</Text>
       <MatchSummaryCard
         {...entry.card}
         onPress={() => router.push(guestFeaturedHref(match))}
@@ -38,7 +38,7 @@ function guestTournamentSection(
   }
   return (
     <View key="featured-tournament" className="gap-3">
-      <Text className="font-sans-bold text-xl text-on-surface">Tournament</Text>
+      <Text variant="section" className="font-sans-bold text-on-surface">Tournament</Text>
       <TournamentDashboardCard
         tournament={tournament}
         onPress={() => router.push(`/tournaments/${tournament.id}`)}

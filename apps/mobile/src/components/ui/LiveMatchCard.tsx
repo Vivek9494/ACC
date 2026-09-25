@@ -89,7 +89,9 @@ export function LiveMatchCard({ match, onPress }: LiveMatchCardProps): React.Rea
           </Text>
         </View>
         <View className="items-end">
-          <Text className="font-sans-bold text-xl text-primary">{match.score}</Text>
+          <Text variant="section" className="font-sans-bold text-primary">
+            {match.score}
+          </Text>
           <Text
             variant="caption"
             className="font-sans-medium uppercase tracking-wider text-on-surface-variant"
@@ -112,7 +114,9 @@ export function LiveMatchCard({ match, onPress }: LiveMatchCardProps): React.Rea
           >
             Projected
           </Text>
-          <Text className="font-sans-bold text-xl text-secondary">{match.projectedRuns}</Text>
+          <Text variant="section" className="font-sans-bold text-secondary">
+            {match.projectedRuns}
+          </Text>
           <Text variant="secondary" className="font-sans text-on-surface-variant">
             @ {match.runRate} rpo
           </Text>

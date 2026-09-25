@@ -37,7 +37,14 @@ export function ParticipationPollCard({
         ) : null}
       </View>
 
-      <Text className="font-sans-bold text-lg text-on-surface">{poll.matchTitle}</Text>
+      <Text
+        className="font-sans-bold text-card-title text-on-surface"
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.85}
+      >
+        {poll.matchTitle}
+      </Text>
 
       <ParticipationPollSection poll={poll} onPollUpdated={onPollUpdated} />
     </Card>

@@ -109,7 +109,9 @@ export function ScreenHeader({
           {title ? (
             <Text
               variant="screenTitle"
-              numberOfLines={3}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.85}
               className={`min-w-[70%] max-w-full flex-1 font-sans-bold ${accentTitle ? 'text-primary' : 'text-on-surface'}`}
             >
               {title}

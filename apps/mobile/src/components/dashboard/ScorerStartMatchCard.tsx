@@ -56,17 +56,19 @@ export function ScorerStartMatchCard({
         <View className="min-w-0 flex-1 items-center gap-2 px-2">
           <TeamAvatar name={match.teamA.name} logoUrl={match.teamA.logoUrl} size="md" />
           <Text
-            className="w-full text-center font-sans-semibold text-sm text-on-surface"
+            variant="cardTitle"
+            className="w-full text-center font-sans-semibold text-on-surface"
             numberOfLines={2}
           >
             {match.teamA.name}
           </Text>
         </View>
-        <Text className="shrink-0 px-2 font-sans-bold text-lg text-primary">VS</Text>
+        <Text className="shrink-0 px-2 font-sans-bold text-base text-primary">VS</Text>
         <View className="min-w-0 flex-1 items-center gap-2 px-2">
           <TeamAvatar name={match.teamB.name} logoUrl={match.teamB.logoUrl} size="md" />
           <Text
-            className="w-full text-center font-sans-semibold text-sm text-on-surface"
+            variant="cardTitle"
+            className="w-full text-center font-sans-semibold text-on-surface"
             numberOfLines={2}
           >
             {match.teamB.name}

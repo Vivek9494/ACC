@@ -289,7 +289,14 @@ export function PunchTimeScreen({
           contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 24) }}
         >
           <View className="mb-6 gap-3 rounded-control border border-primary/30 bg-primary-container/30 p-4">
-            <Text className="font-sans-bold text-lg text-on-surface">{view.matchTitle}</Text>
+            <Text
+              className="font-sans-bold text-card-title text-on-surface"
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.85}
+            >
+              {view.matchTitle}
+            </Text>
             <View className="flex-row items-end justify-between">
               <View>
                 <Text className="font-sans-bold text-4xl text-on-surface">

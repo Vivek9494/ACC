@@ -95,7 +95,7 @@ export function buildCaptainDashboardSections(
     <YourPerformanceSection key="performance" performance={dashboard.playerStats} />,
     dashboard.tournaments.length > 0 ? (
       <View key="tournaments" className="gap-3">
-        <Text className="font-sans-bold text-xl text-on-surface">Tournaments</Text>
+        <Text variant="section" className="font-sans-bold text-on-surface">Tournaments</Text>
         {dashboard.tournaments.map((tournament) => (
           <TournamentDashboardCard
             key={tournament.id}

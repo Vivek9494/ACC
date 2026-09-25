@@ -61,7 +61,14 @@ export function CaptainUpcomingMatchCard({
         ) : null}
       </View>
 
-      <Text className="font-sans-bold text-lg text-on-surface">{card.matchTitle}</Text>
+      <Text
+        className="font-sans-bold text-card-title text-on-surface"
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.85}
+      >
+        {card.matchTitle}
+      </Text>
 
       {pollOpen && card.participationPoll ? (
         <ParticipationPollSection

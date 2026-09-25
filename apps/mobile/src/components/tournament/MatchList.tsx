@@ -33,7 +33,11 @@ function TeamColumn({
   return (
     <View className="min-w-0 flex-1 items-center gap-2">
       <TeamAvatar name={name} logoUrl={logoUrl} size="md" />
-      <Text className="text-center font-sans-bold text-sm text-on-surface" numberOfLines={2}>
+      <Text
+        variant="cardTitle"
+        className="text-center font-sans-bold text-on-surface"
+        numberOfLines={2}
+      >
         {name}
       </Text>
       {scoreLine ? (
@@ -192,7 +196,7 @@ function MatchListCard({
             logoUrl={match.teamA.logoUrl}
             scoreLine={match.teamA.scoreLine}
           />
-          <Text className="px-2 font-sans-bold text-xl italic text-primary">VS</Text>
+          <Text className="px-2 font-sans-bold text-base italic text-primary">VS</Text>
           <TeamColumn
             name={match.teamB.name}
             logoUrl={match.teamB.logoUrl}

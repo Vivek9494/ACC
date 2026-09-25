@@ -212,7 +212,9 @@ export function TeamLeadershipSection({
 
   return (
     <View className="gap-3 rounded-xl border border-outline-variant bg-surface-container-lowest p-4">
-      <Text className="font-sans-bold text-lg text-on-surface">Team Leadership</Text>
+      <Text variant="section" className="font-sans-bold text-on-surface">
+        Team Leadership
+      </Text>
       <Text className="font-sans text-sm text-on-surface-variant">
         Assign Captain, Vice-Captain
         {showManager ? ', and Manager' : ''} from confirmed registrants after registration closes.
@@ -225,7 +227,7 @@ export function TeamLeadershipSection({
             <Text variant="secondary" className="font-sans-semibold text-on-surface-variant">
               Captain
             </Text>
-            <Text variant="body" className="font-sans-bold text-on-surface">
+            <Text variant="body" className="font-sans-bold text-on-surface" numberOfLines={1}>
               {playerName(captain)}
             </Text>
           </View>
@@ -234,7 +236,7 @@ export function TeamLeadershipSection({
             label="Change"
             onPress={() => openPicker('captain')}
             disabled={saving}
-            className="h-9 rounded-full px-4"
+            className="h-8 shrink-0 px-2.5"
           />
         </View>
 
@@ -243,7 +245,7 @@ export function TeamLeadershipSection({
             <Text variant="secondary" className="font-sans-semibold text-on-surface-variant">
               Vice-Captain
             </Text>
-            <Text variant="body" className="font-sans-bold text-on-surface">
+            <Text variant="body" className="font-sans-bold text-on-surface" numberOfLines={1}>
               {playerName(viceCaptain)}
             </Text>
           </View>
@@ -252,7 +254,7 @@ export function TeamLeadershipSection({
             label="Change"
             onPress={() => openPicker('viceCaptain')}
             disabled={saving}
-            className="h-9 rounded-full px-4"
+            className="h-8 shrink-0 px-2.5"
           />
         </View>
 
@@ -262,7 +264,7 @@ export function TeamLeadershipSection({
               <Text variant="secondary" className="font-sans-semibold text-on-surface-variant">
                 Manager
               </Text>
-              <Text variant="body" className="font-sans-bold text-on-surface">
+              <Text variant="body" className="font-sans-bold text-on-surface" numberOfLines={1}>
                 {playerName(manager)}
               </Text>
             </View>
@@ -271,7 +273,7 @@ export function TeamLeadershipSection({
               label="Change"
               onPress={() => openPicker('manager')}
               disabled={saving}
-              className="h-9 rounded-full px-4"
+              className="h-8 shrink-0 px-2.5"
             />
           </View>
         ) : null}
@@ -292,7 +294,7 @@ export function TeamLeadershipSection({
             className="max-h-[70%] overflow-hidden rounded-t-2xl bg-background px-4 pb-8 pt-4"
             onPress={(event) => event.stopPropagation()}
           >
-            <Text className="font-sans-bold text-lg text-on-surface">
+            <Text variant="section" className="font-sans-bold text-on-surface">
               {pickerRole ? pickerTitle(pickerRole) : ''}
             </Text>
             <View className="mt-3 gap-3">

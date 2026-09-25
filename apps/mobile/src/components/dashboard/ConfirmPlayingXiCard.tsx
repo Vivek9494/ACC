@@ -36,7 +36,14 @@ export function ConfirmPlayingXiCard({ card }: ConfirmPlayingXiCardProps): React
         ) : null}
       </View>
 
-      <Text className="font-sans-bold text-lg text-on-surface">{card.matchTitle}</Text>
+      <Text
+        className="font-sans-bold text-card-title text-on-surface"
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.85}
+      >
+        {card.matchTitle}
+      </Text>
 
       <Button
         label={card.hasSavedSquad ? 'Edit Playing 11' : 'Confirm Playing 11'}

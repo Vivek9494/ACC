@@ -77,7 +77,7 @@ export function YourPerformanceSection({
   return (
     <View className="gap-3">
       <View className="flex-row flex-wrap items-center justify-between gap-x-3 gap-y-2">
-        <Text className="min-w-0 shrink font-sans-bold text-xl text-on-surface">
+        <Text variant="section" className="min-w-0 shrink font-sans-bold text-on-surface">
           Your Performance
         </Text>
         {showSwitch ? (

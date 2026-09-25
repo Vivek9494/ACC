@@ -101,7 +101,7 @@ export function GuestTournamentsListScreen(): React.ReactElement {
   return (
     <>
       <View className="z-10 gap-3 bg-background px-4 pb-4 pt-4">
-        <Text className="font-sans-bold text-2xl text-on-surface">Tournaments</Text>
+        <Text variant="screenTitle" className="font-sans-bold text-on-surface">Tournaments</Text>
         <TextInput
           placeholder="Search tournaments…"
           value={search}

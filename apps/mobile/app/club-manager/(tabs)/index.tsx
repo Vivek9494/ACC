@@ -77,7 +77,7 @@ export default function ClubManagerDashboardScreen(): React.ReactElement {
       dashboard.tournaments.length > 0 ? (
         <View key="tournaments" className="gap-3">
           <View className="flex-row items-center justify-between">
-            <Text className="font-sans-bold text-xl text-on-surface">Tournaments</Text>
+            <Text variant="section" className="font-sans-bold text-on-surface">Tournaments</Text>
             <CircularAddButton
               accessibilityLabel="Add tournament"
               onPress={() => router.push(tournamentNewHref(user))}

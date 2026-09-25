@@ -281,7 +281,7 @@ export function TournamentsListScreen(): React.ReactElement {
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
       <View className="z-10 gap-3 bg-background px-4 pb-4 pt-4">
         <View className="flex-row items-center justify-between">
-          <Text className="font-sans-bold text-2xl text-on-surface">Tournaments</Text>
+          <Text variant="screenTitle" className="font-sans-bold text-on-surface">Tournaments</Text>
           {canCreateTournament(user) ? (
             <CircularAddButton
               accessibilityLabel="Add tournament"
