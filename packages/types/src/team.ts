@@ -59,7 +59,7 @@ export interface TeamDetailView {
   parttimePlayerCount: number;
   /** True when the viewer may open another player's profile from this roster. */
   canViewPlayerProfiles: boolean;
-  /** Admin / Club Manager may assign Captain / Vice-Captain / Manager. */
+  /** Admin / Club Manager / organizing Center Sevak may assign Captain / VC / Manager. */
   canAssignTeamRoles: boolean;
   /** Admin / Club Manager, or eligible multi-center Center Sevak, may manage the roster. */
   canAddPlayers: boolean;

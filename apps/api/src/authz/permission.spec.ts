@@ -643,7 +643,7 @@ describe('PermissionService', () => {
     });
   });
 
-  describe('Club Manager assigns team roles', () => {
+  describe('Club Manager / organizer assigns team roles', () => {
     it('allows a Club Manager who organizes the tournament', () => {
       const result = service.evaluate(
         Permission.ASSIGN_TEAM_ROLES,
@@ -652,13 +652,25 @@ describe('PermissionService', () => {
       expect(result).toBe(true);
     });
 
-    it('denies a Center Sevak from assigning team roles', () => {
+    it('allows a participating Center Sevak organizer on a multi-center tournament', () => {
       const result = service.evaluate(
         Permission.ASSIGN_TEAM_ROLES,
         ctx({
           subjects: [UserRole.CenterSevak],
-          tournamentType: TournamentType.APL,
+          tournamentType: TournamentType.Center,
           isOrganizer: true,
+        }),
+      );
+      expect(result).toBe(true);
+    });
+
+    it('denies a Center Sevak who is not an organizer', () => {
+      const result = service.evaluate(
+        Permission.ASSIGN_TEAM_ROLES,
+        ctx({
+          subjects: [UserRole.CenterSevak],
+          tournamentType: TournamentType.Center,
+          isOrganizer: false,
         }),
       );
       expect(result).toBe(false);

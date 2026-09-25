@@ -650,7 +650,7 @@ export class TeamsService {
     });
     if (!allowed) {
       throw new ForbiddenException({
-        message: 'Only Admin or Club Manager may assign team leadership roles',
+        message: 'You do not have permission to assign team leadership roles',
         error: 'FORBIDDEN',
       });
     }
@@ -691,7 +691,7 @@ export class TeamsService {
       });
       if (!canAssign) {
         throw new ForbiddenException({
-          message: 'Only Admin or Club Manager may assign team leadership roles',
+          message: 'You do not have permission to assign team leadership roles',
           error: 'FORBIDDEN',
         });
       }
@@ -893,7 +893,7 @@ export class TeamsService {
     });
     if (!allowed) {
       throw new ForbiddenException({
-        message: 'Only Admin or Club Manager may assign team leadership roles',
+        message: 'You do not have permission to assign team leadership roles',
         error: 'FORBIDDEN',
       });
     }

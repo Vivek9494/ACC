@@ -388,8 +388,16 @@ export const PERMISSION_MATRIX: Record<Permission, PermissionRule> = {
     ],
   },
   [Permission.ASSIGN_TEAM_ROLES]: {
-    // Admin and Club Manager designate Captain, Vice-Captain, and Manager (tennis) per team (§6.3).
-    grants: [{ subject: R.Admin }, { subject: R.ClubManager }],
+    // Admin / Club Manager; participating Center Sevak on multi-center (organizer).
+    grants: [
+      { subject: R.Admin },
+      { subject: R.ClubManager },
+      {
+        subject: R.CenterSevak,
+        scope: PermissionScope.Organizer,
+        tournamentTypes: TENNIS_TYPES,
+      },
+    ],
   },
   [Permission.ADD_PLAYER_TO_TEAM]: {
     grants: [

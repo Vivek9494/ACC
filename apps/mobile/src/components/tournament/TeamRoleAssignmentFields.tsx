@@ -71,7 +71,7 @@ export interface TeamRoleAssignmentFieldsProps {
   onUpdated: () => void;
 }
 
-/** Captain / Vice-Captain / Manager pickers — Admin and Club Manager only. */
+/** Captain / Vice-Captain / Manager pickers — organizers (Admin / CM / participating Sevak). */
 export function TeamRoleAssignmentFields({
   tournamentId,
   teamId,
