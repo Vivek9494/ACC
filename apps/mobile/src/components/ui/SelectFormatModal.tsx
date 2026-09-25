@@ -40,7 +40,9 @@ export function SelectFormatModal({
           style={INPUT_SHADOW_STYLE}
           onPress={(event) => event.stopPropagation()}
         >
-          <Text className="text-center font-sans-bold text-lg text-on-surface">Select Format</Text>
+          <Text variant="cardTitle" className="text-center font-sans-bold text-on-surface">
+            Select Format
+          </Text>
 
           <View className="gap-3">
             {MATCH_SCHEDULING_FORMAT_OPTIONS.map((format) => (

@@ -49,7 +49,8 @@ export function UnderlineTabBar<T extends string>({
             }
           >
             <Text
-              className={`text-center font-sans-semibold text-sm ${
+              variant="secondary"
+              className={`text-center font-sans-semibold ${
                 active ? 'text-primary' : 'text-on-surface-variant'
               }`}
               numberOfLines={2}

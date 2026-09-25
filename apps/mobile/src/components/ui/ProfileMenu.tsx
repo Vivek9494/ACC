@@ -44,7 +44,9 @@ function MenuItem({ label, icon, onPress, destructive = false }: MenuItemProps):
       className="flex-row items-center gap-3 px-4 py-2.5 active:bg-surface-container-high"
     >
       <Ionicons name={icon} size={20} color={iconColor} />
-      <Text className={`font-sans text-sm ${textClass}`}>{label}</Text>
+      <Text variant="secondary" className={`font-sans ${textClass}`}>
+        {label}
+      </Text>
     </Pressable>
   );
 }

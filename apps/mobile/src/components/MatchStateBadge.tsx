@@ -40,7 +40,8 @@ export function MatchStateBadge({ state }: { state: MatchState }): React.ReactEl
   return (
     <View className={`self-start rounded-full px-3 py-1 ${STATE_STYLES[displayState]}`}>
       <Text
-        className={`font-sans-medium text-[11px] uppercase tracking-wider ${STATE_TEXT[displayState]}`}
+        variant="caption"
+        className={`font-sans-medium uppercase tracking-wider ${STATE_TEXT[displayState]}`}
       >
         {label}
       </Text>

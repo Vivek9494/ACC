@@ -27,7 +27,7 @@ export function SectionCard({
       {heading ? (
         <View className="flex-row items-center gap-2">
           {icon}
-          <Text className="font-sans-bold text-sm uppercase tracking-wider text-primary">
+          <Text variant="caption" className="font-sans-bold uppercase tracking-wider text-primary">
             {heading}
           </Text>
         </View>

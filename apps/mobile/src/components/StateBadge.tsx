@@ -28,7 +28,10 @@ const STATE_TEXT: Record<TournamentState, string> = {
 export function StateBadge({ state }: { state: TournamentState }): React.ReactElement {
   return (
     <View className={`self-start rounded-full px-3 py-1 ${STATE_STYLES[state]}`}>
-      <Text className={`font-sans-medium text-[11px] uppercase tracking-wider ${STATE_TEXT[state]}`}>
+      <Text
+        variant="caption"
+        className={`font-sans-medium uppercase tracking-wider ${STATE_TEXT[state]}`}
+      >
         {TOURNAMENT_STATE_LABELS[state]}
       </Text>
     </View>

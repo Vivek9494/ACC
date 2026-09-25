@@ -38,7 +38,9 @@ export function StatTile({
     <Card className={`rounded-control${className ? ` ${className}` : ''}`}>
       {title ? (
         <View className="mb-4 flex-row items-center gap-2">
-          <Text className="min-w-0 flex-1 font-sans-bold text-lg text-on-surface">{title}</Text>
+          <Text variant="cardTitle" className="min-w-0 flex-1 font-sans-bold text-on-surface">
+            {title}
+          </Text>
           {onInfoPress ? (
             <Pressable
               onPress={onInfoPress}

@@ -47,14 +47,17 @@ function TeamRow({
   return (
     <View className="flex-row items-center gap-3">
       <TeamAvatar name={team.name} logoUrl={team.logoUrl} size="xs" />
-      <Text className="flex-1 font-sans-bold text-base text-on-surface" numberOfLines={1}>
+      <Text variant="cardTitle" className="flex-1 font-sans-bold text-on-surface" numberOfLines={1}>
         {team.name}
       </Text>
       {scoreVisible ? (
         <View className="items-end">
           <Text className={`font-sans-bold text-xl ${scoreClass}`}>{team.score}</Text>
           {team.overs ? (
-            <Text className="font-sans-medium text-[10px] uppercase tracking-wider text-on-surface-variant">
+            <Text
+              variant="caption"
+              className="font-sans-medium uppercase tracking-wider text-on-surface-variant"
+            >
               {team.overs}
             </Text>
           ) : null}
@@ -88,7 +91,11 @@ export function MatchSummaryCard({
     <Card accent onPress={onPress} className="gap-4 rounded-control">
       <View className="gap-1">
         <View className="flex-row items-start justify-between gap-2">
-          <Text className="flex-1 font-sans-medium text-sm text-on-surface-variant" numberOfLines={1}>
+          <Text
+            variant="secondary"
+            className="flex-1 font-sans-medium text-on-surface-variant"
+            numberOfLines={1}
+          >
             {tournamentName}
           </Text>
           <View className="shrink-0 flex-row items-center gap-1.5">
@@ -98,7 +105,9 @@ export function MatchSummaryCard({
           </View>
         </View>
         {dateTimeLine ? (
-          <Text className="font-sans text-sm text-on-surface-variant">{dateTimeLine}</Text>
+          <Text variant="secondary" className="font-sans text-on-surface-variant">
+            {dateTimeLine}
+          </Text>
         ) : null}
       </View>
 
@@ -110,7 +119,8 @@ export function MatchSummaryCard({
 
       {footerLine ? (
         <Text
-          className={`font-sans-semibold text-sm ${
+          variant="secondary"
+          className={`font-sans-semibold ${
             status === 'COMPLETED' ? 'text-[#FF6B00]' : 'text-tertiary'
           }`}
         >

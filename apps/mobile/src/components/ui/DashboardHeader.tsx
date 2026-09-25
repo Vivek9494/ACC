@@ -18,8 +18,10 @@ export function DashboardHeader({ fallbackName = 'User' }: DashboardHeaderProps)
   return (
     <View className="flex-row items-center justify-between">
       <View className="flex-1 gap-1">
-        <Text className="font-sans text-base text-on-surface-variant">Jay Swaminarayan,</Text>
-        <Text className="font-sans-bold text-2xl text-primary">
+        <Text variant="body" className="font-sans text-on-surface-variant">
+          Jay Swaminarayan,
+        </Text>
+        <Text className="font-sans-bold text-screen text-primary">
           {user?.firstName ?? fallbackName}
         </Text>
       </View>

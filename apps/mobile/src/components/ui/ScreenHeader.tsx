@@ -121,7 +121,9 @@ export function ScreenHeader({
         </View>
       ) : null}
       {subtitle ? (
-        <Text className="font-sans text-sm text-on-surface-variant">{subtitle}</Text>
+        <Text variant="secondary" className="font-sans text-on-surface-variant">
+          {subtitle}
+        </Text>
       ) : null}
     </View>
   );

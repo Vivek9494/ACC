@@ -71,7 +71,8 @@ function MenuItem({
     >
       <Ionicons name={icon} size={20} color={iconColor} />
       <Text
-        className="font-sans text-sm text-on-surface"
+        variant="secondary"
+        className="font-sans text-on-surface"
         style={textColor ? { color: textColor } : undefined}
       >
         {label}

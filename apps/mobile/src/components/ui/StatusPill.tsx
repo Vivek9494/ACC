@@ -33,7 +33,10 @@ export function StatusPill({ variant, label, className }: StatusPillProps): Reac
         className={`flex-row items-center gap-1 rounded-full px-3 py-1 ${VARIANT_BG.live} ${className ?? ''}`.trim()}
       >
         <View className="h-2 w-2 rounded-full bg-text-inverse" />
-        <Text className={`font-sans-semibold text-[11px] uppercase tracking-wide ${VARIANT_TEXT.live}`}>
+        <Text
+          variant="caption"
+          className={`font-sans-semibold uppercase tracking-wide ${VARIANT_TEXT.live}`}
+        >
           {label}
         </Text>
       </View>
@@ -42,7 +45,10 @@ export function StatusPill({ variant, label, className }: StatusPillProps): Reac
 
   return (
     <View className={`rounded-full px-3 py-1 ${VARIANT_BG[variant]} ${className ?? ''}`.trim()}>
-      <Text className={`font-sans-semibold text-[11px] uppercase tracking-wide ${VARIANT_TEXT[variant]}`}>
+      <Text
+        variant="caption"
+        className={`font-sans-semibold uppercase tracking-wide ${VARIANT_TEXT[variant]}`}
+      >
         {label}
       </Text>
     </View>

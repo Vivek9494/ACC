@@ -33,7 +33,8 @@ export function SegmentedControl<T extends string>({
   size = 'sm',
 }: SegmentedControlProps<T>): React.ReactElement {
   const sizePadding = size === 'sm' ? 'px-2.5 py-1.5' : 'px-4 py-2';
-  const labelSize = size === 'sm' ? 'text-xs' : 'text-sm';
+  /** sm → caption floor; md → secondary (tab chrome). */
+  const labelSize = size === 'sm' ? 'text-caption' : 'text-sm';
   const segmentFlexClass = size === 'sm' ? 'shrink' : 'min-w-0 flex-1';
 
   return (

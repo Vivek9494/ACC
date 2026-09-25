@@ -78,9 +78,9 @@ export function BirthdayHeaderButton({
       {showBadge ? (
         <View
           pointerEvents="none"
-          className="absolute -right-0.5 -top-0.5 min-h-[16px] min-w-[16px] items-center justify-center rounded-full bg-primary px-1"
+          className="absolute -right-0.5 -top-0.5 min-h-[18px] min-w-[18px] items-center justify-center rounded-full bg-primary px-1"
         >
-          <Text className="font-sans-bold text-[10px] leading-[12px] text-on-primary">
+          <Text variant="caption" className="font-sans-bold leading-4 text-on-primary">
             {formatBadgeCount(todayCount)}
           </Text>
         </View>

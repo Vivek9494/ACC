@@ -81,12 +81,15 @@ export function SuccessDialog({
           <View className="h-14 w-14 items-center justify-center rounded-full bg-primary-container">
             <Ionicons name="checkmark-circle" size={40} color={FIELD_ORANGE} />
           </View>
-          <Text className="text-center font-sans-bold text-xl text-on-surface">{title}</Text>
-          <Text className="text-center font-sans text-base text-on-surface-variant">{message}</Text>
+          <Text variant="section" className="text-center font-sans-bold text-on-surface">
+            {title}
+          </Text>
+          <Text variant="body" className="text-center font-sans text-on-surface-variant">
+            {message}
+          </Text>
           <Button
             onPress={dismiss}
             className="mt-2 h-12 w-full"
-            textClassName="font-sans-semibold text-sm"
             label={continueLabel}
           />
         </Pressable>

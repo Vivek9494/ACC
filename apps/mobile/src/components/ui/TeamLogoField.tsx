@@ -71,14 +71,16 @@ export function TeamLogoField({
         ) : (
           <>
             <Ionicons name="image-outline" size={28} color={FIELD_ORANGE} />
-            <Text className="text-center font-sans-semibold text-[10px] leading-3 text-primary">
+            <Text variant="caption" className="text-center font-sans-semibold leading-4 text-primary">
               Tap to upload
             </Text>
           </>
         )}
       </Pressable>
       {uploading ? (
-        <Text className="font-sans text-sm text-on-surface-variant">Uploading logo…</Text>
+        <Text variant="secondary" className="font-sans text-on-surface-variant">
+          Uploading logo…
+        </Text>
       ) : null}
       <FormErrorText>{error}</FormErrorText>
     </View>

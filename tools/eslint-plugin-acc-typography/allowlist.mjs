@@ -1,8 +1,8 @@
 /**
- * Paths still using sub-caption sizes (<12px) pending typography Phases 1–3.
- * Shrink this list as screens migrate to TYPE.caption (12) or larger.
+ * Paths still using sub-caption sizes (<12px) pending typography Phases 2–3
+ * (feature screens / scoring dense UI). Phase 1 shared chrome has been removed.
  *
- * Do NOT add new files here — migrate to tokens instead.
+ * Do NOT add new files here — migrate to TYPE.caption (12) or larger instead.
  *
  * @see apps/mobile/src/theme/typography.ts
  */
@@ -17,9 +17,7 @@ export const SUB_CAPTION_ALLOWLIST = [
   'apps/mobile/src/components/InningsScorecardView.tsx',
   'apps/mobile/src/components/LiveScorecard.tsx',
   'apps/mobile/src/components/ManOfMatchCard.tsx',
-  'apps/mobile/src/components/MatchStateBadge.tsx',
   'apps/mobile/src/components/RatingStats.tsx',
-  'apps/mobile/src/components/StateBadge.tsx',
   'apps/mobile/src/components/admin/AdminPasswordResetOtpAnalyticsCard.tsx',
   'apps/mobile/src/components/admin/BroadcastHistoryList.tsx',
   'apps/mobile/src/components/dashboard/PlayingXiSelectionScreen.tsx',
@@ -30,19 +28,12 @@ export const SUB_CAPTION_ALLOWLIST = [
   'apps/mobile/src/components/tournament/KnockoutBracketManageScreen.tsx',
   'apps/mobile/src/components/tournament/KnockoutChartScreen.tsx',
   'apps/mobile/src/components/tournament/KnockoutManualBracketFill.tsx',
-  'apps/mobile/src/components/tournament/MatchDeletedBadge.tsx',
   'apps/mobile/src/components/tournament/StandingsTableStats.tsx',
   'apps/mobile/src/components/tournament/TournamentBoundaryLeaderboardSection.tsx',
   'apps/mobile/src/components/tournament/TournamentGroupCard.tsx',
   'apps/mobile/src/components/tournament/TournamentRegistrationFormScreen.tsx',
   'apps/mobile/src/components/tournament/verify-players/VerifyNotRegisteredCard.tsx',
   'apps/mobile/src/components/tournament/verify-players/VerifyPlayerRatingsRow.tsx',
-  'apps/mobile/src/components/ui/BirthdayHeaderButton.tsx',
-  'apps/mobile/src/components/ui/BottomTabBar.tsx',
-  'apps/mobile/src/components/ui/LiveMatchCard.tsx',
-  'apps/mobile/src/components/ui/MatchSummaryCard.tsx',
-  'apps/mobile/src/components/ui/StatusPill.tsx',
-  'apps/mobile/src/components/ui/TeamLogoField.tsx',
 ];
 
 /** Shared form controls — fontSize must stay ≥16 (iOS focus zoom). */

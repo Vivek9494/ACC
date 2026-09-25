@@ -11,7 +11,7 @@ export interface MatchHomeAwayBadgeProps {
 export function MatchHomeAwayBadge({ homeAway }: MatchHomeAwayBadgeProps): React.ReactElement {
   return (
     <View className="self-start rounded-full bg-secondary px-2.5 py-0.5">
-      <Text className="font-sans-semibold text-sm text-text-inverse">
+      <Text variant="secondary" className="font-sans-semibold text-text-inverse">
         {HOME_AWAY_LABELS[homeAway]}
       </Text>
     </View>

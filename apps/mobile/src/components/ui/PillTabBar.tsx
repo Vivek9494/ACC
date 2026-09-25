@@ -26,8 +26,10 @@ export const PILL_TAB_CHIP_PADDING_CLASS = 'px-4 py-2';
 export const PILL_TAB_CHIP_BASE_CLASS = `${PILL_TAB_CHIP_SHAPE_CLASS} ${PILL_TAB_CHIP_PADDING_CLASS}`;
 export const PILL_TAB_CHIP_ACTIVE_CLASS = 'bg-primary';
 export const PILL_TAB_CHIP_INACTIVE_CLASS = 'border border-outline-variant bg-surface';
-export const PILL_TAB_LABEL_ACTIVE_CLASS = 'text-center font-sans-semibold text-sm text-on-primary';
-export const PILL_TAB_LABEL_INACTIVE_CLASS = 'text-center font-sans-semibold text-sm text-on-surface';
+export const PILL_TAB_LABEL_ACTIVE_CLASS =
+  'text-center font-sans-semibold text-sm text-on-primary';
+export const PILL_TAB_LABEL_INACTIVE_CLASS =
+  'text-center font-sans-semibold text-sm text-on-surface';
 
 /**
  * Separate tab chips — active fill primary orange, inactive outlined surface.

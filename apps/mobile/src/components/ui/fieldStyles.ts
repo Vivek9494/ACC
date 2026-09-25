@@ -18,7 +18,8 @@ export const INPUT_SHADOW_STYLE = {
 export const HEADER_PROFILE_AVATAR_SIZE_CLASS = 'h-11 w-11';
 
 /** Initial letter inside the profile avatar. */
-export const HEADER_PROFILE_AVATAR_INITIAL_CLASS = 'font-sans-bold text-lg text-primary';
+export const HEADER_PROFILE_AVATAR_INITIAL_CLASS =
+  'font-sans-bold text-card-title text-primary';
 
 /** Icon glyph size balanced inside {@link HEADER_PROFILE_AVATAR_SIZE_CLASS} (~text-lg weight). */
 export const HEADER_PROFILE_AVATAR_ICON_SIZE = 18;
@@ -54,13 +55,13 @@ export const DEFAULT_PLACEHOLDER_COLOR = colors.placeholder;
 export type LabelVariant = 'brand' | 'muted' | 'strong';
 
 const LABEL_CLASSES: Record<LabelVariant, string> = {
-  brand: 'font-sans text-base leading-6 text-text-muted mb-2 ml-1',
+  brand: 'font-sans text-body leading-6 text-text-muted mb-2 ml-1',
   muted: 'text-text-muted text-sm font-sans-medium tracking-wide mb-2 ml-1',
   strong: 'text-text font-sans-bold text-sm mb-2 ml-1',
 };
 
 /** Label typography without block spacing — inline checkbox labels, etc. */
-export const FIELD_LABEL_TEXT_CLASS = 'font-sans text-base leading-6 text-text-muted';
+export const FIELD_LABEL_TEXT_CLASS = 'font-sans text-body leading-6 text-text-muted';
 
 export function labelClassName(variant: LabelVariant = 'brand'): string {
   return LABEL_CLASSES[variant];

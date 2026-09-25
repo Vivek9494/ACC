@@ -84,7 +84,10 @@ export function TabEmptyState({
           className="mt-8 h-12 w-full max-w-xs"
         />
       ) : message ? (
-        <Text className="mt-8 text-center font-sans text-base text-on-surface-variant opacity-60">
+        <Text
+          variant="body"
+          className="mt-8 text-center font-sans text-on-surface-variant opacity-60"
+        >
           {message}
         </Text>
       ) : null}

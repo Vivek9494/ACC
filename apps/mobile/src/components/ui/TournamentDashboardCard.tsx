@@ -122,12 +122,16 @@ export function TournamentDashboardCard({
                 accessibilityRole="button"
                 className="min-w-0 flex-1 active:opacity-90"
               >
-                <Text className="font-sans-bold text-lg text-on-surface" numberOfLines={2}>
+                <Text variant="cardTitle" className="font-sans-bold text-on-surface" numberOfLines={2}>
                   {tournament.name}
                 </Text>
               </Pressable>
             ) : (
-              <Text className="min-w-0 flex-1 font-sans-bold text-lg text-on-surface" numberOfLines={2}>
+              <Text
+                variant="cardTitle"
+                className="min-w-0 flex-1 font-sans-bold text-on-surface"
+                numberOfLines={2}
+              >
                 {tournament.name}
               </Text>
             )}

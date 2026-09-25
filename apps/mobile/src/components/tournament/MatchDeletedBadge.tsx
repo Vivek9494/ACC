@@ -6,7 +6,7 @@ import { Text } from '../ui/Text';
 export function MatchDeletedBadge(): React.ReactElement {
   return (
     <View className="self-start rounded-full bg-on-surface/80 px-3 py-1">
-      <Text className="font-sans-semibold text-[10px] uppercase tracking-wider text-text-inverse">
+      <Text variant="caption" className="font-sans-semibold uppercase tracking-wider text-text-inverse">
         Deleted
       </Text>
     </View>

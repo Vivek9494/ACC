@@ -29,12 +29,14 @@ function BatterLine({
   return (
     <View className="gap-0.5">
       <View className="flex-row items-center gap-1">
-        <Text className="font-sans-semibold text-sm text-on-surface" numberOfLines={1}>
+        <Text variant="body" className="font-sans-semibold text-on-surface" numberOfLines={1}>
           {name}
         </Text>
         {onStrike ? <View className="h-2 w-2 rounded-full bg-primary" /> : null}
       </View>
-      <Text className="font-sans text-sm text-on-surface-variant">{scoreText}</Text>
+      <Text variant="secondary" className="font-sans text-on-surface-variant">
+        {scoreText}
+      </Text>
     </View>
   );
 }
@@ -48,7 +50,8 @@ function BallPill({ ball }: { ball: GuestThisOverBall }): React.ReactElement {
       }`}
     >
       <Text
-        className={`font-sans-medium text-xs ${filled ? 'text-on-primary' : 'text-on-surface-variant'}`}
+        variant="caption"
+        className={`font-sans-medium ${filled ? 'text-on-primary' : 'text-on-surface-variant'}`}
       >
         {ball.code}
       </Text>
@@ -64,7 +67,11 @@ export function LiveMatchCard({ match, onPress }: LiveMatchCardProps): React.Rea
   return (
     <Card accent onPress={onPress} className="gap-4 rounded-control">
       <View className="flex-row items-start justify-between gap-2">
-        <Text className="flex-1 font-sans-medium text-sm text-on-surface-variant" numberOfLines={1}>
+        <Text
+          variant="secondary"
+          className="flex-1 font-sans-medium text-on-surface-variant"
+          numberOfLines={1}
+        >
           {match.tournamentName}
         </Text>
         <StatusPill variant="live" label="Live" />
@@ -73,13 +80,20 @@ export function LiveMatchCard({ match, onPress }: LiveMatchCardProps): React.Rea
       <View className="flex-row items-center justify-between gap-3">
         <View className="flex-1 flex-row items-center gap-3">
           <TeamAvatar name={match.battingTeamName} size="xs" />
-          <Text className="flex-1 font-sans-bold text-base text-on-surface" numberOfLines={1}>
+          <Text
+            variant="cardTitle"
+            className="flex-1 font-sans-bold text-on-surface"
+            numberOfLines={1}
+          >
             {match.battingTeamName}
           </Text>
         </View>
         <View className="items-end">
           <Text className="font-sans-bold text-xl text-primary">{match.score}</Text>
-          <Text className="font-sans-medium text-[10px] uppercase tracking-wider text-on-surface-variant">
+          <Text
+            variant="caption"
+            className="font-sans-medium uppercase tracking-wider text-on-surface-variant"
+          >
             {match.overs}
           </Text>
         </View>
@@ -92,11 +106,16 @@ export function LiveMatchCard({ match, onPress }: LiveMatchCardProps): React.Rea
           ))}
         </View>
         <View className="items-end">
-          <Text className="font-sans-semibold text-xs uppercase tracking-wider text-secondary">
+          <Text
+            variant="caption"
+            className="font-sans-semibold uppercase tracking-wider text-secondary"
+          >
             Projected
           </Text>
           <Text className="font-sans-bold text-xl text-secondary">{match.projectedRuns}</Text>
-          <Text className="font-sans text-sm text-on-surface-variant">@ {match.runRate} rpo</Text>
+          <Text variant="secondary" className="font-sans text-on-surface-variant">
+            @ {match.runRate} rpo
+          </Text>
         </View>
       </View>
 
