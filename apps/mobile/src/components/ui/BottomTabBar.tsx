@@ -91,7 +91,7 @@ export function BottomTabBar({
                 numberOfLines={1}
                 adjustsFontSizeToFit
                 minimumFontScale={0.85}
-                className={`mt-0.5 w-full text-center font-sans-semibold ${
+                className={`mt-0.5 w-full text-center font-sans-bold ${
                   active ? 'text-on-primary' : 'text-on-surface-variant'
                 }`}
               >

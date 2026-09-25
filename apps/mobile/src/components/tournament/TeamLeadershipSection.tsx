@@ -237,6 +237,7 @@ export function TeamLeadershipSection({
             onPress={() => openPicker('captain')}
             disabled={saving}
             className="h-8 shrink-0 px-2.5"
+            textClassName="text-caption"
           />
         </View>
 
@@ -255,6 +256,7 @@ export function TeamLeadershipSection({
             onPress={() => openPicker('viceCaptain')}
             disabled={saving}
             className="h-8 shrink-0 px-2.5"
+            textClassName="text-caption"
           />
         </View>
 
@@ -274,6 +276,7 @@ export function TeamLeadershipSection({
               onPress={() => openPicker('manager')}
               disabled={saving}
               className="h-8 shrink-0 px-2.5"
+              textClassName="text-caption"
             />
           </View>
         ) : null}

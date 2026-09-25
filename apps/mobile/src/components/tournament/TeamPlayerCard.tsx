@@ -90,6 +90,7 @@ export function TeamPlayerCard({
             label="View Profile"
             onPress={onViewProfile}
             className="h-8 shrink-0 px-2"
+            textClassName="text-caption"
           />
         ) : null}
 
