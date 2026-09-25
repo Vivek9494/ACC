@@ -21,11 +21,7 @@ export default function HomeLayout(): React.ReactElement {
   if (user.role === UserRole.ClubManager) {
     return <Redirect href="/club-manager" />;
   }
-  if (
-    user.role === UserRole.Captain ||
-    user.role === UserRole.ViceCaptain ||
-    hasTeamLeadAccess(user)
-  ) {
+  if (hasTeamLeadAccess(user)) {
     return <Redirect href="/captain" />;
   }
   if (user.role === UserRole.CenterSevak || hasCenterSevakAccess(user)) {

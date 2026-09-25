@@ -660,18 +660,7 @@ export class TeamsService {
 
   async create(actor: AuthUser, tournamentId: string, dto: CreateTeamDto): Promise<TeamSummary> {
     const tournament = await this.requireTournament(tournamentId);
-
-    const allowed = await this.permissions.check(Permission.EDIT_TOURNAMENT, actor, {
-      tournamentId,
-    });
-    if (!allowed) {
-      throw new ForbiddenException({
-        message: 'You do not have permission to add teams to this tournament',
-        error: 'FORBIDDEN',
-      });
-    }
-
-    await this.tournaments.assertCenterSevakTournamentAccess(actor, tournament);
+    await this.assertCanEditTournamentTeams(actor, tournament);
 
     const teamCount = await this.prisma.team.count({
       where: { tournamentId, ...activeTeamWhere },
@@ -815,8 +804,8 @@ export class TeamsService {
     teamId: string,
     dto: UpdateTeamDto,
   ): Promise<TeamSummary> {
-    await this.requireTournament(tournamentId);
-    await this.assertAdminOrClubManagerCanManageTeams(actor, tournamentId);
+    const tournament = await this.requireTournament(tournamentId);
+    await this.assertCanEditTournamentTeams(actor, tournament);
 
     const team = await this.findActiveTeam(tournamentId, teamId);
 
@@ -864,8 +853,8 @@ export class TeamsService {
 
   /** Soft-deletes a team with no match history; detaches members (§6.3). */
   async remove(actor: AuthUser, tournamentId: string, teamId: string): Promise<void> {
-    await this.requireTournament(tournamentId);
-    await this.assertAdminOrClubManagerCanManageTeams(actor, tournamentId);
+    const tournament = await this.requireTournament(tournamentId);
+    await this.assertCanEditTournamentTeams(actor, tournament);
     const team = await this.findActiveTeam(tournamentId, teamId);
 
     if (await this.teamHasMatches(tournamentId, teamId)) {
@@ -1078,6 +1067,26 @@ export class TeamsService {
     return tournament;
   }
 
+  /**
+   * Create / update / delete team entity — same EDIT_TOURNAMENT organizer gate
+   * (Admin; CM when organizer; participating Center Sevak on multi-center tennis).
+   */
+  private async assertCanEditTournamentTeams(
+    actor: AuthUser,
+    tournament: { id: string; type: string; createdByUserId: string },
+  ): Promise<void> {
+    const allowed = await this.permissions.check(Permission.EDIT_TOURNAMENT, actor, {
+      tournamentId: tournament.id,
+    });
+    if (!allowed) {
+      throw new ForbiddenException({
+        message: 'You do not have permission to manage teams in this tournament',
+        error: 'FORBIDDEN',
+      });
+    }
+    await this.tournaments.assertCenterSevakTournamentAccess(actor, tournament);
+  }
+
   private async canAdminOrClubManagerManageTeams(
     actor: AuthUser,
     tournamentId: string,
@@ -1132,31 +1141,6 @@ export class TeamsService {
         error: 'FORBIDDEN',
       });
     }
-  }
-
-  private async assertAdminOrClubManagerCanManageTeams(
-    actor: AuthUser,
-    tournamentId: string,
-  ): Promise<void> {
-    if (actor.role === UserRole.Admin) {
-      return;
-    }
-    if (actor.role === UserRole.ClubManager) {
-      const allowed = await this.permissions.check(Permission.EDIT_TOURNAMENT, actor, {
-        tournamentId,
-      });
-      if (!allowed) {
-        throw new ForbiddenException({
-          message: 'You do not have permission to manage teams in this tournament',
-          error: 'FORBIDDEN',
-        });
-      }
-      return;
-    }
-    throw new ForbiddenException({
-      message: 'Only Admin or Club Manager may manage teams',
-      error: 'FORBIDDEN',
-    });
   }
 
   private async findActiveTeam(tournamentId: string, teamId: string) {

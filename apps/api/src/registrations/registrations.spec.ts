@@ -345,16 +345,22 @@ describe('RegistrationsService', () => {
       expect(prisma.registration.upsert).toHaveBeenCalled();
     });
 
-    it('allows Vice Captain to self-register during an open window', async () => {
-      const viceCaptain: AuthUser = { ...admin, id: 'vc-1', role: UserRole.ViceCaptain };
-      await service.submit(viceCaptain, 'tour-1', submitPayload);
-      expect(prisma.registration.upsert).toHaveBeenCalled();
+    it('allows a Player with Cap RoleAssignment to self-register', async () => {
+      await service.submit(captain, 'tour-1', submitPayload);
+      expect(prisma.registration.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { tournamentId_userId: { tournamentId: 'tour-1', userId: 'captain-1' } },
+        }),
+      );
     });
 
-    it('allows Manager to self-register during an open window', async () => {
-      const manager: AuthUser = { ...admin, id: 'mgr-1', role: UserRole.Manager };
-      await service.submit(manager, 'tour-1', submitPayload);
-      expect(prisma.registration.upsert).toHaveBeenCalled();
+    it('rejects leftover global Captain / ViceCaptain / Manager self-registration', async () => {
+      for (const role of [UserRole.Captain, UserRole.ViceCaptain, UserRole.Manager]) {
+        const leftover: AuthUser = { ...admin, id: `leftover-${role}`, role };
+        await expect(service.submit(leftover, 'tour-1', submitPayload)).rejects.toBeInstanceOf(
+          ForbiddenException,
+        );
+      }
     });
 
     it('rejects Admin self-registration', async () => {

@@ -29,11 +29,7 @@ export function homeRouteForUser(user: AuthUser | null | undefined): RoleHomeRou
   if (user.role === UserRole.CenterSevak || hasCenterSevakAccess(user)) {
     return '/center-sevak';
   }
-  if (
-    user.role === UserRole.Captain ||
-    user.role === UserRole.ViceCaptain ||
-    hasTeamLeadAccess(user)
-  ) {
+  if (hasTeamLeadAccess(user)) {
     return '/captain';
   }
   return '/home';

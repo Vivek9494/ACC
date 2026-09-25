@@ -94,11 +94,7 @@ export function resolveRoleTabBarRoot(
   if (user.role === UserRole.ClubManager) {
     return 'club-manager';
   }
-  if (
-    user.role === UserRole.Captain ||
-    user.role === UserRole.ViceCaptain ||
-    hasTeamLeadAccess(user)
-  ) {
+  if (hasTeamLeadAccess(user)) {
     return 'captain';
   }
   if (user.role === UserRole.CenterSevak || hasCenterSevakAccess(user)) {

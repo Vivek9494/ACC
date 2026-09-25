@@ -106,6 +106,8 @@ export class TeamsController {
   }
 
   @Patch('tournaments/:tournamentId/teams/:teamId')
+  @RequirePermission(Permission.EDIT_TOURNAMENT)
+  @UseGuards(PermissionGuard)
   update(
     @CurrentUser() user: AuthUser,
     @Param('tournamentId') tournamentId: string,
@@ -116,6 +118,8 @@ export class TeamsController {
   }
 
   @Delete('tournaments/:tournamentId/teams/:teamId')
+  @RequirePermission(Permission.EDIT_TOURNAMENT)
+  @UseGuards(PermissionGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(
     @CurrentUser() user: AuthUser,

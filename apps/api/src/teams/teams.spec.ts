@@ -917,3 +917,135 @@ describe('TeamsService listRoleCandidates', () => {
     );
   });
 });
+
+describe('TeamsService update/remove EDIT_TOURNAMENT gate', () => {
+  const centerSevak: AuthUser = {
+    ...clubManager,
+    id: 'sevak-1',
+    role: UserRole.CenterSevak,
+    centerSevakCenterIds: ['center-A'],
+  };
+
+  let service: TeamsService;
+  let prisma: {
+    tournament: { findUnique: jest.Mock };
+    team: { findFirst: jest.Mock; update: jest.Mock };
+    match: { findMany: jest.Mock };
+    teamMembership: { deleteMany: jest.Mock };
+    roleAssignment: { deleteMany: jest.Mock };
+    teamRegistrationFavourite: { deleteMany: jest.Mock };
+    $transaction: jest.Mock;
+  };
+  let permissions: { check: jest.Mock };
+  let tournaments: { assertCenterSevakTournamentAccess: jest.Mock };
+
+  function buildService(): TeamsService {
+    return new TeamsService(
+      prisma as unknown as PrismaService,
+      permissions as unknown as PermissionService,
+      { deleteObject: jest.fn() } as never,
+      {
+        resolveReadUrl: jest.fn(async (value: string | null) => value),
+        resolveReadUrls: jest.fn(async (values: (string | null)[]) => values),
+      } as never,
+      tournaments as never,
+      { assertCanViewCenterLevelTournament: jest.fn().mockResolvedValue(undefined) } as never,
+      { buildCareerStats: jest.fn() } as never,
+      { record: jest.fn() } as never,
+      { sendNotification: jest.fn(), sendToAudience: jest.fn() } as never,
+    );
+  }
+
+  beforeEach(() => {
+    prisma = {
+      tournament: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'tour-1',
+          isDeleted: false,
+          type: TournamentType.Center,
+          createdByUserId: 'admin-1',
+          ballType: BallType.Tennis,
+          numberOfTeams: 8,
+        }),
+      },
+      team: {
+        findFirst: jest
+          .fn()
+          .mockResolvedValueOnce({
+            id: 'team-1',
+            name: 'Titans',
+            nameNormalized: 'titans',
+            logoUrl: null,
+          })
+          .mockResolvedValue(null),
+        update: jest.fn().mockResolvedValue({
+          id: 'team-1',
+          tournamentId: 'tour-1',
+          name: 'Titans XI',
+          logoUrl: null,
+          group: null,
+          _count: { memberships: 0 },
+        }),
+      },
+      match: { findMany: jest.fn().mockResolvedValue([]) },
+      teamMembership: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
+      roleAssignment: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
+      teamRegistrationFavourite: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
+      $transaction: jest.fn(async (ops: unknown) => ops),
+    };
+    permissions = {
+      check: jest.fn().mockResolvedValue(true),
+    };
+    tournaments = {
+      assertCenterSevakTournamentAccess: jest.fn().mockResolvedValue(undefined),
+    };
+    service = buildService();
+  });
+
+  it('allows a participating Center Sevak to update a team when EDIT_TOURNAMENT passes', async () => {
+    const result = await service.update(centerSevak, 'tour-1', 'team-1', {
+      name: 'Titans XI',
+    });
+
+    expect(result.name).toBe('Titans XI');
+    expect(permissions.check).toHaveBeenCalledWith(Permission.EDIT_TOURNAMENT, centerSevak, {
+      tournamentId: 'tour-1',
+    });
+    expect(tournaments.assertCenterSevakTournamentAccess).toHaveBeenCalled();
+  });
+
+  it('allows a participating Center Sevak to delete a team when EDIT_TOURNAMENT passes', async () => {
+    prisma.team.findFirst.mockReset();
+    prisma.team.findFirst.mockResolvedValue({
+      id: 'team-1',
+      name: 'Titans',
+      nameNormalized: 'titans',
+      logoUrl: null,
+    });
+
+    await service.remove(centerSevak, 'tour-1', 'team-1');
+
+    expect(permissions.check).toHaveBeenCalledWith(Permission.EDIT_TOURNAMENT, centerSevak, {
+      tournamentId: 'tour-1',
+    });
+    expect(tournaments.assertCenterSevakTournamentAccess).toHaveBeenCalled();
+    expect(prisma.$transaction).toHaveBeenCalled();
+  });
+
+  it('rejects update when EDIT_TOURNAMENT is denied (non-participating Sevak)', async () => {
+    permissions.check.mockResolvedValue(false);
+
+    await expect(
+      service.update(centerSevak, 'tour-1', 'team-1', { name: 'Nope' }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(tournaments.assertCenterSevakTournamentAccess).not.toHaveBeenCalled();
+  });
+
+  it('rejects remove when EDIT_TOURNAMENT is denied', async () => {
+    permissions.check.mockResolvedValue(false);
+
+    await expect(service.remove(centerSevak, 'tour-1', 'team-1')).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
+  });
+});

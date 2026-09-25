@@ -29,7 +29,10 @@ export function hasCenterSevakAssignment(user: AuthUser | null | undefined): boo
   return (user?.centerSevakCenterIds?.length ?? 0) > 0;
 }
 
-/** Platform roles that may self-register during an open registration window. */
+/**
+ * Platform roles that may self-register during an open registration window.
+ * Cap/VC/Manager are tournament-scoped (RoleAssignment) — holders keep User.role = Player.
+ */
 export function canSelfRegisterForTournament(
   userRole: UserRole | null | undefined,
 ): boolean {
@@ -38,9 +41,6 @@ export function canSelfRegisterForTournament(
   }
   return (
     userRole === UserRole.Player ||
-    userRole === UserRole.Captain ||
-    userRole === UserRole.ViceCaptain ||
-    userRole === UserRole.Manager ||
     userRole === UserRole.CenterSevak ||
     userRole === UserRole.ClubManager
   );
