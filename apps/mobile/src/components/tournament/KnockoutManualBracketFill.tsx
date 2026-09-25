@@ -24,7 +24,7 @@ export interface KnockoutManualBracketFillProps {
 function ByeTag(): React.ReactElement {
   return (
     <View className="rounded-full bg-surface-container-high px-2 py-0.5">
-      <Text className="font-sans-semibold text-[10px] text-on-surface-variant">BYE</Text>
+      <Text className="font-sans-semibold text-caption text-on-surface-variant">BYE</Text>
     </View>
   );
 }
@@ -32,7 +32,7 @@ function ByeTag(): React.ReactElement {
 function SeedBadge({ seed }: { seed: number }): React.ReactElement {
   return (
     <View className="h-6 w-6 items-center justify-center rounded-full bg-primary/10">
-      <Text className="font-sans-semibold text-[11px] text-primary">{seed}</Text>
+      <Text className="font-sans-semibold text-caption text-primary">{seed}</Text>
     </View>
   );
 }

@@ -133,7 +133,7 @@ export function WagonWheelPanel({
       <View className="min-h-0 flex-1">
         <View className="flex-row items-center justify-between gap-2 border-b border-outline-variant px-2 py-1.5">
           <Text
-            className="min-w-0 flex-1 font-sans text-[10px] text-on-surface-variant"
+            className="min-w-0 flex-1 font-sans text-caption text-on-surface-variant"
             numberOfLines={2}
           >
             {statusLine}
@@ -146,7 +146,7 @@ export function WagonWheelPanel({
               accessibilityRole="button"
               accessibilityLabel="Clear shot placement for this ball"
             >
-              <Text className="font-sans-semibold text-[9px] text-on-surface-variant">Clear</Text>
+              <Text className="font-sans-semibold text-caption text-on-surface-variant">Clear</Text>
             </Pressable>
           ) : null}
         </View>

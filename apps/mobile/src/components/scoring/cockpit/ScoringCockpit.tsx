@@ -281,12 +281,12 @@ export function ScoringCockpit({
         <View className="min-h-0 min-w-0 flex-1 bg-background" style={{ width: '100%' }}>
           {error ? (
             <View className="mx-2 mt-1 rounded-control bg-primary-50 px-3 py-1.5">
-              <Text className="font-sans text-[11px] text-primary">{error}</Text>
+              <Text className="font-sans text-caption text-primary">{error}</Text>
             </View>
           ) : null}
           {prompt ? (
             <View className="mx-2 mt-1 rounded-control border border-primary bg-primary-container px-3 py-1.5">
-              <Text className="font-sans-semibold text-[11px] text-on-primary-container">
+              <Text className="font-sans-semibold text-caption text-on-primary-container">
                 {prompt}
               </Text>
             </View>
@@ -377,18 +377,18 @@ export function ScoringCockpit({
           </View>
 
           <View className="h-6 flex-row items-center gap-4 border-t border-outline-variant bg-surface px-3">
-            <Text className="font-sans text-[11px] text-on-surface-variant" numberOfLines={1}>
+            <Text className="font-sans text-caption text-on-surface-variant" numberOfLines={1}>
               {playState}
               {toss ? ` — ${toss}` : ''}
             </Text>
             <View className="flex-1" />
-            <Text className="font-sans text-[11px] text-on-surface-variant">
+            <Text className="font-sans text-caption text-on-surface-variant">
               Video Sync: N/A (stub)
             </Text>
-            <Text className="font-sans text-[11px] text-on-surface-variant">
+            <Text className="font-sans text-caption text-on-surface-variant">
               Scoring Sync: {live.status === 'live' ? '● live' : live.status}
             </Text>
-            <Text className="font-sans-semibold text-[11px] text-primary">
+            <Text className="font-sans-semibold text-caption text-primary">
               Role: {user?.role ?? 'Scorer'} (server-enforced)
             </Text>
           </View>

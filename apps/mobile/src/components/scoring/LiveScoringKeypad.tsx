@@ -79,7 +79,7 @@ function Key({
       {spec.icon ? (
         <View className="items-center gap-0.5">
           <Ionicons name={spec.icon} size={compact ? 16 : 20} color={spec.iconColor ?? colors.text} />
-          <Text className={`font-sans-semibold text-[10px] ${textClassName}`}>{spec.label}</Text>
+          <Text className={`font-sans-semibold text-caption ${textClassName}`}>{spec.label}</Text>
         </View>
       ) : (
         <Text className={`font-sans-bold ${numberSize} ${textClassName}`}>{spec.label}</Text>

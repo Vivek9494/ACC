@@ -45,7 +45,7 @@ function InlineSelectChip({
       accessibilityLabel={`Select ${label}`}
       className="min-h-[28px] min-w-[72px] flex-row items-center justify-between gap-1 rounded border border-outline-variant bg-surface-container-lowest px-2 active:opacity-80"
     >
-      <Text className="font-sans text-[10px] text-on-surface-variant">{label}</Text>
+      <Text className="font-sans text-caption text-on-surface-variant">{label}</Text>
       <View className="flex-row items-center gap-0.5">
         <Text className="font-sans-semibold text-[12px] text-on-surface">{value}</Text>
         <Ionicons name="chevron-down" size={11} color={colors.textMuted} />
@@ -125,7 +125,7 @@ function DropdownRow({
         {label}
       </Text>
       {subtitle ? (
-        <Text className="mt-0.5 font-sans text-[10px] text-on-surface-variant" numberOfLines={1}>
+        <Text className="mt-0.5 font-sans text-caption text-on-surface-variant" numberOfLines={1}>
           {subtitle}
         </Text>
       ) : null}

@@ -68,7 +68,7 @@ export function RecentBallsStrip({
   return (
     <View className={compact ? 'gap-1' : 'gap-1.5'}>
       {showLabel ? (
-        <Text className="font-sans-semibold text-[10px] uppercase tracking-wider text-on-surface-variant">
+        <Text className="font-sans-semibold text-caption uppercase tracking-wider text-on-surface-variant">
           Recent balls
         </Text>
       ) : null}

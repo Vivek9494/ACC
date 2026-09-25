@@ -13,6 +13,7 @@ import { Pressable, View } from 'react-native';
 import { Text } from '../../ui/Text';
 import { FIELD_ORANGE } from '../../ui/fieldStyles';
 import { colors } from '../../../theme/colors';
+import { TYPE } from '../../../theme/typography';
 import { canCorrectNonStriker } from '../canCorrectNonStriker';
 import { recentBallChipStyle } from '../liveScoringKeypadTokens';
 import { BatterInlineSelect } from './BatterInlineSelect';
@@ -162,9 +163,9 @@ const HEADER_BAND: ViewStyle = {
 function StatRow({ label, value }: { label: string; value: string }): React.ReactElement {
   return (
     <View style={STAT_ROW}>
-      <Text className="shrink-0 font-sans text-[11px] text-on-surface-variant">{label}</Text>
+      <Text className="shrink-0 font-sans text-caption text-on-surface-variant">{label}</Text>
       <Text
-        className="min-w-0 text-right font-sans-semibold text-[11px] text-on-surface"
+        className="min-w-0 text-right font-sans-semibold text-caption text-on-surface"
         numberOfLines={1}
       >
         {value}
@@ -188,7 +189,7 @@ function RowLabel({
         width,
         textAlign: compact ? 'right' : 'left',
       }}
-      className="shrink-0 font-sans text-[10px] uppercase tracking-wide text-on-surface-variant"
+      className="shrink-0 font-sans text-caption uppercase tracking-wide text-on-surface-variant"
       numberOfLines={1}
     >
       {label}
@@ -225,7 +226,7 @@ function StatHeader({
             style={{
               width: cellWidths?.[index] ?? STAT_CELL_W,
               color: HEADER_LABEL_COLOR,
-              fontSize: 10,
+              fontSize: TYPE.caption,
               fontWeight: '700',
               textAlign: 'right',
             }}
@@ -255,8 +256,8 @@ function BowlerFiguresGrid({
           key={mode === 'header' ? cell : `${index}-${cell}`}
           className={`w-full text-right ${
             mode === 'header'
-              ? 'font-sans text-[10px] font-bold'
-              : 'font-sans-semibold text-[11px] text-on-surface'
+              ? 'font-sans text-caption font-bold'
+              : 'font-sans-semibold text-caption text-on-surface'
           }`}
           style={mode === 'header' ? { color: HEADER_LABEL_COLOR } : undefined}
           numberOfLines={1}
@@ -281,7 +282,7 @@ function StatValues({
         <Text
           key={index}
           style={{ width: cellWidths?.[index] ?? STAT_CELL_W }}
-          className="text-right font-sans-semibold text-[11px] text-on-surface"
+          className="text-right font-sans-semibold text-caption text-on-surface"
           numberOfLines={1}
         >
           {value}

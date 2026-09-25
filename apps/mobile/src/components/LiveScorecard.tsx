@@ -4,7 +4,7 @@ import {
   type ScorecardResponse,
 } from '@acc/types';
 import { useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 
 import { Button } from './ui/Button';
 import { Text } from './ui/Text';
@@ -72,7 +72,7 @@ export function LiveScorecard({ state, nameOf, teamNameOf }: Props): React.React
     <View className="gap-4">
       {/* Score header */}
       <View className="gap-2 rounded-xl bg-primary-container p-4">
-        <Text className="font-sans-medium text-[11px] uppercase tracking-wider text-on-surface-variant">
+        <Text className="font-sans-medium text-caption uppercase tracking-wider text-on-surface-variant">
           {teamNameOf(inn.battingTeamId)} batting
         </Text>
         <View className="flex-row items-end justify-between">
@@ -116,13 +116,13 @@ export function LiveScorecard({ state, nameOf, teamNameOf }: Props): React.React
       {/* Current batters */}
       <View className="rounded-xl border border-outline-variant bg-surface-container-lowest p-4">
         <View className="flex-row pb-2">
-          <Text className="flex-1 font-sans-medium text-[10px] uppercase tracking-wider text-on-surface-variant">
+          <Text className="flex-1 font-sans-medium text-caption uppercase tracking-wider text-on-surface-variant">
             Batter
           </Text>
           {['R', 'B', '4s', '6s', 'SR'].map((h) => (
             <Text
               key={h}
-              className="w-10 text-right font-sans-medium text-[10px] uppercase tracking-wider text-on-surface-variant"
+              className="w-10 text-right font-sans-medium text-caption uppercase tracking-wider text-on-surface-variant"
             >
               {h}
             </Text>
@@ -175,7 +175,7 @@ export function LiveScorecard({ state, nameOf, teamNameOf }: Props): React.React
       {/* Partnership */}
       {inn.partnership ? (
         <View className="flex-row items-center justify-between rounded-xl border border-outline-variant bg-surface-container-lowest px-4 py-3">
-          <Text className="font-sans-medium text-[10px] uppercase tracking-wider text-on-surface-variant">
+          <Text className="font-sans-medium text-caption uppercase tracking-wider text-on-surface-variant">
             Partnership
           </Text>
           <Text className="font-sans-semibold text-sm text-on-surface">
@@ -187,7 +187,7 @@ export function LiveScorecard({ state, nameOf, teamNameOf }: Props): React.React
       {/* Recent overs strip */}
       {inn.recentOvers.length > 0 ? (
         <View className="gap-2">
-          <Text className="font-sans-medium text-[10px] uppercase tracking-wider text-on-surface-variant">
+          <Text className="font-sans-medium text-caption uppercase tracking-wider text-on-surface-variant">
             Recent Overs
           </Text>
           <View className="gap-2">
@@ -209,7 +209,7 @@ export function LiveScorecard({ state, nameOf, teamNameOf }: Props): React.React
                       }`}
                     >
                       <Text
-                        className={`font-sans-medium text-[11px] ${
+                        className={`font-sans-medium text-caption ${
                           code === 'W' || code.endsWith('+W') || code === '4' || code === '6'
                             ? 'text-on-primary'
                             : 'text-on-surface'
@@ -232,7 +232,7 @@ export function LiveScorecard({ state, nameOf, teamNameOf }: Props): React.React
       {/* Fall of wickets */}
       {inn.fallOfWickets.length > 0 ? (
         <View className="gap-1">
-          <Text className="font-sans-medium text-[10px] uppercase tracking-wider text-on-surface-variant">
+          <Text className="font-sans-medium text-caption uppercase tracking-wider text-on-surface-variant">
             Fall of Wickets
           </Text>
           <Text className="font-sans text-xs text-on-surface-variant">
@@ -256,7 +256,7 @@ export function LiveScorecard({ state, nameOf, teamNameOf }: Props): React.React
         <View className="gap-1 rounded-xl border border-outline-variant bg-surface-container-lowest p-4">
           {[...inn.timeline].reverse().map((t, index) => (
             <View key={`${t.sequence}-${index}`} className="flex-row items-center gap-3 py-1">
-              <Text className="w-12 font-sans-medium text-[11px] text-on-surface-variant">
+              <Text className="w-12 font-sans-medium text-caption text-on-surface-variant">
                 {t.label || '—'}
               </Text>
               <Text className="w-12 font-sans-medium text-xs text-on-surface">{t.code}</Text>

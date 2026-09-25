@@ -99,7 +99,7 @@ function StandingsStatsHeaderCells({
       {STANDINGS_STAT_COLUMNS.map((column) => (
         <Text
           key={column}
-          className={`text-center font-sans-medium text-[9px] uppercase tracking-wider ${headerClass(column)}`}
+          className={`text-center font-sans-medium text-caption uppercase tracking-wider ${headerClass(column)}`}
           style={statColumnStyle(stretch)}
         >
           {column}
@@ -109,7 +109,7 @@ function StandingsStatsHeaderCells({
         <View className="items-center" style={ptsColumnStyle(stretch)}>
           <View className="rounded-control bg-primary-container px-2 py-1">
             <Text
-              className={`text-center text-[9px] uppercase tracking-wider ${headerClass('PTS')}`}
+              className={`text-center text-caption uppercase tracking-wider ${headerClass('PTS')}`}
             >
               PTS
             </Text>
@@ -121,7 +121,7 @@ function StandingsStatsHeaderCells({
           style={ptsColumnStyle(stretch)}
         >
           <Text
-            className={`text-center text-[9px] uppercase tracking-wider ${headerClass('PTS')}`}
+            className={`text-center text-caption uppercase tracking-wider ${headerClass('PTS')}`}
           >
             PTS
           </Text>
@@ -129,7 +129,7 @@ function StandingsStatsHeaderCells({
       )}
       {showNetRunRate ? (
         <Text
-          className={`text-right font-sans-medium text-[9px] uppercase tracking-wider ${headerClass('NRR')}`}
+          className={`text-right font-sans-medium text-caption uppercase tracking-wider ${headerClass('NRR')}`}
           style={{ width: STANDINGS_NRR_COL_WIDTH }}
         >
           NRR
@@ -162,7 +162,7 @@ function StandingsPinnedTeamHeaderCell(): React.ReactElement {
       className="justify-center border-b border-separator bg-surface-container-low px-3"
       style={{ height: PT_HEADER_HEIGHT, width: STANDINGS_PINNED_TEAM_COL_WIDTH }}
     >
-      <Text className="font-sans-medium text-[10px] uppercase tracking-wider text-on-surface-variant">
+      <Text className="font-sans-medium text-caption uppercase tracking-wider text-on-surface-variant">
         Team
       </Text>
     </View>
@@ -193,7 +193,7 @@ function StandingsPinnedTeamDataCell({
           {name}
         </Text>
         {groupLabel ? (
-          <Text className="font-sans text-[10px] text-on-surface-variant" numberOfLines={1}>
+          <Text className="font-sans text-caption text-on-surface-variant" numberOfLines={1}>
             {groupLabel}
           </Text>
         ) : null}

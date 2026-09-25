@@ -4,6 +4,7 @@ import type { ViewStyle } from 'react-native';
 import { View } from 'react-native';
 
 import type { AscObsStatus } from '../../../types/asc-broadcast';
+import { TYPE } from '../../../theme/typography';
 import { CockpitPanel } from './CockpitPanel';
 import {
   canPlayBoundaryClips,
@@ -71,7 +72,7 @@ const TABLE_STYLE: CSSProperties = {
   minWidth: TABLE_MIN_WIDTH,
   tableLayout: 'fixed',
   borderCollapse: 'collapse',
-  fontSize: 12,
+  fontSize: TYPE.caption,
 };
 
 const TH_STYLE: CSSProperties = {
@@ -80,7 +81,7 @@ const TH_STYLE: CSSProperties = {
   zIndex: 1,
   padding: '3px 6px',
   textAlign: 'left',
-  fontSize: 10,
+  fontSize: TYPE.caption,
   fontWeight: 600,
   textTransform: 'uppercase',
   letterSpacing: '0.04em',
@@ -92,7 +93,7 @@ const TH_STYLE: CSSProperties = {
 
 const TD_STYLE: CSSProperties = {
   padding: '3px 6px',
-  fontSize: 12,
+  fontSize: TYPE.caption,
   color: 'var(--color-on-surface, #1c1917)',
   borderBottom:
     '1px solid color-mix(in srgb, var(--color-outline-variant, #e7e5e4) 50%, transparent)',
@@ -139,7 +140,7 @@ const TD_EXTRAS: CSSProperties = {
 
 const OVER_ROW: CSSProperties = {
   padding: '3px 6px',
-  fontSize: 11,
+  fontSize: TYPE.caption,
   fontWeight: 700,
   color: 'var(--color-on-surface-variant, #78716c)',
   backgroundColor: 'var(--color-surface-container-low, #f5f5f4)',
@@ -152,7 +153,7 @@ const WKT_CHIP: CSSProperties = {
   borderRadius: 4,
   backgroundColor: 'var(--color-secondary-900, #1c1917)',
   color: '#fff',
-  fontSize: 10,
+  fontSize: TYPE.caption,
   fontWeight: 700,
   lineHeight: '16px',
   textAlign: 'center',
@@ -165,7 +166,7 @@ const VIDEO_PLACEHOLDER: CSSProperties = {
   border: 'none',
   background: 'transparent',
   color: 'var(--color-on-surface-variant, #a8a29e)',
-  fontSize: 11,
+  fontSize: TYPE.caption,
   cursor: 'default',
   whiteSpace: 'nowrap',
 };
@@ -178,7 +179,7 @@ const VIDEO_MARKED: CSSProperties = {
   borderRadius: 4,
   background: 'color-mix(in srgb, var(--color-primary, #ff6b00) 12%, transparent)',
   color: 'var(--color-primary, #ff6b00)',
-  fontSize: 10,
+  fontSize: TYPE.caption,
   fontWeight: 700,
   lineHeight: '16px',
   letterSpacing: '0.02em',
@@ -195,7 +196,7 @@ const PLAY_BTN: CSSProperties = {
   borderRadius: 4,
   background: 'var(--color-primary, #ff6b00)',
   color: '#fff',
-  fontSize: 10,
+  fontSize: TYPE.caption,
   fontWeight: 700,
   lineHeight: '18px',
   letterSpacing: '0.02em',

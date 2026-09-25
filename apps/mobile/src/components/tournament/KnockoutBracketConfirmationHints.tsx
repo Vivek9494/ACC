@@ -15,7 +15,7 @@ export function KnockoutAwaitingConfirmationNotice(): ReactElement {
 export function KnockoutAwaitingConfirmationPill(): ReactElement {
   return (
     <View className="rounded-full bg-amber-100 px-2 py-0.5">
-      <Text className="font-sans-semibold text-[10px] text-amber-800">
+      <Text className="font-sans-semibold text-caption text-amber-800">
         {KNOCKOUT_BRACKET_MESSAGES.awaitingScorecardConfirmationShort}
       </Text>
     </View>

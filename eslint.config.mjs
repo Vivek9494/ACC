@@ -40,19 +40,20 @@ export default tseslint.config(
       '@typescript-eslint/no-require-imports': 'off',
     },
   },
-  // --- ACC mobile typography guardrails (Phase 0) ---
+  // --- ACC mobile typography guardrails (Phases 0–3 complete) ---
   {
     files: ['apps/mobile/**/*.{ts,tsx}'],
     plugins: {
       'acc-typography': accTypography,
     },
     rules: {
+      // Sub-12 is error; only documented allowlist paths may use 8–11px.
       'acc-typography/no-sub-caption-font-size': 'error',
       'acc-typography/prefer-type-scale-token': 'warn',
     },
   },
   {
-    // Pending Phases 1–3 — shrink tools/eslint-plugin-acc-typography/allowlist.mjs as you migrate.
+    // Documented density exceptions — see allowlist.mjs SUB_CAPTION_ALLOWLIST_ENTRIES.
     files: SUB_CAPTION_ALLOWLIST,
     rules: {
       'acc-typography/no-sub-caption-font-size': 'off',

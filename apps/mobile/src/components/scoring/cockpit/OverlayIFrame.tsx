@@ -11,7 +11,7 @@ export function OverlayIFrame({
 }): React.ReactElement {
   return (
     <View className="flex-1 items-center justify-center px-3">
-      <Text className="text-center font-sans text-[11px] text-text-inverse">
+      <Text className="text-center font-sans text-caption text-text-inverse">
         Overlay embed is desktop web only.
       </Text>
     </View>

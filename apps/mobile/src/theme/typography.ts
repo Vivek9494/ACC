@@ -5,10 +5,11 @@
  * (`text-caption`, `text-body`, `text-button`, `text-card-title`,
  * `text-section`, `text-screen`). Keep `text-xs`/`sm`/`base`/`lg` aligned.
  *
- * Floor: nothing readable below {@link TYPE.caption} (12).
+ * Floor: nothing readable below {@link TYPE.caption} (12), except documented
+ * density exceptions in `tools/eslint-plugin-acc-typography/allowlist.mjs`.
  * Inputs: always ≥ {@link TYPE.body} (16) — avoids iOS focus auto-zoom.
  *
- * Guardrails: `tools/eslint-plugin-acc-typography` (see its README).
+ * Guardrails: `tools/eslint-plugin-acc-typography` (sub-12 = error outside allowlist).
  */
 
 export const TYPE = {

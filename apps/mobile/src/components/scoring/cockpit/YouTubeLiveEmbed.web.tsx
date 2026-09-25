@@ -19,7 +19,7 @@ export function YouTubeLiveEmbed({
         <Text className="text-center font-sans text-xs text-text-inverse/80">
           Add a YouTube Live URL in Settings to preview the stream
         </Text>
-        <Text className="mt-2 text-center font-sans text-[10px] text-text-inverse/50">
+        <Text className="mt-2 text-center font-sans text-caption text-text-inverse/50">
           ~10–30s behind live scoring (broadcast delay)
         </Text>
       </View>

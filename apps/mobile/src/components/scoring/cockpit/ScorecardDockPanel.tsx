@@ -22,6 +22,7 @@ import type { TextStyle, ViewStyle } from 'react-native';
 
 import { Text } from '../../ui/Text';
 import { colors } from '../../../theme/colors';
+import { TYPE } from '../../../theme/typography';
 import { recentBallChipStyle } from '../liveScoringKeypadTokens';
 import { CockpitPanel } from './CockpitPanel';
 
@@ -63,7 +64,7 @@ const DATA_ROW: ViewStyle = {
 };
 
 const STAT_HEADER: TextStyle = {
-  fontSize: 10,
+  fontSize: TYPE.caption,
   fontWeight: '600',
   textTransform: 'uppercase',
   color: '#78716c',
@@ -71,7 +72,7 @@ const STAT_HEADER: TextStyle = {
 };
 
 const STAT_VALUE: TextStyle = {
-  fontSize: 12,
+  fontSize: TYPE.caption,
   color: '#1c1917',
   textAlign: 'right',
   fontVariant: ['tabular-nums'],
@@ -141,7 +142,7 @@ function FallOfWicketRow({
           {score}
         </Text>
       </View>
-      <Text className="min-w-0 flex-1 font-sans text-[11px] text-on-surface-variant" numberOfLines={1}>
+      <Text className="min-w-0 flex-1 font-sans text-caption text-on-surface-variant" numberOfLines={1}>
         {howOut}
       </Text>
       <StatCell value={fow.oversText} width={FOW_OVER} nowrap />
@@ -339,8 +340,8 @@ function PartnershipContributionBar({
       <View className="w-full">
         <View className="h-6 w-full rounded bg-surface-container" />
         <View className="mt-0.5 w-full flex-row justify-between">
-          <Text className="font-sans text-[9px] text-on-surface-variant">0%</Text>
-          <Text className="font-sans text-[9px] text-on-surface-variant">0%</Text>
+          <Text className="font-sans text-caption text-on-surface-variant">0%</Text>
+          <Text className="font-sans text-caption text-on-surface-variant">0%</Text>
         </View>
       </View>
     );
@@ -366,7 +367,7 @@ function PartnershipContributionBar({
             }}
           >
             {showLeftLabel ? (
-              <Text className="font-sans-bold text-[10px] text-white" numberOfLines={1}>
+              <Text className="font-sans-bold text-caption text-white" numberOfLines={1}>
                 {leftRuns}
               </Text>
             ) : null}
@@ -384,7 +385,7 @@ function PartnershipContributionBar({
             }}
           >
             {showRightLabel ? (
-              <Text className="font-sans-bold text-[10px] text-white" numberOfLines={1}>
+              <Text className="font-sans-bold text-caption text-white" numberOfLines={1}>
                 {rightRuns}
               </Text>
             ) : null}
@@ -392,8 +393,8 @@ function PartnershipContributionBar({
         ) : null}
       </View>
       <View className="mt-0.5 w-full flex-row justify-between">
-        <Text className="font-sans text-[9px] text-on-surface-variant">{leftPct}%</Text>
-        <Text className="font-sans text-[9px] text-on-surface-variant">{rightPct}%</Text>
+        <Text className="font-sans text-caption text-on-surface-variant">{leftPct}%</Text>
+        <Text className="font-sans text-caption text-on-surface-variant">{rightPct}%</Text>
       </View>
     </View>
   );
@@ -435,19 +436,19 @@ function PartnershipContributionRow({
         >
           {leftName}
         </Text>
-        <Text className="text-right font-sans text-[11px] text-on-surface-variant">
+        <Text className="text-right font-sans text-caption text-on-surface-variant">
           {leftRuns} ({leftBalls})
         </Text>
       </View>
 
       <View style={PARTNERSHIP_BAR_COL}>
-        <Text className="mb-1.5 text-center font-sans-semibold text-[11px] text-on-surface">
+        <Text className="mb-1.5 text-center font-sans-semibold text-caption text-on-surface">
           {headerLabel}
           <Text className="font-sans-bold text-on-surface">
             {' '}
             · {stand.runs} ({stand.balls})
           </Text>
-          {isCurrent ? <Text className="font-sans text-[10px] text-primary"> · live</Text> : null}
+          {isCurrent ? <Text className="font-sans text-caption text-primary"> · live</Text> : null}
         </Text>
         <PartnershipContributionBar leftRuns={leftRuns} rightRuns={rightRuns} />
       </View>
@@ -459,7 +460,7 @@ function PartnershipContributionRow({
         >
           {rightName}
         </Text>
-        <Text className="text-left font-sans text-[11px] text-on-surface-variant">
+        <Text className="text-left font-sans text-caption text-on-surface-variant">
           {rightRuns} ({rightBalls})
         </Text>
       </View>
@@ -564,7 +565,7 @@ export function ScorecardDockPanel({
                 accessibilityState={{ selected: active }}
               >
                 <Text
-                  className={`font-sans text-[11px] ${
+                  className={`font-sans text-caption ${
                     active ? 'font-sans-semibold text-on-surface' : 'text-on-surface-variant'
                   }`}
                 >
@@ -587,10 +588,10 @@ export function ScorecardDockPanel({
           {tab === 'scorecard' ? (
             <View style={{ minWidth: Math.max(STATS_WIDTH + 280, 0) }}>
               <View style={HEADER_ROW}>
-                <Text className="min-w-0 flex-1 font-sans-semibold text-[10px] uppercase text-on-surface-variant">
+                <Text className="min-w-0 flex-1 font-sans-semibold text-caption uppercase text-on-surface-variant">
                   Batter
                 </Text>
-                <Text className="min-w-0 flex-1 font-sans-semibold text-[10px] uppercase text-on-surface-variant">
+                <Text className="min-w-0 flex-1 font-sans-semibold text-caption uppercase text-on-surface-variant">
                   How Out
                 </Text>
                 <View style={{ width: STATS_WIDTH, flexDirection: 'row', flexShrink: 0 }}>
@@ -613,7 +614,7 @@ export function ScorecardDockPanel({
                         {nameOf(row.playerId)}
                       </Text>
                       <Text
-                        className="min-w-0 flex-1 font-sans italic text-[11px] text-on-surface-variant"
+                        className="min-w-0 flex-1 font-sans italic text-caption text-on-surface-variant"
                         numberOfLines={1}
                       >
                         {waitingLabel}
@@ -649,7 +650,7 @@ export function ScorecardDockPanel({
                       {onStrike ? ' *' : ''}
                     </Text>
                     <Text
-                      className="min-w-0 flex-1 font-sans text-[11px] text-on-surface-variant"
+                      className="min-w-0 flex-1 font-sans text-caption text-on-surface-variant"
                       numberOfLines={1}
                     >
                       {batter.isOut
@@ -673,7 +674,7 @@ export function ScorecardDockPanel({
                 <Text className="min-w-0 flex-1 font-sans-bold text-[12px] text-on-surface">
                   Extras
                 </Text>
-                <Text className="min-w-0 flex-1 font-sans text-[11px] text-on-surface-variant">
+                <Text className="min-w-0 flex-1 font-sans text-caption text-on-surface-variant">
                   {innings.extras.total} ({extrasDetail})
                 </Text>
                 <View style={{ width: STATS_WIDTH }} />
@@ -682,7 +683,7 @@ export function ScorecardDockPanel({
                 <Text className="min-w-0 flex-1 font-sans-bold text-[12px] text-on-surface">
                   Total
                 </Text>
-                <Text className="min-w-0 flex-1 font-sans text-[11px] text-on-surface-variant">
+                <Text className="min-w-0 flex-1 font-sans text-caption text-on-surface-variant">
                   {innings.wickets} wkts · {innings.oversText} ov
                 </Text>
                 <View
@@ -701,7 +702,7 @@ export function ScorecardDockPanel({
                 <Text className="font-sans-bold text-[12px] text-on-surface">Bowling</Text>
               </View>
               <View style={HEADER_ROW}>
-                <Text className="min-w-0 flex-1 font-sans-semibold text-[10px] uppercase text-on-surface-variant">
+                <Text className="min-w-0 flex-1 font-sans-semibold text-caption uppercase text-on-surface-variant">
                   Bowler
                 </Text>
                 <View style={{ width: BOWL_STATS_WIDTH, flexDirection: 'row', flexShrink: 0 }}>
@@ -716,7 +717,7 @@ export function ScorecardDockPanel({
               </View>
               {bowlingRows.length === 0 ? (
                 <View style={DATA_ROW}>
-                  <Text className="font-sans text-[11px] text-on-surface-variant">
+                  <Text className="font-sans text-caption text-on-surface-variant">
                     No bowlers yet
                   </Text>
                 </View>
@@ -756,7 +757,7 @@ export function ScorecardDockPanel({
               )}
 
               {card.result.note ? (
-                <Text className="px-2 pt-2 font-sans text-[11px] text-on-surface-variant">
+                <Text className="px-2 pt-2 font-sans text-caption text-on-surface-variant">
                   {card.result.note}
                 </Text>
               ) : null}
@@ -813,15 +814,15 @@ export function ScorecardDockPanel({
                 <>
                   <View style={HEADER_ROW}>
                     <Text
-                      className="font-sans-semibold text-[10px] uppercase text-on-surface-variant"
+                      className="font-sans-semibold text-caption uppercase text-on-surface-variant"
                       style={{ width: FOW_WKT, flexShrink: 0 }}
                     >
                       #
                     </Text>
-                    <Text className="min-w-0 flex-1 font-sans-semibold text-[10px] uppercase text-on-surface-variant">
+                    <Text className="min-w-0 flex-1 font-sans-semibold text-caption uppercase text-on-surface-variant">
                       Batter
                     </Text>
-                    <Text className="min-w-0 flex-1 font-sans-semibold text-[10px] uppercase text-on-surface-variant">
+                    <Text className="min-w-0 flex-1 font-sans-semibold text-caption uppercase text-on-surface-variant">
                       How Out
                     </Text>
                     <StatHeaderCell label="Over" width={FOW_OVER} />

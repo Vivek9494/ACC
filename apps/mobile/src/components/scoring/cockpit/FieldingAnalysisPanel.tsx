@@ -15,7 +15,7 @@ export function FieldingAnalysisPanel({
     <CockpitPanel title="Fielding">
       <View className="flex-1">
         {bowlingXi.length === 0 ? (
-          <Text className="font-sans text-[11px] text-on-surface-variant">
+          <Text className="font-sans text-caption text-on-surface-variant">
             Bowling XI not locked yet.
           </Text>
         ) : (
@@ -23,7 +23,7 @@ export function FieldingAnalysisPanel({
             {bowlingXi.map((player, index) => (
               <Text
                 key={player.userId}
-                className="font-sans text-[11px] text-on-surface"
+                className="font-sans text-caption text-on-surface"
                 numberOfLines={1}
               >
                 {index + 1}. {nameOf(player.userId)}

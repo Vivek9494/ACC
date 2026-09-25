@@ -304,7 +304,7 @@ function CardShell({
         {icon}
       </View>
       {hint ? (
-        <Text className="font-sans-semibold text-[11px] text-primary" numberOfLines={2}>
+        <Text className="font-sans-semibold text-caption text-primary" numberOfLines={2}>
           {hint}
         </Text>
       ) : null}

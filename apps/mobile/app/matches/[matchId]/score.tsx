@@ -1721,7 +1721,7 @@ export default function LiveScoringScreen(): React.ReactElement {
 
               {inn && inn.inningsType === InningsType.SuperOver && !openersReady && !inn.closed ? (
                 <View className="rounded-control border border-primary bg-primary-container px-3 py-1.5">
-                  <Text className="font-sans-semibold text-[11px] text-on-primary-container">
+                  <Text className="font-sans-semibold text-caption text-on-primary-container">
                     Super Over — select batters and bowler (2 wickets ends the innings)
                   </Text>
                 </View>
@@ -1733,7 +1733,7 @@ export default function LiveScoringScreen(): React.ReactElement {
               !openersReady &&
               !inn.closed ? (
                 <View className="rounded-control border border-primary bg-primary-container px-3 py-1.5">
-                  <Text className="font-sans-semibold text-[11px] text-on-primary-container">
+                  <Text className="font-sans-semibold text-caption text-on-primary-container">
                     Select opening batters and bowler to start scoring
                   </Text>
                 </View>
@@ -1745,7 +1745,7 @@ export default function LiveScoringScreen(): React.ReactElement {
               !openersReady &&
               !inn.closed ? (
                 <View className="rounded-control border border-primary bg-primary-container px-3 py-1.5">
-                  <Text className="font-sans-semibold text-[11px] text-on-primary-container">
+                  <Text className="font-sans-semibold text-caption text-on-primary-container">
                     Select opening batters and bowler for the chase
                   </Text>
                 </View>
@@ -1753,7 +1753,7 @@ export default function LiveScoringScreen(): React.ReactElement {
 
               {needsIncomingBatter ? (
                 <View className="rounded-control border border-primary bg-primary-container px-3 py-1.5">
-                  <Text className="font-sans-semibold text-[11px] text-on-primary-container">
+                  <Text className="font-sans-semibold text-caption text-on-primary-container">
                     Select incoming batter
                   </Text>
                 </View>
@@ -1761,7 +1761,7 @@ export default function LiveScoringScreen(): React.ReactElement {
 
               {inningsAllOut ? (
                 <View className="rounded-control border border-outline-variant bg-surface-container-low px-3 py-1.5">
-                  <Text className="font-sans-semibold text-[11px] text-on-surface">
+                  <Text className="font-sans-semibold text-caption text-on-surface">
                     All out ({WICKETS_FOR_ALL_OUT} wickets)
                   </Text>
                 </View>
@@ -1769,7 +1769,7 @@ export default function LiveScoringScreen(): React.ReactElement {
 
               {needsBowlerForNewOver ? (
                 <View className="rounded-control border border-primary bg-primary-container px-3 py-1.5">
-                  <Text className="font-sans-semibold text-[11px] text-on-primary-container">
+                  <Text className="font-sans-semibold text-caption text-on-primary-container">
                     Select next bowler
                   </Text>
                 </View>

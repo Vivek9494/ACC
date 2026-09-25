@@ -227,10 +227,10 @@ function ChartSlot({
       </Text>
       {slot.kind === KnockoutBracketSlotKind.Bye ? (
         <View className="rounded-full bg-surface-container-high px-1.5 py-0.5">
-          <Text className="font-sans-semibold text-[9px] text-on-surface-variant">BYE</Text>
+          <Text className="font-sans-semibold text-caption text-on-surface-variant">BYE</Text>
         </View>
       ) : isWinner ? (
-        <Text className="font-sans-bold text-[10px] text-secondary">W</Text>
+        <Text className="font-sans-bold text-caption text-secondary">W</Text>
       ) : null}
     </View>
   );
@@ -254,7 +254,7 @@ function ChartMatchBox({
       style={{ width: BOX_WIDTH, minHeight: BOX_HEIGHT }}
     >
       <View className="flex-row items-center justify-between gap-1">
-        <Text className="font-sans-semibold text-[10px] text-on-surface-variant" numberOfLines={1}>
+        <Text className="font-sans-semibold text-caption text-on-surface-variant" numberOfLines={1}>
           M{(match.bracketPosition ?? 0) + 1}
         </Text>
         <View className="flex-row items-center gap-1">

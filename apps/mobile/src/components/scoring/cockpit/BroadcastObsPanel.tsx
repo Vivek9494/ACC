@@ -115,8 +115,8 @@ function ObsButton({
     variant === 'primary' ? BTN_PRIMARY : variant === 'danger' ? BTN_DANGER : BTN_GHOST;
   const textCls =
     variant === 'ghost'
-      ? 'font-sans-semibold text-[10px] uppercase tracking-wide text-on-surface'
-      : 'font-sans-semibold text-[10px] uppercase tracking-wide text-white';
+      ? 'font-sans-semibold text-caption uppercase tracking-wide text-on-surface'
+      : 'font-sans-semibold text-caption uppercase tracking-wide text-white';
   return (
     <Pressable
       accessibilityRole="button"
@@ -447,21 +447,21 @@ export function BroadcastObsPanel({
     <>
       <CockpitPanel title="Broadcast / OBS" live={Boolean(connected)} fitContent>
         <View className="min-w-0 gap-2" style={{ width: '100%', maxWidth: '100%' }}>
-          <Text className="font-sans text-[11px] text-on-surface-variant" numberOfLines={2}>
+          <Text className="font-sans text-caption text-on-surface-variant" numberOfLines={2}>
             {status ? statusLine(status) : 'Connecting…'}
           </Text>
           {errorText ? (
-            <Text className="font-sans text-[10px] text-primary" numberOfLines={3}>
+            <Text className="font-sans text-caption text-primary" numberOfLines={3}>
               {errorText}
             </Text>
           ) : null}
           {showInnings1Note && innings1.note ? (
-            <Text className="font-sans text-[10px] text-on-surface-variant" numberOfLines={2}>
+            <Text className="font-sans text-caption text-on-surface-variant" numberOfLines={2}>
               1st innings highlight: {innings1.note}
             </Text>
           ) : null}
           {showFullMatchNote && fullMatch.note ? (
-            <Text className="font-sans text-[10px] text-on-surface-variant" numberOfLines={2}>
+            <Text className="font-sans text-caption text-on-surface-variant" numberOfLines={2}>
               Full match highlight: {fullMatch.note}
             </Text>
           ) : null}

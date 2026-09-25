@@ -194,7 +194,7 @@ export function BowlerInlineSelect({
                             {playerLabel(row)}
                           </Text>
                           <Text
-                            className="mt-0.5 font-sans text-[10px] text-on-surface-variant"
+                            className="mt-0.5 font-sans text-caption text-on-surface-variant"
                             numberOfLines={1}
                           >
                             {rowSubtitle(row)}

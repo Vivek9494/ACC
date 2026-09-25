@@ -96,7 +96,7 @@ function KeyCap({
       accessibilityRole="button"
       accessibilityLabel={label}
     >
-      <Text className={`font-sans-bold text-[11px] ${textClassName}`} numberOfLines={1}>
+      <Text className={`font-sans-bold text-caption ${textClassName}`} numberOfLines={1}>
         {label}
       </Text>
     </Pressable>

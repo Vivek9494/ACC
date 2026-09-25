@@ -100,14 +100,14 @@ function ProjectedScoreBox({
     <View className={`rounded-control bg-primary-container ${compact ? 'px-3 py-2' : 'p-4'}`}>
       <Text
         className={`font-sans-semibold uppercase tracking-wide text-on-primary-container/80 ${
-          compact ? 'text-[10px]' : 'text-xs'
+          compact ? 'text-caption' : 'text-xs'
         }`}
       >
         Projected score
       </Text>
       <View className="mt-1 flex-row items-end justify-between gap-4">
         <View className="min-w-0 flex-1">
-          <Text className={`text-on-primary-container/90 ${compact ? 'text-[11px]' : 'text-sm'}`}>
+          <Text className={`text-on-primary-container/90 ${compact ? 'text-caption' : 'text-sm'}`}>
             at current
           </Text>
           <Text
@@ -119,7 +119,7 @@ function ProjectedScoreBox({
           </Text>
         </View>
         <View className="min-w-0 flex-1 border-l border-on-primary-container/20 pl-4">
-          <Text className={`text-on-primary-container/90 ${compact ? 'text-[11px]' : 'text-sm'}`}>
+          <Text className={`text-on-primary-container/90 ${compact ? 'text-caption' : 'text-sm'}`}>
             at {PROJECTED_SCORE_REFERENCE_RPO} RPO
           </Text>
           <Text
@@ -327,7 +327,7 @@ export function LiveScoringHeader({
           <View className="items-end gap-1">
             <MatchStatusBadge state={matchState} />
             {innings?.freeHitNext ? (
-              <Text className="font-sans-semibold text-[10px] uppercase tracking-wide text-primary">
+              <Text className="font-sans-semibold text-caption uppercase tracking-wide text-primary">
                 Free hit
               </Text>
             ) : null}

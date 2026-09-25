@@ -15,7 +15,6 @@ import {
   type ScorecardResponse,
   partnershipRunRate,
 } from '@acc/types';
-import { useState } from 'react';
 import { View } from 'react-native';
 
 import type { NameResolver } from './LiveScorecard';
@@ -283,7 +282,7 @@ function ScoreHeader({
             <Text className="font-sans-bold text-4xl leading-none text-primary">
               {innings.runs}/{innings.wickets}
             </Text>
-            <Text className="font-sans-semibold text-[11px] uppercase tracking-wider text-on-surface-variant">
+            <Text className="font-sans-semibold text-caption uppercase tracking-wider text-on-surface-variant">
               {innings.oversText} Overs
             </Text>
           </View>
@@ -309,7 +308,7 @@ function ScoreHeader({
             </View>
             {showProjection ? (
               <View className="items-end gap-0.5">
-                <Text className="font-sans-semibold text-[10px] uppercase tracking-wider text-secondary">
+                <Text className="font-sans-semibold text-caption uppercase tracking-wider text-secondary">
                   Projected
                 </Text>
                 <Text className="font-sans-bold text-4xl leading-none text-secondary">
@@ -322,7 +321,7 @@ function ScoreHeader({
             ) : null}
             {showChase ? (
               <View className="max-w-[45%] items-end gap-0.5">
-                <Text className="font-sans-semibold text-[10px] uppercase tracking-wider text-secondary">
+                <Text className="font-sans-semibold text-caption uppercase tracking-wider text-secondary">
                   Chase
                 </Text>
                 <Text className="text-right font-sans-semibold text-sm text-on-surface">

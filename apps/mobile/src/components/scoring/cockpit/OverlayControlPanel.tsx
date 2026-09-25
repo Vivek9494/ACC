@@ -10,6 +10,7 @@ import { createElement, useEffect, useMemo, useState, type ChangeEvent } from 'r
 import { Pressable, ScrollView, View, type ViewStyle } from 'react-native';
 
 import { listTeams } from '../../../lib/api';
+import { TYPE } from '../../../theme/typography';
 import { Text } from '../../ui/Text';
 import { CockpitPanel } from './CockpitPanel';
 import { ObsOverlayLinkButton } from './ObsOverlayLinkButton';
@@ -71,7 +72,7 @@ const SELECT_STYLE: React.CSSProperties = {
   borderRadius: 5,
   background: '#ffffff',
   fontFamily: 'inherit',
-  fontSize: 12,
+  fontSize: TYPE.caption,
   fontWeight: 600,
   color: '#5A4136',
   lineHeight: '22px',
@@ -798,10 +799,10 @@ export function OverlayControlPanel({
             className="mx-2 mt-1 rounded border border-primary bg-primary-50 px-2 py-1"
             accessibilityLiveRegion="polite"
           >
-            <Text className="font-sans-bold text-[10px] text-primary">
+            <Text className="font-sans-bold text-caption text-primary">
               {obsLinkFeedback.copied ? 'Copied!' : 'Copy failed — select manually'}
             </Text>
-            <Text className="font-sans text-[9px] leading-snug text-on-surface-variant" selectable>
+            <Text className="font-sans text-caption leading-snug text-on-surface-variant" selectable>
               {obsLinkFeedback.url}
             </Text>
           </View>
@@ -813,7 +814,7 @@ export function OverlayControlPanel({
           >
             {overlayOnAirLabel(onAir, match)}
           </Text>
-          <Text className="font-sans text-[11px] text-on-surface-variant">{connLabel}</Text>
+          <Text className="font-sans text-caption text-on-surface-variant">{connLabel}</Text>
           <Pressable
             onPress={() => {
               if (!anythingOverlayOnAir(onAir)) {
@@ -830,7 +831,7 @@ export function OverlayControlPanel({
             }`}
           >
             <Text
-              className={`font-sans-bold text-[11px] ${live ? 'text-secondary' : 'text-on-surface-variant'}`}
+              className={`font-sans-bold text-caption ${live ? 'text-secondary' : 'text-on-surface-variant'}`}
             >
               Take off air
             </Text>
@@ -887,7 +888,7 @@ export function OverlayControlPanel({
             })}
           </View>
 
-          <Text className="mt-0.5 font-sans-semibold text-[11px] uppercase tracking-wider text-on-surface-variant">
+          <Text className="mt-0.5 font-sans-semibold text-caption uppercase tracking-wider text-on-surface-variant">
             Common
           </Text>
 
@@ -906,7 +907,7 @@ export function OverlayControlPanel({
                 Innings break
               </Text>
               <Text
-                className="min-w-0 flex-1 font-sans text-[11px] text-on-surface-variant"
+                className="min-w-0 flex-1 font-sans text-caption text-on-surface-variant"
                 numberOfLines={1}
                 ellipsizeMode="tail"
               >
@@ -968,7 +969,7 @@ export function OverlayControlPanel({
                     }`}
                   >
                     <Text
-                      className={`text-center font-sans-semibold text-[10px] ${
+                      className={`text-center font-sans-semibold text-caption ${
                         selected ? 'text-primary' : 'text-on-surface-variant'
                       }`}
                       numberOfLines={2}
@@ -1111,7 +1112,7 @@ export function OverlayControlPanel({
                 setOnAir((p) => ({ ...p, stripMode: 'toss' }));
               }}
             >
-              <Text className="font-sans text-[11px] text-on-surface-variant" numberOfLines={2}>
+              <Text className="font-sans text-caption text-on-surface-variant" numberOfLines={2}>
                 {tossLine ?? 'Toss not recorded yet'}
               </Text>
             </ControlTile>
@@ -1132,7 +1133,7 @@ export function OverlayControlPanel({
                 setOnAir((p) => ({ ...p, stripMode: 'chase' }));
               }}
             >
-              <Text className="font-sans text-[11px] text-on-surface-variant" numberOfLines={2}>
+              <Text className="font-sans text-caption text-on-surface-variant" numberOfLines={2}>
                 {chaseLine ?? 'No chase yet'}
               </Text>
             </ControlTile>
@@ -1153,7 +1154,7 @@ export function OverlayControlPanel({
                 setOnAir((p) => ({ ...p, stripMode: 'boundaries' }));
               }}
             >
-              <Text className="font-sans text-[11px] text-on-surface-variant" numberOfLines={2}>
+              <Text className="font-sans text-caption text-on-surface-variant" numberOfLines={2}>
                 {tournamentEnabled
                   ? 'Tournament fours + sixes'
                   : 'No tournament linked'}
@@ -1176,7 +1177,7 @@ export function OverlayControlPanel({
                 setLocalOnAir('partnership', null, null);
               }}
             >
-              <Text className="font-sans text-[11px] text-on-surface-variant" numberOfLines={2}>
+              <Text className="font-sans text-caption text-on-surface-variant" numberOfLines={2}>
                 {partnershipLine ?? 'No live partnership yet'}
               </Text>
             </ControlTile>
@@ -1201,7 +1202,7 @@ export function OverlayControlPanel({
                 setLocalOnAir('playing_xi', null, null, 'both');
               }}
             >
-              <Text className="font-sans text-[11px] text-on-surface-variant" numberOfLines={2}>
+              <Text className="font-sans text-caption text-on-surface-variant" numberOfLines={2}>
                 {xiPreview ?? 'Waiting for squads…'}
               </Text>
             </ControlTile>
@@ -1222,13 +1223,13 @@ export function OverlayControlPanel({
                 setLocalOnAir('toss_result', null, null);
               }}
             >
-              <Text className="font-sans text-[11px] text-on-surface-variant" numberOfLines={2}>
+              <Text className="font-sans text-caption text-on-surface-variant" numberOfLines={2}>
                 {tossLine ?? 'Toss not recorded yet'}
               </Text>
             </ControlTile>
           </View>
 
-          <Text className="mt-0.5 font-sans-semibold text-[11px] uppercase tracking-wider text-on-surface-variant">
+          <Text className="mt-0.5 font-sans-semibold text-caption uppercase tracking-wider text-on-surface-variant">
             Tournament
           </Text>
 
@@ -1352,7 +1353,7 @@ export function OverlayControlPanel({
                     />
                   ) : (
                     <Text
-                      className="font-sans text-[11px] text-on-surface-variant"
+                      className="font-sans text-caption text-on-surface-variant"
                       numberOfLines={2}
                     >
                       {tournamentEnabled

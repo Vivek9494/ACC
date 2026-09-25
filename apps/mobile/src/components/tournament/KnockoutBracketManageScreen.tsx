@@ -195,7 +195,7 @@ function BracketSlotLine({ slot }: { slot: KnockoutBracketMatchSlot }): React.Re
       </Text>
       {slot.kind === KnockoutBracketSlotKind.Bye ? (
         <View className="rounded-full bg-surface-container-high px-2 py-0.5">
-          <Text className="font-sans-semibold text-[10px] text-on-surface-variant">BYE</Text>
+          <Text className="font-sans-semibold text-caption text-on-surface-variant">BYE</Text>
         </View>
       ) : null}
     </View>

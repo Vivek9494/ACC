@@ -54,13 +54,13 @@ export function CockpitPanel({
     >
       <View className="h-7 flex-row items-center gap-2 border-b border-outline-variant bg-surface-container-low px-2.5">
         <View className={`h-1.5 w-1.5 rounded-full ${live ? 'bg-primary' : 'bg-stone-400'}`} />
-        <Text className="font-sans-semibold text-[10px] uppercase tracking-wider text-on-surface-variant">
+        <Text className="font-sans-semibold text-caption uppercase tracking-wider text-on-surface-variant">
           {title}
         </Text>
         <View className="flex-1" />
         {headerTrailing ? <View className="shrink-0">{headerTrailing}</View> : null}
         {badge ? (
-          <Text className="rounded border border-secondary-200 bg-secondary-50 px-1.5 py-0.5 font-sans-bold text-[9px] uppercase tracking-wide text-secondary">
+          <Text className="rounded border border-secondary-200 bg-secondary-50 px-1.5 py-0.5 font-sans-bold text-caption uppercase tracking-wide text-secondary">
             {badge}
           </Text>
         ) : null}
@@ -87,10 +87,10 @@ export function CockpitStubSlot({
       <Text className="rounded border border-stone-400 bg-surface px-1.5 py-0.5 font-sans-bold text-[8px] uppercase tracking-wide text-on-surface-variant">
         coming soon
       </Text>
-      <Text className="font-sans-bold text-[11px] uppercase tracking-wide text-on-surface-variant">
+      <Text className="font-sans-bold text-caption uppercase tracking-wide text-on-surface-variant">
         {title}
       </Text>
-      <Text className="text-center font-sans text-[10px] text-on-surface-variant">{note}</Text>
+      <Text className="text-center font-sans text-caption text-on-surface-variant">{note}</Text>
     </View>
   );
 }
