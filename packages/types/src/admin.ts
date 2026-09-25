@@ -194,7 +194,7 @@ export interface UpdateAdminUserStatusResponse {
   isActive: boolean;
 }
 
-/** Platform roles stored on `User.role` (legacy admin edit subset). */
+/** Global platform roles stored on `User.role` (Admin create/edit assignable set). */
 export const ADMIN_PLATFORM_ROLES: UserRole[] = [
   UserRole.Admin,
   UserRole.ClubManager,
@@ -202,24 +202,18 @@ export const ADMIN_PLATFORM_ROLES: UserRole[] = [
   UserRole.Player,
 ];
 
-/** All roles an admin may assign to `User.role` when creating or editing a user. */
-export const ADMIN_ASSIGNABLE_ROLES: UserRole[] = [
-  UserRole.Admin,
-  UserRole.ClubManager,
-  UserRole.CenterSevak,
-  UserRole.Captain,
-  UserRole.ViceCaptain,
-  UserRole.Manager,
-  UserRole.Player,
-];
+/**
+ * Roles an admin may assign to `User.role` when creating or editing a user.
+ * Captain / Vice Captain / Manager are tournament-scoped via RoleAssignment only
+ * (team leadership) — never assignable as a global platform role.
+ */
+export const ADMIN_ASSIGNABLE_ROLES: UserRole[] = [...ADMIN_PLATFORM_ROLES];
 
-/** Roles that participate in cricket — show player type + skill ratings on admin user forms. */
-export const ADMIN_PLAYING_ROLES: UserRole[] = [
-  UserRole.Player,
-  UserRole.Captain,
-  UserRole.ViceCaptain,
-  UserRole.Manager,
-];
+/**
+ * Platform roles that show player type + skill ratings on admin user forms.
+ * Cap/VC/Manager are not global platform roles; only Player needs these fields here.
+ */
+export const ADMIN_PLAYING_ROLES: UserRole[] = [UserRole.Player];
 
 export function isAdminPlayingRole(role: UserRole): boolean {
   return ADMIN_PLAYING_ROLES.includes(role);

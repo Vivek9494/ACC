@@ -11,9 +11,12 @@ import { Select, type SelectOption } from '../ui/Select';
 import { Text } from '../ui/Text';
 
 const UNASSIGNED_VALUE = '';
+const ALL_CENTERS_VALUE = '';
 
 function candidateLabel(candidate: TeamRoleCandidate): string {
-  return `${candidate.firstName} ${candidate.lastName}`;
+  return candidate.centerName
+    ? `${candidate.firstName} ${candidate.lastName} · ${candidate.centerName}`
+    : `${candidate.firstName} ${candidate.lastName}`;
 }
 
 function roleOptions(
@@ -41,7 +44,11 @@ export interface TeamCreateRoleAssignmentFieldsProps {
   disabled?: boolean;
 }
 
-/** Captain / VC / Manager pickers at team creation — lists unrostered registered players. */
+/**
+ * Captain / VC / Manager pickers at team creation — type-specific audience
+ * (tennis centers / leather province prior participants). Selected players are
+ * auto-rostered onto the new team.
+ */
 export function TeamCreateRoleAssignmentFields({
   tournamentId,
   ballType,
@@ -54,8 +61,10 @@ export function TeamCreateRoleAssignmentFields({
   disabled = false,
 }: TeamCreateRoleAssignmentFieldsProps): React.ReactElement {
   const [candidates, setCandidates] = useState<TeamRoleCandidate[]>([]);
-  const [confirmedRegistrantCount, setConfirmedRegistrantCount] = useState(0);
+  const [centers, setCenters] = useState<{ id: string; name: string }[]>([]);
+  const [audienceCount, setAudienceCount] = useState(0);
   const [rosteredCount, setRosteredCount] = useState(0);
+  const [centerFilter, setCenterFilter] = useState<string>(ALL_CENTERS_VALUE);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -64,11 +73,14 @@ export function TeamCreateRoleAssignmentFields({
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    listTeamRoleCandidates(tournamentId)
+    listTeamRoleCandidates(tournamentId, {
+      centerId: centerFilter || undefined,
+    })
       .then((response) => {
         if (!cancelled) {
           setCandidates(response.candidates);
-          setConfirmedRegistrantCount(response.confirmedRegistrantCount);
+          setCenters(response.centers);
+          setAudienceCount(response.confirmedRegistrantCount);
           setRosteredCount(response.rosteredCount);
           setLoadError(null);
         }
@@ -78,7 +90,7 @@ export function TeamCreateRoleAssignmentFields({
           setLoadError(
             err instanceof ApiRequestError
               ? err.message
-              : 'Could not load registered players.',
+              : 'Could not load eligible players.',
           );
         }
       })
@@ -90,7 +102,15 @@ export function TeamCreateRoleAssignmentFields({
     return () => {
       cancelled = true;
     };
-  }, [tournamentId]);
+  }, [tournamentId, centerFilter]);
+
+  const centerOptions: SelectOption[] = useMemo(
+    () => [
+      { value: ALL_CENTERS_VALUE, label: 'All centers' },
+      ...centers.map((center) => ({ value: center.id, label: center.name })),
+    ],
+    [centers],
+  );
 
   const captainOptions = useMemo(
     () => roleOptions(candidates, [viceCaptainUserId, managerUserId].filter(Boolean) as string[]),
@@ -125,20 +145,32 @@ export function TeamCreateRoleAssignmentFields({
         <Text className="font-sans-bold text-lg text-on-surface">Team Leadership</Text>
         <Text className="mt-1 font-sans text-sm text-on-surface-variant">
           Optionally assign Captain, Vice-Captain
-          {showManager ? ', and Manager' : ''} now. Selected players are added to this team&apos;s
-          squad automatically. Each role must be a different confirmed registrant not already on
-          another team.
+          {showManager ? ', and Manager' : ''} from eligible players for this tournament type.
+          Selected players are added to this team&apos;s squad automatically. Each role must be a
+          different player not already on another team.
         </Text>
         {!loading && !loadError ? (
           <Text className="mt-2 font-sans text-xs text-text-muted">
-            {`${eligibleCount} eligible player${eligibleCount === 1 ? '' : 's'} · ${confirmedRegistrantCount} confirmed registrant${confirmedRegistrantCount === 1 ? '' : 's'} · ${rosteredCount} already on a team`}
+            {`${eligibleCount} eligible (unrostered) · ${audienceCount} in audience · ${rosteredCount} already on a team`}
           </Text>
         ) : null}
       </View>
 
+      {centers.length > 0 ? (
+        <Select
+          label="Filter by center"
+          placeholder="All centers"
+          value={centerFilter}
+          options={centerOptions}
+          onChange={setCenterFilter}
+          disabled={fieldsDisabled}
+          loading={loading}
+        />
+      ) : null}
+
       <Select
         label="Captain"
-        placeholder={emptyPool ? 'No eligible registered players' : 'Select captain (optional)'}
+        placeholder={emptyPool ? 'No eligible players' : 'Select captain (optional)'}
         value={captainUserId ?? UNASSIGNED_VALUE}
         options={captainOptions}
         onChange={(value) => onCaptainChange(toUserId(value))}
@@ -150,9 +182,7 @@ export function TeamCreateRoleAssignmentFields({
 
       <Select
         label="Vice-Captain"
-        placeholder={
-          emptyPool ? 'No eligible registered players' : 'Select vice-captain (optional)'
-        }
+        placeholder={emptyPool ? 'No eligible players' : 'Select vice-captain (optional)'}
         value={viceCaptainUserId ?? UNASSIGNED_VALUE}
         options={viceCaptainOptions}
         onChange={(value) => onViceCaptainChange(toUserId(value))}
@@ -165,7 +195,7 @@ export function TeamCreateRoleAssignmentFields({
       {showManager ? (
         <Select
           label="Manager"
-          placeholder={emptyPool ? 'No eligible registered players' : 'Select manager (optional)'}
+          placeholder={emptyPool ? 'No eligible players' : 'Select manager (optional)'}
           value={managerUserId ?? UNASSIGNED_VALUE}
           options={managerOptions}
           onChange={(value) => onManagerChange(toUserId(value))}

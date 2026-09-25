@@ -356,7 +356,10 @@ describe('TeamsService assignTeamRoles', () => {
       deleteMany: jest.Mock;
       create: jest.Mock;
     };
-    teamMembership: { findMany: jest.Mock };
+    teamMembership: { findMany: jest.Mock; upsert: jest.Mock };
+    tournamentCenter: { findMany: jest.Mock };
+    user: { findMany: jest.Mock };
+    registration: { findMany: jest.Mock };
     $transaction: jest.Mock;
   };
   let permissions: { check: jest.Mock };
@@ -369,6 +372,8 @@ describe('TeamsService assignTeamRoles', () => {
           id: 'tour-1',
           isDeleted: false,
           ballType: BallType.Tennis,
+          provinceId: 'prov-1',
+          type: TournamentType.APL,
         }),
       },
       team: {
@@ -383,7 +388,25 @@ describe('TeamsService assignTeamRoles', () => {
         create: jest.fn().mockResolvedValue({}),
       },
       teamMembership: {
-        findMany: jest.fn().mockResolvedValue([{ userId: 'player-2' }]),
+        findMany: jest.fn().mockResolvedValue([{ userId: 'player-2', teamId: 'team-1' }]),
+        upsert: jest.fn().mockResolvedValue({}),
+      },
+      tournamentCenter: {
+        findMany: jest.fn().mockResolvedValue([{ centerId: 'center-A' }]),
+      },
+      user: {
+        findMany: jest.fn().mockImplementation(async (args: { where: { id?: { in: string[] }; centerId?: { in: string[] } } }) => {
+          if (args.where.id?.in) {
+            return args.where.id.in.map((id) => ({ id }));
+          }
+          if (args.where.centerId?.in) {
+            return [{ id: 'player-2' }];
+          }
+          return [];
+        }),
+      },
+      registration: {
+        findMany: jest.fn().mockResolvedValue([]),
       },
       $transaction: jest.fn(async (fn: (tx: typeof prisma) => Promise<void>) => fn(prisma)),
     };
@@ -443,6 +466,65 @@ describe('TeamsService assignTeamRoles', () => {
     );
   });
 
+  it('auto-rosters an eligible unrostered player then assigns the role', async () => {
+    prisma.roleAssignment.findMany.mockReset();
+    prisma.roleAssignment.findMany
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ userId: 'player-2', role: UserRole.Captain }]);
+    // assertEligible: on-this-team check (empty) + ensureUsersRosteredOnTeam (empty → upsert)
+    prisma.teamMembership.findMany
+      .mockResolvedValueOnce([]) // assertEligible on-this-team
+      .mockResolvedValueOnce([]); // ensureUsers — not yet rostered
+    prisma.user.findMany.mockImplementation(async (args: { where: { id?: { in: string[] }; centerId?: { in: string[] } } }) => {
+      if (args.where.id?.in) {
+        return args.where.id.in.map((id) => ({ id }));
+      }
+      if (args.where.centerId?.in) {
+        return [{ id: 'player-2' }];
+      }
+      return [];
+    });
+    prisma.registration.findMany.mockResolvedValue([]);
+
+    const result = await service.assignTeamRoles(clubManager, 'tour-1', 'team-1', {
+      captainUserId: 'player-2',
+    });
+
+    expect(result.captainUserId).toBe('player-2');
+    expect(prisma.teamMembership.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { tournamentId_userId: { tournamentId: 'tour-1', userId: 'player-2' } },
+        create: expect.objectContaining({
+          tournamentId: 'tour-1',
+          teamId: 'team-1',
+          userId: 'player-2',
+        }),
+      }),
+    );
+  });
+
+  it('rejects auto-roster when the player is active on a different team', async () => {
+    prisma.roleAssignment.findMany.mockReset();
+    prisma.roleAssignment.findMany.mockResolvedValue([]);
+    prisma.teamMembership.findMany
+      .mockResolvedValueOnce([]) // assertEligible — not on this team
+      .mockResolvedValueOnce([{ userId: 'player-2', teamId: 'team-other' }]); // ensureUsers
+    prisma.user.findMany.mockImplementation(async (args: { where: { id?: { in: string[] }; centerId?: { in: string[] } } }) => {
+      if (args.where.id?.in) {
+        return args.where.id.in.map((id) => ({ id }));
+      }
+      if (args.where.centerId?.in) {
+        return [{ id: 'player-2' }];
+      }
+      return [];
+    });
+
+    await expect(
+      service.assignTeamRoles(clubManager, 'tour-1', 'team-1', { captainUserId: 'player-2' }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(prisma.teamMembership.upsert).not.toHaveBeenCalled();
+  });
+
   it('rejects when the Club Manager lacks permission', async () => {
     permissions.check.mockResolvedValue(false);
 
@@ -467,6 +549,7 @@ describe('TeamsService assignTeamRoles', () => {
       id: 'tour-1',
       isDeleted: false,
       ballType: BallType.Leather,
+      provinceId: 'prov-1',
     });
 
     await expect(
@@ -479,6 +562,8 @@ describe('TeamsService assignTeamRoles', () => {
       id: 'tour-1',
       isDeleted: false,
       ballType: BallType.Tennis,
+      provinceId: 'prov-1',
+      type: TournamentType.APL,
     });
     prisma.roleAssignment.findMany.mockReset();
     prisma.roleAssignment.findMany.mockResolvedValue([
@@ -505,6 +590,7 @@ describe('TeamsService create with leadership roles', () => {
     tournament: { findUnique: jest.Mock };
     team: { count: jest.Mock; create: jest.Mock };
     registration: { findMany: jest.Mock };
+    matchSquadPlayer: { findMany: jest.Mock };
     teamMembership: { findMany: jest.Mock; create: jest.Mock };
     user: { findMany: jest.Mock };
     roleAssignment: { create: jest.Mock };
@@ -545,6 +631,7 @@ describe('TeamsService create with leadership roles', () => {
           id: 'tour-1',
           isDeleted: false,
           ballType: BallType.Leather,
+          provinceId: 'prov-1',
           numberOfTeams: 4,
         }),
       },
@@ -553,10 +640,11 @@ describe('TeamsService create with leadership roles', () => {
         create: tx.team.create,
       },
       registration: {
-        findMany: jest.fn().mockResolvedValue([
-          { userId: 'player-1' },
-          { userId: 'player-2' },
-        ]),
+        // leather audience prior participants
+        findMany: jest.fn().mockResolvedValue([{ userId: 'player-1' }, { userId: 'player-2' }]),
+      },
+      matchSquadPlayer: {
+        findMany: jest.fn().mockResolvedValue([]),
       },
       teamMembership: {
         findMany: jest.fn().mockResolvedValue([]),
@@ -650,38 +738,16 @@ describe('TeamsService listRoleCandidates', () => {
   let prisma: {
     tournament: { findUnique: jest.Mock };
     teamMembership: { findMany: jest.Mock };
-    registration: { findMany: jest.Mock; count: jest.Mock };
+    registration: { findMany: jest.Mock };
+    matchSquadPlayer: { findMany: jest.Mock };
+    tournamentCenter: { findMany: jest.Mock };
+    center: { findMany: jest.Mock };
+    user: { findMany: jest.Mock };
   };
   let permissions: { check: jest.Mock };
 
-  beforeEach(() => {
-    prisma = {
-      tournament: {
-        findUnique: jest.fn().mockResolvedValue({
-          id: 'tour-1',
-          isDeleted: false,
-          ballType: BallType.Leather,
-        }),
-      },
-      teamMembership: {
-        findMany: jest.fn().mockResolvedValue([{ userId: 'rostered-1' }]),
-      },
-      registration: {
-        count: jest.fn().mockResolvedValue(2),
-        findMany: jest.fn().mockResolvedValue([
-          {
-            userId: 'player-2',
-            user: { id: 'player-2', firstName: 'Priya', lastName: 'Shah' },
-            center: { name: 'Brampton' },
-          },
-        ]),
-      },
-    };
-    permissions = {
-      check: jest.fn().mockResolvedValue(true),
-    };
-
-    service = new TeamsService(
+  function buildService(): TeamsService {
+    return new TeamsService(
       prisma as unknown as PrismaService,
       permissions as unknown as PermissionService,
       { deleteObject: jest.fn() } as never,
@@ -695,9 +761,61 @@ describe('TeamsService listRoleCandidates', () => {
       { record: jest.fn() } as never,
       { sendNotification: jest.fn(), sendToAudience: jest.fn() } as never,
     );
+  }
+
+  beforeEach(() => {
+    permissions = {
+      check: jest.fn().mockResolvedValue(true),
+    };
   });
 
-  it('returns confirmed registrants not already on an active team', async () => {
+  it('returns tennis audience from TournamentCenter membership', async () => {
+    prisma = {
+      tournament: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'tour-1',
+          isDeleted: false,
+          ballType: BallType.Tennis,
+          provinceId: 'prov-1',
+          type: TournamentType.APL,
+        }),
+      },
+      teamMembership: {
+        findMany: jest.fn().mockResolvedValue([{ userId: 'rostered-1' }]),
+      },
+      registration: { findMany: jest.fn() },
+      matchSquadPlayer: { findMany: jest.fn() },
+      tournamentCenter: {
+        findMany: jest
+          .fn()
+          // loadParticipatingCenterIds
+          .mockResolvedValueOnce([{ centerId: 'center-A' }, { centerId: 'center-B' }])
+          // loadTeamRoleAudienceCenters
+          .mockResolvedValueOnce([
+            { center: { id: 'center-A', name: 'Brampton' } },
+            { center: { id: 'center-B', name: 'Toronto' } },
+          ]),
+      },
+      center: { findMany: jest.fn() },
+      user: {
+        findMany: jest
+          .fn()
+          // audience ids
+          .mockResolvedValueOnce([{ id: 'rostered-1' }, { id: 'player-2' }])
+          // candidate user rows
+          .mockResolvedValueOnce([
+            {
+              id: 'player-2',
+              firstName: 'Priya',
+              lastName: 'Shah',
+              centerId: 'center-A',
+              center: { name: 'Brampton' },
+            },
+          ]),
+      },
+    };
+    service = buildService();
+
     const result = await service.listRoleCandidates(clubManager, 'tour-1');
 
     expect(result).toEqual({
@@ -706,34 +824,94 @@ describe('TeamsService listRoleCandidates', () => {
           userId: 'player-2',
           firstName: 'Priya',
           lastName: 'Shah',
+          centerId: 'center-A',
           centerName: 'Brampton',
         },
+      ],
+      centers: [
+        { id: 'center-A', name: 'Brampton' },
+        { id: 'center-B', name: 'Toronto' },
       ],
       confirmedRegistrantCount: 2,
       rosteredCount: 1,
     });
-    expect(prisma.teamMembership.findMany).toHaveBeenCalledWith(
+    expect(prisma.tournamentCenter.findMany).toHaveBeenCalled();
+    expect(prisma.user.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
-          tournamentId: 'tour-1',
-          team: { deletedAt: null },
+          centerId: { in: ['center-A', 'center-B'] },
         }),
       }),
     );
-    expect(prisma.registration.count).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({
-          tournamentId: 'tour-1',
-          status: 'CONFIRMED',
+  });
+
+  it('returns leather audience from prior leather registrations and squads in province', async () => {
+    prisma = {
+      tournament: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'tour-1',
+          isDeleted: false,
+          ballType: BallType.Leather,
+          provinceId: 'prov-1',
+          type: TournamentType.ACC,
         }),
-      }),
-    );
+      },
+      teamMembership: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+      registration: {
+        findMany: jest.fn().mockResolvedValue([{ userId: 'player-reg' }]),
+      },
+      matchSquadPlayer: {
+        findMany: jest.fn().mockResolvedValue([{ userId: 'player-squad' }]),
+      },
+      tournamentCenter: { findMany: jest.fn() },
+      center: {
+        findMany: jest.fn().mockResolvedValue([{ id: 'center-A', name: 'Brampton' }]),
+      },
+      user: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'player-reg',
+            firstName: 'Raj',
+            lastName: 'Patel',
+            centerId: 'center-A',
+            center: { name: 'Brampton' },
+          },
+          {
+            id: 'player-squad',
+            firstName: 'Sam',
+            lastName: 'Lee',
+            centerId: 'center-A',
+            center: { name: 'Brampton' },
+          },
+        ]),
+      },
+    };
+    service = buildService();
+
+    const result = await service.listRoleCandidates(clubManager, 'tour-1', { search: 'Pat' });
+
+    expect(result.confirmedRegistrantCount).toBe(2);
+    expect(result.rosteredCount).toBe(0);
+    expect(result.centers).toEqual([{ id: 'center-A', name: 'Brampton' }]);
+    expect(result.candidates).toHaveLength(2);
     expect(prisma.registration.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
-          tournamentId: 'tour-1',
-          status: 'CONFIRMED',
-          userId: { notIn: ['rostered-1'] },
+          tournament: { ballType: BallType.Leather, isDeleted: false },
+          user: expect.objectContaining({
+            center: { provinceId: 'prov-1' },
+          }),
+        }),
+      }),
+    );
+    expect(prisma.matchSquadPlayer.findMany).toHaveBeenCalled();
+    expect(prisma.user.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          id: { in: expect.arrayContaining(['player-reg', 'player-squad']) },
+          OR: expect.any(Array),
         }),
       }),
     );

@@ -1,15 +1,23 @@
-import { BallType, type TeamDetailPlayerRow, type TeamDetailView } from '@acc/types';
-import { useState } from 'react';
+import {
+  BallType,
+  type TeamDetailPlayerRow,
+  type TeamDetailView,
+  type TeamRoleCandidate,
+} from '@acc/types';
+import { useEffect, useMemo, useState } from 'react';
 import { Dimensions, FlatList, Modal, Pressable, View } from 'react-native';
 
-import { ApiRequestError, assignTeamRoles } from '../../lib/api';
+import { ApiRequestError, assignTeamRoles, listTeamRoleCandidates } from '../../lib/api';
 import { Button } from '../ui/Button';
+import { Select, type SelectOption } from '../ui/Select';
 import { Text } from '../ui/Text';
+import { TextInput } from '../ui/TextInput';
 
 type LeadershipRole = 'captain' | 'viceCaptain' | 'manager';
 
 /** Keep the sheet under ~70% of the screen so the roster FlatList scrolls internally. */
 const PICKER_LIST_MAX_HEIGHT = Math.round(Dimensions.get('window').height * 0.55);
+const ALL_CENTERS_VALUE = '';
 
 export interface TeamLeadershipSectionProps {
   tournamentId: string;
@@ -23,6 +31,36 @@ function playerName(player: TeamDetailPlayerRow | undefined): string {
     return 'Not assigned';
   }
   return `${player.firstName} ${player.lastName}`;
+}
+
+function playerToCandidate(player: TeamDetailPlayerRow): TeamRoleCandidate {
+  return {
+    userId: player.userId,
+    firstName: player.firstName,
+    lastName: player.lastName,
+    centerId: null,
+    centerName: '',
+  };
+}
+
+function mergeCandidates(
+  audience: TeamRoleCandidate[],
+  roster: TeamDetailPlayerRow[],
+): TeamRoleCandidate[] {
+  const byId = new Map<string, TeamRoleCandidate>();
+  for (const player of roster) {
+    byId.set(player.userId, playerToCandidate(player));
+  }
+  for (const candidate of audience) {
+    byId.set(candidate.userId, candidate);
+  }
+  return [...byId.values()].sort((a, b) => {
+    const last = a.lastName.localeCompare(b.lastName);
+    if (last !== 0) {
+      return last;
+    }
+    return a.firstName.localeCompare(b.firstName);
+  });
 }
 
 function excludedUserIds(
@@ -42,7 +80,13 @@ function excludedUserIds(
   return [captain, viceCaptain].filter((id): id is string => id != null);
 }
 
-/** Admin / Club Manager assigns Captain, Vice-Captain, and Manager from the team roster. */
+function candidateRowLabel(candidate: TeamRoleCandidate): string {
+  return candidate.centerName
+    ? `${candidate.firstName} ${candidate.lastName} · ${candidate.centerName}`
+    : `${candidate.firstName} ${candidate.lastName}`;
+}
+
+/** Admin / Club Manager assigns Captain, Vice-Captain, and Manager from the type audience. */
 export function TeamLeadershipSection({
   tournamentId,
   teamId,
@@ -52,22 +96,80 @@ export function TeamLeadershipSection({
   const [pickerRole, setPickerRole] = useState<LeadershipRole | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  if (!detail.canAssignTeamRoles) {
-    return null;
-  }
+  const [audienceCandidates, setAudienceCandidates] = useState<TeamRoleCandidate[]>([]);
+  const [centers, setCenters] = useState<{ id: string; name: string }[]>([]);
+  const [centerFilter, setCenterFilter] = useState<string>(ALL_CENTERS_VALUE);
+  const [search, setSearch] = useState('');
+  const [loadingCandidates, setLoadingCandidates] = useState(false);
 
   const showManager = detail.ballType !== BallType.Leather;
   const captain = detail.players.find((player) => player.isCaptain);
   const viceCaptain = detail.players.find((player) => player.isViceCaptain);
   const manager = detail.players.find((player) => player.isManager);
 
-  const candidates =
-    pickerRole == null
-      ? detail.players
-      : detail.players.filter(
-          (player) => !excludedUserIds(detail, pickerRole).includes(player.userId),
-        );
+  useEffect(() => {
+    if (!detail.canAssignTeamRoles || pickerRole == null) {
+      return;
+    }
+    let cancelled = false;
+    setLoadingCandidates(true);
+    listTeamRoleCandidates(tournamentId, {
+      centerId: centerFilter || undefined,
+    })
+      .then((response) => {
+        if (!cancelled) {
+          setAudienceCandidates(response.candidates);
+          setCenters(response.centers);
+        }
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) {
+          setError(
+            err instanceof ApiRequestError
+              ? err.message
+              : 'Could not load eligible players.',
+          );
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoadingCandidates(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [detail.canAssignTeamRoles, pickerRole, tournamentId, centerFilter]);
+
+  const pool = useMemo(() => {
+    const merged = mergeCandidates(audienceCandidates, detail.players);
+    const excluded =
+      pickerRole == null ? new Set<string>() : new Set(excludedUserIds(detail, pickerRole));
+    const needle = search.trim().toLowerCase();
+    return merged.filter((candidate) => {
+      if (excluded.has(candidate.userId)) {
+        return false;
+      }
+      if (!needle) {
+        return true;
+      }
+      const haystack =
+        `${candidate.firstName} ${candidate.lastName} ${candidate.centerName}`.toLowerCase();
+      return haystack.includes(needle);
+    });
+  }, [audienceCandidates, detail, pickerRole, search]);
+
+  const centerOptions: SelectOption[] = useMemo(
+    () => [
+      { value: ALL_CENTERS_VALUE, label: 'All centers' },
+      ...centers.map((center) => ({ value: center.id, label: center.name })),
+    ],
+    [centers],
+  );
+
+  if (!detail.canAssignTeamRoles) {
+    return null;
+  }
 
   async function saveRole(role: LeadershipRole, userId: string | null): Promise<void> {
     setSaving(true);
@@ -81,6 +183,8 @@ export function TeamLeadershipSection({
             : { managerUserId: userId }),
       });
       setPickerRole(null);
+      setSearch('');
+      setCenterFilter(ALL_CENTERS_VALUE);
       onUpdated();
     } catch (err) {
       setError(err instanceof ApiRequestError ? err.message : 'Could not update team role.');
@@ -99,16 +203,21 @@ export function TeamLeadershipSection({
     return 'Select Manager';
   }
 
+  function openPicker(role: LeadershipRole): void {
+    setError(null);
+    setSearch('');
+    setCenterFilter(ALL_CENTERS_VALUE);
+    setPickerRole(role);
+  }
+
   return (
     <View className="gap-3 rounded-xl border border-outline-variant bg-surface-container-lowest p-4">
       <Text className="font-sans-bold text-lg text-on-surface">Team Leadership</Text>
-      {!captain || !viceCaptain ? (
-        <Text className="font-sans text-sm text-on-surface-variant">
-          Assign one Captain, Vice-Captain
-          {showManager ? ', and Manager' : ''} from this roster. Each role must be a different
-          player.
-        </Text>
-      ) : null}
+      <Text className="font-sans text-sm text-on-surface-variant">
+        Assign Captain, Vice-Captain
+        {showManager ? ', and Manager' : ''} from eligible players for this tournament type.
+        Players not already on this squad are added automatically.
+      </Text>
 
       <View className="gap-2">
         <View className="flex-row items-center justify-between gap-3">
@@ -119,8 +228,8 @@ export function TeamLeadershipSection({
           <Button
             variant="outline"
             label="Change"
-            onPress={() => setPickerRole('captain')}
-            disabled={saving || detail.players.length === 0}
+            onPress={() => openPicker('captain')}
+            disabled={saving}
             className="h-9 rounded-full px-4"
             textClassName="text-xs"
           />
@@ -136,8 +245,8 @@ export function TeamLeadershipSection({
           <Button
             variant="outline"
             label="Change"
-            onPress={() => setPickerRole('viceCaptain')}
-            disabled={saving || detail.players.length === 0}
+            onPress={() => openPicker('viceCaptain')}
+            disabled={saving}
             className="h-9 rounded-full px-4"
             textClassName="text-xs"
           />
@@ -152,8 +261,8 @@ export function TeamLeadershipSection({
             <Button
               variant="outline"
               label="Change"
-              onPress={() => setPickerRole('manager')}
-              disabled={saving || detail.players.length === 0}
+              onPress={() => openPicker('manager')}
+              disabled={saving}
               className="h-9 rounded-full px-4"
               textClassName="text-xs"
             />
@@ -161,7 +270,9 @@ export function TeamLeadershipSection({
         ) : null}
       </View>
 
-      {error ? <Text className="font-sans text-sm text-primary">{error}</Text> : null}
+      {error && pickerRole == null ? (
+        <Text className="font-sans text-sm text-primary">{error}</Text>
+      ) : null}
 
       <Modal
         visible={pickerRole != null}
@@ -177,9 +288,32 @@ export function TeamLeadershipSection({
             <Text className="font-sans-bold text-lg text-on-surface">
               {pickerRole ? pickerTitle(pickerRole) : ''}
             </Text>
+            <View className="mt-3 gap-3">
+              {centers.length > 0 ? (
+                <Select
+                  label="Filter by center"
+                  placeholder="All centers"
+                  value={centerFilter}
+                  options={centerOptions}
+                  onChange={setCenterFilter}
+                  disabled={saving || loadingCandidates}
+                />
+              ) : null}
+              <TextInput
+                label="Search"
+                value={search}
+                onChangeText={setSearch}
+                placeholder="Search by name…"
+                autoCorrect={false}
+                autoCapitalize="none"
+              />
+            </View>
+            {error ? (
+              <Text className="mt-2 font-sans text-sm text-primary">{error}</Text>
+            ) : null}
             <FlatList
-              data={candidates}
-              keyExtractor={(player) => player.userId}
+              data={pool}
+              keyExtractor={(candidate) => candidate.userId}
               style={{ maxHeight: PICKER_LIST_MAX_HEIGHT, marginTop: 8 }}
               keyboardShouldPersistTaps="handled"
               nestedScrollEnabled
@@ -197,22 +331,22 @@ export function TeamLeadershipSection({
                   </Text>
                 </Pressable>
               }
-              renderItem={({ item: player }) => (
+              renderItem={({ item: candidate }) => (
                 <Pressable
                   className="border-b border-outline-variant py-3"
-                  onPress={() => pickerRole && void saveRole(pickerRole, player.userId)}
+                  onPress={() => pickerRole && void saveRole(pickerRole, candidate.userId)}
                   disabled={saving}
                   accessibilityRole="button"
-                  accessibilityLabel={`${player.firstName} ${player.lastName}`}
+                  accessibilityLabel={candidateRowLabel(candidate)}
                 >
                   <Text className="font-sans-semibold text-base text-on-surface">
-                    {player.firstName} {player.lastName}
+                    {candidateRowLabel(candidate)}
                   </Text>
                 </Pressable>
               )}
               ListEmptyComponent={
                 <Text className="py-6 text-center font-sans text-sm text-on-surface-variant">
-                  No eligible players on this roster.
+                  {loadingCandidates ? 'Loading…' : 'No eligible players.'}
                 </Text>
               }
             />

@@ -641,8 +641,9 @@ export class TeamsService {
   async listRoleCandidates(
     actor: AuthUser,
     tournamentId: string,
+    filters: { search?: string; centerId?: string } = {},
   ): Promise<TeamRoleCandidatesView> {
-    await this.requireTournament(tournamentId);
+    const tournament = await this.requireTournament(tournamentId);
 
     const allowed = await this.permissions.check(Permission.ASSIGN_TEAM_ROLES, actor, {
       tournamentId,
@@ -654,7 +655,7 @@ export class TeamsService {
       });
     }
 
-    return this.loadUnrosteredRegisteredPlayers(tournamentId);
+    return this.loadTypeAudienceRoleCandidates(tournament, filters);
   }
 
   async create(actor: AuthUser, tournamentId: string, dto: CreateTeamDto): Promise<TeamSummary> {
@@ -722,7 +723,8 @@ export class TeamsService {
           error: 'DUAL_TEAM_LEADER',
         });
       }
-      await this.assertRegisteredAndUnrostered(tournamentId, roleAssignees.userIds);
+      await this.assertEligibleForTeamRole(tournament, roleAssignees.userIds);
+      await this.assertNotRosteredInTournament(tournamentId, roleAssignees.userIds);
     }
 
     try {
@@ -982,31 +984,17 @@ export class TeamsService {
       });
     }
 
-    const assigneeIds = [finalCaptain, finalViceCaptain, finalManager].filter(
-      (id): id is string => id != null,
-    );
+    const assigneeIds = [...new Set(
+      [finalCaptain, finalViceCaptain, finalManager].filter((id): id is string => id != null),
+    )];
     if (assigneeIds.length > 0) {
-      const memberships = await this.prisma.teamMembership.findMany({
-        where: {
-          teamId,
-          tournamentId,
-          userId: { in: assigneeIds },
-          ...activeTeamMembershipWhere,
-        },
-        select: { userId: true },
-      });
-      const memberIds = new Set(memberships.map((row) => row.userId));
-      for (const userId of assigneeIds) {
-        if (!memberIds.has(userId)) {
-          throw new BadRequestException({
-            message: 'Team leaders must be on the team roster',
-            error: 'NOT_ON_ROSTER',
-          });
-        }
-      }
+      await this.assertEligibleForTeamRole(tournament, assigneeIds, { teamId });
     }
 
     await this.prisma.$transaction(async (tx) => {
+      if (assigneeIds.length > 0) {
+        await this.ensureUsersRosteredOnTeam(tx, tournament, teamId, assigneeIds);
+      }
       for (const update of updates) {
         await tx.roleAssignment.deleteMany({
           where: { teamId, tournamentId, role: update.role },
@@ -1218,36 +1206,190 @@ export class TeamsService {
     };
   }
 
-  private async loadUnrosteredRegisteredPlayers(
-    tournamentId: string,
+  private async loadTypeAudienceRoleCandidates(
+    tournament: {
+      id: string;
+      ballType: string;
+      provinceId: string | null;
+      type: string;
+    },
+    filters: { search?: string; centerId?: string },
   ): Promise<TeamRoleCandidatesView> {
-    const rosteredRows = await this.prisma.teamMembership.findMany({
-      where: { tournamentId, team: activeTeamWhere, ...activeTeamMembershipWhere },
-      select: { userId: true },
-    });
-    const rosteredUserIds = [...new Set(rosteredRows.map((row) => row.userId))];
+    const tournamentId = tournament.id;
+    const search = filters.search?.trim() || undefined;
+    const centerId = filters.centerId?.trim() || undefined;
 
-    const confirmedRegistrationWhere: Prisma.RegistrationWhereInput = {
-      tournamentId,
-      status: RegistrationStatus.Confirmed,
-      user: selectableUserWhere,
-    };
-
-    const [confirmedRegistrantCount, rows] = await Promise.all([
-      this.prisma.registration.count({ where: confirmedRegistrationWhere }),
-      this.loadUnrosteredRegistrationRows(tournamentId),
+    const [rosteredRows, audienceUserIds, centers] = await Promise.all([
+      this.prisma.teamMembership.findMany({
+        where: { tournamentId, team: activeTeamWhere, ...activeTeamMembershipWhere },
+        select: { userId: true },
+      }),
+      this.loadTeamRoleAudienceUserIds(tournament),
+      this.loadTeamRoleAudienceCenters(tournament),
     ]);
+    const rosteredUserIds = [...new Set(rosteredRows.map((row) => row.userId))];
+    const rosteredSet = new Set(rosteredUserIds);
+    const confirmedRegistrantCount = audienceUserIds.length;
+
+    if (audienceUserIds.length === 0) {
+      return {
+        candidates: [],
+        centers,
+        confirmedRegistrantCount: 0,
+        rosteredCount: rosteredUserIds.length,
+      };
+    }
+
+    const candidateUserIds = audienceUserIds.filter((id) => !rosteredSet.has(id));
+    if (candidateUserIds.length === 0) {
+      return {
+        candidates: [],
+        centers,
+        confirmedRegistrantCount,
+        rosteredCount: rosteredUserIds.length,
+      };
+    }
+
+    const users = await this.prisma.user.findMany({
+      where: {
+        id: { in: candidateUserIds },
+        ...selectableUserWhere,
+        ...(centerId ? { centerId } : {}),
+        ...(search
+          ? {
+              OR: [
+                { firstName: { contains: search, mode: 'insensitive' } },
+                { lastName: { contains: search, mode: 'insensitive' } },
+              ],
+            }
+          : {}),
+      },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        centerId: true,
+        center: { select: { name: true } },
+      },
+      orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
+    });
 
     return {
-      candidates: rows.map((row) => ({
-        userId: row.userId,
-        firstName: row.user.firstName,
-        lastName: row.user.lastName,
-        centerName: row.center.name,
+      candidates: users.map((user) => ({
+        userId: user.id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        centerId: user.centerId,
+        centerName: user.center?.name ?? '',
       })),
+      centers,
       confirmedRegistrantCount,
       rosteredCount: rosteredUserIds.length,
     };
+  }
+
+  private async loadTeamRoleAudienceUserIds(tournament: {
+    id: string;
+    ballType: string;
+    provinceId: string | null;
+  }): Promise<string[]> {
+    if (tournament.ballType === BallType.Leather) {
+      if (!tournament.provinceId) {
+        return [];
+      }
+      return this.loadLeatherProvincePriorParticipantUserIds(tournament.provinceId);
+    }
+
+    const centerIds = await this.loadParticipatingCenterIds(tournament.id);
+    if (centerIds.length === 0) {
+      return [];
+    }
+    const users = await this.prisma.user.findMany({
+      where: {
+        ...selectableUserWhere,
+        centerId: { in: centerIds },
+      },
+      select: { id: true },
+    });
+    return users.map((row) => row.id);
+  }
+
+  private async loadTeamRoleAudienceCenters(tournament: {
+    id: string;
+    ballType: string;
+    provinceId: string | null;
+  }): Promise<{ id: string; name: string }[]> {
+    if (tournament.ballType === BallType.Leather) {
+      if (!tournament.provinceId) {
+        return [];
+      }
+      return this.prisma.center.findMany({
+        where: { provinceId: tournament.provinceId, isActive: true },
+        select: { id: true, name: true },
+        orderBy: { name: 'asc' },
+      });
+    }
+
+    const links = await this.prisma.tournamentCenter.findMany({
+      where: { tournamentId: tournament.id },
+      select: { center: { select: { id: true, name: true } } },
+      orderBy: { center: { name: 'asc' } },
+    });
+    return links.map((row) => row.center);
+  }
+
+  /** TournamentCenter.centerIds for tennis APL / Center-level audiences. */
+  private async loadParticipatingCenterIds(tournamentId: string): Promise<string[]> {
+    const rows = await this.prisma.tournamentCenter.findMany({
+      where: { tournamentId },
+      select: { centerId: true },
+    });
+    return rows.map((row) => row.centerId);
+  }
+
+  /**
+   * Users who previously registered for any leather tournament or appeared in any
+   * leather match squad, scoped to the given province via User.center.provinceId.
+   */
+  private async loadLeatherProvincePriorParticipantUserIds(
+    provinceId: string,
+  ): Promise<string[]> {
+    const [registrationRows, squadRows] = await Promise.all([
+      this.prisma.registration.findMany({
+        where: {
+          tournament: { ballType: BallType.Leather, isDeleted: false },
+          user: {
+            ...selectableUserWhere,
+            center: { provinceId },
+          },
+        },
+        select: { userId: true },
+        distinct: ['userId'],
+      }),
+      this.prisma.matchSquadPlayer.findMany({
+        where: {
+          squad: {
+            match: {
+              isDeleted: false,
+              tournament: { ballType: BallType.Leather, isDeleted: false },
+            },
+          },
+          user: {
+            ...selectableUserWhere,
+            center: { provinceId },
+          },
+        },
+        select: { userId: true },
+        distinct: ['userId'],
+      }),
+    ]);
+
+    return [
+      ...new Set([
+        ...registrationRows.map((row) => row.userId),
+        ...squadRows.map((row) => row.userId),
+      ]),
+    ];
   }
 
   private async loadUnrosteredRegistrationRows(tournamentId: string) {
@@ -1294,6 +1436,165 @@ export class TeamsService {
       fieldingRating: row.fieldingRating,
     }));
     return this.mediaUrls.resolveProfilePhotoUrls(mapped);
+  }
+
+  /** Assignees must be in the type-specific Cap/VC/Manager audience and selectable.
+   * When `teamId` is set, players already active on that team are allowed (just set role).
+   */
+  private async assertEligibleForTeamRole(
+    tournament: {
+      id: string;
+      ballType: string;
+      provinceId: string | null;
+    },
+    userIds: string[],
+    options: { teamId?: string } = {},
+  ): Promise<void> {
+    if (userIds.length === 0) {
+      return;
+    }
+
+    const uniqueIds = [...new Set(userIds)];
+    const [audienceUserIds, selectableUsers, teamMemberships] = await Promise.all([
+      this.loadTeamRoleAudienceUserIds(tournament),
+      this.prisma.user.findMany({
+        where: { id: { in: uniqueIds }, ...selectableUserWhere },
+        select: { id: true },
+      }),
+      options.teamId
+        ? this.prisma.teamMembership.findMany({
+            where: {
+              tournamentId: tournament.id,
+              teamId: options.teamId,
+              userId: { in: uniqueIds },
+              ...activeTeamMembershipWhere,
+            },
+            select: { userId: true },
+          })
+        : Promise.resolve([] as Array<{ userId: string }>),
+    ]);
+    const audienceSet = new Set(audienceUserIds);
+    const selectableIds = new Set(selectableUsers.map((row) => row.id));
+    const onThisTeam = new Set(teamMemberships.map((row) => row.userId));
+
+    for (const userId of uniqueIds) {
+      if (!selectableIds.has(userId)) {
+        throw new BadRequestException({
+          message: 'One or more selected players are inactive or unavailable',
+          error: 'USER_NOT_SELECTABLE',
+        });
+      }
+      if (!audienceSet.has(userId) && !onThisTeam.has(userId)) {
+        throw new BadRequestException({
+          message: 'Selected players are not eligible for a team leadership role in this tournament',
+          error: 'NOT_ELIGIBLE_FOR_TEAM_ROLE',
+        });
+      }
+    }
+  }
+
+  private async assertNotRosteredInTournament(
+    tournamentId: string,
+    userIds: string[],
+  ): Promise<void> {
+    if (userIds.length === 0) {
+      return;
+    }
+    const memberships = await this.prisma.teamMembership.findMany({
+      where: {
+        tournamentId,
+        userId: { in: userIds },
+        team: activeTeamWhere,
+        ...activeTeamMembershipWhere,
+      },
+      select: { userId: true },
+    });
+    if (memberships.length > 0) {
+      throw new BadRequestException({
+        message: 'Selected players are already assigned to another team in this tournament',
+        error: 'ALREADY_ROSTERED',
+      });
+    }
+  }
+
+  /**
+   * Upsert TeamMembership onto `teamId`. Rejects when the user is already active
+   * on a different team in this tournament. No-op when already on this team.
+   */
+  private async ensureUsersRosteredOnTeam(
+    tx: Prisma.TransactionClient,
+    tournament: { id: string; ballType: string },
+    teamId: string,
+    userIds: string[],
+  ): Promise<void> {
+    if (userIds.length === 0) {
+      return;
+    }
+
+    const tournamentId = tournament.id;
+    const uniqueIds = [...new Set(userIds)];
+    const memberships = await tx.teamMembership.findMany({
+      where: {
+        tournamentId,
+        userId: { in: uniqueIds },
+        team: activeTeamWhere,
+        ...activeTeamMembershipWhere,
+      },
+      select: { userId: true, teamId: true },
+    });
+
+    for (const membership of memberships) {
+      if (membership.teamId !== teamId) {
+        throw new BadRequestException({
+          message: 'Selected players are already assigned to another team in this tournament',
+          error: 'ALREADY_ROSTERED',
+        });
+      }
+    }
+
+    const alreadyOnTeam = new Set(
+      memberships.filter((row) => row.teamId === teamId).map((row) => row.userId),
+    );
+    const toRoster = uniqueIds.filter((id) => !alreadyOnTeam.has(id));
+    if (toRoster.length === 0) {
+      return;
+    }
+
+    const registrations = await tx.registration.findMany({
+      where: {
+        tournamentId,
+        userId: { in: toRoster },
+        status: RegistrationStatus.Confirmed,
+      },
+      select: { userId: true, playerType: true },
+    });
+    const registrationByUser = new Map(registrations.map((row) => [row.userId, row]));
+
+    for (const userId of toRoster) {
+      const registration = registrationByUser.get(userId);
+      await tx.teamMembership.upsert({
+        where: { tournamentId_userId: { tournamentId, userId } },
+        create: {
+          tournamentId,
+          teamId,
+          userId,
+          playerCategory: this.registrationToPlayerCategory(
+            registration?.playerType ?? null,
+            tournament.ballType as BallType,
+          ),
+        },
+        update: {
+          teamId,
+          playerCategory: this.registrationToPlayerCategory(
+            registration?.playerType ?? null,
+            tournament.ballType as BallType,
+          ),
+          isDeleted: false,
+          deletedAt: null,
+          deletedByUserId: null,
+        },
+      });
+    }
   }
 
   private async assertRegisteredAndUnrostered(

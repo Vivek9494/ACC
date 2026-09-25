@@ -308,6 +308,102 @@ describe('PermissionService', () => {
     });
   });
 
+  describe('check() — Cap/VC/Manager never seed from global User.role', () => {
+    const globalCaptain: AuthUser = {
+      id: 'legacy-cap-1',
+      firstName: 'Legacy',
+      lastName: 'Captain',
+      mobileNumber: '+15555550088',
+      email: 'legacy-cap@acc.local',
+      centerId: 'center-A',
+      jerseyNumber: 1,
+      profilePhotoUrl: null,
+      role: UserRole.Captain,
+      isActive: true,
+    };
+
+    it('denies global Captain with no RoleAssignment (no leaked Cap grants)', async () => {
+      prisma.tournament.findUnique.mockResolvedValue({
+        type: TournamentType.APL,
+        createdByUserId: 'other',
+        isDeleted: false,
+        centerLinks: [],
+      });
+      prisma.roleAssignment.findMany.mockResolvedValue([]);
+
+      const allowed = await service.check(
+        Permission.VIEW_VERIFIED_REGISTERED_PLAYERS,
+        globalCaptain,
+        { tournamentId: 'tour-1' },
+      );
+
+      expect(allowed).toBe(false);
+    });
+
+    it('allows Cap powers when RoleAssignment exists even if User.role is Captain', async () => {
+      prisma.tournament.findUnique.mockResolvedValue({
+        type: TournamentType.APL,
+        createdByUserId: 'other',
+        isDeleted: false,
+        centerLinks: [],
+      });
+      prisma.roleAssignment.findMany.mockResolvedValue([
+        {
+          role: UserRole.Captain,
+          tournamentId: 'tour-1',
+          teamId: 'team-1',
+          centerId: null,
+        },
+      ]);
+
+      const verifiedList = await service.check(
+        Permission.VIEW_VERIFIED_REGISTERED_PLAYERS,
+        globalCaptain,
+        { tournamentId: 'tour-1' },
+      );
+      const favourite = await service.check(Permission.FAVOURITE_PLAYERS, globalCaptain, {
+        tournamentId: 'tour-1',
+      });
+
+      expect(verifiedList).toBe(true);
+      expect(favourite).toBe(true);
+    });
+
+    it('still seeds Admin / Club Manager / Player from global User.role', async () => {
+      prisma.tournament.findUnique.mockResolvedValue({
+        type: TournamentType.APL,
+        createdByUserId: 'other',
+        isDeleted: false,
+        centerLinks: [],
+      });
+      prisma.roleAssignment.findMany.mockResolvedValue([]);
+
+      const admin: AuthUser = { ...globalCaptain, id: 'admin-1', role: UserRole.Admin };
+      const clubManager: AuthUser = {
+        ...globalCaptain,
+        id: 'cm-1',
+        role: UserRole.ClubManager,
+      };
+      const player: AuthUser = { ...globalCaptain, id: 'player-1', role: UserRole.Player };
+
+      await expect(
+        service.check(Permission.VIEW_VERIFIED_REGISTERED_PLAYERS, admin, {
+          tournamentId: 'tour-1',
+        }),
+      ).resolves.toBe(true);
+      await expect(
+        service.check(Permission.VIEW_VERIFIED_REGISTERED_PLAYERS, clubManager, {
+          tournamentId: 'tour-1',
+        }),
+      ).resolves.toBe(true);
+      await expect(
+        service.check(Permission.VIEW_VERIFIED_REGISTERED_PLAYERS, player, {
+          tournamentId: 'tour-1',
+        }),
+      ).resolves.toBe(false);
+    });
+  });
+
   describe('check() — VOTE_AVAILABILITY_POLL (rostered Player OwnTeam)', () => {
     const rosteredPlayer: AuthUser = {
       id: 'player-1',

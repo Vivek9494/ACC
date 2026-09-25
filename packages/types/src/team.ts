@@ -106,17 +106,24 @@ export interface AssignTeamRolesResponse {
   managerUserId: string | null;
 }
 
-/** Registered player eligible for Captain / VC / Manager on a new team (not rostered elsewhere). */
+/**
+ * Player eligible for Captain / VC / Manager — type-specific audience
+ * (tennis: tournament centers; leather: prior leather participants in province).
+ * Unrostered in this tournament (already-rostered players are excluded from candidates).
+ */
 export interface TeamRoleCandidate {
   userId: string;
   firstName: string;
   lastName: string;
+  centerId: string | null;
   centerName: string;
 }
 
 export interface TeamRoleCandidatesView {
   candidates: TeamRoleCandidate[];
-  /** Confirmed registrants with selectable (active, non-deleted) accounts. */
+  /** Centers available for the center-filter dropdown on Cap/VC/Manager pickers. */
+  centers: { id: string; name: string }[];
+  /** Total type-audience size (before search/center filters; includes rostered). */
   confirmedRegistrantCount: number;
   /** Distinct players on an active team in this tournament (excluded from candidates). */
   rosteredCount: number;

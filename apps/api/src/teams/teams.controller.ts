@@ -20,6 +20,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -65,8 +66,10 @@ export class TeamsController {
   listRoleCandidates(
     @CurrentUser() user: AuthUser,
     @Param('tournamentId') tournamentId: string,
+    @Query('search') search?: string,
+    @Query('centerId') centerId?: string,
   ): Promise<TeamRoleCandidatesView> {
-    return this.teams.listRoleCandidates(user, tournamentId);
+    return this.teams.listRoleCandidates(user, tournamentId, { search, centerId });
   }
 
   @Get('tournaments/:tournamentId/teams/:teamId')

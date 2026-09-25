@@ -1,4 +1,5 @@
 import {
+  ADMIN_PLATFORM_ROLES,
   type AuthUser,
   canOrganizeTournament,
   type GrantSubject,
@@ -34,6 +35,11 @@ export interface PermissionRefs {
 }
 
 const SUSPENDED_STATUSES = ['PENDING', 'CARRIED_FORWARD'] as const;
+
+/** Cap/VC/Manager are tournament-scoped — never seeded from global User.role. */
+function isGlobalPlatformRole(role: UserRole): boolean {
+  return (ADMIN_PLATFORM_ROLES as readonly UserRole[]).includes(role);
+}
 
 /**
  * Evaluates the RBAC matrix (`@acc/types`) for a given action. `evaluate` is a
@@ -171,9 +177,13 @@ export class PermissionService {
       }
     }
 
-    // Effective subjects: the global role, plus scoped role assignments that
-    // match this tournament/center context, plus the per-match Scorer grant.
-    const subjects = new Set<GrantSubject>([actor.role]);
+    // Effective subjects: legit global platform roles only (Admin / CM / Sevak /
+    // Player), plus tournament/center RoleAssignments, plus per-match Scorer.
+    // Cap/VC/Manager never enter subjects from User.role — only via RoleAssignment.
+    const subjects = new Set<GrantSubject>();
+    if (isGlobalPlatformRole(actor.role)) {
+      subjects.add(actor.role);
+    }
     const captainTeamIds = new Set<string>();
     const sevakCenterIds = new Set<string>();
 

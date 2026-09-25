@@ -270,9 +270,11 @@ export default function EditTeamScreen(): React.ReactElement {
               tournamentId={tournamentId!}
               teamId={teamId!}
               detail={teamDetail}
-              onUpdated={(patch) =>
-                setTeamDetail((current) => (current ? { ...current, ...patch } : current))
-              }
+              onUpdated={() => {
+                void getTeamDetail(tournamentId!, teamId!).then(setTeamDetail).catch(() => {
+                  // Role assign succeeded; detail refresh is best-effort.
+                });
+              }}
             />
           ) : null}
 

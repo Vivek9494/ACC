@@ -1348,10 +1348,21 @@ export function createTeam(tournamentId: string, body: CreateTeamRequest): Promi
   return apiFetch<TeamSummary>(`/tournaments/${tournamentId}/teams`, { method: 'POST', body });
 }
 
-/** Confirmed registrants not yet on a team — for Captain / VC / Manager at team create. */
-export function listTeamRoleCandidates(tournamentId: string): Promise<TeamRoleCandidatesView> {
+/** Type-audience Cap / VC / Manager candidates — optional search + center filters. */
+export function listTeamRoleCandidates(
+  tournamentId: string,
+  params?: { search?: string; centerId?: string },
+): Promise<TeamRoleCandidatesView> {
+  const qs = new URLSearchParams();
+  if (params?.search?.trim()) {
+    qs.set('search', params.search.trim());
+  }
+  if (params?.centerId) {
+    qs.set('centerId', params.centerId);
+  }
+  const query = qs.toString();
   return apiFetch<TeamRoleCandidatesView>(
-    `/tournaments/${tournamentId}/teams/role-candidates`,
+    `/tournaments/${tournamentId}/teams/role-candidates${query ? `?${query}` : ''}`,
   );
 }
 
