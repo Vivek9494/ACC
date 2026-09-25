@@ -42,8 +42,6 @@ export interface InningsScorecardViewProps {
   card: ScorecardResponse;
   innings: InningsScorecard;
   nameOf: NameResolver;
-  teamNameOf: NameResolver;
-  teamLogoUrl?: string | null;
   droppedCatchSlot?: React.ReactNode;
   manOfMatchSlot?: React.ReactNode;
 }
@@ -442,12 +440,10 @@ function BattingTable({
   card,
   innings,
   nameOf,
-  teamName,
 }: {
   card: ScorecardResponse;
   innings: InningsScorecard;
   nameOf: NameResolver;
-  teamName: string;
 }): React.ReactElement {
   const isLive = !innings.closed;
   const extrasParts = extrasBreakdownParts(innings.extras);
@@ -458,7 +454,7 @@ function BattingTable({
     highlight ? INNINGS_SCORECARD_TABLE_TYPE.statActive : INNINGS_SCORECARD_TABLE_TYPE.stat;
 
   return (
-    <SectionCard title={`${teamName} innings scorecard`}>
+    <SectionCard>
       <Text className="font-sans-bold text-base text-on-surface">Batting</Text>
 
       <View className="flex-row items-end justify-between border-b border-outline-variant pb-2 pt-1">
@@ -710,16 +706,12 @@ export function InningsScorecardView({
   card,
   innings,
   nameOf,
-  teamNameOf,
-  teamLogoUrl,
   droppedCatchSlot,
   manOfMatchSlot,
 }: InningsScorecardViewProps): React.ReactElement {
-  const { battingTeamName } = inningsTeamMeta(card, innings, teamNameOf, teamLogoUrl);
-
   return (
     <View className="gap-4">
-      <BattingTable card={card} innings={innings} nameOf={nameOf} teamName={battingTeamName} />
+      <BattingTable card={card} innings={innings} nameOf={nameOf} />
       {manOfMatchSlot}
       <BowlingTable innings={innings} nameOf={nameOf} />
       {droppedCatchSlot}

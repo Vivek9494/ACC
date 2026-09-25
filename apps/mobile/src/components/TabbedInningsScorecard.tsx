@@ -94,7 +94,6 @@ export function TabbedInningsScorecard({
           card={card}
           innings={selectedInnings}
           nameOf={nameOf}
-          teamNameOf={teamNameOf}
           manOfMatchSlot={showManOfMatchOnTab ? manOfMatchSlot : null}
           droppedCatchSlot={
             <DroppedCatchCardSection

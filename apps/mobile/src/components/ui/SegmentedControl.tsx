@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { Text } from './Text';
@@ -10,6 +11,8 @@ import {
 export interface SegmentedControlOption<T extends string> {
   value: T;
   label: string;
+  /** When set with {@link SegmentedControlProps.iconOnly}, replaces the text label. */
+  icon?: ReactNode;
 }
 
 export interface SegmentedControlProps<T extends string> {
@@ -19,6 +22,8 @@ export interface SegmentedControlProps<T extends string> {
   accessibilityLabel?: string;
   /** `sm` fits header rows; `md` for wider layouts. */
   size?: 'sm' | 'md';
+  /** Render option icons instead of text labels (labels remain a11y names). */
+  iconOnly?: boolean;
 }
 
 /**
@@ -31,8 +36,15 @@ export function SegmentedControl<T extends string>({
   onChange,
   accessibilityLabel,
   size = 'sm',
+  iconOnly = false,
 }: SegmentedControlProps<T>): React.ReactElement {
-  const sizePadding = size === 'sm' ? 'px-2.5 py-1.5' : 'px-4 py-2';
+  const sizePadding = iconOnly
+    ? size === 'sm'
+      ? 'px-2 py-1.5'
+      : 'px-3 py-2'
+    : size === 'sm'
+      ? 'px-2.5 py-1.5'
+      : 'px-4 py-2';
   /** sm → caption floor; md → secondary (tab chrome). */
   const labelSize = size === 'sm' ? 'text-caption' : 'text-sm';
   const segmentFlexClass = size === 'sm' ? 'shrink' : 'min-w-0 flex-1';
@@ -50,19 +62,24 @@ export function SegmentedControl<T extends string>({
             key={option.value}
             onPress={() => onChange(option.value)}
             accessibilityRole="tab"
+            accessibilityLabel={option.label}
             accessibilityState={{ selected }}
             className={`${PILL_TAB_CHIP_SHAPE_CLASS} ${sizePadding} ${segmentFlexClass} ${
               selected ? PILL_TAB_CHIP_ACTIVE_CLASS : PILL_TAB_CHIP_INACTIVE_CLASS
             }`}
           >
-            <Text
-              numberOfLines={1}
-              className={`text-center font-sans-semibold ${labelSize} ${
-                selected ? 'text-on-primary' : 'text-on-surface'
-              }`}
-            >
-              {option.label}
-            </Text>
+            {iconOnly && option.icon ? (
+              option.icon
+            ) : (
+              <Text
+                numberOfLines={1}
+                className={`text-center font-sans-semibold ${labelSize} ${
+                  selected ? 'text-on-primary' : 'text-on-surface'
+                }`}
+              >
+                {option.label}
+              </Text>
+            )}
           </Pressable>
         );
       })}
