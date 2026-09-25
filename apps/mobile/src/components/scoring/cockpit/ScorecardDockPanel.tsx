@@ -6,42 +6,50 @@ import {
   extrasBreakdownParts,
   groupTimelineByOver,
   wicketOrdinal,
+  MatchSquadRole,
   type BatterCard,
   type BowlerCard,
   type CompletedPartnership,
   type FallOfWicket,
   type InningsScorecard,
+  type MatchDetail,
   type ScorecardResponse,
+  type SquadCandidate,
   type SquadPlayerView,
+  type SquadView,
   type TimelineEntry,
   DeliveryType,
 } from '@acc/types';
 import { Pressable, View } from 'react-native';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { TextStyle, ViewStyle } from 'react-native';
 
+import { getSquadCandidates } from '../../../lib/api';
 import { Text } from '../../ui/Text';
 import { colors } from '../../../theme/colors';
 import { TYPE } from '../../../theme/typography';
 import { recentBallChipStyle } from '../liveScoringKeypadTokens';
 import { CockpitPanel } from './CockpitPanel';
 
-type ScorecardDockTab = 'scorecard' | 'partnerships' | 'overs' | 'fow';
+type ScorecardDockTab = 'scorecard' | 'partnerships' | 'overs' | 'fow' | 'squads';
 
 const TABS: { id: ScorecardDockTab; label: string }[] = [
   { id: 'scorecard', label: 'Scorecard' },
   { id: 'partnerships', label: 'Partnerships' },
   { id: 'overs', label: 'Over by Over' },
   { id: 'fow', label: 'Fall of Wickets' },
+  { id: 'squads', label: 'Squads' },
 ];
 
 /** Fixed numeric columns — SR must fit "285.71" without wrapping. */
+const STAT_COL_GAP = 6;
 const COL_R = 36;
 const COL_B = 36;
 const COL_4S = 36;
 const COL_6S = 36;
 const COL_SR = 56;
-const STATS_WIDTH = COL_R + COL_B + COL_4S + COL_6S + COL_SR;
+const STATS_WIDTH =
+  COL_R + COL_B + COL_4S + COL_6S + COL_SR + STAT_COL_GAP * 4;
 
 const HEADER_ROW: ViewStyle = {
   flexDirection: 'row',
@@ -93,12 +101,19 @@ const SR_VALUE: TextStyle = {
 const BOWL_O = 40;
 const BOWL_M = 32;
 const BOWL_R = 36;
-const BOWL_W = 32;
-const BOWL_ECO = 48;
+const BOWL_W = 36;
+const BOWL_ECO = 52;
 const BOWL_WD = 32;
 const BOWL_NB = 32;
 const BOWL_STATS_WIDTH =
-  BOWL_O + BOWL_M + BOWL_R + BOWL_W + BOWL_ECO + BOWL_WD + BOWL_NB;
+  BOWL_O +
+  BOWL_M +
+  BOWL_R +
+  BOWL_W +
+  BOWL_ECO +
+  BOWL_WD +
+  BOWL_NB +
+  STAT_COL_GAP * 6;
 
 const SECTION_TITLE: ViewStyle = {
   paddingHorizontal: 8,
@@ -524,27 +539,257 @@ function StatCell({
   );
 }
 
+function playerDisplayName(player: Pick<SquadPlayerView, 'firstName' | 'lastName'>): string {
+  return `${player.firstName} ${player.lastName}`.trim() || 'Player';
+}
+
+function sortSquadPlayers(players: SquadPlayerView[]): SquadPlayerView[] {
+  return players
+    .slice()
+    .sort(
+      (a, b) =>
+        (a.battingOrder ?? 999) - (b.battingOrder ?? 999) || a.userId.localeCompare(b.userId),
+    );
+}
+
+function playingXiFromMatchSquad(players: SquadPlayerView[]): SquadPlayerView[] {
+  return sortSquadPlayers(players.filter((p) => p.role === MatchSquadRole.PlayingXi));
+}
+
+/** Full team roster minus Playing XI (by userId) — not match-day subs alone. */
+function benchFromRoster(
+  roster: SquadCandidate[],
+  xiUserIds: ReadonlySet<string>,
+): SquadPlayerView[] {
+  return roster
+    .filter((candidate) => !xiUserIds.has(candidate.userId))
+    .map((candidate) => ({
+      userId: candidate.userId,
+      firstName: candidate.firstName,
+      lastName: candidate.lastName,
+      role: MatchSquadRole.Substitute,
+      isActiveImpact: false,
+      battingOrder: null,
+      playerRole: null,
+      isCaptain: false,
+      isWicketKeeper: false,
+    }))
+    .sort(
+      (a, b) =>
+        a.lastName.localeCompare(b.lastName) ||
+        a.firstName.localeCompare(b.firstName) ||
+        a.userId.localeCompare(b.userId),
+    );
+}
+
+interface SquadColumnModel {
+  key: string;
+  teamId: string | null;
+  teamName: string;
+  xi: SquadPlayerView[];
+  /** Null until roster fetch completes for system teams. */
+  bench: SquadPlayerView[] | null;
+  isExternal: boolean;
+}
+
+function buildSquadColumnShells(match: MatchDetail): SquadColumnModel[] {
+  const columns: SquadColumnModel[] = match.squads.map((squad: SquadView) => ({
+    key: squad.teamId,
+    teamId: squad.teamId,
+    teamName: squad.teamName,
+    xi: playingXiFromMatchSquad(squad.players),
+    bench: null,
+    isExternal: false,
+  }));
+
+  if (
+    match.externalOpponentName &&
+    match.externalPlayers.length > 0 &&
+    !columns.some((c) => c.teamName === match.externalOpponentName)
+  ) {
+    const xi = match.externalPlayers
+      .slice()
+      .sort((a, b) => a.slot - b.slot)
+      .map((player) => ({
+        userId: player.id,
+        firstName: player.name,
+        lastName: '',
+        role: MatchSquadRole.PlayingXi,
+        isActiveImpact: false,
+        battingOrder: player.slot,
+        playerRole: null,
+        isCaptain: false,
+        isWicketKeeper: false,
+      }));
+    columns.push({
+      key: 'external',
+      teamId: null,
+      teamName: match.externalOpponentName,
+      xi,
+      bench: [],
+      isExternal: true,
+    });
+  }
+
+  return columns;
+}
+
+function SquadPlayerList({
+  title,
+  players,
+  emptyLabel,
+  loading,
+}: {
+  title: string;
+  players: SquadPlayerView[] | null;
+  emptyLabel: string;
+  loading?: boolean;
+}): React.ReactElement {
+  return (
+    <View className="gap-1">
+      <Text className="font-sans-semibold text-caption uppercase tracking-wide text-on-surface-variant">
+        {title}
+      </Text>
+      {loading || players === null ? (
+        <Text className="font-sans text-caption text-on-surface-variant">Loading…</Text>
+      ) : players.length === 0 ? (
+        <Text className="font-sans text-caption text-on-surface-variant">{emptyLabel}</Text>
+      ) : (
+        players.map((player, index) => (
+          <Text
+            key={player.userId}
+            className="font-sans text-caption text-on-surface"
+            numberOfLines={1}
+          >
+            {index + 1}. {playerDisplayName(player)}
+            {player.isCaptain ? ' (c)' : ''}
+            {player.isWicketKeeper ? ' †' : ''}
+            {player.isActiveImpact ? ' (IP)' : ''}
+          </Text>
+        ))
+      )}
+    </View>
+  );
+}
+
+function SquadsTabPanel({ match }: { match: MatchDetail }): React.ReactElement {
+  const shells = useMemo(() => buildSquadColumnShells(match), [match]);
+  const [benchByTeamId, setBenchByTeamId] = useState<Record<string, SquadPlayerView[]>>({});
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    const systemTeams = shells.filter((c) => c.teamId != null);
+
+    if (systemTeams.length === 0) {
+      setBenchByTeamId({});
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    void (async () => {
+      const entries = await Promise.all(
+        systemTeams.map(async (column) => {
+          const teamId = column.teamId as string;
+          try {
+            const roster = await getSquadCandidates(match.id, teamId);
+            const xiIds = new Set(column.xi.map((p) => p.userId));
+            return [teamId, benchFromRoster(roster, xiIds)] as const;
+          } catch {
+            return [teamId, [] as SquadPlayerView[]] as const;
+          }
+        }),
+      );
+      if (cancelled) {
+        return;
+      }
+      const next: Record<string, SquadPlayerView[]> = {};
+      for (const [teamId, bench] of entries) {
+        next[teamId] = bench;
+      }
+      setBenchByTeamId(next);
+      setLoading(false);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [match.id, shells]);
+
+  const columns = useMemo(
+    () =>
+      shells.map((column) => ({
+        ...column,
+        bench: column.isExternal
+          ? (column.bench ?? [])
+          : column.teamId
+            ? (benchByTeamId[column.teamId] ?? null)
+            : [],
+      })),
+    [benchByTeamId, shells],
+  );
+
+  if (columns.length === 0) {
+    return (
+      <Text className="py-6 text-center font-sans text-xs text-on-surface-variant">
+        No squads locked yet
+      </Text>
+    );
+  }
+
+  return (
+    <View className="flex-row gap-3 p-2">
+      {columns.map((column) => (
+        <View
+          key={column.key}
+          className="min-w-0 flex-1 gap-3 rounded-control border border-outline-variant bg-surface p-2.5"
+        >
+          <Text className="font-sans-bold text-caption uppercase text-on-surface" numberOfLines={1}>
+            {column.teamName}
+          </Text>
+          <SquadPlayerList title="Playing XI" players={column.xi} emptyLabel="No Playing XI" />
+          <SquadPlayerList
+            title="On Bench"
+            players={column.bench}
+            emptyLabel="None"
+            loading={!column.isExternal && loading && column.bench === null}
+          />
+        </View>
+      ))}
+    </View>
+  );
+}
+
 export function ScorecardDockPanel({
+  match,
   card,
   innings,
   battingXi,
   nameOf,
 }: {
-  card: ScorecardResponse;
-  innings: InningsScorecard;
+  match: MatchDetail;
+  card: ScorecardResponse | null;
+  innings: InningsScorecard | null;
   battingXi: SquadPlayerView[];
   nameOf: (id: string | null) => string;
 }): React.ReactElement {
-  const [tab, setTab] = useState<ScorecardDockTab>('scorecard');
+  const [tab, setTab] = useState<ScorecardDockTab>(innings ? 'scorecard' : 'squads');
   const battingRows = useMemo(
-    () => buildBattingRows(innings, battingXi),
+    () => (innings ? buildBattingRows(innings, battingXi) : []),
     [battingXi, innings],
   );
-  const bowlingRows = useMemo(() => bowlersWhoHaveBowled(innings), [innings]);
-  const partnershipTabRows = useMemo(() => partnershipDisplayRows(innings), [innings]);
-  const waitingLabel = innings.closed ? 'did not bat' : 'yet to bat';
-  const isLiveInnings = !innings.closed;
-  const extrasParts = extrasBreakdownParts(innings.extras);
+  const bowlingRows = useMemo(
+    () => (innings ? bowlersWhoHaveBowled(innings) : []),
+    [innings],
+  );
+  const partnershipTabRows = useMemo(
+    () => (innings ? partnershipDisplayRows(innings) : []),
+    [innings],
+  );
+  const waitingLabel = innings?.closed ? 'did not bat' : 'yet to bat';
+  const isLiveInnings = Boolean(innings && !innings.closed);
+  const extrasParts = innings ? extrasBreakdownParts(innings.extras) : [];
   const extrasDetail =
     extrasParts.length > 0
       ? extrasParts.join(' ').replace(/w /g, 'w').replace(/b /g, 'b')
@@ -585,7 +830,15 @@ export function ScorecardDockPanel({
             paddingBottom: 12,
           }}
         >
-          {tab === 'scorecard' ? (
+          {tab === 'squads' ? <SquadsTabPanel match={match} /> : null}
+
+          {tab === 'scorecard' && !innings ? (
+            <Text className="py-6 text-center font-sans text-xs text-on-surface-variant">
+              Scorecard available after toss
+            </Text>
+          ) : null}
+
+          {tab === 'scorecard' && innings ? (
             <View style={{ minWidth: Math.max(STATS_WIDTH + 280, 0) }}>
               <View style={HEADER_ROW}>
                 <Text className="min-w-0 flex-1 font-sans-semibold text-caption uppercase text-on-surface-variant">
@@ -594,7 +847,14 @@ export function ScorecardDockPanel({
                 <Text className="min-w-0 flex-1 font-sans-semibold text-caption uppercase text-on-surface-variant">
                   How Out
                 </Text>
-                <View style={{ width: STATS_WIDTH, flexDirection: 'row', flexShrink: 0 }}>
+                <View
+                  style={{
+                    width: STATS_WIDTH,
+                    flexDirection: 'row',
+                    flexShrink: 0,
+                    columnGap: STAT_COL_GAP,
+                  }}
+                >
                   <StatHeaderCell label="R" width={COL_R} />
                   <StatHeaderCell label="B" width={COL_B} />
                   <StatHeaderCell label="4s" width={COL_4S} />
@@ -619,7 +879,14 @@ export function ScorecardDockPanel({
                       >
                         {waitingLabel}
                       </Text>
-                      <View style={{ width: STATS_WIDTH, flexDirection: 'row', flexShrink: 0 }}>
+                      <View
+                        style={{
+                          width: STATS_WIDTH,
+                          flexDirection: 'row',
+                          flexShrink: 0,
+                          columnGap: STAT_COL_GAP,
+                        }}
+                      >
                         <StatCell value="–" width={COL_R} blank />
                         <StatCell value="–" width={COL_B} blank />
                         <StatCell value="–" width={COL_4S} blank />
@@ -657,7 +924,14 @@ export function ScorecardDockPanel({
                         ? formatDismissalShort(batter, nameOf)
                         : formatBatterStatus(batter, nameOf)}
                     </Text>
-                    <View style={{ width: STATS_WIDTH, flexDirection: 'row', flexShrink: 0 }}>
+                    <View
+                      style={{
+                        width: STATS_WIDTH,
+                        flexDirection: 'row',
+                        flexShrink: 0,
+                        columnGap: STAT_COL_GAP,
+                      }}
+                    >
                       <StatCell value={String(batter.runs)} width={COL_R} />
                       <StatCell value={String(batter.balls)} width={COL_B} />
                       <StatCell value={String(batter.fours)} width={COL_4S} />
@@ -705,7 +979,14 @@ export function ScorecardDockPanel({
                 <Text className="min-w-0 flex-1 font-sans-semibold text-caption uppercase text-on-surface-variant">
                   Bowler
                 </Text>
-                <View style={{ width: BOWL_STATS_WIDTH, flexDirection: 'row', flexShrink: 0 }}>
+                <View
+                  style={{
+                    width: BOWL_STATS_WIDTH,
+                    flexDirection: 'row',
+                    flexShrink: 0,
+                    columnGap: STAT_COL_GAP,
+                  }}
+                >
                   <StatHeaderCell label="O" width={BOWL_O} />
                   <StatHeaderCell label="M" width={BOWL_M} />
                   <StatHeaderCell label="R" width={BOWL_R} />
@@ -737,7 +1018,12 @@ export function ScorecardDockPanel({
                         {current ? ' *' : ''}
                       </Text>
                       <View
-                        style={{ width: BOWL_STATS_WIDTH, flexDirection: 'row', flexShrink: 0 }}
+                        style={{
+                          width: BOWL_STATS_WIDTH,
+                          flexDirection: 'row',
+                          flexShrink: 0,
+                          columnGap: STAT_COL_GAP,
+                        }}
                       >
                         <StatCell value={bowler.oversText} width={BOWL_O} nowrap />
                         <StatCell value={String(bowler.maidens)} width={BOWL_M} />
@@ -756,7 +1042,7 @@ export function ScorecardDockPanel({
                 })
               )}
 
-              {card.result.note ? (
+              {card?.result.note ? (
                 <Text className="px-2 pt-2 font-sans text-caption text-on-surface-variant">
                   {card.result.note}
                 </Text>
@@ -764,7 +1050,13 @@ export function ScorecardDockPanel({
             </View>
           ) : null}
 
-          {tab === 'partnerships' ? (
+          {tab === 'partnerships' && !innings ? (
+            <Text className="py-6 text-center font-sans text-xs text-on-surface-variant">
+              Partnerships available after toss
+            </Text>
+          ) : null}
+
+          {tab === 'partnerships' && innings ? (
             <View className="w-full px-2 pt-2">
               {partnershipTabRows.length === 0 ? (
                 <Text className="py-6 text-center font-sans text-xs text-on-surface-variant">
@@ -788,7 +1080,13 @@ export function ScorecardDockPanel({
             </View>
           ) : null}
 
-          {tab === 'overs' ? (
+          {tab === 'overs' && !innings ? (
+            <Text className="py-6 text-center font-sans text-xs text-on-surface-variant">
+              Overs available after toss
+            </Text>
+          ) : null}
+
+          {tab === 'overs' && innings ? (
             <View className="px-2 pt-2">
               {groupTimelineByOver(innings.timeline).map((over) => (
                 <View key={over.overNumber} className="flex-row items-center gap-2 py-1">
@@ -804,7 +1102,13 @@ export function ScorecardDockPanel({
             </View>
           ) : null}
 
-          {tab === 'fow' ? (
+          {tab === 'fow' && !innings ? (
+            <Text className="py-6 text-center font-sans text-xs text-on-surface-variant">
+              Fall of wickets available after toss
+            </Text>
+          ) : null}
+
+          {tab === 'fow' && innings ? (
             <View>
               {innings.fallOfWickets.length === 0 ? (
                 <Text className="py-6 text-center font-sans text-xs text-on-surface-variant">

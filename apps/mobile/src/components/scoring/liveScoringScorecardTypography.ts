@@ -58,8 +58,12 @@ export const SCORECARD_WICKET_EVENT_EMPHASIS = `font-sans-bold text-sm ${SCORECA
 /** Shared scorecard table layout — batting and bowling use the same row/column sizing. */
 export const SCORECARD_TABLE_LAYOUT = {
   pinnedColWidth: 128,
-  statWidth: 34,
-  rateWidth: 42,
+  /** Core single-digit cols (R/B/4s/6s, O/M/R/W). */
+  statWidth: 36,
+  /** SR / Eco — room for "227.27" / "14.00" without colliding with the previous col. */
+  rateWidth: 52,
+  /** Gap between adjacent core stat columns (px). */
+  columnGap: 6,
   headerHeight: 36,
   rowHeight: 46,
 } as const;
@@ -70,6 +74,7 @@ export interface BowlingTableMetrics {
   pinnedColWidth: number;
   scrollStatWidth: number;
   ecoWidth: number;
+  columnGap: number;
   headerHeight: number;
   rowHeight: number;
   headerLabelClass: string;
@@ -83,8 +88,9 @@ export interface BowlingTableMetrics {
 export const BOWLING_TABLE_METRICS: Record<BowlingTableDensity, BowlingTableMetrics> = {
   live: {
     pinnedColWidth: 120,
-    scrollStatWidth: 30,
-    ecoWidth: 38,
+    scrollStatWidth: 34,
+    ecoWidth: 50,
+    columnGap: SCORECARD_TABLE_LAYOUT.columnGap,
     headerHeight: 32,
     rowHeight: 36,
     headerLabelClass: 'font-sans-semibold text-xs uppercase tracking-wide text-on-surface-variant',
@@ -98,6 +104,7 @@ export const BOWLING_TABLE_METRICS: Record<BowlingTableDensity, BowlingTableMetr
     pinnedColWidth: SCORECARD_TABLE_LAYOUT.pinnedColWidth,
     scrollStatWidth: SCORECARD_TABLE_LAYOUT.statWidth,
     ecoWidth: SCORECARD_TABLE_LAYOUT.rateWidth,
+    columnGap: SCORECARD_TABLE_LAYOUT.columnGap,
     headerHeight: SCORECARD_TABLE_LAYOUT.headerHeight,
     rowHeight: SCORECARD_TABLE_LAYOUT.rowHeight,
     headerLabelClass: SCORECARD_TABLE_TYPE.pinnedHeader,
@@ -111,6 +118,7 @@ export const BOWLING_TABLE_METRICS: Record<BowlingTableDensity, BowlingTableMetr
     pinnedColWidth: SCORECARD_TABLE_LAYOUT.pinnedColWidth,
     scrollStatWidth: SCORECARD_TABLE_LAYOUT.statWidth,
     ecoWidth: SCORECARD_TABLE_LAYOUT.rateWidth,
+    columnGap: SCORECARD_TABLE_LAYOUT.columnGap,
     headerHeight: SCORECARD_TABLE_LAYOUT.headerHeight,
     rowHeight: SCORECARD_TABLE_LAYOUT.rowHeight,
     headerLabelClass: INNINGS_SCORECARD_TABLE_TYPE.columnHeader,
@@ -126,6 +134,7 @@ export interface BattingTableMetrics {
   pinnedColWidth: number;
   statWidth: number;
   srWidth: number;
+  columnGap: number;
   headerHeight: number;
   rowHeight: number;
   pinnedHeaderClass: string;
@@ -140,6 +149,7 @@ export const SCORECARD_BATTING_TABLE_METRICS: BattingTableMetrics = {
   pinnedColWidth: SCORECARD_TABLE_LAYOUT.pinnedColWidth,
   statWidth: SCORECARD_TABLE_LAYOUT.statWidth,
   srWidth: SCORECARD_TABLE_LAYOUT.rateWidth,
+  columnGap: SCORECARD_TABLE_LAYOUT.columnGap,
   headerHeight: SCORECARD_TABLE_LAYOUT.headerHeight,
   rowHeight: SCORECARD_TABLE_LAYOUT.rowHeight,
   pinnedHeaderClass: SCORECARD_TABLE_TYPE.pinnedHeader,

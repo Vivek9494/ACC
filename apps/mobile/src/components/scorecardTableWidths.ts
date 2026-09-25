@@ -3,13 +3,19 @@
 export const SCORECARD_STAT_COLS = ['R', 'B', '4s', '6s', 'SR'] as const;
 export type ScorecardStatCol = (typeof SCORECARD_STAT_COLS)[number];
 
-/** Stat column widths — SR is widest for values like "300.0". */
+/**
+ * Horizontal gap between adjacent numeric stat columns — keeps values like
+ * "2" / "227.27" and "0" / "14.00" from touching.
+ */
+export const SCORECARD_STAT_COLUMN_GAP = 6;
+
+/** Stat column widths — SR is widest for values like "227.27" / "300.00". */
 export const SCORECARD_STAT_WIDTHS: Record<ScorecardStatCol, number> = {
-  R: 24,
-  B: 24,
-  '4s': 26,
-  '6s': 26,
-  SR: 44,
+  R: 28,
+  B: 28,
+  '4s': 30,
+  '6s': 30,
+  SR: 52,
 };
 
 /** Gap between the player-name column and the stats block (`pr-3`). */
@@ -23,7 +29,9 @@ export function scorecardStatWidth(col: ScorecardStatCol): number {
 }
 
 export function scorecardBattingStatsTotalWidth(): number {
-  return SCORECARD_STAT_COLS.reduce((sum, col) => sum + scorecardStatWidth(col), 0);
+  const cols = SCORECARD_STAT_COLS.length;
+  const widths = SCORECARD_STAT_COLS.reduce((sum, col) => sum + scorecardStatWidth(col), 0);
+  return widths + SCORECARD_STAT_COLUMN_GAP * Math.max(0, cols - 1);
 }
 
 /** Player name column width so Bowling frozen column matches Batting `flex-1` name area. */

@@ -115,14 +115,14 @@ export function LiveScorecard({ state, nameOf, teamNameOf }: Props): React.React
 
       {/* Current batters */}
       <View className="rounded-xl border border-outline-variant bg-surface-container-lowest p-4">
-        <View className="flex-row pb-2">
+        <View className="flex-row items-center gap-1.5 pb-2">
           <Text className="flex-1 font-sans-medium text-caption uppercase tracking-wider text-on-surface-variant">
             Batter
           </Text>
           {['R', 'B', '4s', '6s', 'SR'].map((h) => (
             <Text
               key={h}
-              className="w-10 text-right font-sans-medium text-caption uppercase tracking-wider text-on-surface-variant"
+              className={`${h === 'SR' ? 'w-14' : 'w-9'} text-right font-sans-medium text-caption uppercase tracking-wider text-on-surface-variant`}
             >
               {h}
             </Text>
@@ -133,22 +133,22 @@ export function LiveScorecard({ state, nameOf, teamNameOf }: Props): React.React
         ) : (
           currentBatters.map(({ card, onStrike }) =>
             card ? (
-              <View key={card.playerId} className="flex-row items-center py-1">
+              <View key={card.playerId} className="flex-row items-center gap-1.5 py-1">
                 <Text className="flex-1 font-sans-semibold text-sm text-on-surface">
                   {nameOf(card.playerId)}
                   {onStrike ? ' *' : ''}
                 </Text>
-                <Text className="w-10 text-right font-sans text-sm text-on-surface">{card.runs}</Text>
-                <Text className="w-10 text-right font-sans text-sm text-on-surface-variant">
+                <Text className="w-9 text-right font-sans text-sm text-on-surface">{card.runs}</Text>
+                <Text className="w-9 text-right font-sans text-sm text-on-surface-variant">
                   {card.balls}
                 </Text>
-                <Text className="w-10 text-right font-sans text-sm text-on-surface-variant">
+                <Text className="w-9 text-right font-sans text-sm text-on-surface-variant">
                   {card.fours}
                 </Text>
-                <Text className="w-10 text-right font-sans text-sm text-on-surface-variant">
+                <Text className="w-9 text-right font-sans text-sm text-on-surface-variant">
                   {card.sixes}
                 </Text>
-                <Text className="w-10 text-right font-sans text-sm text-on-surface-variant">
+                <Text className="w-14 text-right font-sans text-sm text-on-surface-variant">
                   {fmt(card.strikeRate)}
                 </Text>
               </View>

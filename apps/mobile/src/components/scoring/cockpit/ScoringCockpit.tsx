@@ -19,6 +19,7 @@ import { Text } from '../../ui/Text';
 import { BallByBallPanel } from './BallByBallPanel';
 import { BroadcastObsPanel, hasAscObsBridge } from './BroadcastObsPanel';
 import { formatMatchFolderStamp } from './clip-storage-paths';
+import { CockpitStubSlot } from './CockpitPanel';
 import { OverlayControlPanel } from './OverlayControlPanel';
 import { OverlayScoreboardPanel } from './OverlayScoreboardPanel';
 import { ScorecardDockPanel } from './ScorecardDockPanel';
@@ -172,8 +173,9 @@ const SCORECARD_COL: ViewStyle = {
 export interface ScoringCockpitProps {
   matchId: string;
   match: MatchDetail;
-  card: ScorecardResponse;
-  innings: InningsScorecard;
+  card: ScorecardResponse | null;
+  /** Null before toss / first innings — cockpit still mounts for Record Toss + Squads. */
+  innings: InningsScorecard | null;
   user: AuthUser | null | undefined;
   nameOf: (id: string | null) => string;
   battingTeamName: string;
@@ -212,6 +214,8 @@ export interface ScoringCockpitProps {
     shotX: number | null,
     shotY: number | null,
   ) => void;
+  /** Reload after cockpit Record Toss (startScoring). */
+  onTossRecorded?: () => void | Promise<void>;
 }
 
 export function ScoringCockpit({
@@ -252,18 +256,20 @@ export function ScoringCockpit({
   onSelectBowler,
   working,
   onSetShotPlacement,
+  onTossRecorded,
 }: ScoringCockpitProps): React.ReactElement {
   const live = useLiveScore(matchId, card);
   /** Never prefer a stale socket frame over a newer REST card (or vice versa). */
   const displayCard = freshestScorecard(card, live.state) ?? card;
-  const displayInnings = displayCard.innings.at(-1) ?? innings;
+  const displayInnings = displayCard?.innings.at(-1) ?? innings;
   const toss = formatMatchTossSummaryLine(match);
   const playState = MATCH_STATE_LABELS[match.state] ?? match.state;
   const showObs = hasAscObsBridge();
   const matchFolderStamp = formatMatchFolderStamp(match);
+  const scoringReady = Boolean(displayInnings && displayCard);
 
   useScoringKeyboardShortcuts({
-    enabled: keyboardEnabled,
+    enabled: keyboardEnabled && scoringReady,
     onRuns,
     onWicket,
     onWide: () => onWide(0),
@@ -314,9 +320,10 @@ export function ScoringCockpit({
                   onUndo={onUndo}
                   working={working}
                   resultLine={resultLine}
+                  onTossRecorded={onTossRecorded}
                 />
                 <ScoringInputPanel
-                  disabled={keypadDisabled}
+                  disabled={keypadDisabled || !scoringReady}
                   onRuns={onRuns}
                   onWide={onWide}
                   onNoBall={onNoBall}
@@ -330,10 +337,14 @@ export function ScoringCockpit({
                 />
               </View>
               <View style={BALLS_COL}>
-                <BallByBallPanel innings={displayInnings} nameOf={nameOf} />
+                {displayInnings ? (
+                  <BallByBallPanel innings={displayInnings} nameOf={nameOf} />
+                ) : (
+                  <CockpitStubSlot title="Ball by Ball" note="Available after toss" />
+                )}
               </View>
               <View style={SCOREBOARD_COL}>
-                {showObs ? (
+                {showObs && displayCard ? (
                   <BroadcastObsPanel
                     matchId={matchId}
                     matchFolderStamp={matchFolderStamp}
@@ -349,24 +360,33 @@ export function ScoringCockpit({
 
             <View style={BOTTOM_BAND}>
               <View style={OVERLAY_CONTROL_COL}>
-                <OverlayControlPanel
-                  matchId={matchId}
-                  match={match}
-                  card={displayCard}
-                  innings={displayInnings}
-                  nameOf={nameOf}
-                />
+                {displayInnings && displayCard ? (
+                  <OverlayControlPanel
+                    matchId={matchId}
+                    match={match}
+                    card={displayCard}
+                    innings={displayInnings}
+                    nameOf={nameOf}
+                  />
+                ) : (
+                  <CockpitStubSlot title="Overlay Control" note="Available after toss" />
+                )}
               </View>
               <View style={WAGON_COL}>
-                <WagonWheelPanel
-                  innings={displayInnings}
-                  nameOf={nameOf}
-                  working={working}
-                  onSetShotPlacement={onSetShotPlacement}
-                />
+                {displayInnings ? (
+                  <WagonWheelPanel
+                    innings={displayInnings}
+                    nameOf={nameOf}
+                    working={working}
+                    onSetShotPlacement={onSetShotPlacement}
+                  />
+                ) : (
+                  <CockpitStubSlot title="Wagon Wheel" note="Available after toss" />
+                )}
               </View>
               <View style={SCORECARD_COL}>
                 <ScorecardDockPanel
+                  match={match}
                   card={displayCard}
                   innings={displayInnings}
                   battingXi={battingXi}

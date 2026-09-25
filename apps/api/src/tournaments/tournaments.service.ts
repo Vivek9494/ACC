@@ -499,11 +499,11 @@ export class TournamentsService {
             tournamentId: id,
           }));
         if (registrationVerificationComplete) {
-          canViewFavouritePlayers = await this.permissions.check(
-            Permission.FAVOURITE_PLAYERS,
-            viewer,
-            { tournamentId: id },
-          );
+          canViewFavouritePlayers =
+            !hideRegisteredPlayersForNonAdmin &&
+            (await this.permissions.check(Permission.FAVOURITE_PLAYERS, viewer, {
+              tournamentId: id,
+            }));
         }
       }
     }

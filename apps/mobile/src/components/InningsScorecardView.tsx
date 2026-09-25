@@ -21,6 +21,7 @@ import type { NameResolver } from './LiveScorecard';
 import {
   SCORECARD_NAME_COLUMN_GAP,
   SCORECARD_STAT_COLS,
+  SCORECARD_STAT_COLUMN_GAP,
   scorecardBattingStatsTotalWidth,
   scorecardStatWidth,
 } from './scorecardTableWidths';
@@ -113,7 +114,7 @@ function battingStatWidth(col: BattingStatCol): number {
 
 function BattingStatsHeader(): React.ReactElement {
   return (
-    <View className="shrink-0 flex-row">
+    <View className="shrink-0 flex-row" style={{ columnGap: SCORECARD_STAT_COLUMN_GAP }}>
       {BATTING_STAT_COLS.map((col) => (
         <Text
           key={col}
@@ -143,7 +144,7 @@ function BattingStatsCells({
   };
 
   return (
-    <View className="shrink-0 flex-row">
+    <View className="shrink-0 flex-row" style={{ columnGap: SCORECARD_STAT_COLUMN_GAP }}>
       {BATTING_STAT_COLS.map((col) => (
         <Text
           key={col}

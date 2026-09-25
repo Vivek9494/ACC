@@ -65,8 +65,11 @@ export interface BowlerFiguresScrollTableProps {
   density?: BowlingTableDensity;
 }
 
-function statTableWidth(columns: StatColumn[]): number {
-  return columns.reduce((sum, column) => sum + column.width, 0);
+function statTableWidth(columns: StatColumn[], columnGap: number): number {
+  if (columns.length === 0) {
+    return 0;
+  }
+  return columns.reduce((sum, column) => sum + column.width, 0) + columnGap * (columns.length - 1);
 }
 
 function BowlingPinnedSplitTable({
@@ -96,7 +99,7 @@ function BowlingPinnedSplitTable({
 
   const [statsViewportWidth, setStatsViewportWidth] = useState(0);
   const lastIndex = rows.length - 1;
-  const scrollContentWidth = statTableWidth(scrollColumns);
+  const scrollContentWidth = statTableWidth(scrollColumns, metrics.columnGap);
   const statsReady = statsViewportWidth > 0;
 
   const onStatsViewportLayout = useCallback((event: LayoutChangeEvent) => {
@@ -152,9 +155,20 @@ function BowlingPinnedSplitTable({
                   width: statsViewportWidth + scrollContentWidth,
                 }}
               >
-                <View style={{ width: statsViewportWidth }} className="flex-row">
+                <View
+                  style={{ width: statsViewportWidth, columnGap: metrics.columnGap }}
+                  className="flex-row"
+                >
                   {coreColumns.map((column) => (
-                    <View key={column.key} className="flex-1 justify-center px-0.5">
+                    <View
+                      key={column.key}
+                      className="justify-center"
+                      style={{
+                        flexGrow: column.width,
+                        flexShrink: 1,
+                        flexBasis: 0,
+                      }}
+                    >
                       <Text
                         className={`w-full text-right ${
                           column.emphasize
@@ -168,7 +182,7 @@ function BowlingPinnedSplitTable({
                   ))}
                 </View>
                 <View
-                  style={{ width: scrollContentWidth }}
+                  style={{ width: scrollContentWidth, columnGap: metrics.columnGap }}
                   className="flex-row items-center pr-1"
                 >
                   {scrollColumns.map((column) => (
@@ -192,9 +206,20 @@ function BowlingPinnedSplitTable({
                     width: statsViewportWidth + scrollContentWidth,
                   }}
                 >
-                  <View style={{ width: statsViewportWidth }} className="flex-row">
+                  <View
+                    style={{ width: statsViewportWidth, columnGap: metrics.columnGap }}
+                    className="flex-row"
+                  >
                     {coreColumns.map((column) => (
-                      <View key={column.key} className="flex-1 justify-center px-0.5">
+                      <View
+                        key={column.key}
+                        className="justify-center"
+                        style={{
+                          flexGrow: column.width,
+                          flexShrink: 1,
+                          flexBasis: 0,
+                        }}
+                      >
                         <Text
                           numberOfLines={1}
                           className={`w-full text-right ${
@@ -211,7 +236,7 @@ function BowlingPinnedSplitTable({
                     ))}
                   </View>
                   <View
-                    style={{ width: scrollContentWidth }}
+                    style={{ width: scrollContentWidth, columnGap: metrics.columnGap }}
                     className="flex-row items-center pr-1"
                   >
                     {scrollColumns.map((column) => (

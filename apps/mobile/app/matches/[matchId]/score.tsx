@@ -1532,7 +1532,7 @@ export default function LiveScoringScreen(): React.ReactElement {
     moreAction != null;
 
   const cockpitHeaderTrailing =
-    useCockpit && inn ? (
+    useCockpit && match ? (
       <CockpitSettingsHeaderButton onPress={() => setShowCockpitSettings(true)} />
     ) : undefined;
 
@@ -1555,11 +1555,11 @@ export default function LiveScoringScreen(): React.ReactElement {
         onBack={goToRoleHome}
         trailing={cockpitHeaderTrailing ?? scoringViewToggle}
       />
-      {useCockpit && inn && match && matchId ? (
+      {useCockpit && match && matchId && (inn || hasAscObsBridge()) ? (
         <ScoringCockpit
           matchId={matchId}
           match={match}
-          card={card!}
+          card={card}
           innings={inn}
           user={user}
           nameOf={nameOf}
@@ -1568,13 +1568,13 @@ export default function LiveScoringScreen(): React.ReactElement {
           strikerId={strikerId}
           nonStrikerId={nonStrikerId}
           bowlerId={bowlerId}
-          strikerCard={inn.batters.find((b) => b.playerId === strikerId)}
+          strikerCard={inn?.batters.find((b) => b.playerId === strikerId)}
           nonStrikerCard={nonStrikerCard}
-          bowlerCard={inn.bowlers.find((b) => b.playerId === bowlerId)}
+          bowlerCard={inn?.bowlers.find((b) => b.playerId === bowlerId)}
           battingXi={battingSquad}
           bowlingXi={bowlingSquad}
-          keypadDisabled={keypadDisabled}
-          keyboardEnabled={!keypadDisabled && !dialogOpen}
+          keypadDisabled={keypadDisabled || !inn}
+          keyboardEnabled={!keypadDisabled && !dialogOpen && Boolean(inn)}
           error={error && !isScoringNotAllowedMessage(error) ? error : null}
           prompt={cockpitPrompt}
           resultLine={completedResultLine}
@@ -1599,7 +1599,7 @@ export default function LiveScoringScreen(): React.ReactElement {
           onOpenMore={() => setShowMore(true)}
           onPenalty={() => handleMoreSelect('PENALTY')}
           onUndo={() => {
-            const inningsId = inn.inningsId;
+            const inningsId = inn?.inningsId;
             if (!matchId || !card || !inningsId) return;
             void applyMutation(() =>
               undoLastDelivery(matchId, inningsId, {
@@ -1612,7 +1612,7 @@ export default function LiveScoringScreen(): React.ReactElement {
           onSelectBowler={(userId) => selectBowlerInline(userId)}
           working={working}
           onSetShotPlacement={(target, shotX, shotY) => {
-            const inningsId = inn.inningsId;
+            const inningsId = inn?.inningsId;
             if (!matchId || !card || !inningsId || working) return;
             void applyMutation(() =>
               setDeliveryShotPlacement(matchId, inningsId, {
@@ -1623,6 +1623,7 @@ export default function LiveScoringScreen(): React.ReactElement {
               }),
             );
           }}
+          onTossRecorded={() => load()}
         />
       ) : (
       <View className="min-h-0 flex-1">

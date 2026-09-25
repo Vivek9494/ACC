@@ -9,8 +9,10 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import type { ViewStyle } from 'react-native';
 import { Pressable, View } from 'react-native';
+import { useState } from 'react';
 
 import { Text } from '../../ui/Text';
+import { Button } from '../../ui/Button';
 import { FIELD_ORANGE } from '../../ui/fieldStyles';
 import { colors } from '../../../theme/colors';
 import { TYPE } from '../../../theme/typography';
@@ -22,6 +24,7 @@ import {
   BowlerInlineSelect,
 } from './BowlerInlineSelect';
 import { CockpitPanel } from './CockpitPanel';
+import { CockpitRecordTossDialog } from './CockpitRecordTossDialog';
 import {
   currentOverSummary,
   currentRunRate,
@@ -34,7 +37,8 @@ import {
 export interface ScoreSummaryPanelProps {
   matchId: string;
   match: MatchDetail;
-  innings: InningsScorecard;
+  /** Null before toss / first innings — shows teams + Record Toss only. */
+  innings: InningsScorecard | null;
   battingTeamName: string;
   bowlingTeamName: string;
   nameOf: (id: string | null) => string;
@@ -53,6 +57,8 @@ export interface ScoreSummaryPanelProps {
   working?: boolean;
   /** Match result when decided — shown under Toss (same string as cockpit prompt). */
   resultLine?: string | null;
+  /** Reload match + scorecard after cockpit Record Toss succeeds. */
+  onTossRecorded?: () => void | Promise<void>;
 }
 
 const SUMMARY_TOP: ViewStyle = {
@@ -385,9 +391,47 @@ export function ScoreSummaryPanel({
   onUndo,
   working,
   resultLine = null,
+  onTossRecorded,
 }: ScoreSummaryPanelProps): React.ReactElement {
+  const [recordTossOpen, setRecordTossOpen] = useState(false);
   const toss = formatMatchTossSummaryLine(match);
   const result = resultLine?.trim() || null;
+  const showRecordToss = !toss && Boolean(onTossRecorded);
+  const teamAName = match.homeTeamName ?? battingTeamName;
+  const teamBName = match.awayTeamName ?? match.externalOpponentName ?? bowlingTeamName;
+
+  if (!innings) {
+    return (
+      <CockpitPanel title="Score Summary & Play Control" live fitContent>
+        <View style={SUMMARY_LEFT} className="gap-2">
+          <Text className="font-sans-bold text-xl text-on-surface" numberOfLines={1}>
+            {teamAName} vs {teamBName}
+          </Text>
+          <Text className="font-sans text-xs text-on-surface-variant">
+            Toss not recorded yet
+          </Text>
+          {showRecordToss ? (
+            <Button
+              label="Record Toss"
+              onPress={() => setRecordTossOpen(true)}
+              disabled={working}
+              className="mt-1 h-10 self-start px-4"
+            />
+          ) : null}
+        </View>
+        {onTossRecorded ? (
+          <CockpitRecordTossDialog
+            visible={recordTossOpen}
+            matchId={matchId}
+            match={match}
+            onClose={() => setRecordTossOpen(false)}
+            onRecorded={onTossRecorded}
+          />
+        ) : null}
+      </CockpitPanel>
+    );
+  }
+
   const strikerName = strikerId ? nameOf(strikerId) : 'Select striker';
   const nonStrikerName = nonStrikerId ? nameOf(nonStrikerId) : 'Select non-striker';
   const nonStrikerChangeAllowed = canCorrectNonStriker(nonStrikerId, nonStrikerCard);
@@ -427,6 +471,18 @@ export function ScoreSummaryPanel({
             <Text className="mt-0.5 font-sans text-xs text-on-surface-variant" numberOfLines={1}>
               Toss: {toss}
             </Text>
+          ) : (
+            <Text className="mt-0.5 font-sans text-xs text-on-surface-variant" numberOfLines={1}>
+              Toss not recorded yet
+            </Text>
+          )}
+          {showRecordToss ? (
+            <Button
+              label="Record Toss"
+              onPress={() => setRecordTossOpen(true)}
+              disabled={working}
+              className="mt-1.5 h-9 self-start px-3"
+            />
           ) : null}
           {result ? (
             <Text
@@ -526,6 +582,16 @@ export function ScoreSummaryPanel({
           </View>
         </View>
       </View>
+
+      {onTossRecorded ? (
+        <CockpitRecordTossDialog
+          visible={recordTossOpen}
+          matchId={matchId}
+          match={match}
+          onClose={() => setRecordTossOpen(false)}
+          onRecorded={onTossRecorded}
+        />
+      ) : null}
     </CockpitPanel>
   );
 }

@@ -88,7 +88,10 @@ export function BottomTabBar({
               )}
               <Text
                 variant="caption"
-                className={`mt-0.5 font-sans-semibold ${
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.85}
+                className={`mt-0.5 w-full text-center font-sans-semibold ${
                   active ? 'text-on-primary' : 'text-on-surface-variant'
                 }`}
               >

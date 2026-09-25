@@ -51,8 +51,11 @@ function buildStatColumns(): StatColumn[] {
   ];
 }
 
-function statTableWidth(columns: StatColumn[]): number {
-  return columns.reduce((sum, column) => sum + column.width, 0);
+function statTableWidth(columns: StatColumn[], columnGap: number): number {
+  if (columns.length === 0) {
+    return 0;
+  }
+  return columns.reduce((sum, column) => sum + column.width, 0) + columnGap * (columns.length - 1);
 }
 
 export interface DetailedBattingScrollTableProps {
@@ -79,7 +82,7 @@ export function DetailedBattingScrollTable({
 
   const [statsViewportWidth, setStatsViewportWidth] = useState(0);
   const lastIndex = rows.length - 1;
-  const scrollContentWidth = statTableWidth(scrollColumns);
+  const scrollContentWidth = statTableWidth(scrollColumns, METRICS.columnGap);
   const statsReady = statsViewportWidth > 0;
 
   const onStatsViewportLayout = useCallback((event: LayoutChangeEvent) => {
@@ -144,18 +147,32 @@ export function DetailedBattingScrollTable({
                   width: statsViewportWidth + scrollContentWidth,
                 }}
               >
-                <View style={{ width: statsViewportWidth }} className="flex-row">
+                <View
+                  style={{ width: statsViewportWidth, columnGap: METRICS.columnGap }}
+                  className="flex-row"
+                >
                   {coreColumns.map((column) => (
-                    <View key={column.key} className="flex-1 items-center justify-center px-0.5">
+                    <View
+                      key={column.key}
+                      className="items-center justify-center"
+                      style={{
+                        flexGrow: column.width,
+                        flexShrink: 1,
+                        flexBasis: 0,
+                      }}
+                    >
                       <Text className={METRICS.columnHeaderClass}>{column.label}</Text>
                     </View>
                   ))}
                 </View>
-                <View style={{ width: scrollContentWidth }} className="flex-row">
+                <View
+                  style={{ width: scrollContentWidth, columnGap: METRICS.columnGap }}
+                  className="flex-row"
+                >
                   {scrollColumns.map((column) => (
                     <View
                       key={column.key}
-                      className="items-center justify-center px-0.5"
+                      className="items-center justify-center"
                       style={{ width: column.width }}
                     >
                       <Text className={METRICS.columnHeaderClass}>{column.label}</Text>
@@ -173,9 +190,20 @@ export function DetailedBattingScrollTable({
                     width: statsViewportWidth + scrollContentWidth,
                   }}
                 >
-                  <View style={{ width: statsViewportWidth }} className="flex-row">
+                  <View
+                    style={{ width: statsViewportWidth, columnGap: METRICS.columnGap }}
+                    className="flex-row"
+                  >
                     {coreColumns.map((column) => (
-                      <View key={column.key} className="flex-1 items-center justify-center px-0.5">
+                      <View
+                        key={column.key}
+                        className="items-center justify-center"
+                        style={{
+                          flexGrow: column.width,
+                          flexShrink: 1,
+                          flexBasis: 0,
+                        }}
+                      >
                         <Text
                           className={`${METRICS.valueClass} ${
                             row.highlightName ? 'text-primary' : 'text-on-surface'
@@ -186,11 +214,14 @@ export function DetailedBattingScrollTable({
                       </View>
                     ))}
                   </View>
-                  <View style={{ width: scrollContentWidth }} className="flex-row items-center">
+                  <View
+                    style={{ width: scrollContentWidth, columnGap: METRICS.columnGap }}
+                    className="flex-row items-center"
+                  >
                     {scrollColumns.map((column) => (
                       <View
                         key={column.key}
-                        className="items-center justify-center px-0.5"
+                        className="items-center justify-center"
                         style={{ width: column.width }}
                       >
                         <Text

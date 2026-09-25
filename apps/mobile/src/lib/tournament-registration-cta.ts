@@ -3,8 +3,10 @@ import {
   canSelfRegisterForTournament,
   RegistrationStatus,
   TOURNAMENT_REGISTRATION_STATUS_INDICATOR_LABELS,
+  TournamentDisplayStatus,
   type RegistrationStatus as RegistrationStatusType,
   type TournamentDetail,
+  type TournamentDisplayStatus as TournamentDisplayStatusType,
   type UserRole,
 } from '@acc/types';
 
@@ -24,6 +26,7 @@ export interface RegistrationCtaInput {
     | 'registrationOpenAt'
     | 'registrationCloseAt'
     | 'ballType'
+    | 'displayStatus'
   >;
   isAuthenticated: boolean;
   userRole: UserRole | null | undefined;
@@ -54,6 +57,13 @@ function registeredStatusCta(
   };
 }
 
+function isRegistrationCtaEnded(displayStatus: TournamentDisplayStatusType): boolean {
+  return (
+    displayStatus === TournamentDisplayStatus.Completed ||
+    displayStatus === TournamentDisplayStatus.Cancelled
+  );
+}
+
 /** Resolve the bottom Registration CTA for the tournament details screen. */
 export function resolveRegistrationCta(input: RegistrationCtaInput): RegistrationCtaState {
   const {
@@ -67,6 +77,11 @@ export function resolveRegistrationCta(input: RegistrationCtaInput): Registratio
   } = input;
 
   if (!tournament.hasRegistrationWindow) {
+    return { kind: 'hidden' };
+  }
+
+  // Tournament over — hide Registration CTA and Confirmed/Waitlist/Declined indicators.
+  if (isRegistrationCtaEnded(tournament.displayStatus)) {
     return { kind: 'hidden' };
   }
 
