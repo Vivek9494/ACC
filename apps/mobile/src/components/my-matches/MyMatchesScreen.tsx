@@ -157,20 +157,23 @@ export function MyMatchesScreen(): React.ReactElement {
         />
       }
     >
-      <Text className="font-sans-bold text-2xl text-on-surface">My Matches</Text>
+      <View className="flex-row items-center justify-between gap-3">
+        <Text className="min-w-0 shrink font-sans-bold text-2xl text-on-surface">My Matches</Text>
+        {showBallTypeTabs ? (
+          <View className="shrink-0">
+            <MyMatchesBallTypeTabs
+              ballTypes={ballTypes}
+              selected={activeBallType}
+              onSelect={setActiveBallType}
+            />
+          </View>
+        ) : null}
+      </View>
 
       {error ? (
         <View className="rounded-lg bg-primary-50 px-4 py-3">
           <Text className="font-sans text-sm text-primary">{error}</Text>
         </View>
-      ) : null}
-
-      {showBallTypeTabs ? (
-        <MyMatchesBallTypeTabs
-          ballTypes={ballTypes}
-          selected={activeBallType}
-          onSelect={setActiveBallType}
-        />
       ) : null}
 
       {matches.length > 0 ? (

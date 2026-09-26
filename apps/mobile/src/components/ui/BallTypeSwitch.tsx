@@ -6,11 +6,13 @@ import { colors } from '@/theme/colors';
 
 import { BallTypeIcon } from './BallTypeIcon';
 
-const TRACK_WIDTH = 76;
-const TRACK_HEIGHT = 36;
-const THUMB_SIZE = 32;
+/** Orange thumb = one segment; each ball sits centered in its segment. */
+const THUMB_SIZE = 30;
 const BALL_SIZE = 22;
-const TRACK_PAD = 2;
+const TRACK_PAD = 3;
+const TRACK_BORDER = 1;
+const TRACK_WIDTH = TRACK_PAD * 2 + THUMB_SIZE * 2 + TRACK_BORDER * 2;
+const TRACK_HEIGHT = TRACK_PAD * 2 + THUMB_SIZE + TRACK_BORDER * 2;
 
 export interface BallTypeSwitchProps {
   value: BallTypeValue;
@@ -39,10 +41,9 @@ export function BallTypeSwitch({
     }).start();
   }, [isTennis, progress]);
 
-  const thumbTravel = TRACK_WIDTH - THUMB_SIZE - TRACK_PAD * 2;
   const thumbTranslateX = progress.interpolate({
     inputRange: [0, 1],
-    outputRange: [TRACK_PAD, TRACK_PAD + thumbTravel],
+    outputRange: [0, THUMB_SIZE],
   });
 
   function toggle(): void {
@@ -62,34 +63,50 @@ export function BallTypeSwitch({
       className="active:opacity-90"
     >
       <View
-        className="flex-row items-center justify-between overflow-hidden rounded-full border border-outline-variant bg-surface"
-        style={{ width: TRACK_WIDTH, height: TRACK_HEIGHT, paddingHorizontal: TRACK_PAD }}
+        className="overflow-hidden rounded-full border border-outline-variant bg-surface"
+        style={{
+          width: TRACK_WIDTH,
+          height: TRACK_HEIGHT,
+          padding: TRACK_PAD,
+          borderWidth: TRACK_BORDER,
+        }}
       >
-        <Animated.View
-          pointerEvents="none"
-          style={{
-            position: 'absolute',
-            top: TRACK_PAD,
-            width: THUMB_SIZE,
-            height: THUMB_SIZE,
-            borderRadius: THUMB_SIZE / 2,
-            backgroundColor: colors.primary,
-            transform: [{ translateX: thumbTranslateX }],
-          }}
-        />
-        <View className="z-10 flex-1 items-center justify-center">
-          <BallTypeIcon
-            ballType={BallType.Leather}
-            size={BALL_SIZE}
-            accessibilityLabel=""
+        <View style={{ width: THUMB_SIZE * 2, height: THUMB_SIZE }}>
+          <Animated.View
+            pointerEvents="none"
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: THUMB_SIZE,
+              height: THUMB_SIZE,
+              borderRadius: THUMB_SIZE / 2,
+              backgroundColor: colors.primary,
+              transform: [{ translateX: thumbTranslateX }],
+            }}
           />
-        </View>
-        <View className="z-10 flex-1 items-center justify-center">
-          <BallTypeIcon
-            ballType={BallType.Tennis}
-            size={BALL_SIZE}
-            accessibilityLabel=""
-          />
+          <View className="absolute inset-0 flex-row">
+            <View
+              className="items-center justify-center"
+              style={{ width: THUMB_SIZE, height: THUMB_SIZE }}
+            >
+              <BallTypeIcon
+                ballType={BallType.Leather}
+                size={BALL_SIZE}
+                accessibilityLabel=""
+              />
+            </View>
+            <View
+              className="items-center justify-center"
+              style={{ width: THUMB_SIZE, height: THUMB_SIZE }}
+            >
+              <BallTypeIcon
+                ballType={BallType.Tennis}
+                size={BALL_SIZE}
+                accessibilityLabel=""
+              />
+            </View>
+          </View>
         </View>
       </View>
     </Pressable>
