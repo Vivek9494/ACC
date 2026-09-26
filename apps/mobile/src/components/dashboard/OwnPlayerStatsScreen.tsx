@@ -54,16 +54,15 @@ export function OwnPlayerStatsScreen(): React.ReactElement {
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
       <ScrollView className="flex-1" contentContainerClassName="gap-4 px-4 pb-10 pt-2">
-        <View className="flex-row items-center justify-between gap-3">
-          <Text className="min-w-0 shrink font-sans-bold text-2xl text-on-surface">Stats</Text>
-          {showBallTypeSwitch ? (
-            <View className="shrink-0">
-              <BallTypeSwitch value={ballType} onChange={setBallType} />
-            </View>
-          ) : null}
-        </View>
+        <Text className="font-sans-bold text-2xl text-on-surface">Stats</Text>
 
         {stats ? <PlayerProfileHeader profile={stats} /> : null}
+
+        {showBallTypeSwitch ? (
+          <View className="-mt-6 -mb-2 items-end">
+            <BallTypeSwitch value={ballType} onChange={setBallType} />
+          </View>
+        ) : null}
 
         {loading ? (
           <View className="items-center py-12">
