@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { UserRole } from '@acc/types';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState, type ComponentProps } from 'react';
 import {
@@ -51,7 +52,7 @@ function MenuItem({ label, icon, onPress, destructive = false }: MenuItemProps):
   );
 }
 
-/** Profile avatar with anchored dropdown (Profile, Change Password, Logout). */
+/** Profile avatar with anchored dropdown (Profile, Change Password, Settings, Logout). */
 export function ProfileMenu(): React.ReactElement {
   const router = useRouter();
   const { user, signOut } = useAuth();
@@ -59,6 +60,7 @@ export function ProfileMenu(): React.ReactElement {
   const [open, setOpen] = useState(false);
   const [menuLayout, setMenuLayout] = useState<LayoutRectangle | null>(null);
   const [avatarFailed, setAvatarFailed] = useState(false);
+  const isAdmin = user?.role === UserRole.Admin;
 
   const close = useCallback(() => {
     setOpen(false);
@@ -84,6 +86,11 @@ export function ProfileMenu(): React.ReactElement {
   const onChangePassword = useCallback(() => {
     close();
     router.push('/change-password');
+  }, [close, router]);
+
+  const onSettings = useCallback(() => {
+    close();
+    router.push('/admin/settings');
   }, [close, router]);
 
   const onLogout = useCallback(() => {
@@ -157,6 +164,12 @@ export function ProfileMenu(): React.ReactElement {
               <MenuItem label="Profile" icon="person-outline" onPress={onProfile} />
               <View className="mx-4 bg-separator" />
               <MenuItem label="Change Password" icon="lock-closed-outline" onPress={onChangePassword} />
+              {isAdmin ? (
+                <>
+                  <View className="mx-4 bg-separator" />
+                  <MenuItem label="Settings" icon="settings-outline" onPress={onSettings} />
+                </>
+              ) : null}
               <View className="mx-4 bg-separator" />
               <MenuItem label="Logout" icon="log-out-outline" onPress={onLogout} destructive />
             </View>

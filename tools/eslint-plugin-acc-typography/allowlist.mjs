@@ -18,6 +18,11 @@
 /** @type {SubCaptionAllowEntry[]} */
 export const SUB_CAPTION_ALLOWLIST_ENTRIES = [
   {
+    path: 'apps/mobile/src/components/ui/BottomTabBar.tsx',
+    reason:
+      'Uniform label size may drop below caption so "Tournaments" fits one line in equal 5-tab slots; all tabs share that size.',
+  },
+  {
     path: 'apps/mobile/src/components/scoring/RecentBallsStrip.tsx',
     reason:
       'Adaptive ball chips: labels like "wd+2" / "nb+1" must fit fixed 32–40px circles; 12 clips multi-char codes.',

@@ -10,7 +10,6 @@ export const ADMIN_TABS: BottomTabItem[] = [
   { key: 'tournaments', label: 'Tournaments', icon: 'trophy-outline' },
   { key: 'users', label: 'Users', icon: 'people-outline' },
   { key: 'geography', label: 'Geography', icon: 'map-outline' },
-  { key: 'settings', label: 'Settings', icon: 'settings-outline' },
 ];
 
 const ADMIN_ROLE_ROOT = '/admin';
@@ -20,11 +19,11 @@ const TAB_ROUTES: Record<string, Href> = {
   tournaments: '/admin/tournaments',
   users: '/admin/users',
   geography: '/admin/geography',
-  settings: '/admin/settings',
 };
 
 function isAdminStackOverlayPath(current: string): boolean {
   return (
+    current === '/admin/settings' ||
     /^\/admin\/users\/[^/]+$/.test(current) ||
     current === '/admin/users/new' ||
     current.startsWith('/admin/provinces') ||
@@ -41,7 +40,8 @@ export default function AdminTabsLayout(): React.ReactElement {
   const pathname = usePathname();
   const router = useRouter();
   const activeKey = adminActiveTabKey(pathname);
-  const hideTabBar = shouldHideRoleTabBarForPath(pathname);
+  const hideTabBar =
+    shouldHideRoleTabBarForPath(pathname) || pathname === '/admin/settings';
 
   return (
     <View className="flex-1 bg-background">

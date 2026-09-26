@@ -8,6 +8,7 @@ import {
   normalizeAwsSecretAccessKey,
   normalizeGoogleMapsApiKey,
 } from '@acc/types';
+import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -15,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '../../../src/components/ui/Button';
 import { Card } from '../../../src/components/ui/Card';
 import { KeyboardAwareFormScrollView } from '../../../src/components/ui/KeyboardAwareFormScrollView';
+import { ScreenHeader } from '../../../src/components/ui/ScreenHeader';
 import { Text } from '../../../src/components/ui/Text';
 import { TextInput } from '../../../src/components/ui/TextInput';
 import { FIELD_ORANGE } from '../../../src/components/ui/fieldStyles';
@@ -26,6 +28,7 @@ import {
 import { invalidateUploadLimitsCache } from '../../../src/lib/upload-limits';
 
 export default function AdminSettingsTabScreen(): React.ReactElement {
+  const router = useRouter();
 
   const [videoUploadMaxMb, setVideoUploadMaxMb] = useState('');
   const [imageUploadMaxMb, setImageUploadMaxMb] = useState('');
@@ -117,9 +120,18 @@ export default function AdminSettingsTabScreen(): React.ReactElement {
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
+      <ScreenHeader
+        title="Settings"
+        showBack
+        onBack={() => {
+          if (router.canGoBack()) {
+            router.back();
+            return;
+          }
+          router.replace('/admin');
+        }}
+      />
       <KeyboardAwareFormScrollView className="flex-1 px-4 py-4" contentContainerClassName="gap-5" extraBottomPadding={24}>
-          <Text className="font-sans-bold text-2xl text-on-surface">Settings</Text>
-
           {loading ? (
             <ActivityIndicator color={FIELD_ORANGE} className="py-4" />
           ) : (

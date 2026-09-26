@@ -88,9 +88,12 @@ export function mergeFieldClassName(
   return stripInputTypography(merged);
 }
 
-/** Dashboard stat column labels (MATCHES / RUNS / WICKETS) and matching metadata rows. */
-export const STAT_LABEL_TEXT_CLASS =
-  'font-sans-medium text-caption uppercase tracking-wider text-on-surface-variant';
+/** Dashboard stat column labels — type only (MATCHES / RUNS / WICKETS). */
+export const STAT_LABEL_TYPE_CLASS =
+  'font-sans-medium text-caption uppercase tracking-wider';
+
+/** Stat labels + matching metadata rows (muted color). */
+export const STAT_LABEL_TEXT_CLASS = `${STAT_LABEL_TYPE_CLASS} text-on-surface-variant`;
 
 /** Validation / form error text — primary orange app-wide. */
 export const ERROR_TEXT_CLASS = 'font-sans text-sm text-primary';

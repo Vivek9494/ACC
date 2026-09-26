@@ -16,7 +16,6 @@ const ADMIN_TAB_ROUTES: Record<string, Href> = {
   tournaments: '/admin/tournaments',
   users: '/admin/users',
   geography: '/admin/geography',
-  settings: '/admin/settings',
 };
 
 function useStaticTabConfig(
