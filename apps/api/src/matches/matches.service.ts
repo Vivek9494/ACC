@@ -802,9 +802,10 @@ export class MatchesService {
   }
 
   /**
-   * Soft-delete a fixture (Admin / Club Manager only). Upcoming fixtures carry no
-   * scoring data; Completed / No Result fixtures do, so the audit entry snapshots
-   * the final scorecard and dependent suspensions/penalties are released.
+   * Soft-delete a fixture (Admin / Club Manager only). Upcoming and Cancelled
+   * fixtures carry no scoring data; Completed / No Result fixtures do, so the
+   * audit entry snapshots the final scorecard and dependent suspensions/penalties
+   * are released.
    */
   async remove(actor: AuthUser, matchId: string): Promise<void> {
     const existing = await this.requireActiveMatchRow(matchId);

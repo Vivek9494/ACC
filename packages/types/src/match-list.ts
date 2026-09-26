@@ -245,16 +245,17 @@ const COMPLETED_STATES: MatchStateType[] = [
 const LIVE_STATES: MatchStateType[] = LIVE_MATCH_STATES;
 
 /**
- * States a fixture may be soft-deleted from: the pre-live Scheduled bucket plus
- * finished results. `SCORECARD_LOCKED` is excluded because a confirmed scorecard is
- * only correctable under §13.2, and Live / Rain Interrupted are excluded because
- * deleting mid-session has no defined scorer/overlay teardown.
+ * States a fixture may be soft-deleted from: the pre-live Scheduled bucket,
+ * finished results, and Cancelled. `SCORECARD_LOCKED` is excluded because a
+ * confirmed scorecard is only correctable under §13.2, and Live / Rain Interrupted
+ * are excluded because deleting mid-session has no defined scorer/overlay teardown.
  */
 export function isDeletableMatchState(state: MatchStateType): boolean {
   return (
     isUpcomingMatchForScheduleManagement(state) ||
     state === MatchState.Completed ||
-    state === MatchState.NoResult
+    state === MatchState.NoResult ||
+    state === MatchState.Cancelled
   );
 }
 

@@ -13,8 +13,8 @@ import type { PermissionService } from '../authz/permission.service';
  * Server gate for editing or soft-deleting a fixture (Admin / Club Manager).
  *
  * Edit stays restricted to upcoming fixtures. Delete also allows finished results
- * (Completed / No Result); knockout fixtures are never deletable because the
- * bracket has already progressed downstream.
+ * (Completed / No Result) and Cancelled; knockout fixtures are never deletable
+ * because the bracket has already progressed downstream.
  */
 export async function assertCanManageUpcomingMatch(
   permissions: PermissionService,
@@ -38,7 +38,7 @@ export async function assertCanManageUpcomingMatch(
   if (!stateAllowed) {
     throw new ForbiddenException({
       message: isDelete
-        ? 'Only upcoming, completed, or no-result matches can be deleted'
+        ? 'Only upcoming, completed, no-result, or cancelled matches can be deleted'
         : 'Only upcoming matches can be edited',
       error: 'FORBIDDEN',
     });

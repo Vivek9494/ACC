@@ -34,6 +34,7 @@ describe('assertCanManageUpcomingMatch', () => {
       MatchState.TossCompleted,
       MatchState.Completed,
       MatchState.NoResult,
+      MatchState.Cancelled,
     ])('allows deleting a %s match', async (state) => {
       await expect(
         assertCanManageUpcomingMatch(
@@ -49,7 +50,6 @@ describe('assertCanManageUpcomingMatch', () => {
       MatchState.Live,
       MatchState.RainInterrupted,
       MatchState.ScorecardLocked,
-      MatchState.Cancelled,
     ])('blocks deleting a %s match', async (state) => {
       await expect(
         assertCanManageUpcomingMatch(
@@ -60,7 +60,7 @@ describe('assertCanManageUpcomingMatch', () => {
         ),
       ).rejects.toMatchObject({
         response: {
-          message: 'Only upcoming, completed, or no-result matches can be deleted',
+          message: 'Only upcoming, completed, no-result, or cancelled matches can be deleted',
         },
       });
     });
