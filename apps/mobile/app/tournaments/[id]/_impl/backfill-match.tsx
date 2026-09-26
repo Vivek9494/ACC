@@ -1,5 +1,3 @@
-import { Ionicons } from '@expo/vector-icons';
-import { colors } from '@/theme/colors';
 import {
   BallType,
   HomeAway,
@@ -34,6 +32,7 @@ import { useAuth } from '../../../../src/lib/auth-context';
 import { tournamentDetailHref } from '../../../../src/lib/tournament-detail-route';
 import { TOURNAMENT_DETAIL_TAB } from '../../../../src/lib/tournament-detail-tabs';
 import type { SelectOption } from '../../../../src/components/ui/Select';
+import { colors } from '@/theme/colors';
 
 function combineMatchStartIso(matchDate: string, matchTime: string): string {
   const dateMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(matchDate);
@@ -336,148 +335,146 @@ export default function BackfillPastMatchScreen(): React.ReactElement {
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
-      <ScreenHeader title="Backfill past match" showBack onBack={handleBack} />
+      <ScreenHeader
+        title="Backfill past match"
+        subtitle="Schedule a past ACC fixture, pick the Playing XI, enter opponent names, then enter the paper scorecard. Live ball-by-ball scoring is not used."
+        showBack
+        onBack={handleBack}
+      />
       <KeyboardAwareFormScrollView
-        contentContainerClassName="gap-4 px-4 pt-2"
+        contentContainerClassName="px-4 pt-2"
         extraBottomPadding={32}
-        footer={
-          <SafeAreaView edges={['bottom']} className="border-t border-outline-variant px-4 py-3">
-            {submitError ? (
-              <Text className="mb-2 font-sans text-sm text-error">{submitError}</Text>
-            ) : null}
-            <Button
-              disabled={submitting}
-              onPress={() => void handleSubmit()}
-              className="h-14 w-full flex-row gap-2"
-            >
-              <Ionicons name="create-outline" size={20} color={colors.textInverse} />
-              <Text className="font-sans-semibold text-base text-on-primary">
-                {submitting ? 'Creating…' : 'Create & select Playing XI'}
-              </Text>
-            </Button>
-          </SafeAreaView>
-        }
+        showsVerticalScrollIndicator={false}
       >
-        <View>
-          <Text className="font-sans-bold text-2xl text-on-surface">Backfill past match</Text>
-          <Text className="mt-2 font-sans text-sm text-on-surface-variant">
-            Schedule a past ACC fixture, pick the Playing XI, enter opponent names, then enter
-            the paper scorecard. Live ball-by-ball scoring is not used.
-          </Text>
+        <View className="gap-5">
+          <Select
+            label="ACC team"
+            placeholder="Select team"
+            value={teamAId}
+            options={teamOptions}
+            onChange={(value) => {
+              setTeamAId(value);
+              clearField('teamAId');
+            }}
+            error={fieldErrors.teamAId}
+          />
+
+          <TextInput
+            label="Match #"
+            value={matchCode}
+            onChangeText={setMatchCode}
+            placeholder="Optional match code"
+          />
+
+          <TextInput
+            label="Opponent team name"
+            value={opponentName}
+            onChangeText={(text) => {
+              setOpponentName(text);
+              clearField('externalOpponentName');
+            }}
+            placeholder="e.g. Men in Greens"
+            error={fieldErrors.externalOpponentName}
+          />
+
+          <DateField
+            label="Match date"
+            value={matchDate ?? ''}
+            onChange={(value) => {
+              setMatchDate(value || null);
+              clearField('matchDate');
+            }}
+            minimumDate={spanMinimum}
+            maximumDate={spanMaximum}
+            enforceSignupAgeMax={false}
+            error={fieldErrors.matchDate}
+          />
+
+          <TimeField
+            label="Match time"
+            value={matchTime}
+            onChange={(value) => {
+              setMatchTime(value);
+              clearField('matchTime');
+            }}
+            error={fieldErrors.matchTime}
+          />
+
+          <TournamentLocationField
+            label="Ground"
+            address={groundAddress}
+            latitude={groundLat}
+            longitude={groundLng}
+            onAddressChange={(address) => {
+              setGroundAddress(address);
+              clearField('groundLocation');
+            }}
+            onCoordinatesChange={(lat, lng) => {
+              setGroundLat(lat);
+              setGroundLng(lng);
+              clearField('groundLocation');
+            }}
+            error={fieldErrors.groundLocation}
+          />
+
+          <Select
+            label="Overs per innings"
+            value={oversPerInnings != null ? String(oversPerInnings) : null}
+            options={oversOptions}
+            onChange={(value) => {
+              const next = value ? Number(value) : null;
+              setOversPerInnings(next);
+              setMaxOversPerBowler(next != null ? Math.min(5, Math.floor(next / 5) || 1) : null);
+              clearField('oversPerInnings');
+            }}
+            error={fieldErrors.oversPerInnings}
+          />
+
+          <Select
+            label="Overs per bowler"
+            value={maxOversPerBowler != null ? String(maxOversPerBowler) : null}
+            options={bowlerOversOptions}
+            onChange={(value) => {
+              setMaxOversPerBowler(value ? Number(value) : null);
+              clearField('maxOversPerBowler');
+            }}
+            error={fieldErrors.maxOversPerBowler}
+          />
+
+          <Select
+            label="Powerplay overs"
+            value={powerplayOvers != null ? String(powerplayOvers) : ''}
+            options={powerplayOptions}
+            onChange={(value) => {
+              setPowerplayOvers(value ? Number(value) : null);
+              clearField('powerplayOvers');
+            }}
+            error={fieldErrors.powerplayOvers}
+          />
+
+          <Select
+            label="Home / Away"
+            placeholder="Optional"
+            value={homeAway}
+            options={homeAwayOptions}
+            onChange={(value) => setHomeAway((value as HomeAway | null) ?? null)}
+          />
+
+          {submitError ? (
+            <View className="rounded-lg bg-primary-50 px-4 py-3">
+              <Text className="font-sans text-sm text-primary">{submitError}</Text>
+            </View>
+          ) : null}
+
+          <Button
+            disabled={submitting}
+            onPress={() => void handleSubmit()}
+            className="mt-2 h-14 w-full"
+            label={submitting ? undefined : 'Create & select Playing XI'}
+          >
+            {submitting ? <ActivityIndicator color={colors.textInverse} /> : null}
+          </Button>
         </View>
-
-        <Select
-          label="ACC team"
-          placeholder="Select team"
-          value={teamAId}
-          options={teamOptions}
-          onChange={(value) => {
-            setTeamAId(value);
-            clearField('teamAId');
-          }}
-          error={fieldErrors.teamAId}
-        />
-
-        <TextInput
-          label="Match #"
-          value={matchCode}
-          onChangeText={setMatchCode}
-          placeholder="Optional match code"
-        />
-
-        <TextInput
-          label="Opponent team name"
-          value={opponentName}
-          onChangeText={(text) => {
-            setOpponentName(text);
-            clearField('externalOpponentName');
-          }}
-          placeholder="e.g. Men in Greens"
-          error={fieldErrors.externalOpponentName}
-        />
-
-        <DateField
-          label="Match date"
-          value={matchDate ?? ''}
-          onChange={(value) => {
-            setMatchDate(value || null);
-            clearField('matchDate');
-          }}
-          minimumDate={spanMinimum}
-          maximumDate={spanMaximum}
-          enforceSignupAgeMax={false}
-          error={fieldErrors.matchDate}
-        />
-
-        <TimeField
-          label="Match time"
-          value={matchTime}
-          onChange={(value) => {
-            setMatchTime(value);
-            clearField('matchTime');
-          }}
-          error={fieldErrors.matchTime}
-        />
-
-        <TournamentLocationField
-          label="Ground"
-          address={groundAddress}
-          latitude={groundLat}
-          longitude={groundLng}
-          onAddressChange={(address) => {
-            setGroundAddress(address);
-            clearField('groundLocation');
-          }}
-          onCoordinatesChange={(lat, lng) => {
-            setGroundLat(lat);
-            setGroundLng(lng);
-            clearField('groundLocation');
-          }}
-          error={fieldErrors.groundLocation}
-        />
-
-        <Select
-          label="Overs per innings"
-          value={oversPerInnings != null ? String(oversPerInnings) : null}
-          options={oversOptions}
-          onChange={(value) => {
-            const next = value ? Number(value) : null;
-            setOversPerInnings(next);
-            setMaxOversPerBowler(next != null ? Math.min(5, Math.floor(next / 5) || 1) : null);
-            clearField('oversPerInnings');
-          }}
-          error={fieldErrors.oversPerInnings}
-        />
-
-        <Select
-          label="Overs per bowler"
-          value={maxOversPerBowler != null ? String(maxOversPerBowler) : null}
-          options={bowlerOversOptions}
-          onChange={(value) => {
-            setMaxOversPerBowler(value ? Number(value) : null);
-            clearField('maxOversPerBowler');
-          }}
-          error={fieldErrors.maxOversPerBowler}
-        />
-
-        <Select
-          label="Powerplay overs"
-          value={powerplayOvers != null ? String(powerplayOvers) : ''}
-          options={powerplayOptions}
-          onChange={(value) => {
-            setPowerplayOvers(value ? Number(value) : null);
-            clearField('powerplayOvers');
-          }}
-          error={fieldErrors.powerplayOvers}
-        />
-
-        <Select
-          label="Home / Away"
-          placeholder="Optional"
-          value={homeAway}
-          options={homeAwayOptions}
-          onChange={(value) => setHomeAway((value as HomeAway | null) ?? null)}
-        />
       </KeyboardAwareFormScrollView>
     </SafeAreaView>
   );
