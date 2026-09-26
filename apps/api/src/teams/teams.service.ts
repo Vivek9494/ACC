@@ -46,6 +46,7 @@ import { MediaUrlResolver } from '../storage/media-url.resolver';
 import { S3StorageService } from '../storage/s3-storage.service';
 import { PlayerStatsService } from '../player-stats/player-stats.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { StatsInvalidationService } from '../stats/stats-invalidation.service';
 import { selectableUserWhere } from '../users/user-query';
 import { assertTournamentActive } from '../tournaments/tournament-query';
 import { TournamentsService } from '../tournaments/tournaments.service';
@@ -88,6 +89,7 @@ export class TeamsService {
     private readonly playerStats: PlayerStatsService,
     private readonly audit: AuditService,
     private readonly notifications: NotificationsService,
+    private readonly statsInvalidation: StatsInvalidationService,
   ) {}
 
   async list(
@@ -395,6 +397,7 @@ export class TeamsService {
       after: { userIds, addedCount: userIds.length },
       details: { tournamentId },
     });
+    await this.statsInvalidation.invalidateTournamentAggregates(tournamentId);
 
     await this.notifyPlayersAddedToTeam(tournamentId, teamId, team.name, tournament.name, userIds);
 
@@ -468,6 +471,7 @@ export class TeamsService {
       targetEntityId: membership.id,
       after: { tournamentId, teamId, userId, deletedAt: removedAt.toISOString() },
     });
+    await this.statsInvalidation.invalidateTournamentAggregates(tournamentId);
     await this.notifyPlayerRemovedFromTeam(
       tournamentId,
       teamId,
@@ -684,6 +688,7 @@ export class TeamsService {
         },
         include: { _count: { select: { memberships: activeTeamMembershipCountSelect } } },
       });
+      await this.statsInvalidation.invalidateTournamentAggregates(tournamentId);
       return this.toSummary(created, false);
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
@@ -736,6 +741,11 @@ export class TeamsService {
           _count: { select: { memberships: activeTeamMembershipCountSelect } },
         },
       });
+      if (nextName !== team.name) {
+        await this.statsInvalidation.invalidateTournamentAndPlayerCareers(tournamentId);
+      } else {
+        await this.statsInvalidation.invalidateTournamentAggregates(tournamentId);
+      }
       const hasMatches = await this.teamHasMatches(tournamentId, teamId);
       return this.toSummary(updated, hasMatches);
     } catch (err) {
@@ -772,6 +782,7 @@ export class TeamsService {
         },
       }),
     ]);
+    await this.statsInvalidation.invalidateTournamentAggregates(tournamentId);
   }
 
   async assignTeamRoles(
@@ -911,6 +922,9 @@ export class TeamsService {
       after,
       details: { tournamentId },
     });
+    if (assigneeIds.length > 0) {
+      await this.statsInvalidation.invalidateTournamentAggregates(tournamentId);
+    }
 
     return after;
   }

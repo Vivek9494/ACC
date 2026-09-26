@@ -12,6 +12,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { ScorecardReader } from '../scoring/scorecard-reader';
 import { MediaUrlResolver } from '../storage/media-url.resolver';
 import { TennisTournamentVisibilityService } from '../tournaments/tennis-tournament-visibility.service';
+import { TournamentAggregatesCacheService } from '../stats/tournament-aggregates-cache.service';
 
 type MatchFixture = {
   id: string;
@@ -90,7 +91,7 @@ async function standingsWith(secondIsDeleted: boolean) {
   const prismaMock = {
     tournament: {
       findUnique: jest.fn(
-        async (args: { include: { matches: { where: { isDeleted: boolean } } } }) => ({
+        async (args: { include?: { matches: { where: { isDeleted: boolean } } } }) => ({
           id: 'tour-1',
           isDeleted: false,
           type: TournamentType.APL,
@@ -104,7 +105,7 @@ async function standingsWith(secondIsDeleted: boolean) {
           ],
           // Mirror the Prisma relation filter the service asks for.
           matches: rows.filter(
-            (row) => row.isDeleted === args.include.matches.where.isDeleted,
+            (row) => row.isDeleted === args.include?.matches.where.isDeleted,
           ),
         }),
       ),
@@ -120,6 +121,13 @@ async function standingsWith(secondIsDeleted: boolean) {
       {
         provide: TennisTournamentVisibilityService,
         useValue: { assertCanViewCenterLevelTournament: jest.fn().mockResolvedValue(undefined) },
+      },
+      {
+        provide: TournamentAggregatesCacheService,
+        useValue: {
+          getStandings: jest.fn().mockResolvedValue(null),
+          setStandings: jest.fn().mockResolvedValue(undefined),
+        },
       },
     ],
   }).compile();

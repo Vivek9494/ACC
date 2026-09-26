@@ -15,6 +15,13 @@ import { PermissionService } from '../authz/permission.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { TeamsService } from './teams.service';
 
+function statsInvalidationMock() {
+  return {
+    invalidateTournamentAggregates: jest.fn().mockResolvedValue(undefined),
+    invalidateTournamentAndPlayerCareers: jest.fn().mockResolvedValue(undefined),
+  };
+}
+
 describe('canViewTeamRosterMobileNumbers', () => {
   const member: AuthUser = {
     id: 'player-1',
@@ -211,6 +218,7 @@ describe('TeamsService player profile access', () => {
       playerStats as never,
       { record: jest.fn() } as never,
       { sendNotification: jest.fn(), sendToAudience: jest.fn() } as never,
+      statsInvalidationMock() as never,
     );
   });
 
@@ -320,6 +328,7 @@ describe('TeamsService removePlayerFromTeam', () => {
       { buildCareerStats: jest.fn() } as never,
       audit as never,
       notifications as never,
+      statsInvalidationMock() as never,
     );
     return { service, prisma, audit, notifications };
   }
@@ -448,6 +457,7 @@ describe('TeamsService assignTeamRoles', () => {
       { buildCareerStats: jest.fn() } as never,
       audit as never,
       { sendNotification: jest.fn(), sendToAudience: jest.fn() } as never,
+      statsInvalidationMock() as never,
     );
   });
 
@@ -657,6 +667,7 @@ describe('TeamsService create (no create-time Cap/VC/Manager)', () => {
       { buildCareerStats: jest.fn() } as never,
       { record: jest.fn() } as never,
       { sendNotification: jest.fn(), sendToAudience: jest.fn() } as never,
+      statsInvalidationMock() as never,
     );
 
     jest.spyOn(service, 'assertTeamNameAvailable').mockResolvedValue(undefined);
@@ -700,6 +711,7 @@ describe('TeamsService listRoleCandidates', () => {
       { buildCareerStats: jest.fn() } as never,
       { record: jest.fn() } as never,
       { sendNotification: jest.fn(), sendToAudience: jest.fn() } as never,
+      statsInvalidationMock() as never,
     );
   }
 
@@ -827,6 +839,7 @@ describe('TeamsService update/remove EDIT_TOURNAMENT gate', () => {
       { buildCareerStats: jest.fn() } as never,
       { record: jest.fn() } as never,
       { sendNotification: jest.fn(), sendToAudience: jest.fn() } as never,
+      statsInvalidationMock() as never,
     );
   }
 

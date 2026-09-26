@@ -30,6 +30,7 @@ import { AuditService } from '../audit/audit.service';
 import { PermissionService } from '../authz/permission.service';
 import { activeMatchFirstWhere } from '../matches/match-query';
 import { PrismaService } from '../prisma/prisma.service';
+import { StatsInvalidationService } from '../stats/stats-invalidation.service';
 import { deriveMatchResult } from './engine';
 import {
   buildInningsScorecardFromSummary,
@@ -58,6 +59,7 @@ export class ScorecardSummaryService {
     private readonly permissions: PermissionService,
     private readonly reader: ScorecardReader,
     private readonly audit: AuditService,
+    private readonly statsInvalidation: StatsInvalidationService,
   ) {}
 
   async upsert(
@@ -260,6 +262,8 @@ export class ScorecardSummaryService {
         warnings: warnings.map((w) => w.code),
       },
     });
+
+    await this.statsInvalidation.invalidateMatchAggregates(matchId, match.tournamentId);
 
     const scorecard = await this.reader.byMatchId(matchId);
     return { scorecard, warnings };

@@ -15,7 +15,17 @@ function makeService(prisma: unknown): ScoringService {
   const audit = { record: async () => undefined } as never;
   const confirmation = { evaluateAutoConfirm: async () => undefined } as never;
   const tennisScoringAuth = { assertCanEnterScoringSession: async () => undefined } as never;
-  return new ScoringService(prisma as never, live, reader, audit, confirmation, { generateForCompletedMatch: jest.fn() } as never, tennisScoringAuth);
+  const statsInvalidation = { invalidateMatchAggregates: async () => undefined } as never;
+  return new ScoringService(
+    prisma as never,
+    live,
+    reader,
+    audit,
+    confirmation,
+    { generateForCompletedMatch: jest.fn() } as never,
+    tennisScoringAuth,
+    statsInvalidation,
+  );
 }
 
 const scorer: AuthUser = {

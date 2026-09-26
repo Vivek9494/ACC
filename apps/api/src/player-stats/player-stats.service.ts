@@ -13,6 +13,9 @@ import { Injectable } from '@nestjs/common';
 
 import { PrismaService } from '../prisma/prisma.service';
 import { ScorecardReader } from '../scoring/scorecard-reader';
+import { mapPool } from '../stats/map-pool';
+import { PlayerCareerCacheService } from '../stats/player-career-cache.service';
+import { SCORECARD_BUILD_CONCURRENCY } from '../stats/tournament-aggregates-cache.service';
 import { activeTeamMembershipWhere } from '../teams/team-membership-query';
 import { activeTournamentWhere } from '../tournaments/tournament-query';
 import {
@@ -32,30 +35,12 @@ export interface PlayerCareerStatsBundle {
   byTournament: PlayerProfileTournamentSummary[];
 }
 
-interface LockedXiAppearanceRow {
-  squad: {
-    teamId: string;
-    team: { name: string };
-    match: {
-      id: string;
-      matchDate: Date | null;
-      groundLocation: string | null;
-      tournamentId: string;
-      homeTeamId: string | null;
-      awayTeamId: string | null;
-      externalOpponentName: string | null;
-      homeTeam: { name: string } | null;
-      awayTeam: { name: string } | null;
-      tournament: { id: string; name: string };
-    };
-  };
-}
-
 @Injectable()
 export class PlayerStatsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly scorecards: ScorecardReader,
+    private readonly careerCache: PlayerCareerCacheService,
   ) {}
 
   /** Dashboard “Your Performance” — Matches / Runs / Wickets per ball type. */
@@ -108,6 +93,19 @@ export class PlayerStatsService {
   }
 
   async buildCareerStats(userId: string, ballType: BallType): Promise<PlayerCareerStatsBundle> {
+    const cached = await this.careerCache.get<PlayerCareerStatsBundle>(userId, ballType);
+    if (cached) {
+      return cached;
+    }
+    const computed = await this.computeCareerStats(userId, ballType);
+    await this.careerCache.set(userId, ballType, computed);
+    return computed;
+  }
+
+  private async computeCareerStats(
+    userId: string,
+    ballType: BallType,
+  ): Promise<PlayerCareerStatsBundle> {
     const appearances = await this.prisma.matchSquadPlayer.findMany({
       where: {
         userId,
@@ -126,14 +124,7 @@ export class PlayerStatsService {
             teamId: true,
             team: { select: { name: true } },
             match: {
-              select: {
-                id: true,
-                matchDate: true,
-                groundLocation: true,
-                tournamentId: true,
-                homeTeamId: true,
-                awayTeamId: true,
-                externalOpponentName: true,
+              include: {
                 homeTeam: { select: { name: true } },
                 awayTeam: { select: { name: true } },
                 tournament: { select: { id: true, name: true } },
@@ -144,10 +135,14 @@ export class PlayerStatsService {
       },
     });
 
-    const uniqueByMatch = new Map<string, LockedXiAppearanceRow>();
+    const uniqueByMatch = new Map<string, (typeof appearances)[number]>();
     for (const row of appearances) {
       uniqueByMatch.set(row.squad.match.id, row);
     }
+    const rows = [...uniqueByMatch.values()];
+    const scorecards = await mapPool(rows, SCORECARD_BUILD_CONCURRENCY, (row) =>
+      this.scorecards.build(row.squad.match),
+    );
 
     const careerAcc = createPlayerStatsAccumulator();
     const byYear = new Map<number, PlayerStatsAccumulator>();
@@ -156,9 +151,9 @@ export class PlayerStatsService {
       { acc: PlayerStatsAccumulator; tournamentName: string; year: number; teamName: string }
     >();
 
-    for (const row of uniqueByMatch.values()) {
+    for (const [index, row] of rows.entries()) {
       const { match } = row.squad;
-      const scorecard = await this.scorecards.byMatchId(match.id);
+      const scorecard = scorecards[index]!;
       const year = resolveMatchYear(match.matchDate);
       const opponentName = resolveOpponentName(match, row.squad.teamId);
       const context: PlayerMatchStatsContext = {

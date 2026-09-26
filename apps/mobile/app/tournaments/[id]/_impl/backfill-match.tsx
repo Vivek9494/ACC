@@ -77,7 +77,6 @@ export default function BackfillPastMatchScreen(): React.ReactElement {
   const [powerplayOvers, setPowerplayOvers] = useState<number | null>(null);
   const [matchDate, setMatchDate] = useState<string | null>(null);
   const [matchTime, setMatchTime] = useState('10:00');
-  const [matchCode, setMatchCode] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -248,7 +247,6 @@ export default function BackfillPastMatchScreen(): React.ReactElement {
         awayTeamId: null,
         externalOpponentName: opponentName.trim(),
         matchType: MatchType.LeagueMatch,
-        matchCode: matchCode.trim() || null,
         matchDate: matchDate!,
         startTime: combineMatchStartIso(matchDate!, matchTime.trim()),
         groundLocation: groundAddress.trim(),
@@ -357,13 +355,6 @@ export default function BackfillPastMatchScreen(): React.ReactElement {
               clearField('teamAId');
             }}
             error={fieldErrors.teamAId}
-          />
-
-          <TextInput
-            label="Match #"
-            value={matchCode}
-            onChangeText={setMatchCode}
-            placeholder="Optional match code"
           />
 
           <TextInput

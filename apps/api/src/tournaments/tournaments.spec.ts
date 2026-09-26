@@ -19,6 +19,7 @@ import { TennisTournamentVisibilityService } from './tennis-tournament-visibilit
 import { TournamentsService } from './tournaments.service';
 import { TournamentScorersService } from './tournament-scorers.service';
 import { KnockoutBracketService } from '../knockout-bracket/knockout-bracket.service';
+import { StatsInvalidationService } from '../stats/stats-invalidation.service';
 import { PlayerSkillVideosService } from '../player-videos/player-skill-videos.service';
 
 interface TxMock {
@@ -250,6 +251,13 @@ describe('TournamentsService', () => {
         {
           provide: KnockoutBracketService,
           useValue: { hasKnockoutBracket: jest.fn().mockResolvedValue(false) },
+        },
+        {
+          provide: StatsInvalidationService,
+          useValue: {
+            invalidateTournamentAggregates: jest.fn().mockResolvedValue(undefined),
+            invalidateTournamentAndPlayerCareers: jest.fn().mockResolvedValue(undefined),
+          },
         },
       ],
     }).compile();

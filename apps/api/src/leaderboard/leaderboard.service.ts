@@ -1,6 +1,5 @@
 import {
   BallType,
-  LIVE_MATCH_STATES,
   MatchSquadRole,
   MatchState,
   filterAccFixedTeamsInTournament,
@@ -9,11 +8,14 @@ import {
   type TournamentStatsView,
 } from '@acc/types';
 import { Injectable } from '@nestjs/common';
+import type { Match } from '@prisma/client';
 
-import { LiveService } from '../live/live.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { MediaUrlResolver } from '../storage/media-url.resolver';
 import { ScorecardReader } from '../scoring/scorecard-reader';
+import { SCORECARD_BUILD_CONCURRENCY } from '../stats/tournament-aggregates-cache.service';
+import { TournamentAggregatesCacheService } from '../stats/tournament-aggregates-cache.service';
+import { mapPool } from '../stats/map-pool';
 import { assertTournamentActive } from '../tournaments/tournament-query';
 import { TennisTournamentVisibilityService } from '../tournaments/tennis-tournament-visibility.service';
 import { activeTeamWhere } from '../teams/team-query';
@@ -41,11 +43,15 @@ const LEADERBOARD_MATCH_STATES: MatchState[] = [
   MatchState.ScorecardLocked,
 ];
 
+/**
+ * Option B: cached tournament-stats exclude Live / RainInterrupted — those
+ * matches contribute only after completion (via invalidation).
+ */
 const TOURNAMENT_STATS_MATCH_STATES: MatchState[] = [
-  MatchState.Live,
-  MatchState.RainInterrupted,
   MatchState.Completed,
   MatchState.ScorecardLocked,
+  MatchState.NoResult,
+  MatchState.Cancelled,
 ];
 
 const EMPTY_STATS_AGGREGATES = {
@@ -69,8 +75,8 @@ export class LeaderboardService {
     private readonly prisma: PrismaService,
     private readonly scorecards: ScorecardReader,
     private readonly mediaUrls: MediaUrlResolver,
-    private readonly live: LiveService,
     private readonly tennisVisibility: TennisTournamentVisibilityService,
+    private readonly aggregatesCache: TournamentAggregatesCacheService,
   ) {}
 
   async getLeaderboard(
@@ -80,40 +86,137 @@ export class LeaderboardService {
   ): Promise<TournamentLeaderboard> {
     const tournament = await this.prisma.tournament.findUnique({
       where: { id: tournamentId },
-      include: {
-        teams: {
-          select: { id: true, name: true, logoUrl: true },
-          orderBy: { name: 'asc' },
-        },
-        matches: {
-          where: {
-            isDeleted: false,
-            state: { in: LEADERBOARD_MATCH_STATES },
-          },
-          orderBy: [{ matchDate: 'asc' }, { createdAt: 'asc' }],
-        },
-      },
     });
     assertTournamentActive(tournament);
     await this.tennisVisibility.assertCanViewCenterLevelTournament(viewer, tournament, {
       allowUnauthenticated: true,
     });
 
-    const teams = tournament.teams.map((team) => ({
+    const cached = await this.aggregatesCache.getLeaderboard<TournamentLeaderboard>(
+      tournamentId,
+      teamId,
+    );
+    if (cached) {
+      return this.resolveLeaderboardMedia(cached);
+    }
+
+    const teams = await this.prisma.team.findMany({
+      where: { tournamentId },
+      select: { id: true, name: true, logoUrl: true },
+      orderBy: { name: 'asc' },
+    });
+    const teamOptions = teams.map((team) => ({
       id: team.id,
       name: team.name,
       logoUrl: team.logoUrl,
     }));
 
-    if (teamId && !tournament.teams.some((team) => team.id === teamId)) {
+    if (teamId && !teams.some((team) => team.id === teamId)) {
       return {
         tournamentId,
         hasRecords: false,
-        teams,
+        teams: teamOptions,
         ...EMPTY_LEADERBOARD,
       };
     }
 
+    const matches = await this.prisma.match.findMany({
+      where: {
+        tournamentId,
+        isDeleted: false,
+        state: { in: LEADERBOARD_MATCH_STATES },
+      },
+      orderBy: [{ matchDate: 'asc' }, { createdAt: 'asc' }],
+    });
+
+    const computed = await this.computeLeaderboard(
+      tournamentId,
+      matches,
+      teamOptions,
+      teamId,
+    );
+    await this.aggregatesCache.setLeaderboard(tournamentId, teamId, computed);
+    return this.resolveLeaderboardMedia(computed);
+  }
+
+  async getTournamentStats(
+    tournamentId: string,
+    teamId?: string | null,
+    viewer: AuthUser | null = null,
+  ): Promise<TournamentStatsView> {
+    const tournament = await this.prisma.tournament.findUnique({
+      where: { id: tournamentId },
+    });
+    assertTournamentActive(tournament);
+    await this.tennisVisibility.assertCanViewCenterLevelTournament(viewer, tournament, {
+      allowUnauthenticated: true,
+    });
+
+    const cached = await this.aggregatesCache.getTournamentStats<TournamentStatsView>(
+      tournamentId,
+      teamId,
+    );
+    if (cached) {
+      return this.resolveTournamentStatsMedia(cached);
+    }
+
+    const allTeams = await this.prisma.team.findMany({
+      where: { tournamentId, ...activeTeamWhere },
+      select: { id: true, name: true, logoUrl: true },
+      orderBy: { name: 'asc' },
+    });
+
+    const isLeather = tournament.ballType === BallType.Leather;
+    const statsTeams = isLeather
+      ? filterAccFixedTeamsInTournament(allTeams)
+      : allTeams;
+    const allowedTeamIds = isLeather
+      ? new Set(statsTeams.map((team) => team.id))
+      : null;
+
+    const teams = statsTeams.map((team) => ({
+      id: team.id,
+      name: team.name,
+      logoUrl: team.logoUrl,
+    }));
+
+    if (teamId && !statsTeams.some((team) => team.id === teamId)) {
+      return {
+        tournamentId,
+        hasRecords: false,
+        teams,
+        aggregates: EMPTY_STATS_AGGREGATES,
+        mostSixes: [],
+        mostFours: [],
+      };
+    }
+
+    const matches = await this.prisma.match.findMany({
+      where: {
+        tournamentId,
+        isDeleted: false,
+        state: { in: TOURNAMENT_STATS_MATCH_STATES },
+      },
+      orderBy: [{ matchDate: 'asc' }, { createdAt: 'asc' }],
+    });
+
+    const computed = await this.computeTournamentStats(
+      tournamentId,
+      matches,
+      teams,
+      teamId,
+      allowedTeamIds,
+    );
+    await this.aggregatesCache.setTournamentStats(tournamentId, teamId, computed);
+    return this.resolveTournamentStatsMedia(computed);
+  }
+
+  private async computeLeaderboard(
+    tournamentId: string,
+    matches: Match[],
+    teams: TournamentLeaderboard['teams'],
+    teamId?: string | null,
+  ): Promise<TournamentLeaderboard> {
     const memberships = await this.prisma.teamMembership.findMany({
       where: {
         tournamentId,
@@ -143,8 +246,11 @@ export class LeaderboardService {
     const battingAccumulators = new Map<string, BattingAccumulator>();
     const bowlingAccumulators = new Map<string, BowlingAccumulator>();
 
-    for (const match of tournament.matches) {
-      const scorecard = await this.scorecards.build(match);
+    const scorecards = await mapPool(matches, SCORECARD_BUILD_CONCURRENCY, (match) =>
+      this.scorecards.build(match),
+    );
+
+    for (const scorecard of scorecards) {
       for (const innings of scorecard.innings) {
         for (const batter of innings.batters) {
           const membership = membershipByUserId.get(batter.playerId);
@@ -156,7 +262,7 @@ export class LeaderboardService {
             acc = createBattingAccumulator();
             battingAccumulators.set(batter.playerId, acc);
           }
-          applyBatterInnings(acc, match.id, batter);
+          applyBatterInnings(acc, scorecard.matchId, batter);
         }
 
         for (const bowler of innings.bowlers) {
@@ -169,19 +275,18 @@ export class LeaderboardService {
             acc = createBowlingAccumulator();
             bowlingAccumulators.set(bowler.playerId, acc);
           }
-          applyBowlerInnings(acc, match.id, bowler);
+          applyBowlerInnings(acc, scorecard.matchId, bowler);
         }
       }
     }
 
-    // Matches = Playing XI appearances (independent of bowling activity).
-    if (tournament.matches.length > 0 && bowlingAccumulators.size > 0) {
+    if (matches.length > 0 && bowlingAccumulators.size > 0) {
       const xiRows = await this.prisma.matchSquadPlayer.findMany({
         where: {
           role: MatchSquadRole.PlayingXi,
           userId: { in: [...bowlingAccumulators.keys()] },
           squad: {
-            matchId: { in: tournament.matches.map((match) => match.id) },
+            matchId: { in: matches.map((match) => match.id) },
           },
         },
         select: {
@@ -219,7 +324,6 @@ export class LeaderboardService {
     const bowlingPlayers = memberships
       .map((membership) => {
         const acc = bowlingAccumulators.get(membership.userId);
-        // Bowl tab: only players who actually bowled (Inns > 0); XI-only never-bowled excluded.
         if (!acc || acc.innings === 0) {
           return null;
         }
@@ -236,12 +340,9 @@ export class LeaderboardService {
       })
       .filter((player): player is NonNullable<typeof player> => player != null);
 
-    const battingEntries = buildBattingLeaderboardEntries(
-      await this.mediaUrls.resolveProfilePhotoUrls(battingPlayers),
-    );
-    const bowlingEntries = buildBowlingLeaderboardEntries(
-      await this.mediaUrls.resolveProfilePhotoUrls(bowlingPlayers),
-    );
+    // Cache storage keys (not presigned URLs). Resolve on every response.
+    const battingEntries = buildBattingLeaderboardEntries(battingPlayers);
+    const bowlingEntries = buildBowlingLeaderboardEntries(bowlingPlayers);
 
     return {
       tournamentId,
@@ -252,58 +353,13 @@ export class LeaderboardService {
     };
   }
 
-  async getTournamentStats(
+  private async computeTournamentStats(
     tournamentId: string,
-    teamId?: string | null,
-    viewer: AuthUser | null = null,
+    matches: Match[],
+    teams: TournamentStatsView['teams'],
+    teamId: string | null | undefined,
+    allowedTeamIds: Set<string> | null,
   ): Promise<TournamentStatsView> {
-    const tournament = await this.prisma.tournament.findUnique({
-      where: { id: tournamentId },
-      include: {
-        teams: {
-          where: activeTeamWhere,
-          select: { id: true, name: true, logoUrl: true },
-          orderBy: { name: 'asc' },
-        },
-        matches: {
-          where: {
-            isDeleted: false,
-            state: { in: TOURNAMENT_STATS_MATCH_STATES },
-          },
-          orderBy: [{ matchDate: 'asc' }, { createdAt: 'asc' }],
-        },
-      },
-    });
-    assertTournamentActive(tournament);
-    await this.tennisVisibility.assertCanViewCenterLevelTournament(viewer, tournament, {
-      allowUnauthenticated: true,
-    });
-
-    const isLeather = tournament.ballType === BallType.Leather;
-    const statsTeams = isLeather
-      ? filterAccFixedTeamsInTournament(tournament.teams)
-      : tournament.teams;
-    const allowedTeamIds = isLeather
-      ? new Set(statsTeams.map((team) => team.id))
-      : null;
-
-    const teams = statsTeams.map((team) => ({
-      id: team.id,
-      name: team.name,
-      logoUrl: team.logoUrl,
-    }));
-
-    if (teamId && !statsTeams.some((team) => team.id === teamId)) {
-      return {
-        tournamentId,
-        hasRecords: false,
-        teams,
-        aggregates: EMPTY_STATS_AGGREGATES,
-        mostSixes: [],
-        mostFours: [],
-      };
-    }
-
     const memberships = await this.prisma.teamMembership.findMany({
       where: {
         tournamentId,
@@ -336,8 +392,11 @@ export class LeaderboardService {
     const membershipUserIds = new Set(memberships.map((row) => row.userId));
     const acc = createTournamentStatsAccumulators();
 
-    for (const match of tournament.matches) {
-      const scorecard = await this.resolveStatsScorecard(match);
+    const scorecards = await mapPool(matches, SCORECARD_BUILD_CONCURRENCY, (match) =>
+      this.scorecards.build(match),
+    );
+
+    for (const scorecard of scorecards) {
       foldScorecardIntoTournamentStats(
         acc,
         scorecard,
@@ -356,10 +415,8 @@ export class LeaderboardService {
       teamName: membership.team.name,
     }));
 
-    const resolvedPlayers = await this.mediaUrls.resolveProfilePhotoUrls(boundaryPlayers);
-
     const mostSixes = buildBoundaryLeaderboardEntries(
-      resolvedPlayers.map((player) => ({
+      boundaryPlayers.map((player) => ({
         ...player,
         count: acc.playerSixes.get(player.userId) ?? 0,
         runs: acc.playerRuns.get(player.userId) ?? 0,
@@ -367,7 +424,7 @@ export class LeaderboardService {
     );
 
     const mostFours = buildBoundaryLeaderboardEntries(
-      resolvedPlayers.map((player) => ({
+      boundaryPlayers.map((player) => ({
         ...player,
         count: acc.playerFours.get(player.userId) ?? 0,
         runs: acc.playerRuns.get(player.userId) ?? 0,
@@ -392,15 +449,27 @@ export class LeaderboardService {
     };
   }
 
-  private async resolveStatsScorecard(
-    match: Parameters<ScorecardReader['build']>[0],
-  ): Promise<Awaited<ReturnType<ScorecardReader['build']>>> {
-    if (LIVE_MATCH_STATES.includes(match.state as MatchState)) {
-      const cached = await this.live.getCached(match.id);
-      if (cached) {
-        return cached;
-      }
-    }
-    return this.scorecards.build(match);
+  private async resolveLeaderboardMedia(
+    board: TournamentLeaderboard,
+  ): Promise<TournamentLeaderboard> {
+    const [battingEntries, bowlingEntries] = await Promise.all([
+      this.mediaUrls.resolveProfilePhotoUrls(board.batting.entries),
+      this.mediaUrls.resolveProfilePhotoUrls(board.bowling.entries),
+    ]);
+    return {
+      ...board,
+      batting: { entries: battingEntries },
+      bowling: { entries: bowlingEntries },
+    };
+  }
+
+  private async resolveTournamentStatsMedia(
+    stats: TournamentStatsView,
+  ): Promise<TournamentStatsView> {
+    const [mostSixes, mostFours] = await Promise.all([
+      this.mediaUrls.resolveProfilePhotoUrls(stats.mostSixes),
+      this.mediaUrls.resolveProfilePhotoUrls(stats.mostFours),
+    ]);
+    return { ...stats, mostSixes, mostFours };
   }
 }

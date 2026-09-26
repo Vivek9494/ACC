@@ -99,6 +99,7 @@ import {
   assertKnockoutTeamCountOnUpdate,
 } from './tournament-knockout-team-count.validation';
 import { KnockoutBracketService } from '../knockout-bracket/knockout-bracket.service';
+import { StatsInvalidationService } from '../stats/stats-invalidation.service';
 
 const CREATE_PERMISSION: Record<TournamentType, Permission> = {
   ACC: Permission.CREATE_ACC_TOURNAMENT,
@@ -138,6 +139,7 @@ export class TournamentsService {
     private readonly tennisVisibility: TennisTournamentVisibilityService,
     private readonly tournamentScorers: TournamentScorersService,
     private readonly knockoutBracket: KnockoutBracketService,
+    private readonly statsInvalidation: StatsInvalidationService,
   ) {}
 
   /** Creates a tournament (§6.1), deriving the type server-side and RBAC-gating it. */
@@ -861,6 +863,12 @@ export class TournamentsService {
       }
     });
 
+    if (dto.name !== undefined && dto.name !== existing.name) {
+      await this.statsInvalidation.invalidateTournamentAndPlayerCareers(id);
+    } else {
+      await this.statsInvalidation.invalidateTournamentAggregates(id);
+    }
+
     await this.notifyOnTournamentEdit(existing, dto, normalizedDates);
 
     return this.getDetail(id, actor);
@@ -975,6 +983,7 @@ export class TournamentsService {
       where: { id: tournamentId },
       data: { matchSchedulingFormat: schedulingFormat },
     });
+    await this.statsInvalidation.invalidateTournamentAggregates(tournamentId);
 
     return this.getDetail(tournamentId, actor);
   }
@@ -998,6 +1007,7 @@ export class TournamentsService {
         deletedById: actor.id,
       },
     });
+    await this.statsInvalidation.invalidateTournamentAndPlayerCareers(id);
   }
 
   /** Validates and applies a §5.1 lifecycle transition. */

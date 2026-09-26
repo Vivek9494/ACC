@@ -37,6 +37,7 @@ import { LiveService } from '../live/live.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { activeMatchFirstWhere } from '../matches/match-query';
 import { SuspensionService } from '../suspension/suspension.service';
+import { StatsInvalidationService } from '../stats/stats-invalidation.service';
 import { TennisMatchScoringAuthService } from '../tournaments/tennis-match-scoring-auth.service';
 import { assertKnockoutPostConfirmEditAllowed } from '../knockout-bracket/knockout-bracket-correction.guard';
 import { toScoringEvent } from './delivery-mapper';
@@ -114,6 +115,7 @@ export class ScoringService {
     private readonly confirmation: ScorecardConfirmationService,
     private readonly suspensions: SuspensionService,
     private readonly tennisScoringAuth: TennisMatchScoringAuthService,
+    private readonly statsInvalidation: StatsInvalidationService,
   ) {}
 
   /**
@@ -285,6 +287,9 @@ export class ScoringService {
       }
       return this.bumpVersion(tx, matchId);
     });
+    if (opts.postConfirm) {
+      await this.statsInvalidation.invalidateMatchAggregates(matchId, match.tournamentId);
+    }
     return this.publishAndReturn(updated);
   }
 
@@ -451,6 +456,9 @@ export class ScoringService {
       }
       return this.bumpVersion(tx, matchId);
     });
+    if (opts.postConfirm) {
+      await this.statsInvalidation.invalidateMatchAggregates(matchId, match.tournamentId);
+    }
     return this.publishAndReturn(updated);
   }
 
@@ -929,6 +937,7 @@ export class ScoringService {
       },
     });
     await this.suspensions.generateForCompletedMatch(matchId);
+    await this.statsInvalidation.invalidateMatchAggregates(matchId, matchRow.tournamentId);
     return this.publishAndReturn(updated);
   }
 

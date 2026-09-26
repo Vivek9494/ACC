@@ -991,6 +991,7 @@ export class AdminService {
       this.prisma.match.count({
         where: {
           matchDate: { gte: todayStart, lt: todayEnd },
+          isDeleted: false,
           ...activeTournamentRelationWhere,
         },
       }),

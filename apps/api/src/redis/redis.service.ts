@@ -77,6 +77,27 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     return count;
   }
 
+  /** Increment without TTL (e.g. cache version stamps). */
+  async incr(key: string): Promise<number> {
+    return this.client.incr(key);
+  }
+
+  /** Pipelined INCR of many keys in one round trip. */
+  async incrMany(keys: readonly string[]): Promise<void> {
+    if (keys.length === 0) {
+      return;
+    }
+    const pipeline = this.client.pipeline();
+    for (const key of keys) {
+      pipeline.incr(key);
+    }
+    const results = await pipeline.exec();
+    const failed = results?.find(([err]) => err != null);
+    if (failed?.[0]) {
+      throw failed[0];
+    }
+  }
+
   async get(key: string): Promise<string | null> {
     return this.client.get(key);
   }

@@ -349,6 +349,7 @@ function makeHarness(
     knockoutProgression as never,
     notifications as never,
     notificationAudience as never,
+    { invalidateMatchAggregates: async () => undefined } as never,
   );
   return {
     service,

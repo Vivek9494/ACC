@@ -203,6 +203,7 @@ function buildService(): {
     live as never,
     scorecardReader as never,
     { markRemainingPendingAsServed: jest.fn(), assertPlayingXiExcludesPendingSuspensions: jest.fn(), listPenaltyServingForSquads: jest.fn().mockResolvedValue(new Map()), generateForCompletedMatch: jest.fn() } as never,
+    { invalidateMatchAggregates: jest.fn().mockResolvedValue(undefined) } as never,
   );
   return { service, prisma, permissions, scorerGrants, notifications, scoring, tennisMatchScoringAuth, live, scorecardReader };
 }

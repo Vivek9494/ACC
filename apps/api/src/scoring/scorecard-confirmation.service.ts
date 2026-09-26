@@ -35,6 +35,7 @@ import {
   NotificationTrigger,
 } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { StatsInvalidationService } from '../stats/stats-invalidation.service';
 import { activeMatchFirstWhere } from '../matches/match-query';
 import { isCaptainOrViceCaptain } from '../authz/team-leader.util';
 import { ScorecardReader } from './scorecard-reader';
@@ -66,6 +67,7 @@ export class ScorecardConfirmationService {
     private readonly knockoutProgression: KnockoutProgressionService,
     private readonly notifications: NotificationsService,
     private readonly notificationAudience: NotificationAudienceService,
+    private readonly statsInvalidation: StatsInvalidationService,
   ) {}
 
   // --- Manual confirmation (§13.1) -----------------------------------------
@@ -581,6 +583,7 @@ export class ScorecardConfirmationService {
     });
     await this.live.publish(await this.reader.build(updated));
     await this.notifyWinningSquad(updated);
+    await this.statsInvalidation.invalidateMatchAggregates(updated.id, updated.tournamentId);
     return updated;
   }
 

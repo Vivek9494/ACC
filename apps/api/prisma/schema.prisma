@@ -377,7 +377,7 @@ model User {
   updatedAt DateTime @updatedAt
 
   @@index([centerId])
-  @@index([deletedAt])
+  @@index([deletedAt, isActive])
 }
 
 /// Append-only log of password-reset OTP SMS sends (Admin analytics).
@@ -953,9 +953,10 @@ model Match {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([tournamentId])
+  @@index([tournamentId, isDeleted, state])
   @@index([state])
   @@index([isDeleted])
+  @@index([matchDate])
   @@index([scoringMode])
   @@index([tournamentId, roundRobinPairKey])
   @@index([tournamentId, bracketRoundIndex])

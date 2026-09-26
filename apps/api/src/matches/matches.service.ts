@@ -103,6 +103,7 @@ import { TournamentScorersService } from '../tournaments/tournament-scorers.serv
 import { TennisMatchScoringAuthService } from '../tournaments/tennis-match-scoring-auth.service';
 import { TennisTournamentVisibilityService } from '../tournaments/tennis-tournament-visibility.service';
 import { SuspensionService } from '../suspension/suspension.service';
+import { StatsInvalidationService } from '../stats/stats-invalidation.service';
 import { assertCanCreateMatchFixture } from './create-match-auth.util';
 import { assertCanManageUpcomingMatch } from './match-manage-auth.util';
 import {
@@ -262,6 +263,7 @@ export class MatchesService {
     private readonly live: LiveService,
     private readonly scorecardReader: ScorecardReader,
     private readonly suspensions: SuspensionService,
+    private readonly statsInvalidation: StatsInvalidationService,
   ) {}
 
   // --- Creation & reads ----------------------------------------------------
@@ -853,6 +855,8 @@ export class MatchesService {
         ...(scorecardSnapshot ? { scorecard: scorecardSnapshot } : {}),
       },
     });
+
+    await this.statsInvalidation.invalidateMatchAggregates(matchId, existing.tournamentId);
   }
 
   /**
@@ -2277,6 +2281,14 @@ export class MatchesService {
 
     if (COMPLETION_STATES.includes(next)) {
       await this.suspensions.generateForCompletedMatch(matchId);
+    }
+
+    if (
+      next === MatchState.Completed ||
+      next === MatchState.NoResult ||
+      next === MatchState.Cancelled
+    ) {
+      await this.statsInvalidation.invalidateMatchAggregates(matchId, match.tournamentId);
     }
 
     return this.getDetail(matchId, actor);

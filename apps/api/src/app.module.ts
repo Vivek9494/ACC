@@ -27,6 +27,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { PlacesModule } from './places/places.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { RedisModule } from './redis/redis.module';
+import { StatsModule } from './stats/stats.module';
 import { RegistrationsModule } from './registrations/registrations.module';
 import { ScoringModule } from './scoring/scoring.module';
 import { ProfileModule } from './profile/profile.module';
@@ -56,6 +57,7 @@ import { KnockoutSeedingModule } from './knockout-seeding/knockout-seeding.modul
     StorageModule,
     PrismaModule,
     RedisModule,
+    StatsModule,
     SmsModule,
     AuditModule,
     AuthzModule,

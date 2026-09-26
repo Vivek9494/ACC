@@ -20,6 +20,7 @@ import { Prisma } from '@prisma/client';
 
 import { PermissionService } from '../authz/permission.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { StatsInvalidationService } from '../stats/stats-invalidation.service';
 import { activeTeamWhere } from '../teams/team-query';
 import { activeTeamMembershipCountSelect } from '../teams/team-membership-query';
 import { assertTournamentActive } from '../tournaments/tournament-query';
@@ -39,6 +40,7 @@ export class GroupsService {
     private readonly prisma: PrismaService,
     private readonly permissions: PermissionService,
     private readonly tournaments: TournamentsService,
+    private readonly statsInvalidation: StatsInvalidationService,
   ) {}
 
   async list(tournamentId: string): Promise<GroupSummary[]> {
@@ -131,6 +133,7 @@ export class GroupsService {
         });
       });
 
+      await this.statsInvalidation.invalidateTournamentAggregates(tournamentId);
       return this.toSummary(created, 0);
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
@@ -215,6 +218,7 @@ export class GroupsService {
       }
     });
 
+    await this.statsInvalidation.invalidateTournamentAggregates(tournamentId);
     return this.getGroupSummary(groupId);
   }
 
@@ -247,6 +251,7 @@ export class GroupsService {
       });
       await tx.tournamentGroup.delete({ where: { id: groupId } });
     });
+    await this.statsInvalidation.invalidateTournamentAggregates(tournamentId);
   }
 
   private async getGroupSummary(groupId: string): Promise<GroupSummary> {

@@ -29,6 +29,7 @@ export * from './guest';
 export * from './center';
 export * from './province';
 export * from './live';
+export * from './stats-cache';
 export * from './overlay-theme';
 export * from './youtube-url';
 export * from './broadcast-stats';

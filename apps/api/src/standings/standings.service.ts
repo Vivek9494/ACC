@@ -1,6 +1,7 @@
 import {
   BallType,
   InningsType,
+  MatchSchedulingFormat,
   MatchState,
   resolveStandingsSplitPointOutcome,
   LEATHER_STANDINGS_POINTS,
@@ -15,6 +16,11 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ScorecardReader } from '../scoring/scorecard-reader';
 import { MediaUrlResolver } from '../storage/media-url.resolver';
+import { mapPool } from '../stats/map-pool';
+import {
+  SCORECARD_BUILD_CONCURRENCY,
+  TournamentAggregatesCacheService,
+} from '../stats/tournament-aggregates-cache.service';
 import { activeTeamWhere } from '../teams/team-query';
 import { assertTournamentActive } from '../tournaments/tournament-query';
 import { TennisTournamentVisibilityService } from '../tournaments/tennis-tournament-visibility.service';
@@ -35,12 +41,26 @@ export class StandingsService {
     private readonly scorecards: ScorecardReader,
     private readonly mediaUrls: MediaUrlResolver,
     private readonly tennisVisibility: TennisTournamentVisibilityService,
+    private readonly aggregatesCache: TournamentAggregatesCacheService,
   ) {}
 
   async getStandings(
     tournamentId: string,
     viewer: AuthUser | null = null,
   ): Promise<TournamentStandings> {
+    const tournamentMeta = await this.prisma.tournament.findUnique({
+      where: { id: tournamentId },
+    });
+    assertTournamentActive(tournamentMeta);
+    await this.tennisVisibility.assertCanViewCenterLevelTournament(viewer, tournamentMeta, {
+      allowUnauthenticated: true,
+    });
+
+    const cached = await this.aggregatesCache.getStandings<TournamentStandings>(tournamentId);
+    if (cached) {
+      return this.resolveStandingsMedia(cached);
+    }
+
     const tournament = await this.prisma.tournament.findUnique({
       where: { id: tournamentId },
       include: {
@@ -75,17 +95,19 @@ export class StandingsService {
       },
     });
     assertTournamentActive(tournament);
-    await this.tennisVisibility.assertCanViewCenterLevelTournament(viewer, tournament, {
-      allowUnauthenticated: true,
-    });
 
     const isLeather = tournament.ballType === BallType.Leather;
     const showNetRunRate = !isLeather;
     const points = isLeather ? LEATHER_STANDINGS_POINTS : TENNIS_STANDINGS_POINTS;
 
-    const matchInputs: StandingsMatchInput[] = [];
-    for (const match of tournament.matches) {
-      const scorecard = await this.scorecards.build(match);
+    const scorecards = await mapPool(
+      tournament.matches,
+      SCORECARD_BUILD_CONCURRENCY,
+      (match) => this.scorecards.build(match),
+    );
+
+    const matchInputs: StandingsMatchInput[] = tournament.matches.map((match, index) => {
+      const scorecard = scorecards[index]!;
       const normalInnings: StandingsInningsInput[] = scorecard.innings
         .filter((inn) => inn.inningsType === InningsType.Normal)
         .map((inn) => ({
@@ -103,7 +125,7 @@ export class StandingsService {
         scorecardIsNoResult: scorecard.result.isNoResult,
       });
 
-      matchInputs.push({
+      return {
         matchId: match.id,
         groupId: match.groupId,
         homeTeamId: match.homeTeamId,
@@ -115,12 +137,12 @@ export class StandingsService {
         isDecided: scorecard.result.decided && !isNoResult,
         requiresSuperOver: scorecard.result.superOverRequired,
         innings: normalInnings,
-      });
-    }
+      };
+    });
 
     const { tables, dataErrors } = computeStandings({
-      tournamentId,
-      matchSchedulingFormat: tournament.matchSchedulingFormat,
+      tournamentId: tournament.id,
+      matchSchedulingFormat: tournament.matchSchedulingFormat as MatchSchedulingFormat | null,
       groupCount: tournament._count.groups,
       teams: tournament.teams.map((team) => ({
         teamId: team.id,
@@ -139,8 +161,21 @@ export class StandingsService {
       awardUndecidedAsSplit: isLeather,
     });
 
-    const resolvedTables = await Promise.all(
-      tables.map(async (table) => ({
+    const computed: TournamentStandings = {
+      tournamentId: tournament.id,
+      tables,
+      dataErrors,
+      showNetRunRate,
+    };
+    await this.aggregatesCache.setStandings(tournamentId, computed);
+    return this.resolveStandingsMedia(computed);
+  }
+
+  private async resolveStandingsMedia(
+    standings: TournamentStandings,
+  ): Promise<TournamentStandings> {
+    const tables = await Promise.all(
+      standings.tables.map(async (table) => ({
         ...table,
         teams: await Promise.all(
           table.teams.map(async (team) => ({
@@ -150,7 +185,6 @@ export class StandingsService {
         ),
       })),
     );
-
-    return { tournamentId, tables: resolvedTables, dataErrors, showNetRunRate };
+    return { ...standings, tables };
   }
 }

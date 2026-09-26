@@ -18,7 +18,15 @@ import { ScorerDashboardMatchService } from './scorer-dashboard-match.service';
  * NotificationsModule and AuditModule; imports AuthModule for JwtAuthGuard.
  */
 @Module({
-  imports: [AuthModule, LiveModule, StandingsModule, ScoringModule, SuspensionModule, TournamentsModule, StorageModule],
+  imports: [
+    AuthModule,
+    LiveModule,
+    StandingsModule,
+    ScoringModule,
+    SuspensionModule,
+    TournamentsModule,
+    StorageModule,
+  ],
   controllers: [MatchesController],
   providers: [MatchesService, ScorerDashboardMatchService, DashboardFeaturedMatchesService],
   exports: [MatchesService, ScorerDashboardMatchService, DashboardFeaturedMatchesService],
