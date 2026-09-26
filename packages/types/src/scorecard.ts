@@ -286,28 +286,20 @@ export interface ScorecardSummaryInningsWriteInput {
 /**
  * PUT body for Admin scorecard-only backfill.
  * Persists Scorecard*Summary rows and completes/locks the match.
+ * Result note and standings points are derived server-side from winner + totals.
  */
 export interface UpsertScorecardSummaryRequest {
   tossWinner?: MatchSide | null;
   tossDecision?: TossDecision | null;
   winningTeamId?: string | null;
   isNoResult?: boolean;
-  resultNote?: string | null;
-  /**
-   * Optional points the paper scorecard stated for the home (Team A) side —
-   * compared to the computed leather schedule for a WARNING only.
-   */
-  statedHomePoints?: number | null;
-  /** Optional stated points for the away / external side. */
-  statedAwayPoints?: number | null;
   innings: ScorecardSummaryInningsWriteInput[];
 }
 
 export type ScorecardSummaryValidationCode =
   | 'RUNS_EXTRAS_MISMATCH'
   | 'WICKETS_OVER_LIMIT'
-  | 'INVALID_OVERS_TEXT'
-  | 'POINTS_MISMATCH';
+  | 'INVALID_OVERS_TEXT';
 
 export interface ScorecardSummaryValidationIssue {
   code: ScorecardSummaryValidationCode;

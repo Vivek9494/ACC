@@ -1,15 +1,14 @@
 import {
-  BallType,
   InningsType,
-  LEATHER_STANDINGS_POINTS,
   MatchSquadRole,
   MatchState,
   Permission,
   ScoringMode,
   ScorecardAuditAction,
   WICKETS_FOR_ALL_OUT,
+  formatMatchResultNote,
   parseOversTextToLegalBalls,
-  standingsPointsForBallType,
+  resolveMatchWinnerDisplayName,
   type AuthUser,
   type ScorecardSummaryValidationIssue,
   type UpsertScorecardSummaryRequest,
@@ -31,6 +30,12 @@ import { AuditService } from '../audit/audit.service';
 import { PermissionService } from '../authz/permission.service';
 import { activeMatchFirstWhere } from '../matches/match-query';
 import { PrismaService } from '../prisma/prisma.service';
+import { deriveMatchResult } from './engine';
+import {
+  buildInningsScorecardFromSummary,
+  mergeScorecardOnlyResult,
+  type ScorecardSummaryInningsInput,
+} from './scorecard-summary.builder';
 import { ScorecardReader } from './scorecard-reader';
 
 /** True when overs text is a valid cricket overs string (e.g. "21.2"). */
@@ -74,6 +79,8 @@ export class ScorecardSummaryService {
       where: activeMatchFirstWhere(matchId),
       include: {
         tournament: { select: { ballType: true, type: true } },
+        homeTeam: { select: { id: true, name: true } },
+        awayTeam: { select: { id: true, name: true } },
       },
     });
     if (!match) {
@@ -92,7 +99,7 @@ export class ScorecardSummaryService {
       });
     }
 
-    const { hardErrors, warnings } = this.validate(dto, match);
+    const { hardErrors, warnings } = this.validate(dto);
     if (hardErrors.length > 0) {
       throw new BadRequestException({
         message: hardErrors[0]!.message,
@@ -110,6 +117,9 @@ export class ScorecardSummaryService {
 
     const now = new Date();
     const oversAllottedDefault = match.oversPerInnings;
+    const isNoResult = dto.isNoResult === true;
+    const winningTeamId = isNoResult ? null : (dto.winningTeamId ?? null);
+    const resultNote = this.deriveResultNote(dto, match, winningTeamId, isNoResult);
 
     await this.prisma.$transaction(async (tx) => {
       await tx.scorecardFallOfWicket.deleteMany({
@@ -219,9 +229,9 @@ export class ScorecardSummaryService {
         data: {
           tossWinner: dto.tossWinner ?? match.tossWinner,
           tossDecision: dto.tossDecision ?? match.tossDecision,
-          winningTeamId: isNoResult ? null : (dto.winningTeamId ?? null),
+          winningTeamId,
           isNoResult,
-          resultNote: dto.resultNote?.trim() || null,
+          resultNote,
           state: MatchState.ScorecardLocked,
           completedAt: match.completedAt ?? now,
           confirmedAt: now,
@@ -255,14 +265,7 @@ export class ScorecardSummaryService {
     return { scorecard, warnings };
   }
 
-  private validate(
-    dto: UpsertScorecardSummaryRequest,
-    match: {
-      homeTeamId: string | null;
-      awayTeamId: string | null;
-      tournament: { ballType: string };
-    },
-  ): {
+  private validate(dto: UpsertScorecardSummaryRequest): {
     hardErrors: ScorecardSummaryValidationIssue[];
     warnings: ScorecardSummaryValidationIssue[];
   } {
@@ -325,76 +328,93 @@ export class ScorecardSummaryService {
       }
     }
 
-    const schedule = standingsPointsForBallType(match.tournament.ballType as BallType);
-    const isNoResult = dto.isNoResult === true;
-    const winnerId = isNoResult ? null : (dto.winningTeamId ?? null);
-    const expectedHome = this.expectedPointsForSide(
-      match.homeTeamId,
-      winnerId,
-      isNoResult,
-      schedule,
-    );
-    const expectedAway = this.expectedPointsForSide(
-      match.awayTeamId,
-      winnerId,
-      isNoResult,
-      schedule,
-    );
-
-    if (
-      dto.statedHomePoints != null &&
-      expectedHome != null &&
-      dto.statedHomePoints !== expectedHome
-    ) {
-      warnings.push({
-        code: 'POINTS_MISMATCH',
-        severity: 'soft',
-        message: `Home stated points ${dto.statedHomePoints} ≠ computed ${expectedHome} (${schedule.win}/${schedule.tieOrNoResult}/${schedule.loss})`,
-      });
-    }
-    if (
-      dto.statedAwayPoints != null &&
-      expectedAway != null &&
-      dto.statedAwayPoints !== expectedAway
-    ) {
-      warnings.push({
-        code: 'POINTS_MISMATCH',
-        severity: 'soft',
-        message: `Away stated points ${dto.statedAwayPoints} ≠ computed ${expectedAway} (${schedule.win}/${schedule.tieOrNoResult}/${schedule.loss})`,
-      });
-    }
-    if (match.awayTeamId == null && dto.statedAwayPoints != null && !isNoResult) {
-      const externalExpected =
-        winnerId == null
-          ? LEATHER_STANDINGS_POINTS.tieOrNoResult
-          : winnerId === match.homeTeamId
-            ? LEATHER_STANDINGS_POINTS.loss
-            : LEATHER_STANDINGS_POINTS.win;
-      if (dto.statedAwayPoints !== externalExpected) {
-        warnings.push({
-          code: 'POINTS_MISMATCH',
-          severity: 'soft',
-          message: `Opponent stated points ${dto.statedAwayPoints} ≠ computed ${externalExpected}`,
-        });
-      }
-    }
-
     return { hardErrors, warnings };
   }
 
-  private expectedPointsForSide(
-    teamId: string | null,
-    winnerId: string | null,
+  /**
+   * Derive the persisted result line from innings totals + Admin winner /
+   * No Result (same wording as live completion).
+   */
+  private deriveResultNote(
+    dto: UpsertScorecardSummaryRequest,
+    match: {
+      homeTeamId: string | null;
+      awayTeamId: string | null;
+      externalOpponentName: string | null;
+      homeTeam: { id: string; name: string } | null;
+      awayTeam: { id: string; name: string } | null;
+    },
+    winningTeamId: string | null,
     isNoResult: boolean,
-    schedule: { win: number; tieOrNoResult: number; loss: number },
-  ): number | null {
-    if (teamId == null) {
-      return null;
+  ): string | null {
+    if (isNoResult) {
+      return 'No Result';
     }
-    if (isNoResult || winnerId == null) {
-      return schedule.tieOrNoResult;
-    }
-    return teamId === winnerId ? schedule.win : schedule.loss;
+
+    const cards = [...dto.innings]
+      .sort((a, b) => a.sequence - b.sequence)
+      .map((innings, index) => {
+        const extrasByes = innings.extrasByes ?? 0;
+        const extrasLegByes = innings.extrasLegByes ?? 0;
+        const extrasWides = innings.extrasWides ?? 0;
+        const extrasNoBalls = innings.extrasNoBalls ?? 0;
+        const extrasPenalties = innings.extrasPenalties ?? 0;
+        const input: ScorecardSummaryInningsInput = {
+          id: `pending-${index + 1}`,
+          sequence: innings.sequence,
+          inningsType: innings.inningsType ?? InningsType.Normal,
+          battingTeamId: innings.battingTeamId,
+          bowlingTeamId: innings.bowlingTeamId,
+          battingIsExternal: innings.battingIsExternal ?? innings.battingTeamId == null,
+          bowlingIsExternal: innings.bowlingIsExternal ?? innings.bowlingTeamId == null,
+          runs: innings.runs,
+          wickets: innings.wickets,
+          legalBalls: parseOversTextToLegalBalls(innings.oversText),
+          oversText: innings.oversText.trim(),
+          oversAllotted: innings.oversAllotted ?? null,
+          closed: innings.closed ?? true,
+          closeReason: innings.closeReason ?? null,
+          target: innings.target ?? null,
+          extrasByes,
+          extrasLegByes,
+          extrasWides,
+          extrasNoBalls,
+          extrasPenalties,
+          extrasTotal:
+            extrasByes + extrasLegByes + extrasWides + extrasNoBalls + extrasPenalties,
+          batters: innings.batters,
+          bowlers: innings.bowlers.map((bowler) => ({
+            playerId: bowler.playerId,
+            legalBalls: parseOversTextToLegalBalls(bowler.oversText),
+            maidens: bowler.maidens,
+            runsConceded: bowler.runsConceded,
+            wickets: bowler.wickets,
+            wides: bowler.wides,
+            noBalls: bowler.noBalls,
+          })),
+          fallOfWickets: innings.fallOfWickets,
+        };
+        return buildInningsScorecardFromSummary(input);
+      });
+
+    const derived = deriveMatchResult(cards);
+    const result = mergeScorecardOnlyResult(derived, {
+      winningTeamId,
+      isNoResult: false,
+      resultNote: null,
+    });
+    const winnerName = resolveMatchWinnerDisplayName(
+      {
+        homeTeamId: match.homeTeamId,
+        awayTeamId: match.awayTeamId,
+        homeTeamName: match.homeTeam?.name ?? null,
+        awayTeamName: match.awayTeam?.name ?? null,
+        externalOpponentName: match.externalOpponentName,
+      },
+      result,
+      cards,
+    );
+    return formatMatchResultNote(winnerName, result);
   }
 
   private async upsertSquadPlayers(

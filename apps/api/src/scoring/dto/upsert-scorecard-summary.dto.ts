@@ -246,20 +246,6 @@ export class UpsertScorecardSummaryDto implements UpsertScorecardSummaryRequest 
   @IsBoolean()
   isNoResult?: boolean;
 
-  @IsOptional()
-  @IsString()
-  resultNote?: string | null;
-
-  @IsOptional()
-  @IsInt()
-  @Min(0)
-  statedHomePoints?: number | null;
-
-  @IsOptional()
-  @IsInt()
-  @Min(0)
-  statedAwayPoints?: number | null;
-
   @IsArray()
   @ArrayMinSize(1)
   @ValidateNested({ each: true })
