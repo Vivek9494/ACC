@@ -191,10 +191,16 @@ export default function OpponentPlayersScreen(): React.ReactElement {
 
           {atCapacity ? (
             <Button
-              label="Continue to match"
+              label="Continue to scorecard entry"
               onPress={() => {
                 if (matchId) {
-                  router.replace(`/matches/${matchId}`);
+                  router.replace(
+                    tournamentId
+                      ? `/matches/${matchId}/scorecard-only-entry?tournamentId=${encodeURIComponent(
+                          tournamentId,
+                        )}`
+                      : `/matches/${matchId}/scorecard-only-entry`,
+                  );
                 }
               }}
               className="mt-4 h-12 w-full"

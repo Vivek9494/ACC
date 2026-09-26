@@ -17,6 +17,32 @@ import { canManageTournamentScorers } from './tournament-scorers';
 import { canViewAdminUsersDirectory } from './admin';
 import type { OverlayThemeKey } from './overlay-theme';
 
+/**
+ * How a match's scorecard is produced.
+ * - LIVE: fold from Delivery events (normal scoring).
+ * - SCORECARD_ONLY: build from persisted summary figures (historical backfill).
+ */
+export const ScoringMode = {
+  Live: 'LIVE',
+  ScorecardOnly: 'SCORECARD_ONLY',
+} as const;
+export type ScoringMode = (typeof ScoringMode)[keyof typeof ScoringMode];
+
+/** True for normal ball-by-ball matches (not Admin scorecard-only backfill). */
+export function isLiveScoringMode(mode: ScoringMode | null | undefined): boolean {
+  return mode !== ScoringMode.ScorecardOnly;
+}
+
+/**
+ * Whether a scorecard payload has ball-level data (timeline, wagon, clips, etc.).
+ * Missing `scoringMode` is treated as LIVE for older cached snapshots.
+ */
+export function scorecardHasBallByBall(
+  card: { scoringMode?: ScoringMode | null } | null | undefined,
+): boolean {
+  return isLiveScoringMode(card?.scoringMode);
+}
+
 /** Match states (spec §5.2). */
 export const MatchState = {
   Scheduled: 'SCHEDULED',
@@ -373,6 +399,8 @@ export interface MatchSummary {
   startTime: string | null;
   /** Cumulative pre-live delay in minutes; original startTime unchanged. */
   delayMinutes: number;
+  /** LIVE folds deliveries; SCORECARD_ONLY reads summary tables (Admin backfill). */
+  scoringMode: ScoringMode;
 }
 
 export interface SquadPlayerView {

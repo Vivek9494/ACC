@@ -3,6 +3,7 @@ import {
   buildDeliveryHighlightMarker,
   DeliveryType,
   InningsType,
+  ScoringMode,
   type ScorecardResponse,
   type TimelineEntry,
   type DismissalType,
@@ -21,6 +22,11 @@ import {
   ScorecardDisplayBuilder,
   type MatchContext,
 } from './scorecard-display.builder';
+import {
+  buildInningsScorecardFromSummary,
+  mergeScorecardOnlyResult,
+  prismaSummaryToInput,
+} from './scorecard-summary.builder';
 
 function participantId(
   userId: string | null | undefined,
@@ -48,10 +54,14 @@ function markerFromDelivery(row: Delivery): DeliveryHighlightMarker | null {
 }
 
 /**
- * Builds the derived {@link ScorecardResponse} for a match by folding over the
- * append-only delivery log (spec §12, §28). Read-only and Prisma-coupled; the
- * scoring writer and the confirmation/PDF services all derive from this single
- * builder so totals/figures never diverge.
+ * Builds the derived {@link ScorecardResponse} for a match.
+ *
+ * - {@link ScoringMode.Live}: fold non-voided Delivery rows (spec §12, §28).
+ * - {@link ScoringMode.ScorecardOnly}: build from Scorecard*Summary tables
+ *   (historical backfill — empty timeline / recent overs).
+ *
+ * Read-only and Prisma-coupled; scoring writers and confirmation/PDF services
+ * all derive from this single builder so totals/figures never diverge.
  */
 @Injectable()
 export class ScorecardReader {
@@ -70,6 +80,79 @@ export class ScorecardReader {
   }
 
   async build(match: Match): Promise<ScorecardResponse> {
+    if (match.scoringMode === ScoringMode.ScorecardOnly) {
+      return this.buildFromSummaries(match);
+    }
+    return this.buildFromDeliveries(match);
+  }
+
+  private async buildFromSummaries(match: Match): Promise<ScorecardResponse> {
+    const [matchContext, summaries] = await Promise.all([
+      this.loadMatchContext(match.id),
+      this.prisma.scorecardInningsSummary.findMany({
+        where: { matchId: match.id },
+        orderBy: { sequence: 'asc' },
+        include: {
+          batters: { orderBy: { sortOrder: 'asc' } },
+          bowlers: { orderBy: { sortOrder: 'asc' } },
+          fallOfWickets: { orderBy: { wicketNumber: 'asc' } },
+        },
+      }),
+    ]);
+
+    if (!matchContext) {
+      throw new NotFoundException({ message: 'Match not found', error: 'MATCH_NOT_FOUND' });
+    }
+
+    const originalTarget = match.originalTarget ?? null;
+    const dlsTarget = match.dlsTarget ?? null;
+    const effectiveTarget = dlsTarget ?? originalTarget;
+
+    const cards: InningsScorecard[] = summaries.map((row, index, all) => {
+      const input = prismaSummaryToInput(row);
+      if (input.target == null && input.inningsType === InningsType.Normal && input.sequence > 1) {
+        const firstNormal = all.find((candidate) => candidate.inningsType === InningsType.Normal);
+        const firstRuns = firstNormal?.runs ?? 0;
+        input.target = effectiveTarget ?? firstRuns + 1;
+      }
+      return buildInningsScorecardFromSummary(input);
+    });
+
+    const derived = deriveMatchResult(cards);
+    const result = mergeScorecardOnlyResult(derived, match);
+
+    const core = {
+      matchId: match.id,
+      version: match.scorecardVersion,
+      scoringMode: ScoringMode.ScorecardOnly,
+      originalTarget,
+      dlsTarget,
+      effectiveTarget,
+      innings: cards,
+      result,
+      boundaryHighlights: [] as DeliveryHighlightMarker[],
+    };
+
+    const display = this.displayBuilder.build(
+      matchContext,
+      core,
+      summaries.map((row) => ({
+        id: row.id,
+        battingIsExternal: row.battingIsExternal,
+        bowlingIsExternal: row.bowlingIsExternal,
+      })),
+    );
+    const participantIds = collectParticipantIds({ ...core, display });
+    display.players = await this.displayBuilder.enrichPlayers(
+      match.id,
+      display.players,
+      participantIds,
+    );
+
+    return { ...core, display };
+  }
+
+  private async buildFromDeliveries(match: Match): Promise<ScorecardResponse> {
     const [matchContext, innings] = await Promise.all([
       this.loadMatchContext(match.id),
       this.prisma.innings.findMany({
@@ -150,6 +233,7 @@ export class ScorecardReader {
     const core = {
       matchId: match.id,
       version: match.scorecardVersion,
+      scoringMode: ScoringMode.Live,
       originalTarget,
       dlsTarget,
       effectiveTarget,

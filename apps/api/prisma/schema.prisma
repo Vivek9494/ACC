@@ -230,6 +230,12 @@ enum InningsType {
   SUPER_OVER
 }
 
+/// How the match scorecard is produced (live ball-by-ball vs summary backfill).
+enum ScoringMode {
+  LIVE
+  SCORECARD_ONLY
+}
+
 /// Type of a scoring event. A single append-only stream carries both deliveries
 /// and discrete non-ball events (spec §12.1). `overNumber`/`ballNumber` are null
 /// for non-ball events such as penalty runs or an Impact Player coming in.
@@ -919,6 +925,9 @@ model Match {
   /// historical backfill; resulting scorecards still look like live matches.
   suppressLiveSideEffects Boolean @default(false)
 
+  /// LIVE folds Delivery rows; SCORECARD_ONLY builds from Scorecard*Summary tables.
+  scoringMode ScoringMode @default(LIVE)
+
   /// Knockout bracket placement and advancement (GROUP_STAGE_KNOCKOUT).
   bracketId          String?
   bracket            KnockoutBracket? @relation(fields: [bracketId], references: [id], onDelete: SetNull)
@@ -932,6 +941,7 @@ model Match {
   feedsIntoMatches   Match[]    @relation("KnockoutAdvancement")
 
   innings         Innings[]
+  scorecardInningsSummaries ScorecardInningsSummary[]
   scorerGrants    MatchScorerGrant[]
   externalPlayers ExternalPlayer[]
   squads          MatchSquad[]
@@ -946,6 +956,7 @@ model Match {
   @@index([tournamentId])
   @@index([state])
   @@index([isDeleted])
+  @@index([scoringMode])
   @@index([tournamentId, roundRobinPairKey])
   @@index([tournamentId, bracketRoundIndex])
   @@index([bracketId])
@@ -1093,6 +1104,100 @@ model Innings {
   updatedAt DateTime @updatedAt
 
   @@unique([matchId, sequence])
+}
+
+/// Per-innings totals for SCORECARD_ONLY matches (no Delivery fold).
+/// Linked to Match; does not replace the live Innings/Delivery path.
+model ScorecardInningsSummary {
+  id                String      @id @default(uuid())
+  matchId           String
+  match             Match       @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  sequence          Int
+  inningsType       InningsType @default(NORMAL)
+  battingTeamId     String?
+  bowlingTeamId     String?
+  battingIsExternal Boolean     @default(false)
+  bowlingIsExternal Boolean     @default(false)
+  runs              Int
+  wickets           Int
+  legalBalls        Int
+  oversText         String
+  oversAllotted     Int?
+  closed            Boolean     @default(true)
+  /// Matches InningsCloseReason string values (ALL_OUT, OVERS_COMPLETE, …).
+  closeReason       String?
+  target            Int?
+  extrasWides       Int         @default(0)
+  extrasNoBalls     Int         @default(0)
+  extrasByes        Int         @default(0)
+  extrasLegByes     Int         @default(0)
+  extrasPenalties   Int         @default(0)
+  extrasTotal       Int         @default(0)
+
+  batters        ScorecardBatterSummary[]
+  bowlers        ScorecardBowlerSummary[]
+  fallOfWickets  ScorecardFallOfWicket[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([matchId, sequence])
+  @@index([matchId])
+}
+
+model ScorecardBatterSummary {
+  id               String               @id @default(uuid())
+  inningsSummaryId String
+  inningsSummary   ScorecardInningsSummary @relation(fields: [inningsSummaryId], references: [id], onDelete: Cascade)
+  sortOrder        Int                  @default(0)
+  /// Opaque participant id (registered userId or external player id).
+  playerId         String
+  runs             Int
+  balls            Int
+  fours            Int                  @default(0)
+  sixes            Int                  @default(0)
+  isOut            Boolean
+  dismissalType    DismissalType?
+  bowlerId         String?
+  fielderId        String?
+  fielder2Id       String?
+  retiredHurt      Boolean              @default(false)
+  isMankad         Boolean              @default(false)
+
+  @@index([inningsSummaryId])
+  @@index([playerId])
+}
+
+model ScorecardBowlerSummary {
+  id               String               @id @default(uuid())
+  inningsSummaryId String
+  inningsSummary   ScorecardInningsSummary @relation(fields: [inningsSummaryId], references: [id], onDelete: Cascade)
+  sortOrder        Int                  @default(0)
+  playerId         String
+  legalBalls       Int
+  maidens          Int                  @default(0)
+  runsConceded     Int
+  wickets          Int
+  wides            Int                  @default(0)
+  noBalls          Int                  @default(0)
+  fours            Int                  @default(0)
+  sixes            Int                  @default(0)
+  dotBalls         Int                  @default(0)
+
+  @@index([inningsSummaryId])
+  @@index([playerId])
+}
+
+model ScorecardFallOfWicket {
+  id               String               @id @default(uuid())
+  inningsSummaryId String
+  inningsSummary   ScorecardInningsSummary @relation(fields: [inningsSummaryId], references: [id], onDelete: Cascade)
+  wicketNumber     Int
+  playerId         String
+  teamRuns         Int
+  oversText        String
+
+  @@index([inningsSummaryId])
 }
 
 /// Append-only ball-by-ball / scoring event (Phase 3; spec §12.1).

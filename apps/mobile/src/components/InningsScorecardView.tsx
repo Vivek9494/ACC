@@ -9,6 +9,7 @@ import {
   formatInningsTotalScore,
   extrasBreakdownParts,
   originalFirstInningsRunsForChaseTotal,
+  scorecardHasBallByBall,
   type BatterCard,
   type CompletedPartnership,
   type InningsScorecard,
@@ -93,6 +94,7 @@ export function InningsLiveTopCards({
         teamLogoUrl={logoUrl}
         showLiveBadge={showLiveBadge}
         showLiveContext
+        showBallByBall={scorecardHasBallByBall(card)}
       />
       <PartnershipCard innings={innings} nameOf={nameOf} />
       <LastWicketCard innings={innings} nameOf={nameOf} />
@@ -236,6 +238,7 @@ function ScoreHeader({
   teamLogoUrl,
   showLiveBadge = false,
   showLiveContext = false,
+  showBallByBall = true,
 }: {
   innings: InningsScorecard;
   nameOf: NameResolver;
@@ -244,6 +247,8 @@ function ScoreHeader({
   teamLogoUrl?: string | null;
   showLiveBadge?: boolean;
   showLiveContext?: boolean;
+  /** False for SCORECARD_ONLY — no over strip / recent balls. */
+  showBallByBall?: boolean;
 }): React.ReactElement {
   // Innings allotment first — reflects a Change Overs reduction; match value can be stale.
   const stats = deriveLiveInningsRunStats(innings, innings.oversAllotted ?? totalOvers);
@@ -336,7 +341,7 @@ function ScoreHeader({
           </View>
         ) : null}
 
-        {showLiveContext && innings.timeline.length > 0 ? (
+        {showLiveContext && showBallByBall && innings.timeline.length > 0 ? (
           <>
             <ScoreHeaderDivider />
             <RecentBallsStrip timeline={innings.timeline} compact showLabel={false} />
@@ -709,6 +714,7 @@ export function InningsScorecardView({
   droppedCatchSlot,
   manOfMatchSlot,
 }: InningsScorecardViewProps): React.ReactElement {
+  const showBallLevel = scorecardHasBallByBall(card);
   return (
     <View className="gap-4">
       <BattingTable card={card} innings={innings} nameOf={nameOf} />
@@ -716,8 +722,10 @@ export function InningsScorecardView({
       <BowlingTable innings={innings} nameOf={nameOf} />
       {droppedCatchSlot}
       <FallOfWicketsSection innings={innings} nameOf={nameOf} />
-      <PartnershipsSection innings={innings} nameOf={nameOf} />
-      <BallByBallCollapsibleSection timeline={innings.timeline} variant="scorecard" />
+      {showBallLevel ? <PartnershipsSection innings={innings} nameOf={nameOf} /> : null}
+      {showBallLevel ? (
+        <BallByBallCollapsibleSection timeline={innings.timeline} variant="scorecard" />
+      ) : null}
     </View>
   );
 }

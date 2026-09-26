@@ -5,7 +5,7 @@ import type {
   MatchDetail,
   ScorecardResponse,
 } from '@acc/types';
-import { BallType } from '@acc/types';
+import { BallType, scorecardHasBallByBall } from '@acc/types';
 import { createElement, useEffect, useMemo, useState, type ChangeEvent } from 'react';
 import { Pressable, ScrollView, View, type ViewStyle } from 'react-native';
 
@@ -423,7 +423,10 @@ export function OverlayControlPanel({
   const inningsBreakPreview = formatOverlayInningsBreakPreview(card);
   const inningsBreakLive = isInningsBreakOnAir(onAir);
   const wagonOptions = useMemo(
-    () => buildOverlayWagonWheelOptions(card, innings, nameOf),
+    () =>
+      scorecardHasBallByBall(card)
+        ? buildOverlayWagonWheelOptions(card, innings, nameOf)
+        : [],
     [card, innings, nameOf],
   );
   const wagonLive = isCommonGraphicOnAir(onAir, 'wagon_wheel');

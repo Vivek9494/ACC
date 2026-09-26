@@ -11,6 +11,8 @@ import {
   canShowRecordToss,
   canViewMatchPlayersPunchTimeButton,
   PLAYING_XI_SIZE,
+  ScoringMode,
+  UserRole,
   type MatchDetail,
   type MatchSquadRole,
   type SquadPlayerView,
@@ -227,11 +229,22 @@ export default function MatchDetailScreen(): React.ReactElement {
   const isAssignedScorer =
     user != null && match.activeScorers.some((scorer) => scorer.userId === user.id);
   const canContinueScoring =
-    isAssignedScorer && (state === 'LIVE' || state === 'RAIN_INTERRUPTED');
+    isAssignedScorer &&
+    (state === 'LIVE' || state === 'RAIN_INTERRUPTED') &&
+    match.scoringMode !== ScoringMode.ScorecardOnly;
+
+  const canEnterScorecardOnly =
+    user?.role === UserRole.Admin &&
+    match.scoringMode === ScoringMode.ScorecardOnly &&
+    state !== MatchState.ScorecardLocked &&
+    state !== MatchState.Completed;
 
   const showPunchTime = canViewMatchPlayersPunchTimeButton(user, match);
   const primaryActionCount =
-    (showPunchTime ? 1 : 0) + (scoreViewAction ? 1 : 0) + (canContinueScoring ? 1 : 0);
+    (showPunchTime ? 1 : 0) +
+    (scoreViewAction ? 1 : 0) +
+    (canContinueScoring ? 1 : 0) +
+    (canEnterScorecardOnly ? 1 : 0);
   const punchAndScoreSideBySide = primaryActionCount === 2;
 
   function resolvePlayingXiRoute(team: { id: string; name: string }): string {
@@ -296,8 +309,21 @@ export default function MatchDetailScreen(): React.ReactElement {
           </View>
         ) : null}
 
-        {showPunchTime || scoreViewAction || canContinueScoring ? (
+        {showPunchTime || scoreViewAction || canContinueScoring || canEnterScorecardOnly ? (
           <View className={punchAndScoreSideBySide ? 'flex-row flex-wrap gap-3' : 'gap-3'}>
+            {canEnterScorecardOnly ? (
+              <Button
+                onPress={() =>
+                  router.push(
+                    `/matches/${match.id}/scorecard-only-entry?tournamentId=${encodeURIComponent(
+                      match.tournamentId,
+                    )}`,
+                  )
+                }
+                className={punchAndScoreSideBySide ? 'h-12 min-w-0 flex-1' : 'h-12'}
+                label="Enter scorecard"
+              />
+            ) : null}
             {canContinueScoring ? (
               <Button
                 onPress={() => router.push(`/matches/${match.id}/score`)}

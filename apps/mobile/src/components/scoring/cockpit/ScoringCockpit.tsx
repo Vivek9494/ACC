@@ -1,6 +1,7 @@
 import {
   formatMatchTossSummaryLine,
   MATCH_STATE_LABELS,
+  scorecardHasBallByBall,
   type AuthUser,
   type BatterCard,
   type BowlerCard,
@@ -267,6 +268,7 @@ export function ScoringCockpit({
   const showObs = hasAscObsBridge();
   const matchFolderStamp = formatMatchFolderStamp(match);
   const scoringReady = Boolean(displayInnings && displayCard);
+  const showBallLevel = scorecardHasBallByBall(displayCard ?? card);
 
   useScoringKeyboardShortcuts({
     enabled: keyboardEnabled && scoringReady,
@@ -337,10 +339,17 @@ export function ScoringCockpit({
                 />
               </View>
               <View style={BALLS_COL}>
-                {displayInnings ? (
+                {showBallLevel && displayInnings ? (
                   <BallByBallPanel innings={displayInnings} nameOf={nameOf} />
                 ) : (
-                  <CockpitStubSlot title="Ball by Ball" note="Available after toss" />
+                  <CockpitStubSlot
+                    title="Ball by Ball"
+                    note={
+                      showBallLevel
+                        ? 'Available after toss'
+                        : 'Not available for scorecard-only matches'
+                    }
+                  />
                 )}
               </View>
               <View style={SCOREBOARD_COL}>
@@ -373,7 +382,7 @@ export function ScoringCockpit({
                 )}
               </View>
               <View style={WAGON_COL}>
-                {displayInnings ? (
+                {showBallLevel && displayInnings ? (
                   <WagonWheelPanel
                     innings={displayInnings}
                     nameOf={nameOf}
@@ -381,7 +390,14 @@ export function ScoringCockpit({
                     onSetShotPlacement={onSetShotPlacement}
                   />
                 ) : (
-                  <CockpitStubSlot title="Wagon Wheel" note="Available after toss" />
+                  <CockpitStubSlot
+                    title="Wagon Wheel"
+                    note={
+                      showBallLevel
+                        ? 'Available after toss'
+                        : 'Not available for scorecard-only matches'
+                    }
+                  />
                 )}
               </View>
               <View style={SCORECARD_COL}>

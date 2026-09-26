@@ -4,6 +4,7 @@ import {
   isExternalOpponentMatch,
   isScorerMatchResumable,
   MatchState,
+  ScoringMode,
   serverVenueTimezone,
   type ScorerStartableMatch,
 } from '@acc/types';
@@ -63,13 +64,16 @@ export class ScorerDashboardMatchService {
       orderBy: [{ match: { matchDate: 'asc' } }, { match: { startTime: 'asc' } }],
     });
 
-    const visibleGrants = grantRows.filter((grant) =>
-      isDashboardScorerCardVisible(
+    const visibleGrants = grantRows.filter((grant) => {
+      if ((grant.match.scoringMode as ScoringMode) === ScoringMode.ScorecardOnly) {
+        return false;
+      }
+      return isDashboardScorerCardVisible(
         grant.match.state,
         grant.match,
         grant.match.tournament.timezone,
-      ),
-    );
+      );
+    });
 
     const inProgress = visibleGrants.find((grant) =>
       isScorerMatchResumable(
@@ -160,6 +164,7 @@ export class ScorerDashboardMatchService {
       },
       state,
       hasScoringSession,
+      scoringMode: (match.scoringMode as ScoringMode) ?? ScoringMode.Live,
       homeTeamId: finalization.homeTeamId,
       awayTeamId: finalization.awayTeamId,
       homeTeamFinalized: finalization.homeTeamFinalized,

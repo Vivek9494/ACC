@@ -196,6 +196,8 @@ import {
   type UpdateRatingsRequest,
   type UpdateTournamentRequest,
   type UploadTeamLogoResponse,
+  type UpsertScorecardSummaryRequest,
+  type UpsertScorecardSummaryResponse,
 } from '@acc/types';
 
 import { loadTokens, saveTokens } from './session';
@@ -1750,13 +1752,24 @@ export function createMatch(
   return apiFetch<MatchDetail>(`/tournaments/${tournamentId}/matches`, { method: 'POST', body });
 }
 
-/** Admin-only past ACC fixture — suppresses live side effects; uses normal scoring afterward. */
+/** Admin-only past ACC fixture — SCORECARD_ONLY summaries; live side effects suppressed. */
 export function createBackfillMatch(
   tournamentId: string,
   body: CreateMatchRequest,
 ): Promise<MatchDetail> {
   return apiFetch<MatchDetail>(`/tournaments/${tournamentId}/matches/backfill`, {
     method: 'POST',
+    body,
+  });
+}
+
+/** Admin SCORECARD_ONLY: persist summary figures and lock the match. */
+export function upsertScorecardSummary(
+  matchId: string,
+  body: UpsertScorecardSummaryRequest,
+): Promise<UpsertScorecardSummaryResponse> {
+  return apiFetch<UpsertScorecardSummaryResponse>(`/matches/${matchId}/scorecard-summary`, {
+    method: 'PUT',
     body,
   });
 }

@@ -54,8 +54,8 @@ function combineMatchStartIso(matchDate: string, matchTime: string): string {
 }
 
 /**
- * Admin-only: schedule a past ACC vs external opponent match, skip polling,
- * then continue into existing XI / opponent-name / ball-by-ball scoring screens.
+ * Admin-only: schedule a past ACC vs external opponent match as SCORECARD_ONLY,
+ * then continue into Playing XI → opponent names → scorecard entry (not live scoring).
  * No backfill badge is shown anywhere after creation.
  */
 export default function BackfillPastMatchScreen(): React.ReactElement {
@@ -78,6 +78,7 @@ export default function BackfillPastMatchScreen(): React.ReactElement {
   const [powerplayOvers, setPowerplayOvers] = useState<number | null>(null);
   const [matchDate, setMatchDate] = useState<string | null>(null);
   const [matchTime, setMatchTime] = useState('10:00');
+  const [matchCode, setMatchCode] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -248,6 +249,7 @@ export default function BackfillPastMatchScreen(): React.ReactElement {
         awayTeamId: null,
         externalOpponentName: opponentName.trim(),
         matchType: MatchType.LeagueMatch,
+        matchCode: matchCode.trim() || null,
         matchDate: matchDate!,
         startTime: combineMatchStartIso(matchDate!, matchTime.trim()),
         groundLocation: groundAddress.trim(),
@@ -359,8 +361,8 @@ export default function BackfillPastMatchScreen(): React.ReactElement {
         <View>
           <Text className="font-sans-bold text-2xl text-on-surface">Backfill past match</Text>
           <Text className="mt-2 font-sans text-sm text-on-surface-variant">
-            Schedule a past ACC fixture, pick the Playing XI, enter opponent names, then score
-            ball-by-ball with the normal scoring screen. Polling is skipped.
+            Schedule a past ACC fixture, pick the Playing XI, enter opponent names, then enter
+            the paper scorecard. Live ball-by-ball scoring is not used.
           </Text>
         </View>
 
@@ -374,6 +376,13 @@ export default function BackfillPastMatchScreen(): React.ReactElement {
             clearField('teamAId');
           }}
           error={fieldErrors.teamAId}
+        />
+
+        <TextInput
+          label="Match #"
+          value={matchCode}
+          onChangeText={setMatchCode}
+          placeholder="Optional match code"
         />
 
         <TextInput

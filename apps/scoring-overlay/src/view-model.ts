@@ -528,6 +528,9 @@ export function buildStripViewModel(
       ? `${bowlRow.wickets} / ${bowlRow.runsConceded}`
       : '0 / 0',
     bowlerOvers: bowlRow?.oversText ?? '0.0',
-    overTracker: buildCurrentOverTracker(innings),
+    overTracker:
+      card.scoringMode === 'SCORECARD_ONLY'
+        ? { slots: [] }
+        : buildCurrentOverTracker(innings),
   };
 }

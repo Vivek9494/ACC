@@ -1,6 +1,6 @@
 import type { CaptainFeaturedMatchSummary } from './captain';
 import type { DashboardPlayerPerformance, MatchSummaryTeamView } from './club-manager';
-import type { MatchState } from './match';
+import type { MatchState, ScoringMode } from './match';
 import type { ParticipationPollCardView } from './poll';
 import type { TournamentSummary } from './tournament';
 
@@ -38,7 +38,15 @@ export interface ScorerStartableMatch {
    * True once at least one innings row exists. Informational for the score UI;
    * LIVE / rain always use "Continue Scoring" (same as Match Details).
    */
+  /** True once at least one innings row exists. Informational for the score UI;
+   * LIVE / rain always use "Continue Scoring" (same as Match Details).
+   */
   hasScoringSession: boolean;
+  /**
+   * LIVE vs SCORECARD_ONLY. Dashboard Start/Continue must ignore SCORECARD_ONLY
+   * (those matches use the Admin scorecard entry form).
+   */
+  scoringMode: ScoringMode;
   homeTeamId: string | null;
   awayTeamId: string | null;
   homeTeamFinalized: boolean;

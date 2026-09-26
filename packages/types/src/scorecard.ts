@@ -3,7 +3,17 @@
  * the api and mobile. Covers the post-match confirmation flow (§13.1), the
  * 5-hour auto-confirm window (§13.1, §23), post-confirmation edits (§13.2),
  * Man of the Match (§13.3) and the PDF export (§16).
+ *
+ * Also hosts SCORECARD_ONLY Admin backfill write contracts (Phase 2).
  */
+
+import type { MatchSide, TossDecision } from './match';
+import type {
+  DismissalType,
+  InningsCloseReason,
+  InningsType,
+  ScorecardResponse,
+} from './scoring';
 
 /**
  * §13.1: the Captain OR Vice Captain has 5 hours from match completion to
@@ -206,4 +216,108 @@ export interface ScorecardConfirmationView {
   manOfMatchOverdue: boolean;
   winningTeamId: string | null;
   isNoResult: boolean;
+}
+
+// --- SCORECARD_ONLY Admin backfill write (Phase 2) -------------------------
+
+/** One batter row on the scorecard-only entry form. */
+export interface ScorecardSummaryBatterInput {
+  playerId: string;
+  runs: number;
+  balls: number;
+  fours?: number;
+  sixes?: number;
+  isOut: boolean;
+  dismissalType?: DismissalType | null;
+  bowlerId?: string | null;
+  fielderId?: string | null;
+  fielder2Id?: string | null;
+  retiredHurt?: boolean;
+  isMankad?: boolean;
+}
+
+/** One bowler row on the scorecard-only entry form. */
+export interface ScorecardSummaryBowlerInput {
+  playerId: string;
+  /** Cricket overs text (e.g. "4.2"); server parses to legalBalls. */
+  oversText: string;
+  maidens?: number;
+  runsConceded: number;
+  wickets: number;
+  wides?: number;
+  noBalls?: number;
+}
+
+/** Optional fall-of-wicket row. */
+export interface ScorecardSummaryFallOfWicketInput {
+  wicketNumber: number;
+  playerId: string;
+  teamRuns: number;
+  oversText: string;
+}
+
+/** One innings of summary figures for SCORECARD_ONLY persistence. */
+export interface ScorecardSummaryInningsWriteInput {
+  sequence: number;
+  inningsType?: InningsType;
+  battingTeamId: string | null;
+  bowlingTeamId: string | null;
+  battingIsExternal?: boolean;
+  bowlingIsExternal?: boolean;
+  runs: number;
+  wickets: number;
+  oversText: string;
+  oversAllotted?: number | null;
+  closed?: boolean;
+  closeReason?: InningsCloseReason | null;
+  target?: number | null;
+  extrasByes?: number;
+  extrasLegByes?: number;
+  extrasWides?: number;
+  extrasNoBalls?: number;
+  extrasPenalties?: number;
+  batters: ScorecardSummaryBatterInput[];
+  bowlers: ScorecardSummaryBowlerInput[];
+  fallOfWickets?: ScorecardSummaryFallOfWicketInput[];
+  /** Optional Playing-XI / DNB ids written to MatchSquad when a registered team bats. */
+  squadPlayerIds?: string[];
+}
+
+/**
+ * PUT body for Admin scorecard-only backfill.
+ * Persists Scorecard*Summary rows and completes/locks the match.
+ */
+export interface UpsertScorecardSummaryRequest {
+  tossWinner?: MatchSide | null;
+  tossDecision?: TossDecision | null;
+  winningTeamId?: string | null;
+  isNoResult?: boolean;
+  resultNote?: string | null;
+  /**
+   * Optional points the paper scorecard stated for the home (Team A) side —
+   * compared to the computed leather schedule for a WARNING only.
+   */
+  statedHomePoints?: number | null;
+  /** Optional stated points for the away / external side. */
+  statedAwayPoints?: number | null;
+  innings: ScorecardSummaryInningsWriteInput[];
+}
+
+export type ScorecardSummaryValidationCode =
+  | 'RUNS_EXTRAS_MISMATCH'
+  | 'WICKETS_OVER_LIMIT'
+  | 'INVALID_OVERS_TEXT'
+  | 'POINTS_MISMATCH';
+
+export interface ScorecardSummaryValidationIssue {
+  code: ScorecardSummaryValidationCode;
+  /** soft = warning (save allowed); hard = rejected. */
+  severity: 'soft' | 'hard';
+  message: string;
+  inningsSequence?: number;
+}
+
+export interface UpsertScorecardSummaryResponse {
+  scorecard: ScorecardResponse;
+  warnings: ScorecardSummaryValidationIssue[];
 }

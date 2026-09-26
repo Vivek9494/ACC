@@ -1,5 +1,6 @@
 import {
   isExternalOpponentMatch,
+  isLiveScoringMode,
   isScorerMatchResumable,
   scorerVerifyPlayingXiButtonLabel,
   unfinalizedTeamForScorerVerify,
@@ -8,7 +9,10 @@ import {
 import { router as rootRouter, type Router } from 'expo-router';
 
 export function scorerDashboardButtonLabel(match: ScorerStartableMatch): string {
-  if (isScorerMatchResumable(match.state, match.hasScoringSession)) {
+  if (
+    isLiveScoringMode(match.scoringMode) &&
+    isScorerMatchResumable(match.state, match.hasScoringSession)
+  ) {
     return 'Continue Scoring';
   }
   return scorerVerifyPlayingXiButtonLabel({
@@ -36,7 +40,10 @@ export function handleScorerDashboardPress(
   _router: Router,
   onOpenMatchSetup?: (match: ScorerStartableMatch) => void,
 ): void {
-  if (isScorerMatchResumable(match.state, match.hasScoringSession)) {
+  if (
+    isLiveScoringMode(match.scoringMode) &&
+    isScorerMatchResumable(match.state, match.hasScoringSession)
+  ) {
     pushScoreCockpit(match.matchId);
     return;
   }

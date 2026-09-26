@@ -11,6 +11,7 @@ import { ScorecardController } from './scorecard.controller';
 import { ScorecardPdfService } from './scorecard-pdf.service';
 import { ScorecardDisplayBuilder } from './scorecard-display.builder';
 import { ScorecardReader } from './scorecard-reader';
+import { ScorecardSummaryService } from './scorecard-summary.service';
 import { ScoringController } from './scoring.controller';
 import { BatsmanPickerService } from './batsman-picker.service';
 import { BowlerPickerService } from './bowler-picker.service';
@@ -34,11 +35,17 @@ import { ScoringService } from './scoring.service';
     FielderPickerService,
     ScorecardReader,
     ScorecardDisplayBuilder,
+    ScorecardSummaryService,
     ScorecardConfirmationService,
     ScorecardPdfService,
     ScorecardAutoConfirmTask,
     KnockoutProgressionService,
   ],
-  exports: [ScorecardReader, ScoringService, ScorecardConfirmationService],
+  exports: [
+    ScorecardReader,
+    ScoringService,
+    ScorecardConfirmationService,
+    ScorecardSummaryService,
+  ],
 })
 export class ScoringModule {}

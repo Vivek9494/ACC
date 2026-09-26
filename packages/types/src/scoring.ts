@@ -6,6 +6,7 @@
  */
 
 import type { DeliveryHighlightMarker } from './boundary-highlight';
+import type { ScoringMode } from './match';
 import type { BallType } from './rbac';
 import { BallType as BallTypeEnum } from './rbac';
 
@@ -102,6 +103,27 @@ export type InningsType = (typeof InningsType)[keyof typeof InningsType];
 // --- Constants (spec §32, §14) ---------------------------------------------
 
 export const BALLS_PER_OVER = 6;
+
+/** Format legal balls as cricket overs text (e.g. 128 → "21.2"). */
+export function formatOversTextFromLegalBalls(legalBalls: number): string {
+  const safe = Math.max(0, Math.floor(legalBalls));
+  return `${Math.floor(safe / BALLS_PER_OVER)}.${safe % BALLS_PER_OVER}`;
+}
+
+/**
+ * Parse cricket overs text to legal balls ("21.2" → 128).
+ * Invalid / empty input returns 0.
+ */
+export function parseOversTextToLegalBalls(oversText: string): number {
+  const trimmed = oversText.trim();
+  const match = /^(\d+)(?:\.([0-5]))?$/.exec(trimmed);
+  if (!match) {
+    return 0;
+  }
+  const wholes = Number(match[1]);
+  const balls = match[2] != null ? Number(match[2]) : 0;
+  return wholes * BALLS_PER_OVER + balls;
+}
 export const WICKETS_FOR_ALL_OUT = 10;
 /** Two dismissals end a super-over innings (§14). */
 export const WICKETS_FOR_SUPER_OVER_ALL_OUT = 2;
@@ -537,6 +559,11 @@ export interface ScorecardDisplayContext {
 export interface ScorecardResponse {
   matchId: string;
   version: number;
+  /**
+   * LIVE: ball-by-ball fold. SCORECARD_ONLY: summary figures (empty timeline /
+   * wagon / clips). Optional on older cached live snapshots — treat missing as LIVE.
+   */
+  scoringMode?: ScoringMode;
   originalTarget: number | null;
   dlsTarget: number | null;
   /** The target actually in effect (DLS overrides original — §12.1). */

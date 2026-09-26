@@ -338,6 +338,8 @@ export interface MatchResultView {
 export interface ScorecardResponse {
   matchId: string;
   version: number;
+  /** LIVE | SCORECARD_ONLY — optional on older snapshots; treat missing as LIVE. */
+  scoringMode?: 'LIVE' | 'SCORECARD_ONLY';
   originalTarget: number | null;
   dlsTarget: number | null;
   effectiveTarget: number | null;

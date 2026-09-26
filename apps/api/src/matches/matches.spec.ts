@@ -219,6 +219,7 @@ function matchRow(overrides: Record<string, unknown> = {}): Record<string, unkno
     matchDate: null,
     startTime: null,
     delayMinutes: 0,
+    scoringMode: 'LIVE',
     reportingTime: null,
     groundLocation: null,
     homeAway: null,

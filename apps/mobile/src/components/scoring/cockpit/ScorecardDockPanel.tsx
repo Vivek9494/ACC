@@ -7,6 +7,7 @@ import {
   groupTimelineByOver,
   wicketOrdinal,
   MatchSquadRole,
+  scorecardHasBallByBall,
   type BatterCard,
   type BowlerCard,
   type CompletedPartnership,
@@ -774,7 +775,20 @@ export function ScorecardDockPanel({
   battingXi: SquadPlayerView[];
   nameOf: (id: string | null) => string;
 }): React.ReactElement {
+  const showBallLevel = scorecardHasBallByBall(card);
+  const visibleTabs = useMemo(
+    () =>
+      TABS.filter(
+        (item) => showBallLevel || (item.id !== 'partnerships' && item.id !== 'overs'),
+      ),
+    [showBallLevel],
+  );
   const [tab, setTab] = useState<ScorecardDockTab>(innings ? 'scorecard' : 'squads');
+  useEffect(() => {
+    if (!visibleTabs.some((item) => item.id === tab)) {
+      setTab(innings ? 'scorecard' : 'squads');
+    }
+  }, [visibleTabs, tab, innings]);
   const battingRows = useMemo(
     () => (innings ? buildBattingRows(innings, battingXi) : []),
     [battingXi, innings],
@@ -799,7 +813,7 @@ export function ScorecardDockPanel({
     <CockpitPanel title="Scorecard" live bodyNoPad>
       <View className="min-h-0 min-w-0 flex-1" style={{ width: '100%' }}>
         <View className="flex-row border-b border-outline-variant bg-surface-container-low">
-          {TABS.map((item) => {
+          {visibleTabs.map((item) => {
             const active = tab === item.id;
             return (
               <Pressable

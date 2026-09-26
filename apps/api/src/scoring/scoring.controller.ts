@@ -1,4 +1,14 @@
-import { type AuthUser, Permission, type ScorecardResponse, type BatsmanPickerResponse, type BowlerPickerResponse, type FielderPickerResponse, type ExternalPlayerView, type EnterScoringSessionResponse } from '@acc/types';
+import {
+  type AuthUser,
+  Permission,
+  type ScorecardResponse,
+  type BatsmanPickerResponse,
+  type BowlerPickerResponse,
+  type FielderPickerResponse,
+  type ExternalPlayerView,
+  type EnterScoringSessionResponse,
+  type UpsertScorecardSummaryResponse,
+} from '@acc/types';
 import { Body, Controller, Get, Param, Patch, Post, Put, Query, UseGuards } from '@nestjs/common';
 
 import { CurrentUser } from '../auth/current-user.decorator';
@@ -16,9 +26,11 @@ import { SetDlsTargetDto, SetInningsParticipantsDto, StartInningsDto, UpdateOver
 import { UndoDeliveryDto } from './dto/undo-delivery.dto';
 import { SetDeliveryShotPlacementDto } from './dto/set-delivery-shot-placement.dto';
 import { AttachDeliveryVideoDto } from './dto/attach-delivery-video.dto';
+import { UpsertScorecardSummaryDto } from './dto/upsert-scorecard-summary.dto';
 import { BatsmanPickerService } from './batsman-picker.service';
 import { BowlerPickerService } from './bowler-picker.service';
 import { FielderPickerService } from './fielder-picker.service';
+import { ScorecardSummaryService } from './scorecard-summary.service';
 import { ScoringService } from './scoring.service';
 
 /** Scoring engine endpoints (spec §12, §14). All mutations carry an
@@ -31,7 +43,23 @@ export class ScoringController {
     private readonly batsmanPicker: BatsmanPickerService,
     private readonly bowlerPicker: BowlerPickerService,
     private readonly fielderPicker: FielderPickerService,
+    private readonly scorecardSummary: ScorecardSummaryService,
   ) {}
+
+  /**
+   * Admin SCORECARD_ONLY backfill: upsert summary figures and lock the match.
+   * Live Delivery scoring is unchanged.
+   */
+  @Put('scorecard-summary')
+  @UseGuards(JwtAuthGuard, PermissionGuard)
+  @RequirePermission(Permission.BACKFILL_MATCH)
+  upsertScorecardSummary(
+    @CurrentUser() user: AuthUser,
+    @Param('matchId') matchId: string,
+    @Body() dto: UpsertScorecardSummaryDto,
+  ): Promise<UpsertScorecardSummaryResponse> {
+    return this.scorecardSummary.upsert(user, matchId, dto);
+  }
 
   /** Public, guest-readable live scorecard snapshot (spec §2, §28). */
   @Get('scorecard')

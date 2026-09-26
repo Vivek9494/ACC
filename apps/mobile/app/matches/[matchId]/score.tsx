@@ -10,6 +10,8 @@ import {
   DismissalType,
   InningsCloseReason,
   MATCH_TYPE_LABELS,
+  ScoringMode,
+  scorecardHasBallByBall,
   STANDARD_MATCH_PENALTY_RUNS,
   WICKETS_FOR_ALL_OUT,
   WICKETS_FOR_SUPER_OVER_ALL_OUT,
@@ -1266,7 +1268,12 @@ export default function LiveScoringScreen(): React.ReactElement {
       isPenalty ? { promptBowlers: false, ...opts } : opts,
     );
 
-    if (updated && isAutoClipWorthy(body) && canCaptureBoundaryClips()) {
+    if (
+      updated &&
+      scorecardHasBallByBall(updated) &&
+      isAutoClipWorthy(body) &&
+      canCaptureBoundaryClips()
+    ) {
       const deliveryId = findLatestAutoClipDeliveryId(updated);
       if (deliveryId) {
         scheduleBoundaryClipCapture({
@@ -1315,7 +1322,11 @@ export default function LiveScoringScreen(): React.ReactElement {
         syncFromCard(afterBall, { promptBowlers: false });
         liveAfterBall = afterBall.innings.at(-1) ?? inn;
 
-        if (isAutoClipWorthy(pending.body) && canCaptureBoundaryClips()) {
+        if (
+          scorecardHasBallByBall(afterBall) &&
+          isAutoClipWorthy(pending.body) &&
+          canCaptureBoundaryClips()
+        ) {
           const deliveryId = findLatestAutoClipDeliveryId(afterBall);
           if (deliveryId) {
             scheduleBoundaryClipCapture({
@@ -1466,6 +1477,39 @@ export default function LiveScoringScreen(): React.ReactElement {
             <Text className="font-sans text-sm text-on-surface">{sessionBlocked}</Text>
           </View>
           <Button className="h-12" label="Go Back" onPress={goToRoleHome} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (match?.scoringMode === ScoringMode.ScorecardOnly) {
+    return (
+      <SafeAreaView className="flex-1 bg-background" edges={['top', 'bottom']}>
+        <ScreenHeader compact showProfileMenu={false} onBack={goToRoleHome} />
+        <View className="flex-1 justify-center gap-4 px-4">
+          <View className="rounded-control border border-outline-variant bg-surface-container-lowest p-4">
+            <Text className="font-sans text-sm text-on-surface">
+              This match is scorecard-only. Use the Admin scorecard entry form — live scoring is
+              not available.
+            </Text>
+          </View>
+          <Button
+            className="h-12"
+            label="Open scorecard entry"
+            onPress={() =>
+              router.replace(
+                `/matches/${matchId}/scorecard-only-entry?tournamentId=${encodeURIComponent(
+                  match.tournamentId,
+                )}`,
+              )
+            }
+          />
+          <Button
+            className="h-12"
+            variant="secondary"
+            label="View scorecard"
+            onPress={() => router.replace(`/matches/${matchId}/scorecard`)}
+          />
         </View>
       </SafeAreaView>
     );

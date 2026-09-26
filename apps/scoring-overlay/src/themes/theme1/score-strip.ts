@@ -70,6 +70,18 @@ function renderOverTracker(vm: StripViewModel): void {
     return;
   }
 
+  // SCORECARD_ONLY / empty: hide the mid-over strip cleanly.
+  if (vm.overTracker.slots.length === 0) {
+    tracker.replaceChildren();
+    tracker.dataset.sig = '';
+    tracker.hidden = true;
+    if (empty) {
+      empty.hidden = true;
+    }
+    return;
+  }
+  tracker.hidden = false;
+
   const slots = vm.overTracker.slots;
   const signature = slots
     .map(

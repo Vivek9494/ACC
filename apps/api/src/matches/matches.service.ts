@@ -22,6 +22,7 @@ import {
   resolveMatchListTeamScoreLines,
   type ScorerGrantView,
   type ScorecardResponse,
+  ScoringMode,
   type SquadCandidate,
   type SquadView,
   MatchSide,
@@ -560,6 +561,8 @@ export class MatchesService {
           homeAway: dto.homeAway ?? null,
           youtubeUrl: dto.youtubeUrl ?? null,
           suppressLiveSideEffects: backfill,
+          // Historical backfill enters figures via Scorecard*Summary (not LIVE).
+          scoringMode: backfill ? ScoringMode.ScorecardOnly : ScoringMode.Live,
         },
       });
     } catch (error) {
@@ -588,15 +591,16 @@ export class MatchesService {
         reschedule: false,
       });
     } else {
-      // Admin scores via the normal SCORE_BALL path (scorer grant).
-      await this.scorerGrants.assignOrSwitch(match.id, actor.id, actor.id);
       await this.audit.record({
-        action: 'MATCH_SCORER_ASSIGNED',
+        action: 'MATCH_BACKFILL_CREATED',
         actorUserId: actor.id,
-        targetUserId: actor.id,
         targetEntityType: 'match',
         targetEntityId: match.id,
-        after: { backfill: true, suppressLiveSideEffects: true },
+        after: {
+          backfill: true,
+          suppressLiveSideEffects: true,
+          scoringMode: ScoringMode.ScorecardOnly,
+        },
       });
     }
 
@@ -1903,6 +1907,13 @@ export class MatchesService {
 
     await this.assertBothTeamsFinalized(match);
 
+    if ((match.scoringMode as ScoringMode) === ScoringMode.ScorecardOnly) {
+      throw new BadRequestException({
+        message: 'Scorecard-only backfill matches are entered via the Admin scorecard form, not live scoring',
+        error: 'SCORECARD_ONLY_MATCH',
+      });
+    }
+
     const state = match.state as MatchState;
     const deliveryCount =
       state === MatchState.Live
@@ -3147,6 +3158,7 @@ export class MatchesService {
       matchDate: row.matchDate?.toISOString() ?? null,
       startTime: row.startTime?.toISOString() ?? null,
       delayMinutes: row.delayMinutes ?? 0,
+      scoringMode: (row.scoringMode as ScoringMode) ?? ScoringMode.Live,
     };
   }
 

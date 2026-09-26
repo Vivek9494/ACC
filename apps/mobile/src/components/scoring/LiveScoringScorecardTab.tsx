@@ -5,6 +5,7 @@ import {
   formatInningsTotalScore,
   originalFirstInningsRunsForChaseTotal,
   partnershipRunRate,
+  scorecardHasBallByBall,
   type AuthUser,
   type CompletedPartnership,
   type InningsScorecard,
@@ -381,6 +382,8 @@ const InningsScorecardBody = memo(function InningsScorecardBody({
     [innings, isLiveInnings, nameOf],
   );
 
+  const showBallLevel = scorecardHasBallByBall(card);
+
   return (
     <View className="gap-3">
       <ScorecardSection title={`${teamName} — Batting`}>
@@ -390,7 +393,7 @@ const InningsScorecardBody = memo(function InningsScorecardBody({
       <ExtrasBreakdownCard extras={innings.extras} />
       <InningsTotalCard card={card} innings={innings} />
 
-      {isLiveInnings && innings.partnership ? (
+      {showBallLevel && isLiveInnings && innings.partnership ? (
         <PartnershipCard innings={innings} nameOf={nameOf} title="Current partnership" />
       ) : null}
 
@@ -409,8 +412,10 @@ const InningsScorecardBody = memo(function InningsScorecardBody({
       />
 
       <FallOfWicketsList innings={innings} nameOf={nameOf} />
-      <PartnershipsList innings={innings} nameOf={nameOf} />
-      <BallByBallCollapsibleSection timeline={innings.timeline} variant="live" />
+      {showBallLevel ? <PartnershipsList innings={innings} nameOf={nameOf} /> : null}
+      {showBallLevel ? (
+        <BallByBallCollapsibleSection timeline={innings.timeline} variant="live" />
+      ) : null}
     </View>
   );
 });
