@@ -44,6 +44,24 @@ const EXTERNAL_WINNER = '__EXTERNAL__';
 type BatterDraft = ScorecardSummaryBatterInput & { key: string };
 type BowlerDraft = ScorecardSummaryBowlerInput & { key: string };
 
+/** Input-box state: count fields stay as raw text so they can be blank (blank ⇒ 0 on commit). */
+type BatterForm = Omit<BatterDraft, 'key' | 'runs' | 'balls' | 'fours' | 'sixes'> & {
+  runs: string;
+  balls: string;
+  fours: string;
+  sixes: string;
+};
+type BowlerForm = Omit<
+  BowlerDraft,
+  'key' | 'maidens' | 'runsConceded' | 'wickets' | 'wides' | 'noBalls'
+> & {
+  maidens: string;
+  runsConceded: string;
+  wickets: string;
+  wides: string;
+  noBalls: string;
+};
+
 interface InningsDraft {
   sequence: number;
   battingTeamId: string | null;
@@ -63,14 +81,17 @@ interface InningsDraft {
   bowlers: BowlerDraft[];
 }
 
-function emptyBatter(): BatterDraft {
+function newRowKey(prefix: 'b' | 'o'): string {
+  return `${prefix}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
+function emptyBatterForm(): BatterForm {
   return {
-    key: `b-${Math.random().toString(36).slice(2, 9)}`,
     playerId: '',
-    runs: 0,
-    balls: 0,
-    fours: 0,
-    sixes: 0,
+    runs: '',
+    balls: '',
+    fours: '',
+    sixes: '',
     isOut: false,
     dismissalType: null,
     bowlerId: null,
@@ -78,20 +99,56 @@ function emptyBatter(): BatterDraft {
   };
 }
 
-function emptyBowler(): BowlerDraft {
+function emptyBowlerForm(): BowlerForm {
   return {
-    key: `o-${Math.random().toString(36).slice(2, 9)}`,
     playerId: '',
-    oversText: '0',
-    maidens: 0,
-    runsConceded: 0,
-    wickets: 0,
+    oversText: '',
+    maidens: '',
+    runsConceded: '',
+    wickets: '',
+    wides: '',
+    noBalls: '',
   };
 }
 
 function num(value: string): number {
   const n = Number(value);
   return Number.isFinite(n) ? n : 0;
+}
+
+/** Saved count → input text; 0 shows as blank (placeholder "0"). */
+function countText(value: number | undefined): string {
+  return value ? String(value) : '';
+}
+
+function batterToForm({ key: _key, ...batter }: BatterDraft): BatterForm {
+  return {
+    ...batter,
+    runs: countText(batter.runs),
+    balls: countText(batter.balls),
+    fours: countText(batter.fours),
+    sixes: countText(batter.sixes),
+  };
+}
+
+function bowlerToForm({ key: _key, ...bowler }: BowlerDraft): BowlerForm {
+  return {
+    ...bowler,
+    oversText: bowler.oversText === '0' ? '' : bowler.oversText,
+    maidens: countText(bowler.maidens),
+    runsConceded: countText(bowler.runsConceded),
+    wickets: countText(bowler.wickets),
+    wides: countText(bowler.wides),
+    noBalls: countText(bowler.noBalls),
+  };
+}
+
+/** Compact "(1nb, 8w)" suffix, matching printed scorecards. */
+function bowlerExtrasSuffix(bowler: Pick<BowlerDraft, 'wides' | 'noBalls'>): string {
+  const parts: string[] = [];
+  if (bowler.noBalls) parts.push(`${bowler.noBalls}nb`);
+  if (bowler.wides) parts.push(`${bowler.wides}w`);
+  return parts.length > 0 ? ` (${parts.join(', ')})` : '';
 }
 
 function isValidOversText(oversText: string): boolean {
@@ -138,10 +195,10 @@ function buildInitialInnings(match: MatchDetail): InningsDraft[] {
       runs: '',
       wickets: '',
       oversText: '',
-      extrasByes: '0',
-      extrasLegByes: '0',
-      extrasWides: '0',
-      extrasNoBalls: '0',
+      extrasByes: '',
+      extrasLegByes: '',
+      extrasWides: '',
+      extrasNoBalls: '',
       closeReason: InningsCloseReason.ManuallyEnded,
       batters: [],
       bowlers: [],
@@ -156,10 +213,10 @@ function buildInitialInnings(match: MatchDetail): InningsDraft[] {
       runs: '',
       wickets: '',
       oversText: '',
-      extrasByes: '0',
-      extrasLegByes: '0',
-      extrasWides: '0',
-      extrasNoBalls: '0',
+      extrasByes: '',
+      extrasLegByes: '',
+      extrasWides: '',
+      extrasNoBalls: '',
       closeReason: InningsCloseReason.TargetReached,
       batters: [],
       bowlers: [],
@@ -209,10 +266,10 @@ export default function ScorecardOnlyEntryScreen(): React.ReactElement {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const [batterDraft, setBatterDraft] = useState<BatterDraft>(() => emptyBatter());
+  const [batterDraft, setBatterDraft] = useState<BatterForm>(() => emptyBatterForm());
   const [editingBatterKey, setEditingBatterKey] = useState<string | null>(null);
   const [batterDraftError, setBatterDraftError] = useState<string | null>(null);
-  const [bowlerDraft, setBowlerDraft] = useState<BowlerDraft>(() => emptyBowler());
+  const [bowlerDraft, setBowlerDraft] = useState<BowlerForm>(() => emptyBowlerForm());
   const [editingBowlerKey, setEditingBowlerKey] = useState<string | null>(null);
   const [bowlerDraftError, setBowlerDraftError] = useState<string | null>(null);
 
@@ -341,13 +398,13 @@ export default function ScorecardOnlyEntryScreen(): React.ReactElement {
   }
 
   function resetBatterDraft(): void {
-    setBatterDraft(emptyBatter());
+    setBatterDraft(emptyBatterForm());
     setEditingBatterKey(null);
     setBatterDraftError(null);
   }
 
   function resetBowlerDraft(): void {
-    setBowlerDraft(emptyBowler());
+    setBowlerDraft(emptyBowlerForm());
     setEditingBowlerKey(null);
     setBowlerDraftError(null);
   }
@@ -358,12 +415,12 @@ export default function ScorecardOnlyEntryScreen(): React.ReactElement {
     resetBowlerDraft();
   }
 
-  function patchBatterDraft(patch: Partial<BatterDraft>): void {
+  function patchBatterDraft(patch: Partial<BatterForm>): void {
     setBatterDraftError(null);
     setBatterDraft((prev) => ({ ...prev, ...patch }));
   }
 
-  function patchBowlerDraft(patch: Partial<BowlerDraft>): void {
+  function patchBowlerDraft(patch: Partial<BowlerForm>): void {
     setBowlerDraftError(null);
     setBowlerDraft((prev) => ({ ...prev, ...patch }));
   }
@@ -373,17 +430,21 @@ export default function ScorecardOnlyEntryScreen(): React.ReactElement {
       setBatterDraftError('Select a batter.');
       return;
     }
-    if (batterDraft.runs < 0 || batterDraft.balls < 0) {
-      setBatterDraftError('Runs and balls must be 0 or more.');
+    const runs = num(batterDraft.runs);
+    const balls = num(batterDraft.balls);
+    const fours = num(batterDraft.fours);
+    const sixes = num(batterDraft.sixes);
+    if (runs < 0 || balls < 0 || fours < 0 || sixes < 0) {
+      setBatterDraftError('Runs, balls, 4s, and 6s must be 0 or more.');
       return;
     }
     const row: BatterDraft = {
       ...batterDraft,
-      key: editingBatterKey ?? emptyBatter().key,
-      runs: Number(batterDraft.runs) || 0,
-      balls: Number(batterDraft.balls) || 0,
-      fours: Number(batterDraft.fours) || 0,
-      sixes: Number(batterDraft.sixes) || 0,
+      key: editingBatterKey ?? newRowKey('b'),
+      runs,
+      balls,
+      fours,
+      sixes,
       dismissalType: batterDraft.isOut ? batterDraft.dismissalType : null,
       bowlerId: batterDraft.isOut ? batterDraft.bowlerId : null,
       fielderId:
@@ -411,25 +472,29 @@ export default function ScorecardOnlyEntryScreen(): React.ReactElement {
       setBowlerDraftError('Select a bowler.');
       return;
     }
-    if (!isValidOversText(bowlerDraft.oversText)) {
+    const oversText = bowlerDraft.oversText.trim() || '0';
+    if (!isValidOversText(oversText)) {
       setBowlerDraftError('Overs must look like 4.2 (balls 0–5).');
       return;
     }
-    if (
-      (bowlerDraft.maidens ?? 0) < 0 ||
-      bowlerDraft.runsConceded < 0 ||
-      bowlerDraft.wickets < 0
-    ) {
-      setBowlerDraftError('Maidens, runs, and wickets must be 0 or more.');
+    const maidens = num(bowlerDraft.maidens);
+    const runsConceded = num(bowlerDraft.runsConceded);
+    const wickets = num(bowlerDraft.wickets);
+    const wides = num(bowlerDraft.wides);
+    const noBalls = num(bowlerDraft.noBalls);
+    if (maidens < 0 || runsConceded < 0 || wickets < 0 || wides < 0 || noBalls < 0) {
+      setBowlerDraftError('Maidens, runs, wickets, wides, and no-balls must be 0 or more.');
       return;
     }
     const row: BowlerDraft = {
       ...bowlerDraft,
-      key: editingBowlerKey ?? emptyBowler().key,
-      oversText: bowlerDraft.oversText.trim(),
-      maidens: Number(bowlerDraft.maidens) || 0,
-      runsConceded: Number(bowlerDraft.runsConceded) || 0,
-      wickets: Number(bowlerDraft.wickets) || 0,
+      key: editingBowlerKey ?? newRowKey('o'),
+      oversText,
+      maidens,
+      runsConceded,
+      wickets,
+      wides,
+      noBalls,
     };
     setInnings((prev) =>
       prev.map((inn, i) => {
@@ -447,13 +512,13 @@ export default function ScorecardOnlyEntryScreen(): React.ReactElement {
   }
 
   function editBatter(batter: BatterDraft): void {
-    setBatterDraft({ ...batter });
+    setBatterDraft(batterToForm(batter));
     setEditingBatterKey(batter.key);
     setBatterDraftError(null);
   }
 
   function editBowler(bowler: BowlerDraft): void {
-    setBowlerDraft({ ...bowler });
+    setBowlerDraft(bowlerToForm(bowler));
     setEditingBowlerKey(bowler.key);
     setBowlerDraftError(null);
   }
@@ -615,6 +680,8 @@ export default function ScorecardOnlyEntryScreen(): React.ReactElement {
               maidens: Number(rest.maidens) || 0,
               runsConceded: Number(rest.runsConceded) || 0,
               wickets: Number(rest.wickets) || 0,
+              wides: Number(rest.wides) || 0,
+              noBalls: Number(rest.noBalls) || 0,
             })),
           fallOfWickets: [],
           squadPlayerIds: !inn.battingIsExternal
@@ -839,6 +906,7 @@ export default function ScorecardOnlyEntryScreen(): React.ReactElement {
                 label="b"
                 value={inn.extrasByes}
                 onChangeText={(t) => updateInnings(activeInnings, { extrasByes: t })}
+                placeholder="0"
                 keyboardType="number-pad"
               />
             </View>
@@ -847,6 +915,7 @@ export default function ScorecardOnlyEntryScreen(): React.ReactElement {
                 label="lb"
                 value={inn.extrasLegByes}
                 onChangeText={(t) => updateInnings(activeInnings, { extrasLegByes: t })}
+                placeholder="0"
                 keyboardType="number-pad"
               />
             </View>
@@ -855,6 +924,7 @@ export default function ScorecardOnlyEntryScreen(): React.ReactElement {
                 label="w"
                 value={inn.extrasWides}
                 onChangeText={(t) => updateInnings(activeInnings, { extrasWides: t })}
+                placeholder="0"
                 keyboardType="number-pad"
               />
             </View>
@@ -863,6 +933,7 @@ export default function ScorecardOnlyEntryScreen(): React.ReactElement {
                 label="nb"
                 value={inn.extrasNoBalls}
                 onChangeText={(t) => updateInnings(activeInnings, { extrasNoBalls: t })}
+                placeholder="0"
                 keyboardType="number-pad"
               />
             </View>
@@ -890,32 +961,36 @@ export default function ScorecardOnlyEntryScreen(): React.ReactElement {
             <View className="flex-1">
               <TextInput
                 label="R"
-                value={String(batterDraft.runs)}
-                onChangeText={(t) => patchBatterDraft({ runs: num(t) })}
+                value={batterDraft.runs}
+                onChangeText={(t) => patchBatterDraft({ runs: t })}
+                placeholder="0"
                 keyboardType="number-pad"
               />
             </View>
             <View className="flex-1">
               <TextInput
                 label="B"
-                value={String(batterDraft.balls)}
-                onChangeText={(t) => patchBatterDraft({ balls: num(t) })}
+                value={batterDraft.balls}
+                onChangeText={(t) => patchBatterDraft({ balls: t })}
+                placeholder="0"
                 keyboardType="number-pad"
               />
             </View>
             <View className="flex-1">
               <TextInput
                 label="4s"
-                value={String(batterDraft.fours ?? 0)}
-                onChangeText={(t) => patchBatterDraft({ fours: num(t) })}
+                value={batterDraft.fours}
+                onChangeText={(t) => patchBatterDraft({ fours: t })}
+                placeholder="0"
                 keyboardType="number-pad"
               />
             </View>
             <View className="flex-1">
               <TextInput
                 label="6s"
-                value={String(batterDraft.sixes ?? 0)}
-                onChangeText={(t) => patchBatterDraft({ sixes: num(t) })}
+                value={batterDraft.sixes}
+                onChangeText={(t) => patchBatterDraft({ sixes: t })}
+                placeholder="0"
                 keyboardType="number-pad"
               />
             </View>
@@ -1053,33 +1128,59 @@ export default function ScorecardOnlyEntryScreen(): React.ReactElement {
                 label="O"
                 value={bowlerDraft.oversText}
                 onChangeText={(t) => patchBowlerDraft({ oversText: t })}
+                placeholder="0"
                 keyboardType="decimal-pad"
               />
             </View>
             <View className="flex-1">
               <TextInput
                 label="M"
-                value={String(bowlerDraft.maidens ?? 0)}
-                onChangeText={(t) => patchBowlerDraft({ maidens: num(t) })}
+                value={bowlerDraft.maidens}
+                onChangeText={(t) => patchBowlerDraft({ maidens: t })}
+                placeholder="0"
                 keyboardType="number-pad"
               />
             </View>
             <View className="flex-1">
               <TextInput
                 label="R"
-                value={String(bowlerDraft.runsConceded)}
-                onChangeText={(t) => patchBowlerDraft({ runsConceded: num(t) })}
+                value={bowlerDraft.runsConceded}
+                onChangeText={(t) => patchBowlerDraft({ runsConceded: t })}
+                placeholder="0"
                 keyboardType="number-pad"
               />
             </View>
             <View className="flex-1">
               <TextInput
                 label="W"
-                value={String(bowlerDraft.wickets)}
-                onChangeText={(t) => patchBowlerDraft({ wickets: num(t) })}
+                value={bowlerDraft.wickets}
+                onChangeText={(t) => patchBowlerDraft({ wickets: t })}
+                placeholder="0"
                 keyboardType="number-pad"
               />
             </View>
+          </View>
+          <View className="flex-row gap-2">
+            <View className="flex-1">
+              <TextInput
+                label="wd"
+                value={bowlerDraft.wides}
+                onChangeText={(t) => patchBowlerDraft({ wides: t })}
+                placeholder="0"
+                keyboardType="number-pad"
+              />
+            </View>
+            <View className="flex-1">
+              <TextInput
+                label="nb"
+                value={bowlerDraft.noBalls}
+                onChangeText={(t) => patchBowlerDraft({ noBalls: t })}
+                placeholder="0"
+                keyboardType="number-pad"
+              />
+            </View>
+            <View className="flex-1" />
+            <View className="flex-1" />
           </View>
           {bowlerDraftError ? (
             <Text className="font-sans text-sm text-error">{bowlerDraftError}</Text>
@@ -1139,6 +1240,7 @@ export default function ScorecardOnlyEntryScreen(): React.ReactElement {
                       >
                         {bowler.oversText}-{bowler.maidens ?? 0}-{bowler.runsConceded}-
                         {bowler.wickets}
+                        {bowlerExtrasSuffix(bowler)}
                       </Text>
                     </View>
                     <OverflowMenu
