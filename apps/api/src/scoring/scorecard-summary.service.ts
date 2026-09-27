@@ -9,7 +9,9 @@ import {
   formatMatchResultNote,
   parseOversTextToLegalBalls,
   resolveMatchWinnerDisplayName,
+  superOverOnTieForBallType,
   type AuthUser,
+  type BallType,
   type ScorecardSummaryValidationIssue,
   type UpsertScorecardSummaryRequest,
   type UpsertScorecardSummaryResponse,
@@ -347,6 +349,7 @@ export class ScorecardSummaryService {
       externalOpponentName: string | null;
       homeTeam: { id: string; name: string } | null;
       awayTeam: { id: string; name: string } | null;
+      tournament: { ballType: BallType };
     },
     winningTeamId: string | null,
     isNoResult: boolean,
@@ -401,7 +404,9 @@ export class ScorecardSummaryService {
         return buildInningsScorecardFromSummary(input);
       });
 
-    const derived = deriveMatchResult(cards);
+    const derived = deriveMatchResult(cards, {
+      superOverOnTie: superOverOnTieForBallType(match.tournament.ballType),
+    });
     const result = mergeScorecardOnlyResult(derived, {
       winningTeamId,
       isNoResult: false,

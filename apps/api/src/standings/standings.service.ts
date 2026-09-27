@@ -134,7 +134,7 @@ export class StandingsService {
         winningTeamId:
           match.winningTeamId ??
           (scorecard.result.decided ? scorecard.result.winningTeamId : null),
-        isDecided: scorecard.result.decided && !isNoResult,
+        isDecided: scorecard.result.decided && !scorecard.result.isTie && !isNoResult,
         requiresSuperOver: scorecard.result.superOverRequired,
         innings: normalInnings,
       };

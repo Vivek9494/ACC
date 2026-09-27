@@ -145,4 +145,38 @@ describe('Scoring engine — match result & Super Over (§14)', () => {
     ]);
     expect(result).toMatchObject({ decided: false, superOverRequired: true });
   });
+
+  describe('Leather — tie is final (superOverOnTie: false)', () => {
+    it('decides a regulation tie with no winner and no Super Over', () => {
+      const result = deriveMatchResult(
+        [inn(1, N, 'home', 150, true), inn(2, N, 'away', 150, true)],
+        { superOverOnTie: false },
+      );
+      expect(result).toMatchObject({
+        decided: true,
+        isTie: true,
+        winningTeamId: null,
+        marginRuns: null,
+        marginWickets: null,
+        superOverRequired: false,
+        note: 'Match tied',
+      });
+    });
+
+    it('leaves wins unchanged', () => {
+      const result = deriveMatchResult(
+        [inn(1, N, 'home', 150, true), inn(2, N, 'away', 140, true)],
+        { superOverOnTie: false },
+      );
+      expect(result).toMatchObject({ decided: true, isTie: false, winningTeamId: 'home', marginRuns: 10 });
+    });
+
+    it('does not decide while the chase is in progress', () => {
+      const result = deriveMatchResult(
+        [inn(1, N, 'home', 150, true), inn(2, N, 'away', 150, false)],
+        { superOverOnTie: false },
+      );
+      expect(result).toMatchObject({ decided: false, isTie: false, superOverRequired: false });
+    });
+  });
 });

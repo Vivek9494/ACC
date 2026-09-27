@@ -1,4 +1,5 @@
 import type {
+  BallType,
   InningsScorecard,
   ScorecardDisplayContext,
   ScorecardInningsLabels,
@@ -21,6 +22,7 @@ type MatchContext = {
     players: { userId: string; user: { firstName: string; lastName: string } }[];
   }[];
   externalPlayers: { id: string; name: string }[];
+  tournament: { ballType: BallType };
 };
 
 type InningsRow = {

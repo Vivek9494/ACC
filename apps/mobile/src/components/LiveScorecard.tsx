@@ -100,7 +100,9 @@ export function LiveScorecard({ state, nameOf, teamNameOf }: Props): React.React
             Innings closed · {inn.closeReason.replace('_', ' ').toLowerCase()}
           </Text>
         ) : null}
-        {state.result.decided ? (
+        {state.result.decided && state.result.isTie ? (
+          <Text className="font-sans-bold text-sm text-primary">Match tied</Text>
+        ) : state.result.decided ? (
           <Text className="font-sans-bold text-sm text-primary">
             {teamNameOf(state.result.winningTeamId)} won
             {state.result.note ? ` · ${state.result.note}` : ''}

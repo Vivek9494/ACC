@@ -73,6 +73,7 @@ function makeDb() {
         awayTeam: { id: m.awayTeamId ?? 'away', name: 'Away', logoUrl: null },
         squads: [],
         externalPlayers: [],
+        tournament: { ballType: m.ballType ?? 'TENNIS' },
       };
     }
     if (include?.homeTeam || include?.awayTeam) {
@@ -906,6 +907,42 @@ describe('ScoringService — end innings transition (§12.2)', () => {
     expect(superOver.inningsType).toBe('SUPER_OVER');
     expect(superOver.battingTeamId).toBe('away');
     expect(superOver.bowlingTeamId).toBe('home');
+  });
+
+  it('completes a tied LEATHER match as a tie with no super over', async () => {
+    const { service, matches, inningsId, version } = await setupFirstInnings(20, 6, 50);
+    matches.get('match-1')!.ballType = 'LEATHER';
+    await service.endInnings(scorer, 'match-1', inningsId, { expectedVersion: version() });
+    const chaseId = (await service.getScorecard('match-1')).innings[1]!.inningsId!;
+    await service.setInningsParticipants(scorer, 'match-1', chaseId, {
+      strikerId: 'A',
+      nonStrikerId: 'B',
+      bowlerId: 'X',
+      expectedVersion: version(),
+    });
+    await service.recordDelivery(scorer, 'match-1', chaseId, {
+      type: DeliveryType.Legal,
+      strikerId: 'A',
+      nonStrikerId: 'B',
+      bowlerId: 'X',
+      runsBat: 50,
+      expectedVersion: version(),
+    });
+
+    const card = await service.endInnings(scorer, 'match-1', chaseId, {
+      expectedVersion: version(),
+    });
+
+    expect(matches.get('match-1')!.state).toBe('COMPLETED');
+    expect(card.innings).toHaveLength(2);
+    expect(card.result).toMatchObject({
+      decided: true,
+      isTie: true,
+      winningTeamId: null,
+      superOverRequired: false,
+    });
+    expect(matches.get('match-1')!.winningTeamId).toBeNull();
+    expect(matches.get('match-1')!.resultNote).toBe('Match tied');
   });
 
   it('completes the match after a super over decides the winner', async () => {

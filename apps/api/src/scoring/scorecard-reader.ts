@@ -4,6 +4,7 @@ import {
   DeliveryType,
   InningsType,
   ScoringMode,
+  superOverOnTieForBallType,
   type ScorecardResponse,
   type TimelineEntry,
   type DismissalType,
@@ -118,7 +119,9 @@ export class ScorecardReader {
       return buildInningsScorecardFromSummary(input);
     });
 
-    const derived = deriveMatchResult(cards);
+    const derived = deriveMatchResult(cards, {
+      superOverOnTie: superOverOnTieForBallType(matchContext.tournament.ballType),
+    });
     const result = mergeScorecardOnlyResult(derived, match);
 
     const core = {
@@ -221,7 +224,9 @@ export class ScorecardReader {
       );
     });
 
-    const result = deriveMatchResult(cards);
+    const result = deriveMatchResult(cards, {
+      superOverOnTie: superOverOnTieForBallType(matchContext.tournament.ballType),
+    });
     const boundaryHighlights = innings
       .flatMap((inn) => inn.deliveries.map((d) => markerFromDelivery(d)))
       .filter((m): m is DeliveryHighlightMarker => m != null)
@@ -274,6 +279,7 @@ export class ScorecardReader {
           },
         },
         externalPlayers: { select: { id: true, name: true } },
+        tournament: { select: { ballType: true } },
       },
     });
   }

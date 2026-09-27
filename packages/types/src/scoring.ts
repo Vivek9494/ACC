@@ -164,6 +164,11 @@ export function standingsPointsForBallType(ballType: BallType): StandingsPointsS
   return ballType === BallTypeEnum.Leather ? LEATHER_STANDINGS_POINTS : TENNIS_STANDINGS_POINTS;
 }
 
+/** Leather ties are final (split points, no Super Over); tennis ties go to a Super Over (§14). */
+export function superOverOnTieForBallType(ballType: BallType): boolean {
+  return ballType !== BallTypeEnum.Leather;
+}
+
 /** Standard on-field penalty awarded via More → Penalty (§12.1). */
 export const STANDARD_MATCH_PENALTY_RUNS = 5;
 

@@ -130,7 +130,6 @@ export default function ScorecardResultScreen(): React.ReactElement {
       match.state === 'NO_RESULT' ||
       match.isNoResult ||
       card.result.isNoResult ||
-      card.result.isTie ||
       card.result.superOverRequired ||
       !card.result.decided
     ) {

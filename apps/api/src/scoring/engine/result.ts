@@ -84,12 +84,23 @@ function toResultView(res: PairOutcome, note: string | null): MatchResultView {
   };
 }
 
+export interface DeriveMatchResultOptions {
+  /**
+   * When false (Leather), a regulation tie is the final result — decided,
+   * `isTie`, no winner, no Super Over. Defaults to true (Tennis, §14).
+   */
+  superOverOnTie?: boolean;
+}
+
 /**
  * Derives the match result across the normal innings and any chained Super
  * Overs (§14). Returns `superOverRequired` when the latest contest is a tie and
  * no further Super Over innings exist yet.
  */
-export function deriveMatchResult(innings: InningsScorecard[]): MatchResultView {
+export function deriveMatchResult(
+  innings: InningsScorecard[],
+  options: DeriveMatchResultOptions = {},
+): MatchResultView {
   const normals = innings
     .filter((i) => i.inningsType === InningsType.Normal)
     .sort((a, b) => a.sequence - b.sequence);
@@ -111,6 +122,9 @@ export function deriveMatchResult(innings: InningsScorecard[]): MatchResultView 
   let res = evaluatePair(normals[0], normals[1]);
   if (!res.decided && !res.tie) {
     return undecided;
+  }
+  if (res.tie && options.superOverOnTie === false) {
+    return toResultView(res, 'Match tied');
   }
 
   let idx = 0;

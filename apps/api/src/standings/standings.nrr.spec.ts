@@ -575,6 +575,35 @@ describe('leather standings points (10 / 5 / 0)', () => {
     expect(beta?.points).toBe(10);
   });
 
+  it('awards 5 (not a loss) for a final tie against an external opponent', () => {
+    const { tables, dataErrors } = computeStandings({
+      tournamentId: 'leather',
+      matchSchedulingFormat: null,
+      groupCount: 0,
+      includeNetRunRate: false,
+      points: LEATHER_STANDINGS_POINTS,
+      awardUndecidedAsSplit: true,
+      teams: [leatherTeams[0]!],
+      groups: [],
+      matches: [
+        {
+          matchId: 'ext-tie',
+          groupId: null,
+          homeTeamId: 'a',
+          awayTeamId: null,
+          isNoResult: false,
+          winningTeamId: null,
+          isDecided: false,
+          innings: [],
+        },
+      ],
+    });
+
+    expect(dataErrors).toHaveLength(0);
+    const alpha = tables[0]?.teams.find((row: TeamStandingRow) => row.teamId === 'a');
+    expect(alpha).toMatchObject({ matches: 1, wins: 0, losses: 0, noResults: 1, points: 5 });
+  });
+
   it('does not change tennis defaults when leather schedule is omitted', () => {
     const { tables, dataErrors } = computeStandings({
       tournamentId: 'tennis',
