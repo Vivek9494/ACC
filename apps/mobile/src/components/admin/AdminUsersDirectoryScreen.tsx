@@ -61,6 +61,7 @@ export interface AdminUsersDirectoryScreenProps {
   manageUsers: boolean;
   userDetailHref: (userId: string) => Href;
   newUserHref?: Href;
+  editUserHref?: (userId: string) => Href;
 }
 
 /** System-wide user directory — full management for Admin, view-only for Club Manager. */
@@ -68,6 +69,7 @@ export function AdminUsersDirectoryScreen({
   manageUsers,
   userDetailHref,
   newUserHref,
+  editUserHref,
 }: AdminUsersDirectoryScreenProps): React.ReactElement {
   const router = useRouter();
   const [items, setItems] = useState<AdminUserSummary[]>([]);
@@ -421,6 +423,11 @@ export function AdminUsersDirectoryScreen({
                 user={item}
                 showRowActions={manageUsers}
                 onPress={() => router.push(userDetailHref(item.id))}
+                onEdit={
+                  manageUsers && editUserHref
+                    ? () => router.push(editUserHref(item.id))
+                    : undefined
+                }
                 onToggleStatus={() => requestToggleStatus(item)}
                 onDelete={() => requestDeleteUser(item)}
                 onUnlock={manageUsers ? () => requestUnlockUser(item) : undefined}

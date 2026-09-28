@@ -1,5 +1,5 @@
 import type { AdminUserDetail } from '@acc/types';
-import { UserRole, type TournamentPlayerProfileView } from '@acc/types';
+import type { TournamentPlayerProfileView } from '@acc/types';
 import { Ionicons } from '@expo/vector-icons';
 import { Pressable, View } from 'react-native';
 
@@ -14,8 +14,6 @@ export function adminUserToHeaderProfile(
   | 'lastName'
   | 'profilePhotoUrl'
   | 'playerRoleLabel'
-  | 'isCaptain'
-  | 'isViceCaptain'
   | 'centerName'
   | 'ballTypeLabel'
 > {
@@ -25,8 +23,6 @@ export function adminUserToHeaderProfile(
     profilePhotoUrl: user.profilePhotoUrl,
     centerName: user.centerName,
     playerRoleLabel: user.playerRoleLabel,
-    isCaptain: user.roles.includes(UserRole.Captain),
-    isViceCaptain: user.roles.includes(UserRole.ViceCaptain),
     ballTypeLabel: '',
   };
 }

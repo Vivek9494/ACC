@@ -16,22 +16,36 @@ export interface AdminUserListCardProps {
   onPress: () => void;
   /** When false, hides the overflow menu (view-only directory viewers). */
   showRowActions?: boolean;
+  /** Opens the user-edit page; the Edit action is hidden when omitted. */
+  onEdit?: () => void;
   onToggleStatus: () => void;
   onDelete: () => void;
   /** Unlock password-reset lock — only shown when {@link AdminUserSummary.isLocked}. */
   onUnlock?: () => void;
 }
 
-/** Admin directory row — tap opens detail; overflow menu for status + delete. */
+/** Admin directory row — tap opens detail; overflow menu for edit + status + delete. */
 export function AdminUserListCard({
   user,
   onPress,
   showRowActions = true,
+  onEdit,
   onToggleStatus,
   onDelete,
   onUnlock,
 }: AdminUserListCardProps): React.ReactElement {
   const menuActions: OverflowMenuAction[] = [
+    ...(onEdit
+      ? [
+          {
+            key: 'edit',
+            label: 'Edit',
+            icon: 'pencil',
+            secondary: true,
+            onPress: onEdit,
+          } satisfies OverflowMenuAction,
+        ]
+      : []),
     {
       key: 'status',
       label: user.isActive ? 'Inactive' : 'Active',

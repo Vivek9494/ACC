@@ -1,19 +1,14 @@
 import {
   ADMIN_ASSIGNABLE_ROLES,
   ADMIN_USER_ROLE_LABELS,
-  PLAYER_REGISTRATION_ROLE_LABELS,
-  PlayerRegistrationRole,
-  REGISTRATION_PLAYER_TYPE_OPTIONS,
-  REGISTRATION_RATING_OPTIONS,
   SIGNUP_NAME_MAX_LENGTH,
   UserRole,
   formatSignupMobileInput,
   formatSignupNameInput,
-  isAdminPlayingRole,
   type CreateAdminUserRequest,
 } from '@acc/types';
 import { useRouter } from 'expo-router';
-import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { Alert, type LayoutChangeEvent, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -37,46 +32,10 @@ import { ApiRequestError, createAdminUser } from '../../../src/lib/api';
 import { loginMobileForApi } from '../../../src/lib/login-messages';
 import { useSignupGeography } from '../../../src/lib/signup-geography';
 
-function ratingOptions(): SelectOption[] {
-  return REGISTRATION_RATING_OPTIONS.map((option) => ({
-    value: String(option.value),
-    label: option.label,
-  }));
-}
-
 const ROLE_OPTIONS: SelectOption[] = ADMIN_ASSIGNABLE_ROLES.map((role) => ({
   value: role,
   label: ADMIN_USER_ROLE_LABELS[role],
 }));
-
-const PLAYER_ROLE_OPTIONS: SelectOption[] = (
-  Object.keys(PLAYER_REGISTRATION_ROLE_LABELS) as PlayerRegistrationRole[]
-).map((role) => ({
-  value: role,
-  label: PLAYER_REGISTRATION_ROLE_LABELS[role],
-}));
-
-const PLAYER_TYPE_OPTIONS: SelectOption[] = REGISTRATION_PLAYER_TYPE_OPTIONS.map((option) => ({
-  value: option.value,
-  label: option.label,
-}));
-
-function FormSection({
-  title,
-  children,
-}: {
-  title: string;
-  children: ReactNode;
-}): React.ReactElement {
-  return (
-    <View className="gap-4">
-      <Text className="mt-6 font-sans-semibold text-xs uppercase tracking-wider text-primary">
-        {title}
-      </Text>
-      {children}
-    </View>
-  );
-}
 
 export default function AdminUserCreateScreen(): React.ReactElement {
   const router = useRouter();
@@ -94,14 +53,8 @@ export default function AdminUserCreateScreen(): React.ReactElement {
   const [centerId, setCenterId] = useState<string | null>(null);
   const [dateOfBirth, setDateOfBirth] = useState('');
   const [platformRole, setPlatformRole] = useState<string>(UserRole.Player);
-  const [playerRole, setPlayerRole] = useState<string | null>(null);
-  const [playerType, setPlayerType] = useState<string | null>(null);
-  const [battingRating, setBattingRating] = useState<string | null>(null);
-  const [bowlingRating, setBowlingRating] = useState<string | null>(null);
-  const [fieldingRating, setFieldingRating] = useState<string | null>(null);
 
   const { provinceField, centerField } = useSignupGeography(provinceId);
-  const showPlayingFields = isAdminPlayingRole(platformRole as UserRole);
 
   const provinceOptions = useMemo(
     () => provinceField.items.map((row) => ({ value: row.id, label: row.name })),
@@ -141,6 +94,21 @@ export default function AdminUserCreateScreen(): React.ReactElement {
   ): React.ReactElement {
     return (
       <View className={className} onLayout={(event) => registerFieldLayout(key, event)}>
+        {children}
+      </View>
+    );
+  }
+
+  /** Two fields side by side; both scroll-to keys resolve to the row's offset. */
+  function fieldRow(
+    keys: [AdminUserFieldKey, AdminUserFieldKey],
+    children: React.ReactNode,
+  ): React.ReactElement {
+    return (
+      <View
+        className="flex-row items-start gap-3"
+        onLayout={(event) => keys.forEach((key) => registerFieldLayout(key, event))}
+      >
         {children}
       </View>
     );
@@ -190,24 +158,6 @@ export default function AdminUserCreateScreen(): React.ReactElement {
       body.dateOfBirth = dateOfBirth;
     }
 
-    if (showPlayingFields) {
-      if (playerRole) {
-        body.playerRole = playerRole as CreateAdminUserRequest['playerRole'];
-      }
-      if (playerType) {
-        body.playerType = playerType as CreateAdminUserRequest['playerType'];
-      }
-      if (battingRating !== null) {
-        body.battingRating = Number(battingRating);
-      }
-      if (bowlingRating !== null) {
-        body.bowlingRating = Number(bowlingRating);
-      }
-      if (fieldingRating !== null) {
-        body.fieldingRating = Number(fieldingRating);
-      }
-    }
-
     try {
       const result = await createAdminUser(body);
       setRevealedTempPassword(result.user.id, result.temporaryPassword, result.expiresAt);
@@ -254,31 +204,34 @@ export default function AdminUserCreateScreen(): React.ReactElement {
         extraBottomPadding={40}
       >
         <View className="gap-4">
-          {fieldWrap(
-            'firstName',
-            <TextInput
-              label="First name"
-              value={firstName}
-              onChangeText={(value) => {
-                setFirstName(formatSignupNameInput(value));
-                clearFieldError('firstName');
-              }}
-              maxLength={SIGNUP_NAME_MAX_LENGTH}
-              error={fieldErrors.firstName}
-            />,
-          )}
-          {fieldWrap(
-            'lastName',
-            <TextInput
-              label="Last name"
-              value={lastName}
-              onChangeText={(value) => {
-                setLastName(formatSignupNameInput(value));
-                clearFieldError('lastName');
-              }}
-              maxLength={SIGNUP_NAME_MAX_LENGTH}
-              error={fieldErrors.lastName}
-            />,
+          {fieldRow(
+            ['firstName', 'lastName'],
+            <>
+              <View className="min-w-0 flex-1">
+                <TextInput
+                  label="First name"
+                  value={firstName}
+                  onChangeText={(value) => {
+                    setFirstName(formatSignupNameInput(value));
+                    clearFieldError('firstName');
+                  }}
+                  maxLength={SIGNUP_NAME_MAX_LENGTH}
+                  error={fieldErrors.firstName}
+                />
+              </View>
+              <View className="min-w-0 flex-1">
+                <TextInput
+                  label="Last name"
+                  value={lastName}
+                  onChangeText={(value) => {
+                    setLastName(formatSignupNameInput(value));
+                    clearFieldError('lastName');
+                  }}
+                  maxLength={SIGNUP_NAME_MAX_LENGTH}
+                  error={fieldErrors.lastName}
+                />
+              </View>
+            </>,
           )}
           {fieldWrap(
             'mobileNumber',
@@ -315,33 +268,36 @@ export default function AdminUserCreateScreen(): React.ReactElement {
               error={fieldErrors.email}
             />,
           )}
-          {fieldWrap(
-            'province',
-            <Select
-              label="Province"
-              value={provinceId ?? ''}
-              options={provinceOptions}
-              onChange={onProvinceChange}
-              loading={provinceField.loading}
-              error={provinceSelectError}
-              onRetry={provinceField.retry}
-            />,
-          )}
-          {fieldWrap(
-            'center',
-            <Select
-              label="Center"
-              value={centerId ?? ''}
-              options={centerOptions}
-              onChange={(value) => {
-                setCenterId(value);
-                clearFieldError('center');
-              }}
-              loading={centerField.loading}
-              disabled={!provinceId}
-              error={centerSelectError}
-              onRetry={centerField.retry}
-            />,
+          {fieldRow(
+            ['province', 'center'],
+            <>
+              <View className="min-w-0 flex-1">
+                <Select
+                  label="Province"
+                  value={provinceId ?? ''}
+                  options={provinceOptions}
+                  onChange={onProvinceChange}
+                  loading={provinceField.loading}
+                  error={provinceSelectError}
+                  onRetry={provinceField.retry}
+                />
+              </View>
+              <View className="min-w-0 flex-1">
+                <Select
+                  label="Center"
+                  value={centerId ?? ''}
+                  options={centerOptions}
+                  onChange={(value) => {
+                    setCenterId(value);
+                    clearFieldError('center');
+                  }}
+                  loading={centerField.loading}
+                  disabled={!provinceId}
+                  error={centerSelectError}
+                  onRetry={centerField.retry}
+                />
+              </View>
+            </>,
           )}
           {fieldWrap(
             'dateOfBirth',
@@ -356,52 +312,6 @@ export default function AdminUserCreateScreen(): React.ReactElement {
             />,
           )}
         </View>
-
-        {showPlayingFields ? (
-          <FormSection title="Player profile">
-            <View className="gap-4">
-              <Select
-                label="Player type (Leather)"
-                value={playerType ?? ''}
-                options={PLAYER_TYPE_OPTIONS}
-                onChange={setPlayerType}
-                placeholder="Not set"
-              />
-              <Select
-                label="Primary role"
-                value={playerRole ?? ''}
-                options={PLAYER_ROLE_OPTIONS}
-                onChange={setPlayerRole}
-                placeholder="Not set"
-              />
-              <Text className="font-sans text-xs text-text-muted">
-                Skill ratings (0–10) are recorded for audit and apply when the user registers for a
-                tournament.
-              </Text>
-              <Select
-                label="Batting"
-                value={battingRating ?? ''}
-                options={ratingOptions()}
-                onChange={setBattingRating}
-                placeholder="Not set"
-              />
-              <Select
-                label="Bowling"
-                value={bowlingRating ?? ''}
-                options={ratingOptions()}
-                onChange={setBowlingRating}
-                placeholder="Not set"
-              />
-              <Select
-                label="Fielding"
-                value={fieldingRating ?? ''}
-                options={ratingOptions()}
-                onChange={setFieldingRating}
-                placeholder="Not set"
-              />
-            </View>
-          </FormSection>
-        ) : null}
 
         <Text className="mt-6 font-sans text-sm text-on-surface-variant">
           A one-time temporary password will be generated when you create this account. The user must

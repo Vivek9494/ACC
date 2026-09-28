@@ -220,6 +220,15 @@ export default function TournamentTypeDefinitionFormScreen(): React.ReactElement
         }
       >
         <View className="gap-5">
+          <Select
+            label="Ball Type"
+            placeholder="Select ball type"
+            value={ballType}
+            options={BALL_TYPE_OPTIONS}
+            onChange={(value) => setBallType(value as BallType)}
+            containerClassName="gap-1"
+          />
+
           <TextInput
             label="Name"
             value={name}
@@ -238,15 +247,6 @@ export default function TournamentTypeDefinitionFormScreen(): React.ReactElement
               setProvinceId(value);
               setCenterIds([]);
             }}
-            containerClassName="gap-1"
-          />
-
-          <Select
-            label="Ball Type"
-            placeholder="Select ball type"
-            value={ballType}
-            options={BALL_TYPE_OPTIONS}
-            onChange={(value) => setBallType(value as BallType)}
             containerClassName="gap-1"
           />
 

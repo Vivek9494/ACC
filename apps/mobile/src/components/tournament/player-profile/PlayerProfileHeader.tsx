@@ -15,8 +15,6 @@ export interface PlayerProfileHeaderProps {
     | 'lastName'
     | 'profilePhotoUrl'
     | 'playerRoleLabel'
-    | 'isCaptain'
-    | 'isViceCaptain'
     | 'centerName'
     | 'ballTypeLabel'
   >;
@@ -29,7 +27,7 @@ function ProfileBadge({
   label,
   variant = 'default',
 }: {
-  icon: 'workspace-premium' | 'bolt' | 'location-on';
+  icon: 'bolt' | 'location-on';
   label: string;
   variant?: 'default' | 'muted' | 'center';
 }): React.ReactElement {
@@ -50,27 +48,12 @@ function ProfileBadge({
   );
 }
 
-/** Cover banner, avatar, name, and role/captain/center badges. */
+/** Cover banner, avatar, name, and player-type/center badges. */
 export function PlayerProfileHeader({
   profile,
   centerRowTrailing,
 }: PlayerProfileHeaderProps): React.ReactElement {
   const displayName = formatPlayerProfileDisplayName(profile.firstName, profile.lastName);
-  const roleBadges = (
-    <>
-      {profile.isCaptain ? (
-        <ProfileBadge icon="workspace-premium" label="Captain" />
-      ) : null}
-      {profile.isViceCaptain ? (
-        <ProfileBadge icon="workspace-premium" label="Vice-Captain" />
-      ) : null}
-      {profile.playerRoleLabel ? (
-        <ProfileBadge icon="bolt" label={profile.playerRoleLabel} variant="muted" />
-      ) : null}
-    </>
-  );
-  const hasRoleBadges =
-    profile.isCaptain || profile.isViceCaptain || Boolean(profile.playerRoleLabel);
   const showCenterRow = Boolean(profile.centerName) || centerRowTrailing != null;
 
   return (
@@ -86,8 +69,10 @@ export function PlayerProfileHeader({
           shape="square"
         />
         <Text className="mt-4 font-sans-bold text-2xl text-on-surface">{displayName}</Text>
-        {hasRoleBadges ? (
-          <View className="mt-2 flex-row flex-wrap gap-2">{roleBadges}</View>
+        {profile.playerRoleLabel ? (
+          <View className="mt-2 flex-row flex-wrap gap-2">
+            <ProfileBadge icon="bolt" label={profile.playerRoleLabel} variant="muted" />
+          </View>
         ) : null}
         {showCenterRow ? (
           <View className="mt-2 flex-row items-center justify-between gap-3">

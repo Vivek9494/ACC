@@ -4,8 +4,8 @@ import { useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Button } from '../ui/Button';
-import { ListRowIconButton } from '../ui/ListRowIconButton';
+import { CircularAddButton } from '../ui/CircularAddButton';
+import { OverflowMenu } from '../ui/OverflowMenu';
 import { ScreenHeader } from '../ui/ScreenHeader';
 import { FIELD_ORANGE } from '../ui/fieldStyles';
 import { Text } from '../ui/Text';
@@ -82,13 +82,6 @@ export function AdminProvincesListScreen({
               Provinces, centers, and tournament types
             </Text>
           </View>
-          <Button
-            variant="outline"
-            label="Add Tournament Type"
-            className="h-10 shrink-0 px-3"
-            textClassName="text-sm"
-            onPress={() => router.push('/admin/tournament-types/new')}
-          />
         </View>
       )}
 
@@ -103,31 +96,46 @@ export function AdminProvincesListScreen({
           <ActivityIndicator color={FIELD_ORANGE} />
         ) : (
           <>
-            {tournamentTypes.length > 0 ? (
-              <View className="gap-3">
+            <View className="gap-3">
+              <View className="flex-row items-center justify-between">
                 <Text className="font-sans-semibold text-xs uppercase tracking-wider text-primary">
                   Tournament Types
                 </Text>
-                {tournamentTypes.map((type) => (
-                  <Pressable
-                    key={type.id}
-                    className="gap-1 rounded-xl border border-outline-variant bg-surface-container-lowest p-4"
-                    onPress={() => router.push(`/admin/tournament-types/${type.id}`)}
-                  >
-                    <Text className="font-sans-bold text-lg text-on-surface">{type.name}</Text>
-                    <Text className="font-sans text-sm text-on-surface-variant">
-                      {type.provinceName} · {type.centerCount} center
-                      {type.centerCount === 1 ? '' : 's'}
-                    </Text>
-                  </Pressable>
-                ))}
+                <CircularAddButton
+                  accessibilityLabel="Add tournament type"
+                  onPress={() => router.push('/admin/tournament-types/new')}
+                />
               </View>
-            ) : null}
+              {tournamentTypes.length === 0 ? (
+                <Text className="font-sans text-sm text-on-surface-variant">
+                  No tournament types yet.
+                </Text>
+              ) : null}
+              {tournamentTypes.map((type) => (
+                <Pressable
+                  key={type.id}
+                  className="gap-1 rounded-xl border border-outline-variant bg-surface-container-lowest p-4"
+                  onPress={() => router.push(`/admin/tournament-types/${type.id}`)}
+                >
+                  <Text className="font-sans-bold text-lg text-on-surface">{type.name}</Text>
+                  <Text className="font-sans text-sm text-on-surface-variant">
+                    {type.provinceName} · {type.centerCount} center
+                    {type.centerCount === 1 ? '' : 's'}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
 
             <View className="gap-3">
-              <Text className="font-sans-semibold text-xs uppercase tracking-wider text-primary">
-                Provinces
-              </Text>
+              <View className="flex-row items-center justify-between">
+                <Text className="font-sans-semibold text-xs uppercase tracking-wider text-primary">
+                  Provinces
+                </Text>
+                <CircularAddButton
+                  accessibilityLabel="Add province"
+                  onPress={() => router.push('/admin/provinces/new')}
+                />
+              </View>
               {provinces.map((province) => (
                 <View
                   key={province.id}
@@ -142,18 +150,26 @@ export function AdminProvincesListScreen({
                         {province.name}
                       </Text>
                     </Pressable>
-                    <View className="flex-row items-center gap-1">
-                      <ListRowIconButton
-                        icon="pencil"
-                        accessibilityLabel={`Edit ${province.name}`}
-                        onPress={() => router.push(`/admin/provinces/${province.id}/edit`)}
-                      />
-                      <ListRowIconButton
-                        icon="trash-outline"
-                        accessibilityLabel={`Delete ${province.name}`}
-                        onPress={() => requestDeleteProvince(province)}
-                      />
-                    </View>
+                    <OverflowMenu
+                      accessibilityLabel={`More options for ${province.name}`}
+                      iconColor={FIELD_ORANGE}
+                      actions={[
+                        {
+                          key: 'edit',
+                          label: 'Edit',
+                          icon: 'pencil',
+                          secondary: true,
+                          onPress: () => router.push(`/admin/provinces/${province.id}/edit`),
+                        },
+                        {
+                          key: 'delete',
+                          label: 'Delete',
+                          icon: 'trash-outline',
+                          destructive: true,
+                          onPress: () => requestDeleteProvince(province),
+                        },
+                      ]}
+                    />
                   </View>
                   <Pressable onPress={() => router.push(`/admin/provinces/${province.id}`)}>
                     <Text className="font-sans text-sm text-on-surface-variant">
@@ -165,12 +181,6 @@ export function AdminProvincesListScreen({
             </View>
           </>
         )}
-
-        <Button
-          label="Add Province"
-          className="h-14"
-          onPress={() => router.push('/admin/provinces/new')}
-        />
       </ScrollView>
     </SafeAreaView>
   );

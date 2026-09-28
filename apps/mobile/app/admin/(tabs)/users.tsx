@@ -6,6 +6,7 @@ export default function AdminUsersTabScreen(): React.ReactElement {
       manageUsers
       newUserHref="/admin/users/new"
       userDetailHref={(userId) => `/admin/users/${userId}`}
+      editUserHref={(userId) => `/admin/users/${userId}/edit`}
     />
   );
 }
