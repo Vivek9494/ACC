@@ -20,39 +20,6 @@ html, body {
     linear-gradient(165deg, #f7f2eb 0%, #ebe3d8 100%);
 }
 
-.match-view {
-  min-height: 100vh;
-  display: grid;
-  place-items: center;
-  padding: 32px 16px;
-}
-
-.match-view[hidden] {
-  display: none;
-}
-
-.card {
-  width: min(420px, calc(100vw - 48px));
-  padding: 32px 28px 28px;
-  border-radius: 16px;
-  background: var(--card);
-  border: 1px solid var(--border);
-  box-shadow: 0 18px 40px rgba(28, 20, 16, 0.08);
-}
-
-.card h1 {
-  margin: 0 0 8px;
-  font-size: 1.35rem;
-  letter-spacing: -0.02em;
-}
-
-.card p {
-  margin: 0 0 20px;
-  color: var(--muted);
-  font-size: 0.92rem;
-  line-height: 1.45;
-}
-
 label {
   display: block;
   margin: 0 0 6px;
@@ -77,20 +44,6 @@ input {
   gap: 10px;
   justify-content: flex-end;
   margin-top: 8px;
-}
-
-.card-footer {
-  display: flex;
-  justify-content: flex-start;
-  margin-top: 20px;
-  padding-top: 16px;
-  border-top: 1px solid var(--border);
-}
-
-.field-error {
-  margin: 10px 0 0;
-  color: var(--danger);
-  font-size: 0.85rem;
 }
 
 .btn {

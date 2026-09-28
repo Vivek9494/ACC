@@ -9,6 +9,8 @@
 
 import {
   AuthErrorCode,
+  type BroadcastEntryMatch,
+  type BroadcastEntryTournamentsResponse,
   type AuthResponse,
   type AuthTokens,
   type AuthUser,
@@ -1851,6 +1853,18 @@ export function recordToss(matchId: string, body: RecordTossRequest): Promise<Ma
 /** §11.2: scorer Match Setup — toss capture, derive sides, go Live, open innings 1. */
 export function startScoring(matchId: string, body: RecordTossRequest): Promise<MatchDetail> {
   return apiFetch<MatchDetail>(`/matches/${matchId}/start-scoring`, { method: 'POST', body });
+}
+
+/** ASC Broadcast entry: Live tournaments this user may broadcast (role-scoped). */
+export function getBroadcastEntryTournaments(): Promise<BroadcastEntryTournamentsResponse> {
+  return apiFetch<BroadcastEntryTournamentsResponse>('/broadcast-entry/tournaments');
+}
+
+/** ASC Broadcast entry: Live + upcoming matches, Live first then soonest. */
+export function getBroadcastEntryMatches(tournamentId: string): Promise<BroadcastEntryMatch[]> {
+  return apiFetch<BroadcastEntryMatch[]>(
+    `/broadcast-entry/tournaments/${encodeURIComponent(tournamentId)}/matches`,
+  );
 }
 
 /** §11: toss + opening players, transition to Live, and open the first innings. */

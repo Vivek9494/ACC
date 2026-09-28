@@ -6,16 +6,6 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('ascBroadcast', {
-  loadControlPanel(matchId) {
-    ipcRenderer.send('asc:load-control-panel', matchId);
-  },
-  showMatchEntry() {
-    ipcRenderer.send('asc:show-match-entry');
-  },
-  /** Sign out of the cockpit session and return to the /login gate. */
-  logout() {
-    ipcRenderer.send('asc:logout');
-  },
   getObsConfig() {
     return ipcRenderer.invoke('asc:obs-get-config');
   },

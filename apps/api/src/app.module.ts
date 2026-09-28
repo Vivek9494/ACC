@@ -41,6 +41,7 @@ import { LeaderboardModule } from './leaderboard/leaderboard.module';
 import { PlayerSkillVideosModule } from './player-videos/player-skill-videos.module';
 import { AppSettingsModule } from './settings/app-settings.module';
 import { BroadcastModule } from './broadcast/broadcast.module';
+import { BroadcastEntryModule } from './broadcast-entry/broadcast-entry.module';
 import { BirthdaysModule } from './birthdays/birthdays.module';
 import { StandingsModule } from './standings/standings.module';
 import { KnockoutBracketModule } from './knockout-bracket/knockout-bracket.module';
@@ -63,6 +64,7 @@ import { KnockoutSeedingModule } from './knockout-seeding/knockout-seeding.modul
     AuthzModule,
     AppSettingsModule,
     BroadcastModule,
+    BroadcastEntryModule,
     BirthdaysModule,
     NotificationsModule,
     AuthModule,

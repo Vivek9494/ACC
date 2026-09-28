@@ -8,25 +8,6 @@
   <link rel="stylesheet" href="shell.css" />
 </head>
 <body>
-  <main id="match-view" class="match-view">
-    <section class="card">
-      <h1>ASC Broadcast</h1>
-      <p>Enter a Match ID to open the scoring cockpit. OBS launches in the background — use Settings if the websocket password is needed.</p>
-      <form id="load-form">
-        <label for="match-id">Match ID</label>
-        <input id="match-id" name="matchId" type="text" autocomplete="off" spellcheck="false" placeholder="e.g. clxy…" />
-        <div class="actions">
-          <button type="button" id="btn-settings" class="btn ghost">Settings</button>
-          <button type="submit" class="btn primary">Load</button>
-        </div>
-        <p id="match-error" class="field-error" hidden>Enter a Match ID to continue.</p>
-      </form>
-      <div class="card-footer">
-        <button type="button" id="btn-logout" class="btn ghost">Log out</button>
-      </div>
-    </section>
-  </main>
-
   <div id="settings-modal" class="modal" hidden>
     <div class="modal-card">
       <h2>OBS connection</h2>

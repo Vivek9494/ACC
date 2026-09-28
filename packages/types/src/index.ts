@@ -33,6 +33,7 @@ export * from './stats-cache';
 export * from './overlay-theme';
 export * from './youtube-url';
 export * from './broadcast-stats';
+export * from './broadcast-entry';
 export * from './group';
 export * from './tournament-groups';
 export * from './knockout-team-count';

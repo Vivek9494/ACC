@@ -5,7 +5,7 @@ macOS Electron shell that embeds the ASC **scoring cockpit** (Expo web:
 live in the shell chrome and (inside Electron only) in a **Broadcast / OBS**
 block above Main Scoreboard on the cockpit page.
 
-Scope: match-ID entry + full-window cockpit embed + OBS connect / start-stop
+Scope: broadcast home (tournament → match picker) + full-window cockpit embed + OBS connect / start-stop
 stream + **OBS lifecycle** + **Instant Replay**. OBS controls and Settings live
 in the cockpit **Broadcast / OBS** block (Electron only).  
 The graphics-only `control.html` is unchanged and unused by the operator embed.
@@ -34,8 +34,10 @@ Cockpit origin override (default `http://localhost:8081`):
 ASC_COCKPIT_URL=http://localhost:8081 pnpm dev:broadcast
 ```
 
-Load a Match ID → embeds `{ASC_COCKPIT_URL}/matches/{id}/score`. Sign in inside
-the BrowserView when prompted. Keep the window ≥1024px wide so the desktop
+Sign in inside the BrowserView, then pick a tournament and match on broadcast
+home (`{ASC_COCKPIT_URL}/broadcast-home`) → embeds
+`{ASC_COCKPIT_URL}/matches/{id}/score`. Admin / Club Manager see every Live
+tournament; scorers only the Live tournaments they're assigned to. Keep the window ≥1024px wide so the desktop
 cockpit layout (and OBS block) appears.
 
 ## Package (.app)
@@ -49,16 +51,17 @@ Unsigned (`identity: null`) for local use.
 
 ## Flow
 
-1. App opens → Match ID form + OBS chrome.
+1. App opens → sign in → broadcast home (tournament + match dropdowns, Log out,
+   OBS Settings). `⌘O` returns to broadcast home.
 2. **Auto-launch OBS** in the background (`open -g -j`), wait for websocket,
    auto-connect. If OBS is already running, connect to that instance.
 3. **Settings** (`⌘,` or Broadcast/OBS → Settings) — host / port / password, OBS
    app path, optional scene collection + profile, Instant Replay scene/source
-   names. Stored in userData (`obs-connection.json`). Same form on the Match ID
-   entry screen before load.
+   names. Stored in userData (`obs-connection.json`). Also available from
+   broadcast home.
 4. **Start Streaming** / **Stop Streaming** / **Instant Replay** from the
    in-cockpit Broadcast/OBS block.
-5. **Load** → scoring cockpit fills the window (no shell control bar).
+5. **Select a match** → scoring cockpit fills the window (no shell control bar).
 6. On **Quit**, stop an active stream, then quit only an OBS **this app
    launched**. A pre-existing OBS is left running.
 

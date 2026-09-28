@@ -165,13 +165,6 @@ function layoutPanelView() {
   panelView.setAutoResize({ width: true, height: true });
 }
 
-function hidePanelView() {
-  if (!mainWindow || !panelView) {
-    return;
-  }
-  mainWindow.removeBrowserView(panelView);
-}
-
 function showPanelView() {
   if (!mainWindow || !panelView || !panelVisible) {
     return;
@@ -188,54 +181,40 @@ function openObsSettings() {
   sendToShell('asc:open-obs-settings');
 }
 
-function showMatchIdEntry() {
-  panelVisible = false;
-  hidePanelView();
-  sendToShell('asc:shell-state', {
-    view: 'match',
-    lastMatchId: readLastMatchId(),
-  });
-  if (mainWindow) {
-    mainWindow.setTitle('ASC Broadcast');
+/**
+ * Load a cockpit-origin route in the BrowserView (the auth session lives there,
+ * not in the file:// shell).
+ * @param {string} route
+ */
+function loadPanelRoute(route) {
+  if (!mainWindow) {
+    return;
   }
+  const view = ensurePanelView();
+  panelVisible = true;
+  void view.webContents.loadURL(`${COCKPIT_BASE}${route}`);
+  showPanelView();
+  sendToShell('asc:shell-state', {
+    view: 'panel',
+  });
+  mainWindow.setTitle('ASC Broadcast');
 }
 
 /**
- * Auth gate: load Expo /login in the BrowserView before match entry.
- * After login, RootNavigator's Electron branch calls returnToBroadcastHome → match entry.
+ * Broadcast home: Expo /broadcast-home (scoped tournament → match picker).
+ * Unauthenticated sessions are redirected to /login by RootNavigator.
+ */
+function showBroadcastHome() {
+  loadPanelRoute('/broadcast-home');
+}
+
+/**
+ * Auth gate: load Expo /login in the BrowserView before broadcast home.
+ * After login, RootNavigator's Electron branch calls returnToBroadcastHome.
  * If a session already exists, the same redirect fires immediately.
  */
 function showLoginGate() {
-  if (!mainWindow) {
-    return;
-  }
-  const view = ensurePanelView();
-  panelVisible = true;
-  void view.webContents.loadURL(`${COCKPIT_BASE}/login`);
-  showPanelView();
-  sendToShell('asc:shell-state', {
-    view: 'panel',
-  });
-  mainWindow.setTitle('ASC Broadcast');
-}
-
-/**
- * Logout from broadcast home: the session lives in the cockpit origin, so the
- * BrowserView runs the web signOut (/broadcast-logout) and lands on /login —
- * the same gate as launch. The next login redirects back to match entry.
- */
-function logoutToLoginGate() {
-  if (!mainWindow) {
-    return;
-  }
-  const view = ensurePanelView();
-  panelVisible = true;
-  void view.webContents.loadURL(`${COCKPIT_BASE}/broadcast-logout`);
-  showPanelView();
-  sendToShell('asc:shell-state', {
-    view: 'panel',
-  });
-  mainWindow.setTitle('ASC Broadcast');
+  loadPanelRoute('/login');
 }
 
 /**
@@ -294,7 +273,7 @@ function createWindow() {
 
   void mainWindow.loadFile(path.join(__dirname, 'shell.html'));
   mainWindow.webContents.once('did-finish-load', () => {
-    // Login first (BrowserView). Authenticated sessions redirect to match entry.
+    // Login first (BrowserView). Authenticated sessions redirect to broadcast home.
     showLoginGate();
     pushObsStatus();
     void lifecycle.ensureSession().catch(() => {
@@ -339,9 +318,9 @@ function buildAppMenu() {
       label: 'File',
       submenu: [
         {
-          label: 'Enter Match ID…',
+          label: 'Broadcast Home…',
           accelerator: 'CmdOrCtrl+O',
-          click: () => showMatchIdEntry(),
+          click: () => showBroadcastHome(),
         },
         { type: 'separator' },
         {
@@ -415,11 +394,8 @@ function registerIpc() {
   ipcMain.on('asc:load-control-panel', (_event, matchId) => {
     loadControlPanel(matchId);
   });
-  ipcMain.on('asc:show-match-entry', () => {
-    showMatchIdEntry();
-  });
-  ipcMain.on('asc:logout', () => {
-    logoutToLoginGate();
+  ipcMain.on('asc:show-broadcast-home', () => {
+    showBroadcastHome();
   });
 
   ipcMain.handle('asc:obs-get-config', () => readObsConfig(userDataDir()));

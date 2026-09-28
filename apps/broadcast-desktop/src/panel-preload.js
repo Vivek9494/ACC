@@ -1,15 +1,22 @@
 /**
  * Preload bridge for the BrowserView (scoring cockpit).
- * OBS control + config + return-to-match-entry — never expose loadControlPanel or raw ipcRenderer.
+ * OBS control + config + broadcast-home navigation — never expose raw ipcRenderer.
  */
 
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('ascBroadcast', {
   capabilities: Object.freeze({ obs: true }),
-  /** Hide cockpit BrowserView and show ASC Broadcast Match-ID entry (shell). */
+  /** Load the broadcast home (tournament → match picker) in this view. */
   returnToBroadcastHome() {
-    ipcRenderer.send('asc:show-match-entry');
+    ipcRenderer.send('asc:show-broadcast-home');
+  },
+  /** Open the scoring cockpit for a match picked on broadcast home. */
+  openMatch(matchId) {
+    if (typeof matchId !== 'string' || !matchId.trim()) {
+      return;
+    }
+    ipcRenderer.send('asc:load-control-panel', matchId.trim());
   },
   obs: {
     getStatus() {

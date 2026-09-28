@@ -1,12 +1,5 @@
 const api = window.ascBroadcast;
 
-const matchView = document.getElementById('match-view');
-const matchInput = document.getElementById('match-id');
-const matchError = document.getElementById('match-error');
-const loadForm = document.getElementById('load-form');
-
-const btnLogout = document.getElementById('btn-logout');
-const btnSettings = document.getElementById('btn-settings');
 const settingsModal = document.getElementById('settings-modal');
 const settingsForm = document.getElementById('settings-form');
 const obsHost = document.getElementById('obs-host');
@@ -21,17 +14,6 @@ const obsOverlayUrl = document.getElementById('obs-overlay-url');
 const obsReplayScene = document.getElementById('obs-replay-scene');
 const obsReplayMedia = document.getElementById('obs-replay-media');
 const btnSettingsCancel = document.getElementById('btn-settings-cancel');
-
-function applyShellState(state) {
-  if (state.view === 'panel') {
-    matchView.hidden = true;
-    return;
-  }
-  matchView.hidden = false;
-  if (state.lastMatchId) {
-    matchInput.value = state.lastMatchId;
-  }
-}
 
 async function openSettings() {
   const config = await api.getObsConfig();
@@ -53,29 +35,6 @@ async function openSettings() {
 function closeSettings() {
   settingsModal.hidden = true;
 }
-
-loadForm.addEventListener('submit', (event) => {
-  event.preventDefault();
-  const matchId = (matchInput.value || '').trim();
-  if (!matchId) {
-    matchError.hidden = false;
-    matchInput.focus();
-    return;
-  }
-  matchError.hidden = true;
-  api.loadControlPanel(matchId);
-});
-
-btnSettings.addEventListener('click', () => {
-  void openSettings();
-});
-
-btnLogout.addEventListener('click', () => {
-  if (!window.confirm('Log out? The next scorer will need to sign in.')) {
-    return;
-  }
-  api.logout();
-});
 
 btnSettingsCancel.addEventListener('click', () => {
   closeSettings();
@@ -113,10 +72,7 @@ document.addEventListener('keydown', (event) => {
   }
 });
 
-api.onShellState(applyShellState);
+// Only reached before the cockpit BrowserView exists (it covers the shell otherwise).
 api.onOpenObsSettings(() => {
-  // Only used when match-entry is visible (panel not covering the shell).
-  if (!matchView.hidden) {
-    void openSettings();
-  }
+  void openSettings();
 });

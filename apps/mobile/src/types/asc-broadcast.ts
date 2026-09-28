@@ -102,8 +102,10 @@ export interface AscObsBridge {
 
 export interface AscBroadcastApi {
   capabilities?: { obs?: boolean };
-  /** Hide cockpit and show ASC Broadcast Match-ID entry (Electron panel only). */
+  /** Show the ASC Broadcast home (tournament → match picker) — Electron panel only. */
   returnToBroadcastHome?: () => void;
+  /** Open the scoring cockpit for a match picked on broadcast home — Electron panel only. */
+  openMatch?: (matchId: string) => void;
   obs?: AscObsBridge;
 }
 
