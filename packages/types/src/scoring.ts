@@ -305,6 +305,14 @@ export interface UndoDeliveryRequest {
   expectedVersion: number;
 }
 
+/**
+ * Broadcast cockpit "Start Over": delete every innings + delivery, clear the
+ * toss, and return a Live / Rain Interrupted match to Playing 11 Locked.
+ */
+export interface ResetMatchScoringRequest {
+  expectedVersion: number;
+}
+
 /** Manually end the current innings and run the innings-transition flow (§12.2). */
 export interface EndInningsRequest {
   expectedVersion: number;

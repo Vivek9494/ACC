@@ -947,6 +947,36 @@ describe('PermissionService', () => {
     });
   });
 
+  describe('RESET_MATCH_SCORING (cockpit Start Over)', () => {
+    const p = Permission.RESET_MATCH_SCORING;
+    const types = [TournamentType.ACC, TournamentType.APL, TournamentType.Center];
+
+    it('Admin, Club Manager and the assigned Scorer are allowed on every tournament type', () => {
+      for (const tournamentType of types) {
+        for (const subject of [UserRole.Admin, UserRole.ClubManager, 'SCORER'] as const) {
+          expect(service.evaluate(p, ctx({ subjects: [subject], tournamentType }))).toBe(true);
+        }
+      }
+    });
+
+    it('Captain, VC, Manager, Center Sevak and Player are denied', () => {
+      for (const role of [
+        UserRole.Captain,
+        UserRole.ViceCaptain,
+        UserRole.Manager,
+        UserRole.CenterSevak,
+        UserRole.Player,
+      ]) {
+        expect(
+          service.evaluate(
+            p,
+            ctx({ subjects: [role], tournamentType: TournamentType.APL, sameTeam: true, isOrganizer: true }),
+          ),
+        ).toBe(false);
+      }
+    });
+  });
+
   describe('check() resolves Center scope from the database', () => {
     const actor: AuthUser = {
       id: 'sevak-1',

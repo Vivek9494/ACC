@@ -120,6 +120,15 @@ function makeDb() {
         if (data.completedAt !== undefined) m.completedAt = data.completedAt;
         if (data.winningTeamId !== undefined) m.winningTeamId = data.winningTeamId;
         if (data.resultNote !== undefined) m.resultNote = data.resultNote;
+        for (const key of [
+          'tossWinner',
+          'tossDecision',
+          'openingStrikerUserId',
+          'openingNonStrikerUserId',
+          'openingBowlerUserId',
+        ]) {
+          if (data[key] !== undefined) m[key] = data[key];
+        }
         return { ...m };
       },
     },
@@ -189,6 +198,13 @@ function makeDb() {
         Object.assign(r, data);
         return r;
       },
+      count: async ({ where }: { where: { matchId: string } }) =>
+        [...innings.values()].filter((i) => i.matchId === where.matchId).length,
+      deleteMany: async ({ where }: { where: { matchId: string } }) => {
+        const ids = [...innings.values()].filter((i) => i.matchId === where.matchId).map((i) => i.id as string);
+        ids.forEach((id) => innings.delete(id));
+        return { count: ids.length };
+      },
     },
     delivery: {
       findMany: async ({ where }: { where: { inningsId: string; isVoided?: boolean } }) =>
@@ -219,6 +235,17 @@ function makeDb() {
         const r = deliveries.get(where.id) as Row;
         Object.assign(r, data);
         return r;
+      },
+      count: async ({ where }: { where: { innings: { matchId: string } } }) =>
+        [...deliveries.values()].filter(
+          (d) => innings.get(d.inningsId as string)?.matchId === where.innings.matchId,
+        ).length,
+      deleteMany: async ({ where }: { where: { innings: { matchId: string } } }) => {
+        const ids = [...deliveries.values()]
+          .filter((d) => innings.get(d.inningsId as string)?.matchId === where.innings.matchId)
+          .map((d) => d.id as string);
+        ids.forEach((id) => deliveries.delete(id));
+        return { count: ids.length };
       },
     },
     externalPlayer: { findMany: async () => [] as Row[] },
@@ -1306,5 +1333,92 @@ describe('ScoringService — post-confirmation edits (§13.2)', () => {
         { postConfirm: true },
       ),
     ).rejects.toMatchObject({ response: { error: 'SCORECARD_NOT_LOCKED' } });
+  });
+});
+
+describe('ScoringService — resetMatchScoring (cockpit Start Over)', () => {
+  async function seedScoredMatch() {
+    const db = makeDb();
+    seedMatch(db.matches);
+    Object.assign(db.matches.get('match-1')!, {
+      scoringMode: 'LIVE',
+      tossWinner: 'TEAM_A',
+      tossDecision: 'BAT',
+      openingStrikerUserId: 'A',
+    });
+    const service = makeService(db.prisma);
+    await service.startInnings(scorer, 'match-1', { expectedVersion: 0 });
+    const inningsId = [...db.innings.values()][0]!.id as string;
+    const version = (): number => db.matches.get('match-1')!.scorecardVersion as number;
+    await service.setInningsParticipants(scorer, 'match-1', inningsId, {
+      strikerId: 'A',
+      nonStrikerId: 'B',
+      bowlerId: 'X',
+      expectedVersion: version(),
+    });
+    await service.recordDelivery(scorer, 'match-1', inningsId, {
+      type: DeliveryType.Legal,
+      strikerId: 'A',
+      nonStrikerId: 'B',
+      bowlerId: 'X',
+      runsBat: 4,
+      isBoundary: true,
+      expectedVersion: version(),
+    });
+    return { ...db, service, version };
+  }
+
+  it('deletes all innings + deliveries, clears the toss, and returns to Playing 11 Locked', async () => {
+    const { service, matches, innings, deliveries, version } = await seedScoredMatch();
+    const before = version();
+
+    const card = await service.resetMatchScoring(scorer, 'match-1', { expectedVersion: before });
+
+    expect(innings.size).toBe(0);
+    expect(deliveries.size).toBe(0);
+    const m = matches.get('match-1')!;
+    expect(m.state).toBe('PLAYING_XI_LOCKED');
+    expect(m.tossWinner).toBeNull();
+    expect(m.tossDecision).toBeNull();
+    expect(m.openingStrikerUserId).toBeNull();
+    expect(m.scorecardVersion).toBe(before + 1);
+    expect(card.innings).toHaveLength(0);
+  });
+
+  it('works while Rain Interrupted', async () => {
+    const { service, matches, innings, version } = await seedScoredMatch();
+    matches.get('match-1')!.state = 'RAIN_INTERRUPTED';
+    await service.resetMatchScoring(scorer, 'match-1', { expectedVersion: version() });
+    expect(innings.size).toBe(0);
+    expect(matches.get('match-1')!.state).toBe('PLAYING_XI_LOCKED');
+  });
+
+  it.each(['COMPLETED', 'NO_RESULT', 'SCORECARD_LOCKED', 'TOSS_COMPLETED'])(
+    'refuses when the match is %s and deletes nothing',
+    async (state) => {
+      const { service, matches, innings, deliveries, version } = await seedScoredMatch();
+      matches.get('match-1')!.state = state;
+      await expect(
+        service.resetMatchScoring(scorer, 'match-1', { expectedVersion: version() }),
+      ).rejects.toMatchObject({ response: { error: 'MATCH_NOT_LIVE' } });
+      expect(innings.size).toBe(1);
+      expect(deliveries.size).toBe(1);
+    },
+  );
+
+  it('rejects a stale version without deleting anything', async () => {
+    const { service, innings, version } = await seedScoredMatch();
+    await expect(
+      service.resetMatchScoring(scorer, 'match-1', { expectedVersion: version() - 1 }),
+    ).rejects.toBeInstanceOf(ConflictException);
+    expect(innings.size).toBe(1);
+  });
+
+  it('refuses scorecard-only matches', async () => {
+    const { service, matches, version } = await seedScoredMatch();
+    matches.get('match-1')!.scoringMode = 'SCORECARD_ONLY';
+    await expect(
+      service.resetMatchScoring(scorer, 'match-1', { expectedVersion: version() }),
+    ).rejects.toMatchObject({ response: { error: 'SCORECARD_ONLY_MATCH' } });
   });
 });

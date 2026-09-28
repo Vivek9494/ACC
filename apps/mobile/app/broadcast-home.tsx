@@ -1,6 +1,7 @@
 import {
   BROADCAST_ENTRY_NOT_ASSIGNED_MESSAGE,
   BroadcastEntryAccess,
+  broadcastEntryMatchLabelParts,
   formatBroadcastEntryMatchLabel,
   type BroadcastEntryMatch,
   type BroadcastEntryTournamentsResponse,
@@ -12,9 +13,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ObsConnectionSettingsModal } from '../src/components/scoring/cockpit/ObsConnectionSettingsModal';
 import { Button } from '../src/components/ui/Button';
-import { DashboardHeader } from '../src/components/ui/DashboardHeader';
+import { Card, CARD_BORDER_CLASS } from '../src/components/ui/Card';
 import { KeyboardAwareFormScrollView } from '../src/components/ui/KeyboardAwareFormScrollView';
-import { Select } from '../src/components/ui/Select';
+import { Select, type SelectOption } from '../src/components/ui/Select';
 import { Text } from '../src/components/ui/Text';
 import { TextInput } from '../src/components/ui/TextInput';
 import { ApiRequestError, getBroadcastEntryMatches, getBroadcastEntryTournaments } from '../src/lib/api';
@@ -46,6 +47,7 @@ export default function BroadcastHomeScreen(): React.ReactElement {
   const [matches, setMatches] = useState<BroadcastEntryMatch[] | null>(null);
   const [matchesLoading, setMatchesLoading] = useState(false);
   const [matchesError, setMatchesError] = useState<string | null>(null);
+  const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
@@ -74,6 +76,7 @@ export default function BroadcastHomeScreen(): React.ReactElement {
     setMatchesLoading(true);
     setMatchesError(null);
     setMatches(null);
+    setSelectedMatchId(null);
     try {
       setMatches(await getBroadcastEntryMatches(id));
     } catch (err) {
@@ -94,6 +97,7 @@ export default function BroadcastHomeScreen(): React.ReactElement {
       void loadMatches(tournamentId);
     } else {
       setMatches(null);
+      setSelectedMatchId(null);
     }
   }, [tournamentId, loadMatches]);
 
@@ -113,9 +117,32 @@ export default function BroadcastHomeScreen(): React.ReactElement {
     [matches],
   );
 
-  const openMatch = useCallback((matchId: string) => {
-    window.ascBroadcast?.openMatch?.(matchId);
-  }, []);
+  const renderMatchOption = useCallback(
+    (option: SelectOption) => {
+      const match = matches?.find((m) => m.id === option.value);
+      if (!match) {
+        return <Text className="font-sans text-base text-text">{option.label}</Text>;
+      }
+      const { teamAName, teamBName, dateLabel, statusLabel } =
+        broadcastEntryMatchLabelParts(match);
+      return (
+        <Text className="font-sans text-base text-text">
+          <Text className="font-sans-bold">{teamAName}</Text>
+          {' vs '}
+          <Text className="font-sans-bold">{teamBName}</Text>
+          {` | ${dateLabel} | `}
+          <Text className="font-sans-semibold text-primary">{statusLabel}</Text>
+        </Text>
+      );
+    },
+    [matches],
+  );
+
+  const openSelectedMatch = useCallback(() => {
+    if (selectedMatchId) {
+      window.ascBroadcast?.openMatch?.(selectedMatchId);
+    }
+  }, [selectedMatchId]);
 
   const onLogout = useCallback(() => {
     confirmActionAlert({
@@ -167,40 +194,61 @@ export default function BroadcastHomeScreen(): React.ReactElement {
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
-      <KeyboardAwareFormScrollView
-        contentContainerClassName="gap-6 px-4 py-4"
-        footer={
-          <View className="flex-row justify-between gap-3 px-4 py-4">
-            <Button variant="outline" label="Log out" onPress={onLogout} />
-            {obsBridge ? (
-              <Button variant="outline" label="OBS Settings" onPress={() => setSettingsOpen(true)} />
-            ) : null}
-          </View>
-        }
-      >
-        <DashboardHeader fallbackName="Scorer" />
-        <View className="gap-1">
-          <Text className="font-sans-bold text-xl text-on-surface">ASC Broadcast</Text>
-          <Text className="font-sans text-sm text-on-surface-variant">
-            Choose a tournament and match to open the scoring cockpit.
-          </Text>
+      <KeyboardAwareFormScrollView contentContainerClassName="px-4 py-4">
+        <View className="flex-1 items-center justify-center py-8">
+          <Card className={`w-full max-w-[420px] px-7 pb-7 pt-8 ${CARD_BORDER_CLASS}`}>
+            <View className="gap-6">
+              <View className="gap-2">
+                <Text className="font-sans-bold text-xl text-on-surface">ASC Broadcast</Text>
+                <Text className="font-sans text-sm text-on-surface-variant">
+                  Choose a tournament and match to open the scoring cockpit.
+                </Text>
+              </View>
+
+              {tournamentStep}
+
+              {tournamentId ? (
+                <>
+                  <Select
+                    label="Match"
+                    placeholder="Select a match"
+                    value={selectedMatchId}
+                    options={matchOptions}
+                    onChange={setSelectedMatchId}
+                    renderOptionLabel={renderMatchOption}
+                    loading={matchesLoading}
+                    error={matchesError}
+                    onRetry={() => void loadMatches(tournamentId)}
+                    emptyMessage="No Live or upcoming matches in this tournament."
+                  />
+                  <Button
+                    label="Go"
+                    onPress={openSelectedMatch}
+                    disabled={!selectedMatchId}
+                    className="h-11 w-full"
+                  />
+                </>
+              ) : null}
+            </View>
+
+            <View className="mt-6 flex-row gap-3 border-t border-border pt-5">
+              <Button
+                variant="outline"
+                label="Log out"
+                onPress={onLogout}
+                className="h-11 flex-1"
+              />
+              {obsBridge ? (
+                <Button
+                  variant="secondary"
+                  label="OBS Settings"
+                  onPress={() => setSettingsOpen(true)}
+                  className="h-11 flex-1"
+                />
+              ) : null}
+            </View>
+          </Card>
         </View>
-
-        {tournamentStep}
-
-        {tournamentId ? (
-          <Select
-            label="Match"
-            placeholder="Select a match"
-            value={null}
-            options={matchOptions}
-            onChange={openMatch}
-            loading={matchesLoading}
-            error={matchesError}
-            onRetry={() => void loadMatches(tournamentId)}
-            emptyMessage="No Live or upcoming matches in this tournament."
-          />
-        ) : null}
       </KeyboardAwareFormScrollView>
 
       {obsBridge ? (

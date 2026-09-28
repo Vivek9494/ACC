@@ -110,6 +110,8 @@ export const Permission = {
   ENTER_DLS_TARGET: 'ENTER_DLS_TARGET',
   BRING_IN_IMPACT_PLAYER: 'BRING_IN_IMPACT_PLAYER',
   COMPLETE_MATCH: 'COMPLETE_MATCH',
+  /** Broadcast cockpit "Start Over" — wipe live scoring + toss (destructive). */
+  RESET_MATCH_SCORING: 'RESET_MATCH_SCORING',
   // J. Scorecard Confirmation & Post-Match
   CONFIRM_SCORECARD: 'CONFIRM_SCORECARD',
   EDIT_SCORECARD_POST_CONFIRM: 'EDIT_SCORECARD_POST_CONFIRM',
@@ -611,6 +613,9 @@ export const PERMISSION_MATRIX: Record<Permission, PermissionRule> = {
       { subject: R.ViceCaptain, scope: PermissionScope.OwnTeam },
       { subject: R.Admin },
     ],
+  },
+  [Permission.RESET_MATCH_SCORING]: {
+    grants: [{ subject: R.Admin }, { subject: R.ClubManager }, { subject: SCORER_SUBJECT }],
   },
 
   // J. Scorecard Confirmation & Post-Match

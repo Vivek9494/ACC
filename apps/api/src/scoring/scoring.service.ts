@@ -22,6 +22,8 @@ import {
   type SetInningsParticipantsRequest,
   type UndoDeliveryRequest,
   type UpdateOversAllottedRequest,
+  type ResetMatchScoringRequest,
+  ScoringMode,
   LIVE_MATCH_STATES,
 } from '@acc/types';
 import {
@@ -374,6 +376,75 @@ export class ScoringService {
       });
       return this.bumpVersion(tx, matchId);
     });
+
+    return this.publishAndReturn(updated);
+  }
+
+  /**
+   * Broadcast cockpit "Start Over" (destructive): hard-delete every delivery and
+   * innings, clear toss / openers / targets, and return the match to Playing 11
+   * Locked so the toss is recorded again. Squads (finalized before going Live)
+   * are kept. Only while Live / Rain Interrupted — never after completion.
+   */
+  async resetMatchScoring(
+    user: AuthUser,
+    matchId: string,
+    req: ResetMatchScoringRequest,
+  ): Promise<ScorecardResponse> {
+    const match = await this.requireMatch(matchId);
+    this.assertVersion(match, req.expectedVersion);
+    if ((match.scoringMode as ScoringMode) !== ScoringMode.Live) {
+      throw new BadRequestException({
+        message: 'Start Over is only available for live-scored matches',
+        error: 'SCORECARD_ONLY_MATCH',
+      });
+    }
+    if (!LIVE_MATCH_STATES.includes(match.state as MatchState)) {
+      throw new BadRequestException({
+        message: 'Start Over is only available while the match is Live',
+        error: 'MATCH_NOT_LIVE',
+      });
+    }
+
+    const [inningsCount, deliveryCount] = await Promise.all([
+      this.prisma.innings.count({ where: { matchId } }),
+      this.prisma.delivery.count({ where: { innings: { matchId } } }),
+    ]);
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      await tx.delivery.deleteMany({ where: { innings: { matchId } } });
+      await tx.innings.deleteMany({ where: { matchId } });
+      return tx.match.update({
+        where: { id: matchId },
+        data: {
+          state: MatchState.PlayingXiLocked,
+          tossWinner: null,
+          tossDecision: null,
+          openingStrikerUserId: null,
+          openingNonStrikerUserId: null,
+          openingBowlerUserId: null,
+          originalTarget: null,
+          dlsTarget: null,
+          scorecardVersion: { increment: 1 },
+        },
+      });
+    });
+
+    await this.audit.record({
+      action: 'MATCH_SCORING_RESET',
+      actorUserId: user.id,
+      targetEntityType: 'match',
+      targetEntityId: matchId,
+      before: {
+        state: match.state,
+        tossWinner: match.tossWinner,
+        tossDecision: match.tossDecision,
+        inningsCount,
+        deliveryCount,
+      },
+      after: { state: MatchState.PlayingXiLocked },
+    });
+    await this.statsInvalidation.invalidateMatchAggregates(matchId, match.tournamentId);
 
     return this.publishAndReturn(updated);
   }

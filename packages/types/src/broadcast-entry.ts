@@ -83,7 +83,16 @@ export function compareBroadcastEntryMatches(a: BroadcastEntryMatch, b: Broadcas
 }
 
 /** "X vs Y | Sep 28 | Live" — date in the venue timezone. */
-export function formatBroadcastEntryMatchLabel(match: BroadcastEntryMatch): string {
+export interface BroadcastEntryMatchLabelParts {
+  teamAName: string;
+  teamBName: string;
+  dateLabel: string;
+  statusLabel: string;
+}
+
+export function broadcastEntryMatchLabelParts(
+  match: BroadcastEntryMatch,
+): BroadcastEntryMatchLabelParts {
   let dateLabel = 'Date TBD';
   if (match.startTime || match.matchDate) {
     const zone = serverVenueTimezone(match.timezone);
@@ -94,5 +103,10 @@ export function formatBroadcastEntryMatchLabel(match: BroadcastEntryMatch): stri
     dateLabel = DateTime.fromObject(day, { zone }).toFormat('LLL d');
   }
   const statusLabel = match.status === BroadcastEntryMatchStatus.Live ? 'Live' : 'Upcoming';
-  return `${match.teamAName} vs ${match.teamBName} | ${dateLabel} | ${statusLabel}`;
+  return { teamAName: match.teamAName, teamBName: match.teamBName, dateLabel, statusLabel };
+}
+
+export function formatBroadcastEntryMatchLabel(match: BroadcastEntryMatch): string {
+  const { teamAName, teamBName, dateLabel, statusLabel } = broadcastEntryMatchLabelParts(match);
+  return `${teamAName} vs ${teamBName} | ${dateLabel} | ${statusLabel}`;
 }

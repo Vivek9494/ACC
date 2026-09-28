@@ -1,16 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
-import {
-  DEFAULT_OVERLAY_THEME,
-  OVERLAY_THEME_CATALOG,
-  parseYoutubeVideoId,
-  type OverlayThemeKey,
-} from '@acc/types';
+import { parseYoutubeVideoId } from '@acc/types';
 import { useEffect, useState } from 'react';
 import { Modal, Pressable, View } from 'react-native';
 
-import { updateMatchOverlayTheme, updateMatchYoutubeUrl } from '../../../lib/api';
+import { updateMatchYoutubeUrl } from '../../../lib/api';
 import { Button } from '../../ui/Button';
-import { Select } from '../../ui/Select';
 import { Text } from '../../ui/Text';
 import { TextInput } from '../../ui/TextInput';
 import { FIELD_ORANGE, INPUT_SHADOW_STYLE } from '../../ui/fieldStyles';
@@ -18,10 +12,8 @@ import { FIELD_ORANGE, INPUT_SHADOW_STYLE } from '../../ui/fieldStyles';
 export interface CockpitSettingsModalProps {
   visible: boolean;
   matchId: string;
-  overlayTheme: OverlayThemeKey;
   youtubeUrl: string | null;
   onClose: () => void;
-  onThemeSaved: (overlayTheme: OverlayThemeKey) => void;
   onYoutubeUrlSaved: (youtubeUrl: string | null) => void;
 }
 
@@ -46,15 +38,10 @@ export function CockpitSettingsHeaderButton({
 export function CockpitSettingsModal({
   visible,
   matchId,
-  overlayTheme,
   youtubeUrl,
   onClose,
-  onThemeSaved,
   onYoutubeUrlSaved,
 }: CockpitSettingsModalProps): React.ReactElement {
-  const [selectedTheme, setSelectedTheme] = useState<OverlayThemeKey>(
-    overlayTheme ?? DEFAULT_OVERLAY_THEME,
-  );
   const [youtubeInput, setYoutubeInput] = useState(youtubeUrl ?? '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,23 +49,15 @@ export function CockpitSettingsModal({
 
   useEffect(() => {
     if (visible) {
-      setSelectedTheme(overlayTheme ?? DEFAULT_OVERLAY_THEME);
       setYoutubeInput(youtubeUrl ?? '');
       setError(null);
       setYoutubeError(undefined);
     }
-  }, [visible, overlayTheme, youtubeUrl]);
+  }, [visible, youtubeUrl]);
 
-  const themeOptions = OVERLAY_THEME_CATALOG.map((entry) => ({
-    value: entry.key,
-    label: entry.label,
-  }));
-
-  const themeDirty = selectedTheme !== (overlayTheme ?? DEFAULT_OVERLAY_THEME);
   const normalizedYoutube = youtubeInput.trim();
   const savedYoutube = youtubeUrl?.trim() ?? '';
-  const youtubeDirty = normalizedYoutube !== savedYoutube;
-  const dirty = themeDirty || youtubeDirty;
+  const dirty = normalizedYoutube !== savedYoutube;
 
   function validateYoutubeInput(value: string): string | undefined {
     const trimmed = value.trim();
@@ -113,24 +92,10 @@ export function CockpitSettingsModal({
     setSaving(true);
     setError(null);
     try {
-      const tasks: Promise<void>[] = [];
-      if (themeDirty) {
-        tasks.push(
-          updateMatchOverlayTheme(matchId, { overlayTheme: selectedTheme }).then((updated) => {
-            onThemeSaved(updated.overlayTheme);
-          }),
-        );
-      }
-      if (youtubeDirty) {
-        tasks.push(
-          updateMatchYoutubeUrl(matchId, {
-            youtubeUrl: normalizedYoutube.length > 0 ? normalizedYoutube : null,
-          }).then((updated) => {
-            onYoutubeUrlSaved(updated.youtubeUrl);
-          }),
-        );
-      }
-      await Promise.all(tasks);
+      const updated = await updateMatchYoutubeUrl(matchId, {
+        youtubeUrl: normalizedYoutube.length > 0 ? normalizedYoutube : null,
+      });
+      onYoutubeUrlSaved(updated.youtubeUrl);
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save settings.');
@@ -160,17 +125,6 @@ export function CockpitSettingsModal({
           </View>
 
           <View className="gap-4 p-4">
-            <Select
-              label="Overlay Theme"
-              value={selectedTheme}
-              options={themeOptions}
-              onChange={(value) => setSelectedTheme(value as OverlayThemeKey)}
-              disabled={saving}
-            />
-            <Text className="font-sans text-xs text-on-surface-variant">
-              Per-match broadcast overlay look for OBS (Theme 1 score strip, etc.).
-            </Text>
-
             <TextInput
               label="YouTube Live URL"
               value={youtubeInput}

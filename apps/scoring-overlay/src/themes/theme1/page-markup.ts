@@ -42,17 +42,17 @@ export const THEME1_PAGE_MARKUP = `
 
             <div class="t1-batters">
               <div id="batter-0" class="t1-batter-row">
+                <span id="batter-0-strike" class="t1-strike-mark" hidden aria-hidden="true"></span>
                 <span id="batter-0-name" class="t1-batter-name">—</span>
                 <span class="t1-batter-fig">
-                  <span id="batter-0-strike" class="t1-strike-mark" hidden aria-hidden="true"></span>
                   <span id="batter-0-runs" class="t1-batter-runs">0</span>
                   <span class="t1-batter-balls">(<span id="batter-0-balls">0</span>)</span>
                 </span>
               </div>
               <div id="batter-1" class="t1-batter-row">
+                <span id="batter-1-strike" class="t1-strike-mark" hidden aria-hidden="true"></span>
                 <span id="batter-1-name" class="t1-batter-name">—</span>
                 <span class="t1-batter-fig">
-                  <span id="batter-1-strike" class="t1-strike-mark" hidden aria-hidden="true"></span>
                   <span id="batter-1-runs" class="t1-batter-runs">0</span>
                   <span class="t1-batter-balls">(<span id="batter-1-balls">0</span>)</span>
                 </span>
@@ -102,23 +102,6 @@ export const THEME1_PAGE_MARKUP = `
                 <span class="t1-mono-stripe" aria-hidden="true"></span>
               </div>
             </div>
-          </div>
-
-          <div class="t1-footer-bar t1-strip-section" data-strip-section="footer">
-            <p class="t1-footer-legend" aria-hidden="true">
-              <span class="t1-leg">DOT <span class="t1-leg-dot">•</span></span>
-              <span class="t1-leg"
-                >BOUNDARY <span class="t1-leg-4">4</span
-                ><span class="t1-leg-sep">/</span
-                ><span class="t1-leg-6">6</span></span
-              >
-              <span class="t1-leg"
-                >WICKET <span class="t1-leg-wkt-mark">W</span></span
-              >
-              <span class="t1-leg">WIDE WD</span>
-              <span class="t1-leg">NO-BALL NB</span>
-            </p>
-            <p class="t1-footer-brand">CRICKET <span class="t1-footer-slash">/</span> ASC</p>
           </div>
         </div>
         <div id="conn" class="t1-strip-conn" hidden>Reconnecting…</div>

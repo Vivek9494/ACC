@@ -144,6 +144,7 @@ import {
   type SetInningsParticipantsRequest,
   type StartInningsRequest,
   type UndoDeliveryRequest,
+  type ResetMatchScoringRequest,
   type UpdateMatchRequest,
   type UpdateMatchOverlayThemeRequest,
   type UpdateMatchYoutubeUrlRequest,
@@ -2029,6 +2030,17 @@ export function recordDelivery(
 }
 
 /** Undo the most recently appended delivery (re-derive all state). */
+/** Cockpit "Start Over": wipe innings, deliveries and toss (destructive). */
+export function resetMatchScoring(
+  matchId: string,
+  body: ResetMatchScoringRequest,
+): Promise<ScorecardResponse> {
+  return apiFetch<ScorecardResponse>(`/matches/${encodeURIComponent(matchId)}/scoring/reset`, {
+    method: 'POST',
+    body,
+  });
+}
+
 export function undoLastDelivery(
   matchId: string,
   inningsId: string,

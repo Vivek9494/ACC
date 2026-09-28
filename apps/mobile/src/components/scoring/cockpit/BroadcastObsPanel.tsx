@@ -10,7 +10,6 @@ import type {
   AscObsStatus,
 } from '../../../types/asc-broadcast';
 import { CockpitPanel } from './CockpitPanel';
-import { ObsConnectionSettingsModal } from './ObsConnectionSettingsModal';
 import {
   HIGHLIGHT_BUILD_DELAY_MS,
   collectFirstInningsClipPaths,
@@ -172,7 +171,8 @@ const EMPTY_SLOT: HighlightSlotState = { path: null, note: '', building: false }
 
 /**
  * Broadcast / OBS controls — Electron BrowserView only.
- * Uses existing IPC via window.ascBroadcast.obs (including Settings).
+ * Uses existing IPC via window.ascBroadcast.obs. OBS connection settings open
+ * from the cockpit header ("OBS Setting") and the app menu (⌘,).
  */
 export function BroadcastObsPanel({
   matchId,
@@ -190,7 +190,6 @@ export function BroadcastObsPanel({
   const [status, setStatus] = useState<AscObsStatus | null>(null);
   const [busy, setBusy] = useState(false);
   const [localError, setLocalError] = useState('');
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [innings1, setInnings1] = useState<HighlightSlotState>(EMPTY_SLOT);
   const [fullMatch, setFullMatch] = useState<HighlightSlotState>(EMPTY_SLOT);
   const innings1ReadyKeyRef = useRef<string | null>(null);
@@ -212,13 +211,9 @@ export function BroadcastObsPanel({
       setStatus(snap);
       setLocalError('');
     });
-    const unsubSettings = bridge.onOpenSettings(() => {
-      setSettingsOpen(true);
-    });
     return () => {
       cancelled = true;
       unsubStatus();
-      unsubSettings();
     };
   }, [bridge]);
 
@@ -466,12 +461,6 @@ export function BroadcastObsPanel({
             </Text>
           ) : null}
           <View style={ROW}>
-            <ObsButton
-              label="Settings"
-              variant="ghost"
-              disabled={busy}
-              onPress={() => setSettingsOpen(true)}
-            />
             {!connected ? (
               <ObsButton
                 label={
@@ -566,11 +555,6 @@ export function BroadcastObsPanel({
           </View>
         </View>
       </CockpitPanel>
-      <ObsConnectionSettingsModal
-        visible={settingsOpen}
-        bridge={bridge}
-        onClose={() => setSettingsOpen(false)}
-      />
     </>
   );
 }

@@ -135,7 +135,7 @@ function renderBatters(vm: StripViewModel): void {
     };
     const strike = el<HTMLSpanElement>(`batter-${i}-strike`);
     if (strike) {
-      // Faint diamond immediately LEFT of runs — striker only.
+      // Faint diamond immediately LEFT of the name — striker only.
       strike.hidden = !batter.onStrike;
     }
     const empty = !batter.name.trim() || batter.name.trim() === '—';

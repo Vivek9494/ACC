@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -52,6 +52,8 @@ export interface SelectProps {
   /** Placeholder for the in-sheet search field. */
   searchPlaceholder?: string;
   containerClassName?: string;
+  /** Custom rich content for a menu option row; the field still shows `label`. */
+  renderOptionLabel?: (option: SelectOption, active: boolean) => ReactNode;
 }
 
 interface AnchorRect {
@@ -81,6 +83,7 @@ export function Select({
   searchable = false,
   searchPlaceholder = 'Search…',
   containerClassName,
+  renderOptionLabel,
 }: SelectProps): React.ReactElement {
   const isElectronShell = hasAscObsBridge();
   const fieldRef = useRef<RNView>(null);
@@ -158,11 +161,15 @@ export function Select({
             className={`rounded-control px-4 py-3 ${active ? 'bg-primary-50' : ''}`}
             onPress={() => choose(item.value)}
           >
-            <Text
-              className={`font-sans text-base ${active ? 'font-sans-semibold text-primary' : 'text-text'}`}
-            >
-              {item.label}
-            </Text>
+            {renderOptionLabel ? (
+              renderOptionLabel(item, active)
+            ) : (
+              <Text
+                className={`font-sans text-base ${active ? 'font-sans-semibold text-primary' : 'text-text'}`}
+              >
+                {item.label}
+              </Text>
+            )}
           </Pressable>
         );
       }}

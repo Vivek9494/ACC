@@ -24,6 +24,7 @@ import { AddExternalBowlerDto } from './dto/add-external-bowler.dto';
 import { RenameExternalPlayerDto } from './dto/rename-external-player.dto';
 import { SetDlsTargetDto, SetInningsParticipantsDto, StartInningsDto, UpdateOversAllottedDto, EndInningsDto } from './dto/innings.dto';
 import { UndoDeliveryDto } from './dto/undo-delivery.dto';
+import { ResetMatchScoringDto } from './dto/reset-match-scoring.dto';
 import { SetDeliveryShotPlacementDto } from './dto/set-delivery-shot-placement.dto';
 import { AttachDeliveryVideoDto } from './dto/attach-delivery-video.dto';
 import { UpsertScorecardSummaryDto } from './dto/upsert-scorecard-summary.dto';
@@ -189,6 +190,17 @@ export class ScoringController {
     @Body() dto: UndoDeliveryDto,
   ): Promise<ScorecardResponse> {
     return this.scoring.undoLastDelivery(user, matchId, inningsId, dto);
+  }
+
+  @Post('scoring/reset')
+  @RequirePermission(Permission.RESET_MATCH_SCORING)
+  @UseGuards(JwtAuthGuard, PermissionGuard)
+  resetMatchScoring(
+    @CurrentUser() user: AuthUser,
+    @Param('matchId') matchId: string,
+    @Body() dto: ResetMatchScoringDto,
+  ): Promise<ScorecardResponse> {
+    return this.scoring.resetMatchScoring(user, matchId, dto);
   }
 
   @Put('deliveries')

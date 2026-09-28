@@ -24,6 +24,7 @@ import {
   type SetInningsParticipantsRequest,
   type SquadPlayerView,
   type BatsmanPickerRole as BatsmanPickerRoleValue,
+  DEFAULT_OVERLAY_THEME,
 } from '@acc/types';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -60,6 +61,10 @@ import {
   scheduleBoundaryClipCapture,
 } from '../../../src/components/scoring/cockpit/boundary-clip-capture';
 import { hasAscObsBridge } from '../../../src/lib/asc-broadcast-bridge';
+import { CockpitLogoutHeaderButton } from '../../../src/components/scoring/cockpit/CockpitLogoutHeaderButton';
+import { CockpitHeaderMenus } from '../../../src/components/scoring/cockpit/CockpitHeaderMenus';
+import { ObsConnectionSettingsModal } from '../../../src/components/scoring/cockpit/ObsConnectionSettingsModal';
+import { confirmDestructiveDeleteAlert } from '../../../src/lib/confirm-destructive-delete';
 import {
   CockpitSettingsHeaderButton,
   CockpitSettingsModal,
@@ -96,6 +101,7 @@ import {
   setOversAllotted,
   startScoring,
   undoLastDelivery,
+  resetMatchScoring,
 } from '../../../src/lib/api';
 import { isInningsTransitionPending } from '../../../src/lib/match-completion';
 import {
@@ -314,6 +320,8 @@ export default function LiveScoringScreen(): React.ReactElement {
   const [showCatchDrop, setShowCatchDrop] = useState(false);
   const [showMore, setShowMore] = useState(false);
   const [showCockpitSettings, setShowCockpitSettings] = useState(false);
+  const [showObsSettings, setShowObsSettings] = useState(false);
+  const obsBridge = hasAscObsBridge() ? window.ascBroadcast?.obs : undefined;
   const [moreAction, setMoreAction] = useState<MoreOptionsAction | null>(null);
   const [showChangeTargetBlocked, setShowChangeTargetBlocked] = useState(false);
   const [showEndInningsConfirm, setShowEndInningsConfirm] = useState(false);
@@ -441,6 +449,34 @@ export default function LiveScoringScreen(): React.ReactElement {
     }
     router.replace(homeRouteForUser(user));
   }, [router, user]);
+
+  const handleStartOver = useCallback(() => {
+    if (!matchId || !card) return;
+    const expectedVersion = card.version;
+    confirmDestructiveDeleteAlert({
+      title: 'Start over?',
+      message:
+        'This permanently deletes every ball and innings for this match and clears the toss. ' +
+        'The match returns to Playing 11 Locked and the toss must be recorded again.',
+      onConfirm: async () => {
+        try {
+          await resetMatchScoring(matchId, { expectedVersion });
+          setStrikerId(null);
+          setNonStrikerId(null);
+          setBattingSlots({ batsman1Id: null, batsman2Id: null });
+          setBowlerId(null);
+          await load();
+        } catch (err) {
+          reportWriteError(err, 'Could not start over.');
+        }
+      },
+    });
+  }, [card, load, matchId, reportWriteError]);
+
+  useEffect(() => {
+    if (!obsBridge) return;
+    return obsBridge.onOpenSettings(() => setShowObsSettings(true));
+  }, [obsBridge]);
 
   useMatchScorerRevokeListener(matchId, user?.id, handleScorerRevoked);
 
@@ -1577,7 +1613,18 @@ export default function LiveScoringScreen(): React.ReactElement {
 
   const cockpitHeaderTrailing =
     useCockpit && match ? (
-      <CockpitSettingsHeaderButton onPress={() => setShowCockpitSettings(true)} />
+      <View className="flex-row items-center gap-1">
+        {obsBridge ? (
+          <CockpitHeaderMenus
+            overlayTheme={match.overlayTheme ?? DEFAULT_OVERLAY_THEME}
+            onStartOver={handleStartOver}
+            onNewMatch={goToRoleHome}
+            onOpenObsSettings={() => setShowObsSettings(true)}
+          />
+        ) : null}
+        <CockpitSettingsHeaderButton onPress={() => setShowCockpitSettings(true)} />
+        {obsBridge ? <CockpitLogoutHeaderButton /> : null}
+      </View>
     ) : undefined;
 
   const scoringViewToggle =
@@ -1948,15 +1995,19 @@ export default function LiveScoringScreen(): React.ReactElement {
         onSelect={handleMoreSelect}
       />
 
+      {obsBridge ? (
+        <ObsConnectionSettingsModal
+          visible={showObsSettings}
+          bridge={obsBridge}
+          onClose={() => setShowObsSettings(false)}
+        />
+      ) : null}
+
       <CockpitSettingsModal
         visible={showCockpitSettings}
         matchId={matchId}
-        overlayTheme={match?.overlayTheme ?? 'theme1'}
         youtubeUrl={match?.youtubeUrl ?? null}
         onClose={() => setShowCockpitSettings(false)}
-        onThemeSaved={(overlayTheme) => {
-          setMatch((prev) => (prev ? { ...prev, overlayTheme } : prev));
-        }}
         onYoutubeUrlSaved={(youtubeUrl) => {
           setMatch((prev) => (prev ? { ...prev, youtubeUrl } : prev));
         }}
