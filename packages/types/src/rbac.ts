@@ -552,11 +552,14 @@ export const PERMISSION_MATRIX: Record<Permission, PermissionRule> = {
     grants: [{ subject: R.Admin }, { subject: R.ClubManager }, ...captainAndDeputy()],
   },
   [Permission.RECORD_TOSS]: {
-    // H1: Captain / VC act with Scorer-level permission when scoring.
+    // H1: Captain / VC act with Scorer-level permission when scoring. Admin
+    // (platform-wide, §2) may run toss + live scoring on any match — same as
+    // the tennis scoring-session / toss gates.
     grants: [
       { subject: SCORER_SUBJECT },
       { subject: R.Captain, scope: PermissionScope.OwnTeam },
       { subject: R.ViceCaptain, scope: PermissionScope.OwnTeam },
+      { subject: R.Admin },
     ],
   },
   [Permission.START_MATCH]: {
@@ -564,6 +567,7 @@ export const PERMISSION_MATRIX: Record<Permission, PermissionRule> = {
       { subject: SCORER_SUBJECT },
       { subject: R.Captain, scope: PermissionScope.OwnTeam },
       { subject: R.ViceCaptain, scope: PermissionScope.OwnTeam },
+      { subject: R.Admin },
     ],
   },
 
@@ -573,6 +577,7 @@ export const PERMISSION_MATRIX: Record<Permission, PermissionRule> = {
       { subject: SCORER_SUBJECT },
       { subject: R.Captain, scope: PermissionScope.OwnTeam },
       { subject: R.ViceCaptain, scope: PermissionScope.OwnTeam },
+      { subject: R.Admin },
     ],
   },
   [Permission.EDIT_PREVIOUS_OVER]: {
@@ -580,6 +585,7 @@ export const PERMISSION_MATRIX: Record<Permission, PermissionRule> = {
       { subject: SCORER_SUBJECT },
       { subject: R.Captain, scope: PermissionScope.OwnTeam },
       { subject: R.ViceCaptain, scope: PermissionScope.OwnTeam },
+      { subject: R.Admin },
     ],
   },
   [Permission.ENTER_DLS_TARGET]: {
@@ -587,6 +593,7 @@ export const PERMISSION_MATRIX: Record<Permission, PermissionRule> = {
       { subject: SCORER_SUBJECT },
       { subject: R.Captain, scope: PermissionScope.OwnTeam },
       { subject: R.ViceCaptain, scope: PermissionScope.OwnTeam },
+      { subject: R.Admin },
     ],
   },
   [Permission.BRING_IN_IMPACT_PLAYER]: {
@@ -594,6 +601,7 @@ export const PERMISSION_MATRIX: Record<Permission, PermissionRule> = {
       { subject: SCORER_SUBJECT },
       { subject: R.Captain, scope: PermissionScope.OwnTeam },
       { subject: R.ViceCaptain, scope: PermissionScope.OwnTeam },
+      { subject: R.Admin },
     ],
   },
   [Permission.COMPLETE_MATCH]: {
@@ -601,6 +609,7 @@ export const PERMISSION_MATRIX: Record<Permission, PermissionRule> = {
       { subject: SCORER_SUBJECT },
       { subject: R.Captain, scope: PermissionScope.OwnTeam },
       { subject: R.ViceCaptain, scope: PermissionScope.OwnTeam },
+      { subject: R.Admin },
     ],
   },
 

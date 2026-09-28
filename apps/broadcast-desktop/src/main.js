@@ -220,6 +220,25 @@ function showLoginGate() {
 }
 
 /**
+ * Logout from broadcast home: the session lives in the cockpit origin, so the
+ * BrowserView runs the web signOut (/broadcast-logout) and lands on /login —
+ * the same gate as launch. The next login redirects back to match entry.
+ */
+function logoutToLoginGate() {
+  if (!mainWindow) {
+    return;
+  }
+  const view = ensurePanelView();
+  panelVisible = true;
+  void view.webContents.loadURL(`${COCKPIT_BASE}/broadcast-logout`);
+  showPanelView();
+  sendToShell('asc:shell-state', {
+    view: 'panel',
+  });
+  mainWindow.setTitle('ASC Broadcast');
+}
+
+/**
  * Embed the scoring cockpit for this match (graphics + scoring + in-page OBS).
  * @param {string} matchId
  */
@@ -398,6 +417,9 @@ function registerIpc() {
   });
   ipcMain.on('asc:show-match-entry', () => {
     showMatchIdEntry();
+  });
+  ipcMain.on('asc:logout', () => {
+    logoutToLoginGate();
   });
 
   ipcMain.handle('asc:obs-get-config', () => readObsConfig(userDataDir()));

@@ -79,6 +79,14 @@ input {
   margin-top: 8px;
 }
 
+.card-footer {
+  display: flex;
+  justify-content: flex-start;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
 .field-error {
   margin: 10px 0 0;
   color: var(--danger);

@@ -895,6 +895,58 @@ describe('PermissionService', () => {
     });
   });
 
+  describe('toss + live scoring (cockpit Record Toss → start-scoring → balls)', () => {
+    const liveScoring = [
+      Permission.RECORD_TOSS,
+      Permission.START_MATCH,
+      Permission.SCORE_BALL,
+      Permission.EDIT_PREVIOUS_OVER,
+      Permission.ENTER_DLS_TARGET,
+      Permission.BRING_IN_IMPACT_PLAYER,
+      Permission.COMPLETE_MATCH,
+    ];
+    const types = [TournamentType.ACC, TournamentType.APL, TournamentType.Center];
+
+    it.each(liveScoring)('%s: Admin allowed with no scorer grant, on every tournament type', (p) => {
+      for (const tournamentType of types) {
+        expect(service.evaluate(p, ctx({ subjects: [UserRole.Admin], tournamentType }))).toBe(true);
+      }
+    });
+
+    it.each(liveScoring)('%s: assigned Scorer allowed', (p) => {
+      expect(service.evaluate(p, ctx({ subjects: ['SCORER'], tournamentType: TournamentType.ACC }))).toBe(
+        true,
+      );
+    });
+
+    it.each(liveScoring)('%s: Captain / VC only for their own team', (p) => {
+      for (const role of [UserRole.Captain, UserRole.ViceCaptain]) {
+        expect(
+          service.evaluate(p, ctx({ subjects: [role], tournamentType: TournamentType.ACC, sameTeam: true })),
+        ).toBe(true);
+        expect(
+          service.evaluate(p, ctx({ subjects: [role], tournamentType: TournamentType.ACC, sameTeam: false })),
+        ).toBe(false);
+      }
+    });
+
+    it.each(liveScoring)('%s: Player, Club Manager, Center Sevak, Manager still denied', (p) => {
+      for (const role of [
+        UserRole.Player,
+        UserRole.ClubManager,
+        UserRole.CenterSevak,
+        UserRole.Manager,
+      ]) {
+        expect(
+          service.evaluate(
+            p,
+            ctx({ subjects: [role], tournamentType: TournamentType.APL, sameTeam: true, isOrganizer: true }),
+          ),
+        ).toBe(false);
+      }
+    });
+  });
+
   describe('check() resolves Center scope from the database', () => {
     const actor: AuthUser = {
       id: 'sevak-1',

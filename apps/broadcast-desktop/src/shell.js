@@ -5,6 +5,7 @@ const matchInput = document.getElementById('match-id');
 const matchError = document.getElementById('match-error');
 const loadForm = document.getElementById('load-form');
 
+const btnLogout = document.getElementById('btn-logout');
 const btnSettings = document.getElementById('btn-settings');
 const settingsModal = document.getElementById('settings-modal');
 const settingsForm = document.getElementById('settings-form');
@@ -67,6 +68,13 @@ loadForm.addEventListener('submit', (event) => {
 
 btnSettings.addEventListener('click', () => {
   void openSettings();
+});
+
+btnLogout.addEventListener('click', () => {
+  if (!window.confirm('Log out? The next scorer will need to sign in.')) {
+    return;
+  }
+  api.logout();
 });
 
 btnSettingsCancel.addEventListener('click', () => {
