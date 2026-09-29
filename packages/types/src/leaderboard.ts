@@ -22,6 +22,8 @@ export interface BattingLeaderboardEntry {
   matches: number;
   /** Total runs (R). */
   runs: number;
+  /** Balls faced (qualifies Best Strike Rate). */
+  balls: number;
   /** Innings scoring 30–49 (exclusive of fifties/hundreds). */
   thirties: number;
   /** Innings scoring 50–99 (exclusive of hundreds). */
@@ -51,6 +53,8 @@ export interface BowlingLeaderboardEntry {
   /** Innings in which the bowler bowled at least one delivery. */
   innings: number;
   wickets: number;
+  /** Legal balls bowled (qualifies Best Economy). */
+  legalBalls: number;
   /**
    * Best per-innings figures as "W/R" (e.g. "5/23"); null when no bowling innings.
    * Ranking: most wickets, then fewer runs conceded.
@@ -146,4 +150,64 @@ export function computeEconomyRate(runsConceded: number, legalBalls: number): nu
 
 export function formatLeaderboardEconomy(economy: number | null): string {
   return economy == null ? '–' : economy.toFixed(2);
+}
+
+/** Rows on each tournament top-N leaderboard card. */
+export const LEADERBOARD_TOP_N = 10;
+/** Balls faced needed to appear on Best Strike Rate. */
+export const BEST_STRIKE_RATE_MIN_BALLS = 10;
+/** Legal balls bowled (2 overs) needed to appear on Best Economy. */
+export const BEST_ECONOMY_MIN_LEGAL_BALLS = 12;
+
+function byPlayerName(
+  left: Pick<BattingLeaderboardEntry, 'firstName' | 'lastName'>,
+  right: Pick<BattingLeaderboardEntry, 'firstName' | 'lastName'>,
+): number {
+  return `${left.lastName} ${left.firstName}`.trim().localeCompare(`${right.lastName} ${right.firstName}`.trim());
+}
+
+/** Top run scorers (server order: runs desc), batters who batted at least once. */
+export function topRunScorers(
+  entries: readonly BattingLeaderboardEntry[],
+  limit = LEADERBOARD_TOP_N,
+): BattingLeaderboardEntry[] {
+  return entries.filter((entry) => entry.matches > 0).slice(0, limit);
+}
+
+/** Top wicket takers (server order: wickets desc, economy asc), bowlers with at least one wicket. */
+export function topWicketTakers(
+  entries: readonly BowlingLeaderboardEntry[],
+  limit = LEADERBOARD_TOP_N,
+): BowlingLeaderboardEntry[] {
+  return entries.filter((entry) => entry.wickets > 0).slice(0, limit);
+}
+
+/** Highest strike rate among batters with at least {@link BEST_STRIKE_RATE_MIN_BALLS} balls faced. */
+export function bestStrikeRates(
+  entries: readonly BattingLeaderboardEntry[],
+  limit = LEADERBOARD_TOP_N,
+): BattingLeaderboardEntry[] {
+  return entries
+    .filter((entry) => entry.balls >= BEST_STRIKE_RATE_MIN_BALLS && entry.strikeRate != null)
+    .sort(
+      (left, right) =>
+        (right.strikeRate ?? 0) - (left.strikeRate ?? 0) || right.runs - left.runs || byPlayerName(left, right),
+    )
+    .slice(0, limit);
+}
+
+/** Lowest economy among bowlers with at least {@link BEST_ECONOMY_MIN_LEGAL_BALLS} legal balls. */
+export function bestEconomies(
+  entries: readonly BowlingLeaderboardEntry[],
+  limit = LEADERBOARD_TOP_N,
+): BowlingLeaderboardEntry[] {
+  return entries
+    .filter((entry) => entry.legalBalls >= BEST_ECONOMY_MIN_LEGAL_BALLS && entry.economy != null)
+    .sort(
+      (left, right) =>
+        (left.economy ?? 0) - (right.economy ?? 0) ||
+        right.legalBalls - left.legalBalls ||
+        byPlayerName(left, right),
+    )
+    .slice(0, limit);
 }

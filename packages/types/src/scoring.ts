@@ -663,7 +663,7 @@ export interface BatsmanPickerResponse {
   availableSubstitutes: BatsmanPickerSubstituteRow[];
 }
 
-type DismissalNameResolver = (playerId: string | null) => string;
+export type DismissalNameResolver = (playerId: string | null) => string;
 
 /** Builds short scorecard dismissal text (e.g. "c Butler b Wood"). */
 export function formatDismissalShort(

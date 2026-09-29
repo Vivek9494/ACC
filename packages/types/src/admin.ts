@@ -1,7 +1,7 @@
 import type { CaptainFeaturedMatchSummary } from './captain';
 import type { JerseySize } from './jersey-size';
 import { UserRole } from './auth';
-import type { BallType } from './rbac';
+import { Permission, PERMISSION_MATRIX, type BallType } from './rbac';
 import type {
   PlayerRegistrationRole,
   RegistrationPlayerType,
@@ -126,6 +126,13 @@ export interface AdminUserSummary {
   isLocked: boolean;
   /** Deduped platform + scoped roles for chip display. */
   roles: UserRole[];
+  /** Platform `User.role` (distinct from scoped role assignments). */
+  platformRole: UserRole;
+  /** Registration center and its province. */
+  centerId: string;
+  centerName: string;
+  provinceId: string;
+  provinceName: string;
   /** Account created (UTC ISO 8601). */
   createdAt: string;
 }
@@ -143,17 +150,11 @@ export interface AdminUserDetail extends AdminUserSummary {
   /** Full E.164 mobile — admin detail/edit only. */
   mobileNumber: string;
   email: string;
-  centerId: string;
-  centerName: string;
-  provinceId: string;
-  provinceName: string;
   /** ISO date YYYY-MM-DD. */
   dateOfBirth: string;
   jerseyNumber: number;
   jerseyName: string | null;
   jerseySize: JerseySize | null;
-  /** Platform `User.role` (distinct from scoped role assignments). */
-  platformRole: UserRole;
   /** Latest registration skill ratings (0–10); null when none. */
   battingRating: number | null;
   bowlingRating: number | null;
@@ -171,11 +172,20 @@ export interface AdminUserDetail extends AdminUserSummary {
 export interface AdminUsersPage {
   items: AdminUserSummary[];
   nextCursor: string | null;
+  /** Users matching every filter (search, geography, role) — across all pages. */
+  totalCount: number;
+  /**
+   * Users per platform `User.role` matching search + geography, ignoring the role
+   * filter (so role tabs/cards keep their counts while one role is selected).
+   */
+  roleCounts: Partial<Record<UserRole, number>>;
 }
 
 /** Query params for GET /admin/users. */
 export interface ListAdminUsersParams {
   q?: string;
+  /** Filter to users whose platform `User.role` matches (one of {@link ADMIN_PLATFORM_ROLES}). */
+  role?: UserRole;
   /** Filter to users whose registration center is in this province. */
   provinceId?: string;
   /** Filter to users whose registration center matches (implies province when both sent). */
@@ -227,6 +237,11 @@ export function canViewAdminUsersDirectory(role: UserRole): boolean {
 /** Platform roles that may create, edit, or delete users via admin APIs. */
 export function canManageAdminUsers(role: UserRole): boolean {
   return role === UserRole.Admin;
+}
+
+/** VIEW_ADMIN_OVERVIEW: OTP analytics and users-by-geography (Admin only). */
+export function canViewAdminAnalytics(role: UserRole): boolean {
+  return PERMISSION_MATRIX[Permission.VIEW_ADMIN_OVERVIEW].grants.some((grant) => grant.subject === role);
 }
 
 /** Roles that receive full E.164 mobile numbers in admin user list/detail payloads. */

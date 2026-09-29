@@ -1,10 +1,19 @@
 import {
+  BEST_ECONOMY_MIN_LEGAL_BALLS,
+  BEST_STRIKE_RATE_MIN_BALLS,
+  LEADERBOARD_TOP_N,
+  bestEconomies,
+  bestStrikeRates,
   computeBattingAverage,
   computeEconomyRate,
   computeStrikeRate,
   formatLeaderboardAverage,
   formatLeaderboardEconomy,
   formatLeaderboardStrikeRate,
+  topRunScorers,
+  topWicketTakers,
+  type BattingLeaderboardEntry,
+  type BowlingLeaderboardEntry,
 } from '@acc/types';
 
 import {
@@ -95,6 +104,7 @@ describe('leaderboard.compute', () => {
     expect(entries.map((entry) => entry.rank)).toEqual([1, 2]);
     expect(entries[0]?.userId).toBe('u2');
     expect(entries[0]?.runs).toBe(150);
+    expect(entries[0]?.balls).toBe(90);
     expect(entries[0]?.matches).toBe(2);
     expect(entries[0]?.thirties).toBe(0);
     expect(entries[0]?.fifties).toBe(2);
@@ -227,6 +237,7 @@ describe('leaderboard.compute', () => {
     expect(entries.map((entry) => entry.userId)).toEqual(['u2', 'u1', 'u3']);
     expect(entries[0]?.economy).toBe(5);
     expect(entries[1]?.economy).toBe(6);
+    expect(entries[0]?.legalBalls).toBe(48);
     expect(entries[0]?.matches).toBe(1);
     expect(entries[0]?.innings).toBe(1);
     expect(entries[0]?.bestBowling).toBe('4/12');
@@ -255,5 +266,73 @@ describe('leaderboard stat helpers', () => {
     expect(computeEconomyRate(10, 0)).toBeNull();
     expect(formatLeaderboardEconomy(3.82)).toBe('3.82');
     expect(formatLeaderboardEconomy(4)).toBe('4.00');
+  });
+});
+
+describe('tournament top-N leaderboard cards', () => {
+  const person = { firstName: 'F', profilePhotoUrl: null, teamId: 't', teamName: 'T', teamLogoUrl: null };
+  const batter = (
+    userId: string,
+    runs: number,
+    balls: number,
+    matches = 1,
+  ): BattingLeaderboardEntry => ({
+    ...person,
+    rank: 0,
+    userId,
+    lastName: userId,
+    matches,
+    runs,
+    balls,
+    thirties: 0,
+    fifties: 0,
+    average: null,
+    strikeRate: computeStrikeRate(runs, balls),
+  });
+  const bowler = (
+    userId: string,
+    wickets: number,
+    runsConceded: number,
+    legalBalls: number,
+  ): BowlingLeaderboardEntry => ({
+    ...person,
+    rank: 0,
+    userId,
+    lastName: userId,
+    matches: 1,
+    innings: legalBalls > 0 ? 1 : 0,
+    wickets,
+    legalBalls,
+    bestBowling: null,
+    economy: computeEconomyRate(runsConceded, legalBalls),
+  });
+
+  it('keeps server order for runs / wickets and drops players who never batted or took a wicket', () => {
+    expect(topRunScorers([batter('a', 40, 30), batter('b', 0, 0, 0)]).map((e) => e.userId)).toEqual(['a']);
+    expect(
+      topWicketTakers([bowler('a', 3, 20, 24), bowler('wicketless', 0, 30, 24), bowler('xi-only', 0, 0, 0)]).map(
+        (e) => e.userId,
+      ),
+    ).toEqual(['a']);
+    const many = Array.from({ length: 14 }, (_, i) => batter(`p${i}`, 100 - i, 50));
+    expect(topRunScorers(many)).toHaveLength(LEADERBOARD_TOP_N);
+  });
+
+  it('ranks Best Strike Rate only among batters meeting the balls-faced minimum', () => {
+    const rows = [
+      batter('cameo', 6, 1),
+      batter('steady', 30, 30),
+      batter('quick', 40, BEST_STRIKE_RATE_MIN_BALLS),
+    ];
+    expect(bestStrikeRates(rows).map((e) => e.userId)).toEqual(['quick', 'steady']);
+  });
+
+  it('ranks Best Economy only among bowlers meeting the legal-balls minimum', () => {
+    const rows = [
+      bowler('one-over', 0, 1, 6),
+      bowler('tidy', 1, 12, BEST_ECONOMY_MIN_LEGAL_BALLS),
+      bowler('costly', 2, 40, 24),
+    ];
+    expect(bestEconomies(rows).map((e) => e.userId)).toEqual(['tidy', 'costly']);
   });
 });

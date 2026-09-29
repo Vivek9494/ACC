@@ -1,4 +1,8 @@
-import type { AdminPasswordResetOtpDailySeries } from '@acc/types';
+import {
+  defaultPasswordResetOtpRange,
+  utcMonthDateRange,
+  type AdminPasswordResetOtpDailySeries,
+} from '@acc/types';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -44,47 +48,12 @@ const MONTH_LABELS = [
   'December',
 ] as const;
 
-function pad2(n: number): string {
-  return String(n).padStart(2, '0');
-}
-
 function utcTodayParts(): { year: number; month: number; day: number } {
   const now = new Date();
   return {
     year: now.getUTCFullYear(),
     month: now.getUTCMonth(),
     day: now.getUTCDate(),
-  };
-}
-
-function formatUtcYmd(year: number, monthIndex: number, day: number): string {
-  return `${year}-${pad2(monthIndex + 1)}-${pad2(day)}`;
-}
-
-/** Inclusive UTC window ending today, spanning `dayCount` days. */
-export function defaultPasswordResetOtpRange(dayCount = 7): {
-  fromDate: string;
-  toDate: string;
-} {
-  const { year, month, day } = utcTodayParts();
-  const to = new Date(Date.UTC(year, month, day));
-  const from = new Date(Date.UTC(year, month, day));
-  from.setUTCDate(from.getUTCDate() - (dayCount - 1));
-  return {
-    fromDate: from.toISOString().slice(0, 10),
-    toDate: to.toISOString().slice(0, 10),
-  };
-}
-
-/** First/last UTC day of a calendar month (`monthIndex` 0–11). */
-export function utcMonthDateRange(
-  year: number,
-  monthIndex: number,
-): { fromDate: string; toDate: string } {
-  const lastDay = new Date(Date.UTC(year, monthIndex + 1, 0)).getUTCDate();
-  return {
-    fromDate: formatUtcYmd(year, monthIndex, 1),
-    toDate: formatUtcYmd(year, monthIndex, lastDay),
   };
 }
 

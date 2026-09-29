@@ -1,13 +1,24 @@
-import { ADMIN_USERS_PAGE_SIZE, ADMIN_USERS_PAGE_SIZE_MAX } from '@acc/types';
+import {
+  ADMIN_PLATFORM_ROLES,
+  ADMIN_USERS_PAGE_SIZE,
+  ADMIN_USERS_PAGE_SIZE_MAX,
+  type ListAdminUsersParams,
+  type UserRole,
+} from '@acc/types';
 import { Type } from 'class-transformer';
-import { IsInt, IsOptional, IsString, IsUUID, Max, Min } from 'class-validator';
+import { IsIn, IsInt, IsOptional, IsString, IsUUID, Max, Min } from 'class-validator';
 
-/** Query params for GET /admin/users (search + geography filters + cursor pagination). */
-export class ListAdminUsersDto {
+/** Query params for GET /admin/users (search + geography/role filters + cursor pagination). */
+export class ListAdminUsersDto implements ListAdminUsersParams {
   /** Search by name or mobile number (partial match). */
   @IsOptional()
   @IsString()
   q?: string;
+
+  /** Filter by platform `User.role`. */
+  @IsOptional()
+  @IsIn(ADMIN_PLATFORM_ROLES)
+  role?: UserRole;
 
   /** Filter users by registration center's province. */
   @IsOptional()

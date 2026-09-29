@@ -4,6 +4,7 @@ import {
   MatchState,
   filterAccFixedTeamsInTournament,
   type AuthUser,
+  type LeaderboardTeamOption,
   type TournamentLeaderboard,
   type TournamentStatsView,
 } from '@acc/types';
@@ -384,6 +385,7 @@ export class LeaderboardService {
           select: {
             id: true,
             name: true,
+            logoUrl: true,
           },
         },
       },
@@ -413,6 +415,7 @@ export class LeaderboardService {
       profilePhotoUrl: membership.user.profilePhotoUrl,
       teamId: membership.team.id,
       teamName: membership.team.name,
+      teamLogoUrl: membership.team.logoUrl,
     }));
 
     const mostSixes = buildBoundaryLeaderboardEntries(
@@ -449,27 +452,65 @@ export class LeaderboardService {
     };
   }
 
+  /**
+   * Presigns each distinct stored logo key once (many entries share a team).
+   * Entries without their own key (payloads cached before the field existed) fall back
+   * to their team's key from the tournament team list.
+   */
+  private async resolveTeamLogos(
+    teams: readonly LeaderboardTeamOption[],
+    entryGroups: readonly (readonly { teamId: string; teamLogoUrl?: string | null }[])[],
+  ): Promise<{
+    teamLogo: (key: string | null) => string | null;
+    entryLogo: (entry: { teamId: string; teamLogoUrl?: string | null }) => string | null;
+  }> {
+    const keyByTeamId = new Map(teams.map((team) => [team.id, team.logoUrl] as const));
+    const entryKey = (entry: { teamId: string; teamLogoUrl?: string | null }): string | null =>
+      entry.teamLogoUrl ?? keyByTeamId.get(entry.teamId) ?? null;
+    const keys = [
+      ...teams.map((team) => team.logoUrl),
+      ...entryGroups.flatMap((entries) => entries.map(entryKey)),
+    ];
+    const unique = [...new Set(keys.filter((key): key is string => Boolean(key)))];
+    const urls = await this.mediaUrls.resolveReadUrls(unique);
+    const byKey = new Map(unique.map((key, index) => [key, urls[index] ?? null] as const));
+    const teamLogo = (key: string | null): string | null => (key ? (byKey.get(key) ?? null) : null);
+    return { teamLogo, entryLogo: (entry) => teamLogo(entryKey(entry)) };
+  }
+
   private async resolveLeaderboardMedia(
     board: TournamentLeaderboard,
   ): Promise<TournamentLeaderboard> {
-    const [battingEntries, bowlingEntries] = await Promise.all([
+    const [battingEntries, bowlingEntries, { teamLogo, entryLogo }] = await Promise.all([
       this.mediaUrls.resolveProfilePhotoUrls(board.batting.entries),
       this.mediaUrls.resolveProfilePhotoUrls(board.bowling.entries),
+      this.resolveTeamLogos(board.teams, [board.batting.entries, board.bowling.entries]),
     ]);
     return {
       ...board,
-      batting: { entries: battingEntries },
-      bowling: { entries: bowlingEntries },
+      teams: board.teams.map((team) => ({ ...team, logoUrl: teamLogo(team.logoUrl) })),
+      batting: {
+        entries: battingEntries.map((entry) => ({ ...entry, teamLogoUrl: entryLogo(entry) })),
+      },
+      bowling: {
+        entries: bowlingEntries.map((entry) => ({ ...entry, teamLogoUrl: entryLogo(entry) })),
+      },
     };
   }
 
   private async resolveTournamentStatsMedia(
     stats: TournamentStatsView,
   ): Promise<TournamentStatsView> {
-    const [mostSixes, mostFours] = await Promise.all([
+    const [mostSixes, mostFours, { teamLogo, entryLogo }] = await Promise.all([
       this.mediaUrls.resolveProfilePhotoUrls(stats.mostSixes),
       this.mediaUrls.resolveProfilePhotoUrls(stats.mostFours),
+      this.resolveTeamLogos(stats.teams, [stats.mostSixes, stats.mostFours]),
     ]);
-    return { ...stats, mostSixes, mostFours };
+    return {
+      ...stats,
+      teams: stats.teams.map((team) => ({ ...team, logoUrl: teamLogo(team.logoUrl) })),
+      mostSixes: mostSixes.map((entry) => ({ ...entry, teamLogoUrl: entryLogo(entry) })),
+      mostFours: mostFours.map((entry) => ({ ...entry, teamLogoUrl: entryLogo(entry) })),
+    };
   }
 }

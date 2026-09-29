@@ -21,6 +21,7 @@ export interface TournamentBoundaryLeaderboardEntry {
   profilePhotoUrl: string | null;
   teamId: string;
   teamName: string;
+  teamLogoUrl: string | null;
   count: number;
 }
 

@@ -1,0 +1,83 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+/* ACC brand: orange #FF6B00 (primary), navy #294C74, cream #E7E1DB, 8px radius, Montserrat. */
+:root {
+  --radius: 0.5rem;
+
+  --brand-orange: #ff6b00;
+  --brand-navy: #294c74;
+  --brand-cream: #e7e1db;
+
+  --background: #f6f3f0;
+  --foreground: #1f2a37;
+  --card: #ffffff;
+  --card-foreground: #1f2a37;
+  --popover: #ffffff;
+  --popover-foreground: #1f2a37;
+  --primary: var(--brand-orange);
+  --primary-foreground: #ffffff;
+  --secondary: var(--brand-navy);
+  --secondary-foreground: #ffffff;
+  --muted: #efeae5;
+  --muted-foreground: #6b6560;
+  --accent: #fff1e6;
+  --accent-foreground: #b44b00;
+  --destructive: #c62828;
+  --border: var(--brand-cream);
+  --input: #d9d1c9;
+  --ring: var(--brand-orange);
+
+  --sidebar: var(--brand-navy);
+  --sidebar-foreground: #dbe5f0;
+  --sidebar-muted: #9fb3c9;
+  --sidebar-accent: #1f3d5e;
+  --sidebar-border: #34587f;
+}
+
+@theme inline {
+  --font-sans: 'Montserrat', ui-sans-serif, system-ui, sans-serif;
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-brand-orange: var(--brand-orange);
+  --color-brand-navy: var(--brand-navy);
+  --color-brand-cream: var(--brand-cream);
+
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-muted: var(--sidebar-muted);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-border: var(--sidebar-border);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background font-sans text-foreground antialiased;
+  }
+}

@@ -111,6 +111,7 @@ export interface BuildBoundaryLeaderboardPlayerInput {
   profilePhotoUrl: string | null;
   teamId: string;
   teamName: string;
+  teamLogoUrl: string | null;
   count: number;
   /** Tournament batting runs — secondary sort after count. */
   runs: number;
@@ -146,6 +147,7 @@ export function buildBoundaryLeaderboardEntries(
     profilePhotoUrl: player.profilePhotoUrl,
     teamId: player.teamId,
     teamName: player.teamName,
+    teamLogoUrl: player.teamLogoUrl,
     count: player.count,
   }));
 }

@@ -33,6 +33,7 @@ import {
   DEFAULT_VENUE_TIMEZONE,
   getTodayCalendarPartsInZone,
   formatUtcIsoDate,
+  PASSWORD_RESET_OTP_MAX_RANGE_DAYS,
 } from '@acc/types';
 import { Injectable, BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
@@ -78,39 +79,57 @@ export class AdminService {
       await this.assertCenterInProvince(query.centerId, query.provinceId);
     }
 
-    const where = buildAdminUserListWhere({
+    const baseFilters = {
       q: query.q,
       provinceId: query.provinceId,
       centerId: query.centerId,
-    });
+    };
+    const where = buildAdminUserListWhere({ ...baseFilters, role: query.role });
 
-    const users = await this.prisma.user.findMany({
-      where,
-      take: limit + 1,
-      ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
-      orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }, { id: 'asc' }],
-      select: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        mobileNumber: true,
-        profilePhotoUrl: true,
-        isActive: true,
-        role: true,
-        createdAt: true,
-        passwordResetLockedAt: true,
-        roleAssignments: { select: { role: true } },
-      },
-    });
+    const [users, totalCount, roleGroups] = await Promise.all([
+      this.prisma.user.findMany({
+        where,
+        take: limit + 1,
+        ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
+        orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }, { id: 'asc' }],
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          mobileNumber: true,
+          profilePhotoUrl: true,
+          isActive: true,
+          role: true,
+          createdAt: true,
+          passwordResetLockedAt: true,
+          roleAssignments: { select: { role: true } },
+          center: {
+            select: { id: true, name: true, province: { select: { id: true, name: true } } },
+          },
+        },
+      }),
+      this.prisma.user.count({ where }),
+      this.prisma.user.groupBy({
+        by: ['role'],
+        where: buildAdminUserListWhere(baseFilters),
+        _count: { _all: true },
+      }),
+    ]);
 
     const hasMore = users.length > limit;
     const page = hasMore ? users.slice(0, limit) : users;
+    const roleCounts: AdminUsersPage['roleCounts'] = {};
+    for (const group of roleGroups) {
+      roleCounts[group.role] = group._count._all;
+    }
 
     return {
       items: await this.mediaUrls.resolveProfilePhotoUrls(
         page.map((user) => toAdminUserSummary(user, { includeFullMobile })),
       ),
       nextCursor: hasMore ? page[page.length - 1]!.id : null,
+      totalCount,
+      roleCounts,
     };
   }
 
@@ -952,9 +971,9 @@ export class AdminService {
     }
     const spanDays =
       Math.floor((toStart.getTime() - fromStart.getTime()) / (24 * 60 * 60 * 1000)) + 1;
-    if (spanDays > 90) {
+    if (spanDays > PASSWORD_RESET_OTP_MAX_RANGE_DAYS) {
       throw new BadRequestException({
-        message: 'Date range cannot exceed 90 days',
+        message: `Date range cannot exceed ${PASSWORD_RESET_OTP_MAX_RANGE_DAYS} days`,
         error: 'INVALID_DATE_RANGE',
       });
     }

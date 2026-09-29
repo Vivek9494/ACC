@@ -6,6 +6,12 @@ import {
   toAdminUserSummary,
 } from './admin.mapper';
 
+const center = {
+  id: 'center-1',
+  name: 'Brampton',
+  province: { id: 'prov-1', name: 'Ontario' },
+};
+
 describe('admin.mapper', () => {
   describe('toAdminUserSummary', () => {
     it('masks mobile and dedupes roles', () => {
@@ -20,12 +26,37 @@ describe('admin.mapper', () => {
         role: UserRole.Player,
         createdAt: new Date('2024-01-15T00:00:00.000Z'),
         roleAssignments: [{ role: UserRole.Captain }],
+        center,
       });
 
       expect(summary.maskedMobileNumber).toBe('+1 (***) ***-0007');
       expect(summary.mobileNumber).toBeUndefined();
       expect(summary.isLocked).toBe(false);
       expect(summary.roles).toEqual([UserRole.Captain]);
+    });
+
+    it('exposes platform role and registration geography', () => {
+      const summary = toAdminUserSummary({
+        id: 'u1',
+        firstName: 'Dev',
+        lastName: 'Player',
+        mobileNumber: '+15555550007',
+        profilePhotoUrl: null,
+        isActive: true,
+        passwordResetLockedAt: null,
+        role: UserRole.Player,
+        createdAt: new Date('2024-01-15T00:00:00.000Z'),
+        roleAssignments: [{ role: UserRole.Captain }],
+        center,
+      });
+
+      expect(summary).toMatchObject({
+        platformRole: UserRole.Player,
+        centerId: 'center-1',
+        centerName: 'Brampton',
+        provinceId: 'prov-1',
+        provinceName: 'Ontario',
+      });
     });
 
     it('includes full mobile when includeFullMobile is true', () => {
@@ -41,6 +72,7 @@ describe('admin.mapper', () => {
           role: UserRole.Player,
           createdAt: new Date('2024-01-15T00:00:00.000Z'),
           roleAssignments: [],
+          center,
         },
         { includeFullMobile: true },
       );
@@ -65,6 +97,7 @@ describe('admin.mapper', () => {
         role: UserRole.Player,
         createdAt: new Date('2024-01-15T00:00:00.000Z'),
         roleAssignments: [],
+        center,
       });
       expect(locked.isLocked).toBe(true);
 
@@ -79,6 +112,7 @@ describe('admin.mapper', () => {
         role: UserRole.Player,
         createdAt: new Date('2024-01-15T00:00:00.000Z'),
         roleAssignments: [],
+        center,
       });
       expect(expired.isLocked).toBe(false);
 
@@ -132,6 +166,12 @@ describe('admin.mapper', () => {
           },
           { center: { provinceId: 'prov-1' } },
         ],
+      });
+    });
+
+    it('filters by platform role', () => {
+      expect(buildAdminUserListWhere({ role: UserRole.CenterSevak })).toEqual({
+        AND: [{ deletedAt: null }, { role: UserRole.CenterSevak }],
       });
     });
 

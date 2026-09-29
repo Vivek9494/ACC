@@ -6,6 +6,8 @@ import {
   validateSignupMobileNumber,
   validateSignupName,
   validateSignupPostalCode,
+  validateJerseyName,
+  validateJerseyNumber,
   type JerseySize,
 } from '@acc/types';
 
@@ -40,28 +42,7 @@ export interface ProfileFormValues {
   jerseyNumber: string;
 }
 
-export function validateJerseyName(value: string): string | null {
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return null;
-  }
-  return validateSignupName(trimmed, SIGNUP_VALIDATION_MESSAGES.firstName);
-}
-
-export function validateJerseyNumber(value: string): string | null {
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return null;
-  }
-  if (!/^\d+$/.test(trimmed)) {
-    return 'Enter a valid jersey number';
-  }
-  const num = Number(trimmed);
-  if (num < 0 || num > 999) {
-    return 'Jersey number must be between 0 and 999';
-  }
-  return null;
-}
+export { validateJerseyName, validateJerseyNumber };
 
 export function validateProfileForm(values: ProfileFormValues): ProfileFieldErrors {
   const errors: ProfileFieldErrors = {};

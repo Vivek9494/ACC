@@ -34,6 +34,25 @@ export const TOURNAMENT_STATE_LABELS: Record<TournamentState, string> = {
   COMPLETED: 'Completed',
 };
 
+/** Human labels for the date-derived tournament status (lists / tables). */
+export const TOURNAMENT_DISPLAY_STATUS_LABELS: Record<TournamentDisplayStatus, string> = {
+  UPCOMING: 'Upcoming',
+  LIVE: 'Live',
+  COMPLETED: 'Completed',
+  CANCELLED: 'Cancelled',
+};
+
+export const BALL_TYPE_LABELS: Record<BallType, string> = {
+  LEATHER: 'Leather',
+  TENNIS: 'Tennis',
+};
+
+export const TOURNAMENT_TYPE_LABELS: Record<TournamentType, string> = {
+  ACC: 'ACC',
+  APL: 'APL',
+  CENTER: 'Center-level',
+};
+
 /**
  * Allowed forward state transitions (spec §5.1). The graph is linear with one
  * branch: Live can go to Knockout (group+knockout formats) or straight to

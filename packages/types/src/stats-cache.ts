@@ -9,12 +9,15 @@ export function tournamentAggregatesVersionKey(tournamentId: string): string {
   return `stats:agg:ver:${tournamentId}`;
 }
 
+/** Bump when the cached leaderboard payload shape changes so older entries are never read. */
+const LEADERBOARD_CACHE_SCHEMA = 2;
+
 export function leaderboardCacheKey(
   tournamentId: string,
   teamScope: string,
   version: string,
 ): string {
-  return `stats:leaderboard:${tournamentId}:${teamScope}:v${version}`;
+  return `stats:leaderboard:s${LEADERBOARD_CACHE_SCHEMA}:${tournamentId}:${teamScope}:v${version}`;
 }
 
 export function standingsCacheKey(tournamentId: string, version: string): string {

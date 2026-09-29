@@ -81,6 +81,7 @@ export function buildBattingLeaderboardEntries(
       teamLogoUrl: player.teamLogoUrl,
       matches: battedMatchIds.size,
       runs,
+      balls,
       thirties,
       fifties,
       average: computeBattingAverage(runs, dismissals),
@@ -221,6 +222,7 @@ export function buildBowlingLeaderboardEntries(
       matches: xiMatchIds.size,
       innings,
       wickets,
+      legalBalls,
       bestBowling: bestBowling
         ? formatPlayerProfileBestBowling(bestBowling.wickets, bestBowling.runsConceded)
         : null,

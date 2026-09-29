@@ -12,6 +12,7 @@
     "dev:mobile": "pnpm --filter @acc/types build && pnpm --filter @acc/mobile dev",
     "dev:overlay": "pnpm --filter @acc/scoring-overlay dev",
     "dev:broadcast": "pnpm --filter @acc/broadcast-desktop dev",
+    "dev:web-admin": "pnpm --filter @acc/types build && pnpm --filter @acc/web-admin dev",
     "build": "pnpm -r --if-present build",
     "typecheck": "pnpm -r --if-present typecheck",
     "lint": "eslint .",

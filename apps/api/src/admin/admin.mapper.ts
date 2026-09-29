@@ -22,6 +22,7 @@ type UserListRow = {
   role: PrismaUserRole;
   createdAt: Date;
   roleAssignments: { role: PrismaUserRole }[];
+  center: { id: string; name: string; province: { id: string; name: string } };
 };
 
 type UserDetailRow = Omit<UserListRow, 'roleAssignments'> & {
@@ -70,6 +71,11 @@ export function toAdminUserSummary(
     isActive: user.isActive,
     isLocked: isPasswordResetLocked(user.passwordResetLockedAt),
     roles: collectRoles(user),
+    platformRole: user.role,
+    centerId: user.center.id,
+    centerName: user.center.name,
+    provinceId: user.center.province.id,
+    provinceName: user.center.province.name,
     createdAt: user.createdAt.toISOString(),
   };
 
@@ -103,15 +109,10 @@ export function toAdminUserDetail(
     ...summary,
     mobileNumber: user.mobileNumber,
     email: user.email,
-    centerId: user.center.id,
-    centerName: user.center.name,
-    provinceId: user.center.provinceId,
-    provinceName: user.center.province.name,
     dateOfBirth: user.dateOfBirth.toISOString().slice(0, 10),
     jerseyNumber: user.jerseyNumber,
     jerseyName: user.jerseyName,
     jerseySize: user.jerseySize,
-    platformRole: user.role,
     battingRating: null,
     bowlingRating: null,
     fieldingRating: null,
@@ -149,9 +150,11 @@ export interface AdminUserListFilterParams {
   q?: string;
   provinceId?: string;
   centerId?: string;
+  /** Platform `User.role`. */
+  role?: UserRole;
 }
 
-/** Combines name/mobile search with optional province/center geography filters. */
+/** Combines name/mobile search with optional province/center geography and role filters. */
 export function buildAdminUserListWhere(
   params: AdminUserListFilterParams,
 ): Prisma.UserWhereInput {
@@ -168,6 +171,10 @@ export function buildAdminUserListWhere(
     conditions.push({
       center: { provinceId: params.provinceId },
     });
+  }
+
+  if (params.role) {
+    conditions.push({ role: params.role });
   }
 
   if (conditions.length === 1) {
