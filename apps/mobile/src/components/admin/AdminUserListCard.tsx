@@ -91,7 +91,7 @@ export function AdminUserListCard({
               mobileNumber={user.mobileNumber}
               maskedMobileNumber={user.maskedMobileNumber}
             />
-            <AdminUserRoleChips roles={user.roles} />
+            <AdminUserRoleChips roles={[user.platformRole]} />
             {!user.isActive ? (
               <View className="rounded-full border border-primary bg-primary-50 px-2.5 py-1">
                 <Text className="font-sans-semibold text-xs text-primary-800">Inactive</Text>

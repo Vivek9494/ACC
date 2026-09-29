@@ -7,11 +7,13 @@ import { StatisticsLayout } from '@/features/statistics/StatisticsLayout';
 import { MatchesTab } from '@/features/tournaments/detail/MatchesTab';
 import { MatchScorecardPage } from '@/features/tournaments/detail/MatchScorecardPage';
 import { PointsTab } from '@/features/tournaments/detail/PointsTab';
+import { RegistrationsTab } from '@/features/tournaments/detail/RegistrationsTab';
 import { StatsTab } from '@/features/tournaments/detail/StatsTab';
 import { TeamsTab } from '@/features/tournaments/detail/TeamsTab';
 import { TournamentDetailLayout } from '@/features/tournaments/detail/TournamentDetailLayout';
 import { TournamentsPage } from '@/features/tournaments/TournamentsPage';
 import { UsersPage } from '@/features/users/UsersPage';
+import { VerificationPage } from '@/features/verification/VerificationPage';
 import { ComingSoonPage } from '@/pages/ComingSoonPage';
 import { LoginPage } from '@/pages/LoginPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
@@ -46,6 +48,7 @@ export const router = createBrowserRouter([
         children: [
           { index: true, element: <Navigate to={DEFAULT_ROUTE} replace /> },
           { path: 'tournaments', element: <TournamentsPage /> },
+          { path: 'verification', element: <VerificationPage /> },
           {
             path: 'tournaments/:tournamentId',
             element: <TournamentDetailLayout />,
@@ -56,6 +59,7 @@ export const router = createBrowserRouter([
               { path: 'matches/:matchId', element: <MatchScorecardPage /> },
               { path: 'points', element: <PointsTab /> },
               { path: 'stats', element: <StatsTab /> },
+              { path: 'registrations', element: <RegistrationsTab /> },
             ],
           },
           { path: 'users', element: <UsersPage /> },

@@ -514,14 +514,26 @@ export class RegistrationsService {
   ): Promise<RegistrationDetail> {
     const existing = await this.prisma.registration.findUnique({
       where: { id: registrationId },
-      select: { id: true, status: true, userId: true, tournamentId: true },
+      select: { id: true, status: true, userId: true, tournamentId: true, centerId: true },
     });
     if (!existing) {
       throw new NotFoundException({ message: 'Registration not found', error: 'NOT_FOUND' });
     }
     const tournament = await this.requireTournament(existing.tournamentId);
     this.assertRegistrationVerificationTournament(tournament.ballType as BallType);
+    this.assertCenterSevakTennisOnly(actor, tournament.ballType as BallType);
+    if (existing.status !== RegistrationStatus.InWaitlist) {
+      throw new BadRequestException({
+        message: 'Only pending registrations can be approved or declined',
+        error: 'INVALID_REGISTRATION_STATUS',
+      });
+    }
     this.assertRegistrationVerificationManageOpen(tournament);
+    await this.assertSevakVerificationCenterAccess(
+      actor,
+      existing.tournamentId,
+      existing.centerId,
+    );
 
     const row = await this.prisma.registration.update({
       where: { id: registrationId },

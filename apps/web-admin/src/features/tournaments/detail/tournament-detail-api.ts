@@ -1,5 +1,15 @@
-import type { MatchListItem, ScorecardResponse, TeamDetailView, TeamSummary, TournamentDetail } from '@acc/types';
-import { useQueries, useQuery } from '@tanstack/react-query';
+import type {
+  MatchListItem,
+  RegistrationDetail,
+  RegistrationVerificationQueue,
+  ScorecardResponse,
+  TeamDetailView,
+  TeamSummary,
+  TournamentDetail,
+  UpdateRatingsRequest,
+  VerifiedRegisteredPlayersView,
+} from '@acc/types';
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { apiFetch } from '@/lib/api-client';
 
@@ -9,6 +19,7 @@ export const tournamentDetailKeys = {
   team: (tournamentId: string, teamId: string) => ['tournament', tournamentId, 'teams', teamId] as const,
   matches: (tournamentId: string) => ['tournament', tournamentId, 'matches'] as const,
   scorecard: (matchId: string) => ['match', matchId, 'scorecard'] as const,
+  registrations: (tournamentId: string) => ['tournament', tournamentId, 'registrations'] as const,
 };
 
 const tournamentPath = (tournamentId: string, resource = ''): string =>
@@ -47,6 +58,53 @@ export function useTournamentMatches(tournamentId: string) {
     queryKey: tournamentDetailKeys.matches(tournamentId),
     queryFn: ({ signal }) => apiFetch<MatchListItem[]>(tournamentPath(tournamentId, 'matches'), { signal }),
   });
+}
+
+/**
+ * GET /tournaments/:id/registrations/verification-queue — every registrant plus the
+ * server's verification phase and `canManage` (window + who-can-verify). Admin.
+ */
+export function useVerificationQueue(tournamentId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: [...tournamentDetailKeys.registrations(tournamentId), 'queue'],
+    queryFn: ({ signal }) =>
+      apiFetch<RegistrationVerificationQueue>(tournamentPath(tournamentId, 'registrations/verification-queue'), {
+        signal,
+      }),
+    enabled,
+  });
+}
+
+/** GET /tournaments/:id/registrations/verified — read-only waitlist / confirmed / declined lists. */
+export function useRegisteredPlayers(tournamentId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: [...tournamentDetailKeys.registrations(tournamentId), 'verified'],
+    queryFn: ({ signal }) =>
+      apiFetch<VerifiedRegisteredPlayersView>(tournamentPath(tournamentId, 'registrations/verified'), { signal }),
+    enabled,
+  });
+}
+
+/** Approve / decline / revert / ratings — the API re-checks the verification window and verifier scope. */
+export function useRegistrationActions(tournamentId: string) {
+  const queryClient = useQueryClient();
+  const onSuccess = () =>
+    queryClient.invalidateQueries({ queryKey: tournamentDetailKeys.registrations(tournamentId) });
+  const registrationPath = (registrationId: string, action: string) =>
+    tournamentPath(tournamentId, `registrations/${encodeURIComponent(registrationId)}/${action}`);
+  const review = (action: 'approve' | 'decline' | 'revert-waitlist') => (registrationId: string) =>
+    apiFetch<RegistrationDetail>(registrationPath(registrationId, action), { method: 'POST' });
+
+  return {
+    approve: useMutation({ mutationFn: review('approve'), onSuccess }),
+    decline: useMutation({ mutationFn: review('decline'), onSuccess }),
+    revert: useMutation({ mutationFn: review('revert-waitlist'), onSuccess }),
+    updateRatings: useMutation({
+      mutationFn: ({ registrationId, body }: { registrationId: string; body: UpdateRatingsRequest }) =>
+        apiFetch<RegistrationDetail>(registrationPath(registrationId, 'ratings'), { method: 'PATCH', body }),
+      onSuccess,
+    }),
+  };
 }
 
 /** GET /matches/:matchId/scorecard — innings batting / bowling / extras / totals. */

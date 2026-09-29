@@ -1,5 +1,5 @@
 import { BALL_TYPE_LABELS, TOURNAMENT_DISPLAY_STATUS_LABELS, TOURNAMENT_TYPE_LABELS } from '@acc/types';
-import { ArrowLeft, BarChart3, CalendarDays, ListOrdered, Users, type LucideIcon } from 'lucide-react';
+import { ArrowLeft, BarChart3, CalendarDays, ClipboardCheck, ListOrdered, Users, type LucideIcon } from 'lucide-react';
 import { Link, NavLink, Outlet, useParams } from 'react-router';
 
 import { QueryErrorCard } from '@/components/QueryErrorCard';
@@ -16,9 +16,10 @@ const TAB_ICONS: Record<DetailTabPath, LucideIcon> = {
   matches: CalendarDays,
   points: ListOrdered,
   stats: BarChart3,
+  registrations: ClipboardCheck,
 };
 
-/** /tournaments/:tournamentId — header + Teams / Matches / Points table / Tournament stats tabs. */
+/** /tournaments/:tournamentId — header + Teams / Matches / Points table / Tournament stats / Registrations tabs. */
 export function TournamentDetailLayout(): React.ReactElement {
   const { tournamentId = '' } = useParams();
   const detail = useTournamentDetail(tournamentId);

@@ -124,7 +124,10 @@ export interface AdminUserSummary {
    * Past 24h (or cleared) → false even if the timestamp column is stale.
    */
   isLocked: boolean;
-  /** Deduped platform + scoped roles for chip display. */
+  /**
+   * @deprecated Always `[platformRole]`; kept for older mobile builds. Tournament-scoped
+   * Captain / Vice Captain / Manager assignments are never included.
+   */
   roles: UserRole[];
   /** Platform `User.role` (distinct from scoped role assignments). */
   platformRole: UserRole;
@@ -320,28 +323,6 @@ export interface AdminUserPlayerStatsView {
   byYear: PlayerProfileYearSummary[];
   byTournament: PlayerProfileTournamentSummary[];
   showStumpingsCard: boolean;
-}
-
-const USER_ROLE_ORDER: UserRole[] = [
-  UserRole.Admin,
-  UserRole.ClubManager,
-  UserRole.CenterSevak,
-  UserRole.Captain,
-  UserRole.ViceCaptain,
-  UserRole.Manager,
-  UserRole.Player,
-];
-
-/** Sort roles for display; omit generic Player when other roles are present. */
-export function formatAdminUserRolesForDisplay(roles: readonly UserRole[]): UserRole[] {
-  const unique = [...new Set(roles)];
-  const filtered =
-    unique.length > 1 && unique.includes(UserRole.Player)
-      ? unique.filter((role) => role !== UserRole.Player)
-      : unique;
-  return filtered.sort(
-    (a, b) => USER_ROLE_ORDER.indexOf(a) - USER_ROLE_ORDER.indexOf(b),
-  );
 }
 
 /** Human-readable time remaining until a temporary password expires. */

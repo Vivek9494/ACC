@@ -434,6 +434,57 @@ describe('RegistrationsService', () => {
       await expect(service.approve(admin, 'reg-1')).rejects.toBeInstanceOf(ForbiddenException);
     });
 
+    it.each([RegistrationStatus.Confirmed, RegistrationStatus.Declined])(
+      'rejects approve/decline when the registration is %s',
+      async (status) => {
+        prisma.tournament.findUnique.mockResolvedValue({
+          id: 'tour-1',
+          state: 'REGISTRATION_OPEN',
+          type: 'APL',
+          ballType: 'TENNIS',
+          isDeleted: false,
+          ...closedRegistrationWindow,
+        });
+        prisma.registration.findUnique.mockResolvedValue({
+          id: 'reg-1',
+          status,
+          userId: 'player-1',
+          tournamentId: 'tour-1',
+          centerId: 'center-A',
+        });
+        await expect(service.approve(admin, 'reg-1')).rejects.toBeInstanceOf(BadRequestException);
+        await expect(service.decline(admin, 'reg-1')).rejects.toBeInstanceOf(BadRequestException);
+        expect(prisma.registration.update).not.toHaveBeenCalled();
+      },
+    );
+
+    it('blocks a Center Sevak approving outside their verification scope', async () => {
+      prisma.tournament.findUnique.mockResolvedValue({
+        id: 'tour-1',
+        state: 'REGISTRATION_OPEN',
+        type: 'APL',
+        ballType: 'TENNIS',
+        isDeleted: false,
+        ...closedRegistrationWindow,
+      });
+      prisma.registration.findUnique.mockResolvedValue({
+        id: 'reg-1',
+        status: RegistrationStatus.InWaitlist,
+        userId: 'player-1',
+        tournamentId: 'tour-1',
+        centerId: 'center-B',
+      });
+      prisma.tournamentCenter.findMany.mockResolvedValue([
+        { centerId: 'center-A' },
+        { centerId: 'center-B' },
+      ]);
+
+      await expect(service.approve(centerSevak, 'reg-1')).rejects.toBeInstanceOf(
+        ForbiddenException,
+      );
+      expect(prisma.registration.update).not.toHaveBeenCalled();
+    });
+
     it('declines and notifies the player; the spec decline text is exported', async () => {
       prisma.tournament.findUnique.mockResolvedValue({
         id: 'tour-1',

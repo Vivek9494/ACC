@@ -58,8 +58,14 @@ const boundary = (userId: string, count: number): TournamentBoundaryLeaderboardE
 });
 
 describe('tournament detail', () => {
-  it('has the four tabs in order', () => {
-    expect(DETAIL_TABS.map((tab) => tab.label)).toEqual(['Teams', 'Matches', 'Points table', 'Tournament stats']);
+  it('has the detail tabs in order', () => {
+    expect(DETAIL_TABS.map((tab) => tab.label)).toEqual([
+      'Teams',
+      'Matches',
+      'Points table',
+      'Tournament stats',
+      'Registrations',
+    ]);
   });
 
   it('formats match day in UTC and falls back to Date TBD', () => {

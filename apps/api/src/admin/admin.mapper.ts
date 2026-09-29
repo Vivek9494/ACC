@@ -1,5 +1,4 @@
 import {
-  formatAdminUserRolesForDisplay,
   formatCanadianMobileMasked,
   isPasswordResetLocked,
   type AdminUserDetail,
@@ -21,11 +20,10 @@ type UserListRow = {
   passwordResetLockedAt: Date | null;
   role: PrismaUserRole;
   createdAt: Date;
-  roleAssignments: { role: PrismaUserRole }[];
   center: { id: string; name: string; province: { id: string; name: string } };
 };
 
-type UserDetailRow = Omit<UserListRow, 'roleAssignments'> & {
+type UserDetailRow = UserListRow & {
   email: string;
   dateOfBirth: Date;
   jerseyNumber: number;
@@ -47,17 +45,6 @@ type UserDetailRow = Omit<UserListRow, 'roleAssignments'> & {
   }[];
 };
 
-function collectRoles(user: {
-  role: PrismaUserRole;
-  roleAssignments: { role: PrismaUserRole }[];
-}): UserRole[] {
-  const roles = new Set<UserRole>([user.role]);
-  for (const assignment of user.roleAssignments) {
-    roles.add(assignment.role);
-  }
-  return formatAdminUserRolesForDisplay([...roles]);
-}
-
 export function toAdminUserSummary(
   user: UserListRow,
   options?: { includeFullMobile?: boolean },
@@ -70,7 +57,7 @@ export function toAdminUserSummary(
     profilePhotoUrl: user.profilePhotoUrl,
     isActive: user.isActive,
     isLocked: isPasswordResetLocked(user.passwordResetLockedAt),
-    roles: collectRoles(user),
+    roles: [user.role],
     platformRole: user.role,
     centerId: user.center.id,
     centerName: user.center.name,

@@ -52,7 +52,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
     label: 'Verification',
     icon: BadgeCheck,
     description: 'Player verification and tournament registrations.',
-    available: false,
+    available: true,
   },
   {
     path: '/settings',

@@ -102,7 +102,6 @@ export class AdminService {
           role: true,
           createdAt: true,
           passwordResetLockedAt: true,
-          roleAssignments: { select: { role: true } },
           center: {
             select: { id: true, name: true, province: { select: { id: true, name: true } } },
           },

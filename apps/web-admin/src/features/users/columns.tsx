@@ -116,13 +116,9 @@ export function buildUserColumns({
       id: 'role',
       header: 'Role',
       cell: ({ row }) => (
-        <div className="flex max-w-[240px] flex-wrap gap-1">
-          {row.original.roles.map((role) => (
-            <Badge key={role} variant={ROLE_BADGE[role]}>
-              {ADMIN_USER_ROLE_LABELS[role]}
-            </Badge>
-          ))}
-        </div>
+        <Badge variant={ROLE_BADGE[row.original.platformRole]}>
+          {ADMIN_USER_ROLE_LABELS[row.original.platformRole]}
+        </Badge>
       ),
     },
     {

@@ -14,7 +14,7 @@ const center = {
 
 describe('admin.mapper', () => {
   describe('toAdminUserSummary', () => {
-    it('masks mobile and dedupes roles', () => {
+    it('masks mobile and reports only the platform role', () => {
       const summary = toAdminUserSummary({
         id: 'u1',
         firstName: 'Dev',
@@ -25,14 +25,13 @@ describe('admin.mapper', () => {
         passwordResetLockedAt: null,
         role: UserRole.Player,
         createdAt: new Date('2024-01-15T00:00:00.000Z'),
-        roleAssignments: [{ role: UserRole.Captain }],
         center,
       });
 
       expect(summary.maskedMobileNumber).toBe('+1 (***) ***-0007');
       expect(summary.mobileNumber).toBeUndefined();
       expect(summary.isLocked).toBe(false);
-      expect(summary.roles).toEqual([UserRole.Captain]);
+      expect(summary.roles).toEqual([UserRole.Player]);
     });
 
     it('exposes platform role and registration geography', () => {
@@ -46,7 +45,6 @@ describe('admin.mapper', () => {
         passwordResetLockedAt: null,
         role: UserRole.Player,
         createdAt: new Date('2024-01-15T00:00:00.000Z'),
-        roleAssignments: [{ role: UserRole.Captain }],
         center,
       });
 
@@ -71,7 +69,6 @@ describe('admin.mapper', () => {
           passwordResetLockedAt: null,
           role: UserRole.Player,
           createdAt: new Date('2024-01-15T00:00:00.000Z'),
-          roleAssignments: [],
           center,
         },
         { includeFullMobile: true },
@@ -96,7 +93,6 @@ describe('admin.mapper', () => {
         passwordResetLockedAt: new Date('2026-09-23T06:00:00.000Z'),
         role: UserRole.Player,
         createdAt: new Date('2024-01-15T00:00:00.000Z'),
-        roleAssignments: [],
         center,
       });
       expect(locked.isLocked).toBe(true);
@@ -111,7 +107,6 @@ describe('admin.mapper', () => {
         passwordResetLockedAt: new Date('2026-09-22T11:00:00.000Z'),
         role: UserRole.Player,
         createdAt: new Date('2024-01-15T00:00:00.000Z'),
-        roleAssignments: [],
         center,
       });
       expect(expired.isLocked).toBe(false);
