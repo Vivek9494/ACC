@@ -1,0 +1,19 @@
+# ACC web admin dashboard — Netlify site (acc-admin)
+# Build from monorepo root (base directory empty); publish only this app's dist.
+# The site origin must be listed in the API's CORS_ORIGINS on Railway.
+
+[build]
+  command = "pnpm --filter @acc/web-admin... run build"
+  publish = "apps/web-admin/dist"
+
+[build.environment]
+  # Baked into the bundle at build time; the dev /api proxy does not exist in production.
+  VITE_API_URL = "https://acc-api-production.up.railway.app"
+  # Expo Google Maps client key lives under apps/mobile/ in this monorepo.
+  SECRETS_SCAN_OMIT_PATHS = "apps/mobile/**"
+
+# Client-side routes (react-router) must resolve to the SPA shell.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
