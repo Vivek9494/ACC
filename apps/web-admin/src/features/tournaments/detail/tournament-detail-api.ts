@@ -1,17 +1,27 @@
-import type {
-  MatchListItem,
-  RegistrationDetail,
-  RegistrationVerificationQueue,
-  ScorecardResponse,
-  TeamDetailView,
-  TeamSummary,
-  TournamentDetail,
-  UpdateRatingsRequest,
-  VerifiedRegisteredPlayersView,
+import {
+  type AddTeamPlayersRequest,
+  type AddTeamPlayersResponse,
+  type AssignTeamRolesRequest,
+  type AssignTeamRolesResponse,
+  type CreateTeamRequest,
+  type MatchListItem,
+  type RegistrationDetail,
+  type RegistrationVerificationQueue,
+  type ScorecardResponse,
+  TEAM_LOGO_MAX_BYTES,
+  type TeamAddPlayersPickerView,
+  type TeamDetailView,
+  type TeamSummary,
+  type TournamentDetail,
+  type UpdateRatingsRequest,
+  type UpdateTeamRequest,
+  type UploadTeamLogoResponse,
+  type VerifiedRegisteredPlayersView,
 } from '@acc/types';
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { apiFetch } from '@/lib/api-client';
+import { apiFetch, apiSend } from '@/lib/api-client';
+import { uploadJpegImage } from '@/lib/image-upload';
 
 export const tournamentDetailKeys = {
   detail: (tournamentId: string) => ['tournament', tournamentId] as const,
@@ -49,6 +59,89 @@ export function useTeamRosters(tournamentId: string, teams: readonly TeamSummary
       queryFn: ({ signal }: { signal: AbortSignal }) =>
         apiFetch<TeamDetailView>(tournamentPath(tournamentId, `teams/${encodeURIComponent(team.id)}`), { signal }),
     })),
+  });
+}
+
+/**
+ * Create / rename / delete a team. The API enforces EDIT_TOURNAMENT (Admin always; organizer
+ * Club Manager / Center Sevak), the team cap, unique names, and the no-matches delete rule.
+ */
+export function useTeamMutations(tournamentId: string) {
+  const queryClient = useQueryClient();
+  const onSuccess = () => queryClient.invalidateQueries({ queryKey: tournamentDetailKeys.detail(tournamentId) });
+  const teamPath = (teamId: string) => tournamentPath(tournamentId, `teams/${encodeURIComponent(teamId)}`);
+
+  return {
+    create: useMutation({
+      mutationFn: (body: CreateTeamRequest) =>
+        apiFetch<TeamSummary>(tournamentPath(tournamentId, 'teams'), { method: 'POST', body }),
+      onSuccess,
+    }),
+    update: useMutation({
+      mutationFn: ({ teamId, body }: { teamId: string; body: UpdateTeamRequest }) =>
+        apiFetch<TeamSummary>(teamPath(teamId), { method: 'PATCH', body }),
+      onSuccess,
+    }),
+    remove: useMutation({
+      mutationFn: (teamId: string) => apiSend(teamPath(teamId), { method: 'DELETE' }),
+      onSuccess,
+    }),
+  };
+}
+
+/** GET …/add-player-candidates — confirmed registrants not on any team in the tournament. */
+export function useAddPlayerCandidates(tournamentId: string, teamId: string | null) {
+  return useQuery({
+    queryKey: [...tournamentDetailKeys.team(tournamentId, teamId ?? ''), 'candidates'],
+    queryFn: ({ signal }) =>
+      apiFetch<TeamAddPlayersPickerView>(
+        tournamentPath(tournamentId, `teams/${encodeURIComponent(teamId ?? '')}/add-player-candidates`),
+        { signal },
+      ),
+    enabled: teamId !== null,
+    // Any roster change on any team alters who is available, so never render a cached list.
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: 'always',
+  });
+}
+
+/**
+ * Roster add / remove (cap + single-team rules) and Captain / VC / Manager assignment — the same
+ * gated endpoints as mobile (registration-closed window, who-can-assign matrix, auto-roster).
+ */
+export function useRosterMutations(tournamentId: string) {
+  const queryClient = useQueryClient();
+  const onSuccess = () => queryClient.invalidateQueries({ queryKey: tournamentDetailKeys.teams(tournamentId) });
+  const teamPath = (teamId: string, resource: string) =>
+    tournamentPath(tournamentId, `teams/${encodeURIComponent(teamId)}/${resource}`);
+
+  return {
+    addPlayers: useMutation({
+      mutationFn: ({ teamId, body }: { teamId: string; body: AddTeamPlayersRequest }) =>
+        apiFetch<AddTeamPlayersResponse>(teamPath(teamId, 'players'), { method: 'POST', body }),
+      onSuccess,
+    }),
+    removePlayer: useMutation({
+      mutationFn: ({ teamId, userId }: { teamId: string; userId: string }) =>
+        apiSend(teamPath(teamId, `players/${encodeURIComponent(userId)}`), { method: 'DELETE' }),
+      onSuccess,
+    }),
+    assignRoles: useMutation({
+      mutationFn: ({ teamId, body }: { teamId: string; body: AssignTeamRolesRequest }) =>
+        apiFetch<AssignTeamRolesResponse>(teamPath(teamId, 'roles'), { method: 'PATCH', body }),
+      onSuccess,
+    }),
+  };
+}
+
+/** Logo: session → presigned PUT → complete. Persist `storageKey`; show `logoUrl`. */
+export function uploadTeamLogo(file: File): Promise<UploadTeamLogoResponse> {
+  return uploadJpegImage<UploadTeamLogoResponse>(file, {
+    sessionPath: '/tournaments/team-logo/upload-session',
+    completePath: '/tournaments/team-logo/complete',
+    maxBytes: TEAM_LOGO_MAX_BYTES,
+    tooLargeMessage: `Team logo must be ${TEAM_LOGO_MAX_BYTES / (1024 * 1024)} MB or smaller`,
   });
 }
 

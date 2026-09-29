@@ -97,7 +97,8 @@ export interface CreateTournamentFormInput {
   centerSevakCenterIds?: string[];
 }
 
-function combineLocalDateAndTimeToIso(date: string, time: string): string | null {
+/** Combine YYYY-MM-DD + HH:mm in the device/browser timezone into an ISO 8601 UTC string. */
+export function combineLocalDateAndTimeToIso(date: string, time: string): string | null {
   const dateMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
   const timeMatch = /^(\d{2}):(\d{2})$/.exec(time);
   if (!dateMatch || !timeMatch) {
@@ -113,6 +114,22 @@ function combineLocalDateAndTimeToIso(date: string, time: string): string | null
     0,
   );
   return combined.toISOString();
+}
+
+/** Inverse of {@link combineLocalDateAndTimeToIso}: ISO instant → local YYYY-MM-DD + HH:mm (empty when unset). */
+export function splitIsoToLocalDateAndTime(iso: string | null | undefined): { date: string; time: string } {
+  if (!iso) {
+    return { date: '', time: '' };
+  }
+  const value = new Date(iso);
+  if (Number.isNaN(value.getTime())) {
+    return { date: '', time: '' };
+  }
+  const pad = (n: number): string => String(n).padStart(2, '0');
+  return {
+    date: `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}`,
+    time: `${pad(value.getHours())}:${pad(value.getMinutes())}`,
+  };
 }
 
 function compareIsoDates(a: string, b: string): number {

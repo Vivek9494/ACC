@@ -3,8 +3,7 @@ import { type AuthUser, UserRole } from '@acc/types';
 /** Platform roles allowed into the web admin dashboard. */
 export const ADMIN_DASHBOARD_ROLES: readonly UserRole[] = [UserRole.Admin, UserRole.ClubManager];
 
-export const ACCESS_DENIED_MESSAGE =
-  'This dashboard is for Admin and Club Manager accounts only.';
+export const ACCESS_DENIED_MESSAGE = 'This dashboard is for Admin and Club Manager accounts only.';
 
 export const MUST_CHANGE_PASSWORD_MESSAGE =
   'Your account needs a new password. Finish the password change in the ACC mobile app, then sign in here.';

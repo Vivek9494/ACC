@@ -131,6 +131,8 @@ export interface UnassignedTeamPlayerCandidate {
   lastName: string;
   centerName: string;
   profilePhotoUrl: string | null;
+  /** E.164 — the picker is only served to roster managers, who may see contacts. */
+  mobileNumber: string;
   playerType: RegistrationPlayerType | null;
   battingRating: number | null;
   bowlingRating: number | null;

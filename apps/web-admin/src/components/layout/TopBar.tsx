@@ -1,6 +1,6 @@
 import { ADMIN_USER_ROLE_LABELS } from '@acc/types';
-import { ChevronDown, LogOut } from 'lucide-react';
-import { useLocation } from 'react-router';
+import { ChevronDown, LogOut, Settings } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router';
 
 import { navItemForPath } from '@/app/nav';
 import { useAuth } from '@/auth/auth-context';
@@ -20,6 +20,7 @@ function initials(firstName: string, lastName: string): string {
 export function TopBar(): React.ReactElement {
   const { user, logout } = useAuth();
   const { pathname } = useLocation();
+  const navigate = useNavigate();
   const section = navItemForPath(pathname);
 
   return (
@@ -57,6 +58,11 @@ export function TopBar(): React.ReactElement {
               </span>
               <span className="block text-xs text-muted-foreground">{user.mobileNumber}</span>
             </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onSelect={() => void navigate('/settings')}>
+              <Settings />
+              Settings
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem variant="destructive" onSelect={() => void logout()}>
               <LogOut />

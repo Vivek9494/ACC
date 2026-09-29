@@ -1,5 +1,13 @@
 import { BALL_TYPE_LABELS, TOURNAMENT_DISPLAY_STATUS_LABELS, TOURNAMENT_TYPE_LABELS } from '@acc/types';
-import { ArrowLeft, BarChart3, CalendarDays, ClipboardCheck, ListOrdered, Users, type LucideIcon } from 'lucide-react';
+import {
+  ArrowLeft,
+  BarChart3,
+  CalendarDays,
+  ClipboardCheck,
+  ListOrdered,
+  Users,
+  type LucideIcon,
+} from 'lucide-react';
 import { Link, NavLink, Outlet, useParams } from 'react-router';
 
 import { QueryErrorCard } from '@/components/QueryErrorCard';
@@ -8,6 +16,7 @@ import { cn } from '@/lib/utils';
 
 import { STATUS_BADGE } from '../columns';
 import { formatTournamentDates, tournamentLocationLabel } from '../tournament-list';
+import { AddTeamButton } from './AddTeamButton';
 import { DETAIL_TABS, type DetailTabPath } from './tournament-detail';
 import { useTournamentDetail } from './tournament-detail-api';
 
@@ -41,19 +50,22 @@ export function TournamentDetailLayout(): React.ReactElement {
         <>
           <div className="mb-6">
             {tournament ? (
-              <>
-                <div className="flex flex-wrap items-center gap-3">
-                  <h1 className="text-2xl font-bold tracking-tight text-secondary">{tournament.name}</h1>
-                  <Badge variant={STATUS_BADGE[tournament.displayStatus]}>
-                    {TOURNAMENT_DISPLAY_STATUS_LABELS[tournament.displayStatus]}
-                  </Badge>
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <h1 className="text-2xl font-bold tracking-tight text-secondary">{tournament.name}</h1>
+                    <Badge variant={STATUS_BADGE[tournament.displayStatus]}>
+                      {TOURNAMENT_DISPLAY_STATUS_LABELS[tournament.displayStatus]}
+                    </Badge>
+                  </div>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {TOURNAMENT_TYPE_LABELS[tournament.type]} · {BALL_TYPE_LABELS[tournament.ballType]} ·{' '}
+                    {formatTournamentDates(tournament.startAt, tournament.endAt)} · {tournament.teamCount} teams ·{' '}
+                    {tournamentLocationLabel(tournament)}
+                  </p>
                 </div>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {TOURNAMENT_TYPE_LABELS[tournament.type]} · {BALL_TYPE_LABELS[tournament.ballType]} ·{' '}
-                  {formatTournamentDates(tournament.startAt, tournament.endAt)} · {tournament.teamCount} teams ·{' '}
-                  {tournamentLocationLabel(tournament)}
-                </p>
-              </>
+                <AddTeamButton tournament={tournament} />
+              </div>
             ) : (
               <div className="space-y-2">
                 <div className="h-8 w-72 animate-pulse rounded bg-muted" />
@@ -88,6 +100,7 @@ export function TournamentDetailLayout(): React.ReactElement {
           <div className="@container">
             <Outlet />
           </div>
+
         </>
       )}
     </div>

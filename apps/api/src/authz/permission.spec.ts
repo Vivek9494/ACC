@@ -1027,6 +1027,53 @@ describe('PermissionService', () => {
     });
   });
 
+  describe('check() — EDIT_TOURNAMENT on a multi-center CENTER tournament (team CRUD gate)', () => {
+    const base: AuthUser = {
+      id: 'u-1',
+      firstName: 'Test',
+      lastName: 'User',
+      mobileNumber: '+15555550901',
+      email: 'u@acc.local',
+      centerId: 'center-Z',
+      jerseyNumber: 0,
+      profilePhotoUrl: null,
+      role: UserRole.Player,
+      isActive: true,
+    };
+    const sevakOf = (centerId: string) => [
+      { role: UserRole.CenterSevak, tournamentId: null, teamId: null, centerId },
+    ];
+    const edit = (actor: AuthUser) =>
+      service.check(Permission.EDIT_TOURNAMENT, actor, { tournamentId: 'multi-1' });
+
+    beforeEach(() => {
+      prisma.tournament.findUnique.mockResolvedValue({
+        type: TournamentType.Center,
+        createdByUserId: 'sevak-creator',
+        isDeleted: false,
+        centerLinks: [{ centerId: 'center-A' }, { centerId: 'center-B' }],
+      });
+    });
+
+    it('allows Admin with no Center Sevak assignment', async () => {
+      prisma.roleAssignment.findMany.mockResolvedValue([]);
+      await expect(edit({ ...base, id: 'admin-1', role: UserRole.Admin })).resolves.toBe(true);
+    });
+
+    it('allows a Sevak of a participating center', async () => {
+      prisma.roleAssignment.findMany.mockResolvedValue(sevakOf('center-B'));
+      await expect(edit({ ...base, id: 'sevak-b', role: UserRole.CenterSevak })).resolves.toBe(true);
+    });
+
+    it('denies a Sevak of a non-participating center, Club Manager, and Player', async () => {
+      prisma.roleAssignment.findMany.mockResolvedValue(sevakOf('center-Z'));
+      await expect(edit({ ...base, id: 'sevak-z', role: UserRole.CenterSevak })).resolves.toBe(false);
+      prisma.roleAssignment.findMany.mockResolvedValue([]);
+      await expect(edit({ ...base, id: 'cm-1', role: UserRole.ClubManager })).resolves.toBe(false);
+      await expect(edit({ ...base, id: 'player-1' })).resolves.toBe(false);
+    });
+  });
+
   describe('UPDATE_MATCH_STATUS (§5.2 match status controls)', () => {
     it('allows Admin and Club Manager', () => {
       expect(

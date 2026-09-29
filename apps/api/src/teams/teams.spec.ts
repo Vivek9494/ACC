@@ -548,6 +548,33 @@ describe('TeamsService assignTeamRoles', () => {
     expect(prisma.teamMembership.upsert).not.toHaveBeenCalled();
   });
 
+  it('rejects auto-roster that would exceed the players-per-team cap', async () => {
+    prisma.tournament.findUnique.mockResolvedValue({
+      id: 'tour-1',
+      isDeleted: false,
+      ballType: BallType.Tennis,
+      provinceId: 'prov-1',
+      type: TournamentType.APL,
+      createdByUserId: 'admin-1',
+      registrationOpenAt: new Date('2026-01-01T00:00:00.000Z'),
+      registrationCloseAt: new Date('2026-01-15T00:00:00.000Z'),
+      playersPerTeam: 11,
+    });
+    prisma.roleAssignment.findMany.mockReset();
+    prisma.roleAssignment.findMany.mockResolvedValue([]);
+    prisma.teamMembership.findMany
+      .mockResolvedValueOnce([]) // assertEligible — not on this team
+      .mockResolvedValueOnce([]); // ensureUsers — not yet rostered
+    const count = jest.fn().mockResolvedValue(11);
+    Object.assign(prisma.teamMembership, { count });
+
+    await expect(
+      service.assignTeamRoles(clubManager, 'tour-1', 'team-1', { captainUserId: 'player-2' }),
+    ).rejects.toMatchObject({ response: expect.objectContaining({ error: 'ROSTER_CAP_EXCEEDED' }) });
+    expect(prisma.teamMembership.upsert).not.toHaveBeenCalled();
+    expect(prisma.roleAssignment.create).not.toHaveBeenCalled();
+  });
+
   it('rejects when the Club Manager lacks permission', async () => {
     permissions.check.mockResolvedValue(false);
 

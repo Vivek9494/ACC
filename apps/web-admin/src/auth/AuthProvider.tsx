@@ -2,10 +2,23 @@ import type { AuthResponse, AuthUser } from '@acc/types';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 
-import { ApiError, apiFetch, apiSend, onSessionEnded, refreshSession, tokenStore } from '@/lib/api-client';
+import {
+  ApiError,
+  apiFetch,
+  apiSend,
+  onSessionEnded,
+  refreshSession,
+  tokenStore,
+} from '@/lib/api-client';
 
 import { dashboardAccessBlocker, SESSION_ENDED_MESSAGE } from './access';
-import { AuthContext, type AuthContextValue, type AuthStatus, type LoginInput } from './auth-context';
+import {
+  AuthContext,
+  type AuthContextValue,
+  type AuthStatus,
+  type LoginInput,
+  type NoticeTone,
+} from './auth-context';
 
 /** Best-effort server logout (bumps tokenVersion), then drop local tokens. */
 async function endServerSession(): Promise<void> {
@@ -20,14 +33,16 @@ export function AuthProvider({ children }: { children: ReactNode }): React.React
   const [status, setStatus] = useState<AuthStatus>('loading');
   const [user, setUser] = useState<AuthUser | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [noticeTone, setNoticeTone] = useState<NoticeTone>('error');
 
   const signOutLocally = useCallback(
-    (message: string | null) => {
+    (message: string | null, tone: NoticeTone = 'error') => {
       tokenStore.clear();
       queryClient.clear();
       setUser(null);
       setStatus('unauthenticated');
       setNotice(message);
+      setNoticeTone(tone);
     },
     [queryClient],
   );
@@ -91,8 +106,17 @@ export function AuthProvider({ children }: { children: ReactNode }): React.React
   }, [signOutLocally]);
 
   const value = useMemo<AuthContextValue>(
-    () => ({ status, user, notice, login, logout, clearNotice: () => setNotice(null) }),
-    [status, user, notice, login, logout],
+    () => ({
+      status,
+      user,
+      notice,
+      login,
+      logout,
+      noticeTone,
+      endSession: (message) => signOutLocally(message, 'success'),
+      clearNotice: () => setNotice(null),
+    }),
+    [status, user, notice, noticeTone, login, logout, signOutLocally],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

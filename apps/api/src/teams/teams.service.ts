@@ -1252,6 +1252,7 @@ export class TeamsService {
             firstName: true,
             lastName: true,
             profilePhotoUrl: true,
+            mobileNumber: true,
           },
         },
         center: { select: { name: true } },
@@ -1269,6 +1270,7 @@ export class TeamsService {
       lastName: row.user.lastName,
       centerName: row.center.name,
       profilePhotoUrl: row.user.profilePhotoUrl,
+      mobileNumber: row.user.mobileNumber,
       playerType: (row.playerType as RegistrationPlayerType | null) ?? null,
       battingRating: row.battingRating,
       bowlingRating: row.bowlingRating,
@@ -1367,7 +1369,7 @@ export class TeamsService {
    */
   private async ensureUsersRosteredOnTeam(
     tx: Prisma.TransactionClient,
-    tournament: { id: string; ballType: string },
+    tournament: { id: string; ballType: string; playersPerTeam?: number | null },
     teamId: string,
     userIds: string[],
   ): Promise<void> {
@@ -1402,6 +1404,19 @@ export class TeamsService {
     const toRoster = uniqueIds.filter((id) => !alreadyOnTeam.has(id));
     if (toRoster.length === 0) {
       return;
+    }
+
+    const cap = tournament.playersPerTeam ?? null;
+    if (cap != null) {
+      const currentRosterSize = await tx.teamMembership.count({
+        where: { teamId, tournamentId, ...activeTeamMembershipWhere },
+      });
+      if (currentRosterSize + toRoster.length > cap) {
+        throw new BadRequestException({
+          message: teamRosterCapExceededMessage(cap, currentRosterSize, toRoster.length),
+          error: 'ROSTER_CAP_EXCEEDED',
+        });
+      }
     }
 
     const registrations = await tx.registration.findMany({

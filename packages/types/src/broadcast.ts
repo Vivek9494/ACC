@@ -16,6 +16,12 @@ export interface ActiveBroadcast {
   expiresAt: string;
 }
 
+/** POST /admin/broadcast — message and/or image (storage key from the upload-session flow). */
+export interface CreateBroadcastRequest {
+  text?: string | null;
+  imageStorageKey?: string | null;
+}
+
 /** Admin settings view — includes poster identity and time remaining. */
 export interface AdminBroadcastView extends ActiveBroadcast {
   postedByUserId: string;

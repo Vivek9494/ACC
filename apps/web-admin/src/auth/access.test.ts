@@ -41,7 +41,11 @@ describe('dashboardAccessBlocker', () => {
 
   it('asks club managers with a pending password change to finish it on mobile', () => {
     expect(
-      dashboardAccessBlocker({ role: UserRole.ClubManager, isActive: true, mustChangePassword: true }),
+      dashboardAccessBlocker({
+        role: UserRole.ClubManager,
+        isActive: true,
+        mustChangePassword: true,
+      }),
     ).toBe(MUST_CHANGE_PASSWORD_MESSAGE);
   });
 });

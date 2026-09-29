@@ -1,7 +1,9 @@
+import { UserRole } from '@acc/types';
 import {
   BadgeCheck,
   BarChart3,
   MapPinned,
+  Megaphone,
   Settings,
   Trophy,
   Users,
@@ -16,6 +18,8 @@ export interface NavItem {
   description: string;
   /** False until the area ships (later phases) — renders a stub page. */
   available: boolean;
+  /** Restricts the area to these platform roles (mirrors the API permission); all dashboard roles when unset. */
+  roles?: readonly UserRole[];
 }
 
 export const NAV_ITEMS: readonly NavItem[] = [
@@ -44,8 +48,9 @@ export const NAV_ITEMS: readonly NavItem[] = [
     path: '/geography',
     label: 'Geography',
     icon: MapPinned,
-    description: 'Provinces, cities and centers.',
-    available: false,
+    description: 'Tournament types, provinces and centers.',
+    available: true,
+    roles: [UserRole.Admin],
   },
   {
     path: '/verification',
@@ -55,15 +60,30 @@ export const NAV_ITEMS: readonly NavItem[] = [
     available: true,
   },
   {
+    path: '/broadcast',
+    label: 'Broadcast',
+    icon: Megaphone,
+    description: 'Announcement banner shown on every signed-in dashboard for 24 hours.',
+    available: true,
+  },
+  {
     path: '/settings',
     label: 'Settings',
     icon: Settings,
-    description: 'Platform configuration.',
-    available: false,
+    description: 'Your account and platform configuration.',
+    available: true,
   },
 ];
 
 export const DEFAULT_ROUTE = '/tournaments';
+
+export function canOpenNavItem(item: Pick<NavItem, 'roles'>, role: UserRole): boolean {
+  return !item.roles || item.roles.includes(role);
+}
+
+export function navItemsFor(role: UserRole): NavItem[] {
+  return NAV_ITEMS.filter((item) => canOpenNavItem(item, role));
+}
 
 export function navItemForPath(pathname: string): NavItem | undefined {
   return NAV_ITEMS.find((item) => pathname === item.path || pathname.startsWith(`${item.path}/`));

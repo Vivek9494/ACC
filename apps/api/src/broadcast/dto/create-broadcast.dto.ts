@@ -1,8 +1,8 @@
 import { IsOptional, IsString, MaxLength } from 'class-validator';
 
-import { BROADCAST_TEXT_MAX_LENGTH } from '@acc/types';
+import { BROADCAST_TEXT_MAX_LENGTH, type CreateBroadcastRequest } from '@acc/types';
 
-export class CreateBroadcastDto {
+export class CreateBroadcastDto implements CreateBroadcastRequest {
   @IsOptional()
   @IsString()
   @MaxLength(BROADCAST_TEXT_MAX_LENGTH)

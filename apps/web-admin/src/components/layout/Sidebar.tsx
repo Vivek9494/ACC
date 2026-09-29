@@ -1,9 +1,12 @@
 import { NavLink } from 'react-router';
 
-import { NAV_ITEMS } from '@/app/nav';
+import { navItemsFor } from '@/app/nav';
+import { useAuth } from '@/auth/auth-context';
 import { cn } from '@/lib/utils';
 
 export function Sidebar(): React.ReactElement {
+  const { user } = useAuth();
+  const items = user ? navItemsFor(user.role) : [];
   return (
     <aside className="sticky top-0 flex h-screen w-60 shrink-0 flex-col bg-sidebar text-sidebar-foreground">
       <div className="flex h-16 items-center gap-3 border-b border-sidebar-border px-5">
@@ -17,7 +20,7 @@ export function Sidebar(): React.ReactElement {
       </div>
 
       <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4" aria-label="Main">
-        {NAV_ITEMS.map(({ path, label, icon: Icon, available }) => (
+        {items.map(({ path, label, icon: Icon, available }) => (
           <NavLink
             key={path}
             to={path}

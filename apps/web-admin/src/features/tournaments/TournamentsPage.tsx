@@ -5,13 +5,16 @@ import {
   TOURNAMENT_TYPE_LABELS,
   TournamentDisplayStatus,
   TournamentType,
+  type TournamentSummary,
 } from '@acc/types';
-import { AlertCircle, CalendarClock, CheckCircle2, Radio, RefreshCw, Search, Trophy, X } from 'lucide-react';
+import type { ColumnDef } from '@tanstack/react-table';
+import { AlertCircle, CalendarClock, CheckCircle2, Plus, Radio, RefreshCw, Search, Trophy, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 
 import { DataTable } from '@/components/data-table/DataTable';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { RowActionsMenu } from '@/components/RowActionsMenu';
 import { StatCard } from '@/components/StatCard';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -19,6 +22,8 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 import { tournamentColumns } from './columns';
+import { DeleteTournamentDialog, type DeletableTournament } from './manage/DeleteTournamentDialog';
+import { useTournamentPermissions } from './manage/tournament-manage-api';
 import {
   ALL,
   countByStatus,
@@ -64,6 +69,31 @@ export function TournamentsPage(): React.ReactElement {
   const query = useTournaments();
   const navigate = useNavigate();
   const [filters, setFilters] = useState<TournamentFilters>(DEFAULT_TOURNAMENT_FILTERS);
+  const [pendingDelete, setPendingDelete] = useState<DeletableTournament | null>(null);
+  const permissions = useTournamentPermissions();
+
+  const columns = useMemo<ColumnDef<TournamentSummary>[]>(
+    () => [
+      ...tournamentColumns,
+      {
+        id: 'actions',
+        header: () => <span className="sr-only">Actions</span>,
+        enableSorting: false,
+        cell: ({ row }) => {
+          const allowed = permissions.data?.get(row.original.id);
+          if (!allowed?.canEdit && !allowed?.canDelete) return null;
+          return (
+            <RowActionsMenu
+              label={row.original.name}
+              onEdit={allowed.canEdit ? () => void navigate(`${row.original.id}/edit`) : undefined}
+              onDelete={allowed.canDelete ? () => setPendingDelete(row.original) : undefined}
+            />
+          );
+        },
+      },
+    ],
+    [permissions.data, navigate],
+  );
 
   const all = useMemo(() => query.data ?? [], [query.data]);
   const rows = useMemo(() => filterTournaments(all, filters), [all, filters]);
@@ -84,10 +114,16 @@ export function TournamentsPage(): React.ReactElement {
         title="Tournaments"
         description="Every ACC, APL and Center-level tournament on the platform."
         actions={
-          <Button variant="outline" onClick={() => void query.refetch()} disabled={query.isFetching}>
-            <RefreshCw className={query.isFetching ? 'animate-spin' : undefined} />
-            Refresh
-          </Button>
+          <>
+            <Button variant="outline" onClick={() => void query.refetch()} disabled={query.isFetching}>
+              <RefreshCw className={query.isFetching ? 'animate-spin' : undefined} />
+              Refresh
+            </Button>
+            <Button onClick={() => void navigate('new')}>
+              <Plus />
+              Add tournament
+            </Button>
+          </>
         }
       />
 
@@ -163,7 +199,7 @@ export function TournamentsPage(): React.ReactElement {
         </Card>
       ) : (
         <DataTable
-          columns={tournamentColumns}
+          columns={columns}
           data={rows}
           isLoading={query.isPending}
           getRowId={(t) => t.id}
@@ -175,6 +211,8 @@ export function TournamentsPage(): React.ReactElement {
           }
         />
       )}
+
+      <DeleteTournamentDialog tournament={pendingDelete} onOpenChange={(open) => !open && setPendingDelete(null)} />
     </div>
   );
 }

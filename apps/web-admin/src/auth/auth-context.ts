@@ -3,6 +3,8 @@ import { createContext, useContext } from 'react';
 
 export type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated';
 
+export type NoticeTone = 'error' | 'success';
+
 export interface LoginInput {
   mobileNumber: string;
   password: string;
@@ -14,8 +16,11 @@ export interface AuthContextValue {
   user: AuthUser | null;
   /** One-shot message for the login page (session ended, access denied…). */
   notice: string | null;
+  noticeTone: NoticeTone;
   login: (input: LoginInput) => Promise<void>;
   logout: () => Promise<void>;
+  /** Drop the local session the server already invalidated (password changed) and show a success notice. */
+  endSession: (notice: string) => void;
   clearNotice: () => void;
 }
 

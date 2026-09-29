@@ -8,6 +8,7 @@ import { FullPageSpinner } from '@/components/layout/FullPageSpinner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { cn } from '@/lib/utils';
 
 function redirectTarget(state: unknown): string {
   if (state && typeof state === 'object' && 'from' in state && typeof state.from === 'string') {
@@ -17,7 +18,7 @@ function redirectTarget(state: unknown): string {
 }
 
 export function LoginPage(): React.ReactElement {
-  const { status, notice, login, clearNotice } = useAuth();
+  const { status, notice, noticeTone, login, clearNotice } = useAuth();
   const location = useLocation();
   const [mobileNumber, setMobileNumber] = useState('');
   const [password, setPassword] = useState('');
@@ -47,6 +48,7 @@ export function LoginPage(): React.ReactElement {
   };
 
   const message = error ?? notice;
+  const success = error === null && notice !== null && noticeTone === 'success';
 
   return (
     <div className="grid min-h-screen lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
@@ -65,17 +67,22 @@ export function LoginPage(): React.ReactElement {
             Run every tournament from <span className="text-primary">one desk.</span>
           </h1>
           <p className="mt-4 text-white/70">
-            Tournaments, players, registrations and statistics for ACC, APL and Center-level cricket.
+            Tournaments, players, registrations and statistics for ACC, APL and Center-level
+            cricket.
           </p>
         </div>
-        <p className="text-xs text-white/50">Admin & Club Manager access only · Data hosted in Canada</p>
+        <p className="text-xs text-white/50">
+          Admin & Club Manager access only · Data hosted in Canada
+        </p>
         <div className="pointer-events-none absolute -right-24 -bottom-24 size-80 rounded-full border-[36px] border-primary/20" />
       </section>
 
       <section className="flex items-center justify-center p-6">
         <div className="w-full max-w-sm">
           <h2 className="text-2xl font-bold text-secondary">Sign in</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Use your ACC mobile number and password.</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Use your ACC mobile number and password.
+          </p>
 
           <form className="mt-8 space-y-5" onSubmit={onSubmit} noValidate>
             <div className="space-y-2">
@@ -113,7 +120,13 @@ export function LoginPage(): React.ReactElement {
             </label>
 
             {message ? (
-              <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive">
+              <p
+                role={success ? 'status' : 'alert'}
+                className={cn(
+                  'rounded-md px-3 py-2 text-sm font-medium',
+                  success ? 'bg-secondary/10 text-secondary' : 'bg-destructive/10 text-destructive',
+                )}
+              >
                 {message}
               </p>
             ) : null}
@@ -126,7 +139,8 @@ export function LoginPage(): React.ReactElement {
 
           <p className="mt-6 flex gap-2 rounded-md border bg-card px-3 py-2.5 text-xs text-muted-foreground">
             <Info className="mt-0.5 size-3.5 shrink-0 text-secondary" />
-            One active session per account: signing in here signs you out of the ACC mobile app (and vice versa).
+            One active session per account: signing in here signs you out of the ACC mobile app (and
+            vice versa).
           </p>
         </div>
       </section>

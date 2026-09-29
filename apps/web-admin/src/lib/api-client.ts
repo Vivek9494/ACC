@@ -1,4 +1,4 @@
-import type { AuthTokens } from '@acc/types';
+import { AuthErrorCode, type AuthTokens } from '@acc/types';
 
 const API_BASE = (import.meta.env.VITE_API_URL ?? '/api').replace(/\/$/, '');
 const REFRESH_TOKEN_KEY = 'acc-admin.refreshToken';
@@ -12,6 +12,8 @@ export class ApiError extends Error {
     message: string,
     readonly code?: string,
     messages?: readonly string[],
+    /** Per-field validation messages (e.g. tournament form), keyed by form field. */
+    readonly fields: Readonly<Record<string, string>> = {},
   ) {
     super(message);
     this.name = 'ApiError';
@@ -20,7 +22,10 @@ export class ApiError extends Error {
 }
 
 /** User-facing message for any thrown value. */
-export function errorMessage(err: unknown, fallback = 'Something went wrong. Please try again.'): string {
+export function errorMessage(
+  err: unknown,
+  fallback = 'Something went wrong. Please try again.',
+): string {
   return err instanceof Error && err.message ? err.message : fallback;
 }
 
@@ -49,7 +54,11 @@ export const tokenStore = {
   set(tokens: AuthTokens, remember?: boolean): void {
     const current = storageHolding(REFRESH_TOKEN_KEY);
     const target =
-      remember === undefined ? (current ?? sessionStorage) : remember ? localStorage : sessionStorage;
+      remember === undefined
+        ? (current ?? sessionStorage)
+        : remember
+          ? localStorage
+          : sessionStorage;
     localStorage.removeItem(REFRESH_TOKEN_KEY);
     sessionStorage.removeItem(REFRESH_TOKEN_KEY);
     target.setItem(REFRESH_TOKEN_KEY, tokens.refreshToken);
@@ -75,6 +84,7 @@ function isEnvelope(value: unknown): value is { data: unknown; error: unknown } 
 async function toApiError(res: Response): Promise<ApiError> {
   let messages: string[] = [`Request failed (${res.status})`];
   let code: string | undefined;
+  const fields: Record<string, string> = {};
   try {
     const body: unknown = await res.json();
     const error = isEnvelope(body) ? body.error : body;
@@ -85,12 +95,22 @@ async function toApiError(res: Response): Promise<ApiError> {
         messages = raw;
       }
       if ('code' in error && typeof error.code === 'string') code = error.code;
+      if ('fields' in error && error.fields && typeof error.fields === 'object') {
+        for (const [key, value] of Object.entries(error.fields)) {
+          if (typeof value === 'string') fields[key] = value;
+        }
+      }
     }
   } catch {
     // Non-JSON error body — keep the generic message.
   }
-  return new ApiError(res.status, messages.join(', '), code, messages);
+  return new ApiError(res.status, messages.join(', '), code, messages, fields);
 }
+
+/** 401s that reject a submitted credential (not the session) — never refresh or sign out on these. */
+const CREDENTIAL_ERROR_CODES: ReadonlySet<string> = new Set([
+  AuthErrorCode.CurrentPasswordIncorrect,
+]);
 
 /** Single-flight refresh; resolves false (and clears tokens) when the session is gone. */
 export function refreshSession(): Promise<boolean> {
@@ -129,7 +149,11 @@ export interface RequestOptions {
   signal?: AbortSignal;
 }
 
-async function request(path: string, options: RequestOptions, allowRetry: boolean): Promise<Response> {
+async function request(
+  path: string,
+  options: RequestOptions,
+  allowRetry: boolean,
+): Promise<Response> {
   const { method = 'GET', body, auth = true, signal } = options;
   const headers: Record<string, string> = { Accept: 'application/json' };
   if (body !== undefined) headers['Content-Type'] = 'application/json';
@@ -143,6 +167,8 @@ async function request(path: string, options: RequestOptions, allowRetry: boolea
   });
 
   if (res.status === 401 && auth && allowRetry) {
+    const error = await toApiError(res.clone());
+    if (error.code && CREDENTIAL_ERROR_CODES.has(error.code)) throw error;
     if (await refreshSession()) return request(path, options, false);
     tokenStore.clear();
     sessionEndedListener?.();
@@ -156,6 +182,18 @@ async function request(path: string, options: RequestOptions, allowRetry: boolea
 export async function apiFetch<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const res = await request(path, options, true);
   const data: T = await res.json();
+  return data;
+}
+
+/** JSON request for endpoints that return `null` — Nest sends an empty body for it. */
+export async function apiFetchOptional<T>(
+  path: string,
+  options: RequestOptions = {},
+): Promise<T | null> {
+  const res = await request(path, options, true);
+  const text = await res.text();
+  if (text.length === 0) return null;
+  const data: T | null = JSON.parse(text);
   return data;
 }
 

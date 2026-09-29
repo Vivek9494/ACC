@@ -11,7 +11,13 @@ import { RegistrationsTab } from '@/features/tournaments/detail/RegistrationsTab
 import { StatsTab } from '@/features/tournaments/detail/StatsTab';
 import { TeamsTab } from '@/features/tournaments/detail/TeamsTab';
 import { TournamentDetailLayout } from '@/features/tournaments/detail/TournamentDetailLayout';
+import { CreateTournamentPage, EditTournamentPage } from '@/features/tournaments/manage/TournamentFormPage';
 import { TournamentsPage } from '@/features/tournaments/TournamentsPage';
+import { RequireNavRole } from '@/auth/RequireNavRole';
+import { BroadcastPage } from '@/features/broadcast/BroadcastPage';
+import { GeographyManagementPage } from '@/features/geography/GeographyManagementPage';
+import { ProvinceCentersPage } from '@/features/geography/ProvinceCentersPage';
+import { SettingsPage } from '@/features/settings/SettingsPage';
 import { UsersPage } from '@/features/users/UsersPage';
 import { VerificationPage } from '@/features/verification/VerificationPage';
 import { ComingSoonPage } from '@/pages/ComingSoonPage';
@@ -22,10 +28,14 @@ import { DEFAULT_ROUTE, NAV_ITEMS } from './nav';
 
 // Split out of the main bundle (recharts lives in the OTP section).
 const OtpAnalyticsPage = lazy(() =>
-  import('@/features/statistics/otp/OtpAnalyticsPage').then((m) => ({ default: m.OtpAnalyticsPage })),
+  import('@/features/statistics/otp/OtpAnalyticsPage').then((m) => ({
+    default: m.OtpAnalyticsPage,
+  })),
 );
 const GeographyPage = lazy(() =>
-  import('@/features/statistics/geography/GeographyPage').then((m) => ({ default: m.GeographyPage })),
+  import('@/features/statistics/geography/GeographyPage').then((m) => ({
+    default: m.GeographyPage,
+  })),
 );
 const TournamentStatsPage = lazy(() =>
   import('@/features/statistics/tournament-stats/TournamentStatsPage').then((m) => ({
@@ -48,6 +58,8 @@ export const router = createBrowserRouter([
         children: [
           { index: true, element: <Navigate to={DEFAULT_ROUTE} replace /> },
           { path: 'tournaments', element: <TournamentsPage /> },
+          { path: 'tournaments/new', element: <CreateTournamentPage /> },
+          { path: 'tournaments/:tournamentId/edit', element: <EditTournamentPage /> },
           { path: 'verification', element: <VerificationPage /> },
           {
             path: 'tournaments/:tournamentId',
@@ -64,6 +76,13 @@ export const router = createBrowserRouter([
           },
           { path: 'users', element: <UsersPage /> },
           {
+            element: <RequireNavRole path="/geography" />,
+            children: [
+              { path: 'geography', element: <GeographyManagementPage /> },
+              { path: 'geography/provinces/:provinceId', element: <ProvinceCentersPage /> },
+            ],
+          },
+          {
             path: 'statistics',
             element: <StatisticsLayout />,
             children: [
@@ -72,6 +91,8 @@ export const router = createBrowserRouter([
               { path: 'tournaments', element: <TournamentStatsPage /> },
             ],
           },
+          { path: 'broadcast', element: <BroadcastPage /> },
+          { path: 'settings', element: <SettingsPage /> },
           ...stubRoutes,
           { path: '*', element: <NotFoundPage /> },
         ],
