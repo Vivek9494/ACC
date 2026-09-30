@@ -33,6 +33,7 @@ export * from './province';
 export * from './live';
 export * from './stats-cache';
 export * from './overlay-theme';
+export * from './overlay-theme-graphics';
 export * from './youtube-url';
 export * from './broadcast-stats';
 export * from './broadcast-entry';

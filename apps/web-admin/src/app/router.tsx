@@ -19,6 +19,8 @@ import { RequireNavRole } from '@/auth/RequireNavRole';
 import { BroadcastPage } from '@/features/broadcast/BroadcastPage';
 import { GeographyManagementPage } from '@/features/geography/GeographyManagementPage';
 import { ProvinceCentersPage } from '@/features/geography/ProvinceCentersPage';
+import { OverlayThemeFormPage } from '@/features/overlay/OverlayThemeFormPage';
+import { OverlayThemesPage } from '@/features/overlay/OverlayThemesPage';
 import { SettingsPage } from '@/features/settings/SettingsPage';
 import { UsersPage } from '@/features/users/UsersPage';
 import { VerificationPage } from '@/features/verification/VerificationPage';
@@ -96,6 +98,14 @@ export const router = createBrowserRouter([
             ],
           },
           { path: 'broadcast', element: <BroadcastPage /> },
+          {
+            element: <RequireNavRole path="/overlay" />,
+            children: [
+              { path: 'overlay', element: <OverlayThemesPage /> },
+              { path: 'overlay/new', element: <OverlayThemeFormPage /> },
+              { path: 'overlay/:themeId', element: <OverlayThemeFormPage /> },
+            ],
+          },
           { path: 'settings', element: <SettingsPage /> },
           ...stubRoutes,
           { path: '*', element: <NotFoundPage /> },

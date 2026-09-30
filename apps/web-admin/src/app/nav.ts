@@ -4,6 +4,7 @@ import {
   BarChart3,
   MapPinned,
   Megaphone,
+  MonitorPlay,
   Settings,
   Trophy,
   Users,
@@ -65,6 +66,14 @@ export const NAV_ITEMS: readonly NavItem[] = [
     icon: Megaphone,
     description: 'Announcement banner shown on every signed-in dashboard for 24 hours.',
     available: true,
+  },
+  {
+    path: '/overlay',
+    label: 'Overlay',
+    icon: MonitorPlay,
+    description: 'Broadcast overlay themes — one HTML graphic per overlay control.',
+    available: true,
+    roles: [UserRole.Admin],
   },
   {
     path: '/settings',

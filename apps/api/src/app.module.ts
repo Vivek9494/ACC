@@ -47,6 +47,7 @@ import { StandingsModule } from './standings/standings.module';
 import { KnockoutBracketModule } from './knockout-bracket/knockout-bracket.module';
 import { KnockoutQualificationModule } from './knockout-qualification/knockout-qualification.module';
 import { KnockoutSeedingModule } from './knockout-seeding/knockout-seeding.module';
+import { OverlayThemesModule } from './overlay-themes/overlay-themes.module';
 
 @Module({
   imports: [
@@ -65,6 +66,7 @@ import { KnockoutSeedingModule } from './knockout-seeding/knockout-seeding.modul
     AppSettingsModule,
     BroadcastModule,
     BroadcastEntryModule,
+    OverlayThemesModule,
     BirthdaysModule,
     NotificationsModule,
     AuthModule,
