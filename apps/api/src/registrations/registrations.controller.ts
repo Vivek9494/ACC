@@ -150,10 +150,11 @@ export class RegistrationsController {
   @RequirePermission(Permission.BUILD_CUSTOM_FORM)
   @UseGuards(PermissionGuard)
   buildForm(
+    @CurrentUser() user: AuthUser,
     @Param('tournamentId') tournamentId: string,
     @Body() dto: BuildCustomFormDto,
   ): Promise<RegistrationFieldDefinition[]> {
-    return this.registrations.buildCustomForm(tournamentId, dto);
+    return this.registrations.buildCustomForm(user, tournamentId, dto);
   }
 
   /** Organizer requests extra fields from Admin (§7.2). */
@@ -233,9 +234,10 @@ export class RegistrationsController {
   @RequirePermission(Permission.UPDATE_PLAYER_AVAILABILITY)
   @UseGuards(PermissionGuard)
   updateAvailability(
+    @CurrentUser() user: AuthUser,
     @Param('registrationId') registrationId: string,
     @Body() dto: UpdateAvailabilityDto,
   ): Promise<RegistrationDetail> {
-    return this.registrations.updateAvailability(registrationId, dto);
+    return this.registrations.updateAvailability(user, registrationId, dto);
   }
 }

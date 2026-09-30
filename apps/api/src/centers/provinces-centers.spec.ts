@@ -11,6 +11,7 @@ import { Test } from '@nestjs/testing';
 import type { ExecutionContext } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 
+import { AuditService } from '../audit/audit.service';
 import { PermissionGuard } from '../authz/permission.guard';
 import { PermissionService } from '../authz/permission.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -66,7 +67,8 @@ describe('ProvincesService', () => {
       },
     };
     const moduleRef = await Test.createTestingModule({
-      providers: [ProvincesService, { provide: PrismaService, useValue: prisma }],
+      providers: [ProvincesService, { provide: PrismaService, useValue: prisma },
+        { provide: AuditService, useValue: { record: jest.fn().mockResolvedValue(undefined) } }],
     }).compile();
     service = moduleRef.get(ProvincesService);
   });
@@ -81,7 +83,7 @@ describe('ProvincesService', () => {
       _count: { centers: 3 },
     });
 
-    await expect(service.remove('prov-1')).rejects.toMatchObject({
+    await expect(service.remove(admin, 'prov-1')).rejects.toMatchObject({
       response: expect.objectContaining({
         error: 'PROVINCE_HAS_CENTERS',
         references: { centers: 3 },
@@ -122,7 +124,8 @@ describe('CentersService', () => {
       tournamentCenter: { count: jest.fn() },
     };
     const moduleRef = await Test.createTestingModule({
-      providers: [CentersService, { provide: PrismaService, useValue: prisma }],
+      providers: [CentersService, { provide: PrismaService, useValue: prisma },
+        { provide: AuditService, useValue: { record: jest.fn().mockResolvedValue(undefined) } }],
     }).compile();
     service = moduleRef.get(CentersService);
   });
@@ -133,7 +136,7 @@ describe('CentersService', () => {
     prisma.registration.count.mockResolvedValue(1);
     prisma.tournamentCenter.count.mockResolvedValue(1);
 
-    await expect(service.remove('c-1')).rejects.toMatchObject({
+    await expect(service.remove(admin, 'c-1')).rejects.toMatchObject({
       response: expect.objectContaining({
         error: 'CENTER_IN_USE',
         references: { users: 2, registrations: 1, tournaments: 1 },
@@ -146,13 +149,13 @@ describe('CentersService', () => {
     prisma.center.create.mockRejectedValue(prismaKnownError('P2002'));
 
     await expect(
-      service.create({ name: 'Brampton', provinceId: 'prov-1' }),
+      service.create(admin, { name: 'Brampton', provinceId: 'prov-1' }),
     ).rejects.toBeInstanceOf(ConflictException);
   });
 
   it('throws when updating a missing center', async () => {
     prisma.center.findUnique.mockResolvedValue(null);
-    await expect(service.update('missing', { name: 'X' })).rejects.toBeInstanceOf(NotFoundException);
+    await expect(service.update(admin, 'missing', { name: 'X' })).rejects.toBeInstanceOf(NotFoundException);
   });
 });
 

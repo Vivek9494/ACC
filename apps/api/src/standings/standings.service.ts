@@ -7,6 +7,7 @@ import {
   resolveStandingsSplitPointOutcome,
   LEATHER_STANDINGS_POINTS,
   TENNIS_STANDINGS_POINTS,
+  showsNetRunRateForBallType,
   type AuthUser,
   type StandingsInningsInput,
   type StandingsMatchInput,
@@ -98,7 +99,7 @@ export class StandingsService {
     assertTournamentActive(tournament);
 
     const isLeather = tournament.ballType === BallType.Leather;
-    const showNetRunRate = !isLeather;
+    const showNetRunRate = showsNetRunRateForBallType(tournament.ballType as BallType);
     const points = isLeather ? LEATHER_STANDINGS_POINTS : TENNIS_STANDINGS_POINTS;
 
     const scorecards = await mapPool(

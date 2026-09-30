@@ -1,4 +1,5 @@
 import {
+  AuditEntityType,
   type AuthUser,
   BallType,
   effectiveMatchSchedulingFormat,
@@ -20,6 +21,7 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 
+import { AuditService } from '../audit/audit.service';
 import { PermissionService } from '../authz/permission.service';
 import { activeMatchWhere } from '../matches/match-query';
 import { PrismaService } from '../prisma/prisma.service';
@@ -45,6 +47,7 @@ export class GroupsService {
     private readonly permissions: PermissionService,
     private readonly tournaments: TournamentsService,
     private readonly statsInvalidation: StatsInvalidationService,
+    private readonly audit: AuditService,
   ) {}
 
   async list(tournamentId: string): Promise<GroupSummary[]> {
@@ -144,6 +147,18 @@ export class GroupsService {
             });
           }
         }
+
+        await this.audit.record(
+          {
+            action: 'GROUP_CREATED',
+            actorUserId: actor.id,
+            targetEntityType: AuditEntityType.Group,
+            targetEntityId: group.id,
+            after: { name, teamIds },
+            details: { tournamentId, schedulingFormatFinalized: finalizeGroupStage },
+          },
+          tx,
+        );
 
         return tx.tournamentGroup.findUniqueOrThrow({
           where: { id: group.id },
@@ -267,6 +282,18 @@ export class GroupsService {
             });
           }
         }
+
+        await this.audit.record(
+          {
+            action: 'GROUP_UPDATED',
+            actorUserId: actor.id,
+            targetEntityType: AuditEntityType.Group,
+            targetEntityId: groupId,
+            ...(rename ? { before: { name: group.name }, after: { name: rename.name } } : {}),
+            details: { tournamentId, addedTeamIds: addTeamIds, removedTeamIds: removeTeamIds },
+          },
+          tx,
+        );
       });
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
@@ -286,7 +313,7 @@ export class GroupsService {
 
     this.assertTournamentSupportsGroups(tournament);
 
-    await this.requireGroup(tournamentId, groupId);
+    const group = await this.requireGroup(tournamentId, groupId);
 
     const matchCount = await countGroupBlockingLiveMatches(
       this.prisma,
@@ -309,16 +336,27 @@ export class GroupsService {
       });
       await tx.tournamentGroup.delete({ where: { id: groupId } });
       const remainingGroups = await tx.tournamentGroup.count({ where: { tournamentId } });
-      if (
+      const clearFormat =
         remainingGroups === 0 &&
         tournament.matchSchedulingFormat === MatchSchedulingFormat.GroupStageKnockout &&
-        (await tx.match.count({ where: { tournamentId, ...activeMatchWhere } })) === 0
-      ) {
+        (await tx.match.count({ where: { tournamentId, ...activeMatchWhere } })) === 0;
+      if (clearFormat) {
         await tx.tournament.update({
           where: { id: tournamentId },
           data: { matchSchedulingFormat: null },
         });
       }
+      await this.audit.record(
+        {
+          action: 'GROUP_DELETED',
+          actorUserId: actor.id,
+          targetEntityType: AuditEntityType.Group,
+          targetEntityId: groupId,
+          before: { name: group.name },
+          details: { tournamentId, schedulingFormatCleared: clearFormat },
+        },
+        tx,
+      );
     });
     await this.statsInvalidation.invalidateTournamentAggregates(tournamentId);
   }

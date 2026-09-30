@@ -1,4 +1,5 @@
 import {
+  AuditEntityType,
   type AssignTeamRolesResponse,
   type AuthUser,
   BallType,
@@ -42,6 +43,7 @@ import { Prisma } from '@prisma/client';
 
 import { PermissionService } from '../authz/permission.service';
 import { AuditService } from '../audit/audit.service';
+import { auditDiff } from '../audit/audit-snapshot';
 import { MediaUrlResolver } from '../storage/media-url.resolver';
 import { S3StorageService } from '../storage/s3-storage.service';
 import { PlayerStatsService } from '../player-stats/player-stats.service';
@@ -679,14 +681,28 @@ export class TeamsService {
     await this.assertTeamNameAvailable(tournamentId, nameNormalized);
 
     try {
-      const created = await this.prisma.team.create({
-        data: {
-          tournamentId,
-          name,
-          nameNormalized,
-          logoUrl: dto.logoUrl ?? null,
-        },
-        include: { _count: { select: { memberships: activeTeamMembershipCountSelect } } },
+      const created = await this.prisma.$transaction(async (tx) => {
+        const team = await tx.team.create({
+          data: {
+            tournamentId,
+            name,
+            nameNormalized,
+            logoUrl: dto.logoUrl ?? null,
+          },
+          include: { _count: { select: { memberships: activeTeamMembershipCountSelect } } },
+        });
+        await this.audit.record(
+          {
+            action: 'TEAM_CREATED',
+            actorUserId: actor.id,
+            targetEntityType: AuditEntityType.Team,
+            targetEntityId: team.id,
+            after: { name: team.name, logoUrl: team.logoUrl },
+            details: { tournamentId },
+          },
+          tx,
+        );
+        return team;
       });
       await this.statsInvalidation.invalidateTournamentAggregates(tournamentId);
       return this.toSummary(created, false);
@@ -729,17 +745,38 @@ export class TeamsService {
     }
 
     try {
-      const updated = await this.prisma.team.update({
-        where: { id: teamId },
-        data: {
-          name: nextName,
-          nameNormalized,
-          logoUrl: nextLogoUrl,
-        },
-        include: {
-          group: { select: { id: true, name: true } },
-          _count: { select: { memberships: activeTeamMembershipCountSelect } },
-        },
+      const updated = await this.prisma.$transaction(async (tx) => {
+        const row = await tx.team.update({
+          where: { id: teamId },
+          data: {
+            name: nextName,
+            nameNormalized,
+            logoUrl: nextLogoUrl,
+          },
+          include: {
+            group: { select: { id: true, name: true } },
+            _count: { select: { memberships: activeTeamMembershipCountSelect } },
+          },
+        });
+        const diff = auditDiff(
+          { name: team.name, logoUrl: team.logoUrl },
+          { name: row.name, logoUrl: row.logoUrl },
+        );
+        if (diff) {
+          await this.audit.record(
+            {
+              action: 'TEAM_UPDATED',
+              actorUserId: actor.id,
+              targetEntityType: AuditEntityType.Team,
+              targetEntityId: teamId,
+              before: diff.before,
+              after: diff.after,
+              details: { tournamentId, changedFields: diff.changed },
+            },
+            tx,
+          );
+        }
+        return row;
       });
       if (nextName !== team.name) {
         await this.statsInvalidation.invalidateTournamentAndPlayerCareers(tournamentId);
@@ -769,19 +806,34 @@ export class TeamsService {
       });
     }
 
-    await this.prisma.$transaction([
-      this.prisma.teamMembership.deleteMany({ where: { teamId, tournamentId } }),
-      this.prisma.roleAssignment.deleteMany({ where: { teamId, tournamentId } }),
-      this.prisma.teamRegistrationFavourite.deleteMany({ where: { teamId, tournamentId } }),
-      this.prisma.team.update({
+    await this.prisma.$transaction(async (tx) => {
+      const members = await tx.teamMembership.deleteMany({ where: { teamId, tournamentId } });
+      const roles = await tx.roleAssignment.deleteMany({ where: { teamId, tournamentId } });
+      await tx.teamRegistrationFavourite.deleteMany({ where: { teamId, tournamentId } });
+      await tx.team.update({
         where: { id: teamId },
         data: {
           deletedAt: new Date(),
           groupId: null,
           nameNormalized: `${team.nameNormalized}__deleted__${teamId}`,
         },
-      }),
-    ]);
+      });
+      await this.audit.record(
+        {
+          action: 'TEAM_DELETED',
+          actorUserId: actor.id,
+          targetEntityType: AuditEntityType.Team,
+          targetEntityId: teamId,
+          before: { name: team.name, logoUrl: team.logoUrl },
+          details: {
+            tournamentId,
+            detachedMemberships: members.count,
+            removedRoleAssignments: roles.count,
+          },
+        },
+        tx,
+      );
+    });
     await this.statsInvalidation.invalidateTournamentAggregates(tournamentId);
   }
 
@@ -876,10 +928,11 @@ export class TeamsService {
       await this.assertEligibleForTeamRole(tournament, assigneeIds, { teamId });
     }
 
-    await this.prisma.$transaction(async (tx) => {
-      if (assigneeIds.length > 0) {
-        await this.ensureUsersRosteredOnTeam(tx, tournament, teamId, assigneeIds);
-      }
+    const rosteredUserIds = await this.prisma.$transaction(async (tx) => {
+      const added =
+        assigneeIds.length > 0
+          ? await this.ensureUsersRosteredOnTeam(tx, tournament, teamId, assigneeIds)
+          : [];
       for (const update of updates) {
         await tx.roleAssignment.deleteMany({
           where: { teamId, tournamentId, role: update.role },
@@ -895,6 +948,7 @@ export class TeamsService {
           });
         }
       }
+      return added;
     });
 
     const refreshed = await this.prisma.roleAssignment.findMany({
@@ -916,11 +970,11 @@ export class TeamsService {
     await this.audit.record({
       action: 'TEAM_ROLES_ASSIGNED',
       actorUserId: actor.id,
-      targetEntityType: 'team',
+      targetEntityType: AuditEntityType.Team,
       targetEntityId: teamId,
       before,
       after,
-      details: { tournamentId },
+      details: { tournamentId, rosteredUserIds },
     });
     if (assigneeIds.length > 0) {
       await this.statsInvalidation.invalidateTournamentAggregates(tournamentId);
@@ -1372,9 +1426,9 @@ export class TeamsService {
     tournament: { id: string; ballType: string; playersPerTeam?: number | null },
     teamId: string,
     userIds: string[],
-  ): Promise<void> {
+  ): Promise<string[]> {
     if (userIds.length === 0) {
-      return;
+      return [];
     }
 
     const tournamentId = tournament.id;
@@ -1403,7 +1457,7 @@ export class TeamsService {
     );
     const toRoster = uniqueIds.filter((id) => !alreadyOnTeam.has(id));
     if (toRoster.length === 0) {
-      return;
+      return [];
     }
 
     const cap = tournament.playersPerTeam ?? null;
@@ -1454,6 +1508,7 @@ export class TeamsService {
         },
       });
     }
+    return toRoster;
   }
 
   private async assertRegisteredAndUnrostered(

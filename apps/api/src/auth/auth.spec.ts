@@ -9,6 +9,7 @@ import { Test } from '@nestjs/testing';
 import type { ExecutionContext } from '@nestjs/common';
 import type { User } from '@prisma/client';
 
+import { AuditService } from '../audit/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import { MediaUrlResolver } from '../storage/media-url.resolver';
@@ -100,6 +101,7 @@ describe('AuthService', () => {
       providers: [
         AuthService,
         { provide: PrismaService, useValue: prisma },
+        { provide: AuditService, useValue: { record: jest.fn().mockResolvedValue(undefined) } },
         { provide: RedisService, useValue: redis },
         { provide: JwtService, useValue: { signAsync: jest.fn().mockResolvedValue('signed') } },
         {
@@ -297,6 +299,7 @@ describe('JwtAuthGuard (tokenVersion enforcement)', () => {
         JwtAuthGuard,
         { provide: Reflector, useValue: reflector },
         { provide: PrismaService, useValue: prisma },
+        { provide: AuditService, useValue: { record: jest.fn().mockResolvedValue(undefined) } },
         { provide: JwtService, useValue: jwt },
         { provide: ConfigService, useValue: { getOrThrow: () => 'secret' } },
       ],

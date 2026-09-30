@@ -1,5 +1,7 @@
 import {
   APL_TOURNAMENT_TYPE_CODE,
+  AuditEntityType,
+  type AuthUser,
   BallType,
   type CreateTournamentTypeDefinitionRequest,
   type TournamentTypeDefinitionCatalogEntry,
@@ -17,6 +19,8 @@ import {
 } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 
+import { AuditService } from '../audit/audit.service';
+import { auditDiff } from '../audit/audit-snapshot';
 import { PrismaService } from '../prisma/prisma.service';
 
 const activeDefinitionWhere: Prisma.TournamentTypeDefinitionWhereInput = {
@@ -25,7 +29,10 @@ const activeDefinitionWhere: Prisma.TournamentTypeDefinitionWhereInput = {
 
 @Injectable()
 export class TournamentTypeDefinitionsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly audit: AuditService,
+  ) {}
 
   async list(): Promise<TournamentTypeDefinitionSummary[]> {
     const rows = await this.prisma.tournamentTypeDefinition.findMany({
@@ -98,7 +105,10 @@ export class TournamentTypeDefinitionsService {
     return { centerIds: row.centerLinks.map((link) => link.centerId) };
   }
 
-  async create(dto: CreateTournamentTypeDefinitionRequest): Promise<TournamentTypeDefinitionDetail> {
+  async create(
+    actor: AuthUser,
+    dto: CreateTournamentTypeDefinitionRequest,
+  ): Promise<TournamentTypeDefinitionDetail> {
     const name = dto.name.trim();
     if (!name) {
       throw new BadRequestException({
@@ -137,6 +147,22 @@ export class TournamentTypeDefinitionsService {
         },
         include: this.detailInclude,
       });
+      await this.audit.record(
+        {
+          action: 'TOURNAMENT_TYPE_DEFINITION_CREATED',
+          actorUserId: actor.id,
+          targetEntityType: AuditEntityType.TournamentTypeDefinition,
+          targetEntityId: row.id,
+          after: {
+            code: row.code,
+            name: row.name,
+            provinceId: row.provinceId,
+            ballType: row.ballType,
+            centerIds,
+          },
+        },
+        tx,
+      );
       return row;
     });
 
@@ -148,6 +174,7 @@ export class TournamentTypeDefinitionsService {
   }
 
   async update(
+    actor: AuthUser,
     id: string,
     dto: UpdateTournamentTypeDefinitionRequest,
   ): Promise<TournamentTypeDefinitionDetail> {
@@ -188,7 +215,7 @@ export class TournamentTypeDefinitionsService {
         }
       }
 
-      return tx.tournamentTypeDefinition.update({
+      const row = await tx.tournamentTypeDefinition.update({
         where: { id },
         data: {
           name,
@@ -200,6 +227,36 @@ export class TournamentTypeDefinitionsService {
         },
         include: this.detailInclude,
       });
+      const diff = auditDiff(
+        {
+          name: existing.name,
+          provinceId: existing.provinceId,
+          ballType: existing.ballType,
+          centerIds: existing.centerLinks.map((link) => link.centerId).sort(),
+          formatConfig: existing.formatConfig ?? null,
+        },
+        {
+          name: row.name,
+          provinceId: row.provinceId,
+          ballType: row.ballType,
+          centerIds: [...centerIds].sort(),
+          formatConfig: row.formatConfig ?? null,
+        },
+      );
+      if (diff) {
+        await this.audit.record(
+          {
+            action: 'TOURNAMENT_TYPE_DEFINITION_UPDATED',
+            actorUserId: actor.id,
+            targetEntityType: AuditEntityType.TournamentTypeDefinition,
+            targetEntityId: id,
+            before: diff.before,
+            after: diff.after,
+          },
+          tx,
+        );
+      }
+      return row;
     });
 
     if (updated.code === APL_TOURNAMENT_TYPE_CODE && ballType === BallType.Tennis) {
@@ -243,11 +300,23 @@ export class TournamentTypeDefinitionsService {
     });
   }
 
-  async softDelete(id: string): Promise<void> {
-    await this.requireActive(id);
-    await this.prisma.tournamentTypeDefinition.update({
-      where: { id },
-      data: { isDeleted: true, deletedAt: new Date() },
+  async softDelete(actor: AuthUser, id: string): Promise<void> {
+    const existing = await this.requireActive(id);
+    await this.prisma.$transaction(async (tx) => {
+      await tx.tournamentTypeDefinition.update({
+        where: { id },
+        data: { isDeleted: true, deletedAt: new Date() },
+      });
+      await this.audit.record(
+        {
+          action: 'TOURNAMENT_TYPE_DEFINITION_DELETED',
+          actorUserId: actor.id,
+          targetEntityType: AuditEntityType.TournamentTypeDefinition,
+          targetEntityId: id,
+          before: { code: existing.code, name: existing.name, provinceId: existing.provinceId },
+        },
+        tx,
+      );
     });
   }
 

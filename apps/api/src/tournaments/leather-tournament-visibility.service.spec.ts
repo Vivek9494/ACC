@@ -44,7 +44,10 @@ describe('LeatherTournamentVisibilityService', () => {
       user: { findMany: jest.fn().mockResolvedValue([]) },
       registration: { findUnique: jest.fn(), findMany: jest.fn().mockResolvedValue([]) },
     };
-    service = new LeatherTournamentVisibilityService(prisma as unknown as PrismaService);
+    service = new LeatherTournamentVisibilityService(
+      prisma as unknown as PrismaService,
+      { record: jest.fn() } as never,
+    );
   });
 
   it('treats any locked-XI in a leather tournament as existing', async () => {

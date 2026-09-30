@@ -1,4 +1,5 @@
 import {
+  AuditEntityType,
   type AuthUser,
   BallType,
   type CloneSuggestion,
@@ -109,6 +110,8 @@ import {
 } from './tournament-knockout-team-count.validation';
 import { KnockoutBracketService } from '../knockout-bracket/knockout-bracket.service';
 import { StatsInvalidationService } from '../stats/stats-invalidation.service';
+import { AuditService } from '../audit/audit.service';
+import { auditDiff, auditSnapshot } from '../audit/audit-snapshot';
 
 const CREATE_PERMISSION: Record<TournamentType, Permission> = {
   ACC: Permission.CREATE_ACC_TOURNAMENT,
@@ -131,6 +134,39 @@ function newTournamentBody(name: string, type: TournamentType): string {
 
 type TournamentWithCounts = Tournament & { _count: { teams: number } };
 
+const TOURNAMENT_AUDIT_FIELDS = [
+  'name',
+  'year',
+  'type',
+  'ballType',
+  'state',
+  'format',
+  'provinceId',
+  'numberOfTeams',
+  'playersPerTeam',
+  'substitutesAllowed',
+  'oversPerInnings',
+  'maxOversPerBowler',
+  'impactPlayerEnabled',
+  'knockoutTeamCount',
+  'startAt',
+  'endAt',
+  'timezone',
+  'locationAddress',
+  'latitude',
+  'longitude',
+  'registrationOpenAt',
+  'registrationCloseAt',
+  'auctionAt',
+  'videoRequired',
+  'videoUploadStartAt',
+  'videoUploadEndDate',
+  'feeFullTime',
+  'feePartTime',
+  'posterUrl',
+  'youtubeUrl',
+] as const satisfies readonly (keyof Tournament)[];
+
 @Injectable()
 export class TournamentsService {
   private readonly logger = new Logger(TournamentsService.name);
@@ -149,6 +185,7 @@ export class TournamentsService {
     private readonly tournamentScorers: TournamentScorersService,
     private readonly knockoutBracket: KnockoutBracketService,
     private readonly statsInvalidation: StatsInvalidationService,
+    private readonly audit: AuditService,
   ) {}
 
   /** Creates a tournament (§6.1), deriving the type server-side and RBAC-gating it. */
@@ -245,6 +282,26 @@ export class TournamentsService {
           dto.copyRoleAssignments ?? false,
         );
       }
+
+      await this.audit.record(
+        {
+          action: 'TOURNAMENT_CREATED',
+          actorUserId: actor.id,
+          targetEntityType: AuditEntityType.Tournament,
+          targetEntityId: tournament.id,
+          after: auditSnapshot(tournament, TOURNAMENT_AUDIT_FIELDS),
+          details: {
+            dates: normalizedDates,
+            ...(dto.cloneFromTournamentId
+              ? {
+                  clonedFromTournamentId: dto.cloneFromTournamentId,
+                  copyRoleAssignments: dto.copyRoleAssignments ?? false,
+                }
+              : {}),
+          },
+        },
+        tx,
+      );
 
       return tournament.id;
     });
@@ -874,7 +931,7 @@ export class TournamentsService {
     }
 
     await this.prisma.$transaction(async (tx) => {
-      await tx.tournament.update({ where: { id }, data });
+      const updated = await tx.tournament.update({ where: { id }, data });
 
       if (normalizedDates !== undefined) {
         await tx.tournamentDate.deleteMany({ where: { tournamentId: id } });
@@ -884,6 +941,30 @@ export class TournamentsService {
             date: new Date(`${date}T00:00:00.000Z`),
           })),
         });
+      }
+
+      const beforeSnapshot = {
+        ...auditSnapshot(existing, TOURNAMENT_AUDIT_FIELDS),
+        dates: existingDates,
+      };
+      const afterSnapshot = {
+        ...auditSnapshot(updated, TOURNAMENT_AUDIT_FIELDS),
+        dates: normalizedDates ?? existingDates,
+      };
+      const diff = auditDiff(beforeSnapshot, afterSnapshot);
+      if (diff) {
+        await this.audit.record(
+          {
+            action: 'TOURNAMENT_UPDATED',
+            actorUserId: actor.id,
+            targetEntityType: AuditEntityType.Tournament,
+            targetEntityId: id,
+            before: diff.before,
+            after: diff.after,
+            details: { changedFields: diff.changed },
+          },
+          tx,
+        );
       }
     });
 
@@ -1032,9 +1113,22 @@ export class TournamentsService {
 
     const nextFormat = isGroupStage && groupCount === 0 ? null : schedulingFormat;
     if (storedFormat !== nextFormat) {
-      await this.prisma.tournament.update({
-        where: { id: tournamentId },
-        data: { matchSchedulingFormat: nextFormat },
+      await this.prisma.$transaction(async (tx) => {
+        await tx.tournament.update({
+          where: { id: tournamentId },
+          data: { matchSchedulingFormat: nextFormat },
+        });
+        await this.audit.record(
+          {
+            action: 'TOURNAMENT_SCHEDULING_FORMAT_SELECTED',
+            actorUserId: actor.id,
+            targetEntityType: AuditEntityType.Tournament,
+            targetEntityId: tournamentId,
+            before: { matchSchedulingFormat: storedFormat },
+            after: { matchSchedulingFormat: nextFormat },
+          },
+          tx,
+        );
       });
       await this.statsInvalidation.invalidateTournamentAggregates(tournamentId);
     }
@@ -1053,19 +1147,31 @@ export class TournamentsService {
       await this.notifyRegistrants(id, NotificationTrigger.TournamentDeletedMidRegistration);
     }
 
-    await this.prisma.tournament.update({
-      where: { id },
-      data: {
-        isDeleted: true,
-        deletedAt: new Date(),
-        deletedById: actor.id,
-      },
+    await this.prisma.$transaction(async (tx) => {
+      await tx.tournament.update({
+        where: { id },
+        data: {
+          isDeleted: true,
+          deletedAt: new Date(),
+          deletedById: actor.id,
+        },
+      });
+      await this.audit.record(
+        {
+          action: 'TOURNAMENT_DELETED',
+          actorUserId: actor.id,
+          targetEntityType: AuditEntityType.Tournament,
+          targetEntityId: id,
+          before: auditSnapshot(existing, ['name', 'year', 'type', 'state']),
+        },
+        tx,
+      );
     });
     await this.statsInvalidation.invalidateTournamentAndPlayerCareers(id);
   }
 
   /** Validates and applies a §5.1 lifecycle transition. */
-  async transition(id: string, next: TournamentState): Promise<TournamentDetail> {
+  async transition(actor: AuthUser, id: string, next: TournamentState): Promise<TournamentDetail> {
     const existing = await this.prisma.tournament.findUnique({ where: { id } });
     assertTournamentActive(existing);
     const current = existing.state as TournamentState;
@@ -1076,7 +1182,20 @@ export class TournamentsService {
         error: 'INVALID_STATE_TRANSITION',
       });
     }
-    await this.prisma.tournament.update({ where: { id }, data: { state: next } });
+    await this.prisma.$transaction(async (tx) => {
+      await tx.tournament.update({ where: { id }, data: { state: next } });
+      await this.audit.record(
+        {
+          action: 'TOURNAMENT_STATE_CHANGED',
+          actorUserId: actor.id,
+          targetEntityType: AuditEntityType.Tournament,
+          targetEntityId: id,
+          before: { state: current },
+          after: { state: next },
+        },
+        tx,
+      );
+    });
     return this.getDetail(id);
   }
 
@@ -1172,7 +1291,9 @@ export class TournamentsService {
   }
 
   async resolveCenterSevakCenterIds(userId: string): Promise<string[]> {
-    return resolveOrHealCenterSevakCenterIds(this.prisma, userId);
+    return resolveOrHealCenterSevakCenterIds(this.prisma, userId, (entry) =>
+      this.audit.record(entry),
+    );
   }
 
   /** Resolves tournament card permissions for role dashboards. */

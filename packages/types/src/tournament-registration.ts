@@ -3,6 +3,14 @@ import type { TournamentDetail } from './tournament';
 /** When there is no auction, Sevak verification locks this long after registration close. */
 export const REGISTRATION_VERIFICATION_NO_AUCTION_GRACE_MS = 48 * 60 * 60 * 1000;
 
+/** Center Sevak verification reminder fires this long before the deadline (§17 Phase C). */
+export const VERIFICATION_REMINDER_LEAD_HOURS = 24;
+export const VERIFICATION_REMINDER_LEAD_MS = VERIFICATION_REMINDER_LEAD_HOURS * 60 * 60 * 1000;
+
+/** Registration / video-upload close reminders fire this long before the stored close time. */
+export const CLOSE_REMINDER_LEAD_MINUTES = 10;
+export const CLOSE_REMINDER_LEAD_MS = CLOSE_REMINDER_LEAD_MINUTES * 60 * 1000;
+
 type InstantLike = string | Date | null | undefined;
 
 function toMillis(value: InstantLike): number | null {

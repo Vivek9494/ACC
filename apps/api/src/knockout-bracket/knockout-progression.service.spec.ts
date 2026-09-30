@@ -167,7 +167,7 @@ async function confirmMatch(
 }
 
 describe('KnockoutProgressionService', () => {
-  const service = new KnockoutProgressionService();
+  const service = new KnockoutProgressionService({ record: jest.fn().mockResolvedValue(undefined) } as never);
 
   it('does not advance non-knockout matches', async () => {
     const tx = {

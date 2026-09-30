@@ -4,6 +4,7 @@
 
 import { MatchState } from './match';
 import { MatchSchedulingFormat } from './match-scheduling-format';
+import { BallType } from './rbac';
 
 /** One row in a standings table (TEAM | M | W | L | NR | PTS | NRR). */
 export interface TeamStandingRow {
@@ -91,6 +92,11 @@ export function resolveStandingsSplitPointOutcome(input: {
     input.isNoResult ||
     input.scorecardIsNoResult
   );
+}
+
+/** Leather (ACC / BEDCL) points tables omit NRR; tennis tables show and sort by it. */
+export function showsNetRunRateForBallType(ballType: BallType): boolean {
+  return ballType !== BallType.Leather;
 }
 
 /** Format NRR for display: signed, 3 decimal places (e.g. "+1.250", "-0.480"). */

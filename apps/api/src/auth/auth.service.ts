@@ -1,4 +1,5 @@
 import {
+  AuditEntityType,
   AuthErrorCode,
   type AuthResponse,
   type AuthTokens,
@@ -38,6 +39,7 @@ import { randomUUID } from 'node:crypto';
 
 import type { Request } from 'express';
 
+import { AuditService } from '../audit/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { resolveOrHealCenterSevakCenterIds } from '../authz/center-sevak-assignment';
 import { MediaUrlResolver } from '../storage/media-url.resolver';
@@ -72,6 +74,7 @@ export class AuthService {
     private readonly config: ConfigService,
     private readonly redis: RedisService,
     private readonly mediaUrls: MediaUrlResolver,
+    private readonly audit: AuditService,
   ) {}
 
   async signup(dto: SignupDto): Promise<AuthResponse> {
@@ -157,9 +160,10 @@ export class AuthService {
     });
 
     await this.redis.del(attemptsKey);
+    await this.recordSelfEvent('USER_SIGNED_UP', user.id, { centerId: user.centerId });
 
     const tokens = await this.startSession(user);
-    return { user: await loadAuthUser(this.prisma, user, this.mediaUrls), tokens };
+    return { user: await loadAuthUser(this.prisma, user, this.mediaUrls, this.audit), tokens };
   }
 
   async login(dto: LoginDto): Promise<AuthResponse> {
@@ -214,11 +218,19 @@ export class AuthService {
       where: { id: user.id },
       data: { passwordResetLockedAt: null },
     });
+    if (user.passwordResetLockedAt) {
+      await this.recordSelfEvent('PASSWORD_RESET_LOCK_CLEARED', user.id, {
+        reason: 'SUCCESSFUL_LOGIN',
+      });
+    }
+    await this.recordSelfEvent('USER_LOGGED_IN', user.id, {
+      rememberMe: Boolean(dto.rememberMe),
+    });
 
     // Single-device enforcement (§3.2): bumping tokenVersion on every login
     // invalidates any token still held by a previously logged-in device.
     const tokens = await this.startSession(user, Boolean(dto.rememberMe));
-    return { user: await loadAuthUser(this.prisma, user, this.mediaUrls), tokens };
+    return { user: await loadAuthUser(this.prisma, user, this.mediaUrls, this.audit), tokens };
   }
 
   async refresh(refreshToken: string): Promise<AuthTokens> {
@@ -269,7 +281,7 @@ export class AuthService {
 
   async getMe(userId: string): Promise<AuthUser> {
     const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
-    return loadAuthUser(this.prisma, user, this.mediaUrls);
+    return loadAuthUser(this.prisma, user, this.mediaUrls, this.audit);
   }
 
   /** Invalidates the current session (§3.2 single-device logout). */
@@ -279,6 +291,7 @@ export class AuthService {
       data: { tokenVersion: { increment: 1 } },
     });
     await this.redis.del(refreshKey(userId));
+    await this.recordSelfEvent('USER_LOGGED_OUT', userId);
   }
 
   /**
@@ -326,6 +339,7 @@ export class AuthService {
       data: { passwordHash, tokenVersion: { increment: 1 } },
     });
     await this.redis.del(refreshKey(userId));
+    await this.recordSelfEvent('PASSWORD_CHANGED', userId);
   }
 
   /**
@@ -363,6 +377,22 @@ export class AuthService {
         mustChangePassword: false,
         tempPasswordExpiresAt: null,
       },
+    });
+    await this.recordSelfEvent('FORCED_PASSWORD_CHANGE_COMPLETED', userId);
+  }
+
+  private async recordSelfEvent(
+    action: string,
+    userId: string,
+    details?: Record<string, string | number | boolean | null>,
+  ): Promise<void> {
+    await this.audit.record({
+      action,
+      actorUserId: userId,
+      targetUserId: userId,
+      targetEntityType: AuditEntityType.User,
+      targetEntityId: userId,
+      ...(details ? { details } : {}),
     });
   }
 
@@ -487,6 +517,7 @@ export async function loadAuthUser(
   prisma: PrismaService,
   user: User,
   mediaUrls?: MediaUrlResolver,
+  audit?: AuditService,
 ): Promise<AuthUser> {
   const [leadAssignments, centerSevakCenterIds] = await Promise.all([
     prisma.roleAssignment.findMany({
@@ -496,7 +527,11 @@ export async function loadAuthUser(
       },
       select: { role: true, tournamentId: true, teamId: true },
     }),
-    resolveOrHealCenterSevakCenterIds(prisma, user.id),
+    resolveOrHealCenterSevakCenterIds(
+      prisma,
+      user.id,
+      audit ? (entry) => audit.record(entry) : undefined,
+    ),
   ]);
 
   const teamLeadAssignments: TeamLeadAssignment[] = leadAssignments.flatMap((row) => {

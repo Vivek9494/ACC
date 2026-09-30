@@ -1,4 +1,5 @@
 import {
+  AuditEntityType,
   computeParticipationPollClosesAt,
   computeParticipationPollOpensAt,
   formatMatchDateTimeLine,
@@ -283,11 +284,21 @@ export class ParticipationPollService {
     }
 
     const isAvailable = choice === PollVoteChoice.In;
+    const previousVote = poll.votes[0] ?? null;
 
     await this.prisma.pollVote.upsert({
       where: { pollId_userId: { pollId, userId: actor.id } },
       create: { pollId, userId: actor.id, isAvailable, votedAt: new Date() },
       update: { isAvailable, votedAt: new Date() },
+    });
+    await this.audit.record({
+      action: 'POLL_VOTE_SUBMITTED',
+      actorUserId: actor.id,
+      targetEntityType: AuditEntityType.ParticipationPoll,
+      targetEntityId: pollId,
+      before: previousVote ? { isAvailable: previousVote.isAvailable } : undefined,
+      after: { isAvailable },
+      details: { matchId: poll.matchId, teamId: poll.teamId },
     });
 
     const membership = await this.requireMembership(actor.id, poll.teamId, poll.match.tournamentId);

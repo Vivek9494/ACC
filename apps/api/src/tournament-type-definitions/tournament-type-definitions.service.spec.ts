@@ -1,6 +1,19 @@
-import { BallType } from '@acc/types';
+import { type AuthUser, BallType, UserRole } from '@acc/types';
 
 import { TournamentTypeDefinitionsService } from './tournament-type-definitions.service';
+
+const admin: AuthUser = {
+  id: 'admin-1',
+  firstName: 'Platform',
+  lastName: 'Admin',
+  mobileNumber: '+15555550001',
+  email: 'admin@acc.local',
+  centerId: 'center-1',
+  jerseyNumber: 0,
+  profilePhotoUrl: null,
+  role: UserRole.Admin,
+  isActive: true,
+};
 
 describe('TournamentTypeDefinitionsService', () => {
   let prisma: {
@@ -24,6 +37,7 @@ describe('TournamentTypeDefinitionsService', () => {
     $transaction: jest.Mock;
   };
   let service: TournamentTypeDefinitionsService;
+  let audit: { record: jest.Mock };
 
   beforeEach(() => {
     prisma = {
@@ -46,7 +60,8 @@ describe('TournamentTypeDefinitionsService', () => {
       center: { findMany: jest.fn() },
       $transaction: jest.fn((cb: (tx: typeof prisma) => unknown) => cb(prisma)),
     };
-    service = new TournamentTypeDefinitionsService(prisma as never);
+    audit = { record: jest.fn().mockResolvedValue(undefined) };
+    service = new TournamentTypeDefinitionsService(prisma as never, audit as never);
   });
 
   it('creates an APL type and resyncs existing APL tournament centers', async () => {
@@ -71,7 +86,7 @@ describe('TournamentTypeDefinitionsService', () => {
       _count: { centerLinks: 2 },
     });
 
-    const result = await service.create({
+    const result = await service.create(admin, {
       name: 'APL',
       provinceId: 'prov-1',
       ballType: BallType.Tennis,

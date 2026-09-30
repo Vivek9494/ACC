@@ -90,6 +90,7 @@ describe('GroupsService.remove', () => {
       permissions as never,
       tournaments as never,
       { invalidateTournamentAggregates: jest.fn().mockResolvedValue(undefined) } as never,
+      { record: jest.fn().mockResolvedValue(undefined) } as never,
     );
   });
 
@@ -214,6 +215,7 @@ describe('GroupsService.update', () => {
       { check: jest.fn().mockResolvedValue(true) } as never,
       { assertCenterSevakTournamentAccess: jest.fn().mockResolvedValue(undefined) } as never,
       { invalidateTournamentAggregates: jest.fn().mockResolvedValue(undefined) } as never,
+      { record: jest.fn().mockResolvedValue(undefined) } as never,
     );
     return { service, tx };
   }
@@ -275,6 +277,7 @@ describe('GroupsService.create', () => {
       { check: jest.fn().mockResolvedValue(true) } as never,
       { assertCenterSevakTournamentAccess: jest.fn().mockResolvedValue(undefined) } as never,
       { invalidateTournamentAggregates: jest.fn().mockResolvedValue(undefined) } as never,
+      { record: jest.fn().mockResolvedValue(undefined) } as never,
     );
     return { service, tx };
   }

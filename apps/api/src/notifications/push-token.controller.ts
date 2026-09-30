@@ -25,7 +25,10 @@ export class PushTokenController {
   /** Unregister this device's push token (on logout). */
   @Delete()
   @HttpCode(HttpStatus.NO_CONTENT)
-  async unregister(@Body() dto: UnregisterPushTokenDto): Promise<void> {
-    await this.tokens.unregister(dto.token);
+  async unregister(
+    @CurrentUser() user: AuthUser,
+    @Body() dto: UnregisterPushTokenDto,
+  ): Promise<void> {
+    await this.tokens.unregister(dto.token, user.id);
   }
 }

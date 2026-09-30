@@ -7,9 +7,11 @@ import { TournamentFormat } from './tournament';
 
 export const DEFAULT_TOURNAMENT_FORMAT = TournamentFormat.LeagueSingleRoundRobin;
 
+export const DEFAULT_MAX_OVERS_PER_BOWLER: Readonly<Record<BallType, number>> = {
+  [BallType.Leather]: 5,
+  [BallType.Tennis]: 4,
+};
+
 export function deferredMaxOversPerBowler(ballType: BallType): number {
-  if (ballType === BallType.Leather) {
-    return 5;
-  }
-  return 4;
+  return DEFAULT_MAX_OVERS_PER_BOWLER[ballType];
 }

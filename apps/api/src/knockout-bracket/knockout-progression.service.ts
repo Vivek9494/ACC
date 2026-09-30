@@ -1,6 +1,8 @@
-import { MatchSide } from '@acc/types';
+import { AuditEntityType, MatchSide } from '@acc/types';
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
+
+import { AuditService } from '../audit/audit.service';
 
 import {
   parentProgressionUpdate,
@@ -10,6 +12,8 @@ import {
 
 @Injectable()
 export class KnockoutProgressionService {
+  constructor(private readonly audit: AuditService) {}
+
   /**
    * Advances a confirmed knockout match's winner into the parent slot, or
    * records the tournament champion when the feeder is the final.
@@ -33,6 +37,16 @@ export class KnockoutProgressionService {
         where: { id: feeder.tournamentId },
         data: { championTeamId: winnerId },
       });
+      await this.audit.record(
+        {
+          action: 'TOURNAMENT_CHAMPION_SET',
+          targetEntityType: AuditEntityType.Tournament,
+          targetEntityId: feeder.tournamentId,
+          after: { championTeamId: winnerId },
+          details: { finalMatchId: feeder.id },
+        },
+        tx,
+      );
       return;
     }
 
@@ -66,5 +80,16 @@ export class KnockoutProgressionService {
         awaitingTeams: update.awaitingTeams,
       },
     });
+    await this.audit.record(
+      {
+        action: 'KNOCKOUT_WINNER_ADVANCED',
+        targetEntityType: AuditEntityType.Match,
+        targetEntityId: parent.id,
+        before: { homeTeamId: parent.homeTeamId, awayTeamId: parent.awayTeamId },
+        after: { homeTeamId: update.homeTeamId, awayTeamId: update.awayTeamId },
+        details: { feederMatchId: feeder.id, winningTeamId: winnerId, slot: feeder.nextMatchSlot },
+      },
+      tx,
+    );
   }
 }

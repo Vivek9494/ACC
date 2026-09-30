@@ -28,6 +28,7 @@ import { TournamentScorersService } from './tournament-scorers.service';
 import { KnockoutBracketService } from '../knockout-bracket/knockout-bracket.service';
 import { StatsInvalidationService } from '../stats/stats-invalidation.service';
 import { PlayerSkillVideosService } from '../player-videos/player-skill-videos.service';
+import { AuditService } from '../audit/audit.service';
 
 interface TxMock {
   tournament: { create: jest.Mock; update: jest.Mock };
@@ -130,6 +131,7 @@ describe('TournamentsService', () => {
   let storage: { deleteObject: jest.Mock; resolveObjectKey: jest.Mock };
   let mediaUrls: { resolveReadUrl: jest.Mock; resolveReadUrls: jest.Mock };
   let tx: TxMock;
+  let audit: { record: jest.Mock };
 
   beforeEach(async () => {
     tx = {
@@ -190,6 +192,7 @@ describe('TournamentsService', () => {
       },
     };
     permissions = { check: jest.fn().mockResolvedValue(true) };
+    audit = { record: jest.fn().mockResolvedValue(undefined) };
     notifications = {
       notify: jest.fn().mockResolvedValue(undefined),
       sendToAudience: jest.fn().mockResolvedValue({ sent: true }),
@@ -212,6 +215,7 @@ describe('TournamentsService', () => {
         TournamentsService,
         TournamentTypeResolverService,
         { provide: PrismaService, useValue: prisma },
+        { provide: AuditService, useValue: audit },
         { provide: PermissionService, useValue: permissions },
         { provide: NotificationsService, useValue: notifications },
         {
@@ -611,18 +615,30 @@ describe('TournamentsService', () => {
     it('rejects an illegal transition (NEW → TEAMS_FINALIZED)', async () => {
       prisma.tournament.findUnique.mockResolvedValueOnce(detailRow({ state: 'NEW' }));
       await expect(
-        service.transition('tid', TournamentState.TeamsFinalized),
+        service.transition(actor, 'tid', TournamentState.TeamsFinalized),
       ).rejects.toBeInstanceOf(BadRequestException);
-      expect(prisma.tournament.update).not.toHaveBeenCalled();
+      expect(tx.tournament.update).not.toHaveBeenCalled();
+      expect(audit.record).not.toHaveBeenCalled();
     });
 
     it('allows a legal transition (NEW → REGISTRATION_OPEN)', async () => {
       prisma.tournament.findUnique.mockResolvedValueOnce(detailRow({ state: 'NEW' }));
-      await service.transition('tid', TournamentState.RegistrationOpen);
-      expect(prisma.tournament.update).toHaveBeenCalledWith({
+      await service.transition(actor, 'tid', TournamentState.RegistrationOpen);
+      expect(tx.tournament.update).toHaveBeenCalledWith({
         where: { id: 'tid' },
         data: { state: TournamentState.RegistrationOpen },
       });
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'TOURNAMENT_STATE_CHANGED',
+          actorUserId: actor.id,
+          targetEntityType: 'tournament',
+          targetEntityId: 'tid',
+          before: { state: TournamentState.New },
+          after: { state: TournamentState.RegistrationOpen },
+        }),
+        tx,
+      );
     });
   });
 
@@ -827,7 +843,7 @@ describe('TournamentsService', () => {
         MatchSchedulingFormat.GroupStageKnockout,
       );
 
-      expect(prisma.tournament.update).toHaveBeenCalledWith({
+      expect(tx.tournament.update).toHaveBeenCalledWith({
         where: { id: 'tid' },
         data: { matchSchedulingFormat: null },
       });
@@ -840,7 +856,7 @@ describe('TournamentsService', () => {
 
       await service.selectMatchSchedulingFormat(actor, 'tid', MatchSchedulingFormat.RoundRobin);
 
-      expect(prisma.tournament.update).toHaveBeenCalledWith({
+      expect(tx.tournament.update).toHaveBeenCalledWith({
         where: { id: 'tid' },
         data: { matchSchedulingFormat: MatchSchedulingFormat.RoundRobin },
       });
@@ -1008,7 +1024,7 @@ describe('TournamentsService', () => {
 
       await service.remove(sevak, 'tid');
 
-      expect(prisma.tournament.update).toHaveBeenCalledWith({
+      expect(tx.tournament.update).toHaveBeenCalledWith({
         where: { id: 'tid' },
         data: expect.objectContaining({
           isDeleted: true,
@@ -1016,6 +1032,15 @@ describe('TournamentsService', () => {
           deletedById: 'sevak-1',
         }),
       });
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'TOURNAMENT_DELETED',
+          actorUserId: 'sevak-1',
+          targetEntityType: 'tournament',
+          targetEntityId: 'tid',
+        }),
+        tx,
+      );
     });
 
     it('denies a Center Sevak deleting a tournament from another center they did not create', async () => {

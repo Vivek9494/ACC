@@ -1,7 +1,8 @@
-import { PushPlatform } from '@acc/types';
+import { AuditEntityType, PushPlatform } from '@acc/types';
 import { Injectable, Logger } from '@nestjs/common';
 import type { PushPlatform as PrismaPushPlatform } from '@prisma/client';
 
+import { AuditService } from '../audit/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { selectableUserWhere } from '../users/user-query';
 import { ApnsFcmTokenConverter } from './apns-fcm-token.converter';
@@ -21,6 +22,7 @@ export class PushTokenService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly apnsFcm: ApnsFcmTokenConverter,
+    private readonly audit: AuditService,
   ) {}
 
   /** Upsert a device token for a user (called on login / app start). */
@@ -30,11 +32,25 @@ export class PushTokenService {
       return;
     }
 
-    await this.prisma.pushDeviceToken.upsert({
+    const previous = await this.prisma.pushDeviceToken.findUnique({
+      where: { token: storedToken },
+      select: { userId: true },
+    });
+    const row = await this.prisma.pushDeviceToken.upsert({
       where: { token: storedToken },
       create: { userId, token: storedToken, platform },
       update: { userId, platform, lastSeenAt: new Date() },
     });
+    if (previous?.userId !== userId) {
+      await this.audit.record({
+        action: 'PUSH_TOKEN_REGISTERED',
+        actorUserId: userId,
+        targetUserId: userId,
+        targetEntityType: AuditEntityType.PushToken,
+        targetEntityId: row.id,
+        details: { platform, reassignedFromAnotherUser: previous != null },
+      });
+    }
 
     // Drop a stale APNs row if we upgraded this device to an FCM token.
     if (storedToken !== token) {
@@ -43,8 +59,17 @@ export class PushTokenService {
   }
 
   /** Remove a device token (called on logout). No-op if it doesn't exist. */
-  async unregister(token: string): Promise<void> {
-    await this.prisma.pushDeviceToken.deleteMany({ where: { token } });
+  async unregister(token: string, actorUserId?: string): Promise<void> {
+    const removed = await this.prisma.pushDeviceToken.deleteMany({ where: { token } });
+    if (removed.count > 0 && actorUserId) {
+      await this.audit.record({
+        action: 'PUSH_TOKEN_UNREGISTERED',
+        actorUserId,
+        targetUserId: actorUserId,
+        targetEntityType: AuditEntityType.PushToken,
+        details: { removedCount: removed.count },
+      });
+    }
 
     // Client may still send the raw APNs token while DB stores the FCM form.
     if (this.apnsFcm.looksLikeApnsToken(token)) {

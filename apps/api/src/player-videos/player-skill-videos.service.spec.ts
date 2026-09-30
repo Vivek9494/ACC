@@ -114,6 +114,7 @@ describe('PlayerSkillVideosService', () => {
       permissions as unknown as PermissionService,
       settings as unknown as AppSettingsService,
       storage,
+      { record: jest.fn().mockResolvedValue(undefined) } as never,
     );
   });
 

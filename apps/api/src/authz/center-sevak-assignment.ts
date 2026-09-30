@@ -1,5 +1,7 @@
-import { UserRole } from '@acc/types';
+import { AuditEntityType, UserRole } from '@acc/types';
 import type { PrismaClient } from '@prisma/client';
+
+import type { AuditEntry } from '../audit/audit.service';
 
 /** Prisma client or interactive transaction client. */
 type DbClient = Pick<PrismaClient, 'roleAssignment' | 'user'>;
@@ -39,6 +41,7 @@ export async function syncCenterSevakRoleAssignment(
 export async function resolveOrHealCenterSevakCenterIds(
   db: DbClient,
   userId: string,
+  onHealed?: (entry: AuditEntry) => Promise<void>,
 ): Promise<string[]> {
   const rows = await db.roleAssignment.findMany({
     where: { userId, role: UserRole.CenterSevak, centerId: { not: null } },
@@ -60,5 +63,12 @@ export async function resolveOrHealCenterSevakCenterIds(
   }
 
   await syncCenterSevakRoleAssignment(db, userId, UserRole.CenterSevak, user.centerId);
+  await onHealed?.({
+    action: 'CENTER_SEVAK_ASSIGNMENT_HEALED',
+    targetUserId: userId,
+    targetEntityType: AuditEntityType.User,
+    targetEntityId: userId,
+    after: { role: UserRole.CenterSevak, centerId: user.centerId },
+  });
   return [user.centerId];
 }

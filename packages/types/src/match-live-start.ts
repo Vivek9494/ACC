@@ -7,6 +7,10 @@ import { formatVenueDateTime, type MatchScheduleAnchor } from './timezone';
 export const LIVE_START_LEAD_MINUTES = 30;
 export const LIVE_START_LEAD_MS = LIVE_START_LEAD_MINUTES * 60 * 1000;
 
+/** Captain scorer-assignment card opens this long before scheduled start (§11.1). */
+export const SCORER_ASSIGNMENT_LEAD_MINUTES = 120;
+export const SCORER_ASSIGNMENT_LEAD_MS = SCORER_ASSIGNMENT_LEAD_MINUTES * 60 * 1000;
+
 function toDate(value: Date | string | null | undefined): Date | null {
   if (value == null) {
     return null;

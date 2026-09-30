@@ -1,5 +1,6 @@
 import {
   ADMIN_USERS_PAGE_SIZE,
+  AuditEntityType,
   ADMIN_USERS_PAGE_SIZE_MAX,
   type AdminOverview,
   type AdminPasswordResetOtpDailySeries,
@@ -41,6 +42,7 @@ import * as bcrypt from 'bcrypt';
 import { BCRYPT_SALT_ROUNDS, refreshKey } from '../auth/auth.constants';
 import { generateSecureTemporaryPassword } from '../auth/password.util';
 import { AuditService } from '../audit/audit.service';
+import { auditDiff } from '../audit/audit-snapshot';
 import { PlayerStatsService } from '../player-stats/player-stats.service';
 import { DashboardFeaturedMatchesService } from '../matches/dashboard-featured-matches.service';
 import { ScorerDashboardMatchService } from '../matches/scorer-dashboard-match.service';
@@ -401,14 +403,20 @@ export class AdminService {
       const latestRegistration = await tx.registration.findFirst({
         where: { userId },
         orderBy: { updatedAt: 'desc' },
-        select: { id: true },
+        select: {
+          id: true,
+          tournamentId: true,
+          battingRating: true,
+          bowlingRating: true,
+          fieldingRating: true,
+        },
       });
-      if (
-        latestRegistration &&
+      const ratingsChanged =
+        latestRegistration != null &&
         (dto.battingRating !== undefined ||
           dto.bowlingRating !== undefined ||
-          dto.fieldingRating !== undefined)
-      ) {
+          dto.fieldingRating !== undefined);
+      if (latestRegistration && ratingsChanged) {
         await tx.registration.update({
           where: { id: latestRegistration.id },
           data: {
@@ -420,46 +428,102 @@ export class AdminService {
       }
 
       await syncCenterSevakRoleAssignment(tx, userId, dto.platformRole, dto.centerId);
-    });
 
-    if (mobileChanged) {
-      await this.audit.record({
-        action: 'USER_MOBILE_CHANGED',
-        actorUserId: actor.id,
-        targetUserId: userId,
-        targetEntityType: 'user',
-        targetEntityId: userId,
-        before: { mobileNumber: existing.mobileNumber },
-        after: { mobileNumber: normalizedMobile },
-      });
-    }
+      if (mobileChanged) {
+        await this.audit.record(
+          {
+            action: 'USER_MOBILE_CHANGED',
+            actorUserId: actor.id,
+            targetUserId: userId,
+            targetEntityType: AuditEntityType.User,
+            targetEntityId: userId,
+            before: { mobileNumber: existing.mobileNumber },
+            after: { mobileNumber: normalizedMobile },
+          },
+          tx,
+        );
+      }
 
-    await this.audit.record({
-      action: 'USER_PROFILE_UPDATED',
-      actorUserId: actor.id,
-      targetUserId: userId,
-      targetEntityType: 'user',
-      targetEntityId: userId,
-      before: {
-        firstName: existing.firstName,
-        lastName: existing.lastName,
-        email: existing.email,
-        centerId: existing.centerId,
-        dateOfBirth: existing.dateOfBirth.toISOString().slice(0, 10),
-        jerseyNumber: existing.jerseyNumber,
-        jerseyName: existing.jerseyName,
-        platformRole: existing.role,
-      },
-      after: {
-        firstName: dto.firstName,
-        lastName: dto.lastName,
-        email: dto.email,
-        centerId: dto.centerId,
-        dateOfBirth: dto.dateOfBirth,
-        jerseyNumber: dto.jerseyNumber,
-        jerseyName: dto.jerseyName ?? null,
-        platformRole: dto.platformRole,
-      },
+      if (roleChanged) {
+        await this.audit.record(
+          {
+            action: 'USER_ROLE_CHANGED',
+            actorUserId: actor.id,
+            targetUserId: userId,
+            targetEntityType: AuditEntityType.User,
+            targetEntityId: userId,
+            before: { platformRole: existing.role },
+            after: { platformRole: dto.platformRole },
+            details: {
+              centerId: dto.centerId,
+              sessionsInvalidated: true,
+            },
+          },
+          tx,
+        );
+      }
+
+      const ratingsDiff =
+        latestRegistration && ratingsChanged
+          ? auditDiff(
+              {
+                battingRating: latestRegistration.battingRating,
+                bowlingRating: latestRegistration.bowlingRating,
+                fieldingRating: latestRegistration.fieldingRating,
+              },
+              {
+                battingRating: dto.battingRating ?? latestRegistration.battingRating,
+                bowlingRating: dto.bowlingRating ?? latestRegistration.bowlingRating,
+                fieldingRating: dto.fieldingRating ?? latestRegistration.fieldingRating,
+              },
+            )
+          : null;
+      if (latestRegistration && ratingsDiff) {
+        await this.audit.record(
+          {
+            action: 'REGISTRATION_RATINGS_UPDATED',
+            actorUserId: actor.id,
+            targetUserId: userId,
+            targetEntityType: AuditEntityType.Registration,
+            targetEntityId: latestRegistration.id,
+            before: ratingsDiff.before,
+            after: ratingsDiff.after,
+            details: { tournamentId: latestRegistration.tournamentId, source: 'ADMIN_USER_EDIT' },
+          },
+          tx,
+        );
+      }
+
+      await this.audit.record(
+        {
+          action: 'USER_PROFILE_UPDATED',
+          actorUserId: actor.id,
+          targetUserId: userId,
+          targetEntityType: AuditEntityType.User,
+          targetEntityId: userId,
+          before: {
+            firstName: existing.firstName,
+            lastName: existing.lastName,
+            email: existing.email,
+            centerId: existing.centerId,
+            dateOfBirth: existing.dateOfBirth.toISOString().slice(0, 10),
+            jerseyNumber: existing.jerseyNumber,
+            jerseyName: existing.jerseyName,
+            platformRole: existing.role,
+          },
+          after: {
+            firstName: dto.firstName,
+            lastName: dto.lastName,
+            email: dto.email,
+            centerId: dto.centerId,
+            dateOfBirth: dto.dateOfBirth,
+            jerseyNumber: dto.jerseyNumber,
+            jerseyName: dto.jerseyName ?? null,
+            platformRole: dto.platformRole,
+          },
+        },
+        tx,
+      );
     });
 
     return this.getUser(userId);

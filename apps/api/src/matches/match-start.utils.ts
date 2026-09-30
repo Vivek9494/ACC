@@ -3,6 +3,7 @@ import {
   isMatchDayTodayInZone,
   isMatchScheduledDateBeforeTodayInZone,
   MatchSide,
+  SCORER_ASSIGNMENT_LEAD_MS,
   serverVenueTimezone,
   TossDecision,
 } from '@acc/types';
@@ -77,8 +78,6 @@ export function isDashboardScorerCardVisible(
   }
   return true;
 }
-
-const SCORER_ASSIGNMENT_LEAD_MS = 2 * 60 * 60 * 1000;
 
 /**
  * Captain scorer-assignment card window (§11.1): match day, from 2 hours before

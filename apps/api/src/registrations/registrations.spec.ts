@@ -1604,7 +1604,7 @@ describe('RegistrationsService', () => {
 
   describe('custom forms (§7.2)', () => {
     it('replaces the field definitions on build', async () => {
-      await service.buildCustomForm('tour-1', {
+      await service.buildCustomForm(admin, 'tour-1', {
         fields: [{ key: 'tshirt', label: 'T-Shirt Size', fieldType: 'SELECT', options: ['S', 'M'] }],
       });
       expect(prisma.registrationFieldDefinition.deleteMany).toHaveBeenCalledWith({
@@ -1615,7 +1615,7 @@ describe('RegistrationsService', () => {
 
     it('rejects duplicate field keys', async () => {
       await expect(
-        service.buildCustomForm('tour-1', {
+        service.buildCustomForm(admin, 'tour-1', {
           fields: [
             { key: 'dup', label: 'A', fieldType: 'TEXT' },
             { key: 'dup', label: 'B', fieldType: 'TEXT' },

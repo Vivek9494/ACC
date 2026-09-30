@@ -1,77 +1,11 @@
-import type { NotificationContent, NotificationSendResult } from '@acc/types';
+import type { NotificationContent, NotificationSendResult, NotificationTrigger } from '@acc/types';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 
 import { NotificationLogService } from './notification-log.service';
 import { PUSH_PROVIDER, type PushProvider } from './push-provider';
 import { PushTokenService } from './push-token.service';
 
-/**
- * Notification triggers (?17.1). These map 1:1 to the spec's trigger list and
- * the ?6.4 mid-tournament edit events. (Retained for existing call sites; new
- * sends use {@link NotificationsService.sendNotification} with a `triggerKey`.)
- */
-export const NotificationTrigger = {
-  TournamentEditedMidRegistration: 'TOURNAMENT_EDITED_MID_REGISTRATION',
-  TournamentDeletedMidRegistration: 'TOURNAMENT_DELETED_MID_REGISTRATION',
-  /** ?6.4: tournament calendar dates changed mid-season. */
-  TournamentDatesChanged: 'TOURNAMENT_DATES_CHANGED',
-  /** ?6.4: venue/location changed. */
-  TournamentLocationChanged: 'TOURNAMENT_LOCATION_CHANGED',
-  /** ?6.4: registration window changed. */
-  TournamentRegistrationWindowChanged: 'TOURNAMENT_REGISTRATION_WINDOW_CHANGED',
-  /** ?6.4: video upload policy or deadline changed. */
-  TournamentVideoPolicyChanged: 'TOURNAMENT_VIDEO_POLICY_CHANGED',
-  PlayerAddedToTeam: 'PLAYER_ADDED_TO_TEAM',
-  PlayerRemovedFromTeam: 'PLAYER_REMOVED_FROM_TEAM',
-  CaptainRosterChanged: 'CAPTAIN_ROSTER_CHANGED',
-  /** ?17: a new tournament was created (Phase B). */
-  NewTournamentCreated: 'NEW_TOURNAMENT_CREATED',
-  /** ?17: a tournament's registration window opened (Phase C ? date-based). */
-  RegistrationOpened: 'REGISTRATION_OPENED',
-  /** ?17: an Admin/CM published a broadcast announcement (Phase B). */
-  BroadcastPosted: 'BROADCAST_POSTED',
-  /** ?7.3: the player is notified when their registration is confirmed. */
-  RegistrationConfirmed: 'REGISTRATION_CONFIRMED',
-  /** ?7.3: the player is notified when their registration is declined. */
-  RegistrationDeclined: 'REGISTRATION_DECLINED',
-  /** ?9.7: selected players are notified when the Playing 11 is posted/confirmed. */
-  PlayingXiPosted: 'PLAYING_XI_POSTED',
-  /** ?11.1: a player is notified they have been granted match Scorer access. */
-  ScorerAssigned: 'SCORER_ASSIGNED',
-  /** ?17: the winning team's squad is notified when a match result is confirmed (Phase B). */
-  MatchResultConfirmed: 'MATCH_RESULT_CONFIRMED',
-  /** ?17: both squads are notified when a match is scheduled (Phase B). */
-  MatchScheduled: 'MATCH_SCHEDULED',
-  /** ?17: both squads are notified when a match's date/time changes (Phase B). */
-  MatchRescheduled: 'MATCH_RESCHEDULED',
-  /** ?17: a suspended player is notified when designated to serve a penalty (Phase B). */
-  PenaltyServeDesignated: 'PENALTY_SERVE_DESIGNATED',
-  /** ?17: daily 10 AM EDT reminder to leather poll non-voters until close (Phase C). */
-  PollReminder: 'POLL_REMINDER',
-  /** ?17: 10 AM EDT day-before reminder to both squads (Phase C). */
-  MatchReminder: 'MATCH_REMINDER',
-  /** ?17: ~10 min before registration close, to the tournament audience (Phase C). */
-  RegistrationClosing: 'REGISTRATION_CLOSING',
-  /** ?17: ~10 min before the video upload deadline, to registered players (Phase C). */
-  VideoUploadClosing: 'VIDEO_UPLOAD_CLOSING',
-  /** §17: when videoUploadStartAt arrives, to registered players (Confirmed + In Waitlist). */
-  VideoUploadOpened: 'VIDEO_UPLOAD_OPENED',
-  /** ?17: on registration when video is required ? informs the registrant of the deadline (Phase C). */
-  VideoUploadDeadline: 'VIDEO_UPLOAD_DEADLINE',
-  /** §17: 1 day before verification deadline — Center Sevaks of the tournament's centers. */
-  VerificationReminder: 'VERIFICATION_REMINDER',
-  /** §17: bulk auto-confirm of remaining In-Waitlist registrations at the verification deadline. */
-  WaitlistAutoConfirm: 'WAITLIST_AUTO_CONFIRM',
-  /** ?17: at 10 AM EDT on a user's birthday, to all active users (Phase C). */
-  Birthday: 'BIRTHDAY',
-  /** ?17: Captain carried a pending suspension forward — notify Club Managers. */
-  SuspensionCarriedForward: 'SUSPENSION_CARRIED_FORWARD',
-  /** ?17: Captain cancelled a pending suspension — notify Club Managers. */
-  SuspensionCancelled: 'SUSPENSION_CANCELLED',
-} as const;
-
-export type NotificationTrigger =
-  (typeof NotificationTrigger)[keyof typeof NotificationTrigger];
+export { NotificationTrigger } from '@acc/types';
 
 export interface NotificationPayload {
   /** User ids to notify. */

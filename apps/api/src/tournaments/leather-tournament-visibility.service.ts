@@ -1,4 +1,5 @@
 import {
+  AuditEntityType,
   type AuthUser,
   BallType,
   type CenterPlayerRosterEntry,
@@ -16,6 +17,7 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 
+import { AuditService } from '../audit/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { selectableUserWhere } from '../users/user-query';
 import { activeTeamMembershipWhere } from '../teams/team-membership-query';
@@ -58,7 +60,10 @@ function activeLeatherRosterWhere(userId?: string): Prisma.TeamMembershipWhereIn
 
 @Injectable()
 export class LeatherTournamentVisibilityService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly audit: AuditService,
+  ) {}
 
   /**
    * Existing Leather Player (Path A): any locked-XI in a leather tournament OR
@@ -373,13 +378,26 @@ export class LeatherTournamentVisibilityService {
       });
     }
 
-    const result = await this.prisma.tournamentLeatherInvite.createMany({
-      data: uniqueIds.map((userId) => ({
-        tournamentId,
-        userId,
-        invitedByUserId: actor.id,
-      })),
-      skipDuplicates: true,
+    const result = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.tournamentLeatherInvite.createMany({
+        data: uniqueIds.map((userId) => ({
+          tournamentId,
+          userId,
+          invitedByUserId: actor.id,
+        })),
+        skipDuplicates: true,
+      });
+      await this.audit.record(
+        {
+          action: 'LEATHER_INVITES_CREATED',
+          actorUserId: actor.id,
+          targetEntityType: AuditEntityType.Tournament,
+          targetEntityId: tournamentId,
+          details: { invitedUserIds: uniqueIds, createdCount: created.count },
+        },
+        tx,
+      );
+      return created;
     });
 
     return result.count;
@@ -401,15 +419,27 @@ export class LeatherTournamentVisibilityService {
       });
     }
 
-    const deleted = await this.prisma.tournamentLeatherInvite.deleteMany({
-      where: { tournamentId, userId },
-    });
-    if (deleted.count === 0) {
-      throw new NotFoundException({
-        message: 'Invite not found',
-        error: 'NOT_FOUND',
+    await this.prisma.$transaction(async (tx) => {
+      const deleted = await tx.tournamentLeatherInvite.deleteMany({
+        where: { tournamentId, userId },
       });
-    }
+      if (deleted.count === 0) {
+        throw new NotFoundException({
+          message: 'Invite not found',
+          error: 'NOT_FOUND',
+        });
+      }
+      await this.audit.record(
+        {
+          action: 'LEATHER_INVITE_REVOKED',
+          actorUserId: actor.id,
+          targetUserId: userId,
+          targetEntityType: AuditEntityType.Tournament,
+          targetEntityId: tournamentId,
+        },
+        tx,
+      );
+    });
   }
 
   private assertAdmin(actor: AuthUser): void {

@@ -1,4 +1,5 @@
 import {
+  AuditEntityType,
   type AuthUser,
   BallType,
   type AvailabilitySummary,
@@ -160,6 +161,17 @@ export class RegistrationsService {
       playerType,
       ballType,
     );
+
+    await this.audit.record({
+      action: 'REGISTRATION_SUBMITTED',
+      actorUserId: actor.id,
+      targetUserId: actor.id,
+      targetEntityType: AuditEntityType.Registration,
+      targetEntityId: detail.id,
+      before: existing ? { status: existing.status } : undefined,
+      after: { status: detail.status, centerId, playerType },
+      details: { tournamentId, ballType },
+    });
 
     if (ballType === BallType.Leather) {
       await this.notifyRegistrationDecision(
@@ -582,6 +594,7 @@ export class RegistrationsService {
         battingRating: true,
         bowlingRating: true,
         fieldingRating: true,
+        playerType: true,
       },
     });
     if (!existing || existing.tournamentId !== tournamentId) {
@@ -622,11 +635,13 @@ export class RegistrationsService {
         battingRating: existing.battingRating,
         bowlingRating: existing.bowlingRating,
         fieldingRating: existing.fieldingRating,
+        playerType: existing.playerType,
       },
       after: {
         battingRating: row.battingRating,
         bowlingRating: row.bowlingRating,
         fieldingRating: row.fieldingRating,
+        playerType: row.playerType,
       },
     });
 
@@ -634,14 +649,37 @@ export class RegistrationsService {
   }
 
   async updateAvailability(
+    actor: AuthUser,
     registrationId: string,
     dto: UpdateAvailabilityDto,
   ): Promise<RegistrationDetail> {
-    await this.requireRegistration(registrationId);
+    const existing = await this.prisma.registration.findUnique({
+      where: { id: registrationId },
+      select: {
+        id: true,
+        userId: true,
+        tournamentId: true,
+        isAvailable: true,
+        availabilityNote: true,
+      },
+    });
+    if (!existing) {
+      throw new NotFoundException({ message: 'Registration not found', error: 'NOT_FOUND' });
+    }
     const row = await this.prisma.registration.update({
       where: { id: registrationId },
       data: { isAvailable: dto.isAvailable, availabilityNote: dto.availabilityNote ?? null },
       include: REGISTRATION_INCLUDE,
+    });
+    await this.audit.record({
+      action: 'REGISTRATION_AVAILABILITY_UPDATED',
+      actorUserId: actor.id,
+      targetUserId: existing.userId,
+      targetEntityType: AuditEntityType.Registration,
+      targetEntityId: registrationId,
+      before: { isAvailable: existing.isAvailable, availabilityNote: existing.availabilityNote },
+      after: { isAvailable: row.isAvailable, availabilityNote: row.availabilityNote },
+      details: { tournamentId: existing.tournamentId },
     });
     return this.resolveSummaryPhoto(this.toDetail(row));
   }
@@ -973,6 +1011,15 @@ export class RegistrationsService {
         where: { tournamentId, teamId, userId },
       });
     }
+
+    await this.audit.record({
+      action: favourited ? 'REGISTRATION_FAVOURITED' : 'REGISTRATION_UNFAVOURITED',
+      actorUserId: actor.id,
+      targetUserId: userId,
+      targetEntityType: AuditEntityType.Team,
+      targetEntityId: teamId,
+      details: { tournamentId },
+    });
 
     return { userId, isFavourited: favourited };
   }
@@ -1508,12 +1555,29 @@ export class RegistrationsService {
 
   /** Admin builds (replaces) a tournament's custom form (?7.2). */
   async buildCustomForm(
+    actor: AuthUser,
     tournamentId: string,
     dto: BuildCustomFormDto,
   ): Promise<RegistrationFieldDefinition[]> {
     await this.requireTournament(tournamentId);
     this.assertUniqueKeys(dto.fields);
     await this.prisma.$transaction(async (tx) => {
+      const previous = await tx.registrationFieldDefinition.findMany({
+        where: { tournamentId },
+        select: { key: true },
+        orderBy: { position: 'asc' },
+      });
+      await this.audit.record(
+        {
+          action: 'REGISTRATION_FORM_BUILT',
+          actorUserId: actor.id,
+          targetEntityType: AuditEntityType.Tournament,
+          targetEntityId: tournamentId,
+          before: { fieldKeys: previous.map((field) => field.key) },
+          after: { fieldKeys: dto.fields.map((field) => field.key) },
+        },
+        tx,
+      );
       await tx.registrationFieldDefinition.deleteMany({ where: { tournamentId } });
       if (dto.fields.length > 0) {
         await tx.registrationFieldDefinition.createMany({
@@ -1551,6 +1615,16 @@ export class RegistrationsService {
           dto.requestedFields && dto.requestedFields.length > 0
             ? (dto.requestedFields as unknown as Prisma.InputJsonValue)
             : Prisma.JsonNull,
+      },
+    });
+    await this.audit.record({
+      action: 'REGISTRATION_FORM_REQUESTED',
+      actorUserId: actor.id,
+      targetEntityType: AuditEntityType.Tournament,
+      targetEntityId: tournamentId,
+      details: {
+        requestId: row.id,
+        requestedFieldCount: dto.requestedFields?.length ?? 0,
       },
     });
     return this.toCustomFormRequestSummary(row);
@@ -1727,16 +1801,6 @@ export class RegistrationsService {
       where: { id: userId },
       data: { firstName: firstName.trim(), lastName: lastName.trim(), centerId },
     });
-  }
-
-  private async requireRegistration(registrationId: string): Promise<void> {
-    const exists = await this.prisma.registration.findUnique({
-      where: { id: registrationId },
-      select: { id: true },
-    });
-    if (!exists) {
-      throw new NotFoundException({ message: 'Registration not found', error: 'NOT_FOUND' });
-    }
   }
 
   /** Ensures every required custom field has an answer (?7.2). */

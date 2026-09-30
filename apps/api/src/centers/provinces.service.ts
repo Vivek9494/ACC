@@ -1,7 +1,14 @@
-import type { ProvinceDetail, ProvinceSummary } from '@acc/types';
+import {
+  AuditEntityType,
+  type AuthUser,
+  type ProvinceDetail,
+  type ProvinceSummary,
+} from '@acc/types';
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 
+import { AuditService } from '../audit/audit.service';
+import { auditDiff } from '../audit/audit-snapshot';
 import { PrismaService } from '../prisma/prisma.service';
 import type { CreateProvinceDto } from './dto/create-province.dto';
 import type { UpdateProvinceDto } from './dto/update-province.dto';
@@ -26,7 +33,10 @@ function toDetail(row: {
 
 @Injectable()
 export class ProvincesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly audit: AuditService,
+  ) {}
 
   listActive(): Promise<ProvinceSummary[]> {
     return this.prisma.province.findMany({
@@ -56,12 +66,19 @@ export class ProvincesService {
     return toDetail(row);
   }
 
-  async create(dto: CreateProvinceDto): Promise<ProvinceDetail> {
+  async create(actor: AuthUser, dto: CreateProvinceDto): Promise<ProvinceDetail> {
     const name = dto.name.trim();
     try {
       const row = await this.prisma.province.create({
         data: { name },
         include: { _count: { select: { centers: true } } },
+      });
+      await this.audit.record({
+        action: 'PROVINCE_CREATED',
+        actorUserId: actor.id,
+        targetEntityType: AuditEntityType.Province,
+        targetEntityId: row.id,
+        after: { name: row.name, isActive: row.isActive },
       });
       return toDetail(row);
     } catch (err) {
@@ -75,8 +92,8 @@ export class ProvincesService {
     }
   }
 
-  async update(id: string, dto: UpdateProvinceDto): Promise<ProvinceDetail> {
-    await this.getById(id);
+  async update(actor: AuthUser, id: string, dto: UpdateProvinceDto): Promise<ProvinceDetail> {
+    const existing = await this.getById(id);
     const data: Prisma.ProvinceUpdateInput = {};
     if (dto.name !== undefined) {
       data.name = dto.name.trim();
@@ -90,6 +107,20 @@ export class ProvincesService {
         data,
         include: { _count: { select: { centers: true } } },
       });
+      const diff = auditDiff(
+        { name: existing.name, isActive: existing.isActive },
+        { name: row.name, isActive: row.isActive },
+      );
+      if (diff) {
+        await this.audit.record({
+          action: 'PROVINCE_UPDATED',
+          actorUserId: actor.id,
+          targetEntityType: AuditEntityType.Province,
+          targetEntityId: id,
+          before: diff.before,
+          after: diff.after,
+        });
+      }
       return toDetail(row);
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
@@ -102,7 +133,7 @@ export class ProvincesService {
     }
   }
 
-  async remove(id: string): Promise<void> {
+  async remove(actor: AuthUser, id: string): Promise<void> {
     const row = await this.prisma.province.findUnique({
       where: { id },
       include: { _count: { select: { centers: true } } },
@@ -120,5 +151,12 @@ export class ProvincesService {
       });
     }
     await this.prisma.province.delete({ where: { id } });
+    await this.audit.record({
+      action: 'PROVINCE_DELETED',
+      actorUserId: actor.id,
+      targetEntityType: AuditEntityType.Province,
+      targetEntityId: id,
+      before: { name: row.name },
+    });
   }
 }

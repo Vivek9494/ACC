@@ -1,4 +1,5 @@
 import {
+  AuditEntityType,
   BallType,
   type AuthUser,
   canManageTournamentScorers,
@@ -27,6 +28,7 @@ import {
 } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 
+import { AuditService } from '../audit/audit.service';
 import { MediaUrlResolver } from '../storage/media-url.resolver';
 import { PrismaService } from '../prisma/prisma.service';
 import { activeTournamentWhere } from './tournament-query';
@@ -43,6 +45,7 @@ export class TournamentScorersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly mediaUrls: MediaUrlResolver,
+    private readonly audit: AuditService,
   ) {}
 
   async getSelectionView(
@@ -152,6 +155,22 @@ export class TournamentScorersService {
           resetMatches,
         });
       }
+
+      await this.audit.record(
+        {
+          action: 'TOURNAMENT_SCORERS_SET',
+          actorUserId: actor.id,
+          targetEntityType: AuditEntityType.Tournament,
+          targetEntityId: tournamentId,
+          before: { scorerUserIds: [...previousUserIds] },
+          after: { scorerUserIds: userIds },
+          details: {
+            removedUserIds,
+            revokedMatchIds: resets.flatMap((reset) => reset.resetMatches.map((m) => m.matchId)),
+          },
+        },
+        tx,
+      );
       return resets;
     });
 

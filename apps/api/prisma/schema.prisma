@@ -1611,4 +1611,6 @@ model AuditLog {
   @@index([targetUserId])
   @@index([targetEntityType, targetEntityId])
   @@index([action])
+  @@index([createdAt])
+  @@index([actorUserId, createdAt])
 }

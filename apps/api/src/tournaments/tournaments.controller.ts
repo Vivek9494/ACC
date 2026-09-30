@@ -154,10 +154,11 @@ export class TournamentsController {
   @RequirePermission(Permission.CHANGE_TOURNAMENT_STATUS)
   @UseGuards(PermissionGuard)
   transition(
+    @CurrentUser() user: AuthUser,
     @Param('tournamentId') tournamentId: string,
     @Body() dto: TransitionStateDto,
   ): Promise<TournamentDetail> {
-    return this.tournaments.transition(tournamentId, dto.state);
+    return this.tournaments.transition(user, tournamentId, dto.state);
   }
 
   @Delete(':tournamentId')

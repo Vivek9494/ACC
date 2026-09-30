@@ -8,11 +8,13 @@ import { ScorecardReader } from './scorecard-reader';
 import { ScoringService } from './scoring.service';
 
 /** Wires a ScoringService over the in-memory prisma mock with no-op deps. */
-function makeService(prisma: unknown): ScoringService {
+function makeService(
+  prisma: unknown,
+  audit: { record: (...args: unknown[]) => Promise<void> } = { record: async () => undefined },
+): ScoringService {
   const displayBuilder = new ScorecardDisplayBuilder(prisma as never);
   const reader = new ScorecardReader(prisma as never, displayBuilder);
   const live = { publish: async () => undefined } as never;
-  const audit = { record: async () => undefined } as never;
   const confirmation = { evaluateAutoConfirm: async () => undefined } as never;
   const tennisScoringAuth = { assertCanEnterScoringSession: async () => undefined } as never;
   const statsInvalidation = { invalidateMatchAggregates: async () => undefined } as never;
@@ -20,7 +22,7 @@ function makeService(prisma: unknown): ScoringService {
     prisma as never,
     live,
     reader,
-    audit,
+    audit as never,
     confirmation,
     { generateForCompletedMatch: jest.fn() } as never,
     tennisScoringAuth,
@@ -338,6 +340,41 @@ describe('ScoringService — append-only persistence & derivation', () => {
     expect(card.innings[0]!.extras.wides).toBe(1);
     expect(card.innings[0]!.legalBalls).toBe(2);
     expect(card.version).toBe(version());
+  });
+
+  it('writes scoring audit entries through the transaction client', async () => {
+    const { prisma, matches } = makeDb();
+    seedMatch(matches);
+    const txClients: unknown[] = [];
+    const wrapped = {
+      ...prisma,
+      $transaction: async (cb: (tx: unknown) => unknown) => {
+        const tx = { ...prisma };
+        txClients.push(tx);
+        return cb(tx);
+      },
+    };
+    const audit = { record: jest.fn(async (..._args: unknown[]) => undefined) };
+    const service = makeService(wrapped, audit);
+    await service.startInnings(scorer, 'match-1', { expectedVersion: 0 });
+    const inningsId = (await prisma.innings.findMany({ where: { matchId: 'match-1' } }))[0]!
+      .id as string;
+    const version = (): number => matches.get('match-1')!.scorecardVersion as number;
+
+    await service.recordDelivery(scorer, 'match-1', inningsId, {
+      type: DeliveryType.PenaltyRuns,
+      extraRuns: 5,
+      expectedVersion: version(),
+    });
+
+    const penaltyCall = audit.record.mock.calls.find(
+      ([entry]) => (entry as { action: string }).action === 'PENALTY_RUNS_AWARDED',
+    );
+    expect(penaltyCall?.[1]).toBe(txClients.at(-1));
+    const inningsCall = audit.record.mock.calls.find(
+      ([entry]) => (entry as { action: string }).action === 'INNINGS_STARTED',
+    );
+    expect(inningsCall?.[1]).toBe(txClients[0]);
   });
 
   it('records a wide with completed runs (Wd + 4) as extras charged to the bowler', async () => {

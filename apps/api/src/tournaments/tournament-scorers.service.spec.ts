@@ -33,7 +33,7 @@ describe('TournamentScorersService — live-match lock', () => {
     resolveProfilePhotoUrls: jest.fn(async <T extends { profilePhotoUrl: string | null }>(rows: T[]) => rows),
   };
 
-  const service = new TournamentScorersService(prisma as never, mediaUrls as never);
+  const service = new TournamentScorersService(prisma as never, mediaUrls as never, { record: jest.fn() } as never);
 
   const clubManager: AuthUser = {
     id: 'cm-1',

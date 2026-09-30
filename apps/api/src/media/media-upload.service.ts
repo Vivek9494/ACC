@@ -1,4 +1,5 @@
 import {
+  AuditEntityType,
   buildBroadcastImageStorageKey,
   buildProfilePhotoStorageKey,
   buildTeamLogoStorageKey,
@@ -17,6 +18,7 @@ import {
 } from '@acc/types';
 import { BadRequestException, Injectable } from '@nestjs/common';
 
+import { AuditService } from '../audit/audit.service';
 import { AppSettingsService } from '../settings/app-settings.service';
 import { S3StorageService } from '../storage/s3-storage.service';
 
@@ -27,6 +29,7 @@ export class MediaUploadService {
   constructor(
     private readonly storage: S3StorageService,
     private readonly settings: AppSettingsService,
+    private readonly audit: AuditService,
   ) {}
 
   async createProfilePhotoUploadSession(
@@ -60,7 +63,9 @@ export class MediaUploadService {
     dto: MediaUploadCompleteRequest,
   ): Promise<MediaUploadCompleteResponse> {
     this.assertUserScopedKey(userId, dto.storageKey, 'posters/');
-    return this.completeImageUpload(dto, TOURNAMENT_POSTER_MAX_BYTES);
+    const result = await this.completeImageUpload(dto, TOURNAMENT_POSTER_MAX_BYTES);
+    await this.recordUpload(userId, 'TOURNAMENT_POSTER', dto);
+    return result;
   }
 
   async createTeamLogoUploadSession(
@@ -77,7 +82,9 @@ export class MediaUploadService {
     dto: MediaUploadCompleteRequest,
   ): Promise<MediaUploadCompleteResponse> {
     this.assertUserScopedKey(userId, dto.storageKey, 'team-logos/');
-    return this.completeImageUpload(dto, TOURNAMENT_POSTER_MAX_BYTES);
+    const result = await this.completeImageUpload(dto, TOURNAMENT_POSTER_MAX_BYTES);
+    await this.recordUpload(userId, 'TEAM_LOGO', dto);
+    return result;
   }
 
   async createBroadcastImageUploadSession(
@@ -94,7 +101,26 @@ export class MediaUploadService {
     dto: MediaUploadCompleteRequest,
   ): Promise<MediaUploadCompleteResponse> {
     this.assertUserScopedKey(userId, dto.storageKey, 'broadcasts/');
-    return this.completeImageUpload(dto, await this.settings.getImageUploadMaxBytes());
+    const result = await this.completeImageUpload(
+      dto,
+      await this.settings.getImageUploadMaxBytes(),
+    );
+    await this.recordUpload(userId, 'BROADCAST_IMAGE', dto);
+    return result;
+  }
+
+  private async recordUpload(
+    userId: string,
+    kind: 'TOURNAMENT_POSTER' | 'TEAM_LOGO' | 'BROADCAST_IMAGE',
+    dto: MediaUploadCompleteRequest,
+  ): Promise<void> {
+    await this.audit.record({
+      action: 'MEDIA_UPLOADED',
+      actorUserId: userId,
+      targetEntityType: AuditEntityType.Media,
+      targetEntityId: dto.storageKey,
+      details: { kind, mimeType: dto.mimeType, sizeBytes: dto.sizeBytes },
+    });
   }
 
   private async createSession(

@@ -1,5 +1,5 @@
 import type { CenterDetail, CenterSummary } from '@acc/types';
-import { Permission } from '@acc/types';
+import { type AuthUser, Permission } from '@acc/types';
 import {
   Body,
   Controller,
@@ -14,6 +14,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 
+import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Public } from '../auth/public.decorator';
 import { PermissionGuard } from '../authz/permission.guard';
@@ -50,22 +51,26 @@ export class CentersController {
   @Post()
   @UseGuards(PermissionGuard)
   @RequirePermission(Permission.MANAGE_CENTERS)
-  create(@Body() dto: CreateCenterDto): Promise<CenterDetail> {
-    return this.centers.create(dto);
+  create(@CurrentUser() user: AuthUser, @Body() dto: CreateCenterDto): Promise<CenterDetail> {
+    return this.centers.create(user, dto);
   }
 
   @Patch(':id')
   @UseGuards(PermissionGuard)
   @RequirePermission(Permission.MANAGE_CENTERS)
-  update(@Param('id') id: string, @Body() dto: UpdateCenterDto): Promise<CenterDetail> {
-    return this.centers.update(id, dto);
+  update(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body() dto: UpdateCenterDto,
+  ): Promise<CenterDetail> {
+    return this.centers.update(user, id, dto);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @UseGuards(PermissionGuard)
   @RequirePermission(Permission.MANAGE_CENTERS)
-  async remove(@Param('id') id: string): Promise<void> {
-    await this.centers.remove(id);
+  async remove(@CurrentUser() user: AuthUser, @Param('id') id: string): Promise<void> {
+    await this.centers.remove(user, id);
   }
 }

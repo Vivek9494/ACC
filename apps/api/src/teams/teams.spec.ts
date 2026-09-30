@@ -646,6 +646,7 @@ describe('TeamsService create (no create-time Cap/VC/Manager)', () => {
   let prisma: {
     tournament: { findUnique: jest.Mock };
     team: { count: jest.Mock; create: jest.Mock };
+    $transaction: jest.Mock;
   };
   let permissions: { check: jest.Mock };
   let tournaments: { assertCenterSevakTournamentAccess: jest.Mock };
@@ -673,6 +674,7 @@ describe('TeamsService create (no create-time Cap/VC/Manager)', () => {
           _count: { memberships: 0 },
         }),
       },
+      $transaction: jest.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn(prisma)),
     };
     permissions = {
       check: jest.fn().mockResolvedValue(true),
@@ -905,7 +907,7 @@ describe('TeamsService update/remove EDIT_TOURNAMENT gate', () => {
       teamMembership: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
       roleAssignment: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
       teamRegistrationFavourite: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
-      $transaction: jest.fn(async (ops: unknown) => ops),
+      $transaction: jest.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn(prisma)),
     };
     permissions = {
       check: jest.fn().mockResolvedValue(true),

@@ -17,6 +17,7 @@ export * from './signup-validation';
 export * from './profile';
 export * from './admin';
 export * from './admin-user-form';
+export * from './audit-log';
 export * from './app-settings';
 export * from './birthdays';
 export * from './broadcast';

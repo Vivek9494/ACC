@@ -170,7 +170,7 @@ export class ScoringService {
     const nextSequence = (existing[0]?.sequence ?? 0) + 1;
 
     const updated = await this.prisma.$transaction(async (tx) => {
-      await tx.innings.create({
+      const created = await tx.innings.create({
         data: {
           matchId,
           sequence: nextSequence,
@@ -182,6 +182,23 @@ export class ScoringService {
           oversAllotted: req.oversAllotted ?? null,
         },
       });
+      await this.audit.record(
+        {
+          action: 'INNINGS_STARTED',
+          actorUserId: user.id,
+          targetEntityType: 'innings',
+          targetEntityId: created.id,
+          after: {
+            matchId,
+            sequence: created.sequence,
+            inningsType: created.inningsType,
+            battingTeamId: created.battingTeamId,
+            bowlingTeamId: created.bowlingTeamId,
+            oversAllotted: created.oversAllotted,
+          },
+        },
+        tx,
+      );
       return this.bumpVersion(tx, matchId);
     });
 
@@ -271,21 +288,24 @@ export class ScoringService {
       }
       await tx.innings.update({ where: { id: inningsId }, data: participantClear });
       if (opts.postConfirm) {
-        await this.auditPostConfirm(user, matchId, null, created);
+        await this.auditPostConfirm(tx, user, matchId, null, created);
       }
       if (req.type === DeliveryType.PenaltyRuns) {
-        await this.audit.record({
-          action: 'PENALTY_RUNS_AWARDED',
-          actorUserId: user.id,
-          targetEntityType: 'delivery',
-          targetEntityId: created.id,
-          after: {
-            matchId,
-            inningsId,
-            beneficiaryTeamId: req.penaltyBeneficiaryTeamId ?? null,
-            runs: req.extraRuns ?? 0,
+        await this.audit.record(
+          {
+            action: 'PENALTY_RUNS_AWARDED',
+            actorUserId: user.id,
+            targetEntityType: 'delivery',
+            targetEntityId: created.id,
+            after: {
+              matchId,
+              inningsId,
+              beneficiaryTeamId: req.penaltyBeneficiaryTeamId ?? null,
+              runs: req.extraRuns ?? 0,
+            },
           },
-        });
+          tx,
+        );
       }
       return this.bumpVersion(tx, matchId);
     });
@@ -355,6 +375,20 @@ export class ScoringService {
             data: { isVoided: true },
           });
         }
+        await this.audit.record(
+          {
+            action: 'DELIVERY_UNDONE',
+            actorUserId: user.id,
+            targetEntityType: 'innings',
+            targetEntityId: innings.id,
+            details: {
+              matchId,
+              clearedBatterSelection: true,
+              voidedDeliveryId: voidLastCreaseEvent && lastDelivery ? lastDelivery.id : null,
+            },
+          },
+          tx,
+        );
         return this.bumpVersion(tx, matchId);
       });
       return this.publishAndReturn(updated);
@@ -374,6 +408,17 @@ export class ScoringService {
         where: { id: last.id },
         data: { isVoided: true },
       });
+      await this.audit.record(
+        {
+          action: 'DELIVERY_UNDONE',
+          actorUserId: user.id,
+          targetEntityType: 'delivery',
+          targetEntityId: last.id,
+          before: this.deliverySnapshot(last),
+          details: { matchId, inningsId, clearedBatterSelection: false },
+        },
+        tx,
+      );
       return this.bumpVersion(tx, matchId);
     });
 
@@ -523,7 +568,7 @@ export class ScoringService {
         data: { isVoided: true, supersededByDeliveryId: replacement.id },
       });
       if (opts.postConfirm) {
-        await this.auditPostConfirm(user, matchId, target, replacement);
+        await this.auditPostConfirm(tx, user, matchId, target, replacement);
       }
       return this.bumpVersion(tx, matchId);
     });
@@ -540,7 +585,6 @@ export class ScoringService {
     inningsId: string,
     req: import('@acc/types').SetDeliveryShotPlacementRequest,
   ): Promise<ScorecardResponse> {
-    void user;
     const match = await this.requireMatch(matchId);
     this.assertVersion(match, req.expectedVersion);
     this.assertEditable(match, {});
@@ -585,6 +629,18 @@ export class ScoringService {
           shotY: clearing ? null : req.shotY,
         },
       });
+      await this.audit.record(
+        {
+          action: clearing ? 'DELIVERY_SHOT_PLACEMENT_CLEARED' : 'DELIVERY_SHOT_PLACEMENT_SET',
+          actorUserId: user.id,
+          targetEntityType: 'delivery',
+          targetEntityId: target.id,
+          before: { shotX: target.shotX, shotY: target.shotY },
+          after: { shotX: clearing ? null : req.shotX, shotY: clearing ? null : req.shotY },
+          details: { matchId, inningsId },
+        },
+        tx,
+      );
       return this.bumpVersion(tx, matchId);
     });
     return this.publishAndReturn(updated);
@@ -598,7 +654,6 @@ export class ScoringService {
     deliveryId: string,
     req: import('@acc/types').AttachDeliveryVideoRequest,
   ): Promise<ScorecardResponse> {
-    void user;
     const match = await this.requireMatch(matchId);
     this.assertVersion(match, req.expectedVersion);
     this.assertEditable(match, {});
@@ -623,6 +678,18 @@ export class ScoringService {
         where: { id: target.id },
         data: { videoPath },
       });
+      await this.audit.record(
+        {
+          action: 'DELIVERY_VIDEO_ATTACHED',
+          actorUserId: user.id,
+          targetEntityType: 'delivery',
+          targetEntityId: target.id,
+          before: { videoPath: target.videoPath },
+          after: { videoPath },
+          details: { matchId, inningsId },
+        },
+        tx,
+      );
       return this.bumpVersion(tx, matchId);
     });
     return this.publishAndReturn(updated);
@@ -1186,6 +1253,21 @@ export class ScoringService {
 
     const updated = await this.prisma.$transaction(async (tx) => {
       await tx.innings.update({ where: { id: innings.id }, data });
+      await this.audit.record(
+        {
+          action: 'INNINGS_PARTICIPANTS_SET',
+          actorUserId: user.id,
+          targetEntityType: 'innings',
+          targetEntityId: innings.id,
+          after: {
+            ...(req.strikerId !== undefined ? { strikerId: req.strikerId } : {}),
+            ...(req.nonStrikerId !== undefined ? { nonStrikerId: req.nonStrikerId } : {}),
+            ...(req.bowlerId !== undefined ? { bowlerId: req.bowlerId } : {}),
+          },
+          details: { matchId },
+        },
+        tx,
+      );
       return this.bumpVersion(tx, matchId);
     });
     return this.publishAndReturn(updated);
@@ -1481,20 +1563,24 @@ export class ScoringService {
 
   /** §18.1: every post-confirmation scorecard edit is logged with before/after. */
   private async auditPostConfirm(
+    tx: Prisma.TransactionClient,
     user: AuthUser,
     matchId: string,
     before: Delivery | null,
     after: Delivery,
   ): Promise<void> {
-    await this.audit.record({
-      action: ScorecardAuditAction.PostConfirmEdit,
-      actorUserId: user.id,
-      targetEntityType: 'delivery',
-      targetEntityId: after.id,
-      before: before ? this.deliverySnapshot(before) : undefined,
-      after: this.deliverySnapshot(after),
-      details: { matchId },
-    });
+    await this.audit.record(
+      {
+        action: ScorecardAuditAction.PostConfirmEdit,
+        actorUserId: user.id,
+        targetEntityType: 'delivery',
+        targetEntityId: after.id,
+        before: before ? this.deliverySnapshot(before) : undefined,
+        after: this.deliverySnapshot(after),
+        details: { matchId },
+      },
+      tx,
+    );
   }
 
   private deliverySnapshot(d: Delivery): Prisma.InputJsonValue {

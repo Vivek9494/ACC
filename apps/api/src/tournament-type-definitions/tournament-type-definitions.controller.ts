@@ -2,7 +2,7 @@ import type {
   TournamentTypeDefinitionDetail,
   TournamentTypeDefinitionSummary,
 } from '@acc/types';
-import { Permission } from '@acc/types';
+import { type AuthUser, Permission } from '@acc/types';
 import {
   Body,
   Controller,
@@ -16,6 +16,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 
+import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PermissionGuard } from '../authz/permission.guard';
 import { RequirePermission } from '../authz/require-permission.decorator';
@@ -43,21 +44,25 @@ export class TournamentTypeDefinitionsController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  create(@Body() dto: CreateTournamentTypeDefinitionDto): Promise<TournamentTypeDefinitionDetail> {
-    return this.definitions.create(dto);
+  create(
+    @CurrentUser() user: AuthUser,
+    @Body() dto: CreateTournamentTypeDefinitionDto,
+  ): Promise<TournamentTypeDefinitionDetail> {
+    return this.definitions.create(user, dto);
   }
 
   @Patch(':id')
   update(
+    @CurrentUser() user: AuthUser,
     @Param('id') id: string,
     @Body() dto: UpdateTournamentTypeDefinitionDto,
   ): Promise<TournamentTypeDefinitionDetail> {
-    return this.definitions.update(id, dto);
+    return this.definitions.update(user, id, dto);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async remove(@Param('id') id: string): Promise<void> {
-    await this.definitions.softDelete(id);
+  async remove(@CurrentUser() user: AuthUser, @Param('id') id: string): Promise<void> {
+    await this.definitions.softDelete(user, id);
   }
 }

@@ -13,6 +13,7 @@ import { PlayerModule } from './player/player.module';
 import { ClubManagerModule } from './club-manager/club-manager.module';
 import { AdminModule } from './admin/admin.module';
 import { AuditModule } from './audit/audit.module';
+import { AuditLogsModule } from './audit-logs/audit-logs.module';
 import { AuthModule } from './auth/auth.module';
 import { AuthzModule } from './authz/authz.module';
 import { CentersModule } from './centers/centers.module';
@@ -62,6 +63,7 @@ import { OverlayThemesModule } from './overlay-themes/overlay-themes.module';
     StatsModule,
     SmsModule,
     AuditModule,
+    AuditLogsModule,
     AuthzModule,
     AppSettingsModule,
     BroadcastModule,

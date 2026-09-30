@@ -1,4 +1,5 @@
 import {
+  AuditEntityType,
   AuthErrorCode,
   INVALID_POSTAL_CODE_MESSAGE,
   MIN_SIGNUP_AGE,
@@ -33,6 +34,7 @@ import type { Center, JerseySize, Province, User } from '@prisma/client';
 import { randomInt } from 'node:crypto';
 
 import { AuditService } from '../audit/audit.service';
+import { auditDiff, auditSnapshot, changedAuditKeys } from '../audit/audit-snapshot';
 import { PlayerMomStatsService } from '../player-stats/player-mom-stats.service';
 import { PlayerStatsService } from '../player-stats/player-stats.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -49,6 +51,26 @@ import {
 } from './profile.constants';
 
 const ONE_DAY_SECONDS = 24 * 60 * 60;
+
+const PROFILE_AUDIT_VALUE_FIELDS = [
+  'firstName',
+  'lastName',
+  'email',
+  'dateOfBirth',
+  'jerseyName',
+  'jerseySize',
+  'jerseyNumber',
+  'hasHealthCard',
+  'profilePhotoUrl',
+] as const satisfies readonly (keyof User)[];
+
+/** Logged by field name only — values stay out of the audit trail. */
+const PROFILE_AUDIT_PRIVATE_FIELDS = [
+  'address',
+  'postalCode',
+  'emergencyContactName',
+  'emergencyContactNumber',
+] as const satisfies readonly (keyof User)[];
 
 type UserWithCenter = User & {
   center: Center & { province: Province };
@@ -277,10 +299,32 @@ export class ProfileService {
         action: 'USER_CENTER_CHANGED',
         actorUserId: userId,
         targetUserId: userId,
-        targetEntityType: 'User',
+        targetEntityType: AuditEntityType.User,
         targetEntityId: userId,
         before: { centerId: user.centerId, centerName: user.center.name },
         after: { centerId: updated.centerId, centerName: updated.center.name },
+      });
+    }
+
+    const valueDiff = auditDiff(
+      auditSnapshot(user, PROFILE_AUDIT_VALUE_FIELDS),
+      auditSnapshot(updated, PROFILE_AUDIT_VALUE_FIELDS),
+    );
+    const privateChanged = changedAuditKeys(
+      auditSnapshot(user, PROFILE_AUDIT_PRIVATE_FIELDS),
+      auditSnapshot(updated, PROFILE_AUDIT_PRIVATE_FIELDS),
+    );
+    if (valueDiff || privateChanged.length > 0) {
+      await this.audit.record({
+        action: 'USER_PROFILE_SELF_UPDATED',
+        actorUserId: userId,
+        targetUserId: userId,
+        targetEntityType: AuditEntityType.User,
+        targetEntityId: userId,
+        ...(valueDiff ? { before: valueDiff.before, after: valueDiff.after } : {}),
+        details: {
+          changedFields: [...(valueDiff?.changed ?? []), ...privateChanged],
+        },
       });
     }
 
@@ -322,6 +366,15 @@ export class ProfileService {
     await this.prisma.user.update({
       where: { id: userId },
       data: { profilePhotoUrl: nextPhotoKey },
+    });
+    await this.audit.record({
+      action: 'PROFILE_PHOTO_UPLOADED',
+      actorUserId: userId,
+      targetUserId: userId,
+      targetEntityType: AuditEntityType.User,
+      targetEntityId: userId,
+      before: { profilePhotoUrl: previousKey },
+      after: { profilePhotoUrl: nextPhotoKey },
     });
   }
 

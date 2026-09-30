@@ -602,6 +602,14 @@ export class MatchesService {
     }
 
     if (!backfill) {
+      await this.audit.record({
+        action: 'MATCH_CREATED',
+        actorUserId: actor.id,
+        targetEntityType: 'match',
+        targetEntityId: match.id,
+        after: this.fixtureAuditSnapshot(match),
+        details: { tournamentId, schedulingFormatFinalized: finalizeManualFormat },
+      });
       await this.notifyMatchScheduleAudience({
         matchId: match.id,
         homeTeamId: match.homeTeamId,
@@ -790,11 +798,21 @@ export class MatchesService {
         fields: { overlayTheme: 'Select a registered overlay theme' },
       });
     }
-    await this.requireMatchRow(matchId);
+    const existing = await this.requireMatchRow(matchId);
     await this.prisma.match.update({
       where: { id: matchId },
       data: { overlayTheme },
     });
+    if (existing.overlayTheme !== overlayTheme) {
+      await this.audit.record({
+        action: 'MATCH_OVERLAY_THEME_CHANGED',
+        actorUserId: actor.id,
+        targetEntityType: 'match',
+        targetEntityId: matchId,
+        before: { overlayTheme: existing.overlayTheme },
+        after: { overlayTheme },
+      });
+    }
     return this.getDetail(matchId, actor);
   }
 
@@ -804,7 +822,7 @@ export class MatchesService {
     matchId: string,
     youtubeUrl: string | null,
   ): Promise<MatchDetail> {
-    await this.requireMatchRow(matchId);
+    const existing = await this.requireMatchRow(matchId);
     const trimmed = youtubeUrl?.trim() ?? '';
     if (trimmed.length > 0 && parseYoutubeVideoId(trimmed) == null) {
       throw new BadRequestException({
@@ -813,10 +831,21 @@ export class MatchesService {
         fields: { youtubeUrl: 'Use youtube.com/watch, youtu.be, or youtube.com/live links' },
       });
     }
+    const nextUrl = trimmed.length > 0 ? trimmed : null;
     await this.prisma.match.update({
       where: { id: matchId },
-      data: { youtubeUrl: trimmed.length > 0 ? trimmed : null },
+      data: { youtubeUrl: nextUrl },
     });
+    if (existing.youtubeUrl !== nextUrl) {
+      await this.audit.record({
+        action: 'MATCH_YOUTUBE_URL_CHANGED',
+        actorUserId: actor.id,
+        targetEntityType: 'match',
+        targetEntityId: matchId,
+        before: { youtubeUrl: existing.youtubeUrl },
+        after: { youtubeUrl: nextUrl },
+      });
+    }
     return this.getDetail(matchId, actor);
   }
 
@@ -1882,13 +1911,30 @@ export class MatchesService {
         error: 'INVALID_MATCH_STATE',
       });
     }
-    await this.prisma.match.update({
-      where: { id: matchId },
-      data: {
-        tossWinner: dto.tossWinner,
-        tossDecision: dto.decision,
-        state: MatchState.TossCompleted,
-      },
+    await this.prisma.$transaction(async (tx) => {
+      await tx.match.update({
+        where: { id: matchId },
+        data: {
+          tossWinner: dto.tossWinner,
+          tossDecision: dto.decision,
+          state: MatchState.TossCompleted,
+        },
+      });
+      await this.audit.record(
+        {
+          action: 'MATCH_TOSS_RECORDED',
+          actorUserId: actor.id,
+          targetEntityType: 'match',
+          targetEntityId: matchId,
+          before: { state: match.state },
+          after: {
+            state: MatchState.TossCompleted,
+            tossWinner: dto.tossWinner,
+            tossDecision: dto.decision,
+          },
+        },
+        tx,
+      );
     });
     return this.getDetail(matchId);
   }

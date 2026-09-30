@@ -1,5 +1,5 @@
 import type { ProvinceDetail, ProvinceSummary } from '@acc/types';
-import { Permission } from '@acc/types';
+import { type AuthUser, Permission } from '@acc/types';
 import {
   Body,
   Controller,
@@ -13,6 +13,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 
+import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Public } from '../auth/public.decorator';
 import { PermissionGuard } from '../authz/permission.guard';
@@ -49,22 +50,26 @@ export class ProvincesController {
   @Post()
   @UseGuards(PermissionGuard)
   @RequirePermission(Permission.MANAGE_PROVINCES)
-  create(@Body() dto: CreateProvinceDto): Promise<ProvinceDetail> {
-    return this.provinces.create(dto);
+  create(@CurrentUser() user: AuthUser, @Body() dto: CreateProvinceDto): Promise<ProvinceDetail> {
+    return this.provinces.create(user, dto);
   }
 
   @Patch(':id')
   @UseGuards(PermissionGuard)
   @RequirePermission(Permission.MANAGE_PROVINCES)
-  update(@Param('id') id: string, @Body() dto: UpdateProvinceDto): Promise<ProvinceDetail> {
-    return this.provinces.update(id, dto);
+  update(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body() dto: UpdateProvinceDto,
+  ): Promise<ProvinceDetail> {
+    return this.provinces.update(user, id, dto);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @UseGuards(PermissionGuard)
   @RequirePermission(Permission.MANAGE_PROVINCES)
-  async remove(@Param('id') id: string): Promise<void> {
-    await this.provinces.remove(id);
+  async remove(@CurrentUser() user: AuthUser, @Param('id') id: string): Promise<void> {
+    await this.provinces.remove(user, id);
   }
 }

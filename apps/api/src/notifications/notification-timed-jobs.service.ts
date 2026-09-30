@@ -1,9 +1,11 @@
 import {
   BallType,
+  CLOSE_REMINDER_LEAD_MS,
   DEFAULT_VENUE_TIMEZONE,
   PRE_LIVE_MATCH_STATES,
   REGISTRATION_VERIFICATION_NO_AUCTION_GRACE_MS,
   RegistrationStatus,
+  VERIFICATION_REMINDER_LEAD_MS,
   formatTodayDateOnlyInZone,
   getTodayCalendarPartsInZone,
   getYearInZone,
@@ -19,12 +21,8 @@ import { NotificationAudienceService } from './notification-audience.service';
 import { NotificationLogService } from './notification-log.service';
 import { NotificationsService, NotificationTrigger } from './notifications.service';
 
-/** How long before a stored close time (§17 Phase C #11/#12) the reminder fires. */
-const CLOSE_REMINDER_LEAD_MS = 10 * 60_000;
 /** Width of the minute-cron catch window; matches EVERY_MINUTE cadence. */
 const CLOSE_WINDOW_WIDTH_MS = 60_000;
-/** Sevak verification reminder fires this far before the deadline. */
-const VERIFICATION_REMINDER_LEAD_MS = 24 * 60 * 60_000;
 
 /**
  * Timed (§17 Phase C) notification jobs. Each method is invoked by the

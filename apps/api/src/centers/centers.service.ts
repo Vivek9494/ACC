@@ -1,4 +1,4 @@
-import type { CenterDetail, CenterSummary } from '@acc/types';
+import { AuditEntityType, type AuthUser, type CenterDetail, type CenterSummary } from '@acc/types';
 import {
   BadRequestException,
   ConflictException,
@@ -7,6 +7,8 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 
+import { AuditService } from '../audit/audit.service';
+import { auditDiff } from '../audit/audit-snapshot';
 import { PrismaService } from '../prisma/prisma.service';
 import type { CreateCenterDto } from './dto/create-center.dto';
 import type { UpdateCenterDto } from './dto/update-center.dto';
@@ -33,7 +35,10 @@ function toDetail(row: {
 
 @Injectable()
 export class CentersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly audit: AuditService,
+  ) {}
 
   listActive(provinceId?: string): Promise<CenterSummary[]> {
     return this.prisma.center.findMany({
@@ -67,13 +72,20 @@ export class CentersService {
     return toDetail(row);
   }
 
-  async create(dto: CreateCenterDto): Promise<CenterDetail> {
+  async create(actor: AuthUser, dto: CreateCenterDto): Promise<CenterDetail> {
     const name = dto.name.trim();
     await this.assertProvinceExists(dto.provinceId);
     try {
       const row = await this.prisma.center.create({
         data: { name, provinceId: dto.provinceId },
         include: { province: { select: { name: true } } },
+      });
+      await this.audit.record({
+        action: 'CENTER_CREATED',
+        actorUserId: actor.id,
+        targetEntityType: AuditEntityType.Center,
+        targetEntityId: row.id,
+        after: { name: row.name, provinceId: row.provinceId, isActive: row.isActive },
       });
       return toDetail(row);
     } catch (err) {
@@ -87,8 +99,8 @@ export class CentersService {
     }
   }
 
-  async update(id: string, dto: UpdateCenterDto): Promise<CenterDetail> {
-    await this.getById(id);
+  async update(actor: AuthUser, id: string, dto: UpdateCenterDto): Promise<CenterDetail> {
+    const existing = await this.getById(id);
     if (dto.provinceId !== undefined) {
       await this.assertProvinceExists(dto.provinceId);
     }
@@ -108,6 +120,20 @@ export class CentersService {
         data,
         include: { province: { select: { name: true } } },
       });
+      const diff = auditDiff(
+        { name: existing.name, provinceId: existing.provinceId, isActive: existing.isActive },
+        { name: row.name, provinceId: row.provinceId, isActive: row.isActive },
+      );
+      if (diff) {
+        await this.audit.record({
+          action: 'CENTER_UPDATED',
+          actorUserId: actor.id,
+          targetEntityType: AuditEntityType.Center,
+          targetEntityId: id,
+          before: diff.before,
+          after: diff.after,
+        });
+      }
       return toDetail(row);
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
@@ -120,10 +146,10 @@ export class CentersService {
     }
   }
 
-  async remove(id: string): Promise<void> {
+  async remove(actor: AuthUser, id: string): Promise<void> {
     const row = await this.prisma.center.findUnique({
       where: { id },
-      select: { id: true, name: true },
+      select: { id: true, name: true, provinceId: true },
     });
     if (!row) {
       throw new NotFoundException({ message: 'Center not found', error: 'NOT_FOUND' });
@@ -150,6 +176,13 @@ export class CentersService {
     }
 
     await this.prisma.center.delete({ where: { id } });
+    await this.audit.record({
+      action: 'CENTER_DELETED',
+      actorUserId: actor.id,
+      targetEntityType: AuditEntityType.Center,
+      targetEntityId: id,
+      before: { name: row.name, provinceId: row.provinceId },
+    });
   }
 
   private async assertProvinceExists(provinceId: string): Promise<void> {

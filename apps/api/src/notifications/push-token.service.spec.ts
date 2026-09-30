@@ -28,7 +28,8 @@ describe('PushTokenService.register', () => {
   it('converts iOS APNs tokens to FCM before upsert', async () => {
     const prisma = {
       pushDeviceToken: {
-        upsert: jest.fn().mockResolvedValue(undefined),
+        findUnique: jest.fn().mockResolvedValue(null),
+        upsert: jest.fn().mockResolvedValue({ id: 'pt-1' }),
         deleteMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
     };
@@ -36,7 +37,11 @@ describe('PushTokenService.register', () => {
       looksLikeApnsToken: jest.fn().mockReturnValue(true),
       toFcmRegistrationToken: jest.fn().mockResolvedValue('fcm:converted-token'),
     };
-    const service = new PushTokenService(prisma as never, apnsFcm as never);
+    const service = new PushTokenService(
+      prisma as never,
+      apnsFcm as never,
+      { record: jest.fn() } as never,
+    );
 
     await service.register('user-1', 'a'.repeat(64), PushPlatform.Ios);
 
@@ -55,7 +60,8 @@ describe('PushTokenService.register', () => {
   it('stores Android tokens as-is', async () => {
     const prisma = {
       pushDeviceToken: {
-        upsert: jest.fn().mockResolvedValue(undefined),
+        findUnique: jest.fn().mockResolvedValue(null),
+        upsert: jest.fn().mockResolvedValue({ id: 'pt-1' }),
         deleteMany: jest.fn(),
       },
     };
@@ -63,7 +69,11 @@ describe('PushTokenService.register', () => {
       looksLikeApnsToken: jest.fn().mockReturnValue(false),
       toFcmRegistrationToken: jest.fn(),
     };
-    const service = new PushTokenService(prisma as never, apnsFcm as never);
+    const service = new PushTokenService(
+      prisma as never,
+      apnsFcm as never,
+      { record: jest.fn() } as never,
+    );
     const androidToken = 'dXyza:APA91bAndroidFcmToken';
 
     await service.register('user-1', androidToken, PushPlatform.Android);

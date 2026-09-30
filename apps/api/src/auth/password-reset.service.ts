@@ -1,4 +1,5 @@
 import {
+  AuditEntityType,
   AuthErrorCode,
   isPasswordPolicyCompliant,
   isPasswordResetLocked,
@@ -96,6 +97,13 @@ export class PasswordResetService {
       await this.prisma.user.update({
         where: { id: user.id },
         data: { passwordResetLockedAt: new Date() },
+      });
+      await this.audit.record({
+        action: 'PASSWORD_RESET_LOCKED',
+        targetUserId: user.id,
+        targetEntityType: AuditEntityType.User,
+        targetEntityId: user.id,
+        details: { reason: 'OTP_REQUEST_LIMIT', maxRequestsPerDay: OTP_MAX_REQUESTS_PER_DAY },
       });
       throw new HttpException(
         {
@@ -226,6 +234,13 @@ export class PasswordResetService {
       where: { id: user.id },
       data: { passwordHash, tokenVersion: { increment: 1 } },
     });
+    await this.audit.record({
+      action: 'PASSWORD_RESET_COMPLETED',
+      actorUserId: user.id,
+      targetUserId: user.id,
+      targetEntityType: AuditEntityType.User,
+      targetEntityId: user.id,
+    });
 
     await Promise.all([
       this.redis.del(resetTokenKey(dto.resetToken)),
@@ -238,7 +253,10 @@ export class PasswordResetService {
    * action. Restricted to Admin at the controller.
    */
   async unlock(actor: AuthUser, userId: string): Promise<void> {
-    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, mobileNumber: true },
+    });
     if (!user) {
       throw new NotFoundException('User not found');
     }
@@ -258,6 +276,8 @@ export class PasswordResetService {
       action: 'PASSWORD_RESET_UNLOCK',
       actorUserId: actor.id,
       targetUserId: userId,
+      targetEntityType: AuditEntityType.User,
+      targetEntityId: userId,
       details: { unlockedAt: new Date().toISOString(), actorRole: actor.role },
     });
   }

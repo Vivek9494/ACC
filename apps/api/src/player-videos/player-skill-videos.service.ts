@@ -1,4 +1,5 @@
 import {
+  AuditEntityType,
   buildPlayerSkillVideoStorageKey,
   canUploadPlayerSkillVideo,
   type AuthUser,
@@ -23,6 +24,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 
+import { AuditService } from '../audit/audit.service';
 import { PermissionService } from '../authz/permission.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AppSettingsService } from '../settings/app-settings.service';
@@ -38,6 +40,7 @@ export class PlayerSkillVideosService {
     private readonly permissions: PermissionService,
     private readonly settings: AppSettingsService,
     @Inject(VIDEO_STORAGE_PROVIDER) private readonly storage: VideoStorageProvider,
+    private readonly audit: AuditService,
   ) {}
 
   async getMyVideo(actor: AuthUser, tournamentId: string): Promise<PlayerSkillVideoSummary | null> {
@@ -145,6 +148,14 @@ export class PlayerSkillVideosService {
         status: PlayerSkillVideoStatus.Ready,
         uploadedAt: new Date(),
       },
+    });
+    await this.audit.record({
+      action: existing ? 'PLAYER_VIDEO_REPLACED' : 'PLAYER_VIDEO_UPLOADED',
+      actorUserId: actor.id,
+      targetUserId: actor.id,
+      targetEntityType: AuditEntityType.PlayerVideo,
+      targetEntityId: row.id,
+      details: { tournamentId, mimeType: dto.mimeType, sizeBytes: dto.sizeBytes },
     });
 
     return this.toSummary(row);

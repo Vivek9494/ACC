@@ -1,4 +1,4 @@
-import { DEFAULT_VENUE_TIMEZONE } from '@acc/types';
+import { DEFAULT_VENUE_TIMEZONE, NOTIFICATION_DAILY_JOB_HOUR } from '@acc/types';
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 
@@ -37,7 +37,7 @@ export class NotificationScheduler {
   ) {}
 
   /** Daily digest of the 10:00 AM Eastern triggers (#9, #10, #13). */
-  @Cron('0 10 * * *', {
+  @Cron(`0 ${NOTIFICATION_DAILY_JOB_HOUR} * * *`, {
     name: 'notification-daily-morning',
     timeZone: DEFAULT_VENUE_TIMEZONE,
   })
