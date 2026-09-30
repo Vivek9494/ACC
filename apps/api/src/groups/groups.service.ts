@@ -87,7 +87,9 @@ export class GroupsService {
       (dto.schedulingFormat === MatchSchedulingFormat.GroupStageKnockout || storedFormat == null);
     this.assertTournamentSupportsGroups({
       ...tournament,
-      matchSchedulingFormat: dto.schedulingFormat ?? tournament.matchSchedulingFormat,
+      matchSchedulingFormat: finalizeGroupStage
+        ? MatchSchedulingFormat.GroupStageKnockout
+        : tournament.matchSchedulingFormat,
     });
 
     const name = dto.name.trim();

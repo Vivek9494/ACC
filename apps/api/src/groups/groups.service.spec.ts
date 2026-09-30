@@ -193,7 +193,21 @@ describe('GroupsService.create', () => {
     });
   });
 
-  it('rejects a Center-level first group without the schedule-flow intent', async () => {
+  it('finalizes the first group without the intent when no format is set (older app builds)', async () => {
+    const { service, tx } = setup({
+      type: TournamentType.Center,
+      matchSchedulingFormat: null,
+    });
+
+    await service.create(manager, 'tour-1', { name: 'Group A' });
+
+    expect(tx.tournament.update).toHaveBeenCalledWith({
+      where: { id: 'tour-1' },
+      data: { matchSchedulingFormat: MatchSchedulingFormat.GroupStageKnockout },
+    });
+  });
+
+  it('rejects a Center-level first group when another format is already chosen', async () => {
     const { service, tx } = setup({
       type: TournamentType.Center,
       matchSchedulingFormat: MatchSchedulingFormat.RoundRobin,
