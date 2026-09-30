@@ -982,7 +982,8 @@ export class TournamentsService {
    * Records the coarse scheduling mode chosen in the Schedule Matches modal.
    * Does not overwrite {@link TournamentFormat} from creation (§24).
    * Group Stage + Knockout is only persisted once a group exists (first group creation
-   * finalizes it); while groups exist it is locked and other formats are rejected.
+   * finalizes it); choosing it before then clears any earlier choice so the format is unset.
+   * While groups exist it is locked and other formats are rejected.
    */
   async selectMatchSchedulingFormat(
     actor: AuthUser,
@@ -1013,12 +1014,11 @@ export class TournamentsService {
       });
     }
 
-    const shouldPersist =
-      storedFormat !== schedulingFormat && (!isGroupStage || groupCount > 0);
-    if (shouldPersist) {
+    const nextFormat = isGroupStage && groupCount === 0 ? null : schedulingFormat;
+    if (storedFormat !== nextFormat) {
       await this.prisma.tournament.update({
         where: { id: tournamentId },
-        data: { matchSchedulingFormat: schedulingFormat },
+        data: { matchSchedulingFormat: nextFormat },
       });
       await this.statsInvalidation.invalidateTournamentAggregates(tournamentId);
     }

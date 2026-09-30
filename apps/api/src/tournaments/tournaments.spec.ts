@@ -816,6 +816,23 @@ describe('TournamentsService', () => {
       expect(detail.matchSchedulingFormat).toBeNull();
     });
 
+    it('clears an earlier format when Group Stage + Knockout is chosen before any group exists', async () => {
+      prisma.tournament.findUnique.mockResolvedValue(
+        tennisRow({ matchSchedulingFormat: MatchSchedulingFormat.RoundRobin }),
+      );
+
+      await service.selectMatchSchedulingFormat(
+        actor,
+        'tid',
+        MatchSchedulingFormat.GroupStageKnockout,
+      );
+
+      expect(prisma.tournament.update).toHaveBeenCalledWith({
+        where: { id: 'tid' },
+        data: { matchSchedulingFormat: null },
+      });
+    });
+
     it('reports an abandoned Group Stage + Knockout (no groups) as unset and allows switching', async () => {
       prisma.tournament.findUnique.mockResolvedValue(
         tennisRow({ matchSchedulingFormat: MatchSchedulingFormat.GroupStageKnockout }),
