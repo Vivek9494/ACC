@@ -13,7 +13,6 @@ import {
   Keyboard,
   KeyboardAvoidingView,
   Platform,
-  Pressable,
   ScrollView,
   View,
   type ScrollViewProps,
@@ -244,17 +243,14 @@ export const KeyboardAwareFormScrollView = forwardRef<
         : keyboardHeight + extraBottomPadding
       : extraBottomPadding;
 
-  const dismissKeyboard = useCallback(() => {
-    Keyboard.dismiss();
-  }, []);
-
   const scrollBody = (
     <View ref={viewportRef} collapsable={false} className={compact ? undefined : 'flex-1'}>
       <ScrollView
         ref={setScrollRef}
         className={compact ? undefined : 'flex-1'}
         keyboardShouldPersistTaps="handled"
-        keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+        // Not 'interactive': on iOS the first tap on a control after typing is swallowed.
+        keyboardDismissMode="on-drag"
         contentContainerClassName={contentContainerClassName}
         contentContainerStyle={[{ flexGrow: 1, paddingBottom: bottomInset }, contentContainerStyle]}
         onScroll={(event) => {
@@ -265,22 +261,12 @@ export const KeyboardAwareFormScrollView = forwardRef<
         {...scrollProps}
       >
         {/*
-          Native: tap empty / non-control areas to dismiss the soft keyboard.
-          Use Pressable + box-none so nested Buttons/Pressables claim the full
-          control hit target. On web, skip the Pressable — it steals clicks from
-          TextInputs (react-native-web); there is no soft keyboard to dismiss.
+          Don't wrap children in a tap-to-dismiss Pressable — it competes with nested controls
+          for the first tap. "handled" already blurs the input on taps no control claims.
         */}
-        {Platform.OS === 'web' ? (
-          <View collapsable={false} style={{ flexGrow: 1 }}>
-            {children}
-          </View>
-        ) : (
-          <Pressable accessible={false} onPress={dismissKeyboard} style={{ flexGrow: 1 }}>
-            <View collapsable={false} pointerEvents="box-none" style={{ flexGrow: 1 }}>
-              {children}
-            </View>
-          </Pressable>
-        )}
+        <View collapsable={false} style={{ flexGrow: 1 }}>
+          {children}
+        </View>
       </ScrollView>
     </View>
   );

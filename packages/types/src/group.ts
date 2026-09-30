@@ -20,6 +20,8 @@ export interface GroupSummary {
   liveMatchCount: number;
   /** True when one or more non-deleted matches are assigned to this group. */
   hasLiveMatches: boolean;
+  /** A match involving one of this group's teams exists — rename, membership edits and delete are blocked. */
+  isLocked: boolean;
 }
 
 export interface CreateGroupRequest {
@@ -34,6 +36,10 @@ export interface UpdateGroupMembersRequest {
   removeTeamIds?: string[];
 }
 
+export interface UpdateGroupRequest extends UpdateGroupMembersRequest {
+  name?: string;
+}
+
 export const GROUP_FORM_MESSAGES = {
   name: {
     required: 'Group name is required',
@@ -42,7 +48,12 @@ export const GROUP_FORM_MESSAGES = {
   },
   delete: {
     hasMatches: 'This group has matches scheduled and can\'t be deleted',
+    confirmTitle: 'Delete Group?',
+    confirmMessage: (name: string) =>
+      `Delete ${name}? Its teams will no longer be assigned to a group.`,
   },
+  locked: 'Matches have been scheduled for this group\'s teams, so it can no longer be edited or deleted.',
+  allTeamsAssigned: 'All the teams are already assigned to existing groups.',
   members: {
     emptyDiff: 'No team changes to save',
     teamAlreadyGrouped: 'One or more teams are already assigned to another group',

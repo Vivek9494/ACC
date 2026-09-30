@@ -1,20 +1,27 @@
-import type {
-  BattingLeaderboardEntry,
-  BowlingLeaderboardEntry,
-  MatchListItem,
-  ScorecardResponse,
-  TournamentBoundaryLeaderboardEntry,
+import {
+  BallType,
+  type BattingLeaderboardEntry,
+  type BowlingLeaderboardEntry,
+  MatchSchedulingFormat,
+  type MatchListItem,
+  type ScorecardResponse,
+  type TournamentBoundaryLeaderboardEntry,
+  TournamentType,
 } from '@acc/types';
 import { describe, expect, it } from 'vitest';
 
 import {
+  allTeamsAssigned,
   buildLeaderCards,
   DETAIL_TABS,
   formatFallOfWicketsLine,
   formatMatchWhen,
+  groupMemberDiff,
   inningsTeams,
   scorecardNameResolver,
   splitScoreLine,
+  unassignedTeams,
+  visibleDetailTabs,
   visibleMatches,
 } from './tournament-detail';
 
@@ -61,12 +68,64 @@ describe('tournament detail', () => {
   it('has the detail tabs in order', () => {
     expect(DETAIL_TABS.map((tab) => tab.label)).toEqual([
       'Teams',
+      'Groups',
       'Matches',
       'Points table',
       'Tournament stats',
       'Registrations',
       'Details',
     ]);
+  });
+
+  describe('Groups tab visibility', () => {
+    const tennis = {
+      type: TournamentType.Center,
+      ballType: BallType.Tennis,
+      matchSchedulingFormat: null,
+      groupCount: 0,
+    };
+    const hasGroupsTab = (tournament: Parameters<typeof visibleDetailTabs>[0]) =>
+      visibleDetailTabs(tournament).some((tab) => tab.path === 'groups');
+
+    it('shows Groups right after Teams for Group Stage + Knockout', () => {
+      const tabs = visibleDetailTabs({
+        ...tennis,
+        matchSchedulingFormat: MatchSchedulingFormat.GroupStageKnockout,
+        groupCount: 2,
+      });
+      expect(tabs.map((tab) => tab.path).slice(0, 3)).toEqual(['teams', 'groups', 'matches']);
+    });
+
+    it('shows Groups for tennis with no format yet', () => {
+      expect(hasGroupsTab(tennis)).toBe(true);
+    });
+
+    it('hides Groups for other finalized formats and for Leather', () => {
+      expect(hasGroupsTab({ ...tennis, matchSchedulingFormat: MatchSchedulingFormat.RoundRobin })).toBe(false);
+      expect(hasGroupsTab({ ...tennis, matchSchedulingFormat: MatchSchedulingFormat.Manual })).toBe(false);
+      expect(
+        hasGroupsTab({
+          type: TournamentType.ACC,
+          ballType: BallType.Leather,
+          matchSchedulingFormat: MatchSchedulingFormat.Manual,
+          groupCount: 0,
+        }),
+      ).toBe(false);
+      expect(hasGroupsTab(undefined)).toBe(false);
+    });
+  });
+
+  it('derives the unassigned pool and the all-assigned state', () => {
+    const teams = [{ groupId: 'g1' }, { groupId: null }];
+    expect(unassignedTeams(teams)).toEqual([{ groupId: null }]);
+    expect(allTeamsAssigned(teams)).toBe(false);
+    expect(allTeamsAssigned([{ groupId: 'g1' }, { groupId: 'g2' }])).toBe(true);
+    expect(allTeamsAssigned([])).toBe(false);
+  });
+
+  it('diffs a group edit into add / remove team ids', () => {
+    expect(groupMemberDiff(['a', 'b'], ['b', 'c'])).toEqual({ addTeamIds: ['c'], removeTeamIds: ['a'] });
+    expect(groupMemberDiff(['a'], ['a'])).toEqual({ addTeamIds: [], removeTeamIds: [] });
   });
 
   it('formats match day in UTC and falls back to Date TBD', () => {

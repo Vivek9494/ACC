@@ -158,14 +158,15 @@ export function EditableTournamentGroupSection({
     });
   }
 
+  const canManageGroup = canEdit && !group.isLocked;
   const headerTrailing =
-    canEdit && !isEditing ? (
+    canManageGroup && !isEditing ? (
       <ListRowIconButton
         icon="pencil"
         accessibilityLabel={`Edit ${group.name}`}
         onPress={enterEditMode}
       />
-    ) : canEdit && isEditing ? (
+    ) : canManageGroup && isEditing ? (
       <ListRowIconButton
         icon="trash-outline"
         accessibilityLabel={`Delete ${group.name}`}

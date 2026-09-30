@@ -8,16 +8,20 @@ import {
   formatLeaderboardStrikeRate,
   topRunScorers,
   topWicketTakers,
+  shouldShowGroupsTab,
   type DismissalNameResolver,
   type InningsScorecard,
   type MatchListItem,
   type ScorecardResponse,
+  type TeamSummary,
+  type TournamentDetail,
   type TournamentLeaderboard,
   type TournamentStatsView,
 } from '@acc/types';
 
 export const DETAIL_TABS = [
   { path: 'teams', label: 'Teams' },
+  { path: 'groups', label: 'Groups' },
   { path: 'matches', label: 'Matches' },
   { path: 'points', label: 'Points table' },
   { path: 'stats', label: 'Tournament stats' },
@@ -26,6 +30,41 @@ export const DETAIL_TABS = [
 ] as const;
 
 export type DetailTabPath = (typeof DETAIL_TABS)[number]['path'];
+
+/** `/tournaments/:id/groups?newGroup=1` opens the Add New Group modal (Matches → Setup Required). */
+export const NEW_GROUP_PARAM = 'newGroup';
+
+type GroupsTabInput = Pick<TournamentDetail, 'type' | 'ballType' | 'matchSchedulingFormat' | 'groupCount'>;
+
+/** Tabs for this tournament — Groups only for Group Stage + Knockout or unfinalized tennis. */
+export function visibleDetailTabs(tournament: GroupsTabInput | undefined): (typeof DETAIL_TABS)[number][] {
+  return DETAIL_TABS.filter(
+    (tab) => tab.path !== 'groups' || (tournament !== undefined && shouldShowGroupsTab(tournament)),
+  );
+}
+
+/** Teams not in any group — the pool for Add New Group and a group's Edit. */
+export function unassignedTeams<T extends Pick<TeamSummary, 'groupId'>>(teams: readonly T[]): T[] {
+  return teams.filter((team) => team.groupId == null);
+}
+
+/** Add New Group is disabled once every team already belongs to a group. */
+export function allTeamsAssigned(teams: readonly Pick<TeamSummary, 'groupId'>[]): boolean {
+  return teams.length > 0 && unassignedTeams(teams).length === 0;
+}
+
+/** Add / remove diff between a group's saved teams and the dialog selection. */
+export function groupMemberDiff(
+  currentTeamIds: readonly string[],
+  selectedTeamIds: readonly string[],
+): { addTeamIds: string[]; removeTeamIds: string[] } {
+  const current = new Set(currentTeamIds);
+  const selected = new Set(selectedTeamIds);
+  return {
+    addTeamIds: [...selected].filter((id) => !current.has(id)),
+    removeTeamIds: [...current].filter((id) => !selected.has(id)),
+  };
+}
 
 /** Four-up card grid shared by the Teams, Matches and Tournament stats tabs (sized to the tab container). */
 export const DETAIL_GRID = 'grid gap-4 @xl:grid-cols-2 @4xl:grid-cols-4';

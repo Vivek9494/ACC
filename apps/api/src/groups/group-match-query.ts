@@ -80,6 +80,47 @@ export async function resolveGroupBlockingLiveMatchCounts(
   return counts;
 }
 
+/** Live match (any state, group-stage or knockout) with a participating team currently in one of these groups. */
+export function groupLockingMatchWhere(
+  tournamentId: string,
+  groupIds: readonly string[],
+): Prisma.MatchWhereInput {
+  const inGroups = { groupId: { in: [...groupIds] }, ...activeTeamWhere };
+  return {
+    tournamentId,
+    ...activeMatchWhere,
+    OR: [{ homeTeam: inGroups }, { awayTeam: inGroups }],
+  };
+}
+
+/** Groups whose teams already have a match — rename, membership edits and delete are blocked. */
+export async function resolveLockedGroupIds(
+  prisma: PrismaMatchReader,
+  tournamentId: string,
+  groupIds: readonly string[],
+): Promise<Set<string>> {
+  const locked = new Set<string>();
+  if (groupIds.length === 0) {
+    return locked;
+  }
+  const matches = await prisma.match.findMany({
+    where: groupLockingMatchWhere(tournamentId, groupIds),
+    select: {
+      homeTeam: { select: { groupId: true } },
+      awayTeam: { select: { groupId: true } },
+    },
+  });
+  const wanted = new Set(groupIds);
+  for (const match of matches) {
+    for (const groupId of [match.homeTeam?.groupId, match.awayTeam?.groupId]) {
+      if (groupId && wanted.has(groupId)) {
+        locked.add(groupId);
+      }
+    }
+  }
+  return locked;
+}
+
 export async function countGroupBlockingLiveMatches(
   prisma: PrismaMatchReader,
   tournamentId: string,

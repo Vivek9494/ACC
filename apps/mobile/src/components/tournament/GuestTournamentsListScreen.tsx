@@ -112,7 +112,11 @@ export function GuestTournamentsListScreen(): React.ReactElement {
           containerClassName="mb-0"
         />
       </View>
-      <ScrollView className="flex-1" contentContainerClassName="gap-6 px-4 pb-8">
+      <ScrollView
+        className="flex-1"
+        contentContainerClassName="gap-6 px-4 pb-8"
+        keyboardShouldPersistTaps="handled"
+      >
         {loading ? (
           <ActivityIndicator color={FIELD_ORANGE} className="py-12" />
         ) : error ? (

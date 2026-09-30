@@ -392,7 +392,11 @@ export function TournamentsListScreen(): React.ReactElement {
           </View>
         ) : null}
       </View>
-      <ScrollView className="flex-1" contentContainerClassName="gap-6 px-4 pb-8">
+      <ScrollView
+        className="flex-1"
+        contentContainerClassName="gap-6 px-4 pb-8"
+        keyboardShouldPersistTaps="handled"
+      >
         {loading ? (
           <ActivityIndicator color={FIELD_ORANGE} className="py-12" />
         ) : error ? (

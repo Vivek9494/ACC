@@ -1,4 +1,4 @@
-import { tournamentSupportsGroups, type TournamentDetail } from '@acc/types';
+import { shouldShowGroupsTab, type TournamentDetail } from '@acc/types';
 
 /** Unique tournament detail tab keys — never share names with role bottom-tab routes. */
 export const TOURNAMENT_DETAIL_TAB = {
@@ -43,14 +43,8 @@ const LEGACY_TOURNAMENT_DETAIL_TAB_KEYS: Partial<Record<string, TournamentDetail
   Matches: TOURNAMENT_DETAIL_TAB.TournamentMatches,
 };
 
-export function shouldShowGroupsTab(
-  tournament: Pick<TournamentDetail, 'type' | 'matchSchedulingFormat' | 'groupCount'>,
-): boolean {
-  return tournamentSupportsGroups(tournament);
-}
-
 export function buildTournamentDetailTabs(
-  tournament: Pick<TournamentDetail, 'type' | 'matchSchedulingFormat' | 'groupCount'>,
+  tournament: Pick<TournamentDetail, 'type' | 'ballType' | 'matchSchedulingFormat' | 'groupCount'>,
 ): TournamentDetailTab[] {
   const tabs: TournamentDetailTab[] = [
     TOURNAMENT_DETAIL_TAB.Details,

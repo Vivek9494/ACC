@@ -7,9 +7,10 @@ import {
   scheduleMatchesGuardMessage,
   type TournamentDetail,
 } from '@acc/types';
-import { GitBranch, Loader2, type LucideIcon, Pencil, Plus, Repeat, Users } from 'lucide-react';
+import { GitBranch, Layers, Loader2, type LucideIcon, Pencil, Plus, Repeat, Users } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
+import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -23,6 +24,7 @@ import {
 import { errorMessage } from '@/lib/api-client';
 
 import { MatchSetupDialog } from './MatchSetupDialog';
+import { NEW_GROUP_PARAM } from './tournament-detail';
 import { useMatchMutations } from './tournament-detail-api';
 
 const FORMAT_ICONS: Record<MatchSchedulingFormat, LucideIcon> = {
@@ -117,6 +119,20 @@ export function AddMatchButton({
     }
   };
 
+  // The first group finalizes Group Stage + Knockout; an earlier Round Robin / Manual choice is
+  // only cleared here (the Groups tab is hidden while another format is finalized).
+  const goCreateGroup = async () => {
+    try {
+      if (tournament.matchSchedulingFormat != null) {
+        await selectFormat.mutateAsync(MatchSchedulingFormat.GroupStageKnockout);
+      }
+      close();
+      void navigate(`/tournaments/${encodeURIComponent(tournament.id)}/groups?${NEW_GROUP_PARAM}=1`);
+    } catch (err) {
+      toast.error(errorMessage(err, 'Could not open group setup.'));
+    }
+  };
+
   return (
     <>
       <Button onClick={start}>
@@ -193,10 +209,12 @@ export function AddMatchButton({
         open={step.kind === 'groups-required'}
         onClose={close}
         title="Setup Required"
-        message={
-          tournament.canEdit
-            ? 'Create Groups and add teams in the groups.'
-            : 'Groups have not been set up for this tournament yet. Please check back later.'
+        message="Create Groups and add teams in the groups."
+        action={
+          <Button onClick={() => void goCreateGroup()} disabled={selectFormat.isPending}>
+            {selectFormat.isPending ? <Loader2 className="animate-spin" /> : <Layers />}
+            Create Group
+          </Button>
         }
       />
 

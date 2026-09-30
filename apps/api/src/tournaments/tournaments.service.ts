@@ -78,7 +78,10 @@ import {
   assertTournamentActive,
   withActiveTournamentWhere,
 } from './tournament-query';
-import { resolveGroupBlockingLiveMatchCounts } from '../groups/group-match-query';
+import {
+  resolveGroupBlockingLiveMatchCounts,
+  resolveLockedGroupIds,
+} from '../groups/group-match-query';
 import {
   activeTeamCountSelect,
   activeTeamWhere,
@@ -398,11 +401,11 @@ export class TournamentsService {
       row.teams.map((team, index) => [team.id, resolvedTeamLogos[index] ?? null]),
     );
 
-    const groupBlockingMatchCounts = await resolveGroupBlockingLiveMatchCounts(
-      this.prisma,
-      id,
-      row.groups.map((group) => group.id),
-    );
+    const detailGroupIds = row.groups.map((group) => group.id);
+    const [groupBlockingMatchCounts, lockedGroupIds] = await Promise.all([
+      resolveGroupBlockingLiveMatchCounts(this.prisma, id, detailGroupIds),
+      resolveLockedGroupIds(this.prisma, id, detailGroupIds),
+    ]);
 
     const detailBase = {
       ...summaryFields,
@@ -437,6 +440,7 @@ export class TournamentsService {
         name: group.name,
         liveMatchCount: groupBlockingMatchCounts.get(group.id) ?? 0,
         hasLiveMatches: (groupBlockingMatchCounts.get(group.id) ?? 0) > 0,
+        isLocked: lockedGroupIds.has(group.id),
         teams: group.teams.map((team) => ({
           id: team.id,
           name: team.name,

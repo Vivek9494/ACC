@@ -10,7 +10,7 @@ import {
   TournamentType,
   tournamentSupportsGroups,
   type GroupSummary,
-  type UpdateGroupMembersRequest,
+  type UpdateGroupRequest,
 } from '@acc/types';
 import {
   BadRequestException,
@@ -21,6 +21,7 @@ import {
 import { Prisma } from '@prisma/client';
 
 import { PermissionService } from '../authz/permission.service';
+import { activeMatchWhere } from '../matches/match-query';
 import { PrismaService } from '../prisma/prisma.service';
 import { StatsInvalidationService } from '../stats/stats-invalidation.service';
 import { activeTeamWhere } from '../teams/team-query';
@@ -31,6 +32,7 @@ import type { CreateGroupDto } from './dto/create-group.dto';
 import {
   countGroupBlockingLiveMatches,
   resolveGroupBlockingLiveMatchCounts,
+  resolveLockedGroupIds,
   unlinkGroupOrphanedLiveMatches,
 } from './group-match-query';
 
@@ -58,12 +60,14 @@ export class GroupsService {
         },
       },
     });
-    const blockingCounts = await resolveGroupBlockingLiveMatchCounts(
-      this.prisma,
-      tournamentId,
-      rows.map((row) => row.id),
+    const groupIds = rows.map((row) => row.id);
+    const [blockingCounts, lockedIds] = await Promise.all([
+      resolveGroupBlockingLiveMatchCounts(this.prisma, tournamentId, groupIds),
+      resolveLockedGroupIds(this.prisma, tournamentId, groupIds),
+    ]);
+    return rows.map((row) =>
+      this.toSummary(row, blockingCounts.get(row.id) ?? 0, lockedIds.has(row.id)),
     );
-    return rows.map((row) => this.toSummary(row, blockingCounts.get(row.id) ?? 0));
   }
 
   async create(actor: AuthUser, tournamentId: string, dto: CreateGroupDto): Promise<GroupSummary> {
@@ -156,7 +160,8 @@ export class GroupsService {
       });
 
       await this.statsInvalidation.invalidateTournamentAggregates(tournamentId);
-      return this.toSummary(created, 0);
+      const lockedIds = await resolveLockedGroupIds(this.prisma, tournamentId, [created.id]);
+      return this.toSummary(created, 0, lockedIds.has(created.id));
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
         throw this.groupNameTakenException();
@@ -165,11 +170,11 @@ export class GroupsService {
     }
   }
 
-  async updateMembers(
+  async update(
     actor: AuthUser,
     tournamentId: string,
     groupId: string,
-    dto: UpdateGroupMembersRequest,
+    dto: UpdateGroupRequest,
   ): Promise<GroupSummary> {
     const tournament = await this.requireTournament(tournamentId);
     await this.assertCanManageGroups(actor, tournamentId);
@@ -177,7 +182,26 @@ export class GroupsService {
 
     this.assertTournamentSupportsGroups(tournament);
 
-    await this.requireGroup(tournamentId, groupId);
+    const group = await this.requireGroup(tournamentId, groupId);
+    await this.assertGroupNotLocked(tournamentId, groupId);
+
+    let rename: { name: string; nameNormalized: string } | null = null;
+    if (dto.name !== undefined) {
+      const name = dto.name.trim();
+      if (!name) {
+        throw new BadRequestException({
+          message: GROUP_FORM_MESSAGES.name.required,
+          error: 'GROUP_NAME_REQUIRED',
+          fields: { name: GROUP_FORM_MESSAGES.name.required },
+        });
+      }
+      if (name !== group.name) {
+        const nameNormalized = normalizeGroupName(name);
+        await this.assertGroupNameAvailable(tournamentId, nameNormalized, groupId);
+        rename = { name, nameNormalized };
+      }
+    }
+
     const addTeamIds = [...new Set(dto.addTeamIds ?? [])];
     const removeTeamIds = [...new Set(dto.removeTeamIds ?? [])];
 
@@ -190,7 +214,7 @@ export class GroupsService {
       });
     }
 
-    if (addTeamIds.length === 0 && removeTeamIds.length === 0) {
+    if (!rename && addTeamIds.length === 0 && removeTeamIds.length === 0) {
       return this.getGroupSummary(groupId);
     }
 
@@ -202,43 +226,54 @@ export class GroupsService {
       await this.assertTeamsInGroup(tournamentId, groupId, removeTeamIds);
     }
 
-    await this.prisma.$transaction(async (tx) => {
-      if (removeTeamIds.length > 0) {
-        const removed = await tx.team.updateMany({
-          where: {
-            id: { in: removeTeamIds },
-            tournamentId,
-            groupId,
-            ...activeTeamWhere,
-          },
-          data: { groupId: null },
-        });
-        if (removed.count !== removeTeamIds.length) {
-          throw new BadRequestException({
-            message: GROUP_FORM_MESSAGES.members.teamNotInGroup,
-            error: 'TEAM_NOT_IN_GROUP',
-          });
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        if (rename) {
+          await tx.tournamentGroup.update({ where: { id: groupId }, data: rename });
         }
-      }
 
-      if (addTeamIds.length > 0) {
-        const added = await tx.team.updateMany({
-          where: {
-            id: { in: addTeamIds },
-            tournamentId,
-            groupId: null,
-            ...activeTeamWhere,
-          },
-          data: { groupId },
-        });
-        if (added.count !== addTeamIds.length) {
-          throw new BadRequestException({
-            message: GROUP_FORM_MESSAGES.members.teamAlreadyGrouped,
-            error: 'TEAM_ALREADY_GROUPED',
+        if (removeTeamIds.length > 0) {
+          const removed = await tx.team.updateMany({
+            where: {
+              id: { in: removeTeamIds },
+              tournamentId,
+              groupId,
+              ...activeTeamWhere,
+            },
+            data: { groupId: null },
           });
+          if (removed.count !== removeTeamIds.length) {
+            throw new BadRequestException({
+              message: GROUP_FORM_MESSAGES.members.teamNotInGroup,
+              error: 'TEAM_NOT_IN_GROUP',
+            });
+          }
         }
+
+        if (addTeamIds.length > 0) {
+          const added = await tx.team.updateMany({
+            where: {
+              id: { in: addTeamIds },
+              tournamentId,
+              groupId: null,
+              ...activeTeamWhere,
+            },
+            data: { groupId },
+          });
+          if (added.count !== addTeamIds.length) {
+            throw new BadRequestException({
+              message: GROUP_FORM_MESSAGES.members.teamAlreadyGrouped,
+              error: 'TEAM_ALREADY_GROUPED',
+            });
+          }
+        }
+      });
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+        throw this.groupNameTakenException();
       }
-    });
+      throw err;
+    }
 
     await this.statsInvalidation.invalidateTournamentAggregates(tournamentId);
     return this.getGroupSummary(groupId);
@@ -264,6 +299,7 @@ export class GroupsService {
         error: 'GROUP_HAS_MATCHES',
       });
     }
+    await this.assertGroupNotLocked(tournamentId, groupId);
 
     await this.prisma.$transaction(async (tx) => {
       await unlinkGroupOrphanedLiveMatches(tx, tournamentId, groupId);
@@ -275,7 +311,8 @@ export class GroupsService {
       const remainingGroups = await tx.tournamentGroup.count({ where: { tournamentId } });
       if (
         remainingGroups === 0 &&
-        tournament.matchSchedulingFormat === MatchSchedulingFormat.GroupStageKnockout
+        tournament.matchSchedulingFormat === MatchSchedulingFormat.GroupStageKnockout &&
+        (await tx.match.count({ where: { tournamentId, ...activeMatchWhere } })) === 0
       ) {
         await tx.tournament.update({
           where: { id: tournamentId },
@@ -297,18 +334,27 @@ export class GroupsService {
         },
       },
     });
-    const liveMatchCount = await countGroupBlockingLiveMatches(
-      this.prisma,
-      row.tournamentId,
-      groupId,
-    );
-    return this.toSummary(row, liveMatchCount);
+    const [liveMatchCount, lockedIds] = await Promise.all([
+      countGroupBlockingLiveMatches(this.prisma, row.tournamentId, groupId),
+      resolveLockedGroupIds(this.prisma, row.tournamentId, [groupId]),
+    ]);
+    return this.toSummary(row, liveMatchCount, lockedIds.has(groupId));
+  }
+
+  private async assertGroupNotLocked(tournamentId: string, groupId: string): Promise<void> {
+    const lockedIds = await resolveLockedGroupIds(this.prisma, tournamentId, [groupId]);
+    if (lockedIds.has(groupId)) {
+      throw new BadRequestException({
+        message: GROUP_FORM_MESSAGES.locked,
+        error: 'GROUP_LOCKED',
+      });
+    }
   }
 
   private async requireGroup(tournamentId: string, groupId: string) {
     const group = await this.prisma.tournamentGroup.findFirst({
       where: { id: groupId, tournamentId },
-      select: { id: true },
+      select: { id: true, name: true },
     });
     if (!group) {
       throw new NotFoundException({
@@ -447,6 +493,7 @@ export class GroupsService {
       }[];
     },
     liveMatchCount: number,
+    isLocked: boolean,
   ): GroupSummary {
     return {
       id: row.id,
@@ -454,6 +501,7 @@ export class GroupsService {
       name: row.name,
       liveMatchCount,
       hasLiveMatches: liveMatchCount > 0,
+      isLocked,
       teams: row.teams.map((team) => ({
         id: team.id,
         name: team.name,

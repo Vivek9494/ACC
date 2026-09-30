@@ -1,4 +1,4 @@
-import { TournamentType } from './rbac';
+import { BallType, TournamentType } from './rbac';
 import { MatchSchedulingFormat } from './match-scheduling-format';
 
 /** Inputs for deciding whether a tournament may have fixture groups. */
@@ -9,19 +9,28 @@ export interface TournamentGroupsEligibility {
 }
 
 /**
- * Single source of truth — used by group CRUD, Groups tab visibility, etc.
- * APL always supports groups (knockout pipeline). Other tennis formats when
- * Group Stage + Knockout is selected, or when groups already exist.
+ * Single source of truth for an active group stage — used by group CRUD, group pickers and
+ * filters. True for Group Stage + Knockout (tennis), or whenever groups already exist.
  */
 export function tournamentSupportsGroups(input: TournamentGroupsEligibility): boolean {
+  if ((input.groupCount ?? 0) > 0) {
+    return true;
+  }
   if (input.type === TournamentType.ACC) {
-    return (input.groupCount ?? 0) > 0;
+    return false;
   }
-  if (input.type === TournamentType.APL) {
-    return true;
+  return input.matchSchedulingFormat === MatchSchedulingFormat.GroupStageKnockout;
+}
+
+/**
+ * Groups tab: an active group stage, or a tennis tournament whose format is not finalized yet —
+ * creating the first group there finalizes Group Stage + Knockout. Never Leather.
+ */
+export function shouldShowGroupsTab(
+  input: TournamentGroupsEligibility & { ballType: BallType },
+): boolean {
+  if (input.ballType !== BallType.Tennis) {
+    return false;
   }
-  if (input.matchSchedulingFormat === MatchSchedulingFormat.GroupStageKnockout) {
-    return true;
-  }
-  return (input.groupCount ?? 0) > 0;
+  return tournamentSupportsGroups(input) || input.matchSchedulingFormat == null;
 }

@@ -5,6 +5,7 @@ import { RequireAdmin } from '@/auth/RequireAdmin';
 import { AppShell } from '@/components/layout/AppShell';
 import { StatisticsLayout } from '@/features/statistics/StatisticsLayout';
 import { DetailsTab } from '@/features/tournaments/detail/DetailsTab';
+import { GroupsTab } from '@/features/tournaments/detail/GroupsTab';
 import { MatchesTab } from '@/features/tournaments/detail/MatchesTab';
 import { MatchScorecardPage } from '@/features/tournaments/detail/MatchScorecardPage';
 import { PointsTab } from '@/features/tournaments/detail/PointsTab';
@@ -68,6 +69,7 @@ export const router = createBrowserRouter([
             children: [
               { index: true, element: <Navigate to="teams" replace /> },
               { path: 'teams', element: <TeamsTab /> },
+              { path: 'groups', element: <GroupsTab /> },
               { path: 'matches', element: <MatchesTab /> },
               { path: 'matches/:matchId', element: <MatchScorecardPage /> },
               { path: 'points', element: <PointsTab /> },

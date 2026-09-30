@@ -3,9 +3,11 @@ import {
   type AddTeamPlayersResponse,
   type AssignTeamRolesRequest,
   type AssignTeamRolesResponse,
+  type CreateGroupRequest,
   type CreateMatchRequest,
   type CreateTeamRequest,
   type GroupSummary,
+  type UpdateGroupRequest,
   type LateRegisterCandidatesView,
   type LateRegistrationRequest,
   type MatchDetail,
@@ -36,6 +38,7 @@ import { uploadJpegImage } from '@/lib/image-upload';
 export const tournamentDetailKeys = {
   detail: (tournamentId: string) => ['tournament', tournamentId] as const,
   teams: (tournamentId: string) => ['tournament', tournamentId, 'teams'] as const,
+  groups: (tournamentId: string) => ['tournament', tournamentId, 'groups'] as const,
   team: (tournamentId: string, teamId: string) => ['tournament', tournamentId, 'teams', teamId] as const,
   matches: (tournamentId: string) => ['tournament', tournamentId, 'matches'] as const,
   scorecard: (matchId: string) => ['match', matchId, 'scorecard'] as const,
@@ -184,13 +187,41 @@ export function useRoundRobinSetup(tournamentId: string, enabled: boolean) {
   });
 }
 
-/** GET /tournaments/:id/groups — fallback when the detail payload carries no groups. */
+/** GET /tournaments/:id/groups — groups with their teams and per-group lock. */
 export function useTournamentGroups(tournamentId: string, enabled: boolean) {
   return useQuery({
-    queryKey: ['tournament', tournamentId, 'groups'],
+    queryKey: tournamentDetailKeys.groups(tournamentId),
     queryFn: ({ signal }) => apiFetch<GroupSummary[]>(tournamentPath(tournamentId, 'groups'), { signal }),
     enabled,
   });
+}
+
+/**
+ * Create / edit / delete a group. The API enforces CREATE_MATCH (Admin; organizer Club Manager /
+ * Center Sevak), unique names, the per-group lock once matches exist, and finalizes (or, when the
+ * last group goes, un-finalizes) Group Stage + Knockout.
+ */
+export function useGroupMutations(tournamentId: string) {
+  const queryClient = useQueryClient();
+  const onSuccess = () => queryClient.invalidateQueries({ queryKey: tournamentDetailKeys.detail(tournamentId) });
+  const groupPath = (groupId: string) => tournamentPath(tournamentId, `groups/${encodeURIComponent(groupId)}`);
+
+  return {
+    create: useMutation({
+      mutationFn: (body: CreateGroupRequest) =>
+        apiFetch<GroupSummary>(tournamentPath(tournamentId, 'groups'), { method: 'POST', body }),
+      onSuccess,
+    }),
+    update: useMutation({
+      mutationFn: ({ groupId, body }: { groupId: string; body: UpdateGroupRequest }) =>
+        apiFetch<GroupSummary>(groupPath(groupId), { method: 'PATCH', body }),
+      onSuccess,
+    }),
+    remove: useMutation({
+      mutationFn: (groupId: string) => apiSend(groupPath(groupId), { method: 'DELETE' }),
+      onSuccess,
+    }),
+  };
 }
 
 /**

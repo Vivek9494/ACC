@@ -2,6 +2,7 @@ import 'reflect-metadata';
 
 import {
   formatGroupDeleteBlockedMessage,
+  GROUP_FORM_MESSAGES,
   MatchSchedulingFormat,
   TournamentType,
   type AuthUser,
@@ -23,6 +24,8 @@ const manager: AuthUser = {
   isActive: true,
   teamLeadAssignments: [],
 };
+
+const TEAM_ID = '0b0f4a8e-7c1d-4e0a-9f3b-2d5c6e7f8a9b';
 
 describe('group-match-query blocking semantics', () => {
   it('treats fixtures as blocking only when a participating team remains in the group', () => {
@@ -138,6 +141,105 @@ describe('GroupsService.remove', () => {
 
     expect(prisma.tournament.update).not.toHaveBeenCalled();
   });
+
+  it('keeps the format when the last group is deleted but the tournament still has matches', async () => {
+    prisma.tournament.findUnique.mockResolvedValue({
+      id: 'tour-1',
+      type: TournamentType.Center,
+      matchSchedulingFormat: MatchSchedulingFormat.GroupStageKnockout,
+      isDeleted: false,
+      _count: { groups: 1 },
+    });
+    prisma.match.count.mockResolvedValueOnce(0).mockResolvedValueOnce(3);
+    prisma.tournamentGroup.count.mockResolvedValue(0);
+
+    await service.remove(manager, 'tour-1', 'group-1');
+
+    expect(prisma.tournamentGroup.delete).toHaveBeenCalled();
+    expect(prisma.tournament.update).not.toHaveBeenCalled();
+  });
+
+  it('rejects deleting a locked group (a match involves one of its teams)', async () => {
+    prisma.match.count.mockResolvedValue(0);
+    prisma.match.findMany.mockResolvedValue([
+      { homeTeam: { groupId: 'group-1' }, awayTeam: { groupId: 'group-2' } },
+    ]);
+
+    await expect(service.remove(manager, 'tour-1', 'group-1')).rejects.toMatchObject({
+      response: { error: 'GROUP_LOCKED', message: GROUP_FORM_MESSAGES.locked },
+    });
+    expect(prisma.tournamentGroup.delete).not.toHaveBeenCalled();
+  });
+});
+
+describe('GroupsService.update', () => {
+  function setup(lockingMatches: unknown[] = []) {
+    const tx = {
+      tournamentGroup: { update: jest.fn().mockResolvedValue({}) },
+      team: { updateMany: jest.fn().mockResolvedValue({ count: 1 }) },
+    };
+    const prisma = {
+      tournament: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'tour-1',
+          type: TournamentType.Center,
+          ballType: 'TENNIS',
+          matchSchedulingFormat: MatchSchedulingFormat.GroupStageKnockout,
+          isDeleted: false,
+          _count: { groups: 2 },
+        }),
+      },
+      tournamentGroup: {
+        findFirst: jest
+          .fn()
+          .mockImplementation(({ where }: { where: { id?: string; nameNormalized?: string } }) =>
+            Promise.resolve(where.nameNormalized ? null : { id: 'group-1', name: 'Group A' }),
+          ),
+        findUniqueOrThrow: jest.fn().mockResolvedValue({
+          id: 'group-1',
+          tournamentId: 'tour-1',
+          name: 'Group B',
+          teams: [],
+        }),
+      },
+      team: { findMany: jest.fn().mockResolvedValue([{ id: TEAM_ID, groupId: null, group: null }]) },
+      match: {
+        findMany: jest.fn().mockResolvedValue(lockingMatches),
+        count: jest.fn().mockResolvedValue(0),
+      },
+      $transaction: jest.fn(async (fn: (client: typeof tx) => Promise<unknown>) => fn(tx)),
+    };
+    const service = new GroupsService(
+      prisma as never,
+      { check: jest.fn().mockResolvedValue(true) } as never,
+      { assertCenterSevakTournamentAccess: jest.fn().mockResolvedValue(undefined) } as never,
+      { invalidateTournamentAggregates: jest.fn().mockResolvedValue(undefined) } as never,
+    );
+    return { service, tx };
+  }
+
+  it('renames the group and adds unassigned teams in one transaction', async () => {
+    const { service, tx } = setup();
+
+    await service.update(manager, 'tour-1', 'group-1', { name: ' Group B ', addTeamIds: [TEAM_ID] });
+
+    expect(tx.tournamentGroup.update).toHaveBeenCalledWith({
+      where: { id: 'group-1' },
+      data: { name: 'Group B', nameNormalized: 'group b' },
+    });
+    expect(tx.team.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { groupId: 'group-1' } }),
+    );
+  });
+
+  it('rejects edits once a match involves one of the group teams', async () => {
+    const { service, tx } = setup([{ homeTeam: { groupId: 'group-1' }, awayTeam: null }]);
+
+    await expect(
+      service.update(manager, 'tour-1', 'group-1', { name: 'Group B' }),
+    ).rejects.toMatchObject({ response: { error: 'GROUP_LOCKED' } });
+    expect(tx.tournamentGroup.update).not.toHaveBeenCalled();
+  });
 });
 
 describe('GroupsService.create', () => {
@@ -165,6 +267,7 @@ describe('GroupsService.create', () => {
         }),
       },
       tournamentGroup: { findFirst: jest.fn().mockResolvedValue(null) },
+      match: { findMany: jest.fn().mockResolvedValue([]) },
       $transaction: jest.fn(async (fn: (client: typeof tx) => Promise<unknown>) => fn(tx)),
     };
     const service = new GroupsService(

@@ -1,10 +1,16 @@
-import { BALL_TYPE_LABELS, TOURNAMENT_DISPLAY_STATUS_LABELS, TOURNAMENT_TYPE_LABELS } from '@acc/types';
+import {
+  BALL_TYPE_LABELS,
+  shouldShowGroupsTab,
+  TOURNAMENT_DISPLAY_STATUS_LABELS,
+  TOURNAMENT_TYPE_LABELS,
+} from '@acc/types';
 import {
   ArrowLeft,
   BarChart3,
   CalendarDays,
   ClipboardCheck,
   Info,
+  Layers,
   ListOrdered,
   Users,
   type LucideIcon,
@@ -17,15 +23,17 @@ import { cn } from '@/lib/utils';
 
 import { STATUS_BADGE } from '../columns';
 import { formatTournamentDates, tournamentLocationLabel } from '../tournament-list';
+import { AddGroupButton } from './AddGroupButton';
 import { AddMatchButton } from './AddMatchButton';
 import { AddTeamButton } from './AddTeamButton';
 import { EditTournamentButton } from './EditTournamentButton';
 import { RegisterUserButton } from './RegisterUserButton';
-import { DETAIL_TABS, type DetailTabPath } from './tournament-detail';
+import { type DetailTabPath, visibleDetailTabs } from './tournament-detail';
 import { useTournamentDetail } from './tournament-detail-api';
 
 const TAB_ICONS: Record<DetailTabPath, LucideIcon> = {
   teams: Users,
+  groups: Layers,
   matches: CalendarDays,
   points: ListOrdered,
   stats: BarChart3,
@@ -33,12 +41,13 @@ const TAB_ICONS: Record<DetailTabPath, LucideIcon> = {
   details: Info,
 };
 
-/** /tournaments/:tournamentId — header + Teams / Matches / Points table / Tournament stats / Registrations / Details tabs. */
+/** /tournaments/:tournamentId — header + Teams / Groups / Matches / Points table / Tournament stats / Registrations / Details tabs. */
 export function TournamentDetailLayout(): React.ReactElement {
   const { tournamentId = '' } = useParams();
   const detail = useTournamentDetail(tournamentId);
   const tournament = detail.data;
   const onTeamsTab = useMatch('/tournaments/:tournamentId/teams') !== null;
+  const onGroupsTab = useMatch('/tournaments/:tournamentId/groups') !== null;
   const onMatchesTab = useMatch('/tournaments/:tournamentId/matches') !== null;
   const onRegistrationsTab = useMatch('/tournaments/:tournamentId/registrations') !== null;
   const onDetailsTab = useMatch('/tournaments/:tournamentId/details') !== null;
@@ -74,6 +83,9 @@ export function TournamentDetailLayout(): React.ReactElement {
                   </p>
                 </div>
                 {onTeamsTab ? <AddTeamButton tournament={tournament} /> : null}
+                {onGroupsTab && shouldShowGroupsTab(tournament) ? (
+                  <AddGroupButton tournament={tournament} />
+                ) : null}
                 {onMatchesTab ? <AddMatchButton tournament={tournament} /> : null}
                 {onRegistrationsTab ? <RegisterUserButton tournament={tournament} /> : null}
                 {onDetailsTab ? <EditTournamentButton tournament={tournament} /> : null}
@@ -90,7 +102,7 @@ export function TournamentDetailLayout(): React.ReactElement {
             className="mb-6 flex gap-1 overflow-x-auto overflow-y-hidden shadow-[inset_0_-1px_0_var(--color-border)]"
             aria-label="Tournament sections"
           >
-            {DETAIL_TABS.map((tab) => {
+            {visibleDetailTabs(tournament).map((tab) => {
               const Icon = TAB_ICONS[tab.path];
               return (
                 <NavLink

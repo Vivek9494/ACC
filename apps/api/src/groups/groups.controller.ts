@@ -11,7 +11,7 @@ import { Public } from '../auth/public.decorator';
 import { PermissionGuard } from '../authz/permission.guard';
 import { RequirePermission } from '../authz/require-permission.decorator';
 import { CreateGroupDto } from './dto/create-group.dto';
-import { UpdateGroupMembersDto } from './dto/update-group-members.dto';
+import { UpdateGroupDto } from './dto/update-group-members.dto';
 import { GroupsService } from './groups.service';
 
 /** Tournament group management (Group Stage + Knockout). */
@@ -40,13 +40,13 @@ export class GroupsController {
   @Patch('tournaments/:tournamentId/groups/:groupId')
   @RequirePermission(Permission.CREATE_MATCH)
   @UseGuards(PermissionGuard)
-  updateMembers(
+  update(
     @CurrentUser() user: AuthUser,
     @Param('tournamentId') tournamentId: string,
     @Param('groupId') groupId: string,
-    @Body() dto: UpdateGroupMembersDto,
+    @Body() dto: UpdateGroupDto,
   ): Promise<GroupSummary> {
-    return this.groups.updateMembers(user, tournamentId, groupId, dto);
+    return this.groups.update(user, tournamentId, groupId, dto);
   }
 
   @Delete('tournaments/:tournamentId/groups/:groupId')
