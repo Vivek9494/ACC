@@ -3,9 +3,19 @@ import {
   type AddTeamPlayersResponse,
   type AssignTeamRolesRequest,
   type AssignTeamRolesResponse,
+  type CreateMatchRequest,
   type CreateTeamRequest,
+  type GroupSummary,
+  type LateRegisterCandidatesView,
+  type LateRegistrationRequest,
+  type MatchDetail,
   type MatchListItem,
+  type MatchSchedulingFormat,
+  type RoundRobinMatchSetupContext,
+  type SelectMatchSchedulingFormatRequest,
+  type UpdateMatchRequest,
   type RegistrationDetail,
+  type RegistrationFieldDefinition,
   type RegistrationVerificationQueue,
   type ScorecardResponse,
   TEAM_LOGO_MAX_BYTES,
@@ -153,6 +163,79 @@ export function useTournamentMatches(tournamentId: string) {
   });
 }
 
+/** GET /matches/:id — full fixture for Edit Match Setup. */
+export function useMatchDetail(matchId: string | null) {
+  return useQuery({
+    queryKey: ['match', matchId ?? ''],
+    queryFn: ({ signal }) => apiFetch<MatchDetail>(`/matches/${encodeURIComponent(matchId ?? '')}`, { signal }),
+    enabled: matchId !== null,
+    staleTime: 0,
+  });
+}
+
+/** GET …/matches/round-robin-setup — next match number, standings, pairings already scheduled. */
+export function useRoundRobinSetup(tournamentId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: [...tournamentDetailKeys.matches(tournamentId), 'round-robin-setup'],
+    queryFn: ({ signal }) =>
+      apiFetch<RoundRobinMatchSetupContext>(tournamentPath(tournamentId, 'matches/round-robin-setup'), { signal }),
+    enabled,
+    staleTime: 0,
+  });
+}
+
+/** GET /tournaments/:id/groups — fallback when the detail payload carries no groups. */
+export function useTournamentGroups(tournamentId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ['tournament', tournamentId, 'groups'],
+    queryFn: ({ signal }) => apiFetch<GroupSummary[]>(tournamentPath(tournamentId, 'groups'), { signal }),
+    enabled,
+  });
+}
+
+/**
+ * Schedule / edit / delete fixtures and pick the scheduling format. The API enforces CREATE_MATCH,
+ * EDIT_MATCH / DELETE_MATCH (upcoming fixtures only) and the fixture rules.
+ */
+export function useMatchMutations(tournamentId: string) {
+  const queryClient = useQueryClient();
+  const onSuccess = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: tournamentDetailKeys.matches(tournamentId) }),
+      queryClient.invalidateQueries({ queryKey: tournamentDetailKeys.detail(tournamentId), exact: true }),
+    ]);
+  };
+  const matchPath = (matchId: string) => `/matches/${encodeURIComponent(matchId)}`;
+
+  return {
+    selectFormat: useMutation({
+      mutationFn: (schedulingFormat: MatchSchedulingFormat) =>
+        apiFetch<TournamentDetail>(tournamentPath(tournamentId, 'match-scheduling-format'), {
+          method: 'POST',
+          body: { schedulingFormat } satisfies SelectMatchSchedulingFormatRequest,
+        }),
+      onSuccess: (updated) => queryClient.setQueryData(tournamentDetailKeys.detail(tournamentId), updated),
+    }),
+    create: useMutation({
+      mutationFn: (body: CreateMatchRequest) =>
+        apiFetch<MatchDetail>(tournamentPath(tournamentId, 'matches'), { method: 'POST', body }),
+      onSuccess,
+    }),
+    update: useMutation({
+      mutationFn: ({ matchId, body }: { matchId: string; body: UpdateMatchRequest }) =>
+        apiFetch<MatchDetail>(matchPath(matchId), { method: 'PATCH', body }),
+      onSuccess: async (_saved, { matchId }) => {
+        queryClient.removeQueries({ queryKey: ['match', matchId] });
+        await onSuccess();
+      },
+    }),
+    remove: useMutation({
+      mutationFn: (matchId: string) => apiSend(matchPath(matchId), { method: 'DELETE' }),
+      onSuccess,
+    }),
+  };
+}
+
 /**
  * GET /tournaments/:id/registrations/verification-queue — every registrant plus the
  * server's verification phase and `canManage` (window + who-can-verify). Admin.
@@ -197,7 +280,41 @@ export function useRegistrationActions(tournamentId: string) {
         apiFetch<RegistrationDetail>(registrationPath(registrationId, 'ratings'), { method: 'PATCH', body }),
       onSuccess,
     }),
+    /** §7.6: the server confirms immediately (no approval step) and re-checks permission + center. */
+    lateRegister: useMutation({
+      mutationFn: (body: LateRegistrationRequest) =>
+        apiFetch<RegistrationDetail>(tournamentPath(tournamentId, 'registrations/late'), { method: 'POST', body }),
+      onSuccess,
+    }),
   };
+}
+
+/** GET …/registrations/late-candidates — active Players from participating centers with no registration yet. */
+export function useLateRegisterCandidates(tournamentId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: [...tournamentDetailKeys.registrations(tournamentId), 'late-candidates'],
+    queryFn: ({ signal }) =>
+      apiFetch<LateRegisterCandidatesView>(tournamentPath(tournamentId, 'registrations/late-candidates'), {
+        signal,
+      }),
+    enabled,
+    // Every registration changes who is eligible, so never render a cached list.
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: 'always',
+  });
+}
+
+/** GET …/registrations/form-fields — the tournament's custom registration questions (often none). */
+export function useRegistrationFormFields(tournamentId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: [...tournamentDetailKeys.registrations(tournamentId), 'form-fields'],
+    queryFn: ({ signal }) =>
+      apiFetch<RegistrationFieldDefinition[]>(tournamentPath(tournamentId, 'registrations/form-fields'), {
+        signal,
+      }),
+    enabled,
+  });
 }
 
 /** GET /matches/:matchId/scorecard — innings batting / bowling / extras / totals. */

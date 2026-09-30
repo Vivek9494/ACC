@@ -4,13 +4,13 @@ import {
   CitySelection,
   DEFAULT_VENUE_TIMEZONE,
   KNOCKOUT_TEAM_COUNT_MESSAGES,
-  TournamentType,
   UserRole,
   canConfigureKnockoutTeamCount,
   canConfigureKnockoutTeamCountOnCreate,
   firstTournamentFieldError,
   formatTodayDateOnlyInZone,
-  resolvesToAplOnCreate,
+  supportsKnockoutStage,
+  supportsKnockoutStageOnCreate,
   sanitizeTournamentFeeInput,
   type TournamentFormFieldErrors,
   type TournamentFormFieldKey,
@@ -105,7 +105,7 @@ export function EditTournamentPage(): React.ReactElement {
     () => (editForm.data ? hydrateTournamentForm(editForm.data) : null),
     [editForm.data],
   );
-  const backTo = `/tournaments/${encodeURIComponent(tournamentId)}`;
+  const backTo = `/tournaments/${encodeURIComponent(tournamentId)}/details`;
 
   let body: ReactNode;
   if (editForm.isError) {
@@ -324,7 +324,7 @@ function TournamentForm({
             )
           : await createTournament.mutateAsync(toCreateTournamentRequest(values, posterKey ?? ''));
       toast.success(context ? `${saved.name} updated` : `${saved.name} created`);
-      navigate(`/tournaments/${encodeURIComponent(saved.id)}`);
+      navigate(`/tournaments/${encodeURIComponent(saved.id)}${context ? '/details' : ''}`);
     } catch (err) {
       const mapped = err instanceof ApiError ? serverFieldErrors(err.fields) : {};
       const firstServer = firstTournamentFieldError(mapped);
@@ -340,8 +340,8 @@ function TournamentForm({
     { value: CitySelection.Multi, label: 'Multi-centers' },
   ];
   const showKnockout = isEdit
-    ? context.tournamentType === TournamentType.APL
-    : resolvesToAplOnCreate(values.ballType, values.citySelection);
+    ? supportsKnockoutStage(context.tournamentType)
+    : supportsKnockoutStageOnCreate(values.ballType);
   const totalTeams = values.numberOfTeams ? Number(values.numberOfTeams) : 0;
   const knockoutReady = isEdit
     ? canConfigureKnockoutTeamCount(context.groupCount, totalTeams)

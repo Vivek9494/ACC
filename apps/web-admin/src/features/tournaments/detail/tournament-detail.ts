@@ -22,6 +22,7 @@ export const DETAIL_TABS = [
   { path: 'points', label: 'Points table' },
   { path: 'stats', label: 'Tournament stats' },
   { path: 'registrations', label: 'Registrations' },
+  { path: 'details', label: 'Details' },
 ] as const;
 
 export type DetailTabPath = (typeof DETAIL_TABS)[number]['path'];

@@ -6,9 +6,36 @@ import {
   countByStatus,
   defaultRegistrationStatus,
   filterRegistrations,
+  parseRatingDraft,
+  ratingDraftFrom,
   registrationCenters,
   resolveVerificationState,
 } from './registrations';
+
+describe('inline rating edit', () => {
+  it('starts from the current ratings, blank when unrated', () => {
+    expect(ratingDraftFrom({ battingRating: 7, bowlingRating: null, fieldingRating: 0 })).toEqual({
+      battingRating: '7',
+      bowlingRating: '',
+      fieldingRating: '0',
+    });
+  });
+
+  it('parses whole numbers 0–10 and blanks as not rated', () => {
+    expect(parseRatingDraft({ battingRating: ' 10 ', bowlingRating: '', fieldingRating: '0' })).toEqual({
+      ok: true,
+      body: { battingRating: 10, bowlingRating: null, fieldingRating: 0 },
+    });
+  });
+
+  it.each(['11', '-1', '4.5', 'abc'])('rejects %s', (value) => {
+    expect(parseRatingDraft({ battingRating: '5', bowlingRating: value, fieldingRating: '5' })).toEqual({
+      ok: false,
+      field: 'bowlingRating',
+      error: 'Bowling rating must be a whole number from 0 to 10.',
+    });
+  });
+});
 
 const HOUR = 60 * 60 * 1000;
 const now = new Date('2026-09-28T12:00:00.000Z');

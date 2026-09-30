@@ -6,7 +6,7 @@ import {
   type CreateGroupRequest,
   type GroupSummary,
 } from '@acc/types';
-import { IsArray, IsOptional, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
+import { IsArray, IsIn, IsOptional, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
 
 export class CreateGroupDto implements CreateGroupRequest {
   @IsString()
@@ -18,4 +18,8 @@ export class CreateGroupDto implements CreateGroupRequest {
   @IsArray()
   @IsUUID('4', { each: true })
   teamIds?: string[];
+
+  @IsOptional()
+  @IsIn([MatchSchedulingFormat.GroupStageKnockout])
+  schedulingFormat?: typeof MatchSchedulingFormat.GroupStageKnockout;
 }

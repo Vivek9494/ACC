@@ -590,22 +590,3 @@ export function shouldShowKnockoutChartEntry(
     tournament.matchSchedulingFormat === MatchSchedulingFormat.GroupStageKnockout
   );
 }
-
-/** Matches tab — Admin / Club Manager generate & manage knockout (separate from chart view). */
-export function shouldShowKnockoutBracketEntry(
-  tournament: Pick<TournamentDetail, 'matchSchedulingFormat'>,
-  user: ReturnType<typeof useAuth>['user'],
-): boolean {
-  return (
-    canManageKnockoutBracket(user) &&
-    tournament.matchSchedulingFormat === MatchSchedulingFormat.GroupStageKnockout
-  );
-}
-
-/** @deprecated Use shouldShowKnockoutBracketEntry */
-export function shouldShowKnockoutBracketManage(
-  tournament: Pick<TournamentDetail, 'hasKnockoutBracket' | 'matchSchedulingFormat'>,
-  user: ReturnType<typeof useAuth>['user'],
-): boolean {
-  return shouldShowKnockoutBracketEntry(tournament, user);
-}

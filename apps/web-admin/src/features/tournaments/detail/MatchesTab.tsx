@@ -1,20 +1,27 @@
 import {
   MatchCardDisplayState,
+  MatchSchedulingFormat,
   resolveMatchStateBadge,
   type MatchListItem,
   type MatchListTeamView,
 } from '@acc/types';
 import { CalendarDays, MapPin } from 'lucide-react';
+import { useState } from 'react';
 import { Link, useParams } from 'react-router';
+import { toast } from 'sonner';
 
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { QueryErrorCard } from '@/components/QueryErrorCard';
+import { RowActionsMenu } from '@/components/RowActionsMenu';
 import { TeamLogo } from '@/components/TeamLogo';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 
 import { DETAIL_GRID, formatMatchWhen, splitScoreLine, visibleMatches } from './tournament-detail';
-import { useTournamentMatches } from './tournament-detail-api';
+import { canDeleteMatch, canEditMatch } from './match-setup';
+import { MatchSetupDialog } from './MatchSetupDialog';
+import { useMatchMutations, useTournamentDetail, useTournamentMatches } from './tournament-detail-api';
 
 const DISPLAY_BADGE: Record<MatchCardDisplayState, 'live' | 'upcoming' | 'muted' | 'destructive'> = {
   [MatchCardDisplayState.Live]: 'live',
@@ -39,56 +46,101 @@ function TeamLine({ team }: { team: MatchListTeamView }): React.ReactElement {
   );
 }
 
-function MatchCard({ match }: { match: MatchListItem }): React.ReactElement {
+function MatchCard({
+  match,
+  onEdit,
+  onDelete,
+}: {
+  match: MatchListItem;
+  onEdit?: () => void;
+  onDelete?: () => void;
+}): React.ReactElement {
   const live = match.displayState === MatchCardDisplayState.Live;
+  const hasActions = Boolean(onEdit || onDelete);
   return (
-    <Link
-      to={match.id}
-      className="group rounded-lg outline-none focus-visible:ring-[3px] focus-visible:ring-ring/30"
-      aria-label={`${match.teamA.name} vs ${match.teamB.name} scorecard`}
-    >
-      <Card
-        className={cn(
-          'h-full gap-3 py-4 transition-shadow group-hover:border-primary/40 group-hover:shadow-md',
-          live && 'border-primary/50',
-        )}
+    <div className="relative">
+      <Link
+        to={match.id}
+        className="group block h-full rounded-lg outline-none focus-visible:ring-[3px] focus-visible:ring-ring/30"
+        aria-label={`${match.teamA.name} vs ${match.teamB.name} scorecard`}
       >
-        <div className="flex items-center justify-between gap-2 px-4">
-          <span className="truncate text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-            {[match.matchCode, match.groupName].filter(Boolean).join(' · ') || 'Match'}
-          </span>
-          <Badge variant={DISPLAY_BADGE[match.displayState]}>
-            {live ? <span className="size-1.5 rounded-full bg-primary" /> : null}
-            {resolveMatchStateBadge(match.state).label}
-          </Badge>
-        </div>
-        <div className="space-y-2 px-4">
-          <TeamLine team={match.teamA} />
-          <TeamLine team={match.teamB} />
-        </div>
-        {match.resultSummary ? (
-          <p className="px-4 text-xs font-semibold text-accent-foreground">{match.resultSummary}</p>
-        ) : null}
-        <div className="mt-auto space-y-1 border-t px-4 pt-3 text-xs text-muted-foreground">
-          <p className="flex items-center gap-1.5">
-            <CalendarDays className="size-3.5 shrink-0" />
-            {formatMatchWhen(match)}
-          </p>
-          {match.groundLocation ? (
-            <p className="flex items-center gap-1.5">
-              <MapPin className="size-3.5 shrink-0" />
-              <span className="truncate">{match.groundLocation}</span>
-            </p>
+        <Card
+          className={cn(
+            'h-full gap-3 py-4 transition-shadow group-hover:border-primary/40 group-hover:shadow-md',
+            live && 'border-primary/50',
+          )}
+        >
+          <div className={cn('flex items-center justify-between gap-2 px-4', hasActions && 'pr-12')}>
+            <span className="truncate text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+              {[match.matchCode, match.groupName].filter(Boolean).join(' · ') || 'Match'}
+            </span>
+            <Badge variant={DISPLAY_BADGE[match.displayState]}>
+              {live ? <span className="size-1.5 rounded-full bg-primary" /> : null}
+              {resolveMatchStateBadge(match.state).label}
+            </Badge>
+          </div>
+          <div className="space-y-2 px-4">
+            <TeamLine team={match.teamA} />
+            <TeamLine team={match.teamB} />
+          </div>
+          {match.resultSummary ? (
+            <p className="px-4 text-xs font-semibold text-accent-foreground">{match.resultSummary}</p>
           ) : null}
+          <div className="mt-auto space-y-1 border-t px-4 pt-3 text-xs text-muted-foreground">
+            <p className="flex items-center gap-1.5">
+              <CalendarDays className="size-3.5 shrink-0" />
+              {formatMatchWhen(match)}
+            </p>
+            {match.groundLocation ? (
+              <p className="flex items-center gap-1.5">
+                <MapPin className="size-3.5 shrink-0" />
+                <span className="truncate">{match.groundLocation}</span>
+              </p>
+            ) : null}
+          </div>
+        </Card>
+      </Link>
+      {hasActions ? (
+        <div className="absolute top-2.5 right-2">
+          <RowActionsMenu label={`${match.teamA.name} vs ${match.teamB.name}`} onEdit={onEdit} onDelete={onDelete} />
         </div>
-      </Card>
-    </Link>
+      ) : null}
+    </div>
   );
 }
 
 export function MatchesTab(): React.ReactElement {
   const { tournamentId = '' } = useParams();
   const matches = useTournamentMatches(tournamentId);
+  const tournament = useTournamentDetail(tournamentId).data;
+  const { remove } = useMatchMutations(tournamentId);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<MatchListItem | null>(null);
+
+  const dialogs = tournament ? (
+    <>
+      <MatchSetupDialog
+        tournament={tournament}
+        open={editingId !== null}
+        onOpenChange={(open) => !open && setEditingId(null)}
+        format={tournament.matchSchedulingFormat ?? MatchSchedulingFormat.Manual}
+        matchId={editingId}
+      />
+      <ConfirmDialog
+        open={deleting !== null}
+        onOpenChange={(open) => !open && setDeleting(null)}
+        title="Delete this match?"
+        description="It will be removed from match lists. The record is kept and stays visible to Admins."
+        confirmLabel="Delete"
+        destructive
+        onConfirm={async () => {
+          if (!deleting) return;
+          await remove.mutateAsync(deleting.id);
+          toast.success(`${deleting.teamA.name} vs ${deleting.teamB.name} deleted`);
+        }}
+      />
+    </>
+  ) : null;
 
   if (matches.isError) {
     return <QueryErrorCard title="Couldn't load matches" error={matches.error} onRetry={() => void matches.refetch()} />;
@@ -114,10 +166,18 @@ export function MatchesTab(): React.ReactElement {
     );
   }
   return (
-    <div className={DETAIL_GRID}>
-      {rows.map((match) => (
-        <MatchCard key={match.id} match={match} />
-      ))}
-    </div>
+    <>
+      <div className={DETAIL_GRID}>
+        {rows.map((match) => (
+          <MatchCard
+            key={match.id}
+            match={match}
+            onEdit={canEditMatch(match) ? () => setEditingId(match.id) : undefined}
+            onDelete={canDeleteMatch(match) ? () => setDeleting(match) : undefined}
+          />
+        ))}
+      </div>
+      {dialogs}
+    </>
   );
 }

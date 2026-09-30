@@ -1,3 +1,4 @@
+import type { MatchSchedulingFormat } from './match-scheduling-format';
 import { TOURNAMENT_FORM_MESSAGES } from './tournament-validation';
 
 /** Display name length cap for Create Group. */
@@ -24,6 +25,8 @@ export interface GroupSummary {
 export interface CreateGroupRequest {
   name: string;
   teamIds?: string[];
+  /** Sent from the Schedule Matches flow — finalizes Group Stage + Knockout with the first group. */
+  schedulingFormat?: typeof MatchSchedulingFormat.GroupStageKnockout;
 }
 
 export interface UpdateGroupMembersRequest {

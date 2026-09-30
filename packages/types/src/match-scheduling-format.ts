@@ -24,6 +24,30 @@ export const MATCH_SCHEDULING_FORMAT_ROUTE_SEGMENT: Record<MatchSchedulingFormat
   MANUAL: 'manual',
 };
 
+export const MATCH_SCHEDULING_FORMAT_MESSAGES = {
+  locked:
+    'This tournament uses Group Stage + Knockout. Delete all groups to choose a different format.',
+} as const;
+
+/**
+ * Group Stage + Knockout is finalized by creating the first group; until then (or once every
+ * group is deleted) the tournament has no finalized format.
+ */
+export function isMatchSchedulingFormatLocked(
+  format: MatchSchedulingFormat | null,
+  groupCount: number,
+): boolean {
+  return format === MatchSchedulingFormat.GroupStageKnockout && groupCount > 0;
+}
+
+/** Stored format as exposed to clients — Group Stage + Knockout without groups reads as unset. */
+export function effectiveMatchSchedulingFormat(
+  format: MatchSchedulingFormat | null,
+  groupCount: number,
+): MatchSchedulingFormat | null {
+  return format === MatchSchedulingFormat.GroupStageKnockout && groupCount === 0 ? null : format;
+}
+
 export interface SelectMatchSchedulingFormatRequest {
   schedulingFormat: MatchSchedulingFormat;
 }

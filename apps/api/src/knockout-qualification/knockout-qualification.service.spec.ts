@@ -21,16 +21,32 @@ describe('KnockoutQualificationService', () => {
     jest.resetAllMocks();
   });
 
-  it('returns NOT_APPLICABLE for non-APL tournaments', async () => {
+  it('returns NOT_APPLICABLE for ACC tournaments', async () => {
     prisma.tournament.findUnique.mockResolvedValue({
       isDeleted: false,
-      type: TournamentType.Center,
+      type: TournamentType.ACC,
       knockoutTeamCount: 12,
       _count: { groups: 4 },
     });
 
     await expect(service.getQualification('t1')).resolves.toEqual({
       status: QualificationReadinessStatus.NotApplicable,
+    });
+  });
+
+  it('evaluates Center-level tournaments like APL', async () => {
+    prisma.tournament.findUnique.mockResolvedValue({
+      isDeleted: false,
+      type: TournamentType.Center,
+      knockoutTeamCount: 4,
+      _count: { groups: 2 },
+    });
+    prisma.match.count.mockResolvedValueOnce(6).mockResolvedValueOnce(1);
+
+    await expect(service.getQualification('t1')).resolves.toEqual({
+      status: QualificationReadinessStatus.NotReady,
+      scheduledGroupMatchCount: 6,
+      incompleteGroupMatchCount: 1,
     });
   });
 

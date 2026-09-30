@@ -37,6 +37,11 @@ import {
   canManageLeatherInvites,
   canCenterSevakOrganizeTournament,
   canOrganizeTournament as evaluateCanOrganizeTournament,
+  effectiveMatchSchedulingFormat,
+  isMatchSchedulingFormatLocked,
+  MATCH_SCHEDULING_FORMAT_MESSAGES,
+  MatchSchedulingFormat as MatchSchedulingFormatValue,
+  supportsKnockoutStage,
 } from '@acc/types';
 import { decimalToNumberOrNull, numberToDecimalOrNull } from '../common/decimal.util';
 import {
@@ -213,7 +218,7 @@ export class TournamentsService {
           feePartTime: fees.feePartTime,
           provinceId: dto.provinceId,
           createdByUserId: actor.id,
-          ...(type === TournamentType.APL && dto.knockoutTeamCount != null
+          ...(supportsKnockoutStage(type) && dto.knockoutTeamCount != null
             ? { knockoutTeamCount: dto.knockoutTeamCount }
             : {}),
         },
@@ -408,7 +413,10 @@ export class TournamentsService {
       playersPerTeam: row.playersPerTeam,
       substitutesAllowed: row.substitutesAllowed,
       format: row.format,
-      matchSchedulingFormat: row.matchSchedulingFormat ?? null,
+      matchSchedulingFormat: effectiveMatchSchedulingFormat(
+        (row.matchSchedulingFormat as MatchSchedulingFormat | null) ?? null,
+        row._count.groups,
+      ),
       impactPlayerEnabled: row.impactPlayerEnabled,
       videoRequired: row.videoRequired,
       videoUploadStartAt: row.videoUploadStartAt?.toISOString() ?? null,
@@ -572,6 +580,15 @@ export class TournamentsService {
 
     const participatingCenterIds = await this.tournamentScorers.loadParticipatingCenterIds(id);
     const hasKnockoutBracket = await this.knockoutBracket.hasKnockoutBracket(id);
+    const canGenerateKnockout = await this.knockoutBracket.canGenerateKnockout(
+      id,
+      {
+        type: row.type as TournamentType,
+        groupCount: row._count.groups,
+        knockoutTeamCount: row.knockoutTeamCount,
+      },
+      hasKnockoutBracket,
+    );
     const scorerFlags = await this.tournamentScorers.buildViewerFlags(
       viewer,
       id,
@@ -583,6 +600,7 @@ export class TournamentsService {
     return {
       ...detailBase,
       hasKnockoutBracket,
+      canGenerateKnockout,
       myTeamId,
       hasRegistrationWindow,
       registrationIsOpen: isTournamentRegistrationOpen(detailBase),
@@ -963,13 +981,18 @@ export class TournamentsService {
   /**
    * Records the coarse scheduling mode chosen in the Schedule Matches modal.
    * Does not overwrite {@link TournamentFormat} from creation (§24).
+   * Group Stage + Knockout is only persisted once a group exists (first group creation
+   * finalizes it); while groups exist it is locked and other formats are rejected.
    */
   async selectMatchSchedulingFormat(
     actor: AuthUser,
     tournamentId: string,
     schedulingFormat: MatchSchedulingFormat,
   ): Promise<TournamentDetail> {
-    const existing = await this.prisma.tournament.findUnique({ where: { id: tournamentId } });
+    const existing = await this.prisma.tournament.findUnique({
+      where: { id: tournamentId },
+      include: { _count: { select: { groups: true } } },
+    });
     assertTournamentActive(existing);
 
     await assertCanScheduleTournamentMatches(this.permissions, this.prisma, actor, {
@@ -979,11 +1002,26 @@ export class TournamentsService {
 
     await this.assertCenterSevakTournamentAccess(actor, existing);
 
-    await this.prisma.tournament.update({
-      where: { id: tournamentId },
-      data: { matchSchedulingFormat: schedulingFormat },
-    });
-    await this.statsInvalidation.invalidateTournamentAggregates(tournamentId);
+    const groupCount = existing._count.groups;
+    const storedFormat = (existing.matchSchedulingFormat as MatchSchedulingFormat | null) ?? null;
+    const isGroupStage = schedulingFormat === MatchSchedulingFormatValue.GroupStageKnockout;
+
+    if (isMatchSchedulingFormatLocked(storedFormat, groupCount) && !isGroupStage) {
+      throw new BadRequestException({
+        message: MATCH_SCHEDULING_FORMAT_MESSAGES.locked,
+        error: 'SCHEDULING_FORMAT_LOCKED',
+      });
+    }
+
+    const shouldPersist =
+      storedFormat !== schedulingFormat && (!isGroupStage || groupCount > 0);
+    if (shouldPersist) {
+      await this.prisma.tournament.update({
+        where: { id: tournamentId },
+        data: { matchSchedulingFormat: schedulingFormat },
+      });
+      await this.statsInvalidation.invalidateTournamentAggregates(tournamentId);
+    }
 
     return this.getDetail(tournamentId, actor);
   }

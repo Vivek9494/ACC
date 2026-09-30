@@ -81,6 +81,7 @@ function editData(overrides: Partial<TournamentEditFormData> = {}): TournamentEd
     groupCount: 2,
     knockoutTeamCount: 4,
     hasKnockoutBracket: false,
+    canGenerateKnockout: false,
     groups: [],
     teams: [],
     myTeamId: null,
@@ -341,7 +342,7 @@ describe('payloads', () => {
       auctionAt: null,
     });
     expect(body).not.toHaveProperty('tournamentTypeDefinitionId');
-    expect(body).not.toHaveProperty('knockoutTeamCount');
+    expect(body.knockoutTeamCount).toBeNull();
   });
 
   it('APL create sends the type definition and knockout size', () => {

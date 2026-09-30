@@ -14,7 +14,8 @@ import {
   mapApiFieldsToTournamentForm,
   parseOptionalTournamentFee,
   resolveTournamentFormDates,
-  resolvesToAplOnCreate,
+  supportsKnockoutStage,
+  supportsKnockoutStageOnCreate,
   splitIsoToLocalDateAndTime,
   tournamentFeeToInputString,
   utcMidnightIsoToDateOnly,
@@ -366,7 +367,7 @@ export function validateTournamentForm(
   if (!context) {
     return validateCreateTournamentForm({
       ...toFormInput(values, hasPoster, DEFAULT_VENUE_TIMEZONE),
-      knockoutTeamCount: resolvesToAplOnCreate(values.ballType, values.citySelection)
+      knockoutTeamCount: supportsKnockoutStageOnCreate(values.ballType)
         ? values.knockoutTeamCount
         : null,
     });
@@ -465,7 +466,7 @@ export function toCreateTournamentRequest(
               : {}),
         }
       : {}),
-    ...(resolvesToAplOnCreate(ballType, values.citySelection)
+    ...(supportsKnockoutStageOnCreate(ballType)
       ? { knockoutTeamCount: values.knockoutTeamCount ? Number(values.knockoutTeamCount) : null }
       : {}),
   };
@@ -489,7 +490,7 @@ export function toUpdateTournamentRequest(
         }
       : {}),
     provinceId: values.provinceId ?? undefined,
-    ...(context.tournamentType === TournamentType.APL && !context.hasKnockoutBracket
+    ...(supportsKnockoutStage(context.tournamentType) && !context.hasKnockoutBracket
       ? { knockoutTeamCount: values.knockoutTeamCount ? Number(values.knockoutTeamCount) : null }
       : {}),
   };

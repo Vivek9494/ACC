@@ -1,9 +1,10 @@
 import {
-  isAplTournamentType,
   MATCH_END_STATES,
   normalizeTeamPairKey,
   QualificationReadinessStatus,
+  supportsKnockoutStage,
   type KnockoutQualificationResponse,
+  type TournamentType,
 } from '@acc/types';
 import { Injectable, NotFoundException } from '@nestjs/common';
 
@@ -42,7 +43,7 @@ export class KnockoutQualificationService {
     });
     assertTournamentActive(tournament);
 
-    if (!isAplTournamentType(tournament.type)) {
+    if (!supportsKnockoutStage(tournament.type as TournamentType)) {
       return { status: QualificationReadinessStatus.NotApplicable };
     }
 

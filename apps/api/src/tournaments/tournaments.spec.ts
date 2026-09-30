@@ -1,6 +1,13 @@
 import 'reflect-metadata';
 
-import { type AuthUser, Permission, TournamentState, UserRole } from '@acc/types';
+import {
+  type AuthUser,
+  MATCH_SCHEDULING_FORMAT_MESSAGES,
+  MatchSchedulingFormat,
+  Permission,
+  TournamentState,
+  UserRole,
+} from '@acc/types';
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { plainToInstance } from 'class-transformer';
@@ -250,7 +257,10 @@ describe('TournamentsService', () => {
         },
         {
           provide: KnockoutBracketService,
-          useValue: { hasKnockoutBracket: jest.fn().mockResolvedValue(false) },
+          useValue: {
+            hasKnockoutBracket: jest.fn().mockResolvedValue(false),
+            canGenerateKnockout: jest.fn().mockResolvedValue(false),
+          },
         },
         {
           provide: StatsInvalidationService,
@@ -786,6 +796,56 @@ describe('TournamentsService', () => {
         BadRequestException,
       );
       expect(tx.tournament.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('selectMatchSchedulingFormat', () => {
+    const tennisRow = (overrides: Record<string, unknown> = {}) =>
+      detailRow({ type: 'CENTER', ballType: 'TENNIS', ...overrides });
+
+    it('does not persist Group Stage + Knockout before a group exists', async () => {
+      prisma.tournament.findUnique.mockResolvedValue(tennisRow({ matchSchedulingFormat: null }));
+
+      const detail = await service.selectMatchSchedulingFormat(
+        actor,
+        'tid',
+        MatchSchedulingFormat.GroupStageKnockout,
+      );
+
+      expect(prisma.tournament.update).not.toHaveBeenCalled();
+      expect(detail.matchSchedulingFormat).toBeNull();
+    });
+
+    it('reports an abandoned Group Stage + Knockout (no groups) as unset and allows switching', async () => {
+      prisma.tournament.findUnique.mockResolvedValue(
+        tennisRow({ matchSchedulingFormat: MatchSchedulingFormat.GroupStageKnockout }),
+      );
+
+      await service.selectMatchSchedulingFormat(actor, 'tid', MatchSchedulingFormat.RoundRobin);
+
+      expect(prisma.tournament.update).toHaveBeenCalledWith({
+        where: { id: 'tid' },
+        data: { matchSchedulingFormat: MatchSchedulingFormat.RoundRobin },
+      });
+    });
+
+    it('rejects other formats once Group Stage + Knockout has groups', async () => {
+      prisma.tournament.findUnique.mockResolvedValue(
+        tennisRow({
+          matchSchedulingFormat: MatchSchedulingFormat.GroupStageKnockout,
+          _count: { teams: 4, groups: 1 },
+        }),
+      );
+
+      await expect(
+        service.selectMatchSchedulingFormat(actor, 'tid', MatchSchedulingFormat.Manual),
+      ).rejects.toMatchObject({
+        response: {
+          error: 'SCHEDULING_FORMAT_LOCKED',
+          message: MATCH_SCHEDULING_FORMAT_MESSAGES.locked,
+        },
+      });
+      expect(prisma.tournament.update).not.toHaveBeenCalled();
     });
   });
 

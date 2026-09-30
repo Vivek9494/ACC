@@ -22,6 +22,7 @@ import { errorMessage } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
 
 import { RatingsDialog } from './RatingsDialog';
+import { InlineRatingEditContext, type InlineRatingEdit } from './inline-rating-edit';
 import { buildRegistrationColumns, type RegistrationRowActions } from './registration-columns';
 import {
   ALL_CENTERS,
@@ -29,8 +30,12 @@ import {
   countByStatus,
   defaultRegistrationStatus,
   filterRegistrations,
+  parseRatingDraft,
+  ratingDraftFrom,
   registrationCenters,
   resolveVerificationState,
+  type RatingDraft,
+  type RatingKey,
   type RegistrationFilters,
   type VerificationState,
 } from './registrations';
@@ -44,6 +49,8 @@ import {
 type PendingConfirm = { kind: 'decline' | 'revert'; row: RegistrationSummary };
 
 const fullName = (row: RegistrationSummary): string => `${row.firstName} ${row.lastName}`;
+
+const EMPTY_RATINGS = { battingRating: null, bowlingRating: null, fieldingRating: null };
 
 function formatWhen(date: Date, timezone: string | null): string {
   return new Intl.DateTimeFormat('en-CA', {
@@ -161,6 +168,58 @@ export function RegistrationsPanel({ tournamentId }: { tournamentId: string }): 
   const [busyId, setBusyId] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<PendingConfirm | null>(null);
   const [ratingsRow, setRatingsRow] = useState<RegistrationSummary | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [draft, setDraft] = useState<RatingDraft>(() => ratingDraftFrom(EMPTY_RATINGS));
+  const [invalidField, setInvalidField] = useState<RatingKey | null>(null);
+  const savingRatings = actions.updateRatings.isPending;
+  // useMutation returns a fresh object each render; only `mutate` is stable enough for memo deps.
+  const approve = actions.approve.mutate;
+  const updateRatings = actions.updateRatings.mutate;
+
+  const inlineEdit = useMemo<InlineRatingEdit | null>(
+    () =>
+      canManage
+        ? {
+            editingId,
+            draft,
+            invalidField,
+            saving: savingRatings,
+            onStart: (row) => {
+              setEditingId(row.id);
+              setDraft(ratingDraftFrom(row));
+              setInvalidField(null);
+            },
+            onChange: (key, value) => {
+              setDraft((current) => ({ ...current, [key]: value }));
+              setInvalidField((current) => (current === key ? null : current));
+            },
+            onCancel: () => {
+              setEditingId(null);
+              setInvalidField(null);
+            },
+            onUpdate: (row) => {
+              if (savingRatings) return;
+              const parsed = parseRatingDraft(draft);
+              if (!parsed.ok) {
+                setInvalidField(parsed.field);
+                toast.error(parsed.error);
+                return;
+              }
+              updateRatings(
+                { registrationId: row.id, body: parsed.body },
+                {
+                  onSuccess: () => {
+                    setEditingId(null);
+                    toast.success(`Ratings updated for ${fullName(row)}`);
+                  },
+                  onError: (err) => toast.error(errorMessage(err, 'Could not update ratings.')),
+                },
+              );
+            },
+          }
+        : null,
+    [canManage, updateRatings, editingId, draft, invalidField, savingRatings],
+  );
 
   const rowActions = useMemo<RegistrationRowActions | undefined>(
     () =>
@@ -169,7 +228,7 @@ export function RegistrationsPanel({ tournamentId }: { tournamentId: string }): 
             busyId,
             onApprove: (row) => {
               setBusyId(row.id);
-              actions.approve.mutate(row.id, {
+              approve(row.id, {
                 onSuccess: () => toast.success(`${fullName(row)} confirmed`),
                 onError: (err) => toast.error(errorMessage(err, 'Could not approve player.')),
                 onSettled: () => setBusyId(null),
@@ -180,7 +239,7 @@ export function RegistrationsPanel({ tournamentId }: { tournamentId: string }): 
             onEditRatings: setRatingsRow,
           }
         : undefined,
-    [canManage, busyId, actions.approve],
+    [canManage, busyId, approve],
   );
   const columns = useMemo(() => buildRegistrationColumns(rowActions), [rowActions]);
   const visibleRows = useMemo(
@@ -278,19 +337,21 @@ export function RegistrationsPanel({ tournamentId }: { tournamentId: string }): 
           onRetry={() => void active.refetch()}
         />
       ) : (
-        <DataTable
-          columns={columns}
-          data={visibleRows}
-          isLoading={active.isPending}
-          getRowId={(row) => row.id}
-          initialSorting={[{ id: 'name', desc: false }]}
-          resetPageKey={JSON.stringify(filters)}
-          emptyState={
-            rows.length === 0
-              ? 'No players have registered yet.'
-              : `No ${REGISTRATION_STATUS_TABS.find((t) => t.value === filters.status)?.label.toLowerCase()} players match.`
-          }
-        />
+        <InlineRatingEditContext.Provider value={inlineEdit}>
+          <DataTable
+            columns={columns}
+            data={visibleRows}
+            isLoading={active.isPending}
+            getRowId={(row) => row.id}
+            initialSorting={[{ id: 'name', desc: false }]}
+            resetPageKey={JSON.stringify(filters)}
+            emptyState={
+              rows.length === 0
+                ? 'No players have registered yet.'
+                : `No ${REGISTRATION_STATUS_TABS.find((t) => t.value === filters.status)?.label.toLowerCase()} players match.`
+            }
+          />
+        </InlineRatingEditContext.Provider>
       )}
 
       <ConfirmDialog

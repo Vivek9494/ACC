@@ -463,6 +463,7 @@ export type RegistrationVerificationPhase =
 export interface CenterPlayerRosterEntry {
   userId: string;
   centerId: string;
+  centerName: string;
   firstName: string;
   lastName: string;
   mobileNumber: string;

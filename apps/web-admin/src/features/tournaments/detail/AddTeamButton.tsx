@@ -1,7 +1,6 @@
 import { teamCapError, type TournamentDetail } from '@acc/types';
 import { Plus } from 'lucide-react';
 import { useState } from 'react';
-import { useLocation, useNavigate } from 'react-router';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
@@ -9,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { TeamDialog, type TeamDialogValues } from './TeamDialog';
 import { useTeamMutations, useTournamentTeams } from './tournament-detail-api';
 
-/** Header "Add Team" for organizers; disabled at the team cap. Lands on the Teams tab after adding. */
+/** Teams-tab header "Add Team" for organizers; disabled at the team cap. */
 export function AddTeamButton({
   tournament,
 }: {
@@ -17,8 +16,6 @@ export function AddTeamButton({
 }): React.ReactElement | null {
   const teams = useTournamentTeams(tournament.id);
   const { create } = useTeamMutations(tournament.id);
-  const navigate = useNavigate();
-  const { pathname } = useLocation();
   const [open, setOpen] = useState(false);
 
   if (!tournament.canEdit) return null;
@@ -29,7 +26,6 @@ export function AddTeamButton({
   const addTeam = async ({ name, logoStorageKey }: TeamDialogValues) => {
     await create.mutateAsync({ name, logoUrl: logoStorageKey ?? null });
     toast.success(`${name} added`);
-    if (!pathname.endsWith('/teams')) void navigate('teams');
   };
 
   return (

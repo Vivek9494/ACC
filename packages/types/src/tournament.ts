@@ -275,13 +275,21 @@ export interface TournamentDetail extends TournamentSummary {
   hasRegistrationWindow: boolean;
   /** Whether the current instant is within the registration window. */
   registrationIsOpen: boolean;
-  /** Set when the organizer picks a scheduling mode (Schedule Matches modal). */
+  /**
+   * Round Robin / Manual are set when picked in Schedule Matches; Group Stage + Knockout only
+   * once the first group exists (null while no group does).
+   */
   matchSchedulingFormat: MatchSchedulingFormat | null;
   groupCount: number;
-  /** APL only — configured knockout size; null until set. */
+  /** Tennis only — configured knockout size; null until set. */
   knockoutTeamCount: number | null;
   /** True when a live KnockoutBracket row exists — locks knockoutTeamCount. */
   hasKnockoutBracket: boolean;
+  /**
+   * No bracket yet, ≥1 group, knockout size set, and every group-stage match finished.
+   * Role gating stays with {@link canManageKnockoutBracket}.
+   */
+  canGenerateKnockout: boolean;
   groups: GroupSummary[];
   teams: {
     id: string;

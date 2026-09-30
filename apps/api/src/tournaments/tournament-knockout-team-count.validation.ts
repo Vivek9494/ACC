@@ -1,5 +1,5 @@
 import {
-  isAplTournamentType,
+  supportsKnockoutStage,
   KNOCKOUT_TEAM_COUNT_MESSAGES,
   validateKnockoutTeamCount,
   validateKnockoutTeamCountOnCreate,
@@ -7,7 +7,7 @@ import {
 } from '@acc/types';
 import { BadRequestException } from '@nestjs/common';
 
-/** APL create — knockout size may be set before groups exist (floor = 2). */
+/** Tennis create — knockout size may be set before groups exist (floor = 2). */
 export function assertKnockoutTeamCountOnCreate(
   type: TournamentType,
   numberOfTeams: number,
@@ -17,11 +17,11 @@ export function assertKnockoutTeamCountOnCreate(
     return;
   }
 
-  if (!isAplTournamentType(type)) {
+  if (!supportsKnockoutStage(type)) {
     throw new BadRequestException({
-      message: KNOCKOUT_TEAM_COUNT_MESSAGES.notApl,
-      error: 'KNOCKOUT_TEAM_COUNT_NOT_APL',
-      fields: { knockoutTeamCount: KNOCKOUT_TEAM_COUNT_MESSAGES.notApl },
+      message: KNOCKOUT_TEAM_COUNT_MESSAGES.notSupported,
+      error: 'KNOCKOUT_TEAM_COUNT_NOT_SUPPORTED',
+      fields: { knockoutTeamCount: KNOCKOUT_TEAM_COUNT_MESSAGES.notSupported },
     });
   }
 
@@ -50,12 +50,12 @@ export async function assertKnockoutTeamCountOnUpdate(
     return;
   }
 
-  if (!isAplTournamentType(type)) {
+  if (!supportsKnockoutStage(type)) {
     if (nextKnockoutTeamCount != null) {
       throw new BadRequestException({
-        message: KNOCKOUT_TEAM_COUNT_MESSAGES.notApl,
-        error: 'KNOCKOUT_TEAM_COUNT_NOT_APL',
-        fields: { knockoutTeamCount: KNOCKOUT_TEAM_COUNT_MESSAGES.notApl },
+        message: KNOCKOUT_TEAM_COUNT_MESSAGES.notSupported,
+        error: 'KNOCKOUT_TEAM_COUNT_NOT_SUPPORTED',
+        fields: { knockoutTeamCount: KNOCKOUT_TEAM_COUNT_MESSAGES.notSupported },
       });
     }
     return;

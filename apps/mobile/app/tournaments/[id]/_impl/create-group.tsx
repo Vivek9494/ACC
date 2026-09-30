@@ -3,6 +3,7 @@ import { colors } from '@/theme/colors';
 import {
   GROUP_FORM_MESSAGES,
   GROUP_NAME_MAX_LENGTH,
+  MatchSchedulingFormat,
   normalizeGroupName,
   type TeamSummary,
   validateGroupName,
@@ -63,7 +64,11 @@ function TeamSelectRow({
 }
 
 export default function CreateGroupScreen(): React.ReactElement {
-  const { id: tournamentId } = useLocalSearchParams<{ id: string }>();
+  const { id: tournamentId, schedulingFormat } = useLocalSearchParams<{
+    id: string;
+    schedulingFormat?: string;
+  }>();
+  const finalizesGroupStage = schedulingFormat === MatchSchedulingFormat.GroupStageKnockout;
   const router = useRouter();
   const { user } = useAuth();
 
@@ -164,6 +169,9 @@ export default function CreateGroupScreen(): React.ReactElement {
       await createGroup(tournamentId, {
         name: groupName.trim(),
         teamIds: selectedTeamIds,
+        ...(finalizesGroupStage
+          ? { schedulingFormat: MatchSchedulingFormat.GroupStageKnockout }
+          : {}),
       });
       setShowSuccessDialog(true);
     } catch (err) {

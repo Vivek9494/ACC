@@ -1090,6 +1090,7 @@ export class RegistrationsService {
         mobileNumber: true,
         profilePhotoUrl: true,
         centerId: true,
+        center: { select: { name: true } },
       },
       orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
     });
@@ -1099,6 +1100,7 @@ export class RegistrationsService {
       .map((user) => ({
         userId: user.id,
         centerId: user.centerId,
+        centerName: user.center.name,
         firstName: user.firstName,
         lastName: user.lastName,
         mobileNumber: user.mobileNumber,
@@ -1153,7 +1155,7 @@ export class RegistrationsService {
 
     const centerIds = await this.resolveLateRegisterCenterIds(actor, tournamentId);
     const registered = await this.prisma.registration.findMany({
-      where: { tournamentId, centerId: { in: centerIds } },
+      where: { tournamentId },
       select: { userId: true },
     });
     const registeredUserIds = new Set(registered.map((row) => row.userId));
@@ -1171,6 +1173,7 @@ export class RegistrationsService {
         mobileNumber: true,
         profilePhotoUrl: true,
         centerId: true,
+        center: { select: { name: true } },
       },
       orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
     });
@@ -1180,6 +1183,7 @@ export class RegistrationsService {
       .map((user) => ({
         userId: user.id,
         centerId: user.centerId,
+        centerName: user.center.name,
         firstName: user.firstName,
         lastName: user.lastName,
         mobileNumber: user.mobileNumber,

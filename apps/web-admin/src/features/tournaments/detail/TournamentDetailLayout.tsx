@@ -4,11 +4,12 @@ import {
   BarChart3,
   CalendarDays,
   ClipboardCheck,
+  Info,
   ListOrdered,
   Users,
   type LucideIcon,
 } from 'lucide-react';
-import { Link, NavLink, Outlet, useParams } from 'react-router';
+import { Link, NavLink, Outlet, useMatch, useParams } from 'react-router';
 
 import { QueryErrorCard } from '@/components/QueryErrorCard';
 import { Badge } from '@/components/ui/badge';
@@ -16,7 +17,10 @@ import { cn } from '@/lib/utils';
 
 import { STATUS_BADGE } from '../columns';
 import { formatTournamentDates, tournamentLocationLabel } from '../tournament-list';
+import { AddMatchButton } from './AddMatchButton';
 import { AddTeamButton } from './AddTeamButton';
+import { EditTournamentButton } from './EditTournamentButton';
+import { RegisterUserButton } from './RegisterUserButton';
 import { DETAIL_TABS, type DetailTabPath } from './tournament-detail';
 import { useTournamentDetail } from './tournament-detail-api';
 
@@ -26,13 +30,18 @@ const TAB_ICONS: Record<DetailTabPath, LucideIcon> = {
   points: ListOrdered,
   stats: BarChart3,
   registrations: ClipboardCheck,
+  details: Info,
 };
 
-/** /tournaments/:tournamentId — header + Teams / Matches / Points table / Tournament stats / Registrations tabs. */
+/** /tournaments/:tournamentId — header + Teams / Matches / Points table / Tournament stats / Registrations / Details tabs. */
 export function TournamentDetailLayout(): React.ReactElement {
   const { tournamentId = '' } = useParams();
   const detail = useTournamentDetail(tournamentId);
   const tournament = detail.data;
+  const onTeamsTab = useMatch('/tournaments/:tournamentId/teams') !== null;
+  const onMatchesTab = useMatch('/tournaments/:tournamentId/matches') !== null;
+  const onRegistrationsTab = useMatch('/tournaments/:tournamentId/registrations') !== null;
+  const onDetailsTab = useMatch('/tournaments/:tournamentId/details') !== null;
 
   return (
     <div>
@@ -64,7 +73,10 @@ export function TournamentDetailLayout(): React.ReactElement {
                     {tournamentLocationLabel(tournament)}
                   </p>
                 </div>
-                <AddTeamButton tournament={tournament} />
+                {onTeamsTab ? <AddTeamButton tournament={tournament} /> : null}
+                {onMatchesTab ? <AddMatchButton tournament={tournament} /> : null}
+                {onRegistrationsTab ? <RegisterUserButton tournament={tournament} /> : null}
+                {onDetailsTab ? <EditTournamentButton tournament={tournament} /> : null}
               </div>
             ) : (
               <div className="space-y-2">
@@ -74,7 +86,10 @@ export function TournamentDetailLayout(): React.ReactElement {
             )}
           </div>
 
-          <nav className="mb-6 flex gap-1 overflow-x-auto border-b" aria-label="Tournament sections">
+          <nav
+            className="mb-6 flex gap-1 overflow-x-auto overflow-y-hidden shadow-[inset_0_-1px_0_var(--color-border)]"
+            aria-label="Tournament sections"
+          >
             {DETAIL_TABS.map((tab) => {
               const Icon = TAB_ICONS[tab.path];
               return (
@@ -83,7 +98,7 @@ export function TournamentDetailLayout(): React.ReactElement {
                   to={tab.path}
                   className={({ isActive }) =>
                     cn(
-                      '-mb-px inline-flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-semibold whitespace-nowrap transition-colors',
+                      'inline-flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-semibold whitespace-nowrap transition-colors',
                       isActive
                         ? 'border-primary text-secondary'
                         : 'border-transparent text-muted-foreground hover:text-foreground',

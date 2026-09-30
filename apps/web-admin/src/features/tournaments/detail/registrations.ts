@@ -4,8 +4,11 @@ import {
   formatCanadianMobileForDisplay,
   getRegistrationVerificationDeadline,
   hasRegistrationOpened,
+  RATING_MAX,
+  RATING_MIN,
   type RegistrationSummary,
   type TournamentDetail,
+  type UpdateRatingsRequest,
 } from '@acc/types';
 
 export const REGISTRATION_STATUS_TABS = [
@@ -97,4 +100,45 @@ export function registrationMobileLabel(row: Pick<RegistrationSummary, 'mobileNu
 
 export function formatRating(value: number | null): string {
   return value === null ? '—' : String(value);
+}
+
+export type RatingKey = 'battingRating' | 'bowlingRating' | 'fieldingRating';
+
+/** Inline rating inputs keep raw text; '' means "not rated". */
+export type RatingDraft = Record<RatingKey, string>;
+
+export const RATING_LABELS: Record<RatingKey, string> = {
+  battingRating: 'Batting',
+  bowlingRating: 'Bowling',
+  fieldingRating: 'Fielding',
+};
+
+export function ratingDraftFrom(row: Pick<RegistrationSummary, RatingKey>): RatingDraft {
+  const text = (value: number | null) => (value === null ? '' : String(value));
+  return {
+    battingRating: text(row.battingRating),
+    bowlingRating: text(row.bowlingRating),
+    fieldingRating: text(row.fieldingRating),
+  };
+}
+
+/** Whole numbers RATING_MIN–RATING_MAX (blank clears the rating), or the first invalid field's message. */
+export function parseRatingDraft(
+  draft: RatingDraft,
+): { ok: true; body: UpdateRatingsRequest } | { ok: false; error: string; field: RatingKey } {
+  const body: Record<RatingKey, number | null> = { battingRating: null, bowlingRating: null, fieldingRating: null };
+  for (const key of Object.keys(RATING_LABELS) as RatingKey[]) {
+    const text = draft[key].trim();
+    if (text === '') continue;
+    const value = Number(text);
+    if (!/^\d+$/.test(text) || value < RATING_MIN || value > RATING_MAX) {
+      return {
+        ok: false,
+        field: key,
+        error: `${RATING_LABELS[key]} rating must be a whole number from ${RATING_MIN} to ${RATING_MAX}.`,
+      };
+    }
+    body[key] = value;
+  }
+  return { ok: true, body };
 }

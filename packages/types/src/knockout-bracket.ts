@@ -1,12 +1,12 @@
 import type { AuthUser } from './auth';
 import { UserRole } from './auth';
 import { MatchState } from './match';
-
 export const KNOCKOUT_BRACKET_MESSAGES = {
   notFound: 'No knockout bracket exists for this tournament',
   alreadyExists: 'A knockout bracket already exists for this tournament',
-  notApl: 'Knockout brackets apply to APL tournaments only',
+  notSupported: 'Knockout brackets apply to tennis-ball tournaments only',
   notConfigured: 'Set the knockout team count before generating a bracket',
+  noGroups: 'Create at least one group before generating the knockout bracket',
   qualificationNotReady:
     'Group-stage matches must be complete before generating the knockout bracket',
   deleteTitle: 'Delete Knockout Bracket?',
@@ -36,6 +36,17 @@ export function canManageKnockoutBracket(user: AuthUser | null | undefined): boo
     return false;
   }
   return user.role === UserRole.Admin || user.role === UserRole.ClubManager;
+}
+
+/** Matches-tab "Generate / Manage Knockout Bracket" entry. */
+export function shouldShowKnockoutBracketEntry(
+  tournament: { canGenerateKnockout: boolean; hasKnockoutBracket: boolean },
+  user: AuthUser | null | undefined,
+): boolean {
+  return (
+    canManageKnockoutBracket(user) &&
+    (tournament.canGenerateKnockout || tournament.hasKnockoutBracket)
+  );
 }
 
 /** Bracket-existence flag on tournament read models (server-sourced). */

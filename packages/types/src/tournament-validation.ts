@@ -81,7 +81,7 @@ export const TOURNAMENT_FORM_MESSAGES = {
     belowGroupFloor: (min: number) =>
       `Must be at least ${min} to include all group toppers`,
     aboveTotalTeams: (max: number) => `Cannot exceed ${max} teams`,
-    notApl: 'Knockout team count applies to APL tournaments only',
+    notSupported: 'Knockout team count applies to tennis-ball tournaments only',
     prerequisites: 'Set groups and teams first',
     prerequisitesCreate: 'Select number of teams first',
     locked: 'Locked — delete the bracket to change knockout size',

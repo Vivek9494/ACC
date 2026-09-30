@@ -65,6 +65,7 @@ describe('tournament detail', () => {
       'Points table',
       'Tournament stats',
       'Registrations',
+      'Details',
     ]);
   });
 

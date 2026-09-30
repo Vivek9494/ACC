@@ -2,6 +2,10 @@ import {
   isKnockoutMatchPlayedForDeleteWarning,
   knockoutMatchRequiresResolution,
   buildKnockoutBracketDeleteMessage,
+  KNOCKOUT_BRACKET_MESSAGES,
+  shouldShowKnockoutBracketEntry,
+  TournamentType,
+  UserRole,
 } from '@acc/types';
 
 import {
@@ -79,6 +83,40 @@ describe('knockout bracket helpers', () => {
     });
   });
 
+  describe('shouldShowKnockoutBracketEntry', () => {
+    const admin = { id: 'a-1', role: UserRole.Admin, tokenVersion: 1 } as never;
+    const ready = { canGenerateKnockout: true, hasKnockoutBracket: false };
+
+    it('shows Generate when the server says the knockout is ready', () => {
+      expect(shouldShowKnockoutBracketEntry(ready, admin)).toBe(true);
+    });
+
+    it('hides while not ready and no bracket exists', () => {
+      expect(
+        shouldShowKnockoutBracketEntry({ ...ready, canGenerateKnockout: false }, admin),
+      ).toBe(false);
+    });
+
+    it('keeps Manage visible when a bracket already exists', () => {
+      expect(
+        shouldShowKnockoutBracketEntry(
+          { canGenerateKnockout: false, hasKnockoutBracket: true },
+          admin,
+        ),
+      ).toBe(true);
+    });
+
+    it('hides for non-managers', () => {
+      expect(
+        shouldShowKnockoutBracketEntry(ready, {
+          id: 'c-1',
+          role: UserRole.Captain,
+          tokenVersion: 1,
+        } as never),
+      ).toBe(false);
+    });
+  });
+
   describe('ACTIVE_KNOCKOUT_MATCH_WHERE', () => {
     it('excludes soft-deleted rows', () => {
       expect(ACTIVE_KNOCKOUT_MATCH_WHERE).toEqual({
@@ -130,6 +168,116 @@ describe('KnockoutBracketService', () => {
       }),
     });
     expect(seeding.getSeeding).not.toHaveBeenCalled();
+  });
+
+  it('generateKnockoutBracket rejects a tournament with no groups', async () => {
+    const computeForGeneration = jest.fn();
+    const prisma = {
+      knockoutBracket: { findUnique: jest.fn().mockResolvedValue(null) },
+      tournament: {
+        findUnique: jest.fn().mockResolvedValue({
+          isDeleted: false,
+          type: TournamentType.APL,
+          knockoutTeamCount: 4,
+          _count: { groups: 0 },
+        }),
+      },
+    };
+    const service = new KnockoutBracketService(
+      prisma as never,
+      audit as never,
+      { computeForGeneration } as never,
+    );
+
+    await expect(
+      service.generateKnockoutBracket(
+        { id: 'admin-1', role: 'ADMIN', tokenVersion: 1 } as never,
+        't-1',
+      ),
+    ).rejects.toMatchObject({
+      response: {
+        error: 'KNOCKOUT_BRACKET_NO_GROUPS',
+        message: KNOCKOUT_BRACKET_MESSAGES.noGroups,
+      },
+    });
+    expect(computeForGeneration).not.toHaveBeenCalled();
+  });
+
+  it('generateKnockoutBracket rejects while group-stage matches are incomplete', async () => {
+    const computeForGeneration = jest.fn();
+    const prisma = {
+      knockoutBracket: { findUnique: jest.fn().mockResolvedValue(null) },
+      tournament: {
+        findUnique: jest.fn().mockResolvedValue({
+          isDeleted: false,
+          type: TournamentType.Center,
+          knockoutTeamCount: 4,
+          _count: { groups: 2 },
+        }),
+      },
+      match: { count: jest.fn().mockResolvedValueOnce(6).mockResolvedValueOnce(2) },
+    };
+    const service = new KnockoutBracketService(
+      prisma as never,
+      audit as never,
+      { computeForGeneration } as never,
+    );
+
+    await expect(
+      service.generateKnockoutBracket(
+        { id: 'admin-1', role: 'ADMIN', tokenVersion: 1 } as never,
+        't-1',
+      ),
+    ).rejects.toMatchObject({
+      response: {
+        error: 'KNOCKOUT_QUALIFICATION_NOT_READY',
+        message: KNOCKOUT_BRACKET_MESSAGES.qualificationNotReady,
+        incompleteGroupMatchCount: 2,
+        scheduledGroupMatchCount: 6,
+      },
+    });
+    expect(computeForGeneration).not.toHaveBeenCalled();
+  });
+
+  describe('canGenerateKnockout', () => {
+    const tennis = { type: TournamentType.Center, groupCount: 2, knockoutTeamCount: 4 };
+
+    function serviceWithCounts(total: number, incomplete: number) {
+      const count = jest.fn().mockResolvedValueOnce(total).mockResolvedValueOnce(incomplete);
+      return {
+        count,
+        service: makeService({ match: { count } }),
+      };
+    }
+
+    it('is true once every group-stage match is finished', async () => {
+      const { service } = serviceWithCounts(6, 0);
+      await expect(service.canGenerateKnockout('t-1', tennis, false)).resolves.toBe(true);
+    });
+
+    it('is false while any group-stage match is unfinished or none exist', async () => {
+      await expect(
+        serviceWithCounts(6, 1).service.canGenerateKnockout('t-1', tennis, false),
+      ).resolves.toBe(false);
+      await expect(
+        serviceWithCounts(0, 0).service.canGenerateKnockout('t-1', tennis, false),
+      ).resolves.toBe(false);
+    });
+
+    it('skips the match query without groups, knockout size, bracket, or for ACC', async () => {
+      const { count, service } = serviceWithCounts(6, 0);
+      await expect(
+        service.canGenerateKnockout('t-1', { ...tennis, groupCount: 0 }, false),
+      ).resolves.toBe(false);
+      await expect(
+        service.canGenerateKnockout('t-1', { ...tennis, knockoutTeamCount: null }, false),
+      ).resolves.toBe(false);
+      await expect(service.canGenerateKnockout('t-1', tennis, true)).resolves.toBe(false);
+      await expect(
+        service.canGenerateKnockout('t-1', { ...tennis, type: TournamentType.ACC }, false),
+      ).resolves.toBe(false);
+      expect(count).not.toHaveBeenCalled();
+    });
   });
 
   it('deleteKnockoutBracket soft-deletes matches and hard-deletes the bracket row', async () => {

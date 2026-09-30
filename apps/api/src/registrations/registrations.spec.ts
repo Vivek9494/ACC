@@ -633,6 +633,7 @@ describe('RegistrationsService', () => {
           lastName: 'Patel',
           mobileNumber: '+15555559999',
           profilePhotoUrl: null,
+          center: { name: 'Center A' },
         },
       ]);
 
@@ -750,6 +751,7 @@ describe('RegistrationsService', () => {
           lastName: 'Patel',
           mobileNumber: '+15555559999',
           profilePhotoUrl: null,
+          center: { name: 'Center A' },
         },
       ]);
       permissions.check.mockResolvedValue(true);
@@ -778,6 +780,7 @@ describe('RegistrationsService', () => {
           lastName: 'Patel',
           mobileNumber: '+15555559999',
           profilePhotoUrl: null,
+          center: { name: 'Center A' },
         },
       ]);
       permissions.check.mockResolvedValue(true);
@@ -1354,6 +1357,51 @@ describe('RegistrationsService', () => {
   });
 
   describe('late registration (§7.6)', () => {
+    it('lists unregistered participating-center players with their center name', async () => {
+      permissions.check.mockResolvedValue(true);
+      prisma.registration.findMany.mockResolvedValue([{ userId: 'player-declined' }]);
+      prisma.user.findMany.mockResolvedValue([
+        {
+          id: 'player-declined',
+          centerId: 'center-A',
+          firstName: 'Dev',
+          lastName: 'Shah',
+          mobileNumber: '+15555550001',
+          profilePhotoUrl: null,
+          center: { name: 'Center A' },
+        },
+        {
+          id: 'player-new',
+          centerId: 'center-A',
+          firstName: 'Ravi',
+          lastName: 'Patel',
+          mobileNumber: '+15555559999',
+          profilePhotoUrl: null,
+          center: { name: 'Center A' },
+        },
+      ]);
+
+      const result = await service.listLateRegisterCandidates(admin, 'tour-1');
+
+      expect(prisma.registration.findMany).toHaveBeenCalledWith({
+        where: { tournamentId: 'tour-1' },
+        select: { userId: true },
+      });
+      expect(prisma.user.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            centerId: { in: ['center-A'] },
+            isActive: true,
+            deletedAt: null,
+            role: UserRole.Player,
+          }),
+        }),
+      );
+      expect(result.players).toEqual([
+        expect.objectContaining({ userId: 'player-new', centerId: 'center-A', centerName: 'Center A' }),
+      ]);
+    });
+
     it('allows late registration while the registration window is still open', async () => {
       prisma.registration.findUnique.mockResolvedValue(null);
       prisma.user.findUnique.mockResolvedValue({

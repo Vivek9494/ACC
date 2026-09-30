@@ -14,7 +14,8 @@ import {
   isMediaStorageKey,
   parseOptionalTournamentFee,
   resolveTournamentFormDates,
-  resolvesToAplOnCreate,
+  supportsKnockoutStage,
+  supportsKnockoutStageOnCreate,
   sanitizeTournamentFeeInput,
   startOfTodayForDatePicker,
   type CreateTournamentRequest,
@@ -271,8 +272,8 @@ export function TournamentFormScreen({
   }
   const isMultiCenters = isTennisBall && citySelection === CitySelection.Multi;
   const showKnockoutTeamCountField = isEditMode
-    ? editTournamentType === TournamentType.APL
-    : resolvesToAplOnCreate(ballType, citySelection);
+    ? editTournamentType != null && supportsKnockoutStage(editTournamentType)
+    : supportsKnockoutStageOnCreate(ballType);
   const configuredTotalTeams = numberOfTeams ? Number(numberOfTeams) : 0;
   const knockoutPrerequisitesMet = isEditMode
     ? canConfigureKnockoutTeamCount(editGroupCount, configuredTotalTeams)
@@ -827,7 +828,7 @@ export function TournamentFormScreen({
           videoUploadStartTime: isTennisBall ? videoUploadStartTime : '',
           videoUploadEndDate: isTennisBall ? videoUploadEndDate : '',
           videoUploadEndTime: isTennisBall ? videoUploadEndTime : '',
-          knockoutTeamCount: resolvesToAplOnCreate(ballType, citySelection)
+          knockoutTeamCount: supportsKnockoutStageOnCreate(ballType)
             ? knockoutTeamCount
             : null,
           venueTimezone,
@@ -946,7 +947,9 @@ export function TournamentFormScreen({
           feeFullTime: fees.feeFullTime,
           feePartTime: fees.feePartTime,
           provinceId: tournamentProvinceId ?? undefined,
-          ...(editTournamentType === TournamentType.APL && !knockoutFieldLocked
+          ...(editTournamentType != null &&
+          supportsKnockoutStage(editTournamentType) &&
+          !knockoutFieldLocked
             ? {
                 knockoutTeamCount: knockoutTeamCount
                   ? Number(knockoutTeamCount)
@@ -1007,7 +1010,7 @@ export function TournamentFormScreen({
                   : {}),
             }
           : {}),
-        ...(resolvesToAplOnCreate(ballType, citySelection)
+        ...(supportsKnockoutStageOnCreate(ballType)
           ? {
               knockoutTeamCount: knockoutTeamCount ? Number(knockoutTeamCount) : null,
             }

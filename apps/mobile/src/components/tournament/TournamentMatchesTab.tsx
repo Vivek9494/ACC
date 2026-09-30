@@ -5,6 +5,8 @@ import {
   UserRole,
   canViewAdminUsersDirectory,
   filterMatchList,
+  isMatchSchedulingFormatLocked,
+  shouldShowKnockoutBracketEntry,
   tournamentSupportsGroups,
   type GroupSummary,
   type MatchListItem,
@@ -22,10 +24,7 @@ import { useAuth } from '../../lib/auth-context';
 import { buildMatchMenuActions } from '../../lib/build-match-menu-actions';
 import { subscribeMatchDataInvalidation } from '../../lib/match-data-invalidation';
 import { canManageUpcomingMatchSchedule } from '../../lib/can-schedule-matches';
-import {
-  shouldShowKnockoutBracketEntry,
-  shouldShowKnockoutChartEntry,
-} from './KnockoutBracketManageScreen';
+import { shouldShowKnockoutChartEntry } from './KnockoutBracketManageScreen';
 import { tournamentSubpathHref } from '../../lib/tournament-detail-route';
 import { GroupSetupRequiredDialog } from '../ui/GroupSetupRequiredDialog';
 import { ScheduleMatchesNoTeamsDialog } from '../ui/ScheduleMatchesNoTeamsDialog';
@@ -52,6 +51,8 @@ export interface TournamentMatchesTabProps {
   canEdit?: boolean;
   matchSchedulingFormat?: TournamentDetail['matchSchedulingFormat'];
   hasKnockoutBracket?: boolean;
+  /** Server-resolved: groups exist, knockout size set, every group-stage match finished. */
+  canGenerateKnockout?: boolean;
   tournamentName?: string;
   /** Viewer's registration in this tournament (`GET .../registrations/me`). */
   viewerRegistrationStatus?: RegistrationStatus | null;
@@ -69,6 +70,7 @@ export function TournamentMatchesTab({
   canEdit = false,
   matchSchedulingFormat = null,
   hasKnockoutBracket = false,
+  canGenerateKnockout = false,
   tournamentName = '',
   viewerRegistrationStatus = null,
 }: TournamentMatchesTabProps): React.ReactElement {
@@ -155,7 +157,7 @@ export function TournamentMatchesTab({
     user,
   );
   const showKnockoutBracketEntry = shouldShowKnockoutBracketEntry(
-    { matchSchedulingFormat },
+    { canGenerateKnockout, hasKnockoutBracket },
     user,
   );
   const knockoutManageButtonLabel = hasKnockoutBracket
@@ -291,6 +293,10 @@ export function TournamentMatchesTab({
       setNoTeamsDialogVisible(true);
       return;
     }
+    if (isMatchSchedulingFormatLocked(matchSchedulingFormat, groups.length)) {
+      navigateToSchedulingFlow(MatchSchedulingFormat.GroupStageKnockout);
+      return;
+    }
     setSelectFormatError(null);
     setSelectFormatVisible(true);
   }
@@ -302,7 +308,11 @@ export function TournamentMatchesTab({
 
   function handleCreateGroup(): void {
     setSetupRequiredVisible(false);
-    router.push(tournamentSubpathHref(user, tournamentId, 'create-group'));
+    router.push(
+      tournamentSubpathHref(user, tournamentId, 'create-group', {
+        schedulingFormat: MatchSchedulingFormat.GroupStageKnockout,
+      }),
+    );
   }
 
   function navigateToSchedulingFlow(format: MatchSchedulingFormatType): void {
@@ -314,20 +324,16 @@ export function TournamentMatchesTab({
   }
 
   async function handleFormatSelect(format: MatchSchedulingFormatType): Promise<void> {
+    if (format === MatchSchedulingFormat.GroupStageKnockout && groups.length === 0) {
+      setSelectFormatVisible(false);
+      setSetupRequiredVisible(true);
+      return;
+    }
     setSelectingFormat(true);
     setSelectFormatError(null);
     try {
-      const updated = await selectMatchSchedulingFormat(tournamentId, format);
+      await selectMatchSchedulingFormat(tournamentId, format);
       setSelectFormatVisible(false);
-
-      if (
-        format === MatchSchedulingFormat.GroupStageKnockout &&
-        updated.groupCount === 0
-      ) {
-        setSetupRequiredVisible(true);
-        return;
-      }
-
       navigateToSchedulingFlow(format);
     } catch (err) {
       setSelectFormatError(

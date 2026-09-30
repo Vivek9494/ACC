@@ -1,5 +1,6 @@
 import {
-  resolvesToAplOnCreate,
+  supportsKnockoutStage,
+  supportsKnockoutStageOnCreate,
   validateKnockoutTeamCount,
   validateKnockoutTeamCountOnCreate,
 } from './knockout-team-count';
@@ -392,7 +393,7 @@ export function validateCreateTournamentForm(
 
   appendTennisTournamentLocationErrors(errors, values);
 
-  if (resolvesToAplOnCreate(values.ballType, values.citySelection)) {
+  if (supportsKnockoutStageOnCreate(values.ballType)) {
     const knockoutRaw = values.knockoutTeamCount?.trim() ?? '';
     if (knockoutRaw !== '') {
       const totalTeams = values.numberOfTeams ? Number(values.numberOfTeams) : 0;
@@ -557,7 +558,7 @@ export function validateUpdateTournamentForm(
     }
   }
 
-  if (values.tournamentType === TournamentType.APL) {
+  if (supportsKnockoutStage(values.tournamentType)) {
     if (values.knockoutTeamCount != null && values.knockoutTeamCount.trim() !== '') {
       if (values.hasKnockoutBracket) {
         errors.knockoutTeamCount = TOURNAMENT_FORM_MESSAGES.knockoutTeamCount.locked;

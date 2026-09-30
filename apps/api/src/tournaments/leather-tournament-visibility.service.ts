@@ -514,6 +514,7 @@ export class LeatherTournamentVisibilityService {
         mobileNumber: true,
         profilePhotoUrl: true,
         centerId: true,
+        center: { select: { name: true } },
       },
       orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
     });
@@ -521,6 +522,7 @@ export class LeatherTournamentVisibilityService {
     return users.map((user) => ({
       userId: user.id,
       centerId: user.centerId,
+      centerName: user.center.name,
       firstName: user.firstName,
       lastName: user.lastName,
       mobileNumber: user.mobileNumber,

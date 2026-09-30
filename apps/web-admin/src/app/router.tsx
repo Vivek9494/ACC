@@ -4,6 +4,7 @@ import { createBrowserRouter, Navigate } from 'react-router';
 import { RequireAdmin } from '@/auth/RequireAdmin';
 import { AppShell } from '@/components/layout/AppShell';
 import { StatisticsLayout } from '@/features/statistics/StatisticsLayout';
+import { DetailsTab } from '@/features/tournaments/detail/DetailsTab';
 import { MatchesTab } from '@/features/tournaments/detail/MatchesTab';
 import { MatchScorecardPage } from '@/features/tournaments/detail/MatchScorecardPage';
 import { PointsTab } from '@/features/tournaments/detail/PointsTab';
@@ -72,6 +73,7 @@ export const router = createBrowserRouter([
               { path: 'points', element: <PointsTab /> },
               { path: 'stats', element: <StatsTab /> },
               { path: 'registrations', element: <RegistrationsTab /> },
+              { path: 'details', element: <DetailsTab /> },
             ],
           },
           { path: 'users', element: <UsersPage /> },

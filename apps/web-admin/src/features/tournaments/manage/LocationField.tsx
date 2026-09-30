@@ -1,4 +1,5 @@
 import {
+  type TournamentFormFieldKey,
   LOCATION_INPUT_MESSAGES,
   isCoordinateLikeInput,
   looksLikeGoogleMapsUrl,
@@ -37,19 +38,26 @@ function placesErrorMessage(err: unknown): string {
   return 'Could not search locations. Check your connection and try again.';
 }
 
-/** Tennis venue: search, paste a Google Maps link, or type "lat, lng". Typing clears the pinned coordinates. */
+/** Venue picker: search, paste a Google Maps link, or type "lat, lng". Typing clears the pinned coordinates. */
 export function LocationField({
   address,
   latitude,
   longitude,
   onChange,
   error,
+  id = 'tournament-location',
+  label = 'Tournament Location',
+  field = 'tournamentLocation',
 }: {
   address: string;
   latitude: number | null;
   longitude: number | null;
   onChange: (address: string, latitude: number | null, longitude: number | null) => void;
   error?: string;
+  id?: string;
+  label?: string;
+  /** Scroll-to-error key on the tournament form; null outside it. */
+  field?: TournamentFormFieldKey | null;
 }): React.ReactElement {
   const sessionToken = useRef(crypto.randomUUID());
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -162,9 +170,9 @@ export function LocationField({
 
   return (
     <FieldShell
-      id="tournament-location"
-      field="tournamentLocation"
-      label="Tournament Location"
+      id={id}
+      field={field ?? undefined}
+      label={label}
       error={error ?? searchError ?? undefined}
       hint={
         status ? undefined : pinned ? (
@@ -179,7 +187,7 @@ export function LocationField({
     >
       <div className="relative">
         <Input
-          id="tournament-location"
+          id={id}
           value={address}
           onChange={(e) => onInput(e.target.value)}
           onFocus={() => suggestions.length > 0 && setOpen(true)}
@@ -188,7 +196,7 @@ export function LocationField({
           autoComplete="off"
           role="combobox"
           aria-expanded={open}
-          aria-controls="tournament-location-options"
+          aria-controls={`${id}-options`}
           aria-invalid={Boolean(error)}
         />
         {status ? (
@@ -199,7 +207,7 @@ export function LocationField({
         ) : null}
         {open && (suggestions.length > 0 || showEmpty) ? (
           <ul
-            id="tournament-location-options"
+            id={`${id}-options`}
             role="listbox"
             className="absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-md border bg-popover p-1 text-sm shadow-md"
           >

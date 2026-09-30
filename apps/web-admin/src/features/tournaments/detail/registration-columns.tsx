@@ -5,8 +5,10 @@ import { Check, Loader2, Pencil, Undo2, X } from 'lucide-react';
 import { UserAvatar } from '@/components/UserAvatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
-import { formatRating, registrationMobileLabel } from './registrations';
+import { useInlineRatingEdit } from './inline-rating-edit';
+import { formatRating, RATING_LABELS, type RatingKey, registrationMobileLabel } from './registrations';
 
 type BadgeVariant = React.ComponentProps<typeof Badge>['variant'];
 
@@ -25,17 +27,78 @@ export interface RegistrationRowActions {
   busyId: string | null;
 }
 
-const ratingColumn = (
-  id: string,
-  header: string,
-  pick: (row: RegistrationSummary) => number | null,
-): ColumnDef<RegistrationSummary> => ({
+function RatingCell({ reg, ratingKey: key }: { reg: RegistrationSummary; ratingKey: RatingKey }): React.ReactElement {
+  const inline = useInlineRatingEdit();
+  if (!inline || inline.editingId !== reg.id) {
+    return <span className="tabular-nums">{formatRating(reg[key])}</span>;
+  }
+  return (
+    <Input
+      type="number"
+      inputMode="numeric"
+      min={0}
+      max={10}
+      step={1}
+      value={inline.draft[key]}
+      onChange={(e) => inline.onChange(key, e.target.value)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') inline.onUpdate(reg);
+        if (e.key === 'Escape') inline.onCancel();
+      }}
+      disabled={inline.saving}
+      autoFocus={key === 'battingRating'}
+      aria-invalid={inline.invalidField === key}
+      aria-label={`${RATING_LABELS[key]} rating for ${reg.firstName} ${reg.lastName}`}
+      className="mx-auto h-8 w-16 text-center tabular-nums"
+    />
+  );
+}
+
+const ratingColumn = (id: string, header: string, key: RatingKey): ColumnDef<RegistrationSummary> => ({
   id,
   header,
-  accessorFn: (row) => pick(row) ?? -1,
-  cell: ({ row }) => <span className="tabular-nums">{formatRating(pick(row.original))}</span>,
+  accessorFn: (row) => row[key] ?? -1,
+  cell: ({ row }) => <RatingCell reg={row.original} ratingKey={key} />,
   meta: { headerClassName: 'text-center', cellClassName: 'text-center' },
 });
+
+function ConfirmedRatingActions({ reg, name }: { reg: RegistrationSummary; name: string }): React.ReactElement | null {
+  const inline = useInlineRatingEdit();
+  if (!inline) return null;
+  if (inline.editingId !== reg.id) {
+    return (
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={() => inline.onStart(reg)}
+        disabled={inline.saving}
+        aria-label={`Edit ratings for ${name}`}
+      >
+        <Pencil />
+        Edit
+      </Button>
+    );
+  }
+  return (
+    <>
+      <Button size="sm" onClick={() => inline.onUpdate(reg)} disabled={inline.saving} aria-label={`Update ratings for ${name}`}>
+        {inline.saving ? <Loader2 className="animate-spin" /> : <Check />}
+        Update
+      </Button>
+      <Button
+        size="icon"
+        variant="ghost"
+        className="size-8"
+        onClick={inline.onCancel}
+        disabled={inline.saving}
+        aria-label={`Cancel editing ratings for ${name}`}
+        title="Cancel"
+      >
+        <X />
+      </Button>
+    </>
+  );
+}
 
 /** Registered-players table; the actions column only appears while the API reports `canManage`. */
 export function buildRegistrationColumns(actions?: RegistrationRowActions): ColumnDef<RegistrationSummary>[] {
@@ -67,9 +130,9 @@ export function buildRegistrationColumns(actions?: RegistrationRowActions): Colu
       accessorFn: (row) => row.centerName,
       cell: ({ row }) => <span className="text-muted-foreground">{row.original.centerName}</span>,
     },
-    ratingColumn('batting', 'Bat', (row) => row.battingRating),
-    ratingColumn('bowling', 'Bowl', (row) => row.bowlingRating),
-    ratingColumn('fielding', 'Field', (row) => row.fieldingRating),
+    ratingColumn('batting', 'Bat', 'battingRating'),
+    ratingColumn('bowling', 'Bowl', 'bowlingRating'),
+    ratingColumn('fielding', 'Field', 'fieldingRating'),
     {
       id: 'status',
       header: 'Status',
@@ -123,6 +186,8 @@ export function buildRegistrationColumns(actions?: RegistrationRowActions): Colu
               <Undo2 />
               Revert
             </Button>
+          ) : reg.status === RegistrationStatus.Confirmed ? (
+            <ConfirmedRatingActions reg={reg} name={name} />
           ) : (
             <Button
               size="icon"

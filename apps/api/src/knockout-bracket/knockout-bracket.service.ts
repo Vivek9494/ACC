@@ -1,14 +1,16 @@
 import {
-  isAplTournamentType,
   isKnockoutMatchPlayedForDeleteWarning,
   KNOCKOUT_BRACKET_MESSAGES,
   KNOCKOUT_TOUCHED_MATCH_STATES,
   knockoutMatchRequiresResolution,
+  MATCH_END_STATES,
   MatchState,
   QualificationReadinessStatus,
+  supportsKnockoutStage,
   type AuthUser,
   type KnockoutBracketDeletePreview,
   type KnockoutBracketView,
+  type TournamentType,
 } from '@acc/types';
 import {
   BadRequestException,
@@ -17,6 +19,7 @@ import {
 } from '@nestjs/common';
 
 import { AuditService } from '../audit/audit.service';
+import { groupStageMatchesForTournament } from '../knockout-qualification/group-stage-match-query';
 import { KnockoutSeedingService } from '../knockout-seeding/knockout-seeding.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { assertTournamentActive } from '../tournaments/tournament-query';
@@ -51,14 +54,22 @@ export class KnockoutBracketService {
         isDeleted: true,
         type: true,
         knockoutTeamCount: true,
+        _count: { select: { groups: true } },
       },
     });
     assertTournamentActive(tournament);
 
-    if (!isAplTournamentType(tournament.type)) {
+    if (!supportsKnockoutStage(tournament.type as TournamentType)) {
       throw new BadRequestException({
-        message: KNOCKOUT_BRACKET_MESSAGES.notApl,
-        error: 'KNOCKOUT_BRACKET_NOT_APL',
+        message: KNOCKOUT_BRACKET_MESSAGES.notSupported,
+        error: 'KNOCKOUT_BRACKET_NOT_SUPPORTED',
+      });
+    }
+
+    if (tournament._count.groups === 0) {
+      throw new BadRequestException({
+        message: KNOCKOUT_BRACKET_MESSAGES.noGroups,
+        error: 'KNOCKOUT_BRACKET_NO_GROUPS',
       });
     }
 
@@ -69,14 +80,24 @@ export class KnockoutBracketService {
       });
     }
 
+    const groupMatches = await this.countGroupStageMatches(tournamentId);
+    if (groupMatches.total === 0 || groupMatches.incomplete > 0) {
+      throw new BadRequestException({
+        message: KNOCKOUT_BRACKET_MESSAGES.qualificationNotReady,
+        error: 'KNOCKOUT_QUALIFICATION_NOT_READY',
+        incompleteGroupMatchCount: groupMatches.incomplete,
+        scheduledGroupMatchCount: groupMatches.total,
+      });
+    }
+
     const seedingResponse = await this.seeding.computeForGeneration(
       tournamentId,
       manualTeamIds,
     );
     if (seedingResponse.status === QualificationReadinessStatus.NotApplicable) {
       throw new BadRequestException({
-        message: KNOCKOUT_BRACKET_MESSAGES.notApl,
-        error: 'KNOCKOUT_BRACKET_NOT_APL',
+        message: KNOCKOUT_BRACKET_MESSAGES.notSupported,
+        error: 'KNOCKOUT_BRACKET_NOT_SUPPORTED',
       });
     }
     if (seedingResponse.status === QualificationReadinessStatus.NotConfigured) {
@@ -166,6 +187,37 @@ export class KnockoutBracketService {
     });
 
     return this.getBracket(tournamentId);
+  }
+
+  /** Mirrors the generate prerequisites — drives `TournamentDetail.canGenerateKnockout`. */
+  async canGenerateKnockout(
+    tournamentId: string,
+    tournament: { type: TournamentType; groupCount: number; knockoutTeamCount: number | null },
+    hasKnockoutBracket: boolean,
+  ): Promise<boolean> {
+    if (
+      hasKnockoutBracket ||
+      !supportsKnockoutStage(tournament.type) ||
+      tournament.groupCount === 0 ||
+      tournament.knockoutTeamCount == null
+    ) {
+      return false;
+    }
+    const groupMatches = await this.countGroupStageMatches(tournamentId);
+    return groupMatches.total > 0 && groupMatches.incomplete === 0;
+  }
+
+  private async countGroupStageMatches(
+    tournamentId: string,
+  ): Promise<{ total: number; incomplete: number }> {
+    const where = groupStageMatchesForTournament(tournamentId);
+    const [total, incomplete] = await Promise.all([
+      this.prisma.match.count({ where }),
+      this.prisma.match.count({
+        where: { ...where, state: { notIn: [...MATCH_END_STATES] } },
+      }),
+    ]);
+    return { total, incomplete };
   }
 
   /** Live KnockoutBracket row exists — not inferred from soft-deleted matches. */

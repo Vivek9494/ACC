@@ -1,5 +1,6 @@
 import {
   type AuthUser,
+  effectiveMatchSchedulingFormat,
   formatGroupDeleteBlockedMessage,
   GROUP_FORM_MESSAGES,
   MatchSchedulingFormat,
@@ -77,7 +78,17 @@ export class GroupsService {
 
     await this.tournaments.assertCenterSevakTournamentAccess(actor, tournament);
 
-    this.assertTournamentSupportsGroups(tournament);
+    const storedFormat = effectiveMatchSchedulingFormat(
+      tournament.matchSchedulingFormat as MatchSchedulingFormat | null,
+      tournament._count.groups,
+    );
+    const finalizeGroupStage =
+      tournament._count.groups === 0 &&
+      (dto.schedulingFormat === MatchSchedulingFormat.GroupStageKnockout || storedFormat == null);
+    this.assertTournamentSupportsGroups({
+      ...tournament,
+      matchSchedulingFormat: dto.schedulingFormat ?? tournament.matchSchedulingFormat,
+    });
 
     const name = dto.name.trim();
     if (!name) {
@@ -101,6 +112,13 @@ export class GroupsService {
         const group = await tx.tournamentGroup.create({
           data: { tournamentId, name, nameNormalized },
         });
+
+        if (finalizeGroupStage) {
+          await tx.tournament.update({
+            where: { id: tournamentId },
+            data: { matchSchedulingFormat: MatchSchedulingFormat.GroupStageKnockout },
+          });
+        }
 
         if (teamIds.length > 0) {
           const updated = await tx.team.updateMany({
@@ -250,6 +268,16 @@ export class GroupsService {
         data: { groupId: null },
       });
       await tx.tournamentGroup.delete({ where: { id: groupId } });
+      const remainingGroups = await tx.tournamentGroup.count({ where: { tournamentId } });
+      if (
+        remainingGroups === 0 &&
+        tournament.matchSchedulingFormat === MatchSchedulingFormat.GroupStageKnockout
+      ) {
+        await tx.tournament.update({
+          where: { id: tournamentId },
+          data: { matchSchedulingFormat: null },
+        });
+      }
     });
     await this.statsInvalidation.invalidateTournamentAggregates(tournamentId);
   }

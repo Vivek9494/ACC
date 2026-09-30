@@ -31,21 +31,21 @@ describe('tournament-knockout-team-count.validation', () => {
       ).toThrow(/Cannot exceed 10/i);
     });
 
-    it('rejects knockout for non-APL on create', () => {
+    it('rejects knockout for ACC on create', () => {
       expect(() =>
-        assertKnockoutTeamCountOnCreate(TournamentType.Center, 16, 8),
-      ).toThrow(/APL tournaments only/i);
+        assertKnockoutTeamCountOnCreate(TournamentType.ACC, 16, 8),
+      ).toThrow(/tennis-ball tournaments only/i);
     });
   });
 
   describe('assertKnockoutTeamCountOnUpdate', () => {
-    it('rejects knockout count for non-APL tournaments', async () => {
+    it('rejects knockout count for ACC tournaments', async () => {
       await expect(
-        assertKnockoutTeamCountOnUpdate(TournamentType.Center, 4, 16, null, 8, false),
+        assertKnockoutTeamCountOnUpdate(TournamentType.ACC, 4, 16, null, 8, false),
       ).rejects.toMatchObject({
         response: expect.objectContaining({
           fields: expect.objectContaining({
-            knockoutTeamCount: expect.stringMatching(/APL tournaments only/i),
+            knockoutTeamCount: expect.stringMatching(/tennis-ball tournaments only/i),
           }),
         }),
       });

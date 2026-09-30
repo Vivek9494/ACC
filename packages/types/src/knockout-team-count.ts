@@ -1,4 +1,4 @@
-import { BallType, CitySelection, TournamentType } from './rbac';
+import { BallType, TournamentType } from './rbac';
 
 export const KNOCKOUT_TEAM_COUNT_MESSAGES = {
   required: 'Select knockout team count',
@@ -6,7 +6,7 @@ export const KNOCKOUT_TEAM_COUNT_MESSAGES = {
   belowGroupFloor: (min: number) =>
     `Must be at least ${min} to include all group toppers`,
   aboveTotalTeams: (max: number) => `Cannot exceed ${max} teams`,
-  notApl: 'Knockout team count applies to APL tournaments only',
+  notSupported: 'Knockout team count applies to tennis-ball tournaments only',
   prerequisites: 'Set groups and teams first',
   /** Add Tournament — groups are optional at create; only team count is required. */
   prerequisitesCreate: 'Select number of teams first',
@@ -21,16 +21,14 @@ export function evenCeil(n: number): number {
   return n % 2 === 0 ? n : n + 1;
 }
 
-export function isAplTournamentType(type: TournamentType): boolean {
-  return type === TournamentType.APL;
+/** APL and Center-level (tennis) tournaments can run a knockout stage; ACC cannot. */
+export function supportsKnockoutStage(type: TournamentType): boolean {
+  return type === TournamentType.APL || type === TournamentType.Center;
 }
 
-/** Client-side create-form gate before the server persists type. */
-export function resolvesToAplOnCreate(
-  ballType: BallType | null,
-  citySelection: CitySelection | null,
-): boolean {
-  return ballType === BallType.Tennis && citySelection === CitySelection.Apl;
+/** Create-form gate before the server resolves type — every tennis tournament is APL or Center. */
+export function supportsKnockoutStageOnCreate(ballType: BallType | null): boolean {
+  return ballType === BallType.Tennis;
 }
 
 export function canConfigureKnockoutTeamCount(
