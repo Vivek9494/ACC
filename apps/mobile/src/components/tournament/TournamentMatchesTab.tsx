@@ -5,6 +5,7 @@ import {
   UserRole,
   canViewAdminUsersDirectory,
   filterMatchList,
+  isManualSchedulingOnly,
   isMatchSchedulingFormatLocked,
   shouldShowKnockoutBracketEntry,
   tournamentSupportsGroups,
@@ -152,14 +153,13 @@ export function TournamentMatchesTab({
   const canBackfillPastMatch =
     user?.role === UserRole.Admin && ballType === BallType.Leather;
   const showLiveMatchDetails = user != null && canViewAdminUsersDirectory(user.role);
-  const showKnockoutChartEntry = shouldShowKnockoutChartEntry(
-    { matchSchedulingFormat, hasKnockoutBracket },
-    user,
-  );
-  const showKnockoutBracketEntry = shouldShowKnockoutBracketEntry(
-    { canGenerateKnockout, hasKnockoutBracket },
-    user,
-  );
+  const manualSchedulingOnly = isManualSchedulingOnly(ballType);
+  const showKnockoutChartEntry =
+    !manualSchedulingOnly &&
+    shouldShowKnockoutChartEntry({ matchSchedulingFormat, hasKnockoutBracket }, user);
+  const showKnockoutBracketEntry =
+    !manualSchedulingOnly &&
+    shouldShowKnockoutBracketEntry({ canGenerateKnockout, hasKnockoutBracket }, user);
   const knockoutManageButtonLabel = hasKnockoutBracket
     ? 'Manage Knockout Bracket'
     : 'Generate Knockout Bracket';
@@ -291,6 +291,10 @@ export function TournamentMatchesTab({
     }
     if (teamCount < 2) {
       setNoTeamsDialogVisible(true);
+      return;
+    }
+    if (manualSchedulingOnly) {
+      navigateToSchedulingFlow(MatchSchedulingFormat.Manual);
       return;
     }
     if (isMatchSchedulingFormatLocked(matchSchedulingFormat, groups.length)) {

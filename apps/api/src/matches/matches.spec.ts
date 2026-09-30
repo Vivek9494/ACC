@@ -20,7 +20,7 @@ import { MatchesService } from './matches.service';
 type AnyMock = jest.Mock;
 
 interface PrismaMock {
-  tournament: { findUnique: AnyMock };
+  tournament: { findUnique: AnyMock; update: AnyMock };
   match: {
     findUnique: AnyMock;
     findFirst: AnyMock;
@@ -101,6 +101,7 @@ function buildService(): {
         type: TournamentType.ACC,
         isDeleted: false,
       }),
+      update: jest.fn().mockResolvedValue({}),
     },
     match: {
       findUnique: jest.fn(),
@@ -378,6 +379,85 @@ describe('MatchesService — tournament match list', () => {
         },
       }),
     );
+  });
+});
+
+describe('MatchesService — create (Leather scheduling format)', () => {
+  const leatherTournament = (matchSchedulingFormat: string | null) => ({
+    id: 'tour-1',
+    type: TournamentType.ACC,
+    ballType: 'LEATHER',
+    matchSchedulingFormat,
+    locationAddress: null,
+    latitude: null,
+    longitude: null,
+    timezone: null,
+    startAt: new Date('2099-01-01T00:00:00.000Z'),
+    endAt: new Date('2099-12-31T00:00:00.000Z'),
+    isDeleted: false,
+  });
+
+  const externalFixture = {
+    homeTeamId: 'team-H',
+    externalOpponentName: 'Visitors XI',
+    matchDate: '2099-06-01',
+    startTime: '2099-06-01T14:00:00.000Z',
+    matchType: 'LEAGUE_MATCH',
+    oversPerInnings: 25,
+    maxOversPerBowler: 5,
+    groundLocation: 'Main Ground',
+    geofenceLat: 43.6,
+    geofenceLng: -79.4,
+  };
+
+  function setup(matchSchedulingFormat: string | null) {
+    const built = buildService();
+    built.prisma.tournament.findUnique.mockResolvedValue(leatherTournament(matchSchedulingFormat));
+    built.prisma.team.count.mockResolvedValue(1);
+    built.prisma.match.create.mockResolvedValue(
+      matchRow({ startTime: new Date(externalFixture.startTime) }),
+    );
+    jest.spyOn(built.service, 'getDetail').mockResolvedValue({} as never);
+    return built;
+  }
+
+  it('treats a stored Round Robin as Manual and finalizes Manual on the first match', async () => {
+    const { service, prisma } = setup('ROUND_ROBIN');
+
+    await service.create(actor, 'tour-1', externalFixture as never);
+
+    expect(prisma.match.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          externalOpponentName: 'Visitors XI',
+          roundRobinPairKey: null,
+        }),
+      }),
+    );
+    expect(prisma.tournament.update).toHaveBeenCalledWith({
+      where: { id: 'tour-1' },
+      data: { matchSchedulingFormat: 'MANUAL' },
+    });
+  });
+
+  it('sets Manual when no format is stored yet', async () => {
+    const { service, prisma } = setup(null);
+
+    await service.create(actor, 'tour-1', externalFixture as never);
+
+    expect(prisma.tournament.update).toHaveBeenCalledWith({
+      where: { id: 'tour-1' },
+      data: { matchSchedulingFormat: 'MANUAL' },
+    });
+  });
+
+  it('leaves an already-Manual format untouched', async () => {
+    const { service, prisma } = setup('MANUAL');
+
+    await service.create(actor, 'tour-1', externalFixture as never);
+
+    expect(prisma.match.create).toHaveBeenCalled();
+    expect(prisma.tournament.update).not.toHaveBeenCalled();
   });
 });
 

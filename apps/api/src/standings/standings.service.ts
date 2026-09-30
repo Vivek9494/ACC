@@ -3,6 +3,7 @@ import {
   InningsType,
   MatchSchedulingFormat,
   MatchState,
+  schedulingFormatForBallType,
   resolveStandingsSplitPointOutcome,
   LEATHER_STANDINGS_POINTS,
   TENNIS_STANDINGS_POINTS,
@@ -142,7 +143,10 @@ export class StandingsService {
 
     const { tables, dataErrors } = computeStandings({
       tournamentId: tournament.id,
-      matchSchedulingFormat: tournament.matchSchedulingFormat as MatchSchedulingFormat | null,
+      matchSchedulingFormat: schedulingFormatForBallType(
+        tournament.ballType as BallType,
+        tournament.matchSchedulingFormat as MatchSchedulingFormat | null,
+      ),
       groupCount: tournament._count.groups,
       teams: tournament.teams.map((team) => ({
         teamId: team.id,

@@ -864,6 +864,41 @@ describe('TournamentsService', () => {
       });
       expect(prisma.tournament.update).not.toHaveBeenCalled();
     });
+
+    it.each([MatchSchedulingFormat.RoundRobin, MatchSchedulingFormat.GroupStageKnockout])(
+      'rejects %s for Leather tournaments',
+      async (format) => {
+        prisma.tournament.findUnique.mockResolvedValue(
+          detailRow({ type: 'ACC', ballType: 'LEATHER', matchSchedulingFormat: null }),
+        );
+
+        await expect(service.selectMatchSchedulingFormat(actor, 'tid', format)).rejects.toMatchObject({
+          response: {
+            error: 'SCHEDULING_FORMAT_MANUAL_ONLY',
+            message: MATCH_SCHEDULING_FORMAT_MESSAGES.manualOnly,
+          },
+        });
+        expect(prisma.tournament.update).not.toHaveBeenCalled();
+      },
+    );
+
+    it('reports a Leather tournament with a stored Round Robin format as Manual', async () => {
+      prisma.tournament.findUnique.mockResolvedValue(
+        detailRow({
+          type: 'ACC',
+          ballType: 'LEATHER',
+          matchSchedulingFormat: MatchSchedulingFormat.RoundRobin,
+        }),
+      );
+
+      const detail = await service.selectMatchSchedulingFormat(
+        actor,
+        'tid',
+        MatchSchedulingFormat.Manual,
+      );
+
+      expect(detail.matchSchedulingFormat).toBe(MatchSchedulingFormat.Manual);
+    });
   });
 
   describe('Center Sevak tournament ownership (type-aware organizers)', () => {

@@ -8,6 +8,8 @@ import {
   MATCH_STATE_TRANSITIONS,
   MatchCardDisplayState,
   MatchSchedulingFormat,
+  isManualSchedulingOnly,
+  schedulingFormatForBallType,
   MatchSquadRole,
   MatchState,
   MatchType,
@@ -364,7 +366,7 @@ export class MatchesService {
       tournament.matchSchedulingFormat === MatchSchedulingFormat.RoundRobin;
 
     // Backfill is always ACC vs an external opponent — skip round-robin's
-    // two-registered-teams rule (ACC tournaments often use Round Robin format).
+    // two-registered-teams rule.
     if (isRoundRobin && !backfill) {
       if (dto.groupId) {
         throw new BadRequestException({
@@ -536,36 +538,51 @@ export class MatchesService {
         ? normalizeTeamPairKey(dto.homeTeamId, dto.awayTeamId)
         : null;
 
+    const finalizeManualFormat =
+      isManualSchedulingOnly(tournament.ballType) &&
+      tournament.storedMatchSchedulingFormat !== MatchSchedulingFormat.Manual;
+    const matchDate = new Date(`${dto.matchDate}T00:00:00.000Z`);
+    const startTime = new Date(dto.startTime);
+
     let match;
     try {
-      match = await this.prisma.match.create({
-        data: {
-          tournamentId,
-          groupId: isKnockoutMatchType(matchType) ? null : dto.groupId ?? null,
-          matchCode: dto.matchCode ?? null,
-          matchType,
-          state: MatchState.Scheduled,
-          homeTeamId: dto.homeTeamId,
-          awayTeamId: dto.awayTeamId ?? null,
-          externalOpponentName: dto.externalOpponentName?.trim() || null,
-          roundRobinPairKey,
-          matchDate: new Date(`${dto.matchDate}T00:00:00.000Z`),
-          startTime: new Date(dto.startTime),
-          reportingTime:
-            !isRoundRobin && dto.reportingTime ? new Date(dto.reportingTime) : null,
-          groundLocation: ground.groundLocation,
-          geofenceLat: ground.geofenceLat,
-          geofenceLng: ground.geofenceLng,
-          oversPerInnings: dto.oversPerInnings,
-          maxOversPerBowler: dto.maxOversPerBowler,
-          powerplayOvers: dto.powerplayOvers ?? null,
-          battingPowerplayOvers: isTennisBall ? (dto.battingPowerplayOvers ?? null) : null,
-          homeAway: dto.homeAway ?? null,
-          youtubeUrl: dto.youtubeUrl ?? null,
-          suppressLiveSideEffects: backfill,
-          // Historical backfill enters figures via Scorecard*Summary (not LIVE).
-          scoringMode: backfill ? ScoringMode.ScorecardOnly : ScoringMode.Live,
-        },
+      match = await this.prisma.$transaction(async (tx) => {
+        const created = await tx.match.create({
+          data: {
+            tournamentId,
+            groupId: isKnockoutMatchType(matchType) ? null : dto.groupId ?? null,
+            matchCode: dto.matchCode ?? null,
+            matchType,
+            state: MatchState.Scheduled,
+            homeTeamId: dto.homeTeamId,
+            awayTeamId: dto.awayTeamId ?? null,
+            externalOpponentName: dto.externalOpponentName?.trim() || null,
+            roundRobinPairKey,
+            matchDate,
+            startTime,
+            reportingTime:
+              !isRoundRobin && dto.reportingTime ? new Date(dto.reportingTime) : null,
+            groundLocation: ground.groundLocation,
+            geofenceLat: ground.geofenceLat,
+            geofenceLng: ground.geofenceLng,
+            oversPerInnings: dto.oversPerInnings,
+            maxOversPerBowler: dto.maxOversPerBowler,
+            powerplayOvers: dto.powerplayOvers ?? null,
+            battingPowerplayOvers: isTennisBall ? (dto.battingPowerplayOvers ?? null) : null,
+            homeAway: dto.homeAway ?? null,
+            youtubeUrl: dto.youtubeUrl ?? null,
+            suppressLiveSideEffects: backfill,
+            // Historical backfill enters figures via Scorecard*Summary (not LIVE).
+            scoringMode: backfill ? ScoringMode.ScorecardOnly : ScoringMode.Live,
+          },
+        });
+        if (finalizeManualFormat) {
+          await tx.tournament.update({
+            where: { id: tournamentId },
+            data: { matchSchedulingFormat: MatchSchedulingFormat.Manual },
+          });
+        }
+        return created;
       });
     } catch (error) {
       if (
@@ -2610,6 +2627,7 @@ export class MatchesService {
     type: TournamentType;
     ballType: BallType;
     matchSchedulingFormat: MatchSchedulingFormat | null;
+    storedMatchSchedulingFormat: MatchSchedulingFormat | null;
     locationAddress: string | null;
     latitude: number | null;
     longitude: number | null;
@@ -2630,11 +2648,15 @@ export class MatchesService {
       },
     });
     assertTournamentActive(tournament);
+    const ballType = tournament.ballType as BallType;
+    const storedMatchSchedulingFormat =
+      tournament.matchSchedulingFormat as MatchSchedulingFormat | null;
     return {
       id: tournament.id,
       type: tournament.type as TournamentType,
-      ballType: tournament.ballType as BallType,
-      matchSchedulingFormat: tournament.matchSchedulingFormat as MatchSchedulingFormat | null,
+      ballType,
+      matchSchedulingFormat: schedulingFormatForBallType(ballType, storedMatchSchedulingFormat),
+      storedMatchSchedulingFormat,
       locationAddress: tournament.locationAddress,
       latitude: tournament.latitude,
       longitude: tournament.longitude,

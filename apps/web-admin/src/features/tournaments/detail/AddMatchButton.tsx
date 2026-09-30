@@ -1,4 +1,5 @@
 import {
+  isManualSchedulingOnly,
   isMatchSchedulingFormatLocked,
   MATCH_SCHEDULING_FORMAT_LABELS,
   MATCH_SCHEDULING_FORMAT_OPTIONS,
@@ -70,7 +71,7 @@ function NoticeDialog({
 
 /**
  * Matches-tab header "Add Match" — mobile's Schedule Matches flow: team guard → Select Format →
- * group guard → Match Setup. A locked Group Stage + Knockout skips the format picker.
+ * group guard → Match Setup. Leather and a locked Group Stage + Knockout skip the format picker.
  */
 export function AddMatchButton({
   tournament,
@@ -91,6 +92,8 @@ export function AddMatchButton({
     setFormatError(null);
     if (teamCount < 2) {
       setStep({ kind: 'no-teams' });
+    } else if (isManualSchedulingOnly(tournament.ballType)) {
+      setStep({ kind: 'setup', format: MatchSchedulingFormat.Manual });
     } else if (
       isMatchSchedulingFormatLocked(tournament.matchSchedulingFormat, tournament.groupCount)
     ) {

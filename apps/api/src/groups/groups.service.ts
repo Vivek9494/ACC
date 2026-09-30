@@ -1,5 +1,6 @@
 import {
   type AuthUser,
+  BallType,
   effectiveMatchSchedulingFormat,
   formatGroupDeleteBlockedMessage,
   GROUP_FORM_MESSAGES,
@@ -81,6 +82,7 @@ export class GroupsService {
     const storedFormat = effectiveMatchSchedulingFormat(
       tournament.matchSchedulingFormat as MatchSchedulingFormat | null,
       tournament._count.groups,
+      tournament.ballType as BallType,
     );
     const finalizeGroupStage =
       tournament._count.groups === 0 &&

@@ -38,6 +38,7 @@ import {
   canCenterSevakOrganizeTournament,
   canOrganizeTournament as evaluateCanOrganizeTournament,
   effectiveMatchSchedulingFormat,
+  isManualSchedulingOnly,
   isMatchSchedulingFormatLocked,
   MATCH_SCHEDULING_FORMAT_MESSAGES,
   MatchSchedulingFormat as MatchSchedulingFormatValue,
@@ -416,6 +417,7 @@ export class TournamentsService {
       matchSchedulingFormat: effectiveMatchSchedulingFormat(
         (row.matchSchedulingFormat as MatchSchedulingFormat | null) ?? null,
         row._count.groups,
+        row.ballType as BallType,
       ),
       impactPlayerEnabled: row.impactPlayerEnabled,
       videoRequired: row.videoRequired,
@@ -1002,6 +1004,16 @@ export class TournamentsService {
     });
 
     await this.assertCenterSevakTournamentAccess(actor, existing);
+
+    if (
+      isManualSchedulingOnly(existing.ballType as BallType) &&
+      schedulingFormat !== MatchSchedulingFormatValue.Manual
+    ) {
+      throw new BadRequestException({
+        message: MATCH_SCHEDULING_FORMAT_MESSAGES.manualOnly,
+        error: 'SCHEDULING_FORMAT_MANUAL_ONLY',
+      });
+    }
 
     const groupCount = existing._count.groups;
     const storedFormat = (existing.matchSchedulingFormat as MatchSchedulingFormat | null) ?? null;
