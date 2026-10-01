@@ -1,4 +1,4 @@
-# ASC scoring cockpit (Expo web) — Netlify site (acc-cockpit)
+# ASC scoring cockpit (Expo web) — Netlify site (asc-cockpit)
 # Loaded by the ASC Broadcast desktop app. Build from monorepo root (base
 # directory empty); publish only the Expo web export.
 # The site origin must be listed in the API's CORS_ORIGINS on Railway.

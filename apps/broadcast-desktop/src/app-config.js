@@ -4,12 +4,12 @@
  * ASC_COCKPIT_URL overrides either (origin only — path/query are ignored).
  */
 
-const PRODUCTION_COCKPIT_URL = 'https://acc-cockpit.netlify.app';
+const PRODUCTION_COCKPIT_URL = 'https://asc-cockpit.netlify.app';
 const DEV_COCKPIT_URL = 'http://localhost:8081';
 
 /**
  * @param {{ isPackaged: boolean, override?: string }} opts
- * @returns {string} origin, e.g. https://acc-cockpit.netlify.app
+ * @returns {string} origin, e.g. https://asc-cockpit.netlify.app
  */
 function resolveCockpitOrigin(opts) {
   const raw = opts.override?.trim() || (opts.isPackaged ? PRODUCTION_COCKPIT_URL : DEV_COCKPIT_URL);

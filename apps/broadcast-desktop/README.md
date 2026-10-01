@@ -42,7 +42,7 @@ cockpit layout (and OBS block) appears.
 
 ## Package (installers)
 
-Packaged builds load the **hosted cockpit** at `https://acc-cockpit.netlify.app`
+Packaged builds load the **hosted cockpit** at `https://asc-cockpit.netlify.app`
 (Netlify site built from `apps/mobile/netlify.toml`; its origin must be in the
 API's `CORS_ORIGINS`). `ASC_COCKPIT_URL` still overrides it (https, or
 http://localhost for testing). Dev (`electron .`) defaults to `http://localhost:8081`.
