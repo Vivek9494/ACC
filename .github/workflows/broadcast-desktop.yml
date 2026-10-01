@@ -3,6 +3,8 @@
 #   macOS:   MAC_CSC_LINK (base64 .p12 Developer ID Application cert), MAC_CSC_KEY_PASSWORD,
 #            APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD, APPLE_TEAM_ID (notarization)
 #   Windows: WIN_CSC_LINK, WIN_CSC_KEY_PASSWORD
+# Pushing a broadcast-v<version> tag (matching apps/broadcast-desktop/package.json)
+# also publishes a GitHub Release; the cockpit /download page links to its assets.
 name: Broadcast desktop
 
 on:
@@ -71,3 +73,36 @@ jobs:
           path: ${{ matrix.artifact }}
           if-no-files-found: error
           retention-days: 30
+
+  release:
+    name: Publish GitHub Release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/broadcast-v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check tag matches app version
+        run: |
+          tag_version="${GITHUB_REF_NAME#broadcast-v}"
+          app_version="$(node -p "require('./apps/broadcast-desktop/package.json').version")"
+          if [ "$tag_version" != "$app_version" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match package.json version $app_version" >&2
+            exit 1
+          fi
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: installers
+          merge-multiple: true
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: ASC Broadcast ${{ github.ref_name }}
+          files: |
+            installers/ASC-Broadcast-mac.dmg
+            installers/ASC-Broadcast-Setup-win.exe
+          fail_on_unmatched_files: true
+          make_latest: true

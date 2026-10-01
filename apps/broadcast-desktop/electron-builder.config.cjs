@@ -52,7 +52,8 @@ module.exports = {
   mac: {
     category: 'public.app-category.sports',
     target: [{ target: 'dmg', arch: ['universal'] }],
-    artifactName: '${productName}-${version}-mac-universal.${ext}',
+    // Fixed names: the cockpit /download page links to releases/latest/download/<name>.
+    artifactName: 'ASC-Broadcast-mac.${ext}',
     identity: macSigning ? undefined : '-',
     hardenedRuntime: macSigning,
     gatekeeperAssess: false,
@@ -70,7 +71,7 @@ module.exports = {
 
   win: {
     target: [{ target: 'nsis', arch: ['x64'] }],
-    artifactName: '${productName}-Setup-${version}-win-x64.${ext}',
+    artifactName: 'ASC-Broadcast-Setup-win.${ext}',
   },
   nsis: {
     oneClick: false,

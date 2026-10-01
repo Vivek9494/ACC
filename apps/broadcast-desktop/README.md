@@ -48,8 +48,8 @@ API's `CORS_ORIGINS`). `ASC_COCKPIT_URL` still overrides it (https, or
 http://localhost for testing). Dev (`electron .`) defaults to `http://localhost:8081`.
 
 ```bash
-pnpm --filter @acc/broadcast-desktop dist:mac   # dist/ASC Broadcast-<v>-mac-universal.dmg
-pnpm --filter @acc/broadcast-desktop dist:win   # dist/ASC Broadcast-Setup-<v>-win-x64.exe
+pnpm --filter @acc/broadcast-desktop dist:mac   # dist/ASC-Broadcast-mac.dmg (universal)
+pnpm --filter @acc/broadcast-desktop dist:win   # dist/ASC-Broadcast-Setup-win.exe (x64)
 pnpm --filter @acc/broadcast-desktop pack:mac   # unpacked universal .app only
 ```
 
@@ -65,6 +65,11 @@ pnpm --filter @acc/broadcast-desktop pack:mac   # unpacked universal .app only
   installers show a SmartScreen warning (More info → Run anyway).
 - **CI** — `.github/workflows/broadcast-desktop.yml` (manual run or a
   `broadcast-v*` tag) builds both installers and uploads them as artifacts.
+- **Releasing** — bump `version` in `package.json`, commit, then
+  `git tag broadcast-v<version> && git push origin broadcast-v<version>`. The
+  workflow publishes a GitHub Release with both installers; users download from
+  `https://asc-cockpit.netlify.app/download`, which always links to the latest
+  release (installer file names are fixed for that reason).
 
 Security: the cockpit preload bridge only exists on the cockpit origin, every
 IPC call re-checks the sender, navigation off the origin is blocked (https links
