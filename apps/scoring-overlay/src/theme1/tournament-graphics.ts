@@ -3,11 +3,7 @@
  * Data from GET /tournaments/:id/standings | /leaderboard | /stats — never from match scorecard.
  */
 
-import {
-  fetchTournamentLeaderboard,
-  fetchTournamentStandings,
-  fetchTournamentStats,
-} from '../broadcast-fetch';
+import type { GraphicsDataSource } from '../broadcast-fetch';
 import type { GraphicsCommandMessage, TournamentGraphicKind } from '../types';
 import { type LeaderboardRowView } from './leaderboard-card';
 import { mountPremiumLeaderboardCard } from './premium-leaderboard-card';
@@ -62,7 +58,7 @@ export interface TournamentGraphicsController {
 
 export function mountTournamentGraphics(
   root: HTMLElement,
-  apiBase: string,
+  data: GraphicsDataSource,
 ): TournamentGraphicsController {
   let activeKind: TournamentGraphicKind | null = null;
   let showToken = 0;
@@ -188,7 +184,7 @@ export function mountTournamentGraphics(
     }
     // Leather may pass teamId (top 5); non-leather omits it (top 10).
     const filterTeamId = teamId?.trim() || null;
-    const stats = await fetchTournamentStats(apiBase, tournamentId, filterTeamId);
+    const stats = await data.stats(tournamentId, filterTeamId);
     if (token !== showToken || activeKind !== kind) {
       return false;
     }
@@ -225,7 +221,7 @@ export function mountTournamentGraphics(
       if (!pointsTable) {
         return false;
       }
-      const standings = await fetchTournamentStandings(apiBase, tournamentId);
+      const standings = await data.standings(tournamentId);
       if (token !== showToken || activeKind !== kind) {
         return false;
       }
@@ -235,11 +231,7 @@ export function mountTournamentGraphics(
     if (kind === 'tournament_top_batsmen' || kind === 'tournament_top_bowlers') {
       // Leather Top 5 may pass teamId; non-leather omits it.
       const filterTeamId = teamId?.trim() || null;
-      const leaderboard = await fetchTournamentLeaderboard(
-        apiBase,
-        tournamentId,
-        filterTeamId,
-      );
+      const leaderboard = await data.leaderboard(tournamentId, filterTeamId);
       if (token !== showToken || activeKind !== kind) {
         return false;
       }
@@ -292,7 +284,7 @@ export function mountTournamentGraphics(
     if (!card) {
       return false;
     }
-    const stats = await fetchTournamentStats(apiBase, tournamentId);
+    const stats = await data.stats(tournamentId);
     if (token !== showToken || activeKind !== kind) {
       return false;
     }

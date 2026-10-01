@@ -458,6 +458,27 @@ export async function fetchTournamentStats(
   }
 }
 
+/** Data the graphics stage loads on demand; preview mode swaps in sample data. */
+export interface GraphicsDataSource {
+  playerStats(userId: string, ballType: BallType): Promise<BroadcastPlayerStatsView | null>;
+  standings(tournamentId: string): Promise<TournamentStandingsView | null>;
+  leaderboard(
+    tournamentId: string,
+    teamId?: string | null,
+  ): Promise<TournamentLeaderboardView | null>;
+  stats(tournamentId: string, teamId?: string | null): Promise<TournamentStatsView | null>;
+}
+
+export function apiGraphicsDataSource(apiBase: string): GraphicsDataSource {
+  return {
+    playerStats: (userId, ballType) => fetchBroadcastPlayerStats(apiBase, userId, ballType),
+    standings: (tournamentId) => fetchTournamentStandings(apiBase, tournamentId),
+    leaderboard: (tournamentId, teamId) =>
+      fetchTournamentLeaderboard(apiBase, tournamentId, teamId),
+    stats: (tournamentId, teamId) => fetchTournamentStats(apiBase, tournamentId, teamId),
+  };
+}
+
 export async function fetchBroadcastPlayerStats(
   apiBase: string,
   userId: string,

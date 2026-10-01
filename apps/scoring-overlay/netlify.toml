@@ -10,3 +10,20 @@
   # Expo Google Maps client key living under apps/mobile/ in this monorepo.
   # Omit that tree from scanning — do NOT disable smart detection globally.
   SECRETS_SCAN_OMIT_PATHS = "apps/mobile/**"
+
+# Web-admin overlay preview: sample data only. Framable solely by the dashboard;
+# connect-src 'none' blocks every fetch/XHR/WebSocket (no API, no /live socket).
+# The OBS overlay (/) and graphics.html keep their headers — the cockpit frames /.
+[[headers]]
+  for = "/preview.html"
+  [headers.values]
+    Content-Security-Policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors https://acc-admin.netlify.app"
+    Referrer-Policy = "no-referrer"
+    X-Robots-Tag = "noindex"
+
+[[headers]]
+  for = "/preview"
+  [headers.values]
+    Content-Security-Policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors https://acc-admin.netlify.app"
+    Referrer-Policy = "no-referrer"
+    X-Robots-Tag = "noindex"

@@ -1,3 +1,4 @@
+import { apiGraphicsDataSource } from '../broadcast-fetch';
 import {
   createGraphicsStage,
   type GraphicsStageController,
@@ -21,7 +22,10 @@ export function createTheme1GraphicsStage(
   if (options.injectMarkup) {
     root.insertAdjacentHTML('beforeend', buildTournamentGraphicsMarkup());
   }
-  const tournament = mountTournamentGraphics(root, options.apiBase);
+  const tournament = mountTournamentGraphics(
+    root,
+    options.data ?? apiGraphicsDataSource(options.apiBase),
+  );
   let tournamentId: string | null = null;
 
   const syncTournamentId = (ctx: MatchContext | null): void => {

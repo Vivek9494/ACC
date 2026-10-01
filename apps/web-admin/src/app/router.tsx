@@ -19,9 +19,8 @@ import { RequireNavRole } from '@/auth/RequireNavRole';
 import { BroadcastPage } from '@/features/broadcast/BroadcastPage';
 import { GeographyManagementPage } from '@/features/geography/GeographyManagementPage';
 import { LogsPage } from '@/features/logs/LogsPage';
+import { OverlayPage } from '@/features/overlay/OverlayPage';
 import { ProvinceCentersPage } from '@/features/geography/ProvinceCentersPage';
-import { OverlayThemeFormPage } from '@/features/overlay/OverlayThemeFormPage';
-import { OverlayThemesPage } from '@/features/overlay/OverlayThemesPage';
 import { RulebookPage } from '@/features/rulebook/RulebookPage';
 import { SettingsPage } from '@/features/settings/SettingsPage';
 import { UsersPage } from '@/features/users/UsersPage';
@@ -101,20 +100,16 @@ export const router = createBrowserRouter([
           },
           { path: 'broadcast', element: <BroadcastPage /> },
           {
-            element: <RequireNavRole path="/overlay" />,
-            children: [
-              { path: 'overlay', element: <OverlayThemesPage /> },
-              { path: 'overlay/new', element: <OverlayThemeFormPage /> },
-              { path: 'overlay/:themeId', element: <OverlayThemeFormPage /> },
-            ],
-          },
-          {
             element: <RequireNavRole path="/rulebook" />,
             children: [{ path: 'rulebook', element: <RulebookPage /> }],
           },
           {
             element: <RequireNavRole path="/logs" />,
             children: [{ path: 'logs', element: <LogsPage /> }],
+          },
+          {
+            element: <RequireNavRole path="/overlay" />,
+            children: [{ path: 'overlay', element: <OverlayPage /> }],
           },
           { path: 'settings', element: <SettingsPage /> },
           ...stubRoutes,

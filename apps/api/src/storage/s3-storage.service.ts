@@ -1,5 +1,5 @@
 import { isMediaStorageKey } from '@acc/types';
-import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   DeleteObjectCommand,
@@ -9,8 +9,8 @@ import {
   S3Client,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
-import { dirname, join, resolve } from 'node:path';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
 
 import { AppSettingsService } from '../settings/app-settings.service';
 import { NodeEnv } from '../config/env.validation';
@@ -163,76 +163,6 @@ export class S3StorageService {
     } catch (err) {
       this.logger.warn(`Failed to delete object ${objectKey}: ${String(err)}`);
     }
-  }
-
-  /**
-   * Writes an object that must never be publicly readable (no presigned read
-   * URL is ever issued for it). Dev fallback writes outside the served `uploads/`.
-   */
-  async putPrivateObject(params: {
-    storageKey: string;
-    body: Buffer;
-    contentType: string;
-  }): Promise<void> {
-    if (!(await this.isConfigured())) {
-      this.assertLocalDevOnly();
-      const filePath = this.privateLocalDevPath(params.storageKey);
-      await mkdir(dirname(filePath), { recursive: true });
-      await writeFile(filePath, params.body);
-      return;
-    }
-
-    const client = await this.requireClient();
-    await client.send(
-      new PutObjectCommand({
-        Bucket: this.bucket,
-        Key: params.storageKey,
-        Body: params.body,
-        ContentType: params.contentType,
-        ContentDisposition: 'attachment',
-      }),
-    );
-  }
-
-  async getPrivateObjectText(storageKey: string): Promise<string> {
-    if (!(await this.isConfigured())) {
-      this.assertLocalDevOnly();
-      return readFile(this.privateLocalDevPath(storageKey), 'utf8');
-    }
-
-    const client = await this.requireClient();
-    const result = await client.send(
-      new GetObjectCommand({ Bucket: this.bucket, Key: storageKey }),
-    );
-    if (!result.Body) {
-      throw new NotFoundException({ message: 'Stored file not found', error: 'FILE_NOT_FOUND' });
-    }
-    return result.Body.transformToString('utf-8');
-  }
-
-  async deletePrivateObject(storageKey: string): Promise<void> {
-    if (!(await this.isConfigured())) {
-      if (this.config.get<NodeEnv>('NODE_ENV', NodeEnv.Development) !== NodeEnv.Production) {
-        await rm(this.privateLocalDevPath(storageKey), { force: true });
-      }
-      return;
-    }
-
-    try {
-      const client = await this.requireClient();
-      await client.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: storageKey }));
-    } catch (err) {
-      this.logger.warn(`Failed to delete object ${storageKey}: ${String(err)}`);
-    }
-  }
-
-  private privateLocalDevPath(storageKey: string): string {
-    const root = join(process.cwd(), 'private-uploads');
-    const filePath = resolve(root, storageKey);
-    if (!filePath.startsWith(`${root}/`)) {
-      throw new BadRequestException({ message: 'Invalid storage key', error: 'INVALID_KEY' });
-    }
-    return filePath;
   }
 
   /** Dev-only fallback when S3 is not configured — writes under uploads/{storageKey}. */

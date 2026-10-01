@@ -88,7 +88,6 @@ describe('Audit logs endpoint', () => {
     center: { findMany: empty() },
     province: { findMany: empty() },
     tournamentGroup: { findMany: empty() },
-    overlayTheme: { findMany: empty() },
     tournamentTypeDefinition: { findMany: empty() },
     registration: { findMany: empty() },
   };

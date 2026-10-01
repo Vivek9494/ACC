@@ -4,7 +4,12 @@
  */
 
 import './graphics.css';
-import { ensureMatchContext, fetchMatchContext } from './broadcast-fetch';
+import {
+  apiGraphicsDataSource,
+  ensureMatchContext,
+  fetchMatchContext,
+  type GraphicsDataSource,
+} from './broadcast-fetch';
 import { mountBatsmanCareerCard } from './batsman-career-card';
 import { mountBatsmanMatchCard } from './batsman-match-card';
 import { mountBowlerCareerCard } from './bowler-career-card';
@@ -143,6 +148,8 @@ export interface GraphicsStageOptions {
   matchId?: string | null;
   /** When true, inject panel markup into an empty host (root page). */
   injectMarkup?: boolean;
+  /** On-demand graphic data; defaults to the public API at `apiBase`. */
+  data?: GraphicsDataSource;
 }
 
 export interface GraphicsStageController {
@@ -165,6 +172,7 @@ export function createGraphicsStage(
     root.innerHTML = buildGraphicsStageMarkup();
   }
 
+  const data = options.data ?? apiGraphicsDataSource(options.apiBase);
   const missingMountWarned = new Set<string>();
 
   const warnMissingMount = (id: string): void => {
@@ -778,7 +786,7 @@ export function createGraphicsStage(
         ? playerName(scorecard.display, playerId)
         : undefined;
       const ok = await batsmanCareer.show(playerId, {
-        apiBase: options.apiBase,
+        loadStats: data.playerStats,
         ballType,
         placeholderName,
         teamName: careerTeamLabelForPlayer(matchCtx, playerId),
@@ -814,7 +822,7 @@ export function createGraphicsStage(
         ? playerName(scorecard.display, playerId)
         : undefined;
       const ok = await bowlerCareer.show(playerId, {
-        apiBase: options.apiBase,
+        loadStats: data.playerStats,
         ballType,
         placeholderName,
         teamName: careerTeamLabelForPlayer(matchCtx, playerId),

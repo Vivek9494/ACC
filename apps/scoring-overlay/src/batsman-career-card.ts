@@ -6,7 +6,7 @@
  */
 
 import './batsman-career-card.css';
-import { fetchBroadcastPlayerStats } from './broadcast-fetch';
+import type { GraphicsDataSource } from './broadcast-fetch';
 import { concealGraphic, revealGraphic } from './graphic-visibility';
 import {
   formatHighestScoreMeta,
@@ -20,7 +20,7 @@ const SECTION_STAGGER_MS = 45;
 const EXIT_MS = 320;
 
 export interface BatsmanCareerShowOptions {
-  apiBase: string;
+  loadStats: GraphicsDataSource['playerStats'];
   ballType: BallType;
   /** Optional display name while / if stats load (e.g. from scorecard). */
   placeholderName?: string;
@@ -420,11 +420,7 @@ export function mountBatsmanCareerCard(
           stats = cache.get(key) ?? null;
         } else {
           try {
-            stats = await fetchBroadcastPlayerStats(
-              opts.apiBase,
-              playerId,
-              opts.ballType,
-            );
+            stats = await opts.loadStats(playerId, opts.ballType);
           } catch (err) {
             warnGraphics(err);
             stats = null;

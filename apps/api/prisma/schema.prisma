@@ -370,8 +370,6 @@ model User {
   leatherInvitesReceived     TournamentLeatherInvite[] @relation("LeatherInvitesReceived")
   tournamentScorerAssignments TournamentScorer[]
   broadcastsPosted           Broadcast[]
-  overlayThemesCreated       OverlayTheme[]
-  overlayThemeGraphicsUploaded OverlayThemeGraphic[]
   pushDeviceTokens           PushDeviceToken[]
   passwordResetOtpSends      PasswordResetOtpSend[]
 
@@ -1482,37 +1480,6 @@ model Broadcast {
 
   @@index([postedAt])
   @@index([expiresAt])
-}
-
-// ---------------------------------------------------------------------------
-// Overlay themes (Admin-uploaded broadcast graphics, one HTML file per control)
-// ---------------------------------------------------------------------------
-
-model OverlayTheme {
-  id          String                @id @default(uuid())
-  name        String                @unique
-  createdById String
-  createdBy   User                  @relation(fields: [createdById], references: [id])
-  graphics    OverlayThemeGraphic[]
-  createdAt   DateTime              @default(now())
-  updatedAt   DateTime              @updatedAt
-}
-
-/// Uploaded HTML is executable — stored privately in S3; never served by URL.
-model OverlayThemeGraphic {
-  id           String       @id @default(uuid())
-  themeId      String
-  theme        OverlayTheme @relation(fields: [themeId], references: [id], onDelete: Cascade)
-  /// OverlayThemeControlKey from @acc/types.
-  controlKey   String
-  storageKey   String
-  fileName     String
-  sizeBytes    Int
-  uploadedById String
-  uploadedBy   User         @relation(fields: [uploadedById], references: [id])
-  uploadedAt   DateTime     @default(now())
-
-  @@unique([themeId, controlKey])
 }
 
 // ---------------------------------------------------------------------------

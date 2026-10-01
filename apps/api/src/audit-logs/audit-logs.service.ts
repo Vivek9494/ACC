@@ -207,7 +207,7 @@ export class AuditLogsService {
       names.set(`${type}:${id}`, name);
     };
 
-    const [tournaments, teams, matches, users, centers, provinces, groups, themes, types, registrations] =
+    const [tournaments, teams, matches, users, centers, provinces, groups, types, registrations] =
       await Promise.all([
         this.prisma.tournament.findMany({
           where: { id: { in: ids(AuditEntityType.Tournament) } },
@@ -240,10 +240,6 @@ export class AuditLogsService {
           where: { id: { in: ids(AuditEntityType.Group) } },
           select: { id: true, name: true, tournament: { select: { name: true } } },
         }),
-        this.prisma.overlayTheme.findMany({
-          where: { id: { in: ids(AuditEntityType.OverlayTheme) } },
-          select: { id: true, name: true },
-        }),
         this.prisma.tournamentTypeDefinition.findMany({
           where: { id: { in: ids(AuditEntityType.TournamentTypeDefinition) } },
           select: { id: true, name: true },
@@ -269,7 +265,6 @@ export class AuditLogsService {
     for (const row of centers) put(AuditEntityType.Center, row.id, row.name);
     for (const row of provinces) put(AuditEntityType.Province, row.id, row.name);
     for (const row of groups) put(AuditEntityType.Group, row.id, `${row.name} · ${row.tournament.name}`);
-    for (const row of themes) put(AuditEntityType.OverlayTheme, row.id, row.name);
     for (const row of types) put(AuditEntityType.TournamentTypeDefinition, row.id, row.name);
     for (const row of registrations) {
       put(AuditEntityType.Registration, row.id, `${fullName(row.user)} · ${row.tournament.name}`);

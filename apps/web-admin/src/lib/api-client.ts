@@ -143,7 +143,6 @@ export function refreshSession(): Promise<boolean> {
 
 export interface RequestOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
-  /** JSON-serialized, except `FormData` which is sent as multipart. */
   body?: unknown;
   /** Attach the bearer token and refresh once on 401 (default true). */
   auth?: boolean;
@@ -156,15 +155,14 @@ async function request(
   allowRetry: boolean,
 ): Promise<Response> {
   const { method = 'GET', body, auth = true, signal } = options;
-  const isForm = body instanceof FormData;
   const headers: Record<string, string> = { Accept: 'application/json' };
-  if (body !== undefined && !isForm) headers['Content-Type'] = 'application/json';
+  if (body !== undefined) headers['Content-Type'] = 'application/json';
   if (auth && accessToken) headers.Authorization = `Bearer ${accessToken}`;
 
   const res = await fetch(`${API_BASE}${path}`, {
     method,
     headers,
-    body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
+    body: body === undefined ? undefined : JSON.stringify(body),
     signal,
   });
 

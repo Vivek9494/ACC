@@ -22,9 +22,6 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# Local dev object storage fallback (S3 not configured)
-apps/api/private-uploads/
-
 # Test / coverage
 coverage/
 
