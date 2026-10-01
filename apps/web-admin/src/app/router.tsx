@@ -18,7 +18,7 @@ import { TournamentsPage } from '@/features/tournaments/TournamentsPage';
 import { RequireNavRole } from '@/auth/RequireNavRole';
 import { BroadcastPage } from '@/features/broadcast/BroadcastPage';
 import { GeographyManagementPage } from '@/features/geography/GeographyManagementPage';
-import { LogsPage } from '@/features/logs/LogsPage';
+import { LogsPage } from '@/features/audit-logs/LogsPage';
 import { OverlayPage } from '@/features/overlay/OverlayPage';
 import { ProvinceCentersPage } from '@/features/geography/ProvinceCentersPage';
 import { RulebookPage } from '@/features/rulebook/RulebookPage';
