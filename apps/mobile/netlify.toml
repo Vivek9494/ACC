@@ -15,6 +15,15 @@
   # in the bundle. Omit this tree from scanning — do NOT disable smart detection.
   SECRETS_SCAN_OMIT_PATHS = "apps/mobile/**"
 
+# The bare domain is the public download page. `force` is required because
+# dist/index.html (the SPA shell) exists and would otherwise win. The desktop
+# app and in-app links never load "/" directly, so the cockpit is unaffected.
+[[redirects]]
+  from = "/"
+  to = "/download/index.html"
+  status = 200
+  force = true
+
 # Expo Router single-page output: every route resolves to the SPA shell.
 [[redirects]]
   from = "/*"
