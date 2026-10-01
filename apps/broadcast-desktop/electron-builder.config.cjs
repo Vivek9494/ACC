@@ -11,6 +11,25 @@
  */
 
 const env = process.env;
+
+// CI passes unset GitHub secrets as empty strings; electron-builder treats an
+// empty CSC_LINK as a (missing) file path and aborts instead of skipping signing.
+for (const key of [
+  'CSC_LINK',
+  'CSC_KEY_PASSWORD',
+  'CSC_NAME',
+  'WIN_CSC_LINK',
+  'WIN_CSC_KEY_PASSWORD',
+  'APPLE_ID',
+  'APPLE_APP_SPECIFIC_PASSWORD',
+  'APPLE_TEAM_ID',
+  'APPLE_API_KEY',
+  'APPLE_API_KEY_ID',
+  'APPLE_API_ISSUER',
+]) {
+  if (env[key] !== undefined && env[key].trim() === '') delete env[key];
+}
+
 const macSigning = Boolean(env.CSC_LINK || env.CSC_NAME);
 const notarizeCredentials =
   Boolean(env.APPLE_ID && env.APPLE_APP_SPECIFIC_PASSWORD && env.APPLE_TEAM_ID) ||
