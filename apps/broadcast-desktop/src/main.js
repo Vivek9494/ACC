@@ -4,7 +4,7 @@
  * OBS via IPC → ObsController (in-cockpit Broadcast/OBS block + Settings).
  */
 
-const { app, BrowserWindow, BrowserView, Menu, shell, ipcMain } = require('electron');
+const { app, BrowserWindow, BrowserView, Menu, ipcMain } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
 const { readObsConfig, writeObsConfig } = require('./obs-config');
@@ -14,10 +14,28 @@ const {
   buildHighlight,
   readExistingHighlightPath,
 } = require('./innings-highlight');
+const { resolveCockpitOrigin } = require('./app-config');
+const { clipsRoot } = require('./clip-storage');
+const {
+  allowedClipPath,
+  applyGlobalHardening,
+  fileUrl,
+  isTrustedSender,
+  lockToOrigin,
+  lockToShell,
+  realPathOrNull,
+} = require('./security');
 
-/** Scoring cockpit origin (Expo web). Deployable URL swapped via env later. */
-const COCKPIT_BASE =
-  process.env.ASC_COCKPIT_URL?.replace(/\/$/, '') || 'http://localhost:8081';
+/** Scoring cockpit origin (Expo web): hosted when packaged, local Expo web in dev. */
+const COCKPIT_BASE = resolveCockpitOrigin({
+  isPackaged: app.isPackaged,
+  override: process.env.ASC_COCKPIT_URL,
+});
+const SHELL_HTML_PATH = path.join(__dirname, 'shell.html');
+const SHELL_FILE_URL = fileUrl(SHELL_HTML_PATH);
+const DEVTOOLS_ENABLED = !app.isPackaged;
+/** Clip files OBS returned this session (may live outside userData/clips). */
+const knownClipPaths = new Set();
 
 /** No in-app chrome bar — BrowserView fills the content area. */
 const SHELL_CHROME_HEIGHT = 0;
@@ -143,14 +161,11 @@ function ensurePanelView() {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
+      devTools: DEVTOOLS_ENABLED,
+      additionalArguments: [`--asc-cockpit-origin=${COCKPIT_BASE}`],
     },
   });
-  panelView.webContents.setWindowOpenHandler(({ url }) => {
-    if (url.startsWith('http:') || url.startsWith('https:')) {
-      void shell.openExternal(url);
-    }
-    return { action: 'deny' };
-  });
+  lockToOrigin(panelView.webContents, COCKPIT_BASE);
   panelView.webContents.on('did-finish-load', () => {
     pushObsStatus();
   });
@@ -254,8 +269,10 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
+      devTools: DEVTOOLS_ENABLED,
     },
   });
+  lockToShell(mainWindow.webContents, SHELL_FILE_URL);
 
   mainWindow.once('ready-to-show', () => {
     mainWindow?.show();
@@ -271,7 +288,7 @@ function createWindow() {
     layoutPanelView();
   });
 
-  void mainWindow.loadFile(path.join(__dirname, 'shell.html'));
+  void mainWindow.loadFile(SHELL_HTML_PATH);
   mainWindow.webContents.once('did-finish-load', () => {
     // Login first (BrowserView). Authenticated sessions redirect to broadcast home.
     showLoginGate();
@@ -369,7 +386,7 @@ function buildAppMenu() {
       submenu: [
         { role: 'reload' },
         { role: 'forceReload' },
-        { role: 'toggleDevTools' },
+        ...(DEVTOOLS_ENABLED ? [{ role: 'toggleDevTools' }] : []),
         { type: 'separator' },
         { role: 'resetZoom' },
         { role: 'zoomIn' },
@@ -390,16 +407,90 @@ function buildAppMenu() {
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 
+/** Channels the file:// shell preload also calls; all others are cockpit-only. */
+const SHELL_CHANNELS = new Set([
+  'asc:obs-get-config',
+  'asc:obs-save-config',
+  'asc:obs-get-status',
+  'asc:obs-connect',
+  'asc:obs-disconnect',
+  'asc:obs-start-stream',
+  'asc:obs-stop-stream',
+  'asc:obs-start-replay-buffer',
+  'asc:obs-instant-replay',
+  'asc:obs-return-to-live',
+]);
+
+/** @param {Electron.IpcMainEvent | Electron.IpcMainInvokeEvent} event @param {string} channel */
+function trustedSender(event, channel) {
+  const ok = isTrustedSender(event, {
+    cockpitOrigin: COCKPIT_BASE,
+    shellFileUrl: SHELL_FILE_URL,
+    allowShell: SHELL_CHANNELS.has(channel),
+  });
+  if (!ok) {
+    console.warn(`[ASC Broadcast] blocked ${channel} from ${event.senderFrame?.url ?? 'unknown frame'}`);
+  }
+  return ok;
+}
+
+/**
+ * @param {string} channel
+ * @param {(event: Electron.IpcMainInvokeEvent, ...args: any[]) => unknown} handler
+ */
+function handleTrusted(channel, handler) {
+  ipcMain.handle(channel, (event, ...args) => {
+    if (!trustedSender(event, channel)) {
+      throw new Error('ASC Broadcast bridge is only available on the scoring cockpit.');
+    }
+    return handler(event, ...args);
+  });
+}
+
+/**
+ * @param {string} channel
+ * @param {(event: Electron.IpcMainEvent, ...args: any[]) => void} listener
+ */
+function onTrusted(channel, listener) {
+  ipcMain.on(channel, (event, ...args) => {
+    if (trustedSender(event, channel)) {
+      listener(event, ...args);
+    }
+  });
+}
+
+/** @param {unknown} candidate */
+function clipPathOrNull(candidate) {
+  return allowedClipPath(candidate, {
+    clipsRoot: clipsRoot(userDataDir()),
+    knownPaths: knownClipPaths,
+  });
+}
+
+/** @param {unknown} raw */
+function allowedClipPaths(raw) {
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+  return raw.flatMap((candidate) => {
+    const allowed = clipPathOrNull(candidate);
+    if (!allowed && typeof candidate === 'string' && candidate.trim()) {
+      console.warn(`[ASC Broadcast] ignoring clip outside the clips folder: ${candidate}`);
+    }
+    return allowed ? [allowed] : [];
+  });
+}
+
 function registerIpc() {
-  ipcMain.on('asc:load-control-panel', (_event, matchId) => {
+  onTrusted('asc:load-control-panel', (_event, matchId) => {
     loadControlPanel(matchId);
   });
-  ipcMain.on('asc:show-broadcast-home', () => {
+  onTrusted('asc:show-broadcast-home', () => {
     showBroadcastHome();
   });
 
-  ipcMain.handle('asc:obs-get-config', () => readObsConfig(userDataDir()));
-  ipcMain.handle('asc:obs-save-config', (_event, raw) => {
+  handleTrusted('asc:obs-get-config', () => readObsConfig(userDataDir()));
+  handleTrusted('asc:obs-save-config', (_event, raw) => {
     const config = writeObsConfig(userDataDir(), raw);
     obs.applyReplaySceneConfig(config);
     const matchId = pendingOverlayMatchId || readLastMatchId();
@@ -408,25 +499,25 @@ function registerIpc() {
     }
     return config;
   });
-  ipcMain.handle('asc:obs-get-status', () => lifecycle.snapshot());
+  handleTrusted('asc:obs-get-status', () => lifecycle.snapshot());
 
-  ipcMain.handle('asc:obs-connect', async () => {
+  handleTrusted('asc:obs-connect', async () => {
     await handleConnect();
     return lifecycle.snapshot();
   });
-  ipcMain.handle('asc:obs-disconnect', async () => {
+  handleTrusted('asc:obs-disconnect', async () => {
     await obs.disconnect();
     return lifecycle.snapshot();
   });
-  ipcMain.handle('asc:obs-start-stream', async () => {
+  handleTrusted('asc:obs-start-stream', async () => {
     await obs.startStream();
     return lifecycle.snapshot();
   });
-  ipcMain.handle('asc:obs-stop-stream', async () => {
+  handleTrusted('asc:obs-stop-stream', async () => {
     await obs.stopStream();
     return lifecycle.snapshot();
   });
-  ipcMain.handle('asc:obs-start-replay-buffer', async () => {
+  handleTrusted('asc:obs-start-replay-buffer', async () => {
     lifecycle.replayBufferWarning = '';
     try {
       await obs.ensureReplayBuffer();
@@ -442,11 +533,11 @@ function registerIpc() {
     }
     return lifecycle.snapshot();
   });
-  ipcMain.handle('asc:obs-instant-replay', async () => {
+  handleTrusted('asc:obs-instant-replay', async () => {
     await obs.startInstantReplay();
     return lifecycle.snapshot();
   });
-  ipcMain.handle('asc:obs-save-boundary-clip', async (_event, payload) => {
+  handleTrusted('asc:obs-save-boundary-clip', async (_event, payload) => {
     // Soft-skip when OBS is down — auto-clip is best-effort; do not reject IPC
     // (Electron logs "Error occurred in handler" for every rejected invoke).
     if (obs.connection !== 'connected') {
@@ -457,21 +548,34 @@ function registerIpc() {
       console.warn('[OBS] Skipping boundary clip — replay buffer is not active.');
       return null;
     }
-    return obs.saveBoundaryClip(payload, userDataDir());
+    const saved = await obs.saveBoundaryClip(payload, userDataDir());
+    const savedReal = saved?.videoPath ? realPathOrNull(saved.videoPath) : null;
+    if (savedReal) {
+      knownClipPaths.add(savedReal);
+    }
+    return saved;
   });
-  ipcMain.handle('asc:obs-play-delivery-clip', async (_event, payload) => {
-    await obs.playDeliveryClip(payload ?? {});
+  handleTrusted('asc:obs-play-delivery-clip', async (_event, payload) => {
+    const videoPath = clipPathOrNull(payload?.videoPath);
+    if (!videoPath) {
+      throw new Error('That clip is not in the ASC Broadcast clips folder.');
+    }
+    await obs.playDeliveryClip({ ...payload, videoPath });
     return lifecycle.snapshot();
   });
-  ipcMain.handle('asc:obs-play-file', async (_event, filePath) => {
-    await obs.playFileOnAir(typeof filePath === 'string' ? filePath : '');
+  handleTrusted('asc:obs-play-file', async (_event, filePath) => {
+    const allowed = clipPathOrNull(filePath);
+    if (!allowed) {
+      throw new Error('That clip is not in the ASC Broadcast clips folder.');
+    }
+    await obs.playFileOnAir(allowed);
     return lifecycle.snapshot();
   });
-  ipcMain.handle('asc:build-highlight', async (_event, payload) => {
+  handleTrusted('asc:build-highlight', async (_event, payload) => {
     const matchId = payload && typeof payload.matchId === 'string' ? payload.matchId : '';
     const matchFolderStamp =
       payload && typeof payload.matchFolderStamp === 'string' ? payload.matchFolderStamp : '';
-    const clipPaths = payload && Array.isArray(payload.clipPaths) ? payload.clipPaths : [];
+    const clipPaths = allowedClipPaths(payload?.clipPaths);
     const kind = payload && payload.kind === 'full-match' ? 'full-match' : 'innings-1';
     return buildHighlight({
       matchId,
@@ -482,11 +586,11 @@ function registerIpc() {
     });
   });
   // Back-compat alias for older preloads.
-  ipcMain.handle('asc:build-innings-highlight', async (_event, payload) => {
+  handleTrusted('asc:build-innings-highlight', async (_event, payload) => {
     const matchId = payload && typeof payload.matchId === 'string' ? payload.matchId : '';
     const matchFolderStamp =
       payload && typeof payload.matchFolderStamp === 'string' ? payload.matchFolderStamp : '';
-    const clipPaths = payload && Array.isArray(payload.clipPaths) ? payload.clipPaths : [];
+    const clipPaths = allowedClipPaths(payload?.clipPaths);
     return buildHighlight({
       matchId,
       matchFolderStamp,
@@ -495,7 +599,7 @@ function registerIpc() {
       userDataDir: userDataDir(),
     });
   });
-  ipcMain.handle('asc:get-highlight', async (_event, payload) => {
+  handleTrusted('asc:get-highlight', async (_event, payload) => {
     const matchId =
       typeof payload === 'string'
         ? payload
@@ -522,7 +626,7 @@ function registerIpc() {
       kind,
     };
   });
-  ipcMain.handle('asc:get-innings-highlight', async (_event, matchId) => {
+  handleTrusted('asc:get-innings-highlight', async (_event, matchId) => {
     const id = typeof matchId === 'string' ? matchId : '';
     const highlightPath = readExistingHighlightPath(userDataDir(), id, '', 'innings-1');
     return {
@@ -531,7 +635,7 @@ function registerIpc() {
       kind: 'innings-1',
     };
   });
-  ipcMain.handle('asc:obs-return-to-live', async () => {
+  handleTrusted('asc:obs-return-to-live', async () => {
     await obs.returnToLive({ reason: 'manual' });
     return lifecycle.snapshot();
   });
@@ -539,6 +643,7 @@ function registerIpc() {
 
 app.whenReady().then(() => {
   app.setName('ASC Broadcast');
+  applyGlobalHardening(app, COCKPIT_BASE);
   registerIpc();
   buildAppMenu();
   createWindow();

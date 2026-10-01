@@ -1,18 +1,30 @@
 /**
- * macOS OBS lifecycle (Step 3).
+ * OBS lifecycle (launch / detect / quit) for macOS and Windows.
  *
- * Launch: `open -g -j -a OBS.app --args …` (background, no focus steal).
- * Installed OBS 32.2.2 flags used: --startreplaybuffer, --minimize-to-tray,
- * --disable-missing-files-check, optional --collection / --profile.
- * --disable-shutdown-check is NOT supported (removed in OBS 32) — we quit
- * cleanly via AppleScript instead so the .sentinel file is cleared.
+ * macOS launch: `open -g -j -a OBS.app --args …` (background, no focus steal).
+ * Windows launch: obs64.exe spawned detached with its bin folder as cwd (OBS
+ * resolves its data paths relative to the working directory).
+ * Flags: --startreplaybuffer, --minimize-to-tray, --disable-missing-files-check,
+ * optional --collection / --profile.
+ * --disable-shutdown-check is NOT supported (removed in OBS 32) — quit cleanly
+ * (AppleScript on macOS, non-forced taskkill on Windows) so the .sentinel file
+ * is cleared and OBS does not offer Safe Mode next launch.
  */
 
-const { execFile } = require('node:child_process');
+const { execFile, spawn } = require('node:child_process');
 const net = require('node:net');
+const path = require('node:path');
 const { promisify } = require('node:util');
-const { obsAppExists, resolveObsAppPath } = require('./obs-config');
+const {
+  obsAppExists,
+  obsBinaryPath,
+  resolveObsAppPath,
+  WINDOWS_OBS_EXE,
+} = require('./obs-config');
 const { isRetryableObsError } = require('./obs-client');
+
+const IS_WINDOWS = process.platform === 'win32';
+const IS_MAC = process.platform === 'darwin';
 
 const execFileAsync = promisify(execFile);
 
@@ -28,6 +40,18 @@ function sleep(ms) {
 }
 
 async function isObsProcessRunning() {
+  if (IS_WINDOWS) {
+    try {
+      const { stdout } = await execFileAsync(
+        'tasklist',
+        ['/FI', `IMAGENAME eq ${WINDOWS_OBS_EXE}`, '/NH', '/FO', 'CSV'],
+        { timeout: 4000, windowsHide: true },
+      );
+      return stdout.toLowerCase().includes(`"${WINDOWS_OBS_EXE}"`);
+    } catch {
+      return false;
+    }
+  }
   try {
     await execFileAsync('pgrep', ['-x', 'OBS'], { timeout: 2000 });
     return true;
@@ -60,6 +84,10 @@ async function isObsAlreadyRunning(port) {
 }
 
 async function hideObsWindows() {
+  if (!IS_MAC) {
+    // Windows: --minimize-to-tray already keeps OBS out of the way.
+    return;
+  }
   try {
     await execFileAsync(
       'osascript',
@@ -73,7 +101,17 @@ async function hideObsWindows() {
 
 async function quitObsApp() {
   try {
-    await execFileAsync('osascript', ['-e', 'tell application "OBS" to quit'], { timeout: 8000 });
+    if (IS_WINDOWS) {
+      // No /F: sends WM_CLOSE so OBS shuts down cleanly.
+      await execFileAsync('taskkill', ['/IM', WINDOWS_OBS_EXE], {
+        timeout: 8000,
+        windowsHide: true,
+      });
+    } else {
+      await execFileAsync('osascript', ['-e', 'tell application "OBS" to quit'], {
+        timeout: 8000,
+      });
+    }
   } catch {
     // Fall through to wait/poll; process may already be exiting.
   }
@@ -90,32 +128,45 @@ async function quitObsApp() {
  * @param {{ obsAppPath: string, sceneCollection?: string, profile?: string }} config
  */
 async function launchObsApp(config) {
+  if (!IS_MAC && !IS_WINDOWS) {
+    throw new Error('Launching OBS is supported on macOS and Windows only. Start OBS manually.');
+  }
   const appPath = resolveObsAppPath(config.obsAppPath);
   if (!obsAppExists(appPath)) {
     throw new Error(
-      `OBS was not found at ${appPath}. Set the OBS app path in Settings (default /Applications/OBS.app).`,
+      `OBS was not found at ${appPath}. Set the OBS app path in Settings, or leave it blank for the standard install location.`,
     );
   }
 
   /** @type {string[]} */
-  const args = [
-    '-g',
-    '-j',
-    '-a',
-    appPath,
-    '--args',
-    '--startreplaybuffer',
-    '--minimize-to-tray',
-    '--disable-missing-files-check',
-  ];
+  const obsArgs = ['--startreplaybuffer', '--minimize-to-tray', '--disable-missing-files-check'];
   if (config.sceneCollection) {
-    args.push('--collection', config.sceneCollection);
+    obsArgs.push('--collection', config.sceneCollection);
   }
   if (config.profile) {
-    args.push('--profile', config.profile);
+    obsArgs.push('--profile', config.profile);
   }
 
-  await execFileAsync('open', args, { timeout: 8000 });
+  if (IS_WINDOWS) {
+    const exe = obsBinaryPath(appPath);
+    await new Promise((resolve, reject) => {
+      const child = spawn(exe, obsArgs, {
+        cwd: path.dirname(exe),
+        detached: true,
+        stdio: 'ignore',
+      });
+      child.once('error', reject);
+      child.once('spawn', () => {
+        child.unref();
+        resolve(undefined);
+      });
+    });
+    return;
+  }
+
+  await execFileAsync('open', ['-g', '-j', '-a', appPath, '--args', ...obsArgs], {
+    timeout: 8000,
+  });
 }
 
 /**

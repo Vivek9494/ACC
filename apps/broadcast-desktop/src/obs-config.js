@@ -6,11 +6,22 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
+const IS_WINDOWS = process.platform === 'win32';
+const WINDOWS_OBS_EXE = 'obs64.exe';
+
+function defaultObsAppPath() {
+  if (IS_WINDOWS) {
+    const programFiles = process.env.ProgramFiles || 'C:\\Program Files';
+    return path.win32.join(programFiles, 'obs-studio', 'bin', '64bit', WINDOWS_OBS_EXE);
+  }
+  return '/Applications/OBS.app';
+}
+
 const DEFAULTS = Object.freeze({
   host: '127.0.0.1',
   port: 4455,
   password: '',
-  obsAppPath: '/Applications/OBS.app',
+  obsAppPath: defaultObsAppPath(),
   sceneCollection: '',
   profile: '',
   /** Program scene used for live broadcast (Instant Replay returns here). */
@@ -31,25 +42,56 @@ function configPath(userDataDir) {
 }
 
 /**
- * Accept either the .app bundle or the inner MacOS/OBS binary.
+ * macOS: the .app bundle (or its inner MacOS/OBS binary).
+ * Windows: obs64.exe (or the obs-studio install folder).
  * @param {string} input
  */
 function resolveObsAppPath(input) {
   const trimmed = typeof input === 'string' && input.trim() ? input.trim() : DEFAULTS.obsAppPath;
+  if (IS_WINDOWS) {
+    if (path.extname(trimmed).toLowerCase() === '.exe') {
+      return trimmed;
+    }
+    return path.win32.join(trimmed, 'bin', '64bit', WINDOWS_OBS_EXE);
+  }
   if (trimmed.endsWith(`${path.sep}Contents${path.sep}MacOS${path.sep}OBS`)) {
     return path.resolve(trimmed, '..', '..', '..');
   }
   return trimmed;
 }
 
-/** @param {string} appPath */
+/** Executable that is actually launched. @param {string} appPath */
 function obsBinaryPath(appPath) {
-  return path.join(resolveObsAppPath(appPath), 'Contents', 'MacOS', 'OBS');
+  const resolved = resolveObsAppPath(appPath);
+  return IS_WINDOWS ? resolved : path.join(resolved, 'Contents', 'MacOS', 'OBS');
 }
 
-/** @param {string} appPath */
+/**
+ * Only launch something that looks like OBS (the path is editable from the cockpit).
+ * @param {string} appPath
+ */
 function obsAppExists(appPath) {
-  return fs.existsSync(obsBinaryPath(appPath));
+  const binary = obsBinaryPath(appPath);
+  if (IS_WINDOWS && path.basename(binary).toLowerCase() !== WINDOWS_OBS_EXE) {
+    return false;
+  }
+  return fs.existsSync(binary);
+}
+
+/**
+ * Overlay origin pushed into the OBS browser source: http(s) origins only.
+ * @param {string} raw
+ */
+function normalizeOverlayUrl(raw) {
+  try {
+    const url = new URL(raw);
+    if (url.protocol === 'https:' || url.protocol === 'http:') {
+      return url.origin;
+    }
+  } catch {
+    // fall through
+  }
+  return DEFAULTS.overlayUrlBase;
 }
 
 /**
@@ -112,7 +154,7 @@ function normalizeConfig(raw) {
       DEFAULTS.replayMediaSourceName,
     ),
     overlaySceneName: stringOrDefault(source.overlaySceneName, DEFAULTS.overlaySceneName),
-    overlayUrlBase: overlayUrlRaw.replace(/\/$/, ''),
+    overlayUrlBase: normalizeOverlayUrl(overlayUrlRaw),
   };
 }
 
@@ -145,4 +187,5 @@ module.exports = {
   resolveObsAppPath,
   obsBinaryPath,
   obsAppExists,
+  WINDOWS_OBS_EXE,
 };

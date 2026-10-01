@@ -1,0 +1,73 @@
+# ASC Broadcast desktop installers: universal macOS .dmg + Windows x64 .exe.
+# Signing is optional — with no secrets the jobs still produce unsigned builds.
+#   macOS:   MAC_CSC_LINK (base64 .p12 Developer ID Application cert), MAC_CSC_KEY_PASSWORD,
+#            APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD, APPLE_TEAM_ID (notarization)
+#   Windows: WIN_CSC_LINK, WIN_CSC_KEY_PASSWORD
+name: Broadcast desktop
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'broadcast-v*'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: broadcast-desktop-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build (${{ matrix.target }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: mac
+            runner: macos-latest
+            artifact: apps/broadcast-desktop/dist/*.dmg
+          - target: win
+            runner: windows-latest
+            artifact: apps/broadcast-desktop/dist/*.exe
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile --filter @acc/broadcast-desktop...
+
+      - name: Build macOS .dmg (universal)
+        if: matrix.target == 'mac'
+        working-directory: apps/broadcast-desktop
+        env:
+          CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: pnpm run dist:mac
+
+      - name: Build Windows installer (x64)
+        if: matrix.target == 'win'
+        working-directory: apps/broadcast-desktop
+        env:
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+        run: pnpm run dist:win
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: asc-broadcast-${{ matrix.target }}
+          path: ${{ matrix.artifact }}
+          if-no-files-found: error
+          retention-days: 30

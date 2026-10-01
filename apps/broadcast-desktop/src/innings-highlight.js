@@ -23,10 +23,21 @@ function concatListLine(filePath) {
 }
 
 /**
- * Resolve ffmpeg binary (bundled ffmpeg-static, then PATH).
+ * Resolve ffmpeg: packaged app → Resources/bin (per-arch binary shipped as an
+ * extraResource, outside app.asar so it can be spawned); dev → ffmpeg-static; then PATH.
  * @returns {string}
  */
 function resolveFfmpegPath() {
+  if (typeof process.resourcesPath === 'string') {
+    const packaged = path.join(
+      process.resourcesPath,
+      'bin',
+      process.platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg',
+    );
+    if (fs.existsSync(packaged)) {
+      return packaged;
+    }
+  }
   try {
     // eslint-disable-next-line global-require, import/no-extraneous-dependencies
     const bundled = require('ffmpeg-static');
@@ -46,7 +57,7 @@ function resolveFfmpegPath() {
  */
 function runFfmpeg(ffmpegBin, args) {
   return new Promise((resolve, reject) => {
-    const child = spawn(ffmpegBin, args, { stdio: ['ignore', 'pipe', 'pipe'] });
+    const child = spawn(ffmpegBin, args, { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
     let stderr = '';
     child.stderr.on('data', (chunk) => {
       stderr += String(chunk);

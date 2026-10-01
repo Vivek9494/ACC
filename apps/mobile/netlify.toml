@@ -1,0 +1,29 @@
+# ASC scoring cockpit (Expo web) — Netlify site (acc-cockpit)
+# Loaded by the ASC Broadcast desktop app. Build from monorepo root (base
+# directory empty); publish only the Expo web export.
+# The site origin must be listed in the API's CORS_ORIGINS on Railway.
+
+[build]
+  command = "pnpm --filter @acc/types build && pnpm --filter @acc/mobile run export:web"
+  publish = "apps/mobile/dist"
+
+[build.environment]
+  # Inlined into the bundle at build time (EXPO_PUBLIC_*).
+  EXPO_PUBLIC_API_URL = "https://acc-api-production.up.railway.app"
+  EXPO_PUBLIC_OVERLAY_URL = "https://acc-overlay.netlify.app"
+  # The Expo Google Maps client key (app.json) is public by design and ends up
+  # in the bundle. Omit this tree from scanning — do NOT disable smart detection.
+  SECRETS_SCAN_OMIT_PATHS = "apps/mobile/**"
+
+# Expo Router single-page output: every route resolves to the SPA shell.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Content-Security-Policy = "frame-ancestors 'none'"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"

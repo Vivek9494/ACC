@@ -1,0 +1,5 @@
+# build/ holds electron-builder resources (icon, entitlements) — tracked, unlike
+# the repo-wide build/ ignore. Per-arch ffmpeg binaries are downloaded at
+# package time (scripts/fetch-ffmpeg.cjs).
+!build/
+build/ffmpeg/

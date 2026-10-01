@@ -5,7 +5,11 @@
 
 const { contextBridge, ipcRenderer } = require('electron');
 
-contextBridge.exposeInMainWorld('ascBroadcast', {
+const ORIGIN_ARG = '--asc-cockpit-origin=';
+const trustedOrigin =
+  process.argv.find((arg) => arg.startsWith(ORIGIN_ARG))?.slice(ORIGIN_ARG.length) ?? '';
+
+const bridge = {
   capabilities: Object.freeze({ obs: true }),
   /** Load the broadcast home (tournament → match picker) in this view. */
   returnToBroadcastHome() {
@@ -93,4 +97,9 @@ contextBridge.exposeInMainWorld('ascBroadcast', {
       return () => ipcRenderer.removeListener('asc:open-obs-settings', listener);
     },
   },
-});
+};
+
+// Off the trusted cockpit origin the page gets no bridge (main re-checks every IPC too).
+if (trustedOrigin && window.location.origin === trustedOrigin) {
+  contextBridge.exposeInMainWorld('ascBroadcast', bridge);
+}

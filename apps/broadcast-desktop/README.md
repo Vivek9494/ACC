@@ -1,6 +1,6 @@
 # ASC Broadcast (desktop)
 
-macOS Electron shell that embeds the ASC **scoring cockpit** (Expo web:
+Electron shell (macOS + Windows) that embeds the ASC **scoring cockpit** (Expo web:
 `/matches/:id/score`) and drives OBS via **obs-websocket v5**. OBS controls
 live in the shell chrome and (inside Electron only) in a **Broadcast / OBS**
 block above Main Scoreboard on the cockpit page.
@@ -40,14 +40,40 @@ home (`{ASC_COCKPIT_URL}/broadcast-home`) → embeds
 tournament; scorers only the Live tournaments they're assigned to. Keep the window ≥1024px wide so the desktop
 cockpit layout (and OBS block) appears.
 
-## Package (.app)
+## Package (installers)
+
+Packaged builds load the **hosted cockpit** at `https://acc-cockpit.netlify.app`
+(Netlify site built from `apps/mobile/netlify.toml`; its origin must be in the
+API's `CORS_ORIGINS`). `ASC_COCKPIT_URL` still overrides it (https, or
+http://localhost for testing). Dev (`electron .`) defaults to `http://localhost:8081`.
 
 ```bash
-pnpm --filter @acc/broadcast-desktop pack:mac
+pnpm --filter @acc/broadcast-desktop dist:mac   # dist/ASC Broadcast-<v>-mac-universal.dmg
+pnpm --filter @acc/broadcast-desktop dist:win   # dist/ASC Broadcast-Setup-<v>-win-x64.exe
+pnpm --filter @acc/broadcast-desktop pack:mac   # unpacked universal .app only
 ```
 
-Output: `apps/broadcast-desktop/dist/mac-arm64/ASC Broadcast.app`  
-Unsigned (`identity: null`) for local use.
+- **ffmpeg** — `scripts/fetch-ffmpeg.cjs` downloads per-arch binaries (same
+  release as `ffmpeg-static`) into `build/ffmpeg/`; they ship as
+  `Resources/bin/ffmpeg[.exe]` outside `app.asar`, merged into one universal
+  binary on macOS. Licences ship in `Resources/licenses/`.
+- **macOS signing** — set `CSC_LINK` + `CSC_KEY_PASSWORD` (or `CSC_NAME` for a
+  keychain identity) to sign with Developer ID + hardened runtime. Add
+  `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID` to notarize.
+  Without them the build is ad-hoc signed (right-click → Open on first launch).
+- **Windows signing** — set `WIN_CSC_LINK` + `WIN_CSC_KEY_PASSWORD`. Unsigned
+  installers show a SmartScreen warning (More info → Run anyway).
+- **CI** — `.github/workflows/broadcast-desktop.yml` (manual run or a
+  `broadcast-v*` tag) builds both installers and uploads them as artifacts.
+
+Security: the cockpit preload bridge only exists on the cockpit origin, every
+IPC call re-checks the sender, navigation off the origin is blocked (https links
+open in the browser), DevTools are off in packaged builds, renderer permission
+requests are denied, and clip paths passed to OBS/ffmpeg must live in the app's
+clips folder (or be a path OBS returned this session).
+
+On **Windows**, OBS defaults to `C:\Program Files\obs-studio\bin\64bit\obs64.exe`
+(launched with `--minimize-to-tray`, quit with a non-forced `taskkill`).
 
 ## Flow
 

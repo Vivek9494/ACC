@@ -11,7 +11,7 @@ const EMPTY_CONFIG: AscObsConfig = {
   host: '127.0.0.1',
   port: 4455,
   password: '',
-  obsAppPath: '/Applications/OBS.app',
+  obsAppPath: '',
   sceneCollection: '',
   profile: '',
   liveSceneName: 'Scene',
@@ -88,7 +88,7 @@ export function ObsConnectionSettingsModal({
           <View className="border-b border-outline-variant px-4 py-3">
             <Text className="font-sans-bold text-base text-on-surface">OBS connection</Text>
             <Text className="mt-1 font-sans text-[12px] text-on-surface-variant">
-              obs-websocket v5. Stored only on this Mac (same file as before).
+              obs-websocket v5. Stored only on this computer.
             </Text>
           </View>
           <KeyboardAwareFormScrollView
@@ -147,6 +147,7 @@ export function ObsConnectionSettingsModal({
                 label="OBS app path"
                 value={form.obsAppPath}
                 onChangeText={(v) => setField('obsAppPath', v)}
+                placeholder="Leave blank for the standard install location"
                 autoCapitalize="none"
                 autoCorrect={false}
               />
